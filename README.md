@@ -75,7 +75,7 @@ This computation starts with an element in a finite field and then, for the spec
 
 Suppose, we run this computation for a million steps and get some result. Using STARKs we can prove that we did the work correctly without requiring anyone to re-execute the computation. Here is how to do it.
 
-First, we need to define an *execution trace* for our computation. This trace should capture the state of the computation at all step of its execution. In our case, the trace is just a single column of intermediate values after each execution of the loop. For example, if we start with value `3` and run the computation for 1,048,576 (same as 2<sup>20</sup>) steps, the execution trace will look like this:
+First, we need to define an *execution trace* for our computation. This trace should capture the state of the computation at every step of its execution. In our case, the trace is just a single column of intermediate values after each execution of the loop. For example, if we start with value `3` and run the computation for 1,048,576 (same as 2<sup>20</sup>) steps, the execution trace will look like this:
 
 | Step      | State  |
 | :-------: | :----- |
