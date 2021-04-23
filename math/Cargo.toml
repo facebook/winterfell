@@ -1,0 +1,42 @@
+[package]
+name = "winter-math"
+version = "0.1.0"
+description = "Math library for the Winterfell STARK prover/verifier"
+authors = ["winterfell contributors"]
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/novifinancial/winterfell"
+categories = ["cryptography"]
+keywords = ["crypto", "finite-fields", "polynomials", "fft"]
+edition = "2018"
+
+[lib]
+bench = false
+
+[[bench]]
+name = "fft"
+harness = false
+
+[[bench]]
+name = "field"
+harness = false
+
+[[bench]]
+name = "polynom"
+harness = false
+
+[features]
+concurrent = ["rayon"]
+
+[dependencies]
+utils = { path = "../utils", package = "winter-utils" }
+rand = "0.8"
+thiserror = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+rayon = { version = "1.5", optional = true }
+
+
+[dev-dependencies]
+criterion = "0.3"
+num-bigint = "0.4"
+proptest = "1.0"

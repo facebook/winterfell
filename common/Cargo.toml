@@ -1,0 +1,24 @@
+[package]
+name = "winter-common"
+version = "0.1.0"
+description = "Common components for the Winterfell STARK prover/verifier"
+authors = ["winterfell contributors"]
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/novifinancial/winterfell"
+categories = ["cryptography"]
+keywords = ["crypto", "arithmetization", "air"]
+edition = "2018"
+
+[lib]
+bench = false
+
+[dependencies]
+math = { path = "../math", package = "winter-math" }
+crypto = { path = "../crypto", package = "winter-crypto" }
+fri = { path = "../fri", package = "winter-fri" }
+displaydoc = "0.2"
+rand = "0.8"
+
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "1.0"

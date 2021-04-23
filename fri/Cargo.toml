@@ -1,0 +1,37 @@
+[package]
+name = "winter-fri"
+version = "0.1.0"
+description = "Implementation of FRI protocol for Winterfell STARK prover/verifier"
+authors = ["winterfell contributors"]
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/novifinancial/winterfell"
+categories = ["cryptography"]
+keywords = ["crypto", "polynomial", "commitments"]
+edition = "2018"
+
+[lib]
+bench = false
+
+[[bench]]
+name = "monolith_prover"
+harness = false
+
+[[bench]]
+name = "quartic"
+required-features = ["concurrent"]
+harness = false
+
+[features]
+concurrent = ["rayon", "crypto/concurrent"]
+
+[dependencies]
+utils = { path = "../utils", package = "winter-utils" }
+math = { path = "../math", package = "winter-math" }
+crypto = { path = "../crypto", package = "winter-crypto" }
+thiserror = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+rayon = { version = "1.5", optional = true }
+
+[dev-dependencies]
+criterion = "0.3"

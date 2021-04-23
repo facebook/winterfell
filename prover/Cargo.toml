@@ -1,0 +1,26 @@
+[package]
+name = "prover"
+version = "0.1.0"
+description = "Winterfell STARK prover"
+authors = ["winterfell contributors"]
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/novifinancial/winterfell"
+categories = ["cryptography"]
+keywords = ["crypto", "zkp", "stark", "prover"]
+edition = "2018"
+
+[lib]
+bench = false
+
+[features]
+concurrent = ["crypto/concurrent", "math/concurrent", "fri/concurrent", "rayon"]
+
+[dependencies]
+utils = { path = "../utils", package = "winter-utils" }
+math = { path = "../math", package = "winter-math" }
+crypto = { path = "../crypto", package = "winter-crypto" }
+fri = { path = '../fri', package = "winter-fri" }
+common = { path = "../common", package = "winter-common" }
+rayon = { version = "1.5", optional = true }
+log = "0.4"

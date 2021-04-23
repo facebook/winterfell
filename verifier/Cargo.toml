@@ -1,0 +1,20 @@
+[package]
+name = "verifier"
+version = "0.1.0"
+description = "Winterfell STARK verifier"
+authors = ["winterfell contributors"]
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/novifinancial/winterfell"
+categories = ["cryptography"]
+keywords = ["crypto", "zkp", "stark", "verifier"]
+edition = "2018"
+
+[lib]
+bench = false
+
+[dependencies]
+math = { path = "../math", package = "winter-math" }
+crypto = { path = "../crypto", package = "winter-crypto" }
+fri = { path = "../fri", package = "winter-fri" }
+common = { path = "../common", package = "winter-common" }

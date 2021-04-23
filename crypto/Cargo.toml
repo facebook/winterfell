@@ -1,0 +1,40 @@
+[package]
+name = "winter-crypto"
+version = "0.1.0"
+description = "Cryptographic library for the Winterfell STARK prover/verifier"
+authors = ["winterfell contributors"]
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/novifinancial/winterfell"
+categories = ["cryptography"]
+keywords = ["crypto", "merkle-tree", "hash"]
+edition = "2018"
+
+[lib]
+bench = false
+
+[[bench]]
+name = "hash"
+harness = false
+
+[[bench]]
+name = "merkle"
+harness = false
+required-features = ["concurrent"]
+
+[features]
+concurrent = ["rayon"]
+
+[dependencies]
+utils = { path = "../utils", package = "winter-utils" }
+math = { path = "../math", package = "winter-math" }
+blake3 = "0.3"
+sha3 = "0.9"
+serde = { version = "1.0", features = ["derive"] }
+rayon = { version = "1.5", optional = true }
+
+[dev-dependencies]
+criterion = "0.3"
+proptest = "1.0"
+sha2 = "0.9"
+rand = "0.8"
