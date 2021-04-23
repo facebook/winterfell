@@ -10,7 +10,7 @@ This crate contains modules with mathematical operations needed in STARK proof g
 
 Currently, there are two implementations of finite fields:
 
-* A 128-bit field with modulus 2<sup>128</sup> - 45 * 2<sup>40</sup> + 1. This field was not chosen with any significant thought given to performance, and the implementation of most operations is sub-optimal as well. Proof generated in this will can support security level of ~100 bits. If higher level of security is desired, proofs must be generated in a quadratic extension of the field.
+* A 128-bit field with modulus 2<sup>128</sup> - 45 * 2<sup>40</sup> + 1. This field was not chosen with any significant thought given to performance, and the implementation of most operations is sub-optimal as well. Proof generated in field can support security level of ~100 bits. If higher level of security is desired, proofs must be generated in a quadratic extension of the field.
 * A 62-bit field with modulus 2<sup>62</sup> - 111 * 2<sup>39</sup> + 1. This field supports very fast modular arithmetic including branchless multiplication and addition. To achieve adequate security (i.e. ~100 bits), proofs must be generated in a quadratic extension of this field. For higher levels of security, a cubic extension field should be used.
 
 ### Extension fields

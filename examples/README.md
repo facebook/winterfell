@@ -42,7 +42,7 @@ There are several examples illustrating how to generate (and verify) proofs for 
 
 It is interesting to note that `fib`/`fib8` and `mulfib`/`mulfib8` examples encode identical computations but these different encodings have significant impact on performance. Specifically, proving time for `fib8` example is 4x times faster than for `fib` example, while proving time for `mulfib8` example is about 2.4x times faster than for `mulfib` example. The difference stems from the fact that when we deal with additions only, we can omit intermediate states from the execution trace. But when multiplications are involved, we need to introduce additional registers to record intermediate results (another option would be to increase constraint degree, but this is not covered here).
 
-Additionally, proof sizes for `fib8` and `mulfib8` are about 15% smaller than for their "uncompressed" counterparts.
+Additionally, proof sizes for `fib8` and `mulfib8` are about 15% smaller than their "uncompressed" counterparts.
 
 These improvements come at the expense of slightly more complex proof verification: constraint evaluation now involves 4 times more work for each of the "compressed" examples. But in case of Fibonacci sequences, this additional work is negligible and has no measurable impact on verifier performance.
 
@@ -52,7 +52,7 @@ You can run these examples like so:
 ```
 where:
 
-* **sequence length** is the term of the Fibonacci sequence to compute. Currently, this must be a power of 2. The default is 1,048,576 (same as 2^20).
+* **sequence length** is the term of the Fibonacci sequence to compute. Currently, this must be a power of 2. The default is 1,048,576 (same as 2<sup>20</sup>).
 
 For example, the following command will generate and very a proof for computing a Fibonacci sequence up to 1024th term.
 ```

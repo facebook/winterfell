@@ -51,7 +51,7 @@ This second option is usually simpler to use and also makes it easy to implement
 #### Concurrent trace generation
 For computations which consist of many small independent computations, we can generate the execution trace of the entire computation by building fragments of the trace in parallel, and then joining these fragments together.
 
-For this purpose, `ExecutionTrace` struct exposes `fragments()` method, which takes fragment length as a parameter and breaks the execution trace into equally sized fragments. You can then use fragment's `fill()` method to fill all fragments with data in parallel. The semantics of the fragment's `fill()` method are identical the `fill()` method of the execution trace.
+For this purpose, `ExecutionTrace` struct exposes `fragments()` method, which takes fragment length as a parameter and breaks the execution trace into equally sized fragments. You can then use fragment's `fill()` method to fill all fragments with data in parallel. The semantics of the fragment's `fill()` method are identical to the `fill()` method of the execution trace.
 
 License
 -------
