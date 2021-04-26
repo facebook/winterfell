@@ -115,7 +115,13 @@ pub fn build_do_work_trace(start: BaseElement, n: usize) -> ExecutionTrace<BaseE
 }
 ```
 
-Next, we need to define the AIR for our computation. We do this by implementing the `Air` trait (see [common crate](common) for more info about the `Air` trait):
+Next, we need to define the AIR for our computation. We do this by implementing the `Air` trait. At the high level, the code below does three things:
+
+1. Defines what the public inputs for our computation should look like. These inputs are called "public" because they must be known to both, the prover and the verifier.
+2. Defines a transition function with a single transition constraint. This transition constraint must evaluate to zero for all valid state transitions, and to non-zero for any invalid state transition. The degree of this constraint is 3 (see more about constraint degrees [here](common/#Constraint-degrees)).
+3. Define two assertions against an execution trace of our computation. These assertions tie a specific set of public inputs to a specific execution trace (see more about assertions [here](common/#Trace-assertions)).
+
+For more information about the `Air` trait see [common crate](common#Air-trait), and here is the actual code:
 
 ```Rust
 use math::field::{f128::BaseElement, FieldElement};
@@ -208,12 +214,6 @@ impl Air for WorkAir {
 }
 ```
 
-There is a lot to parse in the code above, and hopefully, the comments make it a bit easier to understand. But to sum up the important points:
-
-1. We define what the public inputs for our computation should look like. These inputs are called public because they must be known to both, the prover and the verifier.
-2. We define a transition function with a single transition constraint. This transition constraint must evaluate to zero for all valid state transitions, and to non-zero for any invalid state transition. The degree of this constraint is 3.
-3. We define two assertions against an execution trace of our computation. These assertions tie a specific set of public inputs to a specific execution trace.
-
 Now, we are finally ready to generate a STARK proof. The function below, will execute our computation, and will return the result together with the proof that the computation was executed correctly.
 
 ```Rust
@@ -260,7 +260,7 @@ pub fn verify_work(start: BaseElement, result: BaseElement, proof: StarkProof) {
 }
 ```
 
-That's all there is to it! As mentioned above, the [examples](examples) crate contains examples of much more interesting computations. So, do check it out!
+That's all there is to it! As mentioned above, the [examples](examples) crate contains examples of much more interesting computations (together with instructions on how to compile and run these examples). So, do check it out.
 
 ## Performance
 The Winterfell prover's performance depends on a large number of factors including the nature of the computation itself, efficiency of encoding the computation in AIR, proof generation parameters, hardware setup etc. Thus, the benchmarks below should be viewed as directional: they illustrate the general trends, but concrete numbers will be different for different computations, choices of parameters etc.
