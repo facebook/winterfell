@@ -45,7 +45,17 @@ The constraints are considered to be satisfied if and only if, after the functio
 * For all valid transitions between consecutive computation steps, transition constraints should evaluation to all zeros.
 * For any invalid transition, at least one constraint must evaluate to a non-zero value.
 
-Keep in mind is that since transition constraints define algebraic relations, they should be described using only algebraic operations: additions, subtractions, and multiplications. It is also important to note that multiplying register values increases constraint degree. We usually want to keep constraint degrees as low as possible to ensure reasonable proof generation time without sacrificing security. Thus, multiplications should be used judiciously - though, there are ways to ease this restriction a bit (check out [mulfib8](../examples/src/fibonacci/mulfib8/air.rs) example).
+Keep in mind is that since transition constraints define algebraic relations, they should be described using only algebraic operations: additions, subtractions, and multiplications (divisions can be emulated using inverse of multiplication).
+
+#### Constraint degrees
+One of the main factors impacting proof generation time and proof size is the maximum degree of transition constraints. The higher is this degree, the larger our blowup factor needs to be. Usually, we want to keep this degree as low as possible - e.g. under 4 or 8. To accurately describe degrees of your transition constraints, keep the following in mind:
+
+* All trace registers have degree `1`.
+* When multiplying trace registers together, the degree increases by `1`. For example, if our constraint involves multiplication of two registers, the degree of this constraint will be `2`. We can describe this constraint using `TransitionConstraintDegree` struct as follows: `TransitionConstraintDegree::new(2)`.
+* Degrees of periodic columns depend on the length of their cycles, but in most cases, these degrees are very close to `1`.
+* To describe a degree of a constraint involving multiplication of trace registers and periodic columns, use the `with_cycles()` constructor of `TransitionConstraintDegree` struct. For example, if our constraint involves multiplication of one trace register and one periodic column with a cycle of 32 steps, the degree can be described as: `TransitionConstraintDegree::with_cycles(1, vec![32])`.
+
+In general, multiplications should be used judiciously - though, there are ways to ease this restriction a bit (check out [mulfib8](../examples/src/fibonacci/mulfib8/air.rs) example).
 
 ### Trace assertions
 Assertions are used to specify that a valid execution trace of a computation must contain certain values in certain cells. They are frequently used to tie public inputs to a specific execution trace, but can be used to constrain a computation in other ways as well. Internally within Winterfell, assertions are converted into *boundary constraints*.
