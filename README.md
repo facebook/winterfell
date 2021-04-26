@@ -12,17 +12,17 @@ An experimental project for building a distributed STARK prover.
 
 ## Overview
 
-A STARK is a novel proof-of-computation scheme which can be used to create efficiently verifiable proofs that a computation was executed correctly. The scheme was developed by Eli-Ben Sasson and team at Technion - Israel Institute of Technology. STARKs do not require an initial trusted setup, and rely on very few cryptographic assumptions. See [references](#References) for more info.
+A STARK is a novel proof-of-computation scheme to create efficiently verifiable proofs of the correct execution of a computation. The scheme was developed by Eli-Ben Sasson and collaborators at Technion - Israel Institute of Technology. STARKs do not require an initial trusted setup, and rely on very few cryptographic assumptions. See [references](#References) for more info.
 
-The aim of this project is to build a feature-rich, easy to use, and highly performant STARK prover which can generate integrity proofs for very large computations. STARK proof generation process is massively parallelizable, however, it also requires lots of RAM. For very large computations, amount of RAM available on a single machine may not be sufficient to efficiently generate a proof. Therefore, our goal is to efficiently distribute proof generation across many machines.
+The aim of this project is to build a feature-rich, easy to use, and highly performant STARK prover which can generate integrity proofs for very large computations. STARK proof generation process is massively parallelizable, however, it also requires lots of RAM. For very large computations, amount of RAM available on a single machine may not be sufficient to efficiently generate a proof. Therefore, our final goal is to efficiently distribute proof generation across many machines.
 
 ### Status and features
 
-A distributed STARK prover has not been implemented yet, but the project contains a fully-functional multi-threaded STARK prover and verifier with the following nice properties:
+While our distributed STARK prover implementation is still under development, this project contains fully-functional, multi-threaded, STARK prover and verifier code with the following nice properties:
 
-**A simple interface.** The library exposes a relatively simple interface for describing general computations. See [usage](#Usage) for a quick tutorial, [common crate](common) for the description of the interface, and [examples crate](examples) for a few real-world examples.
+**A simple interface.** This library provides a relatively simple interface for describing general computations. See [usage](#Usage) for a quick tutorial, [common crate](common) for the description of the interface, and [examples crate](examples) for a few real-world examples.
 
-**Multi-threaded proof generation.** When complied with `concurrent` feature enabled, proof generation process will run in multiple threads. The library also supports concurrent construction of execution trace tables. The [performance](#Performance) section showcases the benefits of multi-threading.
+**Multi-threaded proof generation.** When complied with `concurrent` feature enabled, the proof generation process will run in multiple threads. The library also supports concurrent construction of execution trace tables. The [performance](#Performance) section showcases the benefits of multi-threading.
 
 **Configurable fields.** Both the base and the extension field for proof generation can be chosen dynamically. This simplifies fine-tuning of proof generation for specific performance and security targets. See [math crate](math) for description of currently available fields.
 
@@ -32,11 +32,11 @@ A distributed STARK prover has not been implemented yet, but the project contain
 
 Over time, we hope extend the library with additional features:
 
-**Distributed prover.** Distributed proof generation is the main priority of this project, and we hope to implement it sooner rather than later.
+**Distributed prover.** Distributed proof generation is the main priority of this project, and we hope to release an update containing it soon.
 
 **Perfect zero-knowledge.** The current implementation provides succinct proofs but NOT perfect zero-knowledge. This means that, in its current form, the library may not be suitable for use cases where proofs must not leak any info about secret inputs. 
 
-**WebAssembly support.** The library is written in pure Rust, and in the future we hope to enable compilation to WebAssembly. First for the verifier, and later for the prover.
+**WebAssembly support.** The library is written in pure Rust, and in the future we hope to enable compilation to WebAssembly. First, for the verifier, and later for the prover.
 
 ### Project structure
 The project is organized into several crates like so:
@@ -45,17 +45,17 @@ The project is organized into several crates like so:
 | -------------------- | ----------- |
 | [examples](examples) | Contains examples of generating/verifying proofs for several toy and real-world computations. |
 | [prover](prover)     | Contains implementations of STARK provers. You can use these to generate computational integrity proofs. |
-| [verifier](verifier) | Contains an implementation of STARK verifier which can verify proofs generated by a prover. |
-| [fri](fri)           | Contains implementation of FRI prover and verifier. These are used internally by STARK prover and verifier. |
+| [verifier](verifier) | Contains an implementation of a STARK verifier which can verify proofs generated by a prover. |
+| [fri](fri)           | Contains implementation of a FRI prover and verifier. These are used internally by the STARK prover and verifier. |
 | [common](common)     | Contains modules with components shared between the prover and the verifier. |
 | [math](math)         | Contains modules with math operations needed in STARK proof generation/verification. These include: finite field arithmetic, polynomial arithmetic, and FFTs. |
 | [crypto](crypto)     | Contains modules with cryptographic operations needed in STARK proof generation/verification. Specifically: hash functions and Merkle trees. |
 | [utils](utils)       | Contains a few utility functions used throughout the library. |
 
 ## Usage
-Generating STARK proofs for a computation is a relatively complicated process. This library aims to abstract away most of the complexity, however, the users are still expected to provide descriptions of their computations in a STARK-specific format. This format is called *algebraic intermediate representation*, or AIR for short.
+Generating STARK proofs for a computation is a relatively complicated process. This library aims to abstract away most of the complexity, however, the users are still expected to provide descriptions of their computations in a STARK-specific format. This format is called *algebraic intermediate representation*, or AIR, for short.
 
-The library contains several higher-level constructs which make defining AIR a little easier, and there are also examples of AIRs for several computations available in the [examples crate](examples). However, the best way to understand STARK proof generation process is to go through a trivial example from start to finish.
+This library contains several higher-level constructs which make defining AIRs for computations a little easier, and there are also examples of AIRs for several computations available in the [examples crate](examples). However, the best way to understand the STARK proof generation process is to go through a trivial example from start to finish.
 
 First, we'll need to pick a computation for which we'll be generating and verifying STARK proofs. To keep things simple, we'll use the following:
 
@@ -73,7 +73,7 @@ fn do_work(start: BaseElement, n: usize) -> BaseElement {
 
 This computation starts with an element in a finite field and then, for the specified number of steps, cubes the element and adds value `42` to it.
 
-Suppose, we run this computation for a million steps and get some result. Using STARKs we can prove that we did the work correctly without requiring anyone to re-execute the computation. Here is how to do it.
+Suppose, we run this computation for a million steps and get some result. Using STARKs we can prove that we did the work correctly without requiring any verifying party to re-execute the computation. Here is how to do it.
 
 First, we need to define an *execution trace* for our computation. This trace should capture the state of the computation at every step of its execution. In our case, the trace is just a single column of intermediate values after each execution of the loop. For example, if we start with value `3` and run the computation for 1,048,576 (same as 2<sup>20</sup>) steps, the execution trace will look like this:
 
@@ -115,7 +115,7 @@ pub fn build_do_work_trace(start: BaseElement, n: usize) -> ExecutionTrace<BaseE
 }
 ```
 
-Next, we need to define AIR for our computation. We do this by implementing the `Air` trait (see [common crate](common) for more info about `Air` trait):
+Next, we need to define the AIR for our computation. We do this by implementing the `Air` trait (see [common crate](common) for more info about the `Air` trait):
 
 ```Rust
 use math::field::{f128::BaseElement, FieldElement};
@@ -157,7 +157,7 @@ impl Air for WorkAir {
 
         // Our computation requires a single transition constraint. The constraint itself 
         // is defined in the evaluate_transition() method below, but here we need to specify
-        // the expected degree of the constraint. If expected and actual degrees of the
+        // the expected degree of the constraint. If the expected and actual degrees of the
         // constraints don't match, an error will be thrown in the debug mode, but in release
         // mode, an invalid proof will be generated which will not be accepted by any verifier.
         let degrees = vec![TransitionConstraintDegree::new(3)];
@@ -210,7 +210,7 @@ impl Air for WorkAir {
 
 There is a lot to parse in the code above, and hopefully, the comments make it a bit easier to understand. But to sum up the important points:
 
-1. We define how the public inputs for our computation should look like. These inputs are called public because they must be know to both, the prover and the verifier.
+1. We define what the public inputs for our computation should look like. These inputs are called public because they must be known to both, the prover and the verifier.
 2. We define a transition function with a single transition constraint. This transition constraint must evaluate to zero for all valid state transitions, and to non-zero for any invalid state transition. The degree of this constraint is 3.
 3. We define two assertions against an execution trace of our computation. These assertions tie a specific set of public inputs to a specific execution trace.
 
@@ -260,10 +260,10 @@ pub fn verify_work(start: BaseElement, result: BaseElement, proof: StarkProof) {
 }
 ```
 
-That's all there is to it! As mentioned above, the [examples](examples) crate contains examples of much more interesting computations. So, do check it out.
+That's all there is to it! As mentioned above, the [examples](examples) crate contains examples of much more interesting computations. So, do check it out!
 
 ## Performance
-Winterfell prover performance depends on a large number of factors including the nature of the computation itself, efficiency of encoding the computation in AIR, proof generation parameters, hardware setup etc. Thus, the benchmarks below should be viewed as directional: they illustrate the general relations well, but concrete numbers will be different for different computations, choices of parameters etc.
+The Winterfell prover's performance depends on a large number of factors including the nature of the computation itself, efficiency of encoding the computation in AIR, proof generation parameters, hardware setup etc. Thus, the benchmarks below should be viewed as directional: they illustrate the general trends, but concrete numbers will be different for different computations, choices of parameters etc.
 
 The computation we benchmark here is a chain of Rescue hash invocations (see [examples](examples/#Rescue-hash-chain) for more info). The benchmarks were run on Intel Core i9-9980KH @ 2.4 GHz and 32 GB of RAM using all 8 cores.
 
@@ -323,7 +323,7 @@ The computation we benchmark here is a chain of Rescue hash invocations (see [ex
     </tbody>
 </table>
 
-A few remarks about this benchmark:
+A few remarks about these benchmarks:
 * **Trace time** is the time it takes to generate an execution trace for the computation. This time does not depend on the chosen security level. For this specific computation, trace generation must be sequential, and thus, cannot take advantage of multiple cores. However, for other computations, where execution trace can be generated in parallel, trace time would be much smaller in relation to the proving time.
 * **R1CS equiv.** is a very rough estimate of how many R1CS constraints would be required for this computation. The assumption here is that a single invocation of Rescue hash function requires ~120 R1CS constraints.
 * As can be seen from the table, with STARKs, we can dynamically trade off proof size, proof security level, and proving time against each other.
@@ -338,7 +338,7 @@ As mentioned previously, we used all 8 CPU cores for the above benchmark. In gen
 | 8       | 1.4 sec     | 2.7 sec                | 4.2 sec                |
 | 16      | 1.4 sec     | 2.5 sec                | 3.7 sec                |
 
-A few remarks about this benchmark:
+A few remarks about these benchmarks:
 * We are still using the same 8-core machine - thus, going from 8 to 16 threads has only a minor impact.
 * Utilizing all 8 cores to the fullest, reduces prover time by 5x - 6x as compared to the single-threaded proof generation.
 
