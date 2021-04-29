@@ -17,8 +17,7 @@ bench = false
 math = { path = "../math", package = "winter-math" }
 crypto = { path = "../crypto", package = "winter-crypto" }
 fri = { path = "../fri", package = "winter-fri" }
-displaydoc = "0.2"
-rand = "0.8"
-
 serde = { version = "1.0", features = ["derive"] }
-thiserror = "1.0"
+
+[dev-dependencies]
+rand = "0.8"
