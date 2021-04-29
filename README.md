@@ -223,7 +223,7 @@ use prover::{self, ExecutionTrace, FieldExtension, HashFunction, ProofOptions, S
 pub fn prove_work() -> (BaseElement, StarkProof) {
     // We'll just hard-code the parameters here for this example.
     let start = BaseElement::new(3);
-    let n = 1_048_575;
+    let n = 1_048_576;
 
     // Build the execution trace and get the result from the last step.
     let trace = build_do_work_trace(start, n);
