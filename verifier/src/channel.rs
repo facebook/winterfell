@@ -109,8 +109,10 @@ where
     /// Returns trace states at the specified positions. This also checks if the
     /// trace states are valid against the trace commitment sent by the prover.
     pub fn read_trace_states(&self, positions: &[usize]) -> Result<Vec<Vec<B>>, VerifierError> {
+        // deserialize query bytes into a set of trace states at the specified positions
+        // and corresponding Merkle paths
         // TODO: avoid cloning
-        let (trace_proof, trace_states) = self
+        let (merkle_paths, trace_states) = self
             .trace_queries
             .clone()
             .deserialize::<H, B>(self.context.lde_domain_size(), self.context.trace_width())
@@ -120,7 +122,7 @@ where
         if !MerkleTree::verify_batch(
             &self.commitments.trace_root,
             positions,
-            &trace_proof,
+            &merkle_paths,
             H::hash_fn(),
         ) {
             return Err(VerifierError::TraceQueryDoesNotMatchCommitment);
@@ -137,8 +139,10 @@ where
     ) -> Result<Vec<E>, VerifierError> {
         let evaluations_per_leaf = utils::evaluations_per_leaf::<E, H>();
         let num_leaves = self.context.lde_domain_size() / evaluations_per_leaf;
+        // deserialize query bytes into a set of constraint evaluations at the specified positions
+        // and corresponding Merkle paths
         // TODO: avoid cloning
-        let (constraint_proof, constraint_evaluations) = self
+        let (merkle_paths, constraint_evaluations) = self
             .constraint_queries
             .clone()
             .deserialize::<H, E>(num_leaves, evaluations_per_leaf)
@@ -148,7 +152,7 @@ where
         if !MerkleTree::verify_batch(
             &self.commitments.constraint_root,
             &c_positions,
-            &constraint_proof,
+            &merkle_paths,
             H::hash_fn(),
         ) {
             return Err(VerifierError::ConstraintQueryDoesNotMatchCommitment);
@@ -156,7 +160,6 @@ where
 
         // build constraint evaluation values from the leaves of constraint Merkle proof
         let mut evaluations: Vec<E> = Vec::with_capacity(positions.len());
-
         for &position in positions.iter() {
             // TODO: position computation should be in common
             let leaf_idx = c_positions

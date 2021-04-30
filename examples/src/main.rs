@@ -50,7 +50,7 @@ fn main() {
         now.elapsed().as_millis()
     );
     let proof_bytes = bincode::serialize(&proof).unwrap();
-    debug!("Proof size: {} KB", proof_bytes.len() / 1024);
+    debug!("Proof size: {:.1} KB", proof_bytes.len() as f64 / 1024f64);
     debug!("Proof security: {} bits", proof.security_level(true));
 
     // verify the proof
