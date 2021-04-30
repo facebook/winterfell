@@ -6,6 +6,7 @@
 use crate::HashFunction;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
+use utils::group_slice_elements;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BatchMerkleProof {
@@ -205,6 +206,54 @@ impl BatchMerkleProof {
 
         v.remove(&1)
     }
+
+    // SERIALIZATION / DESERIALIZATION
+    // --------------------------------------------------------------------------------------------
+
+    /// Converts all internal proof nodes into a vector of bytes.
+    pub fn serialize_nodes(&self) -> Vec<u8> {
+        let mut result = Vec::new();
+
+        // record total number of node vectors
+        assert!(self.nodes.len() <= u8::MAX as usize, "too many paths");
+        result.push(self.nodes.len() as u8);
+
+        // record each node vector as individual bytes
+        for nodes in self.nodes.iter() {
+            assert!(nodes.len() <= u8::MAX as usize, "too many nodes");
+            // record the number of nodes, and append all nodes to the paths buffer
+            result.push(nodes.len() as u8);
+            for node in nodes.iter() {
+                result.extend_from_slice(node);
+            }
+        }
+
+        result
+    }
+
+    /// Parses internal nodes from the vector of bytes, and constructs a batch Merkle proof
+    /// from these nodes, leaf values, and provided tree depth.
+    pub fn deserialize(bytes: &[u8], leaves: Vec<[u8; 32]>, depth: u8) -> Self {
+        let num_node_vectors = bytes[0] as usize;
+        let mut nodes = Vec::with_capacity(num_node_vectors);
+        let mut head_ptr = 1;
+        for _ in 0..num_node_vectors {
+            // read the number of digests in the vector
+            let num_digests = bytes[head_ptr] as usize;
+            head_ptr += 1;
+
+            // read the digests and advance head pointer
+            let (digests, bytes_read) = read_nodes(&bytes[head_ptr..], num_digests);
+            nodes.push(digests);
+            head_ptr += bytes_read;
+        }
+
+        BatchMerkleProof {
+            nodes,
+            values: leaves,
+            depth,
+        }
+    }
 }
 
 // HELPER FUNCTIONS
@@ -214,4 +263,18 @@ impl BatchMerkleProof {
 /// immediately follows the left node.
 fn are_siblings(left: usize, right: usize) -> bool {
     left & 1 == 0 && right - 1 == left
+}
+
+// TODO: move into Hasher trait
+fn read_nodes(source: &[u8], num_nodes: usize) -> (Vec<[u8; 32]>, usize) {
+    if num_nodes == 0 {
+        return (Vec::new(), 0);
+    }
+
+    let num_bytes = num_nodes * 32;
+    // TODO: return error instead of panicking
+    assert!(source.len() >= num_bytes, "not enough bytes");
+
+    let result = group_slice_elements(&source[..num_bytes]).to_vec();
+    (result, num_bytes)
 }

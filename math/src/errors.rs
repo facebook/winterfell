@@ -11,6 +11,8 @@ use core::fmt;
 pub enum SerializationError {
     /// Destination must be at least {0} elements long, but was {1}
     DestinationTooSmall(usize, usize),
+    /// Expected source to contain exactly {0} bytes, but was {1}
+    WrongNumberOfBytes(usize, usize),
     /// Failed to read field element from bytes at position {0}
     FailedToReadElement(usize),
     /// Number of bytes ({0}) does not divide into whole number of field elements
@@ -25,6 +27,9 @@ impl fmt::Display for SerializationError {
         match self {
             Self::DestinationTooSmall(expected, actual) => {
                 write!(f, "destination must be at least {} elements long, but was {}", expected, actual)
+            }
+            Self::WrongNumberOfBytes(expected, actual) => {
+                write!(f, "expected source to contain exactly {} bytes, but was {}", expected, actual)
             }
             Self::FailedToReadElement(position) => {
                 write!(f, "failed to read field element from bytes at position {}", position)
