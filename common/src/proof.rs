@@ -6,7 +6,11 @@
 use crate::{FieldExtension, ProofOptions};
 use crypto::{BatchMerkleProof, Hasher};
 use fri::FriProof;
-use math::{field::FieldElement, utils::log2};
+use math::{
+    errors::SerializationError,
+    field::FieldElement,
+    utils::{log2, read_elements_into_vec},
+};
 use serde::{Deserialize, Serialize};
 
 // CONSTANTS
@@ -126,12 +130,18 @@ impl Queries {
     }
 
     /// Convert a set of queries into a batch Merkle proof and corresponding values.
-    /// TODO: return values as a vector of field elements
-    pub fn into_batch<H: Hasher>(self, num_leaves: usize) -> (BatchMerkleProof, Vec<Vec<u8>>) {
+    pub fn deserialize<H: Hasher, E: FieldElement>(
+        self,
+        num_leaves: usize,
+        _elements_per_query: usize,
+    ) -> Result<(BatchMerkleProof, Vec<Vec<E>>), SerializationError> {
         let hash_fn = H::hash_fn();
         let mut hashed_values = vec![[0u8; 32]; self.values.len()];
-        for (trace_state, state_hash) in self.values.iter().zip(hashed_values.iter_mut()) {
-            hash_fn(trace_state, state_hash);
+        let mut query_elements = Vec::new();
+        for (query_values, query_hash) in self.values.iter().zip(hashed_values.iter_mut()) {
+            hash_fn(query_values, query_hash);
+            let x = read_elements_into_vec::<E>(query_values)?;
+            query_elements.push(x);
         }
 
         let merkle_proof = BatchMerkleProof {
@@ -140,7 +150,7 @@ impl Queries {
             depth: log2(num_leaves) as u8,
         };
 
-        (merkle_proof, self.values)
+        Ok((merkle_proof, query_elements))
     }
 }
 
