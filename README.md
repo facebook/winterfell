@@ -99,7 +99,7 @@ pub fn build_do_work_trace(start: BaseElement, n: usize) -> ExecutionTrace<BaseE
     let trace_width = 1;
     let mut trace = ExecutionTrace::new(trace_width, n);
 
-    // Fill the trace with data; the first closure initialized the first state of the
+    // Fill the trace with data; the first closure initializes the first state of the
     // computation; the second closure computes the next state of the computation based
     // on its current state.
     trace.fill(
