@@ -36,6 +36,7 @@ fn sequential_fri_prove_verify() {
         commitments,
         &evaluations,
         max_degree,
+        lde_domain.len(),
         &positions,
         &options,
     );

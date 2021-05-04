@@ -20,8 +20,6 @@ use std::marker::PhantomData;
 // TYPES AND INTERFACES
 // ================================================================================================
 
-type Bytes = Vec<u8>;
-
 pub struct VerifierChannel<B: StarkField, E: FieldElement + From<B>, H: Hasher> {
     context: ComputationContext,
     commitments: Commitments,
@@ -29,12 +27,11 @@ pub struct VerifierChannel<B: StarkField, E: FieldElement + From<B>, H: Hasher> 
     constraint_queries: Queries,
     ood_frame: OodEvaluationFrame,
     fri_layer_proofs: Vec<BatchMerkleProof>,
-    fri_layer_queries: Vec<Vec<Bytes>>,
-    fri_remainder: Bytes,
+    fri_layer_queries: Vec<Vec<E>>,
+    fri_remainder: Vec<E>,
     fri_partitioned: bool,
     query_seed: [u8; 32],
     _base_element: PhantomData<B>,
-    _extension_element: PhantomData<E>,
     _hasher: PhantomData<H>,
 }
 
@@ -53,9 +50,16 @@ where
         // TODO: verify ce blowup factor
 
         // --- parse FRI proofs -------------------------------------------------------------------
-        let fri_partitioned = proof.fri_proof.partitioned;
-        let (fri_layer_proofs, fri_layer_queries, fri_remainder) =
-            Self::parse_fri_proof(proof.fri_proof);
+        let fri_partitioned = proof.fri_proof.is_partitioned();
+        let fri_remainder = proof
+            .fri_proof
+            .parse_remainder()
+            .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
+        // TODO: don't hard-code folding factor
+        let (fri_layer_queries, fri_layer_proofs) = proof
+            .fri_proof
+            .parse_layers::<H, E>(air.lde_domain_size(), 4)
+            .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         // --- build query seed -------------------------------------------------------------------
         let query_seed = build_query_seed::<H>(
@@ -76,7 +80,6 @@ where
             fri_partitioned,
             query_seed,
             _base_element: PhantomData,
-            _extension_element: PhantomData,
             _hasher: PhantomData,
         })
     }
@@ -185,11 +188,11 @@ where
         &self.fri_layer_proofs
     }
 
-    fn fri_layer_queries(&self) -> &[Vec<Bytes>] {
+    fn fri_layer_queries(&self) -> &[Vec<E>] {
         &self.fri_layer_queries
     }
 
-    fn fri_remainder(&self) -> &[u8] {
+    fn fri_remainder(&self) -> &[E] {
         &self.fri_remainder
     }
 

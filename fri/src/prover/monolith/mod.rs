@@ -149,14 +149,7 @@ where
                 queried_values.push(self.layers[i].evaluations[position]);
             }
 
-            layers.push(FriProofLayer {
-                values: queried_values
-                    .into_iter()
-                    .map(|v| E::elements_as_bytes(&v).to_vec())
-                    .collect(),
-                paths: proof.nodes,
-                depth: proof.depth,
-            });
+            layers.push(FriProofLayer::new(queried_values, proof));
             domain_size /= FOLDING_FACTOR;
         }
 
@@ -175,11 +168,7 @@ where
         // clear layers so that another proof can be generated
         self.reset();
 
-        FriProof {
-            layers,
-            rem_values: E::elements_as_bytes(&remainder).to_vec(),
-            partitioned: false,
-        }
+        FriProof::new(layers, remainder, false)
     }
 
     /// Returns number of FRI layers computed during the last execution of build_layers() method
@@ -204,7 +193,7 @@ where
 ///   f'(x) = a + alpha * b + alpha^2 * c + alpha^3 * d, where alpha is a random coefficient
 /// - evaluate f'(x) on a domain which consists of x^4 from the original domain (and thus is
 ///   1/4 the size)
-/// note: that to compute an x in the new domain, we need 4 values from the old domain:
+/// note: to compute an x in the new domain, we need 4 values from the old domain:
 /// x^{1/4}, x^{2/4}, x^{3/4}, x
 fn apply_drp<B, E>(
     evaluations: &[[E; FOLDING_FACTOR]],
