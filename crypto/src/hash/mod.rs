@@ -7,7 +7,7 @@ use crate::HashFunction;
 use core::fmt::Debug;
 use math::field::FieldElement;
 use sha3::Digest;
-use utils::AsBytes;
+use utils::{AsBytes, group_slice_elements};
 
 // HASHER TRAIT
 // ================================================================================================
@@ -18,6 +18,8 @@ pub trait Hasher {
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest;
 
     fn hash_elements<E: FieldElement>(elements: &[E]) -> Self::Digest;
+
+    fn read_digests_into_vec(source: &[u8], num_digests: usize) -> (Vec<Self::Digest>, usize);
 
     fn hash_fn() -> HashFunction;
 }
@@ -38,6 +40,10 @@ impl Hasher for Blake3_256 {
     fn hash_elements<E: FieldElement>(elements: &[E]) -> Self::Digest {
         let bytes = E::elements_as_bytes(elements);
         blake3::hash(&bytes).into()
+    }
+
+    fn read_digests_into_vec(source: &[u8], num_digests: usize) -> (Vec<Self::Digest>, usize) {
+        read_32_byte_digests(source, num_digests)
     }
 
     fn hash_fn() -> HashFunction {
@@ -73,6 +79,10 @@ impl Hasher for Sha3_256 {
         sha3::Sha3_256::digest(bytes).into()
     }
 
+    fn read_digests_into_vec(source: &[u8], num_digests: usize) -> (Vec<Self::Digest>, usize) {
+        read_32_byte_digests(source, num_digests)
+    }
+
     fn hash_fn() -> HashFunction {
         sha3
     }
@@ -89,4 +99,20 @@ pub fn sha3(values: &[u8], result: &mut [u8]) {
     hasher.update(&values);
     let hash = hasher.finalize();
     result.copy_from_slice(hash.as_ref());
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+fn read_32_byte_digests(source: &[u8], num_digests: usize) -> (Vec<[u8; 32]>, usize) {
+    if num_digests == 0 {
+        return (Vec::new(), 0);
+    }
+
+    let num_bytes = num_digests * 32;
+    // TODO: return error instead of panicking
+    assert!(source.len() >= num_bytes, "not enough bytes");
+
+    let result = group_slice_elements(&source[..num_bytes]).to_vec();
+    (result, num_bytes)
 }

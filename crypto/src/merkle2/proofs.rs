@@ -202,6 +202,54 @@ impl<H: Hasher> BatchMerkleProof<H> {
 
         v.remove(&1)
     }
+
+    // SERIALIZATION / DESERIALIZATION
+    // --------------------------------------------------------------------------------------------
+
+    /// Converts all internal proof nodes into a vector of bytes.
+    pub fn serialize_nodes(&self) -> Vec<u8> {
+        let mut result = Vec::new();
+
+        // record total number of node vectors
+        assert!(self.nodes.len() <= u8::MAX as usize, "too many paths");
+        result.push(self.nodes.len() as u8);
+
+        // record each node vector as individual bytes
+        for nodes in self.nodes.iter() {
+            assert!(nodes.len() <= u8::MAX as usize, "too many nodes");
+            // record the number of nodes, and append all nodes to the paths buffer
+            result.push(nodes.len() as u8);
+            for node in nodes.iter() {
+                result.extend_from_slice(node.as_ref());
+            }
+        }
+
+        result
+    }
+
+    /// Parses internal nodes from the vector of bytes, and constructs a batch Merkle proof
+    /// from these nodes, leaf values, and provided tree depth.
+    pub fn deserialize(bytes: &[u8], leaves: Vec<H::Digest>, depth: u8) -> Self {
+        let num_node_vectors = bytes[0] as usize;
+        let mut nodes = Vec::with_capacity(num_node_vectors);
+        let mut head_ptr = 1;
+        for _ in 0..num_node_vectors {
+            // read the number of digests in the vector
+            let num_digests = bytes[head_ptr] as usize;
+            head_ptr += 1;
+
+            // read the digests and advance head pointer
+            let (digests, bytes_read) = H::read_digests_into_vec(&bytes[head_ptr..], num_digests);
+            nodes.push(digests);
+            head_ptr += bytes_read;
+        }
+
+        BatchMerkleProof {
+            nodes,
+            values: leaves,
+            depth,
+        }
+    }
 }
 
 // HELPER FUNCTIONS
