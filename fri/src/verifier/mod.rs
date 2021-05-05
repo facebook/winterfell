@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{folding::quartic, utils};
+use crate::{folding::quartic, utils, VerifierError};
 use math::{
     field::{FieldElement, StarkField},
     polynom,
@@ -16,9 +16,6 @@ pub use context::VerifierContext;
 
 mod channel;
 pub use channel::{DefaultVerifierChannel, VerifierChannel};
-
-mod errors;
-pub use errors::VerifierError;
 
 // VERIFICATION PROCEDURE
 // ================================================================================================

@@ -35,6 +35,8 @@ impl fmt::Display for ProverError {
 /// Represents an error thrown by the verifier during an execution of the protocol
 #[derive(Debug, PartialEq)]
 pub enum VerifierError {
+    /// Proof deserialization failed: {0}
+    ProofDeserializationError(String),
     /// Verification of low-degree proof failed: {0}
     FriVerificationFailed(fri::VerifierError),
     /// Trace query did not match the commitment
@@ -56,6 +58,9 @@ pub enum VerifierError {
 impl fmt::Display for VerifierError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::ProofDeserializationError(msg) => {
+                write!(f, "proof deserialization failed: {}", msg)
+            }
             Self::FriVerificationFailed(err) => {
                 write!(f, "verification of low-degree proof failed: {}", err)
             }

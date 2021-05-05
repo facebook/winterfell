@@ -55,10 +55,16 @@ pub fn verify_proof(
     commitments: Vec<[u8; 32]>,
     evaluations: &[BaseElement],
     max_degree: usize,
+    domain_size: usize,
     positions: &[usize],
     options: &FriOptions<BaseElement>,
 ) -> Result<(), VerifierError> {
-    let channel = DefaultVerifierChannel::<BaseElement, hash::Blake3_256>::new(proof, commitments);
+    let channel = DefaultVerifierChannel::<BaseElement, hash::Blake3_256>::new(
+        proof,
+        commitments,
+        domain_size,
+    )
+    .unwrap();
     let context = VerifierContext::new(
         evaluations.len(),
         max_degree,
