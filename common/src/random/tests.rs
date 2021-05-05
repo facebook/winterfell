@@ -3,12 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crypto::{hash, DefaultRandomElementGenerator, RandomElementGenerator};
+use crypto::{hash, RandomElementGenerator};
 use math::field::f128::BaseElement;
 
 #[test]
 fn random_generator_draw() {
-    let mut generator = DefaultRandomElementGenerator::<hash::Blake3_256>::new([0; 32], 0);
+    let mut generator = RandomElementGenerator::<hash::Blake3_256>::new([0; 32], 0);
 
     let result = generator.draw::<BaseElement>();
     assert_eq!(

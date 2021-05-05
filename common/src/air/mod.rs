@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{ComputationContext, ProofOptions};
-use crypto::RandomElementGenerator;
+use crypto::{Hasher, RandomElementGenerator};
 use math::{
     fft,
     field::{FieldElement, StarkField},
@@ -127,14 +127,10 @@ pub trait Air: Send + Sync {
     /// Groups transition constraints together by their degree, and also assigns coefficients
     /// to each constraint. These coefficients will be used to compute random linear combination
     /// of transition constraints during constraint merging.
-    fn get_transition_constraints<E, R>(
+    fn get_transition_constraints<E: FieldElement + From<Self::BaseElement>, H: Hasher>(
         &self,
-        mut coeff_prng: R,
-    ) -> Vec<TransitionConstraintGroup<E>>
-    where
-        E: FieldElement + From<Self::BaseElement>,
-        R: RandomElementGenerator,
-    {
+        mut coeff_prng: RandomElementGenerator<H>,
+    ) -> Vec<TransitionConstraintGroup<E>> {
         let context = self.context();
         // We want to make sure that once we divide constraint polynomials by the divisor,
         // the degree of the resulting polynomial will be exactly equal to the composition_degree.
@@ -162,14 +158,10 @@ pub trait Air: Send + Sync {
     /// assign coefficients to each constraint, and group the constraints by denominator. The
     /// coefficients will be used to compute random linear combination of boundary constraints
     /// during constraint merging.
-    fn get_boundary_constraints<E, R>(
+    fn get_boundary_constraints<E: FieldElement + From<Self::BaseElement>, H: Hasher>(
         &self,
-        mut coeff_prng: R,
-    ) -> Vec<BoundaryConstraintGroup<Self::BaseElement, E>>
-    where
-        E: FieldElement + From<Self::BaseElement>,
-        R: RandomElementGenerator,
-    {
+        mut coeff_prng: RandomElementGenerator<H>,
+    ) -> Vec<BoundaryConstraintGroup<Self::BaseElement, E>> {
         // group assertions by step - i.e.: assertions for the first step are grouped together,
         // assertions for the last step are grouped together etc.
         let mut groups = HashMap::new();

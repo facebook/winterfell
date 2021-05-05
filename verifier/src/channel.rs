@@ -8,7 +8,7 @@ use common::{
     proof::{Commitments, OodEvaluationFrame, Queries, StarkProof},
     utils, Air, ComputationContext, EvaluationFrame, ProofOptions, PublicCoin,
 };
-use crypto::{BatchMerkleProof, DefaultRandomElementGenerator, Hasher, MerkleTree};
+use crypto::{BatchMerkleProof, Hasher, MerkleTree};
 use fri::{PublicCoin as FriPublicCoin, VerifierChannel as FriVerifierChannel};
 use math::{
     field::{FieldElement, StarkField},
@@ -182,8 +182,6 @@ where
     E: FieldElement + From<B>,
     H: Hasher,
 {
-    type Hasher = H;
-
     fn fri_layer_proofs(&self) -> &[BatchMerkleProof] {
         &self.fri_layer_proofs
     }
@@ -209,8 +207,6 @@ where
     E: FieldElement + From<B>,
     H: Hasher,
 {
-    type Hasher = H;
-
     fn context(&self) -> &ComputationContext {
         &self.context
     }
@@ -234,7 +230,7 @@ where
     E: FieldElement + From<B>,
     H: Hasher,
 {
-    type RandomElementGenerator = DefaultRandomElementGenerator<H>;
+    type Hasher = H;
 
     fn fri_layer_commitments(&self) -> &[[u8; 32]] {
         &self.commitments.fri_roots

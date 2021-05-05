@@ -8,7 +8,7 @@ use super::{
     TraceInfo, TransitionConstraintDegree,
 };
 use crate::{FieldExtension, HashFunction};
-use crypto::{hash, DefaultRandomElementGenerator, RandomElementGenerator};
+use crypto::{hash, RandomElementGenerator};
 use math::{
     field::{f128::BaseElement, FieldElement, StarkField},
     polynom,
@@ -378,8 +378,8 @@ pub fn build_context(trace_length: usize, trace_width: usize) -> ComputationCont
     ComputationContext::new(trace_width, trace_length, t_degrees, options)
 }
 
-pub fn build_prng() -> DefaultRandomElementGenerator<hash::Blake3_256> {
-    DefaultRandomElementGenerator::new([0; 32], 0)
+pub fn build_prng() -> RandomElementGenerator<hash::Blake3_256> {
+    RandomElementGenerator::new([0; 32], 0)
 }
 
 pub fn build_sequence_poly(values: &[BaseElement], trace_length: usize) -> Vec<BaseElement> {

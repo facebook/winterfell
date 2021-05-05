@@ -7,7 +7,7 @@ use super::{
     super::tests::{build_prng, build_sequence_poly},
     Assertion, BoundaryConstraint,
 };
-use crypto::{hash, DefaultRandomElementGenerator, RandomElementGenerator};
+use crypto::{hash, RandomElementGenerator};
 use math::{
     field::{f128::BaseElement, FieldElement, StarkField},
     polynom,
@@ -183,7 +183,7 @@ fn build_constraint_params(
 ) -> (
     BaseElement,
     HashMap<usize, Vec<BaseElement>>,
-    DefaultRandomElementGenerator<hash::Blake3_256>,
+    RandomElementGenerator<hash::Blake3_256>,
 ) {
     let inv_g = BaseElement::get_root_of_unity(log2(trace_length)).inv();
     let prng = build_prng();

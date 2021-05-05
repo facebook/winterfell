@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::PublicCoin;
-use crypto::{DefaultRandomElementGenerator, Hasher};
+use crypto::Hasher;
 use std::{convert::TryInto, marker::PhantomData, mem::size_of};
 
 // PROVER CHANNEL TRAIT
@@ -103,7 +103,7 @@ impl<H: Hasher> ProverChannel for DefaultProverChannel<H> {
 }
 
 impl<H: Hasher> PublicCoin for DefaultProverChannel<H> {
-    type RandomElementGenerator = DefaultRandomElementGenerator<H>;
+    type Hasher = H;
 
     fn fri_layer_commitments(&self) -> &[[u8; 32]] {
         &self.commitments

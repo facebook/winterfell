@@ -7,7 +7,7 @@ use crate::HashFunction;
 use core::fmt::Debug;
 use math::field::FieldElement;
 use sha3::Digest;
-use utils::{AsBytes, group_slice_elements};
+use utils::{group_slice_elements, AsBytes};
 
 // HASHER TRAIT
 // ================================================================================================
@@ -18,6 +18,8 @@ pub trait Hasher {
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest;
 
     fn hash_elements<E: FieldElement>(elements: &[E]) -> Self::Digest;
+
+    fn hash_with_int(seed: Self::Digest, value: u64) -> Self::Digest;
 
     fn read_digests_into_vec(source: &[u8], num_digests: usize) -> (Vec<Self::Digest>, usize);
 
@@ -40,6 +42,13 @@ impl Hasher for Blake3_256 {
     fn hash_elements<E: FieldElement>(elements: &[E]) -> Self::Digest {
         let bytes = E::elements_as_bytes(elements);
         blake3::hash(&bytes).into()
+    }
+
+    fn hash_with_int(seed: Self::Digest, value: u64) -> Self::Digest {
+        let mut data = [0; 64];
+        data[..32].copy_from_slice(&seed);
+        data[56..].copy_from_slice(&value.to_le_bytes());
+        blake3::hash(&data).into()
     }
 
     fn read_digests_into_vec(source: &[u8], num_digests: usize) -> (Vec<Self::Digest>, usize) {
@@ -81,6 +90,13 @@ impl Hasher for Sha3_256 {
 
     fn read_digests_into_vec(source: &[u8], num_digests: usize) -> (Vec<Self::Digest>, usize) {
         read_32_byte_digests(source, num_digests)
+    }
+
+    fn hash_with_int(seed: Self::Digest, value: u64) -> Self::Digest {
+        let mut data = [0; 64];
+        data[..32].copy_from_slice(&seed);
+        data[56..].copy_from_slice(&value.to_le_bytes());
+        sha3::Sha3_256::digest(&data).into()
     }
 
     fn hash_fn() -> HashFunction {

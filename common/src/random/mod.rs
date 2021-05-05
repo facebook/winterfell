@@ -22,8 +22,6 @@ const COMPOSITION_COEFF_OFFSET: u64 = 1024;
 // ================================================================================================
 
 pub trait PublicCoin: fri::PublicCoin {
-    type Hasher: Hasher;
-
     // ABSTRACT METHODS
     // --------------------------------------------------------------------------------------------
 
@@ -36,13 +34,13 @@ pub trait PublicCoin: fri::PublicCoin {
     // --------------------------------------------------------------------------------------------
 
     /// Returns a PRNG for transition constraint coefficients.
-    fn get_transition_coefficient_prng(&self) -> Self::RandomElementGenerator {
-        Self::RandomElementGenerator::new(self.constraint_seed(), TRANSITION_COEFF_OFFSET)
+    fn get_transition_coefficient_prng(&self) -> RandomElementGenerator<Self::Hasher> {
+        RandomElementGenerator::new(self.constraint_seed(), TRANSITION_COEFF_OFFSET)
     }
 
     /// Returns a PRNG for boundary constraint coefficients.
-    fn get_boundary_coefficient_prng(&self) -> Self::RandomElementGenerator {
-        Self::RandomElementGenerator::new(self.constraint_seed(), BOUNDARY_COEFF_OFFSET)
+    fn get_boundary_coefficient_prng(&self) -> RandomElementGenerator<Self::Hasher> {
+        RandomElementGenerator::new(self.constraint_seed(), BOUNDARY_COEFF_OFFSET)
     }
 
     // DRAW METHODS
@@ -51,15 +49,17 @@ pub trait PublicCoin: fri::PublicCoin {
     /// Draws a point from the entire field using PRNG seeded with composition seed.
     fn draw_deep_point<E: FieldElement>(&self) -> E {
         let mut generator =
-            Self::RandomElementGenerator::new(self.composition_seed(), DEEP_POINT_OFFSET);
+            RandomElementGenerator::<Self::Hasher>::new(self.composition_seed(), DEEP_POINT_OFFSET);
         generator.draw()
     }
 
     /// Draws coefficients for building composition polynomial using PRNG seeded with
     /// composition seed.
     fn draw_composition_coefficients<E: FieldElement>(&self) -> CompositionCoefficients<E> {
-        let generator =
-            Self::RandomElementGenerator::new(self.composition_seed(), COMPOSITION_COEFF_OFFSET);
+        let generator = RandomElementGenerator::<Self::Hasher>::new(
+            self.composition_seed(),
+            COMPOSITION_COEFF_OFFSET,
+        );
         CompositionCoefficients::new(generator, self.context().trace_width())
     }
 
@@ -121,7 +121,7 @@ pub struct CompositionCoefficients<E: FieldElement> {
 }
 
 impl<E: FieldElement> CompositionCoefficients<E> {
-    pub fn new<R: RandomElementGenerator>(mut prng: R, trace_width: usize) -> Self {
+    pub fn new<H: Hasher>(mut prng: RandomElementGenerator<H>, trace_width: usize) -> Self {
         CompositionCoefficients {
             trace: (0..trace_width).map(|_| prng.draw_triple()).collect(),
             trace_degree: prng.draw_pair(),

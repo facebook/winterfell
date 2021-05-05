@@ -7,7 +7,7 @@ use common::{
     proof::{Commitments, Context, OodEvaluationFrame, Queries, StarkProof},
     ComputationContext, EvaluationFrame, PublicCoin,
 };
-use crypto::{DefaultRandomElementGenerator, Hasher};
+use crypto::Hasher;
 use fri::{self, FriProof};
 use math::{
     field::{FieldElement, StarkField},
@@ -130,8 +130,6 @@ impl<H: Hasher> fri::ProverChannel for ProverChannel<H> {
 // ================================================================================================
 
 impl<H: Hasher> PublicCoin for ProverChannel<H> {
-    type Hasher = H;
-
     fn context(&self) -> &ComputationContext {
         &self.context
     }
@@ -156,7 +154,7 @@ impl<H: Hasher> PublicCoin for ProverChannel<H> {
 }
 
 impl<H: Hasher> fri::PublicCoin for ProverChannel<H> {
-    type RandomElementGenerator = DefaultRandomElementGenerator<H>;
+    type Hasher = H;
 
     fn fri_layer_commitments(&self) -> &[[u8; 32]] {
         assert!(!self.fri_roots.is_empty(), "FRI layers are not set");

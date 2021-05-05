@@ -5,7 +5,7 @@
 
 use crate::{folding::quartic, FriProof, ProofSerializationError, PublicCoin, VerifierError};
 use core::marker::PhantomData;
-use crypto::{BatchMerkleProof, DefaultRandomElementGenerator, Hasher, MerkleTree};
+use crypto::{BatchMerkleProof, Hasher, MerkleTree};
 use math::field::FieldElement;
 use utils::group_vector_elements;
 
@@ -13,8 +13,6 @@ use utils::group_vector_elements;
 // ================================================================================================
 
 pub trait VerifierChannel<E: FieldElement>: PublicCoin {
-    type Hasher: Hasher;
-
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
 
@@ -115,8 +113,6 @@ impl<E: FieldElement, H: Hasher> DefaultVerifierChannel<E, H> {
 }
 
 impl<E: FieldElement, H: Hasher> VerifierChannel<E> for DefaultVerifierChannel<E, H> {
-    type Hasher = H;
-
     fn fri_layer_proofs(&self) -> &[BatchMerkleProof] {
         &self.layer_proofs
     }
@@ -135,7 +131,7 @@ impl<E: FieldElement, H: Hasher> VerifierChannel<E> for DefaultVerifierChannel<E
 }
 
 impl<E: FieldElement, H: Hasher> PublicCoin for DefaultVerifierChannel<E, H> {
-    type RandomElementGenerator = DefaultRandomElementGenerator<H>;
+    type Hasher = H;
 
     fn fri_layer_commitments(&self) -> &[[u8; 32]] {
         &self.commitments
