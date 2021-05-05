@@ -109,38 +109,26 @@ where
     /// Returns trace states at the specified positions. This also checks if the
     /// trace states are valid against the trace commitment sent by the prover.
     pub fn read_trace_states(&self, positions: &[usize]) -> Result<Vec<Vec<B>>, VerifierError> {
+        // deserialize query bytes into a set of trace states at the specified positions
+        // and corresponding Merkle paths
         // TODO: avoid cloning
-        let (trace_proof, trace_values) = self
+        let (merkle_paths, trace_states) = self
             .trace_queries
             .clone()
-            .into_batch::<H>(self.context.lde_domain_size());
+            .deserialize::<H, B>(self.context.lde_domain_size(), self.context.trace_width())
+            .map_err(|_err| VerifierError::TraceQueryDeserializationFailed)?;
 
         // make sure the states included in the proof correspond to the trace commitment
         if !MerkleTree::verify_batch(
             &self.commitments.trace_root,
             positions,
-            &trace_proof,
+            &merkle_paths,
             H::hash_fn(),
         ) {
             return Err(VerifierError::TraceQueryDoesNotMatchCommitment);
         }
 
-        // convert query bytes into field elements of appropriate type
-        let mut states = Vec::new();
-        for state_bytes in trace_values.iter() {
-            let trace_state = match read_elements_into_vec(state_bytes) {
-                Ok(elements) => {
-                    if elements.len() != self.context.trace_width() {
-                        return Err(VerifierError::TraceQueryDeserializationFailed);
-                    }
-                    elements
-                }
-                Err(_) => return Err(VerifierError::TraceQueryDeserializationFailed),
-            };
-            states.push(trace_state);
-        }
-
-        Ok(states)
+        Ok(trace_states)
     }
 
     /// Returns constraint evaluations at the specified positions. This also checks if the
@@ -151,14 +139,20 @@ where
     ) -> Result<Vec<E>, VerifierError> {
         let evaluations_per_leaf = utils::evaluations_per_leaf::<E, H>();
         let num_leaves = self.context.lde_domain_size() / evaluations_per_leaf;
+        // deserialize query bytes into a set of constraint evaluations at the specified positions
+        // and corresponding Merkle paths
         // TODO: avoid cloning
-        let (constraint_proof, constraint_values) =
-            self.constraint_queries.clone().into_batch::<H>(num_leaves);
+        let (merkle_paths, constraint_evaluations) = self
+            .constraint_queries
+            .clone()
+            .deserialize::<H, E>(num_leaves, evaluations_per_leaf)
+            .map_err(|_err| VerifierError::ConstraintQueryDeserializationFailed)?;
+
         let c_positions = utils::map_trace_to_constraint_positions(positions, evaluations_per_leaf);
         if !MerkleTree::verify_batch(
             &self.commitments.constraint_root,
             &c_positions,
-            &constraint_proof,
+            &merkle_paths,
             H::hash_fn(),
         ) {
             return Err(VerifierError::ConstraintQueryDoesNotMatchCommitment);
@@ -166,21 +160,13 @@ where
 
         // build constraint evaluation values from the leaves of constraint Merkle proof
         let mut evaluations: Vec<E> = Vec::with_capacity(positions.len());
-
         for &position in positions.iter() {
             // TODO: position computation should be in common
             let leaf_idx = c_positions
                 .iter()
                 .position(|&v| v == position / evaluations_per_leaf)
                 .unwrap();
-            let element_start = (position % evaluations_per_leaf) * E::ELEMENT_BYTES;
-            let element_bytes =
-                &constraint_values[leaf_idx][element_start..(element_start + E::ELEMENT_BYTES)];
-            evaluations.push(E::try_from(element_bytes).map_err(|_| {
-                // TODO: display the error from try_from; this requires adding
-                // Debug trait bound to the Error associated type of TryFrom
-                VerifierError::ConstraintQueryDeserializationFailed
-            })?);
+            evaluations.push(constraint_evaluations[leaf_idx][position % evaluations_per_leaf]);
         }
 
         Ok(evaluations)
