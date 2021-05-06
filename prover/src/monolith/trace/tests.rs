@@ -90,7 +90,6 @@ fn commit_trace_table() {
     let trace_tree = extended_trace.build_commitment::<Blake3_256>();
 
     // build Merkle tree from trace rows
-    let hash_fn = Blake3_256::hash_fn();
     let mut hashed_states = Vec::new();
     let mut trace_state = vec![BaseElement::ZERO; extended_trace.width()];
     #[allow(clippy::needless_range_loop)]
@@ -98,11 +97,10 @@ fn commit_trace_table() {
         for j in 0..extended_trace.width() {
             trace_state[j] = extended_trace.get(j, i);
         }
-        let mut buf = [0; 32];
-        hash_fn(BaseElement::elements_as_bytes(&trace_state), &mut buf);
+        let buf = Blake3_256::hash_elements(&trace_state);
         hashed_states.push(buf);
     }
-    let expected_tree = MerkleTree::new(hashed_states, hash_fn);
+    let expected_tree = MerkleTree::<Blake3_256>::new(hashed_states);
 
     // compare the result
     assert_eq!(expected_tree.root(), trace_tree.root())

@@ -9,7 +9,6 @@ use common::{
 };
 use crypto::{Hasher, MerkleTree};
 use math::field::FieldElement;
-use std::marker::PhantomData;
 use utils::{group_slice_elements, uninit_vector};
 
 #[cfg(feature = "concurrent")]
@@ -20,9 +19,7 @@ use rayon::prelude::*;
 
 pub struct ConstraintCommitment<E: FieldElement, H: Hasher> {
     evaluations: Vec<E>,
-    commitment: MerkleTree,
-    _element: PhantomData<E>,
-    _hasher: PhantomData<H>,
+    commitment: MerkleTree<H>,
 }
 
 impl<E: FieldElement, H: Hasher> ConstraintCommitment<E, H> {
@@ -50,14 +47,12 @@ impl<E: FieldElement, H: Hasher> ConstraintCommitment<E, H> {
         // build Merkle tree out of hashed evaluation values
         ConstraintCommitment {
             evaluations,
-            commitment: MerkleTree::new(hashed_evaluations, H::hash_fn()),
-            _element: PhantomData,
-            _hasher: PhantomData,
+            commitment: MerkleTree::new(hashed_evaluations),
         }
     }
 
     /// Returns the root of the commitment Merkle tree.
-    pub fn root(&self) -> [u8; 32] {
+    pub fn root(&self) -> H::Digest {
         *self.commitment.root()
     }
 
@@ -95,22 +90,21 @@ impl<E: FieldElement, H: Hasher> ConstraintCommitment<E, H> {
 /// Computes hashes of evaluations grouped by N elements and returns the resulting hashes.
 fn hash_evaluations<E: FieldElement, H: Hasher, const N: usize>(
     evaluations: &[E],
-) -> Vec<[u8; 32]> {
+) -> Vec<H::Digest> {
     let evaluations = group_slice_elements::<E, N>(evaluations);
 
-    let hash_fn = H::hash_fn();
-    let mut result = uninit_vector::<[u8; 32]>(evaluations.len());
+    let mut result = uninit_vector::<H::Digest>(evaluations.len());
 
     #[cfg(not(feature = "concurrent"))]
     for (result, evaluations) in result.iter_mut().zip(evaluations.iter()) {
-        hash_fn(E::elements_as_bytes(evaluations), result);
+        *result = H::hash_elements(evaluations);
     }
     #[cfg(feature = "concurrent")]
     result
         .par_iter_mut()
         .zip(evaluations.par_iter())
         .for_each(|(result, evaluations)| {
-            hash_fn(E::elements_as_bytes(evaluations), result);
+            *result = H::hash_elements(evaluations);
         });
 
     result

@@ -30,17 +30,12 @@ where
     H: Hasher,
 {
     options: FriOptions<B>,
-    layers: Vec<FriLayer<B, E>>,
+    layers: Vec<FriLayer<B, E, H>>,
     _coin: PhantomData<C>,
-    _hasher: PhantomData<H>,
 }
 
-struct FriLayer<B, E>
-where
-    B: StarkField,
-    E: FieldElement + From<B>,
-{
-    tree: MerkleTree,
+struct FriLayer<B: StarkField, E: FieldElement + From<B>, H: Hasher> {
+    tree: MerkleTree<H>,
     evaluations: Vec<[E; FOLDING_FACTOR]>,
     _b_marker: PhantomData<B>,
 }
@@ -60,7 +55,6 @@ where
             options,
             layers: Vec::new(),
             _coin: PhantomData,
-            _hasher: PhantomData,
         }
     }
 
@@ -87,8 +81,6 @@ where
             "a prior proof generation request has not been completed yet"
         );
 
-        let hash_fn = H::hash_fn();
-
         // reduce the degree by 4 at each iteration until the remaining polynomial is small enough;
         // + 1 is for the remainder
         for depth in 0..self.options.num_fri_layers(domain.len()) + 1 {
@@ -97,8 +89,8 @@ where
             // rows of this matrix; we do this so that we could de-commit to 4 values with a sing
             // Merkle authentication path.
             let transposed_evaluations = quartic::transpose(&evaluations, 1);
-            let hashed_evaluations = quartic::hash_values(&transposed_evaluations, hash_fn);
-            let evaluation_tree = MerkleTree::new(hashed_evaluations, hash_fn);
+            let hashed_evaluations = quartic::hash_values::<H, E>(&transposed_evaluations);
+            let evaluation_tree = MerkleTree::<H>::new(hashed_evaluations);
             channel.commit_fri_layer(*evaluation_tree.root());
 
             // draw a pseudo-random coefficient from the channel, and use it in degree-respecting

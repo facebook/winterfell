@@ -123,3 +123,38 @@ impl fmt::Display for AssertionError {
         }
     }
 }
+
+// PROOF SERIALIZATION ERROR
+// ================================================================================================
+
+#[derive(Debug, PartialEq)]
+pub enum ProofSerializationError {
+    /// Failed to parse commitments: {0}
+    FailedToParseCommitments(String),
+    /// Too many commitment bytes; expected {0}, but was {1}
+    TooManyCommitmentBytes(usize, usize),
+    /// Failed to parse query values: {0}
+    FailedToParseQueryValues(String),
+    /// Failed to parse query authentication paths: {0}
+    FailedToParseQueryProofs(String),
+}
+
+impl fmt::Display for ProofSerializationError {
+    #[rustfmt::skip]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::FailedToParseCommitments(msg) => {
+                write!(f, "failed to parse commitments: {}", msg)
+            }
+            Self::TooManyCommitmentBytes(expected, actual) => {
+                write!(f, "too many commitment bytes; expected {}, but was {}", expected, actual)
+            }
+            Self::FailedToParseQueryValues(msg) => {
+                write!(f, "failed to parse query values: {}", msg)
+            }
+            Self::FailedToParseQueryProofs(msg) => {
+                write!(f, " failed to parse query authentication paths: {}", msg)
+            }
+        }
+    }
+}

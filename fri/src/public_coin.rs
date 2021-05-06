@@ -18,5 +18,5 @@ pub trait PublicCoin {
         generator.draw()
     }
 
-    fn fri_layer_commitments(&self) -> &[[u8; 32]];
+    fn fri_layer_commitments(&self) -> &[<<Self as PublicCoin>::Hasher as Hasher>::Digest];
 }

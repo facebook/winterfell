@@ -5,7 +5,7 @@
 
 use common::{
     errors::VerifierError,
-    proof::{Commitments, OodEvaluationFrame, Queries, StarkProof},
+    proof::{OodEvaluationFrame, Queries, StarkProof},
     utils, Air, ComputationContext, EvaluationFrame, ProofOptions, PublicCoin,
 };
 use crypto::{BatchMerkleProof, Hasher, MerkleTree};
@@ -22,17 +22,18 @@ use std::marker::PhantomData;
 
 pub struct VerifierChannel<B: StarkField, E: FieldElement + From<B>, H: Hasher> {
     context: ComputationContext,
-    commitments: Commitments,
+    trace_root: H::Digest,
     trace_queries: Queries,
+    constraint_root: H::Digest,
     constraint_queries: Queries,
     ood_frame: OodEvaluationFrame,
-    fri_layer_proofs: Vec<BatchMerkleProof>,
+    fri_roots: Vec<H::Digest>,
+    fri_layer_proofs: Vec<BatchMerkleProof<H>>,
     fri_layer_queries: Vec<Vec<E>>,
     fri_remainder: Vec<E>,
     fri_partitioned: bool,
-    query_seed: [u8; 32],
+    query_seed: H::Digest,
     _base_element: PhantomData<B>,
-    _hasher: PhantomData<H>,
 }
 
 // VERIFIER CHANNEL IMPLEMENTATION
@@ -49,6 +50,14 @@ where
         // TODO: validate field modulus
         // TODO: verify ce blowup factor
 
+        // --- parse commitments ------------------------------------------------------------------
+        let fri_options = air.context().options().to_fri_options::<B>();
+        let num_fri_layers = fri_options.num_fri_layers(air.lde_domain_size());
+        let (trace_root, constraint_root, fri_roots) = proof
+            .commitments
+            .parse::<H>(num_fri_layers)
+            .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
+
         // --- parse FRI proofs -------------------------------------------------------------------
         let fri_partitioned = proof.fri_proof.is_partitioned();
         let fri_remainder = proof
@@ -62,25 +71,23 @@ where
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         // --- build query seed -------------------------------------------------------------------
-        let query_seed = build_query_seed::<H>(
-            &proof.commitments.fri_roots,
-            proof.pow_nonce,
-            &air.context().options(),
-        )?;
+        let query_seed =
+            build_query_seed::<H>(&fri_roots, proof.pow_nonce, &air.context().options())?;
 
         Ok(VerifierChannel {
             context: air.context().clone(),
-            commitments: proof.commitments,
             ood_frame: proof.ood_frame,
+            trace_root,
             trace_queries: proof.trace_queries,
+            constraint_root,
             constraint_queries: proof.constraint_queries,
+            fri_roots,
             fri_layer_proofs,
             fri_layer_queries,
             fri_remainder,
             fri_partitioned,
             query_seed,
             _base_element: PhantomData,
-            _hasher: PhantomData,
         })
     }
 
@@ -118,16 +125,11 @@ where
         let (merkle_paths, trace_states) = self
             .trace_queries
             .clone()
-            .deserialize::<H, B>(self.context.lde_domain_size(), self.context.trace_width())
+            .parse::<H, B>(self.context.lde_domain_size(), self.context.trace_width())
             .map_err(|_err| VerifierError::TraceQueryDeserializationFailed)?;
 
         // make sure the states included in the proof correspond to the trace commitment
-        if !MerkleTree::verify_batch(
-            &self.commitments.trace_root,
-            positions,
-            &merkle_paths,
-            H::hash_fn(),
-        ) {
+        if !MerkleTree::verify_batch(&self.trace_root, positions, &merkle_paths) {
             return Err(VerifierError::TraceQueryDoesNotMatchCommitment);
         }
 
@@ -148,16 +150,11 @@ where
         let (merkle_paths, constraint_evaluations) = self
             .constraint_queries
             .clone()
-            .deserialize::<H, E>(num_leaves, evaluations_per_leaf)
+            .parse::<H, E>(num_leaves, evaluations_per_leaf)
             .map_err(|_err| VerifierError::ConstraintQueryDeserializationFailed)?;
 
         let c_positions = utils::map_trace_to_constraint_positions(positions, evaluations_per_leaf);
-        if !MerkleTree::verify_batch(
-            &self.commitments.constraint_root,
-            &c_positions,
-            &merkle_paths,
-            H::hash_fn(),
-        ) {
+        if !MerkleTree::verify_batch(&self.constraint_root, &c_positions, &merkle_paths) {
             return Err(VerifierError::ConstraintQueryDoesNotMatchCommitment);
         }
 
@@ -182,7 +179,7 @@ where
     E: FieldElement + From<B>,
     H: Hasher,
 {
-    fn fri_layer_proofs(&self) -> &[BatchMerkleProof] {
+    fn fri_layer_proofs(&self) -> &[BatchMerkleProof<H>] {
         &self.fri_layer_proofs
     }
 
@@ -211,15 +208,15 @@ where
         &self.context
     }
 
-    fn constraint_seed(&self) -> [u8; 32] {
-        self.commitments.trace_root
+    fn constraint_seed(&self) -> H::Digest {
+        self.trace_root
     }
 
-    fn composition_seed(&self) -> [u8; 32] {
-        self.commitments.constraint_root
+    fn composition_seed(&self) -> H::Digest {
+        self.constraint_root
     }
 
-    fn query_seed(&self) -> [u8; 32] {
+    fn query_seed(&self) -> H::Digest {
         self.query_seed
     }
 }
@@ -232,38 +229,26 @@ where
 {
     type Hasher = H;
 
-    fn fri_layer_commitments(&self) -> &[[u8; 32]] {
-        &self.commitments.fri_roots
+    fn fri_layer_commitments(&self) -> &[H::Digest] {
+        &self.fri_roots
     }
 }
 
 // HELPER FUNCTIONS
 // ================================================================================================
 fn build_query_seed<H: Hasher>(
-    fri_roots: &[[u8; 32]],
+    fri_roots: &[H::Digest],
     nonce: u64,
     options: &ProofOptions,
-) -> Result<[u8; 32], VerifierError> {
-    let hash_fn = H::hash_fn();
-
-    // combine roots of all FIR layers into a single array of bytes
-    let mut root_bytes: Vec<u8> = Vec::with_capacity(fri_roots.len() * 32);
-    for root in fri_roots.iter() {
-        root.iter().for_each(|&v| root_bytes.push(v));
-    }
-
-    // hash the array of bytes into a single 32-byte value
-    let mut query_seed = [0u8; 32];
-    hash_fn(&root_bytes, &mut query_seed);
+) -> Result<H::Digest, VerifierError> {
+    // merge all FRI roots into a single value
+    let merged_roots = H::merge_many(fri_roots);
 
     // verify proof of work
-    let mut input_bytes = [0; 64];
-    input_bytes[0..32].copy_from_slice(&query_seed);
-    input_bytes[56..].copy_from_slice(&nonce.to_le_bytes());
+    let query_seed = H::merge_with_int(merged_roots, nonce);
+    let seed_bytes: &[u8] = query_seed.as_ref();
 
-    hash_fn(&input_bytes, &mut query_seed);
-
-    let seed_head = u64::from_le_bytes(query_seed[..8].try_into().unwrap());
+    let seed_head = u64::from_le_bytes(seed_bytes[..8].try_into().unwrap());
     if seed_head.trailing_zeros() < options.grinding_factor() {
         return Err(VerifierError::QuerySeedProofOfWorkVerificationFailed);
     }

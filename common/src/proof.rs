@@ -3,11 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{FieldExtension, ProofOptions};
+use crate::{errors::ProofSerializationError, FieldExtension, ProofOptions};
 use crypto::{BatchMerkleProof, Hasher};
 use fri::FriProof;
 use math::{
-    errors::SerializationError,
     field::FieldElement,
     utils::{log2, read_elements_into_vec},
 };
@@ -33,7 +32,6 @@ pub struct StarkProof {
     pub pow_nonce: u64,
 }
 
-// TODO: this should be replaced by ProofContext
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Context {
     pub lde_domain_depth: u8,
@@ -43,11 +41,7 @@ pub struct Context {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct Commitments {
-    pub trace_root: [u8; 32],
-    pub constraint_root: [u8; 32],
-    pub fri_roots: Vec<[u8; 32]>,
-}
+pub struct Commitments(Vec<u8>);
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Queries {
@@ -113,12 +107,51 @@ impl StarkProof {
     }
 }
 
+// COMMITMENTS IMPLEMENTATION
+// ================================================================================================
+
+impl Commitments {
+    pub fn new<H: Hasher>(
+        trace_root: H::Digest,
+        constraint_root: H::Digest,
+        fri_roots: Vec<H::Digest>,
+    ) -> Self {
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(trace_root.as_ref());
+        bytes.extend_from_slice(constraint_root.as_ref());
+        for fri_root in fri_roots.iter() {
+            bytes.extend_from_slice(fri_root.as_ref());
+        }
+        Commitments(bytes)
+    }
+
+    pub fn parse<H: Hasher>(
+        self,
+        num_fri_layers: usize,
+    ) -> Result<(H::Digest, H::Digest, Vec<H::Digest>), ProofSerializationError> {
+        let num_bytes = self.0.len();
+        // +1 for trace_root, +1 for constraint root, + 1 for FRI remainder commitment
+        let num_commitments = num_fri_layers + 3;
+        let (commitments, read_bytes) = H::read_digests_into_vec(&self.0, num_commitments)
+            .map_err(|err| ProofSerializationError::FailedToParseCommitments(err.to_string()))?;
+        if read_bytes != num_bytes {
+            return Err(ProofSerializationError::TooManyCommitmentBytes(
+                read_bytes, num_bytes,
+            ));
+        }
+        Ok((commitments[0], commitments[1], commitments[2..].to_vec()))
+    }
+}
+
 // QUERY PROOFS IMPLEMENTATION
 // ================================================================================================
 
 impl Queries {
     /// Returns a set of queries constructed from a batch Merkle proof and corresponding elements.
-    pub fn new<E: FieldElement>(merkle_proof: BatchMerkleProof, query_values: Vec<Vec<E>>) -> Self {
+    pub fn new<H: Hasher, E: FieldElement>(
+        merkle_proof: BatchMerkleProof<H>,
+        query_values: Vec<Vec<E>>,
+    ) -> Self {
         assert!(!query_values.is_empty(), "query values cannot be empty");
         let elements_per_query = query_values[0].len();
         assert!(
@@ -148,11 +181,11 @@ impl Queries {
     }
 
     /// Convert a set of queries into a batch Merkle proof and corresponding query values.
-    pub fn deserialize<H: Hasher, E: FieldElement>(
+    pub fn parse<H: Hasher, E: FieldElement>(
         self,
         domain_size: usize,
         elements_per_query: usize,
-    ) -> Result<(BatchMerkleProof, Vec<Vec<E>>), SerializationError> {
+    ) -> Result<(BatchMerkleProof<H>, Vec<Vec<E>>), ProofSerializationError> {
         assert!(
             domain_size.is_power_of_two(),
             "domain size must be a power of two"
@@ -161,7 +194,6 @@ impl Queries {
             elements_per_query >= 1,
             "a query must contain at least one element"
         );
-        let hash_fn = H::hash_fn();
 
         // make sure we have enough bytes to read the expected number of queries
         let num_query_bytes = E::ELEMENT_BYTES * elements_per_query;
@@ -170,13 +202,14 @@ impl Queries {
         let num_queries = self.values.len() / num_query_bytes;
         if self.values.len() % num_query_bytes != 0 {
             let expected_bytes = (num_queries + 1) * num_query_bytes;
-            return Err(SerializationError::WrongNumberOfBytes(
+            return Err(ProofSerializationError::FailedToParseQueryValues(format!(
+                "expected {} bytes, but was {}",
                 expected_bytes,
-                self.values.len(),
-            ));
+                self.values.len()
+            )));
         }
 
-        let mut hashed_queries = vec![[0u8; 32]; num_queries];
+        let mut hashed_queries = vec![H::Digest::default(); num_queries];
         let mut query_values = Vec::with_capacity(num_queries);
 
         // read bytes corresponding to each query, convert them into field elements,
@@ -186,14 +219,19 @@ impl Queries {
             .chunks(num_query_bytes)
             .zip(hashed_queries.iter_mut())
         {
-            hash_fn(query_bytes, query_hash);
-            let elements = read_elements_into_vec::<E>(query_bytes)?;
+            let elements = read_elements_into_vec::<E>(query_bytes).map_err(|err| {
+                ProofSerializationError::FailedToParseQueryValues(err.to_string())
+            })?;
+            *query_hash = H::hash_elements(&elements);
             query_values.push(elements);
         }
 
         // build batch Merkle proof
         let tree_depth = log2(domain_size) as u8;
-        let merkle_proof = BatchMerkleProof::deserialize(&self.paths, hashed_queries, tree_depth);
+        let merkle_proof = BatchMerkleProof::deserialize(&self.paths, hashed_queries, tree_depth)
+            .map_err(|err| {
+            ProofSerializationError::FailedToParseQueryProofs(err.to_string())
+        })?;
 
         Ok((merkle_proof, query_values))
     }

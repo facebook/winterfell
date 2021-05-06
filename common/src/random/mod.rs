@@ -26,9 +26,9 @@ pub trait PublicCoin: fri::PublicCoin {
     // --------------------------------------------------------------------------------------------
 
     fn context(&self) -> &ComputationContext;
-    fn constraint_seed(&self) -> [u8; 32];
-    fn composition_seed(&self) -> [u8; 32];
-    fn query_seed(&self) -> [u8; 32];
+    fn constraint_seed(&self) -> <<Self as fri::PublicCoin>::Hasher as Hasher>::Digest;
+    fn composition_seed(&self) -> <<Self as fri::PublicCoin>::Hasher as Hasher>::Digest;
+    fn query_seed(&self) -> <<Self as fri::PublicCoin>::Hasher as Hasher>::Digest;
 
     // PRNG BUILDERS
     // --------------------------------------------------------------------------------------------
@@ -66,7 +66,6 @@ pub trait PublicCoin: fri::PublicCoin {
     /// Draws a set of unique query positions using PRNG seeded with query seed. The positions
     /// are selected from the range [0, lde_domain_size).
     fn draw_query_positions(&self) -> Vec<usize> {
-        let hash_fn = Self::Hasher::hash_fn();
         let num_queries = self.context().options().num_queries();
 
         // determine how many bits are needed to represent valid indexes in the domain
@@ -74,17 +73,14 @@ pub trait PublicCoin: fri::PublicCoin {
         let value_offset = 32 - size_of::<usize>();
 
         // initialize the seed for PRNG
-        let mut seed = [0u8; 64];
-        seed[..32].copy_from_slice(&self.query_seed());
-        let mut value_bytes = [0u8; 32];
+        let seed = self.query_seed();
 
-        // draw values from PRNG until we get as many unique values as specified by
-        // num_queries, but skipping values which are a multiple of blowup factor
+        // draw values from PRNG until we get as many unique values as specified by num_queries
         let mut result = Vec::new();
-        for i in 0usize..1000 {
+        for i in 0u64..1000 {
             // update the seed with the new counter and hash the result
-            seed[56..].copy_from_slice(&i.to_le_bytes());
-            hash_fn(&seed, &mut value_bytes);
+            let seed_hash = Self::Hasher::merge_with_int(seed, i);
+            let value_bytes: &[u8] = seed_hash.as_ref();
 
             // read the required number of bits from the hashed value
             let value =

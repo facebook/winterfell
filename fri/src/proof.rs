@@ -50,7 +50,7 @@ impl FriProof {
         self,
         mut domain_size: usize,
         folding_factor: usize,
-    ) -> Result<(Vec<Vec<E>>, Vec<BatchMerkleProof>), ProofSerializationError> {
+    ) -> Result<(Vec<Vec<E>>, Vec<BatchMerkleProof<H>>), ProofSerializationError> {
         assert!(
             domain_size.is_power_of_two(),
             "domain size must be a power of two"
@@ -106,9 +106,9 @@ pub struct FriProofLayer {
 impl FriProofLayer {
     /// Creates a new proof layer from the specified query values and the corresponding Merkle
     /// paths aggregated into a single batch Merkle proof.
-    pub fn new<E: FieldElement, const N: usize>(
+    pub fn new<H: Hasher, E: FieldElement, const N: usize>(
         query_values: Vec<[E; N]>,
-        merkle_proof: BatchMerkleProof,
+        merkle_proof: BatchMerkleProof<H>,
     ) -> Self {
         assert!(!query_values.is_empty(), "query values cannot be empty");
 
@@ -135,9 +135,7 @@ impl FriProofLayer {
         layer_depth: usize,
         domain_size: usize,
         folding_factor: usize,
-    ) -> Result<(Vec<E>, BatchMerkleProof), ProofSerializationError> {
-        let hash_fn = H::hash_fn();
-
+    ) -> Result<(Vec<E>, BatchMerkleProof<H>), ProofSerializationError> {
         // these will fail only if the struct was constructed incorrectly
         assert!(!self.values.is_empty(), "empty values vector");
         assert!(!self.paths.is_empty(), "empty paths vector");
@@ -155,7 +153,7 @@ impl FriProofLayer {
         }
 
         let num_queries = self.values.len() / num_query_bytes;
-        let mut hashed_queries = vec![[0u8; 32]; num_queries];
+        let mut hashed_queries = vec![H::Digest::default(); num_queries];
         let mut query_values = Vec::with_capacity(num_queries * folding_factor);
 
         // read bytes corresponding to each query, convert them into field elements,
@@ -165,17 +163,19 @@ impl FriProofLayer {
             .chunks(num_query_bytes)
             .zip(hashed_queries.iter_mut())
         {
-            hash_fn(query_bytes, query_hash);
-            query_values.append(
-                &mut read_elements_into_vec::<E>(query_bytes).map_err(|err| {
-                    ProofSerializationError::LayerDeserializationError(layer_depth, err.to_string())
-                })?,
-            );
+            let mut qe = read_elements_into_vec::<E>(query_bytes).map_err(|err| {
+                ProofSerializationError::LayerDeserializationError(layer_depth, err.to_string())
+            })?;
+            *query_hash = H::hash_elements(&qe);
+            query_values.append(&mut qe);
         }
 
         // build batch Merkle proof
         let tree_depth = log2(domain_size) as u8;
-        let merkle_proof = BatchMerkleProof::deserialize(&self.paths, hashed_queries, tree_depth);
+        let merkle_proof = BatchMerkleProof::deserialize(&self.paths, hashed_queries, tree_depth)
+            .map_err(|err| {
+            ProofSerializationError::LayerDeserializationError(layer_depth, err.to_string())
+        })?;
 
         Ok((query_values, merkle_proof))
     }

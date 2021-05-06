@@ -9,9 +9,8 @@ pub use hash::Hasher;
 pub mod merkle;
 pub use merkle::{build_merkle_nodes, BatchMerkleProof, MerkleTree};
 
-pub mod merkle2;
-
 mod random;
 pub use random::RandomElementGenerator;
 
-pub type HashFunction = fn(&[u8], &mut [u8]);
+mod errors;
+pub use errors::{DigestSerializationError, ProofSerializationError};

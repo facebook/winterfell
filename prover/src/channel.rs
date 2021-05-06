@@ -23,10 +23,10 @@ use rayon::prelude::*;
 
 pub struct ProverChannel<H: Hasher> {
     context: ComputationContext,
-    trace_root: Option<[u8; 32]>,
-    constraint_root: Option<[u8; 32]>,
-    fri_roots: Vec<[u8; 32]>,
-    query_seed: Option<[u8; 32]>,
+    trace_root: Option<H::Digest>,
+    constraint_root: Option<H::Digest>,
+    fri_roots: Vec<H::Digest>,
+    query_seed: Option<H::Digest>,
     pow_nonce: u64,
     _hasher: PhantomData<H>,
 }
@@ -49,7 +49,7 @@ impl<H: Hasher> ProverChannel<H> {
     }
 
     /// Commits the prover the extended execution trace.
-    pub fn commit_trace(&mut self, trace_root: [u8; 32]) {
+    pub fn commit_trace(&mut self, trace_root: H::Digest) {
         assert!(
             self.trace_root.is_none(),
             "trace root has already been committed"
@@ -58,7 +58,7 @@ impl<H: Hasher> ProverChannel<H> {
     }
 
     /// Commits the prover the the constraint evaluations.
-    pub fn commit_constraints(&mut self, constraint_root: [u8; 32]) {
+    pub fn commit_constraints(&mut self, constraint_root: H::Digest) {
         assert!(
             self.constraint_root.is_none(),
             "constraint root has already been committed"
@@ -78,7 +78,7 @@ impl<H: Hasher> ProverChannel<H> {
             "query seed has already been computed"
         );
         let options = self.context().options();
-        let seed = build_query_seed::<H>(&self.fri_roots);
+        let seed = H::merge_many(&self.fri_roots);
         let (seed, nonce) = find_pow_nonce::<H>(seed, options.grinding_factor());
         self.query_seed = Some(seed);
         self.pow_nonce = nonce;
@@ -93,18 +93,21 @@ impl<H: Hasher> ProverChannel<H> {
         ood_frame: EvaluationFrame<E>,
         fri_proof: FriProof,
     ) -> StarkProof {
+        let options = self.context.options().clone();
+        let commitments = Commitments::new::<H>(
+            self.trace_root.unwrap(),
+            self.constraint_root.unwrap(),
+            self.fri_roots,
+        );
+
         StarkProof {
             context: Context {
                 lde_domain_depth: log2(self.context.lde_domain_size()) as u8,
                 ce_blowup_factor: self.context.ce_blowup_factor() as u8,
                 field_modulus_bytes: B::get_modulus_le_bytes(),
-                options: self.context().options().clone(),
+                options,
             },
-            commitments: Commitments {
-                trace_root: self.trace_root.unwrap(),
-                constraint_root: self.constraint_root.unwrap(),
-                fri_roots: self.fri_roots,
-            },
+            commitments,
             trace_queries,
             constraint_queries,
             ood_frame: OodEvaluationFrame {
@@ -118,10 +121,8 @@ impl<H: Hasher> ProverChannel<H> {
 }
 
 impl<H: Hasher> fri::ProverChannel for ProverChannel<H> {
-    type Hasher = H;
-
     /// Commits the prover to the a FRI layer.
-    fn commit_fri_layer(&mut self, layer_root: [u8; 32]) {
+    fn commit_fri_layer(&mut self, layer_root: H::Digest) {
         self.fri_roots.push(layer_root);
     }
 }
@@ -134,12 +135,12 @@ impl<H: Hasher> PublicCoin for ProverChannel<H> {
         &self.context
     }
 
-    fn constraint_seed(&self) -> [u8; 32] {
+    fn constraint_seed(&self) -> H::Digest {
         assert!(self.trace_root.is_some(), "constraint seed is not set");
         self.trace_root.unwrap()
     }
 
-    fn composition_seed(&self) -> [u8; 32] {
+    fn composition_seed(&self) -> H::Digest {
         assert!(
             self.constraint_root.is_some(),
             "composition seed is not set"
@@ -147,7 +148,7 @@ impl<H: Hasher> PublicCoin for ProverChannel<H> {
         self.constraint_root.unwrap()
     }
 
-    fn query_seed(&self) -> [u8; 32] {
+    fn query_seed(&self) -> H::Digest {
         assert!(self.query_seed.is_some(), "query seed is not set");
         self.query_seed.unwrap()
     }
@@ -156,7 +157,7 @@ impl<H: Hasher> PublicCoin for ProverChannel<H> {
 impl<H: Hasher> fri::PublicCoin for ProverChannel<H> {
     type Hasher = H;
 
-    fn fri_layer_commitments(&self) -> &[[u8; 32]] {
+    fn fri_layer_commitments(&self) -> &[H::Digest] {
         assert!(!self.fri_roots.is_empty(), "FRI layers are not set");
         &self.fri_roots
     }
@@ -164,35 +165,13 @@ impl<H: Hasher> fri::PublicCoin for ProverChannel<H> {
 
 // HELPER FUNCTIONS
 // ================================================================================================
-fn build_query_seed<H: Hasher>(fri_roots: &[[u8; 32]]) -> [u8; 32] {
-    let hash_fn = H::hash_fn();
-    // combine roots of all FIR layers into a single array of bytes
-    let mut root_bytes: Vec<u8> = Vec::with_capacity(fri_roots.len() * 32);
-    for root in fri_roots.iter() {
-        root.iter().for_each(|&v| root_bytes.push(v));
-    }
-
-    // hash the array of bytes into a single 32-byte value
-    let mut query_seed = [0u8; 32];
-    hash_fn(&root_bytes, &mut query_seed);
-
-    query_seed
-}
-
-fn find_pow_nonce<H: Hasher>(seed: [u8; 32], grinding_factor: u32) -> ([u8; 32], u64) {
-    let hash_fn = H::hash_fn();
-    let mut buf = [0u8; 64];
-    buf[0..32].copy_from_slice(&seed);
-
+fn find_pow_nonce<H: Hasher>(seed: H::Digest, grinding_factor: u32) -> (H::Digest, u64) {
     #[cfg(not(feature = "concurrent"))]
     let nonce = (1..u64::MAX)
         .find(|nonce| {
-            let mut result = [0u8; 32];
-            let mut buf = buf;
-
-            buf[56..].copy_from_slice(&nonce.to_le_bytes());
-            hash_fn(&buf, &mut result);
-            u64::from_le_bytes(result[..8].try_into().unwrap()).trailing_zeros() >= grinding_factor
+            let result = H::merge_with_int(seed, *nonce);
+            let bytes: &[u8] = result.as_ref();
+            u64::from_le_bytes(bytes[..8].try_into().unwrap()).trailing_zeros() >= grinding_factor
         })
         .expect("nonce not found");
 
@@ -200,18 +179,12 @@ fn find_pow_nonce<H: Hasher>(seed: [u8; 32], grinding_factor: u32) -> ([u8; 32],
     let nonce = (1..u64::MAX)
         .into_par_iter()
         .find_any(|nonce| {
-            let mut result = [0u8; 32];
-            let mut buf = buf;
-
-            buf[56..].copy_from_slice(&nonce.to_le_bytes());
-            hash_fn(&buf, &mut result);
-            u64::from_le_bytes(result[..8].try_into().unwrap()).trailing_zeros() >= grinding_factor
+            let result = H::merge_with_int(seed, *nonce);
+            let bytes: &[u8] = result.as_ref();
+            u64::from_le_bytes(bytes[..8].try_into().unwrap()).trailing_zeros() >= grinding_factor
         })
         .expect("nonce not found");
 
-    let mut result = [0u8; 32];
-    buf[56..].copy_from_slice(&nonce.to_le_bytes());
-    hash_fn(&buf, &mut result);
-
+    let result = H::merge_with_int(seed, nonce);
     (result, nonce)
 }

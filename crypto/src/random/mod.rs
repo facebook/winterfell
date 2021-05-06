@@ -16,11 +16,9 @@ pub struct RandomElementGenerator<H: Hasher> {
 
 impl<H: Hasher> RandomElementGenerator<H> {
     /// Returns a new random element generator instantiated with the provided `seed` and `offset`.
-    pub fn new(seed: [u8; 32], offset: u64) -> Self {
-        // TODO: remove when seed is changed into H::Digest
-        let (seed_vec, _) = H::read_digests_into_vec(&seed, 1);
+    pub fn new(seed: H::Digest, offset: u64) -> Self {
         RandomElementGenerator {
-            seed: seed_vec[0],
+            seed,
             counter: offset,
         }
     }
@@ -30,7 +28,7 @@ impl<H: Hasher> RandomElementGenerator<H> {
         loop {
             // updated the seed by incrementing its counter and then hash the result
             self.counter += 1;
-            let result = H::hash_with_int(self.seed, self.counter);
+            let result = H::merge_with_int(self.seed, self.counter);
             let bytes: &[u8] = result.as_ref();
 
             // take the first ELEMENT_BYTES from the hashed seed and check if they can be

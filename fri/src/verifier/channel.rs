@@ -4,7 +4,6 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{folding::quartic, FriProof, ProofSerializationError, PublicCoin, VerifierError};
-use core::marker::PhantomData;
 use crypto::{BatchMerkleProof, Hasher, MerkleTree};
 use math::field::FieldElement;
 use utils::group_vector_elements;
@@ -16,7 +15,7 @@ pub trait VerifierChannel<E: FieldElement>: PublicCoin {
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
 
-    fn fri_layer_proofs(&self) -> &[BatchMerkleProof];
+    fn fri_layer_proofs(&self) -> &[BatchMerkleProof<Self::Hasher>];
     fn fri_layer_queries(&self) -> &[Vec<E>];
     fn fri_remainder(&self) -> &[E];
     fn fri_partitioned(&self) -> bool;
@@ -32,11 +31,10 @@ pub trait VerifierChannel<E: FieldElement>: PublicCoin {
         layer_idx: usize,
         positions: &[usize],
     ) -> Result<Vec<[E; N]>, VerifierError> {
-        let hash_fn = Self::Hasher::hash_fn();
         let layer_root = self.fri_layer_commitments()[layer_idx];
         let layer_proof = &self.fri_layer_proofs()[layer_idx];
 
-        if !MerkleTree::verify_batch(&layer_root, &positions, &layer_proof, hash_fn) {
+        if !MerkleTree::<Self::Hasher>::verify_batch(&layer_root, &positions, &layer_proof) {
             return Err(VerifierError::LayerCommitmentMismatch(layer_idx));
         }
 
@@ -48,15 +46,13 @@ pub trait VerifierChannel<E: FieldElement>: PublicCoin {
     /// Reads FRI remainder values (last FRI layer). This also checks that the remainder is
     /// valid against the commitment sent by the prover.
     fn read_remainder(&self) -> Result<Vec<E>, VerifierError> {
-        let hash_fn = Self::Hasher::hash_fn();
-
         // TODO: avoid cloning
         let remainder = self.fri_remainder().to_vec();
 
         // build remainder Merkle tree
         let remainder_values = quartic::transpose(&remainder, 1);
-        let hashed_values = quartic::hash_values(&remainder_values, hash_fn);
-        let remainder_tree = MerkleTree::new(hashed_values, hash_fn);
+        let hashed_values = quartic::hash_values::<Self::Hasher, E>(&remainder_values);
+        let remainder_tree = MerkleTree::<Self::Hasher>::new(hashed_values);
 
         // make sure the root of the tree matches the committed root of the last layer
         let committed_root = self.fri_layer_commitments().last().unwrap();
@@ -80,19 +76,18 @@ pub trait VerifierChannel<E: FieldElement>: PublicCoin {
 // ================================================================================================
 
 pub struct DefaultVerifierChannel<E: FieldElement, H: Hasher> {
-    commitments: Vec<[u8; 32]>,
-    layer_proofs: Vec<BatchMerkleProof>,
+    commitments: Vec<H::Digest>,
+    layer_proofs: Vec<BatchMerkleProof<H>>,
     layer_queries: Vec<Vec<E>>,
     remainder: Vec<E>,
     partitioned: bool,
-    _hasher: PhantomData<H>,
 }
 
 impl<E: FieldElement, H: Hasher> DefaultVerifierChannel<E, H> {
     /// Builds a new verifier channel from the specified parameters.
     pub fn new(
         proof: FriProof,
-        commitments: Vec<[u8; 32]>,
+        commitments: Vec<H::Digest>,
         domain_size: usize,
     ) -> Result<Self, ProofSerializationError> {
         let partitioned = proof.is_partitioned();
@@ -107,13 +102,12 @@ impl<E: FieldElement, H: Hasher> DefaultVerifierChannel<E, H> {
             layer_queries,
             remainder,
             partitioned,
-            _hasher: PhantomData,
         })
     }
 }
 
 impl<E: FieldElement, H: Hasher> VerifierChannel<E> for DefaultVerifierChannel<E, H> {
-    fn fri_layer_proofs(&self) -> &[BatchMerkleProof] {
+    fn fri_layer_proofs(&self) -> &[BatchMerkleProof<H>] {
         &self.layer_proofs
     }
 
@@ -133,7 +127,7 @@ impl<E: FieldElement, H: Hasher> VerifierChannel<E> for DefaultVerifierChannel<E
 impl<E: FieldElement, H: Hasher> PublicCoin for DefaultVerifierChannel<E, H> {
     type Hasher = H;
 
-    fn fri_layer_commitments(&self) -> &[[u8; 32]] {
+    fn fri_layer_commitments(&self) -> &[H::Digest] {
         &self.commitments
     }
 }

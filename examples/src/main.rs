@@ -7,7 +7,7 @@ use log::debug;
 use std::io::Write;
 use std::time::Instant;
 use structopt::StructOpt;
-use winterfell::{fibonacci, merkle, rescue, ExampleOptions, ExampleType};
+use winterfell::{fibonacci, rescue, ExampleOptions, ExampleType};
 
 // EXAMPLE RUNNER
 // ================================================================================================
@@ -39,7 +39,7 @@ fn main() {
             fibonacci::mulfib8::get_example(options, sequence_length)
         }
         ExampleType::Rescue { chain_length } => rescue::get_example(options, chain_length),
-        ExampleType::Merkle { tree_depth } => merkle::get_example(options, tree_depth),
+        //ExampleType::Merkle { tree_depth } => merkle::get_example(options, tree_depth),
     };
 
     // generate proof

@@ -6,7 +6,7 @@
 use proptest::prelude::*;
 
 use super::*;
-use crate::hash;
+use crate::hash::Blake3_256;
 
 static LEAVES4: [[u8; 32]; 4] = [
     [
@@ -65,7 +65,7 @@ static LEAVES8: [[u8; 32]; 8] = [
 #[test]
 fn new_tree() {
     let leaves = LEAVES4.to_vec();
-    let tree = MerkleTree::new(leaves, hash::blake3);
+    let tree = MerkleTree::<Blake3_256>::new(leaves);
     let root = hash_2x1(
         &hash_2x1(&LEAVES4[0], &LEAVES4[1]),
         &hash_2x1(&LEAVES4[2], &LEAVES4[3]),
@@ -73,7 +73,7 @@ fn new_tree() {
     assert_eq!(&root, tree.root());
 
     let leaves = LEAVES8.to_vec();
-    let tree = MerkleTree::new(leaves, hash::blake3);
+    let tree = MerkleTree::<Blake3_256>::new(leaves);
     let root = hash_2x1(
         &hash_2x1(
             &hash_2x1(&LEAVES8[0], &LEAVES8[1]),
@@ -91,7 +91,7 @@ fn new_tree() {
 fn prove() {
     // depth 4
     let leaves = LEAVES4.to_vec();
-    let tree = MerkleTree::new(leaves, hash::blake3);
+    let tree = MerkleTree::<Blake3_256>::new(leaves);
 
     let proof = vec![LEAVES4[1], LEAVES4[0], hash_2x1(&LEAVES4[2], &LEAVES4[3])];
     assert_eq!(proof, tree.prove(1));
@@ -101,7 +101,7 @@ fn prove() {
 
     // depth 5
     let leaves = LEAVES8.to_vec();
-    let tree = MerkleTree::new(leaves, hash::blake3);
+    let tree = MerkleTree::<Blake3_256>::new(leaves);
 
     let proof = vec![
         LEAVES8[1],
@@ -130,39 +130,39 @@ fn prove() {
 fn verify() {
     // depth 4
     let leaves = LEAVES4.to_vec();
-    let tree = MerkleTree::new(leaves, hash::blake3);
+    let tree = MerkleTree::<Blake3_256>::new(leaves);
     let proof = tree.prove(1);
     assert_eq!(
         true,
-        MerkleTree::verify(tree.root(), 1, &proof, hash::blake3)
+        MerkleTree::<Blake3_256>::verify(*tree.root(), 1, &proof)
     );
 
     let proof = tree.prove(2);
     assert_eq!(
         true,
-        MerkleTree::verify(tree.root(), 2, &proof, hash::blake3)
+        MerkleTree::<Blake3_256>::verify(*tree.root(), 2, &proof)
     );
 
     // depth 5
     let leaves = LEAVES8.to_vec();
-    let tree = MerkleTree::new(leaves, hash::blake3);
+    let tree = MerkleTree::<Blake3_256>::new(leaves);
     let proof = tree.prove(1);
     assert_eq!(
         true,
-        MerkleTree::verify(tree.root(), 1, &proof, hash::blake3)
+        MerkleTree::<Blake3_256>::verify(*tree.root(), 1, &proof)
     );
 
     let proof = tree.prove(6);
     assert_eq!(
         true,
-        MerkleTree::verify(tree.root(), 6, &proof, hash::blake3)
+        MerkleTree::<Blake3_256>::verify(*tree.root(), 6, &proof)
     );
 }
 
 #[test]
 fn prove_batch() {
     let leaves = LEAVES8.to_vec();
-    let tree = MerkleTree::new(leaves, hash::blake3);
+    let tree = MerkleTree::<Blake3_256>::new(leaves);
 
     // 1 index
     let proof = tree.prove_batch(&[1]);
@@ -219,52 +219,37 @@ fn prove_batch() {
 #[test]
 fn verify_batch() {
     let leaves = LEAVES8.to_vec();
-    let tree = MerkleTree::new(leaves, hash::blake3);
+    let tree = MerkleTree::<Blake3_256>::new(leaves);
 
     let proof = tree.prove_batch(&[1]);
-    assert_eq!(
-        true,
-        MerkleTree::verify_batch(tree.root(), &[1], &proof, hash::blake3)
-    );
-    assert_eq!(
-        false,
-        MerkleTree::verify_batch(tree.root(), &[2], &proof, hash::blake3)
-    );
+    assert_eq!(true, MerkleTree::verify_batch(tree.root(), &[1], &proof));
+    assert_eq!(false, MerkleTree::verify_batch(tree.root(), &[2], &proof));
 
     let proof = tree.prove_batch(&[1, 2]);
+    assert_eq!(true, MerkleTree::verify_batch(tree.root(), &[1, 2], &proof));
+    assert_eq!(false, MerkleTree::verify_batch(tree.root(), &[1], &proof));
     assert_eq!(
-        true,
-        MerkleTree::verify_batch(tree.root(), &[1, 2], &proof, hash::blake3)
+        false,
+        MerkleTree::verify_batch(tree.root(), &[1, 3], &proof)
     );
     assert_eq!(
         false,
-        MerkleTree::verify_batch(tree.root(), &[1], &proof, hash::blake3)
-    );
-    assert_eq!(
-        false,
-        MerkleTree::verify_batch(tree.root(), &[1, 3], &proof, hash::blake3)
-    );
-    assert_eq!(
-        false,
-        MerkleTree::verify_batch(tree.root(), &[1, 2, 3], &proof, hash::blake3)
+        MerkleTree::verify_batch(tree.root(), &[1, 2, 3], &proof)
     );
 
     let proof = tree.prove_batch(&[1, 6]);
-    assert_eq!(
-        true,
-        MerkleTree::verify_batch(tree.root(), &[1, 6], &proof, hash::blake3)
-    );
+    assert_eq!(true, MerkleTree::verify_batch(tree.root(), &[1, 6], &proof));
 
     let proof = tree.prove_batch(&[1, 3, 6]);
     assert_eq!(
         true,
-        MerkleTree::verify_batch(tree.root(), &[1, 3, 6], &proof, hash::blake3)
+        MerkleTree::verify_batch(tree.root(), &[1, 3, 6], &proof)
     );
 
     let proof = tree.prove_batch(&[0, 1, 2, 3, 4, 5, 6, 7]);
     assert_eq!(
         true,
-        MerkleTree::verify_batch(tree.root(), &[0, 1, 2, 3, 4, 5, 6, 7], &proof, hash::blake3)
+        MerkleTree::verify_batch(tree.root(), &[0, 1, 2, 3, 4, 5, 6, 7], &proof)
     );
 }
 
@@ -275,7 +260,7 @@ proptest! {
     )  {
         for proof_index in proof_indices{
             let proof = tree.prove(proof_index.index(128));
-            prop_assert!(MerkleTree::verify(tree.root(), proof_index.index(128), &proof, hash::blake3))
+            prop_assert!(MerkleTree::<Blake3_256>::verify(*tree.root(), proof_index.index(128), &proof))
         }
     }
 
@@ -286,7 +271,7 @@ proptest! {
         let mut indices: Vec<usize> = proof_indices.iter().map(|idx| idx.index(128)).collect();
         indices.sort_unstable(); indices.dedup();
         let proof = tree.prove_batch(&indices[..]);
-        prop_assert!(MerkleTree::verify_batch(tree.root(), &indices[..], &proof, hash::blake3));
+        prop_assert!(MerkleTree::verify_batch(tree.root(), &indices[..], &proof));
     }
 
     #[test]
@@ -310,16 +295,12 @@ proptest! {
 // HELPER FUNCTIONS
 // --------------------------------------------------------------------------------------------
 fn hash_2x1(v1: &[u8; 32], v2: &[u8; 32]) -> [u8; 32] {
-    let mut buf = [0u8; 64];
-    buf[..32].copy_from_slice(v1);
-    buf[32..].copy_from_slice(v2);
-
-    let mut result = [0u8; 32];
-    hash::blake3(&buf, &mut result);
-    result
+    Blake3_256::merge(&[*v1, *v2])
 }
 
-pub fn random_blake3_merkle_tree(leave_count: usize) -> impl Strategy<Value = MerkleTree> {
+pub fn random_blake3_merkle_tree(
+    leave_count: usize,
+) -> impl Strategy<Value = MerkleTree<Blake3_256>> {
     prop::collection::vec(any::<[u8; 32]>(), leave_count)
-        .prop_map(|leaves| MerkleTree::new(leaves, hash::blake3))
+        .prop_map(|leaves| MerkleTree::<Blake3_256>::new(leaves))
 }
