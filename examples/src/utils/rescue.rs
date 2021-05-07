@@ -4,7 +4,11 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::utils::{are_equal, EvaluationResult};
-use prover::math::field::{f128::BaseElement, FieldElement};
+use prover::{
+    crypto::{DigestSerializationError, Hasher},
+    math::field::{f128::BaseElement, FieldElement},
+};
+use std::slice;
 
 /// Function state is set to 6 field elements or 96 bytes; 4 elements are reserved for rate
 /// and 2 elements are reserved for capacity.
@@ -26,21 +30,22 @@ pub const CYCLE_LENGTH: usize = 8;
 // TYPES AND INTERFACES
 // ================================================================================================
 
-pub struct Hasher {
+pub struct Rescue128 {
     state: [BaseElement; STATE_WIDTH],
     idx: usize,
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
 pub struct Hash([BaseElement; DIGEST_SIZE]);
 
-// HASHER IMPLEMENTATION
+// RESCUE128 IMPLEMENTATION
 // ================================================================================================
 
-impl Hasher {
+impl Rescue128 {
     /// Returns a new hasher with the state initialized to all zeros.
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        Hasher {
+        Rescue128 {
             state: [BaseElement::ZERO; STATE_WIDTH],
             idx: 0,
         }
@@ -91,10 +96,44 @@ impl Hasher {
     }
 }
 
+// HASHER IMPLEMENTATION
+// ================================================================================================
+
+impl Hasher for Rescue128 {
+    type Digest = Hash;
+
+    fn merge(values: &[Self::Digest; 2]) -> Self::Digest {
+        Self::digest(Hash::hashes_as_elements(values))
+    }
+
+    fn merge_many(data: &[Self::Digest]) -> Self::Digest {
+        Self::digest(Hash::hashes_as_elements(data))
+    }
+
+    fn merge_with_int(_seed: Self::Digest, _value: u64) -> Self::Digest {
+        unimplemented!("not implemented")
+    }
+
+    fn hash_elements<E: FieldElement>(_elements: &[E]) -> Self::Digest {
+        unimplemented!("not implemented");
+    }
+
+    fn read_digests_into_vec(
+        _source: &[u8],
+        _num_digests: usize,
+    ) -> Result<(Vec<Self::Digest>, usize), DigestSerializationError> {
+        unimplemented!("not implemented");
+    }
+}
+
 // HASH IMPLEMENTATION
 // ================================================================================================
 
 impl Hash {
+    pub fn new(v1: BaseElement, v2: BaseElement) -> Self {
+        Hash([v1, v2])
+    }
+
     #[allow(dead_code)]
     pub fn to_bytes(&self) -> [u8; 32] {
         let mut bytes = [0; 32];
@@ -106,14 +145,18 @@ impl Hash {
     pub fn to_elements(&self) -> [BaseElement; DIGEST_SIZE] {
         self.0
     }
+
+    pub fn hashes_as_elements(hashes: &[Hash]) -> &[BaseElement] {
+        let p = hashes.as_ptr();
+        let len = hashes.len() * DIGEST_SIZE;
+        unsafe { slice::from_raw_parts(p as *const BaseElement, len) }
+    }
 }
 
-// HASH FUNCTION WRAPPER
-// ================================================================================================
-
-pub fn hash(values: &[u8], result: &mut [u8]) {
-    let elements = unsafe { BaseElement::bytes_as_elements(values).unwrap() };
-    result.copy_from_slice(&Hasher::digest(elements).to_bytes())
+impl AsRef<[u8]> for Hash {
+    fn as_ref(&self) -> &[u8] {
+        BaseElement::elements_as_bytes(&self.0)
+    }
 }
 
 // RESCUE PERMUTATION

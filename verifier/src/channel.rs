@@ -40,12 +40,7 @@ pub struct VerifierChannel<B: StarkField, E: FieldElement + From<B>, H: Hasher> 
 // VERIFIER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-impl<B, E, H> VerifierChannel<B, E, H>
-where
-    B: StarkField,
-    E: FieldElement + From<B>,
-    H: Hasher,
-{
+impl<B: StarkField, E: FieldElement + From<B>, H: Hasher> VerifierChannel<B, E, H> {
     /// Creates and returns a new verifier channel initialized from the specified `proof`.
     pub fn new<A: Air<BaseElement = B>>(air: &A, proof: StarkProof) -> Result<Self, VerifierError> {
         // TODO: validate field modulus

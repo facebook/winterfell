@@ -8,7 +8,7 @@ use structopt::StructOpt;
 use verifier::VerifierError;
 
 pub mod fibonacci;
-//pub mod merkle;
+pub mod merkle;
 pub mod rescue;
 pub mod utils;
 
@@ -103,12 +103,10 @@ pub enum ExampleType {
         #[structopt(short = "n", default_value = "1024")]
         chain_length: usize,
     },
-    /*
     /// Compute a root of a Merkle path using Rescue hash function
     Merkle {
         /// Depth of the Merkle tree; must be one less than a power of two
         #[structopt(short = "n", default_value = "7")]
         tree_depth: usize,
     },
-    */
 }
