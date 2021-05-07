@@ -3,11 +3,11 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use crate::DigestSerializationError;
 use core::fmt::Debug;
 use math::field::FieldElement;
 use sha3::Digest;
 use utils::{group_slice_elements, AsBytes};
-use crate::DigestSerializationError;
 
 // HASHER TRAIT
 // ================================================================================================

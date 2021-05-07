@@ -13,7 +13,7 @@ use math::{
     field::{FieldElement, StarkField},
     utils::log2,
 };
-use std::{convert::TryInto, marker::PhantomData};
+use std::convert::TryInto;
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
@@ -28,7 +28,6 @@ pub struct ProverChannel<H: Hasher> {
     fri_roots: Vec<H::Digest>,
     query_seed: Option<H::Digest>,
     pow_nonce: u64,
-    _hasher: PhantomData<H>,
 }
 
 // PROVER CHANNEL IMPLEMENTATION
@@ -44,7 +43,6 @@ impl<H: Hasher> ProverChannel<H> {
             fri_roots: Vec::new(),
             query_seed: None,
             pow_nonce: 0,
-            _hasher: PhantomData,
         }
     }
 
@@ -110,10 +108,7 @@ impl<H: Hasher> ProverChannel<H> {
             commitments,
             trace_queries,
             constraint_queries,
-            ood_frame: OodEvaluationFrame {
-                trace_at_z1: E::elements_as_bytes(&ood_frame.current).to_vec(),
-                trace_at_z2: E::elements_as_bytes(&ood_frame.next).to_vec(),
-            },
+            ood_frame: OodEvaluationFrame::new(ood_frame),
             fri_proof,
             pow_nonce: self.pow_nonce,
         }
