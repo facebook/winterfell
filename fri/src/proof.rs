@@ -46,6 +46,7 @@ impl FriProof {
 
     /// Decomposes this proof into vectors of query values for each FRI layer and corresponding
     /// Merkle paths for each query (grouped into batch Merkle proofs)
+    #[allow(clippy::type_complexity)]
     pub fn parse_layers<H: Hasher, E: FieldElement>(
         self,
         mut domain_size: usize,

@@ -135,6 +135,7 @@ impl Hash {
     }
 
     #[allow(dead_code)]
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_bytes(&self) -> [u8; 32] {
         let mut bytes = [0; 32];
         bytes[..16].copy_from_slice(&self.0[0].to_canonical_bytes());
@@ -142,6 +143,7 @@ impl Hash {
         bytes
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_elements(&self) -> [BaseElement; DIGEST_SIZE] {
         self.0
     }

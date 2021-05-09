@@ -30,6 +30,7 @@ impl Commitments {
     }
 
     /// Parses the serialized commitments into distinct parts.
+    #[allow(clippy::type_complexity)]
     pub fn parse<H: Hasher>(
         self,
         num_fri_layers: usize,
