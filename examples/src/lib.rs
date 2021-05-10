@@ -8,6 +8,7 @@ use structopt::StructOpt;
 use verifier::VerifierError;
 
 pub mod fibonacci;
+pub mod lamport;
 pub mod merkle;
 pub mod rescue;
 pub mod utils;
@@ -108,5 +109,11 @@ pub enum ExampleType {
         /// Depth of the Merkle tree; must be one less than a power of two
         #[structopt(short = "n", default_value = "7")]
         tree_depth: usize,
+    },
+    /// Compute an aggregate Lamport+ signature
+    LamportA {
+        /// Number of signatures to aggregate; must be a power of two
+        #[structopt(short = "n", default_value = "4")]
+        num_signatures: usize,
     },
 }
