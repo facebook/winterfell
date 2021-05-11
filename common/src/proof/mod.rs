@@ -3,7 +3,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{FieldExtension, ProofOptions};
+use crate::ProofOptions;
+use core::cmp;
 use fri::FriProof;
 use serde::{Deserialize, Serialize};
 
@@ -56,42 +57,33 @@ impl StarkProof {
         2usize.pow(self.context.lde_domain_depth as u32) / self.context.options.blowup_factor()
     }
 
-    pub fn security_level(&self, optimistic: bool) -> u32 {
+    // SECURITY LEVEL
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns security level of this proof (in bits). When `conjectured` is true, conjectured
+    /// security level is returned; otherwise, proven security level is returned. Usually, the
+    /// number of queries needed for proven security is 2x - 3x higher than the number of queries
+    /// needed for conjectured security.
+    pub fn security_level(&self, conjectured: bool) -> u32 {
         let options = &self.context.options;
 
-        // conjectured security requires half the queries as compared to proven security
-        let num_queries = if optimistic {
-            options.num_queries()
+        let base_field_size_bits = get_num_modulus_bits(&self.context.field_modulus_bytes);
+        let lde_domain_size_bits = self.context.lde_domain_depth as u32;
+
+        let ce_to_lde_blowup = options.blowup_factor() as u8 / self.context.ce_blowup_factor;
+        let evaluation_domain_size_bits = lde_domain_size_bits / ce_to_lde_blowup as u32;
+
+        if conjectured {
+            get_conjectured_security(
+                options,
+                base_field_size_bits,
+                lde_domain_size_bits,
+                evaluation_domain_size_bits,
+            )
         } else {
-            options.num_queries() / 2
-        };
-
-        let one_over_rho =
-            (options.blowup_factor() / self.context.ce_blowup_factor as usize) as u32;
-        let security_per_query = 31 - one_over_rho.leading_zeros(); // same as log2(one_over_rho)
-        let mut result = security_per_query * num_queries as u32;
-
-        // include grinding factor contributions only for proofs adequate security
-        if result >= GRINDING_CONTRIBUTION_FLOOR {
-            result += options.grinding_factor();
+            // TODO: implement proven security estimation
+            unimplemented!("proven security estimation has not been implement yet")
         }
-
-        // Provided by the collision resistance (CR) of the hash function we use
-        // TODO: make this dynamic based on the hash function used
-        let cr_security = 128;
-
-        // determine number of bits in the field modulus
-        let field_modulus_bits = get_num_modulus_bits(&self.context.field_modulus_bytes);
-
-        // field_modulus_bits * field_extension_factor - log2(extended trace length)
-        let field_extension_factor = match options.field_extension() {
-            FieldExtension::None => 1,
-            FieldExtension::Quadratic => 2,
-        };
-        let max_fri_security =
-            field_modulus_bits * field_extension_factor - self.context.lde_domain_depth as u32;
-
-        std::cmp::min(std::cmp::min(result, max_fri_security), cr_security)
     }
 }
 
@@ -111,4 +103,31 @@ fn get_num_modulus_bits(modulus_bytes: &[u8]) -> u32 {
     }
 
     0
+}
+
+/// Computes conjectured security level for the specified proof parameters.
+fn get_conjectured_security(
+    options: &ProofOptions,
+    base_field_size: u32,        // in bits
+    lde_domain_size: u32,        // in bits
+    evaluation_domain_size: u32, // in bits
+) -> u32 {
+    // compute max security we can get for a given field size
+    let field_size = base_field_size * options.field_extension().degree();
+    let field_security = field_size - lde_domain_size;
+
+    // compute max security we can get for a given hash function
+    let hash_fn_security = options.hash_fn().collision_resistance();
+
+    // compute security we get by executing multiple query rounds
+    let one_over_rho = lde_domain_size / evaluation_domain_size;
+    let security_per_query = one_over_rho.trailing_zeros(); // same as log2(one_over_rho)
+    let mut query_security = security_per_query * options.num_queries() as u32;
+
+    // include grinding factor contributions only for proofs adequate security
+    if query_security >= GRINDING_CONTRIBUTION_FLOOR {
+        query_security += options.grinding_factor();
+    }
+
+    cmp::min(cmp::min(field_security, hash_fn_security), query_security) - 1
 }

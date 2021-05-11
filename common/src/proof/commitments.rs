@@ -36,7 +36,7 @@ impl Commitments {
         num_fri_layers: usize,
     ) -> Result<(H::Digest, H::Digest, Vec<H::Digest>), ProofSerializationError> {
         let num_bytes = self.0.len();
-        // +1 for trace_root, +1 for constraint root, + 1 for FRI remainder commitment
+        // +1 for trace_root, +1 for constraint root, +1 for FRI remainder commitment
         let num_commitments = num_fri_layers + 3;
         let (commitments, read_bytes) = H::read_digests_into_vec(&self.0, num_commitments)
             .map_err(|err| ProofSerializationError::FailedToParseCommitments(err.to_string()))?;

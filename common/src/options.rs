@@ -141,4 +141,25 @@ impl FieldExtension {
     pub fn is_none(&self) -> bool {
         matches!(self, Self::None)
     }
+
+    /// Returns extension degree of this field extension.
+    pub fn degree(&self) -> u32 {
+        match self {
+            Self::None => 1,
+            Self::Quadratic => 2,
+        }
+    }
+}
+
+// HASH FUNCTION IMPLEMENTATION
+// ================================================================================================
+
+impl HashFunction {
+    /// Returns collision resistance of this hash function in bits.
+    pub fn collision_resistance(&self) -> u32 {
+        match self {
+            Self::Blake3_256 => 128,
+            Self::Sha3_256 => 128,
+        }
+    }
 }
