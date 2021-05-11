@@ -7,7 +7,7 @@ use log::debug;
 use std::io::Write;
 use std::time::Instant;
 use structopt::StructOpt;
-use winterfell::{fibonacci, merkle, rescue, ExampleOptions, ExampleType};
+use winterfell::{fibonacci, lamport, merkle, rescue, ExampleOptions, ExampleType};
 
 // EXAMPLE RUNNER
 // ================================================================================================
@@ -40,6 +40,9 @@ fn main() {
         }
         ExampleType::Rescue { chain_length } => rescue::get_example(options, chain_length),
         ExampleType::Merkle { tree_depth } => merkle::get_example(options, tree_depth),
+        ExampleType::LamportA { num_signatures } => {
+            lamport::aggregate::get_example(options, num_signatures)
+        }
     };
 
     // generate proof
