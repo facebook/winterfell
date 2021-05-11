@@ -288,36 +288,36 @@ The computation we benchmark here is a chain of Rescue hash invocations (see [ex
             <td style="text-align:left">2<sup>10</sup></td>
             <td>0.1 sec</td>
             <td>0.14 sec</td>
-            <td>74 KB</td>
+            <td>72 KB</td>
             <td>0.24 sec</td>
-            <td>113 KB</td>
+            <td>110 KB</td>
             <td>2<sup>17</sup> constr.</td>
         </tr>
         <tr>
             <td style="text-align:left">2<sup>12</sup></td>
             <td>0.4 sec</td>
             <td>0.6 sec</td>
-            <td>92 KB</td>
+            <td>90 KB</td>
             <td>0.9 sec</td>
-            <td>137 KB</td>
+            <td>133 KB</td>
             <td>2<sup>19</sup> constr.</td>
         </tr>
         <tr>
             <td style="text-align:left">2<sup>14</sup></td>
             <td>1.4 sec</td>
             <td>2.5 sec</td>
-            <td>109 KB</td>
+            <td>105 KB</td>
             <td>3.7 sec</td>
-            <td>164 KB</td>
+            <td>159 KB</td>
             <td>2<sup>21</sup> constr.</td>
         </tr>
         <tr>
             <td style="text-align:left">2<sup>16</sup></td>
             <td>6 sec</td>
             <td>9.2 sec</td>
-            <td>131 KB</td>
+            <td>127 KB</td>
             <td>15.5 sec</td>
-            <td>193 KB</td>
+            <td>188 KB</td>
             <td>2<sup>23</sup> constr.</td>
         </tr>
     </tbody>

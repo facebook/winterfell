@@ -23,8 +23,8 @@ pub fn perform_verification<A: Air, E: FieldElement + From<A::BaseElement>, H: H
     let z = channel.draw_deep_point::<E>();
 
     // evaluate constraints at z
-    let ood_frame = channel.read_ood_frame()?;
-    let constraint_evaluation_at_z = evaluate_constraints(&air, &channel, &ood_frame, z);
+    let ood_frame = channel.read_ood_frame();
+    let constraint_evaluation_at_z = evaluate_constraints(&air, &channel, ood_frame, z);
 
     // 2 ----- Read queried trace states and constraint evaluations ---------------------------
 

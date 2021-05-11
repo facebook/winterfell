@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::FOLDING_FACTOR;
-use crypto::HashFunction;
+use crypto::Hasher;
 use math::field::{FieldElement, StarkField};
 use rayon::prelude::*;
 use utils::uninit_vector;
@@ -79,19 +79,16 @@ pub fn to_quartic_vec<E: FieldElement>(vector: Vec<E>) -> Vec<[E; FOLDING_FACTOR
     super::to_quartic_vec(vector)
 }
 
-pub fn hash_values<E: FieldElement>(
-    values: &[[E; FOLDING_FACTOR]],
-    hash: HashFunction,
-) -> Vec<[u8; 32]> {
+pub fn hash_values<H: Hasher, E: FieldElement>(values: &[[E; FOLDING_FACTOR]]) -> Vec<H::Digest> {
     if values.len() <= MIN_CONCURRENT_DOMAIN {
-        super::hash_values(values, hash)
+        super::hash_values::<H, E>(values)
     } else {
-        let mut result: Vec<[u8; 32]> = uninit_vector(values.len());
+        let mut result: Vec<H::Digest> = uninit_vector(values.len());
         result
             .par_iter_mut()
             .zip(values.par_iter())
             .for_each(|(r, v)| {
-                hash(E::elements_as_bytes(v), r);
+                *r = H::hash_elements(v);
             });
         result
     }

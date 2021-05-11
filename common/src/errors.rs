@@ -41,18 +41,10 @@ pub enum VerifierError {
     FriVerificationFailed(fri::VerifierError),
     /// Trace query did not match the commitment
     TraceQueryDoesNotMatchCommitment,
-    /// Trace query deserialization failed
-    TraceQueryDeserializationFailed,
     /// Constraint query did not match the commitment
     ConstraintQueryDoesNotMatchCommitment,
-    /// Constraint query deserialization failed
-    ConstraintQueryDeserializationFailed,
     /// Query seed proof-of-work verification failed
     QuerySeedProofOfWorkVerificationFailed,
-    /// Out-of-domain frame deserialization failed
-    OodFrameDeserializationFailed,
-    /// Computation context deserialization failed
-    ComputationContextDeserializationFailed,
 }
 
 impl fmt::Display for VerifierError {
@@ -67,23 +59,11 @@ impl fmt::Display for VerifierError {
             Self::TraceQueryDoesNotMatchCommitment => {
                 write!(f, "trace query did not match the commitment")
             }
-            Self::TraceQueryDeserializationFailed => {
-                write!(f, "trace query deserialization failed")
-            }
             Self::ConstraintQueryDoesNotMatchCommitment => {
                 write!(f, "constraint query did not match the commitment")
             }
-            Self::ConstraintQueryDeserializationFailed => {
-                write!(f, "constraint query deserialization failed")
-            }
             Self::QuerySeedProofOfWorkVerificationFailed => {
                 write!(f, "query seed proof-of-work verification failed")
-            }
-            Self::OodFrameDeserializationFailed => {
-                write!(f, "out-of-domain frame deserialization failed")
-            }
-            Self::ComputationContextDeserializationFailed => {
-                write!(f, "computation context deserialization failed")
             }
         }
     }
@@ -119,6 +99,51 @@ impl fmt::Display for AssertionError {
             }
             Self::TraceLengthNotExact(expected, actual) => {
                 write!(f, "expected trace length to be exactly {}, but was {}", expected, actual)
+            }
+        }
+    }
+}
+
+// PROOF SERIALIZATION ERROR
+// ================================================================================================
+
+#[derive(Debug, PartialEq)]
+pub enum ProofSerializationError {
+    /// Failed to parse commitments: {0}
+    FailedToParseCommitments(String),
+    /// Too many commitment bytes; expected {0}, but was {1}
+    TooManyCommitmentBytes(usize, usize),
+    /// Failed to parse query values: {0}
+    FailedToParseQueryValues(String),
+    /// Failed to parse query authentication paths: {0}
+    FailedToParseQueryProofs(String),
+    /// Failed to parse out-of-domain evaluation frame: {0}
+    FailedToParseOodFrame(String),
+    /// Too many elements in out-of-domain evaluation frame; expected {0}, but was {1}
+    TooManyOodFrameElements(usize, usize),
+}
+
+impl fmt::Display for ProofSerializationError {
+    #[rustfmt::skip]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::FailedToParseCommitments(msg) => {
+                write!(f, "failed to parse commitments: {}", msg)
+            }
+            Self::TooManyCommitmentBytes(expected, actual) => {
+                write!(f, "too many commitment bytes; expected {}, but was {}", expected, actual)
+            }
+            Self::FailedToParseQueryValues(msg) => {
+                write!(f, "failed to parse query values: {}", msg)
+            }
+            Self::FailedToParseQueryProofs(msg) => {
+                write!(f, "failed to parse query authentication paths: {}", msg)
+            }
+            Self::FailedToParseOodFrame(msg) => {
+                write!(f, "failed to parse out-of-domain evaluation frame: {}", msg)
+            }
+            Self::TooManyOodFrameElements(expected, actual) => {
+                write!(f, "too many elements in out-of-domain evaluation frame; expected {}, but was {}", expected, actual)
             }
         }
     }

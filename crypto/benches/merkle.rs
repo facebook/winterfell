@@ -6,7 +6,7 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use rand::{rngs::ThreadRng, thread_rng, RngCore};
 use utils::uninit_vector;
-use winter_crypto::{hash, merkle, merkle2};
+use winter_crypto::{hash, merkle};
 
 pub fn merkle_tree_construction(c: &mut Criterion) {
     let mut merkle_group = c.benchmark_group("merkle tree construction");
@@ -26,13 +26,10 @@ pub fn merkle_tree_construction(c: &mut Criterion) {
             res
         };
         merkle_group.bench_with_input(BenchmarkId::new("sequential", size), &data, |b, i| {
-            b.iter(|| merkle::build_merkle_nodes(&i, crate::hash::blake3))
+            b.iter(|| merkle::build_merkle_nodes::<hash::Blake3_256>(&i))
         });
         merkle_group.bench_with_input(BenchmarkId::new("concurrent", size), &data, |b, i| {
-            b.iter(|| merkle::concurrent::build_merkle_nodes(&i, crate::hash::blake3))
-        });
-        merkle_group.bench_with_input(BenchmarkId::new("new", size), &data, |b, i| {
-            b.iter(|| merkle2::build_merkle_nodes::<hash::Blake3_256>(&i))
+            b.iter(|| merkle::concurrent::build_merkle_nodes::<hash::Blake3_256>(&i))
         });
     }
 }

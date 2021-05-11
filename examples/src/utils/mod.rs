@@ -4,37 +4,35 @@
 // LICENSE file in the root directory of this source tree.
 
 use prover::{
-    math::{
-        field::{f128::BaseElement, FieldElement, StarkField},
-        utils::read_elements_into_vec,
-    },
+    math::field::{f128::BaseElement, FieldElement, StarkField},
     ExecutionTrace,
 };
-use std::{convert::TryInto, ops::Range};
+use std::ops::Range;
 
 pub mod rescue;
 
 // CONSTRAINT EVALUATION HELPERS
 // ================================================================================================
 
+/// Returns zero only when a == b.
 pub fn are_equal<E: FieldElement>(a: E, b: E) -> E {
     a - b
 }
 
+/// Returns zero only when a == zero.
 pub fn is_zero<E: FieldElement>(a: E) -> E {
     a
 }
 
+/// Returns zero only when a = zero || a == one.
 pub fn is_binary<E: FieldElement>(a: E) -> E {
     a * a - a
 }
 
+/// Return zero when a == one, and one when a == zero;
+/// assumes that a is a binary value.
 pub fn not<E: FieldElement>(a: E) -> E {
     E::ONE - a
-}
-
-pub fn when<E: FieldElement>(a: E, b: E) -> E {
-    a * b
 }
 
 // TRAIT TO SIMPLIFY CONSTRAINT AGGREGATION
@@ -54,22 +52,6 @@ impl<E: FieldElement> EvaluationResult<E> for Vec<E> {
     fn agg_constraint(&mut self, index: usize, flag: E, value: E) {
         self[index] += flag * value;
     }
-}
-
-// MERKLE TREE FUNCTIONS
-// ================================================================================================
-
-pub type TreeNode = (BaseElement, BaseElement);
-
-pub fn node_to_bytes(node: TreeNode) -> [u8; 32] {
-    BaseElement::elements_as_bytes(&[node.0, node.1])
-        .try_into()
-        .unwrap()
-}
-
-pub fn bytes_to_node(bytes: [u8; 32]) -> TreeNode {
-    let elements = read_elements_into_vec(&bytes).unwrap();
-    (elements[0], elements[1])
 }
 
 // OTHER FUNCTIONS

@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{Assertion, ConstraintDivisor};
-use crypto::RandomElementGenerator;
+use crypto::{Hasher, RandomElementGenerator};
 use math::{
     fft,
     field::{FieldElement, StarkField},
@@ -89,12 +89,12 @@ where
     // --------------------------------------------------------------------------------------------
 
     /// Creates a new boundary constraint from the specified assertion and adds it to the group.
-    pub fn add<R: RandomElementGenerator>(
+    pub fn add<H: Hasher>(
         &mut self,
         assertion: Assertion<B>,
         inv_g: B,
         twiddle_map: &mut HashMap<usize, Vec<B>>,
-        coeff_prng: &mut R,
+        coeff_prng: &mut RandomElementGenerator<H>,
     ) {
         self.constraints.push(BoundaryConstraint::new(
             assertion,
@@ -140,11 +140,11 @@ where
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Creates a new boundary constraint from the specified assertion.
-    pub fn new<R: RandomElementGenerator>(
+    pub fn new<H: Hasher>(
         assertion: Assertion<B>,
         inv_g: B,
         twiddle_map: &mut HashMap<usize, Vec<B>>,
-        coeff_prng: &mut R,
+        coeff_prng: &mut RandomElementGenerator<H>,
     ) -> Self {
         // build a polynomial which evaluates to constraint values at asserted steps; for
         // single-value assertions we use the value as constant coefficient of degree 0

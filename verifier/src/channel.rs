@@ -4,50 +4,79 @@
 // LICENSE file in the root directory of this source tree.
 
 use common::{
-    errors::VerifierError,
-    proof::{Commitments, OodEvaluationFrame, Queries, StarkProof},
-    utils, Air, ComputationContext, EvaluationFrame, ProofOptions, PublicCoin,
+    errors::VerifierError, proof::StarkProof, utils, Air, ComputationContext, EvaluationFrame,
+    ProofOptions, PublicCoin,
 };
-use crypto::{BatchMerkleProof, DefaultRandomElementGenerator, Hasher, MerkleTree};
+use crypto::{BatchMerkleProof, Hasher, MerkleTree};
 use fri::{PublicCoin as FriPublicCoin, VerifierChannel as FriVerifierChannel};
-use math::{
-    field::{FieldElement, StarkField},
-    utils::read_elements_into_vec,
-};
+use math::field::{FieldElement, StarkField};
 use std::convert::TryInto;
-use std::marker::PhantomData;
 
 // TYPES AND INTERFACES
 // ================================================================================================
 
 pub struct VerifierChannel<B: StarkField, E: FieldElement + From<B>, H: Hasher> {
     context: ComputationContext,
-    commitments: Commitments,
-    trace_queries: Queries,
-    constraint_queries: Queries,
-    ood_frame: OodEvaluationFrame,
-    fri_layer_proofs: Vec<BatchMerkleProof>,
+    // trace queries
+    trace_root: H::Digest,
+    trace_proof: BatchMerkleProof<H>,
+    trace_states: Vec<Vec<B>>,
+    // constraint queries
+    constraint_root: H::Digest,
+    constraint_proof: BatchMerkleProof<H>,
+    constraint_evaluations: Vec<Vec<E>>,
+    // FRI proof
+    fri_roots: Vec<H::Digest>,
+    fri_layer_proofs: Vec<BatchMerkleProof<H>>,
     fri_layer_queries: Vec<Vec<E>>,
     fri_remainder: Vec<E>,
     fri_partitioned: bool,
-    query_seed: [u8; 32],
-    _base_element: PhantomData<B>,
-    _hasher: PhantomData<H>,
+    // query seed
+    query_seed: H::Digest,
+    // out-of-domain evaluation frame
+    ood_frame: EvaluationFrame<E>,
 }
 
 // VERIFIER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-impl<B, E, H> VerifierChannel<B, E, H>
-where
-    B: StarkField,
-    E: FieldElement + From<B>,
-    H: Hasher,
-{
+impl<B: StarkField, E: FieldElement + From<B>, H: Hasher> VerifierChannel<B, E, H> {
     /// Creates and returns a new verifier channel initialized from the specified `proof`.
     pub fn new<A: Air<BaseElement = B>>(air: &A, proof: StarkProof) -> Result<Self, VerifierError> {
         // TODO: validate field modulus
         // TODO: verify ce blowup factor
+
+        // --- parse commitments ------------------------------------------------------------------
+        let fri_options = air.context().options().to_fri_options::<B>();
+        let num_fri_layers = fri_options.num_fri_layers(air.lde_domain_size());
+        let (trace_root, constraint_root, fri_roots) = proof
+            .commitments
+            .parse::<H>(num_fri_layers)
+            .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
+
+        // --- parse trace queries ----------------------------------------------------------------
+        let (trace_proof, trace_states) = proof
+            .trace_queries
+            .parse::<H, B>(air.lde_domain_size(), air.trace_width())
+            .map_err(|err| {
+                VerifierError::ProofDeserializationError(format!(
+                    "trace query deserialization failed: {}",
+                    err.to_string()
+                ))
+            })?;
+
+        // --- parse constraint evaluation queries ------------------------------------------------
+        let evaluations_per_leaf = utils::evaluations_per_leaf::<E, H>();
+        let num_leaves = air.lde_domain_size() / evaluations_per_leaf;
+        let (constraint_proof, constraint_evaluations) = proof
+            .constraint_queries
+            .parse::<H, E>(num_leaves, evaluations_per_leaf)
+            .map_err(|err| {
+                VerifierError::ProofDeserializationError(format!(
+                    "constraint evaluation query deserialization failed: {}",
+                    err.to_string()
+                ))
+            })?;
 
         // --- parse FRI proofs -------------------------------------------------------------------
         let fri_partitioned = proof.fri_proof.is_partitioned();
@@ -62,76 +91,53 @@ where
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         // --- build query seed -------------------------------------------------------------------
-        let query_seed = build_query_seed::<H>(
-            &proof.commitments.fri_roots,
-            proof.pow_nonce,
-            &air.context().options(),
-        )?;
+        let query_seed =
+            build_query_seed::<H>(&fri_roots, proof.pow_nonce, &air.context().options())?;
+
+        // --- parse out-of-domain evaluation frame -----------------------------------------------
+        let ood_frame = proof
+            .ood_frame
+            .parse(air.trace_width())
+            .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         Ok(VerifierChannel {
             context: air.context().clone(),
-            commitments: proof.commitments,
-            ood_frame: proof.ood_frame,
-            trace_queries: proof.trace_queries,
-            constraint_queries: proof.constraint_queries,
+            // trace queries
+            trace_root,
+            trace_proof,
+            trace_states,
+            // constraint queries
+            constraint_root,
+            constraint_proof,
+            constraint_evaluations,
+            // FRI proof
+            fri_roots,
             fri_layer_proofs,
             fri_layer_queries,
             fri_remainder,
             fri_partitioned,
+            // query seed
             query_seed,
-            _base_element: PhantomData,
-            _hasher: PhantomData,
+            // out-of-domain evaluation frame
+            ood_frame,
         })
     }
 
-    /// Returns trace polynomial evaluations at OOD points z and z * g, where g is the generator
-    /// of the LDE domain.
-    pub fn read_ood_frame(&self) -> Result<EvaluationFrame<E>, VerifierError> {
-        let current = match read_elements_into_vec(&self.ood_frame.trace_at_z1) {
-            Ok(elements) => {
-                if elements.len() != self.context.trace_width() {
-                    return Err(VerifierError::OodFrameDeserializationFailed);
-                }
-                elements
-            }
-            Err(_) => return Err(VerifierError::OodFrameDeserializationFailed),
-        };
-        let next = match read_elements_into_vec(&self.ood_frame.trace_at_z2) {
-            Ok(elements) => {
-                if elements.len() != self.context.trace_width() {
-                    return Err(VerifierError::OodFrameDeserializationFailed);
-                }
-                elements
-            }
-            Err(_) => return Err(VerifierError::OodFrameDeserializationFailed),
-        };
-
-        Ok(EvaluationFrame { current, next })
+    /// Returns trace polynomial evaluations at out-of-domain points z and z * g, where
+    /// g is the generator of the LDE domain.
+    pub fn read_ood_frame(&self) -> &EvaluationFrame<E> {
+        &self.ood_frame
     }
 
     /// Returns trace states at the specified positions. This also checks if the
     /// trace states are valid against the trace commitment sent by the prover.
-    pub fn read_trace_states(&self, positions: &[usize]) -> Result<Vec<Vec<B>>, VerifierError> {
-        // deserialize query bytes into a set of trace states at the specified positions
-        // and corresponding Merkle paths
-        // TODO: avoid cloning
-        let (merkle_paths, trace_states) = self
-            .trace_queries
-            .clone()
-            .deserialize::<H, B>(self.context.lde_domain_size(), self.context.trace_width())
-            .map_err(|_err| VerifierError::TraceQueryDeserializationFailed)?;
-
+    pub fn read_trace_states(&self, positions: &[usize]) -> Result<&[Vec<B>], VerifierError> {
         // make sure the states included in the proof correspond to the trace commitment
-        if !MerkleTree::verify_batch(
-            &self.commitments.trace_root,
-            positions,
-            &merkle_paths,
-            H::hash_fn(),
-        ) {
+        if !MerkleTree::verify_batch(&self.trace_root, positions, &self.trace_proof) {
             return Err(VerifierError::TraceQueryDoesNotMatchCommitment);
         }
 
-        Ok(trace_states)
+        Ok(&self.trace_states)
     }
 
     /// Returns constraint evaluations at the specified positions. This also checks if the
@@ -141,35 +147,20 @@ where
         positions: &[usize],
     ) -> Result<Vec<E>, VerifierError> {
         let evaluations_per_leaf = utils::evaluations_per_leaf::<E, H>();
-        let num_leaves = self.context.lde_domain_size() / evaluations_per_leaf;
-        // deserialize query bytes into a set of constraint evaluations at the specified positions
-        // and corresponding Merkle paths
-        // TODO: avoid cloning
-        let (merkle_paths, constraint_evaluations) = self
-            .constraint_queries
-            .clone()
-            .deserialize::<H, E>(num_leaves, evaluations_per_leaf)
-            .map_err(|_err| VerifierError::ConstraintQueryDeserializationFailed)?;
-
         let c_positions = utils::map_trace_to_constraint_positions(positions, evaluations_per_leaf);
-        if !MerkleTree::verify_batch(
-            &self.commitments.constraint_root,
-            &c_positions,
-            &merkle_paths,
-            H::hash_fn(),
-        ) {
+        if !MerkleTree::verify_batch(&self.constraint_root, &c_positions, &self.constraint_proof) {
             return Err(VerifierError::ConstraintQueryDoesNotMatchCommitment);
         }
 
         // build constraint evaluation values from the leaves of constraint Merkle proof
         let mut evaluations: Vec<E> = Vec::with_capacity(positions.len());
         for &position in positions.iter() {
-            // TODO: position computation should be in common
             let leaf_idx = c_positions
                 .iter()
                 .position(|&v| v == position / evaluations_per_leaf)
                 .unwrap();
-            evaluations.push(constraint_evaluations[leaf_idx][position % evaluations_per_leaf]);
+            evaluations
+                .push(self.constraint_evaluations[leaf_idx][position % evaluations_per_leaf]);
         }
 
         Ok(evaluations)
@@ -182,9 +173,7 @@ where
     E: FieldElement + From<B>,
     H: Hasher,
 {
-    type Hasher = H;
-
-    fn fri_layer_proofs(&self) -> &[BatchMerkleProof] {
+    fn fri_layer_proofs(&self) -> &[BatchMerkleProof<H>] {
         &self.fri_layer_proofs
     }
 
@@ -209,21 +198,19 @@ where
     E: FieldElement + From<B>,
     H: Hasher,
 {
-    type Hasher = H;
-
     fn context(&self) -> &ComputationContext {
         &self.context
     }
 
-    fn constraint_seed(&self) -> [u8; 32] {
-        self.commitments.trace_root
+    fn constraint_seed(&self) -> H::Digest {
+        self.trace_root
     }
 
-    fn composition_seed(&self) -> [u8; 32] {
-        self.commitments.constraint_root
+    fn composition_seed(&self) -> H::Digest {
+        self.constraint_root
     }
 
-    fn query_seed(&self) -> [u8; 32] {
+    fn query_seed(&self) -> H::Digest {
         self.query_seed
     }
 }
@@ -234,40 +221,28 @@ where
     E: FieldElement + From<B>,
     H: Hasher,
 {
-    type RandomElementGenerator = DefaultRandomElementGenerator<H>;
+    type Hasher = H;
 
-    fn fri_layer_commitments(&self) -> &[[u8; 32]] {
-        &self.commitments.fri_roots
+    fn fri_layer_commitments(&self) -> &[H::Digest] {
+        &self.fri_roots
     }
 }
 
 // HELPER FUNCTIONS
 // ================================================================================================
 fn build_query_seed<H: Hasher>(
-    fri_roots: &[[u8; 32]],
+    fri_roots: &[H::Digest],
     nonce: u64,
     options: &ProofOptions,
-) -> Result<[u8; 32], VerifierError> {
-    let hash_fn = H::hash_fn();
-
-    // combine roots of all FIR layers into a single array of bytes
-    let mut root_bytes: Vec<u8> = Vec::with_capacity(fri_roots.len() * 32);
-    for root in fri_roots.iter() {
-        root.iter().for_each(|&v| root_bytes.push(v));
-    }
-
-    // hash the array of bytes into a single 32-byte value
-    let mut query_seed = [0u8; 32];
-    hash_fn(&root_bytes, &mut query_seed);
+) -> Result<H::Digest, VerifierError> {
+    // merge all FRI roots into a single value
+    let merged_roots = H::merge_many(fri_roots);
 
     // verify proof of work
-    let mut input_bytes = [0; 64];
-    input_bytes[0..32].copy_from_slice(&query_seed);
-    input_bytes[56..].copy_from_slice(&nonce.to_le_bytes());
+    let query_seed = H::merge_with_int(merged_roots, nonce);
+    let seed_bytes: &[u8] = query_seed.as_ref();
 
-    hash_fn(&input_bytes, &mut query_seed);
-
-    let seed_head = u64::from_le_bytes(query_seed[..8].try_into().unwrap());
+    let seed_head = u64::from_le_bytes(seed_bytes[..8].try_into().unwrap());
     if seed_head.trailing_zeros() < options.grinding_factor() {
         return Err(VerifierError::QuerySeedProofOfWorkVerificationFailed);
     }

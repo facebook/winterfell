@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crypto::HashFunction;
+use crypto::Hasher;
 use math::{
     field::{FieldElement, StarkField},
     utils::batch_inversion,
@@ -86,10 +86,10 @@ pub fn to_quartic_vec<E: FieldElement>(vector: Vec<E>) -> Vec<[E; 4]> {
 }
 
 /// Computes hashes for all quartic elements using the specified hash function.
-pub fn hash_values<E: FieldElement>(values: &[[E; 4]], hash: HashFunction) -> Vec<[u8; 32]> {
-    let mut result: Vec<[u8; 32]> = uninit_vector(values.len());
+pub fn hash_values<H: Hasher, E: FieldElement>(values: &[[E; 4]]) -> Vec<H::Digest> {
+    let mut result: Vec<H::Digest> = uninit_vector(values.len());
     for (r, v) in result.iter_mut().zip(values) {
-        hash(E::elements_as_bytes(v), r);
+        *r = H::hash_elements(v);
     }
     result
 }

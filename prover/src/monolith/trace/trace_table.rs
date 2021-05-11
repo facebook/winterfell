@@ -75,10 +75,9 @@ impl<B: StarkField> TraceTable<B> {
     // TRACE COMMITMENT
     // --------------------------------------------------------------------------------------------
     /// Builds a Merkle tree out of trace table rows (hash of each row becomes a leaf in the tree).
-    pub fn build_commitment<H: Hasher>(&self) -> MerkleTree {
-        let hash_fn = H::hash_fn();
+    pub fn build_commitment<H: Hasher>(&self) -> MerkleTree<H> {
         // allocate vector to store row hashes
-        let mut hashed_states = uninit_vector::<[u8; 32]>(self.len());
+        let mut hashed_states = uninit_vector::<H::Digest>(self.len());
 
         // iterate though table rows, hashing each row; the hashing is done by first copying
         // the state into trace_state buffer to avoid unneeded allocations, and then by applying
@@ -94,7 +93,7 @@ impl<B: StarkField> TraceTable<B> {
                     let mut trace_state = vec![B::ZERO; self.width()];
                     for (i, row_hash) in hashed_states_batch.iter_mut().enumerate() {
                         self.read_row_into(i + offset, &mut trace_state);
-                        hash_fn(B::elements_as_bytes(&trace_state), row_hash);
+                        *row_hash = H::hash_elements(&trace_state);
                     }
                 });
         }
@@ -104,19 +103,19 @@ impl<B: StarkField> TraceTable<B> {
             let mut trace_state = vec![B::ZERO; self.width()];
             for (i, row_hash) in hashed_states.iter_mut().enumerate() {
                 self.read_row_into(i, &mut trace_state);
-                hash_fn(B::elements_as_bytes(&trace_state), row_hash);
+                *row_hash = H::hash_elements(&trace_state);
             }
         }
 
         // build Merkle tree out of hashed rows
-        MerkleTree::new(hashed_states, hash_fn)
+        MerkleTree::new(hashed_states)
     }
 
     // QUERY TRACE
     // --------------------------------------------------------------------------------------------
     /// Returns trace table rows at the specified positions along with Merkle authentication paths
     /// from the `commitment` root to these rows.
-    pub fn query(&self, commitment: MerkleTree, positions: &[usize]) -> Queries {
+    pub fn query<H: Hasher>(&self, commitment: MerkleTree<H>, positions: &[usize]) -> Queries {
         assert_eq!(
             self.len(),
             commitment.leaves().len(),

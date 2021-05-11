@@ -9,7 +9,7 @@ use crate::utils::{
         self, CYCLE_LENGTH as HASH_CYCLE_LEN, NUM_ROUNDS as NUM_HASH_ROUNDS,
         STATE_WIDTH as HASH_STATE_WIDTH,
     },
-    EvaluationResult, TreeNode,
+    EvaluationResult,
 };
 use prover::{
     math::field::{f128::BaseElement, FieldElement},
@@ -128,8 +128,8 @@ impl Air for MerkleAir {
 // ================================================================================================
 
 pub fn build_trace(
-    value: TreeNode,
-    branch: &[TreeNode],
+    value: [BaseElement; 2],
+    branch: &[rescue::Hash],
     index: usize,
 ) -> ExecutionTrace<BaseElement> {
     // allocate memory to hold the trace table
@@ -142,8 +142,8 @@ pub fn build_trace(
     trace.fill(
         |state| {
             // initialize first state of the computation
-            state[0] = value.0;
-            state[1] = value.1;
+            state[0] = value[0];
+            state[1] = value[1];
             state[2..].fill(BaseElement::ZERO);
         },
         |step, state| {
@@ -160,19 +160,20 @@ pub fn build_trace(
             if cycle_pos < NUM_HASH_ROUNDS {
                 rescue::apply_round(&mut state[..HASH_STATE_WIDTH], step);
             } else {
+                let branch_node = branch[cycle_num].to_elements();
                 let index_bit = BaseElement::new(((index >> cycle_num) & 1) as u128);
                 if index_bit == BaseElement::ZERO {
                     // if index bit is zero, new branch node goes into registers [2, 3]; values in
                     // registers [0, 1] (the accumulated hash) remain unchanged
-                    state[2] = branch[cycle_num].0;
-                    state[3] = branch[cycle_num].1;
+                    state[2] = branch_node[0];
+                    state[3] = branch_node[1];
                 } else {
                     // if index bit is one, accumulated hash goes into registers [2, 3],
                     // and new branch nodes goes into registers [0, 1]
                     state[2] = state[0];
                     state[3] = state[1];
-                    state[0] = branch[cycle_num].0;
-                    state[1] = branch[cycle_num].1;
+                    state[0] = branch_node[0];
+                    state[1] = branch_node[1];
                 }
                 // reset the capacity registers of the state to ZERO
                 state[4] = BaseElement::ZERO;
