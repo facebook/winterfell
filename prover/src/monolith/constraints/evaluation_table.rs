@@ -8,7 +8,7 @@ use common::{errors::ProverError, ConstraintDivisor};
 use math::{
     fft,
     field::{FieldElement, StarkField},
-    utils::{batch_inversion, get_power_series_with_offset},
+    utils::batch_inversion,
 };
 use utils::uninit_vector;
 
@@ -275,20 +275,39 @@ fn acc_column<B: StarkField, E: FieldElement + From<B>>(
         "multiple exclusion points are not yet supported"
     );
 
-    // compute evaluations of the divisor's numerator, which has the form (x^a - b)
+    // compute inverse evaluations of the divisor's numerator, which has the form (x^a - b)
     let domain_size = column.len();
     let z = get_inv_evaluation(divisor, domain_size, domain_offset);
 
+    const MIN_CONCURRENT_SIZE: usize = 1024;
+
+    // divide column values by the divisor; for boundary constraints this computed simply as
+    // multiplication of column value by the inverse of divisor numerator; for transition
+    // constraints, it is computed similarly, but the result is also multiplied by the divisor's
+    // denominator (exclusion point).
     if divisor.exclude().is_empty() {
         // the column represents merged evaluations of boundary constraints, and divisor has the
         // form of (x^a - b); thus to divide the column by the divisor, we compute: value * z,
         // where z = 1 / (x^a - 1) and has already been computed above.
 
-        for (i, (result, value)) in result.iter_mut().zip(column).enumerate() {
-            // determine which value of z corresponds to the current domain point
-            let z = E::from(z[i % z.len()]);
-            // compute value * z and add it to the result
-            *result += value * z;
+        if cfg!(feature = "concurrent") && result.len() >= MIN_CONCURRENT_SIZE {
+            #[cfg(feature = "concurrent")]
+            {
+                #[rustfmt::skip]
+                result.par_iter_mut().zip(column).enumerate().for_each(|(i, (acc_value, value))| {
+                    // determine which value of z corresponds to the current domain point
+                    let z = E::from(z[i % z.len()]);
+                    // compute value * z and add it to the result
+                    *acc_value += value * z;
+                });
+            }
+        } else {
+            for (i, (acc_value, value)) in result.iter_mut().zip(column).enumerate() {
+                // determine which value of z corresponds to the current domain point
+                let z = E::from(z[i % z.len()]);
+                // compute value * z and add it to the result
+                *acc_value += value * z;
+            }
         }
     } else {
         // the column represents merged evaluations of transition constraints, and divisor has the
@@ -297,40 +316,88 @@ fn acc_column<B: StarkField, E: FieldElement + From<B>>(
 
         // set up variables for computing x at every point in the domain
         let g = B::get_root_of_unity(domain_size.trailing_zeros());
-        let mut x = domain_offset;
         let b = divisor.exclude()[0];
 
-        for (i, (result, value)) in result.iter_mut().zip(column).enumerate() {
-            // compute value of (x - b) and compute next value of x
-            let e = x - b;
-            x *= g;
-            // determine which value of z corresponds to the current domain point
-            let z = z[i % z.len()];
-            // compute value * (x - b) * z and add it to the result
-            *result += value * E::from(z * e);
+        if cfg!(feature = "concurrent") && result.len() >= MIN_CONCURRENT_SIZE {
+            #[cfg(feature = "concurrent")]
+            {
+                let batch_size = result.len() / rayon::current_num_threads().next_power_of_two();
+                #[rustfmt::skip]
+                result.par_chunks_mut(batch_size).enumerate().for_each(|(i, batch)| {
+                    let batch_offset = i * batch_size;
+                    let mut x = domain_offset * g.exp((batch_offset as u64).into());
+                    for (i, acc_value) in batch.iter_mut().enumerate() {
+                        // compute value of (x - b) and compute next value of x
+                        let e = x - b;
+                        x *= g;
+                        // determine which value of z corresponds to the current domain point
+                        let z = z[i % z.len()];
+                        // compute value * (x - b) * z and add it to the result
+                        *acc_value += column[batch_offset + i] * E::from(z * e);
+                    }
+                });
+            }
+        } else {
+            let mut x = domain_offset;
+            for (i, (acc_value, value)) in result.iter_mut().zip(column).enumerate() {
+                // compute value of (x - b) and compute next value of x
+                let e = x - b;
+                x *= g;
+                // determine which value of z corresponds to the current domain point
+                let z = z[i % z.len()];
+                // compute value * (x - b) * z and add it to the result
+                *acc_value += value * E::from(z * e);
+            }
         }
     }
 }
 
 /// Computes evaluations of the divisor's numerator over the domain of the specified size and offset.
+#[allow(clippy::many_single_char_names)]
 fn get_inv_evaluation<B: StarkField>(
     divisor: &ConstraintDivisor<B>,
     domain_size: usize,
     domain_offset: B,
 ) -> Vec<B> {
     let numerator = divisor.numerator();
-    let a = numerator[0].0 as u32; // numerator degree
+    let a = numerator[0].0 as u64; // numerator degree
     let b = numerator[0].1;
 
     let n = domain_size / a as usize;
-
     let g = B::get_root_of_unity(domain_size.trailing_zeros()).exp(a.into());
-    let offset = domain_offset.exp(a.into());
 
-    let result = get_power_series_with_offset(g, offset, n);
-    let result = result.into_iter().map(|x| x - b).collect::<Vec<_>>();
-    batch_inversion(&result)
+    // compute x^a - b for all x, either in one thread or in many
+    let mut evaluations = uninit_vector(n);
+
+    const MIN_CONCURRENT_SIZE: usize = 1024;
+    if cfg!(feature = "concurrent") && n >= MIN_CONCURRENT_SIZE {
+        #[cfg(feature = "concurrent")]
+        {
+            let batch_size = evaluations.len() / rayon::current_num_threads().next_power_of_two();
+            #[rustfmt::skip]
+            evaluations.par_chunks_mut(batch_size).enumerate().for_each(|(i, batch)| {
+                let batch_offset = (i * batch_size) as u64;
+                let mut x = domain_offset.exp(a.into()) * g.exp(batch_offset.into());
+                for evaluation in batch.iter_mut() {
+                    *evaluation = x - b;
+                    x *= g;
+                }
+            });
+        }
+    } else {
+        let mut x = domain_offset.exp(a.into());
+        for evaluation in evaluations.iter_mut() {
+            *evaluation = x - b;
+            x *= g;
+        }
+    }
+
+    // compute 1 / (x^a - b)
+    batch_inversion(&evaluations)
 }
+
+// DEBUG HELPERS
+// ================================================================================================
 
 /// makes sure that the post-division degree of the polynomial matches the expected degree
 #[cfg(debug_assertions)]
@@ -338,33 +405,31 @@ fn validate_column_degree<B: StarkField, E: FieldElement + From<B>>(
     column: &[E],
     divisor: &ConstraintDivisor<B>,
     domain_offset: B,
-    composition_degree: usize,
+    expected_degree: usize,
 ) -> Result<(), ProverError> {
-    // convert the polynomial into coefficient form by interpolating the evaluations
-    // over the evaluation domain
-    let mut column = column.to_vec();
-    let inv_twiddles = fft::get_inv_twiddles::<B>(column.len());
-    fft::interpolate_poly_with_offset(&mut column, &inv_twiddles, domain_offset);
-    let mut poly = column;
+    // build domain for divisor evaluation, and evaluate it over this domain
+    let g = B::get_root_of_unity(column.len().trailing_zeros());
+    let domain = math::utils::get_power_series_with_offset(g, domain_offset, column.len());
+    let div_values = domain
+        .into_iter()
+        .map(|x| E::from(divisor.evaluate_at(x)))
+        .collect::<Vec<_>>();
 
-    // divide the polynomial by its divisor
-    let numerator = divisor.numerator();
-    let numerator = numerator[0];
-    let degree = numerator.0;
+    // divide column values by the divisor
+    let mut evaluations = column
+        .iter()
+        .zip(div_values)
+        .map(|(&c, d)| c / d)
+        .collect::<Vec<_>>();
 
-    if divisor.exclude().is_empty() {
-        // the form of the divisor is just (x^degree - a)
-        let a = E::from(numerator.1);
-        math::polynom::syn_div_in_place(&mut poly, degree, a);
-    } else {
-        // the form of divisor is (x^degree - 1) / (x - exception)
-        let exception = E::from(divisor.exclude()[0]);
-        math::polynom::syn_div_in_place_with_exception(&mut poly, degree, exception);
-    }
+    // interpolate evaluations into a polynomial in coefficient form
+    let inv_twiddles = fft::get_inv_twiddles::<B>(evaluations.len());
+    fft::interpolate_poly_with_offset(&mut evaluations, &inv_twiddles, domain_offset);
+    let poly = evaluations;
 
-    if composition_degree != math::polynom::degree_of(&poly) {
+    if expected_degree != math::polynom::degree_of(&poly) {
         return Err(ProverError::MismatchedConstraintPolynomialDegree(
-            composition_degree,
+            expected_degree,
             math::polynom::degree_of(&poly),
         ));
     }
