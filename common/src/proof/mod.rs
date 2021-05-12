@@ -68,17 +68,18 @@ impl StarkProof {
         let options = &self.context.options;
 
         let base_field_size_bits = get_num_modulus_bits(&self.context.field_modulus_bytes);
-        let lde_domain_size_bits = self.context.lde_domain_depth as u32;
+
+        let lde_domain_size = 1u64 << self.context.lde_domain_depth as u32;
 
         let ce_to_lde_blowup = options.blowup_factor() as u8 / self.context.ce_blowup_factor;
-        let evaluation_domain_size_bits = lde_domain_size_bits / ce_to_lde_blowup as u32;
+        let evaluation_domain_size = lde_domain_size / ce_to_lde_blowup as u64;
 
         if conjectured {
             get_conjectured_security(
                 options,
                 base_field_size_bits,
-                lde_domain_size_bits,
-                evaluation_domain_size_bits,
+                lde_domain_size,
+                evaluation_domain_size,
             )
         } else {
             // TODO: implement proven security estimation
@@ -108,13 +109,13 @@ fn get_num_modulus_bits(modulus_bytes: &[u8]) -> u32 {
 /// Computes conjectured security level for the specified proof parameters.
 fn get_conjectured_security(
     options: &ProofOptions,
-    base_field_size: u32,        // in bits
-    lde_domain_size: u32,        // in bits
-    evaluation_domain_size: u32, // in bits
+    base_field_size: u32, // in bits
+    lde_domain_size: u64,
+    evaluation_domain_size: u64,
 ) -> u32 {
     // compute max security we can get for a given field size
     let field_size = base_field_size * options.field_extension().degree();
-    let field_security = field_size - lde_domain_size;
+    let field_security = field_size - lde_domain_size.trailing_zeros();
 
     // compute max security we can get for a given hash function
     let hash_fn_security = options.hash_fn().collision_resistance();
