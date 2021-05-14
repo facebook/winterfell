@@ -60,16 +60,16 @@ impl Hasher for Blake3_256 {
         hasher.finalize().into()
     }
 
-    fn hash_elements<E: FieldElement>(elements: &[E]) -> Self::Digest {
-        let bytes = E::elements_as_bytes(elements);
-        blake3::hash(&bytes).into()
-    }
-
     fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest {
         let mut data = [0; 40];
         data[..32].copy_from_slice(&seed);
         data[32..].copy_from_slice(&value.to_le_bytes());
         blake3::hash(&data).into()
+    }
+
+    fn hash_elements<E: FieldElement>(elements: &[E]) -> Self::Digest {
+        let bytes = E::elements_as_bytes(elements);
+        blake3::hash(&bytes).into()
     }
 
     fn read_digests_into_vec(
@@ -111,6 +111,13 @@ impl Hasher for Sha3_256 {
         hasher.finalize().into()
     }
 
+    fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest {
+        let mut data = [0; 40];
+        data[..32].copy_from_slice(&seed);
+        data[32..].copy_from_slice(&value.to_le_bytes());
+        sha3::Sha3_256::digest(&data).into()
+    }
+
     fn hash_elements<E: FieldElement>(elements: &[E]) -> Self::Digest {
         let bytes = E::elements_as_bytes(elements);
         sha3::Sha3_256::digest(bytes).into()
@@ -121,13 +128,6 @@ impl Hasher for Sha3_256 {
         num_digests: usize,
     ) -> Result<(Vec<Self::Digest>, usize), DigestSerializationError> {
         read_32_byte_digests(source, num_digests)
-    }
-
-    fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest {
-        let mut data = [0; 40];
-        data[..32].copy_from_slice(&seed);
-        data[32..].copy_from_slice(&value.to_le_bytes());
-        sha3::Sha3_256::digest(&data).into()
     }
 }
 

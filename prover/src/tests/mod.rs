@@ -84,20 +84,20 @@ impl Air for MockAir {
         &self.context
     }
 
-    fn get_periodic_column_values(&self) -> Vec<Vec<Self::BaseElement>> {
-        self.periodic_columns.clone()
-    }
-
-    fn get_assertions(&self) -> Vec<Assertion<Self::BaseElement>> {
-        self.assertions.clone()
-    }
-
     fn evaluate_transition<E: FieldElement + From<Self::BaseElement>>(
         &self,
         _frame: &EvaluationFrame<E>,
         _periodic_values: &[E],
         _result: &mut [E],
     ) {
+    }
+
+    fn get_assertions(&self) -> Vec<Assertion<Self::BaseElement>> {
+        self.assertions.clone()
+    }
+
+    fn get_periodic_column_values(&self) -> Vec<Vec<Self::BaseElement>> {
+        self.periodic_columns.clone()
     }
 }
 

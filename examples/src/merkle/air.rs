@@ -61,24 +61,6 @@ impl Air for MerkleAir {
         &self.context
     }
 
-    fn get_periodic_column_values(&self) -> Vec<Vec<Self::BaseElement>> {
-        let mut result = vec![HASH_CYCLE_MASK.to_vec()];
-        result.append(&mut rescue::get_round_constants());
-        result
-    }
-
-    fn get_assertions(&self) -> Vec<Assertion<Self::BaseElement>> {
-        // assert that Merkle path resolves to the tree root, and that hash capacity
-        // registers (registers 4 and 5) are reset to ZERO every 8 steps
-        let last_step = self.trace_length() - 1;
-        vec![
-            Assertion::single(0, last_step, self.tree_root[0]),
-            Assertion::single(1, last_step, self.tree_root[1]),
-            Assertion::periodic(4, 0, HASH_CYCLE_LEN, BaseElement::ZERO),
-            Assertion::periodic(5, 0, HASH_CYCLE_LEN, BaseElement::ZERO),
-        ]
-    }
-
     fn evaluate_transition<E: FieldElement + From<Self::BaseElement>>(
         &self,
         frame: &EvaluationFrame<E>,
@@ -121,6 +103,24 @@ impl Air for MerkleAir {
 
         // finally, we always enforce that values in the bit register must be binary
         result[6] = is_binary(current[6]);
+    }
+
+    fn get_assertions(&self) -> Vec<Assertion<Self::BaseElement>> {
+        // assert that Merkle path resolves to the tree root, and that hash capacity
+        // registers (registers 4 and 5) are reset to ZERO every 8 steps
+        let last_step = self.trace_length() - 1;
+        vec![
+            Assertion::single(0, last_step, self.tree_root[0]),
+            Assertion::single(1, last_step, self.tree_root[1]),
+            Assertion::periodic(4, 0, HASH_CYCLE_LEN, BaseElement::ZERO),
+            Assertion::periodic(5, 0, HASH_CYCLE_LEN, BaseElement::ZERO),
+        ]
+    }
+
+    fn get_periodic_column_values(&self) -> Vec<Vec<Self::BaseElement>> {
+        let mut result = vec![HASH_CYCLE_MASK.to_vec()];
+        result.append(&mut rescue::get_round_constants());
+        result
     }
 }
 

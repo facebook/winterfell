@@ -266,10 +266,7 @@ fn acc_column<B: StarkField, E: FieldElement + From<B>>(
     result: &mut [E],
 ) {
     let numerator = divisor.numerator();
-    assert!(
-        numerator.len() == 1,
-        "complex divisors are not yet supported"
-    );
+    assert_eq!(numerator.len(), 1, "complex divisors are not yet supported");
     assert!(
         divisor.exclude().len() <= 1,
         "multiple exclusion points are not yet supported"

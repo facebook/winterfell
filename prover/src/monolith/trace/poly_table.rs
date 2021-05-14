@@ -25,8 +25,9 @@ impl<B: StarkField> TracePolyTable<B> {
             "trace polynomial size must be a power of 2"
         );
         for poly in polys.iter() {
-            assert!(
-                poly.len() == poly_size,
+            assert_eq!(
+                poly.len(),
+                poly_size,
                 "all trace polynomials must have the same size"
             );
         }

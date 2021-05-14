@@ -95,8 +95,9 @@ pub trait PublicCoin: fri::PublicCoin {
             }
         }
 
-        assert!(
-            result.len() == num_queries,
+        assert_eq!(
+            result.len(),
+            num_queries,
             "needed to generate {} query positions, but generated only {}",
             num_queries,
             result.len()

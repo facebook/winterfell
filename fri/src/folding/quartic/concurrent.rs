@@ -56,8 +56,9 @@ where
 }
 
 pub fn transpose<E: FieldElement>(source: &[E], stride: usize) -> Vec<[E; FOLDING_FACTOR]> {
-    assert!(
-        source.len() % (FOLDING_FACTOR * stride) == 0,
+    assert_eq!(
+        source.len() % (FOLDING_FACTOR * stride),
+        0,
         "vector length must be divisible by {}",
         FOLDING_FACTOR * stride
     );

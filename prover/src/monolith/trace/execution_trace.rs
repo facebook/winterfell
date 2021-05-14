@@ -66,8 +66,9 @@ impl<B: StarkField> ExecutionTrace<B> {
             "execution trace length must be a power of 2"
         );
         for register in registers.iter() {
-            assert!(
-                register.len() == trace_length,
+            assert_eq!(
+                register.len(),
+                trace_length,
                 "all register traces must have the same length"
             );
         }
@@ -189,8 +190,9 @@ impl<B: StarkField> ExecutionTrace<B> {
         // TODO: eventually, this should return errors instead of panicking
 
         // make sure the width align; if they don't something went terribly wrong
-        assert!(
-            self.width() == air.trace_width(),
+        assert_eq!(
+            self.width(),
+            air.trace_width(),
             "inconsistent trace width: expected {}, but was {}",
             self.width(),
             air.trace_width()

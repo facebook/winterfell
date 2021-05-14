@@ -28,8 +28,8 @@ impl Queries {
     ) -> Self {
         assert!(!query_values.is_empty(), "query values cannot be empty");
         let elements_per_query = query_values[0].len();
-        assert!(
-            elements_per_query != 0,
+        assert_ne!(
+            elements_per_query, 0,
             "a query must contain at least one value"
         );
 

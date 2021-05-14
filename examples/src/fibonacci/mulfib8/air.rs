@@ -48,17 +48,6 @@ impl Air for MulFib8Air {
         &self.context
     }
 
-    fn get_assertions(&self) -> Vec<Assertion<Self::BaseElement>> {
-        // a valid multiplicative Fibonacci sequence should start with 1, 2 and terminate
-        // with the expected result
-        let last_step = self.trace_length() - 1;
-        vec![
-            Assertion::single(0, 0, BaseElement::new(1)),
-            Assertion::single(1, 0, BaseElement::new(2)),
-            Assertion::single(6, last_step, self.result),
-        ]
-    }
-
     fn evaluate_transition<E: FieldElement + From<Self::BaseElement>>(
         &self,
         frame: &EvaluationFrame<E>,
@@ -88,6 +77,17 @@ impl Air for MulFib8Air {
         result[5] = are_equal(next[5], next[3] * next[4]);
         result[6] = are_equal(next[6], next[4] * next[5]);
         result[7] = are_equal(next[7], next[5] * next[6]);
+    }
+
+    fn get_assertions(&self) -> Vec<Assertion<Self::BaseElement>> {
+        // a valid multiplicative Fibonacci sequence should start with 1, 2 and terminate
+        // with the expected result
+        let last_step = self.trace_length() - 1;
+        vec![
+            Assertion::single(0, 0, BaseElement::new(1)),
+            Assertion::single(1, 0, BaseElement::new(2)),
+            Assertion::single(6, last_step, self.result),
+        ]
     }
 }
 

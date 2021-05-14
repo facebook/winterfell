@@ -85,33 +85,34 @@ impl Air for LamportAggregateAir {
         &self.context
     }
 
-    fn get_periodic_column_values(&self) -> Vec<Vec<Self::BaseElement>> {
-        let mut result = vec![];
+    fn evaluate_transition<E: FieldElement + From<Self::BaseElement>>(
+        &self,
+        frame: &EvaluationFrame<E>,
+        periodic_values: &[E],
+        result: &mut [E],
+    ) {
+        let current = &frame.current;
+        let next = &frame.next;
+        // expected state width is 4 field elements
+        debug_assert_eq!(TRACE_WIDTH, current.len());
+        debug_assert_eq!(TRACE_WIDTH, next.len());
 
-        // signature cycle mask: 1023 zeros followed by 1 one
-        let mut sig_cycle_mask = vec![BaseElement::ZERO; SIG_CYCLE_LEN];
-        sig_cycle_mask[SIG_CYCLE_LEN - 1] = BaseElement::ONE;
-        result.push(sig_cycle_mask);
+        // spit periodic values into flags and Rescue round constants
+        let sig_cycle_end_flag = periodic_values[0];
+        let power_of_two = periodic_values[1];
+        let hash_flag = periodic_values[2];
+        let ark = &periodic_values[3..];
 
-        // build powers of two column
-        let mut powers_of_two = vec![BaseElement::ZERO; SIG_CYCLE_LEN];
-        let mut current_power_of_two = BaseElement::ONE;
-        powers_of_two[0] = BaseElement::ONE;
-        for (i, value) in powers_of_two.iter_mut().enumerate().skip(1) {
-            // we switch to a new power of two once every 8 steps this. is so that a
-            // new power of two is available for every hash cycle
-            if i % HASH_CYCLE_LEN == 0 {
-                current_power_of_two *= TWO;
-            }
-            *value = current_power_of_two;
-        }
-        result.push(powers_of_two);
-
-        // add hash cycle mask (seven ones followed by a zero), and rescue round constants
-        result.push(HASH_CYCLE_MASK.to_vec());
-        result.append(&mut rescue::get_round_constants());
-
-        result
+        // evaluate the constraints
+        evaluate_constraints(
+            result,
+            &frame.current,
+            &frame.next,
+            ark,
+            hash_flag,
+            sig_cycle_end_flag,
+            power_of_two,
+        );
     }
 
     fn get_assertions(&self) -> Vec<Assertion<Self::BaseElement>> {
@@ -153,34 +154,33 @@ impl Air for LamportAggregateAir {
         ]
     }
 
-    fn evaluate_transition<E: FieldElement + From<Self::BaseElement>>(
-        &self,
-        frame: &EvaluationFrame<E>,
-        periodic_values: &[E],
-        result: &mut [E],
-    ) {
-        let current = &frame.current;
-        let next = &frame.next;
-        // expected state width is 4 field elements
-        debug_assert_eq!(TRACE_WIDTH, current.len());
-        debug_assert_eq!(TRACE_WIDTH, next.len());
+    fn get_periodic_column_values(&self) -> Vec<Vec<Self::BaseElement>> {
+        let mut result = vec![];
 
-        // spit periodic values into flags and Rescue round constants
-        let sig_cycle_end_flag = periodic_values[0];
-        let power_of_two = periodic_values[1];
-        let hash_flag = periodic_values[2];
-        let ark = &periodic_values[3..];
+        // signature cycle mask: 1023 zeros followed by 1 one
+        let mut sig_cycle_mask = vec![BaseElement::ZERO; SIG_CYCLE_LEN];
+        sig_cycle_mask[SIG_CYCLE_LEN - 1] = BaseElement::ONE;
+        result.push(sig_cycle_mask);
 
-        // evaluate the constraints
-        evaluate_constraints(
-            result,
-            &frame.current,
-            &frame.next,
-            ark,
-            hash_flag,
-            sig_cycle_end_flag,
-            power_of_two,
-        );
+        // build powers of two column
+        let mut powers_of_two = vec![BaseElement::ZERO; SIG_CYCLE_LEN];
+        let mut current_power_of_two = BaseElement::ONE;
+        powers_of_two[0] = BaseElement::ONE;
+        for (i, value) in powers_of_two.iter_mut().enumerate().skip(1) {
+            // we switch to a new power of two once every 8 steps this. is so that a
+            // new power of two is available for every hash cycle
+            if i % HASH_CYCLE_LEN == 0 {
+                current_power_of_two *= TWO;
+            }
+            *value = current_power_of_two;
+        }
+        result.push(powers_of_two);
+
+        // add hash cycle mask (seven ones followed by a zero), and rescue round constants
+        result.push(HASH_CYCLE_MASK.to_vec());
+        result.append(&mut rescue::get_round_constants());
+
+        result
     }
 }
 

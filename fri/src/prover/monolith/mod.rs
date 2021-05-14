@@ -65,8 +65,9 @@ where
     /// current evaluations are committed to using a Merkle tree, and the root of this tree is used
     /// to derive randomness for the subsequent application of degree-respecting projection.
     pub fn build_layers(&mut self, channel: &mut C, mut evaluations: Vec<E>, domain: &[B]) {
-        assert!(
-            evaluations.len() == domain.len(),
+        assert_eq!(
+            evaluations.len(),
+            domain.len(),
             "number of evaluations must match the domain size"
         );
         assert_eq!(

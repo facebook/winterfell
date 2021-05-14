@@ -243,7 +243,7 @@ impl<H: Hasher> BatchMerkleProof<H> {
         for _ in 0..num_node_vectors {
             // read the number of digests in the vector
             if pos >= node_bytes.len() {
-                return Err(ProofSerializationError::UnexpectedEOF(pos));
+                return Err(ProofSerializationError::UnexpectedEof(pos));
             }
             let num_digests = node_bytes[pos] as usize;
             pos += 1;
@@ -252,7 +252,7 @@ impl<H: Hasher> BatchMerkleProof<H> {
             let (digests, bytes_read) = H::read_digests_into_vec(&node_bytes[pos..], num_digests)
                 .map_err(|err| match err {
                 DigestSerializationError::TooFewBytesForDigests(_, _, _) => {
-                    ProofSerializationError::UnexpectedEOF(node_bytes.len())
+                    ProofSerializationError::UnexpectedEof(node_bytes.len())
                 }
             })?;
             nodes.push(digests);

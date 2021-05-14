@@ -77,23 +77,6 @@ impl Air for RescueAir {
         &self.context
     }
 
-    fn get_periodic_column_values(&self) -> Vec<Vec<Self::BaseElement>> {
-        let mut result = vec![CYCLE_MASK.to_vec()];
-        result.append(&mut rescue::get_round_constants());
-        result
-    }
-
-    fn get_assertions(&self) -> Vec<Assertion<Self::BaseElement>> {
-        // Assert starting and ending values of the hash chain
-        let last_step = self.trace_length() - 1;
-        vec![
-            Assertion::single(0, 0, self.seed[0]),
-            Assertion::single(1, 0, self.seed[1]),
-            Assertion::single(0, last_step, self.result[0]),
-            Assertion::single(1, last_step, self.result[1]),
-        ]
-    }
-
     fn evaluate_transition<E: FieldElement + From<Self::BaseElement>>(
         &self,
         frame: &EvaluationFrame<E>,
@@ -117,6 +100,23 @@ impl Air for RescueAir {
         // step are enforced.
         let copy_flag = not(hash_flag);
         enforce_hash_copy(result, &frame.current, &frame.next, copy_flag);
+    }
+
+    fn get_assertions(&self) -> Vec<Assertion<Self::BaseElement>> {
+        // Assert starting and ending values of the hash chain
+        let last_step = self.trace_length() - 1;
+        vec![
+            Assertion::single(0, 0, self.seed[0]),
+            Assertion::single(1, 0, self.seed[1]),
+            Assertion::single(0, last_step, self.result[0]),
+            Assertion::single(1, last_step, self.result[1]),
+        ]
+    }
+
+    fn get_periodic_column_values(&self) -> Vec<Vec<Self::BaseElement>> {
+        let mut result = vec![CYCLE_MASK.to_vec()];
+        result.append(&mut rescue::get_round_constants());
+        result
     }
 }
 
