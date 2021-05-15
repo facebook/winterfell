@@ -34,7 +34,7 @@ pub enum ProofSerializationError {
     /// No node bytes provided
     NoNodeBytes,
     /// Unexpected EOF at position {0}
-    UnexpectedEOF(usize),
+    UnexpectedEof(usize),
 }
 
 impl fmt::Display for ProofSerializationError {
@@ -43,7 +43,7 @@ impl fmt::Display for ProofSerializationError {
             Self::NoNodeBytes => {
                 write!(f, "no node bytes provided")
             }
-            Self::UnexpectedEOF(pos) => {
+            Self::UnexpectedEof(pos) => {
                 write!(f, "Unexpected EOF at position {}", pos)
             }
         }

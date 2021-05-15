@@ -42,17 +42,6 @@ impl Air for Fib8Air {
         &self.context
     }
 
-    fn get_assertions(&self) -> Vec<Assertion<Self::BaseElement>> {
-        // assert that the trace starts with 7th and 8th terms of Fibonacci sequence (the first
-        // 6 terms are not recorded in the trace), and ends with the expected result
-        let last_step = self.trace_length() - 1;
-        vec![
-            Assertion::single(0, 0, BaseElement::new(13)),
-            Assertion::single(1, 0, BaseElement::new(21)),
-            Assertion::single(1, last_step, self.result),
-        ]
-    }
-
     fn evaluate_transition<E: FieldElement + From<Self::BaseElement>>(
         &self,
         frame: &EvaluationFrame<E>,
@@ -77,6 +66,17 @@ impl Air for Fib8Air {
 
         result[0] = are_equal(next[0], n6);
         result[1] = are_equal(next[1], n7);
+    }
+
+    fn get_assertions(&self) -> Vec<Assertion<Self::BaseElement>> {
+        // assert that the trace starts with 7th and 8th terms of Fibonacci sequence (the first
+        // 6 terms are not recorded in the trace), and ends with the expected result
+        let last_step = self.trace_length() - 1;
+        vec![
+            Assertion::single(0, 0, BaseElement::new(13)),
+            Assertion::single(1, 0, BaseElement::new(21)),
+            Assertion::single(1, last_step, self.result),
+        ]
     }
 }
 

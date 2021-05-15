@@ -54,8 +54,9 @@ pub fn uninit_vector<T>(length: usize) -> Vec<T> {
 /// an array of N elements.
 /// Panics if n is not divisible by N.
 pub fn group_vector_elements<T, const N: usize>(source: Vec<T>) -> Vec<[T; N]> {
-    assert!(
-        source.len() % N == 0,
+    assert_eq!(
+        source.len() % N,
+        0,
         "source length must be divisible by {}",
         N
     );
@@ -70,8 +71,9 @@ pub fn group_vector_elements<T, const N: usize>(source: Vec<T>) -> Vec<[T; N]> {
 /// an array of N elements.
 /// Panics if n is not divisible by N.
 pub fn group_slice_elements<T, const N: usize>(source: &[T]) -> &[[T; N]] {
-    assert!(
-        source.len() % N == 0,
+    assert_eq!(
+        source.len() % N,
+        0,
         "source length must be divisible by {}",
         N
     );
