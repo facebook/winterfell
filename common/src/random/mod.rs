@@ -22,7 +22,7 @@ const COMPOSITION_COEFF_OFFSET: u64 = 1024;
 // ================================================================================================
 
 pub trait PublicCoin: fri::PublicCoin {
-    // ABSTRACT METHODS
+    // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
 
     fn context(&self) -> &ComputationContext;
@@ -60,7 +60,11 @@ pub trait PublicCoin: fri::PublicCoin {
             self.composition_seed(),
             COMPOSITION_COEFF_OFFSET,
         );
-        CompositionCoefficients::new(generator, self.context().trace_width())
+        CompositionCoefficients::new(
+            generator,
+            self.context().trace_width(),
+            self.context().ce_blowup_factor(),
+        )
     }
 
     /// Draws a set of unique query positions using PRNG seeded with query seed. The positions
@@ -113,16 +117,20 @@ pub trait PublicCoin: fri::PublicCoin {
 #[derive(Debug)]
 pub struct CompositionCoefficients<E: FieldElement> {
     pub trace: Vec<(E, E, E)>,
-    pub trace_degree: (E, E),
-    pub constraints: E,
+    pub constraints: Vec<E>,
+    pub degree: (E, E),
 }
 
 impl<E: FieldElement> CompositionCoefficients<E> {
-    pub fn new<H: Hasher>(mut prng: RandomElementGenerator<H>, trace_width: usize) -> Self {
+    pub fn new<H: Hasher>(
+        mut prng: RandomElementGenerator<H>,
+        trace_width: usize,
+        num_composition_columns: usize,
+    ) -> Self {
         CompositionCoefficients {
             trace: (0..trace_width).map(|_| prng.draw_triple()).collect(),
-            trace_degree: prng.draw_pair(),
-            constraints: prng.draw(),
+            constraints: (0..num_composition_columns).map(|_| prng.draw()).collect(),
+            degree: prng.draw_pair(),
         }
     }
 }

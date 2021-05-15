@@ -9,85 +9,144 @@ use math::{
     field::{FieldElement, StarkField},
     polynom,
 };
+use utils::uninit_vector;
 
 // CONSTRAINT POLYNOMIAL
 // ================================================================================================
-pub struct ConstraintPoly<E: FieldElement> {
-    coefficients: Vec<E>,
-    degree: usize,
-}
+/// Represents a combined constraint polynomial split into a set of columns with each column being
+/// of length equal to trace_length. Thus, for example, if constraint polynomial has degree 2N - 1,
+/// where N is trace length, it will be stored as two columns of size N (each of degree N - 1).
+pub struct ConstraintPoly<E: FieldElement>(Vec<Vec<E>>);
 
 impl<E: FieldElement> ConstraintPoly<E> {
     /// Returns a new constraint polynomial.
-    pub fn new(coefficients: Vec<E>, degree: usize) -> Self {
+    pub fn new(coefficients: Vec<E>, trace_length: usize) -> Self {
         assert!(
             coefficients.len().is_power_of_two(),
-            "number of coefficients must be a power of 2"
+            "size of constraint polynomial must be a power of 2, but was {}",
+            coefficients.len(),
         );
-        // this check is expensive - so, check in debug mode only
-        debug_assert_eq!(
-            degree,
-            polynom::degree_of(&coefficients),
-            "inconsistent constraint polynomial degree; expected {}, but was {}",
-            degree,
+        assert!(
+            trace_length.is_power_of_two(),
+            "trace length must be a power of 2, but was {}",
+            trace_length
+        );
+        assert!(
+            trace_length < coefficients.len(),
+            "trace length must be smaller than size of constraint polynomial"
+        );
+        assert!(
+            coefficients[coefficients.len() - 1] != E::ZERO,
+            "expected constraint polynomial of degree {}, but was {}",
+            coefficients.len() - 1,
             polynom::degree_of(&coefficients)
         );
-        ConstraintPoly {
-            coefficients,
-            degree,
-        }
+
+        let num_columns = coefficients.len() / trace_length;
+        let polys = transpose(coefficients, num_columns);
+
+        ConstraintPoly(polys)
     }
 
-    /// Returns the degree of this constraint polynomial.
-    pub fn degree(&self) -> usize {
-        self.degree
+    // PUBLIC ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns the number of individual column polynomials used to describe this constraint
+    /// polynomial.
+    pub fn num_columns(&self) -> usize {
+        self.0.len()
     }
 
-    /// Returns the length of the vector containing constraint polynomial coefficients;
-    /// this is guaranteed to be a power of 2.
-    pub fn len(&self) -> usize {
-        self.coefficients.len()
+    /// Returns the length of individual column polynomials; this is guaranteed to be a power of 2.
+    pub fn column_len(&self) -> usize {
+        self.0[0].len()
     }
 
-    /// Returns the coefficients of the polynomial in the reverse-degree order (lowest-degree
-    /// coefficients first); some of the leading coefficients may be zeros.
-    #[allow(dead_code)]
-    pub fn coefficients(&self) -> &[E] {
-        &self.coefficients
-    }
-
-    /// Evaluates the polynomial the the specified point `x`.
-    #[allow(dead_code)]
-    pub fn evaluate_at(&self, x: E) -> E {
-        polynom::eval(&self.coefficients, x)
+    /// Returns the degree of individual column polynomial.
+    pub fn column_degree(&self) -> usize {
+        self.column_len() - 1
     }
 
     // LOW-DEGREE EXTENSION
     // --------------------------------------------------------------------------------------------
-    /// Evaluates constraint polynomial over the specified LDE domain and returns the result.
-    pub fn evaluate<B>(&self, domain: &StarkDomain<B>) -> Vec<E>
+    /// Evaluates the columns of the constraint polynomial over the specified LDE domain and
+    /// returns the result.
+    pub fn evaluate<B>(&self, domain: &StarkDomain<B>) -> Vec<Vec<E>>
     where
         B: StarkField,
         E: From<B>,
     {
         assert_eq!(
-            self.len(),
-            domain.ce_domain_size(),
-            "inconsistent evaluation domain size; expected {}, but received {}",
-            self.len(),
-            domain.ce_domain_size()
+            self.column_len(),
+            domain.trace_length(),
+            "inconsistent trace domain size; expected {}, but received {}",
+            self.column_len(),
+            domain.trace_length()
         );
 
-        fft::evaluate_poly_with_offset(
-            &self.coefficients,
-            domain.ce_twiddles(),
-            domain.offset(),
-            domain.ce_to_lde_blowup(),
-        )
+        self.0
+            .iter()
+            .map(|poly| {
+                fft::evaluate_poly_with_offset(
+                    poly,
+                    domain.trace_twiddles(),
+                    domain.offset(),
+                    domain.trace_to_lde_blowup(),
+                )
+            })
+            .collect()
     }
 
-    /// Transforms this constraint polynomial into a vector of coefficients.
-    pub fn into_vec(self) -> Vec<E> {
-        self.coefficients
+    /// Transforms this constraint polynomial into a vector of individual column polynomials.
+    pub fn into_polys(self) -> Vec<Vec<E>> {
+        self.0
+    }
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+/// Splits polynomial coefficients into the specified number of columns. The coefficients are split
+/// in such a way that each resulting column has the same degree. For example, a polynomial
+/// a * x^3 + b * x^2 + c * x + d, can be rewritten as: (b * x^2 + d) + x * (a * x^2 + c), and then
+/// the two columns will be: (b * x^2 + d) and (a * x^2 + c).
+fn transpose<E: FieldElement>(coefficients: Vec<E>, num_columns: usize) -> Vec<Vec<E>> {
+    let column_len = coefficients.len() / num_columns;
+
+    let mut result = (0..num_columns)
+        .map(|_| uninit_vector(column_len))
+        .collect::<Vec<_>>();
+
+    for (i, coeff) in coefficients.into_iter().enumerate() {
+        let row_idx = i / num_columns;
+        let col_idx = i % num_columns;
+        result[col_idx][row_idx] = coeff;
+    }
+
+    result
+}
+
+// TESTS
+// ================================================================================================
+
+#[cfg(test)]
+mod tests {
+
+    use math::field::f128::BaseElement;
+
+    #[test]
+    fn transpose() {
+        let values = (0u128..16).map(BaseElement::new).collect::<Vec<_>>();
+        let actual = super::transpose(values, 4);
+
+        #[rustfmt::skip]
+        let expected = vec![
+            vec![BaseElement::new(0), BaseElement::new(4), BaseElement::new(8), BaseElement::new(12)],
+            vec![BaseElement::new(1), BaseElement::new(5), BaseElement::new(9), BaseElement::new(13)],
+            vec![BaseElement::new(2), BaseElement::new(6), BaseElement::new(10), BaseElement::new(14)],
+            vec![BaseElement::new(3), BaseElement::new(7), BaseElement::new(11), BaseElement::new(15)],
+        ];
+
+        assert_eq!(expected, actual)
     }
 }

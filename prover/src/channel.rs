@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use common::{
-    proof::{Commitments, Context, OodEvaluationFrame, Queries, StarkProof},
+    proof::{Commitments, Context, OodFrame, Queries, StarkProof},
     ComputationContext, EvaluationFrame, PublicCoin,
 };
 use crypto::Hasher;
@@ -82,13 +82,14 @@ impl<H: Hasher> ProverChannel<H> {
         self.pow_nonce = nonce;
     }
 
-    /// Builds a proof from the previously committed values as well as values
-    /// passed in to this method
+    /// Builds a proof from the previously committed values as well as values passed into
+    /// this method.
     pub fn build_proof<B: StarkField, E: FieldElement + From<B>>(
         self,
         trace_queries: Queries,
         constraint_queries: Queries,
         ood_frame: EvaluationFrame<E>,
+        ood_evaluations: Vec<E>,
         fri_proof: FriProof,
     ) -> StarkProof {
         let options = self.context.options().clone();
@@ -101,14 +102,13 @@ impl<H: Hasher> ProverChannel<H> {
         StarkProof {
             context: Context {
                 lde_domain_depth: log2(self.context.lde_domain_size()) as u8,
-                ce_blowup_factor: self.context.ce_blowup_factor() as u8,
                 field_modulus_bytes: B::get_modulus_le_bytes(),
                 options,
             },
             commitments,
             trace_queries,
             constraint_queries,
-            ood_frame: OodEvaluationFrame::new(ood_frame),
+            ood_frame: OodFrame::new(ood_frame, ood_evaluations),
             fri_proof,
             pow_nonce: self.pow_nonce,
         }

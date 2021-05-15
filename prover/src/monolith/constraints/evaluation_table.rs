@@ -137,7 +137,6 @@ impl<B: StarkField, E: FieldElement + From<B>> ConstraintEvaluationTable<B, E> {
     /// Interpolates all constraint evaluations into polynomials, divides them by their respective
     /// divisors, and combines the results into a single polynomial
     pub fn into_poly(self) -> Result<ConstraintPoly<E>, ProverError> {
-        let constraint_poly_degree = self.constraint_poly_degree();
         let domain_offset = self.domain_offset;
 
         // allocate memory for the combined polynomial
@@ -150,7 +149,7 @@ impl<B: StarkField, E: FieldElement + From<B>> ConstraintEvaluationTable<B, E> {
             // in debug mode, make sure post-division degree of each column matches the expected
             // degree
             #[cfg(debug_assertions)]
-            validate_column_degree(&column, &divisor, domain_offset, constraint_poly_degree)?;
+            validate_column_degree(&column, &divisor, domain_offset, column.len() - 1)?;
 
             // divide the column by the divisor and accumulate the result into combined_poly
             acc_column(column, divisor, self.domain_offset, &mut combined_poly);
@@ -161,7 +160,7 @@ impl<B: StarkField, E: FieldElement + From<B>> ConstraintEvaluationTable<B, E> {
         let inv_twiddles = fft::get_inv_twiddles::<B>(combined_poly.len());
         fft::interpolate_poly_with_offset(&mut combined_poly, &inv_twiddles, domain_offset);
 
-        Ok(ConstraintPoly::new(combined_poly, constraint_poly_degree))
+        Ok(ConstraintPoly::new(combined_poly, self.trace_length))
     }
 
     // DEBUG HELPERS
@@ -209,14 +208,6 @@ impl<B: StarkField, E: FieldElement + From<B>> ConstraintEvaluationTable<B, E> {
                 self.num_rows()
             );
         }
-    }
-
-    // HELPER METHODS
-    // --------------------------------------------------------------------------------------------
-
-    /// Computes expected degree of composed constraint polynomial.
-    fn constraint_poly_degree(&self) -> usize {
-        self.num_rows() - self.trace_length
     }
 }
 

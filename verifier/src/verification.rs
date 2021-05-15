@@ -17,14 +17,32 @@ pub fn perform_verification<A: Air, E: FieldElement + From<A::BaseElement>, H: H
     air: A,
     channel: VerifierChannel<A::BaseElement, E, H>,
 ) -> Result<(), VerifierError> {
-    // 1 ----- Compute constraint evaluations at OOD point z ----------------------------------
+    // 1 ----- Check consistency of constraint evaluations at OOD point z -------------------------
+    // make sure that evaluations obtained by evaluating constraints over out-of-domain frame are
+    // consistent with evaluations of composition polynomial columns sent by the prover
 
     // draw a pseudo-random out-of-domain point for DEEP composition
     let z = channel.draw_deep_point::<E>();
 
-    // evaluate constraints at z
-    let ood_frame = channel.read_ood_frame();
-    let constraint_evaluation_at_z = evaluate_constraints(&air, &channel, ood_frame, z);
+    // evaluate constraints over the out-of-domain evaluation frame
+    let ood_frame = channel.read_ood_evaluation_frame();
+    let ood_evaluation_1 = evaluate_constraints(&air, &channel, ood_frame, z);
+
+    // read evaluations of composition polynomial columns, and reduce them to a single value by
+    // computing sum(z^i * value_i), where value_i is the evaluation of the ith column polynomial
+    // at z^m, where m is the total number of column polynomials.
+    let ood_constraint_evaluations = channel.read_ood_evaluations();
+    let ood_evaluation_2 = ood_constraint_evaluations
+        .iter()
+        .enumerate()
+        .fold(E::ZERO, |result, (i, &value)| {
+            result + z.exp((i as u32).into()) * value
+        });
+
+    // make sure the values are the same
+    if ood_evaluation_1 != ood_evaluation_2 {
+        return Err(VerifierError::InconsistentOodConstraintEvaluations);
+    }
 
     // 2 ----- Read queried trace states and constraint evaluations ---------------------------
 
@@ -66,10 +84,11 @@ pub fn perform_verification<A: Air, E: FieldElement + From<A::BaseElement>, H: H
         constraint_evaluations,
         &x_coordinates,
         z,
-        constraint_evaluation_at_z,
+        ood_constraint_evaluations,
         &coefficients,
     );
 
+    // TODO: combine the following two steps together and move them to a separate function
     // add the two together
     let evaluations = t_composition
         .iter()
@@ -77,12 +96,21 @@ pub fn perform_verification<A: Air, E: FieldElement + From<A::BaseElement>, H: H
         .map(|(&t, c)| t + c)
         .collect::<Vec<_>>();
 
+    // raise the degree to match composition degree
+    let evaluations = evaluations
+        .into_iter()
+        .zip(x_coordinates)
+        .map(|(evaluation, x)| {
+            evaluation * (coefficients.degree.0 + E::from(x) * coefficients.degree.1)
+        })
+        .collect::<Vec<_>>();
+
     // 4 ----- Verify low-degree proof -------------------------------------------------------------
     // make sure that evaluations we computed in the previous step are in fact evaluations
     // of a polynomial of degree equal to context.deep_composition_degree()
     let fri_context = fri::VerifierContext::new(
         air.context().lde_domain_size(),
-        air.context().composition_degree(),
+        air.trace_poly_degree(),
         channel.num_fri_partitions(),
         air.context().options().to_fri_options::<A::BaseElement>(),
     );
@@ -106,10 +134,6 @@ fn compose_registers<B: StarkField, E: FieldElement + From<B>, A: Air<BaseElemen
 
     let trace_at_z1 = &ood_frame.current;
     let trace_at_z2 = &ood_frame.next;
-
-    // TODO: this is computed in several paces; consolidate
-    let composition_degree = air.context().deep_composition_degree();
-    let incremental_degree = (composition_degree - (air.trace_length() - 2)) as u32;
 
     // when field extension is enabled, these will be set to conjugates of trace values at
     // z as well as conjugate of z itself
@@ -139,10 +163,6 @@ fn compose_registers<B: StarkField, E: FieldElement + From<B>, A: Air<BaseElemen
                 composition += t3 * cc.trace[i].2;
             }
         }
-
-        // raise the degree to match composition degree
-        let xp = x.exp(incremental_degree.into());
-        composition *= cc.trace_degree.0 + xp * cc.trace_degree.1;
 
         result.push(composition);
     }

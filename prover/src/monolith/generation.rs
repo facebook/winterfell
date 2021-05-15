@@ -82,12 +82,13 @@ pub fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>
 
     // 4 ----- commit to constraint evaluations ---------------------------------------------------
 
-    // first, build a single constraint polynomial from all constraint evaluations
+    // first, build combined constraint polynomial from all constraint evaluations
     let now = Instant::now();
     let constraint_poly = constraint_evaluations.into_poly()?;
     debug!(
-        "Converted constraint evaluations into a single polynomial of degree {} in {} ms",
-        constraint_poly.degree(),
+        "Converted constraint evaluations into {} polynomials of degree {} in {} ms",
+        constraint_poly.num_columns(),
+        constraint_poly.column_degree(),
         now.elapsed().as_millis()
     );
 
@@ -96,7 +97,7 @@ pub fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>
     let combined_constraint_evaluations = constraint_poly.evaluate(&domain);
     debug!(
         "Evaluated constraint polynomial over LDE domain (2^{} elements) in {} ms",
-        log2(combined_constraint_evaluations.len()),
+        log2(combined_constraint_evaluations[0].len()),
         now.elapsed().as_millis()
     );
 
@@ -132,8 +133,13 @@ pub fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>
     // ood_frame are trace states at two out-of-domain points, and will go into the proof
     let ood_frame = composition_poly.add_trace_polys(trace_polys);
 
-    // merge constraint polynomial into the composition polynomial
-    composition_poly.add_constraint_poly(constraint_poly);
+    // merge columns of constraint polynomial into the composition polynomial; ood_evaluations are
+    // evaluations of each column of the constraint polynomial at out-of-domain point, and will
+    // go into the proof
+    let ood_evaluations = composition_poly.add_constraint_poly(constraint_poly);
+
+    // TODO: add comment
+    composition_poly.adjust_degree();
 
     debug!(
         "Built DEEP composition polynomial of degree {} in {} ms",
@@ -141,13 +147,16 @@ pub fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>
         now.elapsed().as_millis()
     );
 
+    // make sure the degree of the DEEP composition polynomial is equal to trace polynomial degree
+    assert_eq!(domain.trace_length() - 1, composition_poly.degree());
+
     // 6 ----- evaluate DEEP composition polynomial over LDE domain -------------------------------
     let now = Instant::now();
     let composed_evaluations = composition_poly.evaluate(&domain);
     // we check the following condition in debug mode only because infer_degree is an expensive
     // operation
     debug_assert_eq!(
-        context.deep_composition_degree(),
+        domain.trace_length() - 1,
         infer_degree(&composed_evaluations, domain.offset())
     );
     debug!(
@@ -200,6 +209,7 @@ pub fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>
         trace_queries,
         constraint_queries,
         ood_frame,
+        ood_evaluations,
         fri_proof,
     );
     debug!("Built proof object in {} ms", now.elapsed().as_millis());

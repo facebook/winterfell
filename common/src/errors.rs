@@ -37,6 +37,8 @@ impl fmt::Display for ProverError {
 pub enum VerifierError {
     /// Proof deserialization failed: {0}
     ProofDeserializationError(String),
+    /// Constraint evaluations over the out-of-domain frame are inconsistent
+    InconsistentOodConstraintEvaluations,
     /// Verification of low-degree proof failed: {0}
     FriVerificationFailed(fri::VerifierError),
     /// Trace query did not match the commitment
@@ -48,10 +50,14 @@ pub enum VerifierError {
 }
 
 impl fmt::Display for VerifierError {
+    #[rustfmt::skip]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::ProofDeserializationError(msg) => {
                 write!(f, "proof deserialization failed: {}", msg)
+            }
+            Self::InconsistentOodConstraintEvaluations => {
+                write!(f, "constraint evaluations over the out-of-domain frame are inconsistent")
             }
             Self::FriVerificationFailed(err) => {
                 write!(f, "verification of low-degree proof failed: {}", err)
@@ -119,8 +125,10 @@ pub enum ProofSerializationError {
     FailedToParseQueryProofs(String),
     /// Failed to parse out-of-domain evaluation frame: {0}
     FailedToParseOodFrame(String),
-    /// Too many elements in out-of-domain evaluation frame; expected {0}, but was {1}
-    TooManyOodFrameElements(usize, usize),
+    /// Wrong number of out-of-domain trace elements; expected {0}, but was {1}
+    WrongNumberOfOodTraceElements(usize, usize),
+    /// Wrong number of out-of-domain evaluation elements; expected {0}, but was {1}
+    WrongNumberOfOodEvaluationElements(usize, usize),
 }
 
 impl fmt::Display for ProofSerializationError {
@@ -142,8 +150,11 @@ impl fmt::Display for ProofSerializationError {
             Self::FailedToParseOodFrame(msg) => {
                 write!(f, "failed to parse out-of-domain evaluation frame: {}", msg)
             }
-            Self::TooManyOodFrameElements(expected, actual) => {
-                write!(f, "too many elements in out-of-domain evaluation frame; expected {}, but was {}", expected, actual)
+            Self::WrongNumberOfOodTraceElements(expected, actual) => {
+                write!(f, "wrong number of out-of-domain trace elements; expected {}, but was {}", expected, actual)
+            }
+            Self::WrongNumberOfOodEvaluationElements(expected, actual) => {
+                write!(f, "wrong number of out-of-domain evaluation elements; expected {}, but was {}", expected, actual)
             }
         }
     }

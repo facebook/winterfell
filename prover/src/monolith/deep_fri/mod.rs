@@ -19,7 +19,6 @@ use rayon::prelude::*;
 // ================================================================================================
 pub struct CompositionPoly<E: FieldElement> {
     coefficients: Vec<E>,
-    degree: usize,
     cc: CompositionCoefficients<E>,
     z: E,
     field_extension: bool,
@@ -32,8 +31,7 @@ impl<E: FieldElement> CompositionPoly<E> {
     /// polynomial coefficients.
     pub fn new(context: &ComputationContext, z: E, cc: CompositionCoefficients<E>) -> Self {
         CompositionPoly {
-            coefficients: E::zeroed_vector(context.ce_domain_size()),
-            degree: context.deep_composition_degree(),
+            coefficients: E::zeroed_vector(context.trace_length()),
             cc,
             z,
             field_extension: !context.options().field_extension().is_none(),
@@ -43,9 +41,9 @@ impl<E: FieldElement> CompositionPoly<E> {
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the expected degree of the composition polynomial.
+    /// Returns the degree of the composition polynomial.
     pub fn degree(&self) -> usize {
-        self.degree
+        polynom::degree_of(&self.coefficients)
     }
 
     // TRACE POLYNOMIAL COMPOSITION
@@ -124,28 +122,8 @@ impl<E: FieldElement> CompositionPoly<E> {
         );
         debug_assert_eq!(trace_length - 2, polynom::degree_of(&trace_poly));
 
-        // we need to make sure that the degree of trace polynomial T(x) matches the degree
-        // of composition polynomial; to do this, we compute a linear combination of T(x)
-        // with itself multiplied by x^p, where p is the incremental degree needed to match
-        // the composition degree.
-        let incremental_degree = self.degree() - (trace_length - 2);
-
-        // The next few lines are an optimized way of computing:
-        // C(x) = T(x) * k_1 + T(x) * x^incremental_degree * k_2
-        // where k_1 and k_2 are pseudo-random coefficients.
-
-        // this is equivalent to T(x) * k_1
-        utils::mul_acc(
-            &mut self.coefficients[..trace_length],
-            &trace_poly,
-            self.cc.trace_degree.0,
-        );
-        // this is equivalent to T(x) * x^incremental_degree * k_2
-        utils::mul_acc(
-            &mut self.coefficients[incremental_degree..(incremental_degree + trace_length)],
-            &trace_poly,
-            self.cc.trace_degree.1,
-        );
+        // TODO: fix
+        self.coefficients = trace_poly;
 
         // trace states at OOD points z and z * g are returned to be included in the proof
         EvaluationFrame {
@@ -158,28 +136,51 @@ impl<E: FieldElement> CompositionPoly<E> {
     // --------------------------------------------------------------------------------------------
     /// Divides out OOD point z from the constraint polynomial and saves the result into the
     /// composition polynomial.
-    pub fn add_constraint_poly(&mut self, constraint_poly: ConstraintPoly<E>) {
-        // TODO: this function should accept generic ConstraintPoly<E>; this would allow
-        // getting rid of the below conversion
-        let mut constraint_poly = constraint_poly
-            .into_vec()
-            .into_iter()
-            .map(E::from)
-            .collect::<Vec<_>>();
+    pub fn add_constraint_poly(&mut self, constraint_poly: ConstraintPoly<E>) -> Vec<E> {
+        let num_columns = constraint_poly.num_columns() as u32;
 
-        // evaluate the polynomial at point z
-        let value_at_z = polynom::eval(&constraint_poly, self.z);
+        // TODO: add comment
+        let z_p = self.z.exp(num_columns.into());
 
-        // compute C(x) = (P(x) - P(z)) / (x - z)
-        constraint_poly[0] -= value_at_z;
-        polynom::syn_div_in_place(&mut constraint_poly, 1, self.z);
+        let mut result = Vec::new();
 
-        // add C(x) * K into the result
+        // TODO: implement multi-threaded version
+        for (i, mut poly) in constraint_poly.into_polys().into_iter().enumerate() {
+            // evaluate the polynomial at point z'
+            let value_at_z = polynom::eval(&poly, z_p);
+            result.push(value_at_z);
+
+            // compute C(x) = (P(x) - P(z)) / (x - z')
+            poly[0] -= value_at_z;
+            polynom::syn_div_in_place(&mut poly, 1, z_p);
+
+            // add C(x) * K into the result
+            utils::mul_acc(&mut self.coefficients, &poly, self.cc.constraints[i]);
+        }
+
+        result
+    }
+
+    // FINAL DEGREE ADJUSTMENT
+    // --------------------------------------------------------------------------------------------
+    // TODO: add comment
+    pub fn adjust_degree(&mut self) {
+        let mut result = E::zeroed_vector(self.coefficients.len());
+
+        // The next few lines are an optimized way of computing:
+        // C(x) = T(x) * k_1 + T(x) * x * k_2
+        // where k_1 and k_2 are pseudo-random coefficients.
+
+        // this is equivalent to T(x) * k_1
+        utils::mul_acc(&mut result, &self.coefficients, self.cc.degree.0);
+        // this is equivalent to T(x) * x * k_2
         utils::mul_acc(
-            &mut self.coefficients[..constraint_poly.len()],
-            &constraint_poly,
-            self.cc.constraints,
+            &mut result[1..],
+            &self.coefficients[..(self.coefficients.len() - 1)],
+            self.cc.degree.1,
         );
+
+        self.coefficients = result;
     }
 
     // LOW-DEGREE EXTENSION
@@ -192,9 +193,9 @@ impl<E: FieldElement> CompositionPoly<E> {
     {
         fft::evaluate_poly_with_offset(
             &self.coefficients,
-            domain.ce_twiddles(),
+            domain.trace_twiddles(),
             domain.offset(),
-            domain.ce_to_lde_blowup(),
+            domain.trace_to_lde_blowup(),
         )
     }
 }

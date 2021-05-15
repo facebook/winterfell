@@ -133,10 +133,10 @@ pub trait Air: Send + Sync {
     ) -> Vec<TransitionConstraintGroup<E>> {
         let context = self.context();
         // We want to make sure that once we divide constraint polynomials by the divisor,
-        // the degree of the resulting polynomial will be exactly equal to the composition_degree.
+        // the degree of the resulting polynomial will be exactly equal to the composition degree.
         // For transition constraints, divisor degree = deg(trace). So, target degree for all
         // transitions constraints is simply: deg(composition) + deg(trace)
-        let target_degree = context.composition_degree() + self.trace_poly_degree();
+        let target_degree = self.composition_degree() + self.trace_poly_degree();
 
         // iterate over all transition constraint degrees, and assign each constraint to the
         // appropriate group based on degree
@@ -191,7 +191,7 @@ pub trait Air: Send + Sync {
                 BoundaryConstraintGroup::new(
                     ConstraintDivisor::from_assertion(&assertion, self.context()),
                     self.trace_poly_degree(),
-                    self.context().composition_degree(),
+                    self.composition_degree(),
                 )
             });
 
@@ -245,6 +245,12 @@ pub trait Air: Send + Sync {
     /// two, and is equal to `trace_length` * `ce_blowup_factor`.
     fn ce_domain_size(&self) -> usize {
         self.trace_length() * self.ce_blowup_factor()
+    }
+
+    /// Returns the degree to which all constraint polynomials are normalized before they are
+    /// composed together. This degree is one less than the size of constraint evaluation domain.
+    fn composition_degree(&self) -> usize {
+        self.ce_domain_size() - 1
     }
 
     /// Returns low-degree extension domain blowup factor for the computation described by this

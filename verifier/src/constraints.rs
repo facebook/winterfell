@@ -87,19 +87,26 @@ pub fn evaluate_constraints<A: Air, C: PublicCoin, E: FieldElement + From<A::Bas
 
 /// TODO: add comments
 pub fn compose_constraints<B: StarkField, E: FieldElement + From<B>>(
-    evaluations: Vec<E>,
+    evaluation_queries: &[Vec<E>],
     x_coordinates: &[B],
     z: E,
-    evaluation_at_z: E,
+    ood_constraint_evaluations: &[E],
     cc: &CompositionCoefficients<E>,
 ) -> Vec<E> {
-    // divide out deep point from the evaluations
-    let mut result = Vec::with_capacity(evaluations.len());
-    for (evaluation, &x) in evaluations.into_iter().zip(x_coordinates) {
-        // compute C(x) = (P(x) - P(z)) / (x - z)
-        let composition = (evaluation - evaluation_at_z) / (E::from(x) - z);
-        // multiply by pseudo-random coefficient for linear combination
-        result.push(composition * cc.constraints);
+    let mut result = Vec::with_capacity(evaluation_queries.len());
+
+    let num_evaluation_columns = ood_constraint_evaluations.len() as u32;
+    let z = z.exp(num_evaluation_columns.into());
+
+    for (query_values, &x) in evaluation_queries.iter().zip(x_coordinates) {
+        let mut row_value = E::ZERO;
+        for (i, &evaluation) in query_values.iter().enumerate() {
+            // compute C(x) = (P(x) - P(z)) / (x - z)
+            let composition = (evaluation - ood_constraint_evaluations[i]) / (E::from(x) - z);
+            // multiply by pseudo-random coefficient for linear combination
+            row_value += composition * cc.constraints[i];
+        }
+        result.push(row_value);
     }
 
     result

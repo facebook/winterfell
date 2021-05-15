@@ -3,13 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use common::{
-    proof::Queries,
-    utils::{evaluations_per_leaf, map_trace_to_constraint_positions},
-};
+use common::proof::Queries;
 use crypto::{Hasher, MerkleTree};
 use math::field::FieldElement;
-use utils::{group_slice_elements, uninit_vector};
+use utils::uninit_vector;
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
@@ -18,31 +15,33 @@ use rayon::prelude::*;
 // ================================================================================================
 
 pub struct ConstraintCommitment<E: FieldElement, H: Hasher> {
-    evaluations: Vec<E>,
+    evaluations: Vec<Vec<E>>,
     commitment: MerkleTree<H>,
 }
 
 impl<E: FieldElement, H: Hasher> ConstraintCommitment<E, H> {
-    /// Commits to the constraint evaluations by putting them into a Merkle tree; since
-    /// evaluations for a specific step are compressed into a single field element, we try
-    /// to put multiple evaluations into a single leaf whenever possible.
-    pub fn new(evaluations: Vec<E>) -> ConstraintCommitment<E, H> {
+    /// Commits to the constraint evaluations by putting them into a Merkle tree such that each
+    /// row in the table is put into a single leaf.
+    pub fn new(evaluations: Vec<Vec<E>>) -> ConstraintCommitment<E, H> {
         assert!(
-            evaluations.len().is_power_of_two(),
-            "number of values must be a power of 2"
+            !evaluations.is_empty(),
+            "Constraint evaluations cannot be empty"
         );
+        let column_size = evaluations[0].len();
+        assert!(
+            column_size.is_power_of_two(),
+            "evaluation column size must be a power of two"
+        );
+        for column in evaluations.iter() {
+            assert_eq!(
+                column_size,
+                column.len(),
+                "all evaluation columns must have the same length"
+            );
+        }
 
-        // determine how many evaluations should go into a single leaf and hash them
-        let evaluations_per_leaf = evaluations_per_leaf::<E, H>();
-        let hashed_evaluations = match evaluations_per_leaf {
-            1 => hash_evaluations::<E, H, 1>(&evaluations),
-            2 => hash_evaluations::<E, H, 2>(&evaluations),
-            4 => hash_evaluations::<E, H, 4>(&evaluations),
-            _ => panic!(
-                "invalid number of evaluations per leaf: {}",
-                evaluations_per_leaf
-            ),
-        };
+        // hash evaluation table into a set of digests, one per row
+        let hashed_evaluations = hash_evaluations::<E, H>(&evaluations);
 
         // build Merkle tree out of hashed evaluation values
         ConstraintCommitment {
@@ -61,23 +60,18 @@ impl<E: FieldElement, H: Hasher> ConstraintCommitment<E, H> {
         self.commitment.depth()
     }
 
-    /// Returns constraint evaluations at the specified positions along with Merkle
-    /// authentication paths from the root of the commitment to these evaluations.
-    pub fn query(self, trace_positions: &[usize]) -> Queries {
-        // first, map trace positions to the corresponding positions in the constraint tree;
-        // we do this because multiple constraint evaluations may be stored in a single leaf
-        let evaluations_per_leaf = evaluations_per_leaf::<E, H>();
-        let constraint_positions =
-            map_trace_to_constraint_positions(trace_positions, evaluations_per_leaf);
-
+    /// Returns constraint evaluations at the specified positions along with Merkle authentication
+    /// paths from the root of the commitment to these evaluations.
+    pub fn query(self, positions: &[usize]) -> Queries {
         // build Merkle authentication paths to the leaves specified by constraint positions
-        let merkle_proof = self.commitment.prove_batch(&constraint_positions);
+        let merkle_proof = self.commitment.prove_batch(&positions);
 
         // determine a set of evaluations corresponding to each position
         let mut evaluations = Vec::new();
-        for position in constraint_positions {
-            let start = position * evaluations_per_leaf;
-            evaluations.push(self.evaluations[start..start + evaluations_per_leaf].to_vec());
+        for &position in positions {
+            let mut row = vec![E::ZERO; self.evaluations.len()];
+            read_row(&self.evaluations, position, &mut row);
+            evaluations.push(row);
         }
 
         Queries::new(merkle_proof, evaluations)
@@ -87,25 +81,40 @@ impl<E: FieldElement, H: Hasher> ConstraintCommitment<E, H> {
 // HELPER FUNCTIONS
 // ================================================================================================
 
-/// Computes hashes of evaluations grouped by N elements and returns the resulting hashes.
-fn hash_evaluations<E: FieldElement, H: Hasher, const N: usize>(
-    evaluations: &[E],
-) -> Vec<H::Digest> {
-    let evaluations = group_slice_elements::<E, N>(evaluations);
-
-    let mut result = uninit_vector::<H::Digest>(evaluations.len());
+/// Computes hashes of evaluations grouped by row.
+fn hash_evaluations<E: FieldElement, H: Hasher>(evaluations: &[Vec<E>]) -> Vec<H::Digest> {
+    let mut result = uninit_vector::<H::Digest>(evaluations[0].len());
 
     #[cfg(not(feature = "concurrent"))]
-    for (result, evaluations) in result.iter_mut().zip(evaluations.iter()) {
-        *result = H::hash_elements(evaluations);
+    {
+        let mut row = vec![E::ZERO; evaluations.len()];
+        for (i, result) in result.iter_mut().enumerate() {
+            read_row(evaluations, i, &mut row);
+            *result = H::hash_elements(&row);
+        }
     }
+
     #[cfg(feature = "concurrent")]
-    result
-        .par_iter_mut()
-        .zip(evaluations.par_iter())
-        .for_each(|(result, evaluations)| {
-            *result = H::hash_elements(evaluations);
-        });
+    {
+        let batch_size = result.len() / rayon::current_num_threads().next_power_of_two();
+        result
+            .par_chunks_mut(batch_size)
+            .enumerate()
+            .for_each(|(batch_num, batch)| {
+                let mut row = vec![E::ZERO; evaluations.len()];
+                for (i, result) in batch.iter_mut().enumerate() {
+                    read_row(evaluations, batch_num * batch_size + i, &mut row);
+                    *result = H::hash_elements(&row);
+                }
+            });
+    }
 
     result
+}
+
+#[inline]
+fn read_row<E: FieldElement>(evaluations: &[Vec<E>], i: usize, row: &mut [E]) {
+    for (value, column) in row.iter_mut().zip(evaluations) {
+        *value = column[i];
+    }
 }

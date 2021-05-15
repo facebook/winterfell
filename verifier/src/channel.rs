@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use common::{
-    errors::VerifierError, proof::StarkProof, utils, Air, ComputationContext, EvaluationFrame,
+    errors::VerifierError, proof::StarkProof, Air, ComputationContext, EvaluationFrame,
     ProofOptions, PublicCoin,
 };
 use crypto::{BatchMerkleProof, Hasher, MerkleTree};
@@ -31,10 +31,11 @@ pub struct VerifierChannel<B: StarkField, E: FieldElement + From<B>, H: Hasher> 
     fri_layer_queries: Vec<Vec<E>>,
     fri_remainder: Vec<E>,
     fri_partitioned: bool,
+    // out-of-domain evaluation
+    ood_frame: EvaluationFrame<E>,
+    ood_evaluations: Vec<E>,
     // query seed
     query_seed: H::Digest,
-    // out-of-domain evaluation frame
-    ood_frame: EvaluationFrame<E>,
 }
 
 // VERIFIER CHANNEL IMPLEMENTATION
@@ -44,7 +45,6 @@ impl<B: StarkField, E: FieldElement + From<B>, H: Hasher> VerifierChannel<B, E, 
     /// Creates and returns a new verifier channel initialized from the specified `proof`.
     pub fn new<A: Air<BaseElement = B>>(air: &A, proof: StarkProof) -> Result<Self, VerifierError> {
         // TODO: validate field modulus
-        // TODO: verify ce blowup factor
 
         // --- parse commitments ------------------------------------------------------------------
         let fri_options = air.context().options().to_fri_options::<B>();
@@ -66,11 +66,9 @@ impl<B: StarkField, E: FieldElement + From<B>, H: Hasher> VerifierChannel<B, E, 
             })?;
 
         // --- parse constraint evaluation queries ------------------------------------------------
-        let evaluations_per_leaf = utils::evaluations_per_leaf::<E, H>();
-        let num_leaves = air.lde_domain_size() / evaluations_per_leaf;
         let (constraint_proof, constraint_evaluations) = proof
             .constraint_queries
-            .parse::<H, E>(num_leaves, evaluations_per_leaf)
+            .parse::<H, E>(air.lde_domain_size(), air.ce_blowup_factor())
             .map_err(|err| {
                 VerifierError::ProofDeserializationError(format!(
                     "constraint evaluation query deserialization failed: {}",
@@ -95,9 +93,9 @@ impl<B: StarkField, E: FieldElement + From<B>, H: Hasher> VerifierChannel<B, E, 
             build_query_seed::<H>(&fri_roots, proof.pow_nonce, &air.context().options())?;
 
         // --- parse out-of-domain evaluation frame -----------------------------------------------
-        let ood_frame = proof
+        let (ood_frame, ood_evaluations) = proof
             .ood_frame
-            .parse(air.trace_width())
+            .parse(air.trace_width(), air.ce_blowup_factor())
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         Ok(VerifierChannel {
@@ -116,17 +114,23 @@ impl<B: StarkField, E: FieldElement + From<B>, H: Hasher> VerifierChannel<B, E, 
             fri_layer_queries,
             fri_remainder,
             fri_partitioned,
+            // out-of-domain evaluation
+            ood_frame,
+            ood_evaluations,
             // query seed
             query_seed,
-            // out-of-domain evaluation frame
-            ood_frame,
         })
     }
 
     /// Returns trace polynomial evaluations at out-of-domain points z and z * g, where
     /// g is the generator of the LDE domain.
-    pub fn read_ood_frame(&self) -> &EvaluationFrame<E> {
+    pub fn read_ood_evaluation_frame(&self) -> &EvaluationFrame<E> {
         &self.ood_frame
+    }
+
+    /// TODO: add comment
+    pub fn read_ood_evaluations(&self) -> &[E] {
+        &self.ood_evaluations
     }
 
     /// Returns trace states at the specified positions. This also checks if the
@@ -145,25 +149,12 @@ impl<B: StarkField, E: FieldElement + From<B>, H: Hasher> VerifierChannel<B, E, 
     pub fn read_constraint_evaluations(
         &self,
         positions: &[usize],
-    ) -> Result<Vec<E>, VerifierError> {
-        let evaluations_per_leaf = utils::evaluations_per_leaf::<E, H>();
-        let c_positions = utils::map_trace_to_constraint_positions(positions, evaluations_per_leaf);
-        if !MerkleTree::verify_batch(&self.constraint_root, &c_positions, &self.constraint_proof) {
+    ) -> Result<&[Vec<E>], VerifierError> {
+        if !MerkleTree::verify_batch(&self.constraint_root, &positions, &self.constraint_proof) {
             return Err(VerifierError::ConstraintQueryDoesNotMatchCommitment);
         }
 
-        // build constraint evaluation values from the leaves of constraint Merkle proof
-        let mut evaluations: Vec<E> = Vec::with_capacity(positions.len());
-        for &position in positions.iter() {
-            let leaf_idx = c_positions
-                .iter()
-                .position(|&v| v == position / evaluations_per_leaf)
-                .unwrap();
-            evaluations
-                .push(self.constraint_evaluations[leaf_idx][position % evaluations_per_leaf]);
-        }
-
-        Ok(evaluations)
+        Ok(&self.constraint_evaluations)
     }
 }
 
