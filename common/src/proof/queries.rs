@@ -58,24 +58,23 @@ impl Queries {
     pub fn parse<H: Hasher, E: FieldElement>(
         self,
         domain_size: usize,
+        num_queries: usize,
         elements_per_query: usize,
     ) -> Result<(BatchMerkleProof<H>, Vec<Vec<E>>), ProofSerializationError> {
         assert!(
             domain_size.is_power_of_two(),
             "domain size must be a power of two"
         );
+        assert!(num_queries > 0, "there must be at least one query");
         assert!(
-            elements_per_query >= 1,
+            elements_per_query > 0,
             "a query must contain at least one element"
         );
 
         // make sure we have enough bytes to read the expected number of queries
         let num_query_bytes = E::ELEMENT_BYTES * elements_per_query;
-        // TODO: pass num_queries as a parameter into this function and change the check to be
-        // num_queries * num_query_bytes == self.values.len()
-        let num_queries = self.values.len() / num_query_bytes;
-        if self.values.len() % num_query_bytes != 0 {
-            let expected_bytes = (num_queries + 1) * num_query_bytes;
+        let expected_bytes = num_queries * num_query_bytes;
+        if self.values.len() != expected_bytes {
             return Err(ProofSerializationError::FailedToParseQueryValues(format!(
                 "expected {} bytes, but was {}",
                 expected_bytes,

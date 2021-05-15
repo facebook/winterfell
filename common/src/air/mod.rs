@@ -209,6 +209,12 @@ pub trait Air: Send + Sync {
     // CONTEXT PASS-THROUGH METHODS
     // --------------------------------------------------------------------------------------------
 
+    /// Returns options which specify proof generation parameters for an instance of the
+    /// computation described by this AIR.
+    fn options(&self) -> &ProofOptions {
+        &self.context().options()
+    }
+
     /// Returns length of the execution trace for an instance of the computation described by
     /// this AIR. This is guaranteed to be a power of two.
     fn trace_length(&self) -> usize {
@@ -222,7 +228,7 @@ pub trait Air: Send + Sync {
     }
 
     /// Returns degree of trace polynomials for an instance of the computation described by
-    /// this AIR.
+    /// this AIR. The degree is always trace_length - 1.
     fn trace_poly_degree(&self) -> usize {
         self.trace_length() - 1
     }
@@ -254,7 +260,8 @@ pub trait Air: Send + Sync {
     }
 
     /// Returns low-degree extension domain blowup factor for the computation described by this
-    /// AIR.
+    /// AIR. This is guaranteed to be a power of two, and is always either equal to or greater
+    /// than ce_blowup_factor.
     fn lde_blowup_factor(&self) -> usize {
         self.context().options().blowup_factor()
     }
@@ -265,7 +272,7 @@ pub trait Air: Send + Sync {
         self.trace_length() * self.lde_blowup_factor()
     }
 
-    /// Returns the offset by which the domain for low degree extension is shifted in relation
+    /// Returns the offset by which the domain for low-degree extension is shifted in relation
     /// to the execution trace domain.
     fn domain_offset(&self) -> Self::BaseElement {
         self.context().options().domain_offset()

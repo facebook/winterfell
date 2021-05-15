@@ -35,32 +35,34 @@ impl fmt::Display for ProverError {
 /// Represents an error thrown by the verifier during an execution of the protocol
 #[derive(Debug, PartialEq)]
 pub enum VerifierError {
+    /// Base field of the proof does not match base field of the specified AIR
+    InconsistentBaseField,
     /// Proof deserialization failed: {0}
     ProofDeserializationError(String),
     /// Constraint evaluations over the out-of-domain frame are inconsistent
     InconsistentOodConstraintEvaluations,
-    /// Verification of low-degree proof failed: {0}
-    FriVerificationFailed(fri::VerifierError),
-    /// Trace query did not match the commitment
+    /// Trace query does not match the commitment
     TraceQueryDoesNotMatchCommitment,
-    /// Constraint query did not match the commitment
+    /// Constraint query does not match the commitment
     ConstraintQueryDoesNotMatchCommitment,
     /// Query seed proof-of-work verification failed
     QuerySeedProofOfWorkVerificationFailed,
+    /// Verification of low-degree proof failed: {0}
+    FriVerificationFailed(fri::VerifierError),
 }
 
 impl fmt::Display for VerifierError {
     #[rustfmt::skip]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::InconsistentBaseField =>  {
+                write!(f, "base field of the proof does not match base field of the specified AIR")
+            }
             Self::ProofDeserializationError(msg) => {
                 write!(f, "proof deserialization failed: {}", msg)
             }
             Self::InconsistentOodConstraintEvaluations => {
                 write!(f, "constraint evaluations over the out-of-domain frame are inconsistent")
-            }
-            Self::FriVerificationFailed(err) => {
-                write!(f, "verification of low-degree proof failed: {}", err)
             }
             Self::TraceQueryDoesNotMatchCommitment => {
                 write!(f, "trace query did not match the commitment")
@@ -70,6 +72,9 @@ impl fmt::Display for VerifierError {
             }
             Self::QuerySeedProofOfWorkVerificationFailed => {
                 write!(f, "query seed proof-of-work verification failed")
+            }
+            Self::FriVerificationFailed(err) => {
+                write!(f, "verification of low-degree proof failed: {}", err)
             }
         }
     }
