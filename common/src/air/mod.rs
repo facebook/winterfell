@@ -233,8 +233,8 @@ pub trait Air: Send + Sync {
         self.trace_length() - 1
     }
 
-    /// Returns generator of the trace domain for an instance of the computation described by
-    /// this AIR.
+    /// Returns the generator of the trace domain for an instance of the computation described
+    /// by this AIR.
     fn trace_domain_generator(&self) -> Self::BaseElement {
         self.context().get_trace_domain_generator()
     }
@@ -270,6 +270,12 @@ pub trait Air: Send + Sync {
     /// two, and is equal to `trace_length` * `lde_blowup_factor`.
     fn lde_domain_size(&self) -> usize {
         self.trace_length() * self.lde_blowup_factor()
+    }
+
+    /// Returns the generator of the low-degree extension domain for an instance of the
+    /// computation described by this AIR.
+    fn lde_domain_generator(&self) -> Self::BaseElement {
+        self.context().get_lde_domain_generator()
     }
 
     /// Returns the offset by which the domain for low-degree extension is shifted in relation
