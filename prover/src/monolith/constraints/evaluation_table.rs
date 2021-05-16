@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{ConstraintPoly, StarkDomain};
+use super::{CompositionPoly, StarkDomain};
 use common::{errors::ProverError, ConstraintDivisor};
 use math::{
     fft,
@@ -134,9 +134,10 @@ impl<B: StarkField, E: FieldElement + From<B>> ConstraintEvaluationTable<B, E> {
 
     // CONSTRAINT COMPOSITION
     // --------------------------------------------------------------------------------------------
-    /// Interpolates all constraint evaluations into polynomials, divides them by their respective
-    /// divisors, and combines the results into a single polynomial
-    pub fn into_poly(self) -> Result<ConstraintPoly<E>, ProverError> {
+    /// Divides constraint evaluation columns by their respective divisor (in evaluation form),
+    /// combines the results into a single column, and interpolates this column into a composition
+    /// polynomial in coefficient form.
+    pub fn into_poly(self) -> Result<CompositionPoly<E>, ProverError> {
         let domain_offset = self.domain_offset;
 
         // allocate memory for the combined polynomial
@@ -160,7 +161,7 @@ impl<B: StarkField, E: FieldElement + From<B>> ConstraintEvaluationTable<B, E> {
         let inv_twiddles = fft::get_inv_twiddles::<B>(combined_poly.len());
         fft::interpolate_poly_with_offset(&mut combined_poly, &inv_twiddles, domain_offset);
 
-        Ok(ConstraintPoly::new(combined_poly, self.trace_length))
+        Ok(CompositionPoly::new(combined_poly, self.trace_length))
     }
 
     // DEBUG HELPERS
@@ -387,7 +388,7 @@ fn get_inv_evaluation<B: StarkField>(
 // DEBUG HELPERS
 // ================================================================================================
 
-/// makes sure that the post-division degree of the polynomial matches the expected degree
+/// Makes sure that the post-division degree of the polynomial matches the expected degree
 #[cfg(debug_assertions)]
 fn validate_column_degree<B: StarkField, E: FieldElement + From<B>>(
     column: &[E],

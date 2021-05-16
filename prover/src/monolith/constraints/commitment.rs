@@ -20,8 +20,9 @@ pub struct ConstraintCommitment<E: FieldElement, H: Hasher> {
 }
 
 impl<E: FieldElement, H: Hasher> ConstraintCommitment<E, H> {
-    /// Commits to the constraint evaluations by putting them into a Merkle tree such that each
-    /// row in the table is put into a single leaf.
+    /// Commits to the evaluations of the constraint composition polynomial by putting it into a
+    /// Merkle tree such that evaluations of all polynomial columns at the same x coordinate are
+    /// placed into a single leaf.
     pub fn new(evaluations: Vec<Vec<E>>) -> ConstraintCommitment<E, H> {
         assert!(
             !evaluations.is_empty(),
@@ -63,7 +64,7 @@ impl<E: FieldElement, H: Hasher> ConstraintCommitment<E, H> {
     /// Returns constraint evaluations at the specified positions along with Merkle authentication
     /// paths from the root of the commitment to these evaluations.
     pub fn query(self, positions: &[usize]) -> Queries {
-        // build Merkle authentication paths to the leaves specified by constraint positions
+        // build Merkle authentication paths to the leaves specified by positions
         let merkle_proof = self.commitment.prove_batch(&positions);
 
         // determine a set of evaluations corresponding to each position

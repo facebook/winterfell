@@ -45,7 +45,7 @@ impl<A: Air, E: FieldElement + From<A::BaseElement>> DeepComposer<A, E> {
     ///   T''_i = (T_i(x) - T_i(z * g)) / (x - z * g), where z is the out-of-domain point and
     ///   g is the generation of the LDE domain.
     /// - Then, combine all T'_i(x) and T''_i(x) values together by computing
-    ///   T(x) = sum(T'_i(x) * cc'_i + T''_i(x) * cc''_i)for all i, where cc'_i and cc''_i are
+    ///   T(x) = sum(T'_i(x) * cc'_i + T''_i(x) * cc''_i) for all i, where cc'_i and cc''_i are
     ///   the coefficients for the random linear combination drawn from the public coin.
     /// - In cases when the proof was generated using an extension field, we also compute
     ///   T'''_i(x) = (T_i(x) - T_i(z_conjugate)) / (x - z_conjugate), and add it to T(x) similarly

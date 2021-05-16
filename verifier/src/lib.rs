@@ -26,7 +26,6 @@ use composer::DeepComposer;
 
 // VERIFIER
 // ================================================================================================
-
 /// Verifies STARK `proof` attesting that the computation specified by `AIR` was executed correctly
 /// against the provided `pub_inputs`.
 #[rustfmt::skip]
@@ -70,7 +69,6 @@ pub fn verify<AIR: Air>(
 
 // VERIFICATION PROCEDURE
 // ================================================================================================
-
 /// Performs the actual verification by reading the data from the `channel` and making sure it
 /// attests to a correct execution of the computation specified by the provided `air`.
 fn perform_verification<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(

@@ -11,19 +11,22 @@ use math::{
 };
 use utils::uninit_vector;
 
-// CONSTRAINT POLYNOMIAL
-// ================================================================================================
-/// Represents a combined constraint polynomial split into a set of columns with each column being
-/// of length equal to trace_length. Thus, for example, if constraint polynomial has degree 2N - 1,
-/// where N is trace length, it will be stored as two columns of size N (each of degree N - 1).
-pub struct ConstraintPoly<E: FieldElement>(Vec<Vec<E>>);
+#[cfg(feature = "concurrent")]
+use rayon::prelude::*;
 
-impl<E: FieldElement> ConstraintPoly<E> {
-    /// Returns a new constraint polynomial.
+// COMPOSITION POLYNOMIAL
+// ================================================================================================
+/// Represents a composition polynomial split into columns with each column being of length equal
+/// to trace_length. Thus, for example, if the composition polynomial has degree 2N - 1, where N
+/// is the trace length, it will be stored as two columns of size N (each of degree N - 1).
+pub struct CompositionPoly<E: FieldElement>(Vec<Vec<E>>);
+
+impl<E: FieldElement> CompositionPoly<E> {
+    /// Returns a new composition polynomial.
     pub fn new(coefficients: Vec<E>, trace_length: usize) -> Self {
         assert!(
             coefficients.len().is_power_of_two(),
-            "size of constraint polynomial must be a power of 2, but was {}",
+            "size of composition polynomial must be a power of 2, but was {}",
             coefficients.len(),
         );
         assert!(
@@ -33,11 +36,11 @@ impl<E: FieldElement> ConstraintPoly<E> {
         );
         assert!(
             trace_length < coefficients.len(),
-            "trace length must be smaller than size of constraint polynomial"
+            "trace length must be smaller than size of composition polynomial"
         );
         assert!(
             coefficients[coefficients.len() - 1] != E::ZERO,
-            "expected constraint polynomial of degree {}, but was {}",
+            "expected composition polynomial of degree {}, but was {}",
             coefficients.len() - 1,
             polynom::degree_of(&coefficients)
         );
@@ -45,13 +48,13 @@ impl<E: FieldElement> ConstraintPoly<E> {
         let num_columns = coefficients.len() / trace_length;
         let polys = transpose(coefficients, num_columns);
 
-        ConstraintPoly(polys)
+        CompositionPoly(polys)
     }
 
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the number of individual column polynomials used to describe this constraint
+    /// Returns the number of individual column polynomials used to describe this composition
     /// polynomial.
     pub fn num_columns(&self) -> usize {
         self.0.len()
@@ -69,8 +72,9 @@ impl<E: FieldElement> ConstraintPoly<E> {
 
     // LOW-DEGREE EXTENSION
     // --------------------------------------------------------------------------------------------
-    /// Evaluates the columns of the constraint polynomial over the specified LDE domain and
+    /// Evaluates the columns of the composition polynomial over the specified LDE domain and
     /// returns the result.
+    #[rustfmt::skip]
     pub fn evaluate<B>(&self, domain: &StarkDomain<B>) -> Vec<Vec<E>>
     where
         B: StarkField,
@@ -84,21 +88,33 @@ impl<E: FieldElement> ConstraintPoly<E> {
             domain.trace_length()
         );
 
-        self.0
-            .iter()
-            .map(|poly| {
-                fft::evaluate_poly_with_offset(
-                    poly,
-                    domain.trace_twiddles(),
-                    domain.offset(),
-                    domain.trace_to_lde_blowup(),
-                )
-            })
-            .collect()
+        #[cfg(not(feature = "concurrent"))]
+        let result = self.0.iter().map(|poly| {
+            fft::evaluate_poly_with_offset(
+                poly,
+                domain.trace_twiddles(),
+                domain.offset(),
+                domain.trace_to_lde_blowup(),
+            )
+        })
+        .collect();
+
+        #[cfg(feature = "concurrent")]
+        let result = self.0.par_iter().map(|poly| {
+            fft::evaluate_poly_with_offset(
+                poly,
+                domain.trace_twiddles(),
+                domain.offset(),
+                domain.trace_to_lde_blowup(),
+            )
+        })
+        .collect();
+
+        result
     }
 
-    /// Transforms this constraint polynomial into a vector of individual column polynomials.
-    pub fn into_polys(self) -> Vec<Vec<E>> {
+    /// Transforms this composition polynomial into a vector of individual column polynomials.
+    pub fn into_columns(self) -> Vec<Vec<E>> {
         self.0
     }
 }
@@ -117,6 +133,7 @@ fn transpose<E: FieldElement>(coefficients: Vec<E>, num_columns: usize) -> Vec<V
         .map(|_| uninit_vector(column_len))
         .collect::<Vec<_>>();
 
+    // TODO: implement multi-threaded version
     for (i, coeff) in coefficients.into_iter().enumerate() {
         let row_idx = i / num_columns;
         let col_idx = i % num_columns;
