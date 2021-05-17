@@ -4,7 +4,7 @@ This crate contains implementations of STARK provers which can be used to genera
 ## Provers
 Currently, the only available prover is a monolith prover. This prover supports multi-threaded proof generation but is limited to a single machine. A fully distributed prover will be added in the future.
 
-To generate proofs using multiple threads, the crate must be compiled with `concurrent` feature enabled.
+To generate proofs using multiple threads, the crate must be compiled with `concurrent` feature enabled. The number of threads used during proof generation can be configured via `RAYON_NUM_THREADS` environment variable. The default number of threads is set to the number of logical cores on the machine.
 
 ## Usage
 To generate a proof that a computation was executed correctly, you will need to do the following:

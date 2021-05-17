@@ -7,7 +7,7 @@ This crate contains modules with cryptographic operations needed in STARK proof 
 ## Merkle
 [Merkle](src/merkle) module contains an implementation of a Merkle tree which supports batch proof generation and verification. Batch proofs are based on the Octopus algorithm described [here](https://eprint.iacr.org/2017/933).
 
-When the crate is compiled with `concurrent` feature enabled, Merkle tree construction will be done using multiple threads (usually, as many threads as there are logical cores on the machine). Number of threads can be configured via `RAYON_NUM_THREADS` environment variable.
+When the crate is compiled with `concurrent` feature enabled, Merkle tree construction will be done using multiple threads (usually, as many threads as there are logical cores on the machine). The number of threads can be configured via `RAYON_NUM_THREADS` environment variable.
 
 License
 -------

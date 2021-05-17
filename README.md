@@ -287,38 +287,56 @@ The computation we benchmark here is a chain of Rescue hash invocations (see [ex
         <tr>
             <td style="text-align:left">2<sup>10</sup></td>
             <td>0.1 sec</td>
-            <td>0.14 sec</td>
-            <td>72 KB</td>
-            <td>0.24 sec</td>
-            <td>110 KB</td>
+            <td>0.04 sec</td>
+            <td>71 KB</td>
+            <td>0.07 sec</td>
+            <td>108 KB</td>
             <td>2<sup>17</sup> constr.</td>
         </tr>
         <tr>
             <td style="text-align:left">2<sup>12</sup></td>
             <td>0.4 sec</td>
-            <td>0.6 sec</td>
+            <td>0.14 sec</td>
             <td>90 KB</td>
-            <td>0.9 sec</td>
-            <td>133 KB</td>
+            <td>0.25 sec</td>
+            <td>135 KB</td>
             <td>2<sup>19</sup> constr.</td>
         </tr>
         <tr>
             <td style="text-align:left">2<sup>14</sup></td>
             <td>1.4 sec</td>
-            <td>2.5 sec</td>
-            <td>105 KB</td>
-            <td>3.7 sec</td>
-            <td>159 KB</td>
+            <td>0.6 sec</td>
+            <td>114 KB</td>
+            <td>1 sec</td>
+            <td>170 KB</td>
             <td>2<sup>21</sup> constr.</td>
         </tr>
         <tr>
             <td style="text-align:left">2<sup>16</sup></td>
             <td>6 sec</td>
-            <td>9.2 sec</td>
-            <td>127 KB</td>
-            <td>15.5 sec</td>
-            <td>188 KB</td>
+            <td>2.5 sec</td>
+            <td>142 KB</td>
+            <td>4 sec</td>
+            <td>210 KB</td>
             <td>2<sup>23</sup> constr.</td>
+        </tr>
+        <tr>
+            <td style="text-align:left">2<sup>18</sup></td>
+            <td>24 sec</td>
+            <td>11 sec</td>
+            <td>168 KB</td>
+            <td> 18 sec </td>
+            <td> 245 KB </td>
+            <td>2<sup>25</sup> constr.</td>
+        </tr>
+        <tr>
+            <td style="text-align:left">2<sup>20</sup></td>
+            <td>94 sec</td>
+            <td>50 sec</td>
+            <td>199 KB</td>
+            <td> 104 sec </td>
+            <td> 290 KB </td>
+            <td>2<sup>27</sup> constr.</td>
         </tr>
     </tbody>
 </table>
@@ -328,15 +346,15 @@ A few remarks about these benchmarks:
 * **R1CS equiv.** is a very rough estimate of how many R1CS constraints would be required for this computation. The assumption here is that a single invocation of Rescue hash function requires ~120 R1CS constraints.
 * As can be seen from the table, with STARKs, we can dynamically trade off proof size, proof security level, and proving time against each other.
 
-As mentioned previously, we used all 8 CPU cores for the above benchmark. In general, Winterfell prover performance scales nearly linearly with every additional CPU core. This is because nearly all steps of STARK proof generation process can be parallelized. The table below illustrates this relationship.
+As mentioned previously, we used all 8 CPU cores for the above benchmark. In general, Winterfell prover performance scales nearly linearly with every additional CPU core. This is because nearly all steps of STARK proof generation process can be parallelized. The table below illustrates this relationship on the example of 2<sup>16</sup> hash invocations.
 
 | Threads | Trace time  | Proving time (100-bit security) | Proving time (128-bit security) |
 | ------- | :---------: | :--------------------: | :--------------------: |
-| 1       | 1.4 sec     | 12.7 sec               | 20.7 sec               |
-| 2       | 1.4 sec     | 7.5 sec                | 12.2 sec               |
-| 4       | 1.4 sec     | 4.4 sec                | 6.9 sec                |
-| 8       | 1.4 sec     | 2.7 sec                | 4.2 sec                |
-| 16      | 1.4 sec     | 2.5 sec                | 3.7 sec                |
+| 1       | 6 sec       | 16.4 sec               | 26.9 sec               |
+| 2       | 6 sec       | 9 sec                  | 14 sec                 |
+| 4       | 6 sec       | 4.8 sec                | 8 sec                  |
+| 8       | 6 sec       | 3 sec                  | 4.8 sec                |
+| 16      | 6 sec       | 2.6 sec                | 4.2 sec                |
 
 A few remarks about these benchmarks:
 * We are still using the same 8-core machine - thus, going from 8 to 16 threads has only a minor impact.
