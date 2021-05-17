@@ -29,5 +29,5 @@ fn build_options(use_extension_field: bool) -> ProofOptions {
     } else {
         FieldExtension::None
     };
-    ProofOptions::new(32, 16, 0, HashFunction::Blake3_256, extension)
+    ProofOptions::new(28, 8, 0, HashFunction::Blake3_256, extension)
 }
