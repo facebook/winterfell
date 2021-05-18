@@ -43,6 +43,9 @@ fn main() {
         ExampleType::LamportA { num_signatures } => {
             lamport::aggregate::get_example(options, num_signatures)
         }
+        ExampleType::LamportT { num_signers } => {
+            lamport::threshold::get_example(options, num_signers)
+        }
     };
 
     // generate proof

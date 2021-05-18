@@ -116,4 +116,10 @@ pub enum ExampleType {
         #[structopt(short = "n", default_value = "4")]
         num_signatures: usize,
     },
+    /// Compute a threshold Lamport+ signature
+    LamportT {
+        /// Number of signers; must be one less than a power of two
+        #[structopt(short = "n", default_value = "3")]
+        num_signers: usize,
+    },
 }

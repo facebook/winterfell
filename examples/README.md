@@ -86,20 +86,22 @@ where:
 * **tree depth** is the depth of the Merkle tree for which to verify a Merkle authentication path. Currently, the depth must be one less than a power of 2 (e.g. 3, 7, 15). Note that, in a single-threaded mode, a tree of depth 15 takes about 3 seconds to construct.
 
 ### LamportPlus signatures
-This example generates (and verifies) proofs for aggregating many LamportPlus signatures. The specific instantiation of LamportPlus we use has the following properties:
+These examples generate (and verify) proofs for aggregating many LamportPlus signatures. Currently, the examples illustrate two types of signature aggregation: multi-message, multi-key signatures and threshold signatures. The specific instantiation of LamportPlus we use has the following properties:
 
 * Public key size: 32 bytes
 * Signature size: 8 KB
 * Hash function: Rescue-Prime
 * Target security level: 123 bits (post-quantum)
 
-You can run the example like so:
+You can run the examples like so:
 ```
 ./target/release/winterfell [FLAGS] [OPTIONS] lamport-a [num signatures]
+./target/release/winterfell [FLAGS] [OPTIONS] lamport-t [num signers]
 ```
 where:
 
 * **num signatures** is the number of signatures (over distinct messages signed by different parties) to aggregate. Currently, number of signatures must be a power of 2.
+* **num signers** is the total number of signers participating in the threshold signature scheme (the threshold is always assumed to be 2/3). Currently, the number of signers must be one less than a power of 2 (e.g. 3, 7, 15).
 
 This example also illustrates how an execution trace can be built using multiple threads.
 
