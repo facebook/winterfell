@@ -66,9 +66,9 @@ impl ComputationContext {
         }
 
         assert!(
-            options.blowup_factor() > ce_blowup_factor,
+            options.blowup_factor() >= ce_blowup_factor,
             "blowup factor too small; expected at least {}, but was {}",
-            ce_blowup_factor * 2,
+            ce_blowup_factor,
             options.blowup_factor()
         );
 
@@ -113,14 +113,6 @@ impl ComputationContext {
 
     pub fn transition_constraint_degrees(&self) -> &[TransitionConstraintDegree] {
         &self.transition_constraint_degrees
-    }
-
-    pub fn composition_degree(&self) -> usize {
-        self.ce_domain_size() - self.trace_length
-    }
-
-    pub fn deep_composition_degree(&self) -> usize {
-        self.composition_degree() - 1
     }
 
     // OTHER PROPERTIES

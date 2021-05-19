@@ -31,7 +31,7 @@ mod tests;
 pub fn get_example(options: ExampleOptions, chain_length: usize) -> Box<dyn Example> {
     Box::new(RescueExample::new(
         chain_length,
-        options.to_proof_options(28, 32),
+        options.to_proof_options(42, 4),
     ))
 }
 

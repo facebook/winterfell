@@ -33,7 +33,7 @@ const SIG_CYCLE_LENGTH: usize = 128 * CYCLE_LENGTH; // 1024 steps
 pub fn get_example(options: ExampleOptions, num_signatures: usize) -> Box<dyn Example> {
     Box::new(LamportAggregateExample::new(
         num_signatures,
-        options.to_proof_options(28, 64),
+        options.to_proof_options(28, 8),
     ))
 }
 

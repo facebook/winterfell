@@ -6,6 +6,7 @@
 use crate::ProofOptions;
 use core::cmp;
 use fri::FriProof;
+use math::utils::log2;
 use serde::{Deserialize, Serialize};
 
 mod commitments;
@@ -15,7 +16,7 @@ mod queries;
 pub use queries::Queries;
 
 mod ood_frame;
-pub use ood_frame::OodEvaluationFrame;
+pub use ood_frame::OodFrame;
 
 // CONSTANTS
 // ================================================================================================
@@ -31,7 +32,7 @@ pub struct StarkProof {
     pub commitments: Commitments,
     pub trace_queries: Queries,
     pub constraint_queries: Queries,
-    pub ood_frame: OodEvaluationFrame,
+    pub ood_frame: OodFrame,
     pub fri_proof: FriProof,
     pub pow_nonce: u64,
 }
@@ -39,7 +40,6 @@ pub struct StarkProof {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Context {
     pub lde_domain_depth: u8,
-    pub ce_blowup_factor: u8,
     pub field_modulus_bytes: Vec<u8>,
     pub options: ProofOptions,
 }
@@ -54,32 +54,32 @@ impl StarkProof {
 
     /// Returns trace length for the computation described by this proof.
     pub fn trace_length(&self) -> usize {
-        2usize.pow(self.context.lde_domain_depth as u32) / self.context.options.blowup_factor()
+        self.lde_domain_size() / self.context.options.blowup_factor()
+    }
+
+    /// Returns the size of the LDE domain for the computation described by this proof.
+    pub fn lde_domain_size(&self) -> usize {
+        2usize.pow(self.context.lde_domain_depth as u32)
     }
 
     // SECURITY LEVEL
     // --------------------------------------------------------------------------------------------
 
     /// Returns security level of this proof (in bits). When `conjectured` is true, conjectured
-    /// security level is returned; otherwise, proven security level is returned. Usually, the
-    /// number of queries needed for proven security is 2x - 3x higher than the number of queries
-    /// needed for conjectured security.
+    /// security level is returned; otherwise, provable security level is returned. Usually, the
+    /// number of queries needed for provable security is 2x - 3x higher than the number of queries
+    /// needed for conjectured security at the same security level.
     pub fn security_level(&self, conjectured: bool) -> u32 {
         let options = &self.context.options;
 
         let base_field_size_bits = get_num_modulus_bits(&self.context.field_modulus_bytes);
 
-        let lde_domain_size = 1u64 << self.context.lde_domain_depth as u32;
-
-        let ce_to_lde_blowup = options.blowup_factor() as u8 / self.context.ce_blowup_factor;
-        let evaluation_domain_size = lde_domain_size / ce_to_lde_blowup as u64;
-
         if conjectured {
             get_conjectured_security(
                 options,
                 base_field_size_bits,
-                lde_domain_size,
-                evaluation_domain_size,
+                self.lde_domain_size() as u64,
+                self.trace_length() as u64,
             )
         } else {
             // TODO: implement proven security estimation
@@ -111,7 +111,7 @@ fn get_conjectured_security(
     options: &ProofOptions,
     base_field_size: u32, // in bits
     lde_domain_size: u64,
-    evaluation_domain_size: u64,
+    trace_length: u64,
 ) -> u32 {
     // compute max security we can get for a given field size
     let field_size = base_field_size * options.field_extension().degree();
@@ -121,8 +121,8 @@ fn get_conjectured_security(
     let hash_fn_security = options.hash_fn().collision_resistance();
 
     // compute security we get by executing multiple query rounds
-    let one_over_rho = lde_domain_size / evaluation_domain_size;
-    let security_per_query = one_over_rho.trailing_zeros(); // same as log2(one_over_rho)
+    let one_over_rho = lde_domain_size / trace_length;
+    let security_per_query = log2(one_over_rho as usize);
     let mut query_security = security_per_query * options.num_queries() as u32;
 
     // include grinding factor contributions only for proofs adequate security

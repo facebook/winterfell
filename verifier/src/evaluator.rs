@@ -3,11 +3,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use common::{Air, CompositionCoefficients, ConstraintDivisor, EvaluationFrame, PublicCoin};
-use math::{
-    field::{FieldElement, StarkField},
-    polynom,
-};
+use common::{Air, ConstraintDivisor, EvaluationFrame, PublicCoin};
+use math::{field::FieldElement, polynom};
 
 // CONSTRAINT EVALUATION
 // ================================================================================================
@@ -19,7 +16,7 @@ pub fn evaluate_constraints<A: Air, C: PublicCoin, E: FieldElement + From<A::Bas
     ood_frame: &EvaluationFrame<E>,
     x: E,
 ) -> E {
-    // ----- evaluate transition constraints ------------------------------------------------------
+    // 1 ----- evaluate transition constraints ----------------------------------------------------
 
     // initialize a buffer to hold transition constraint evaluations
     let mut t_evaluations = E::zeroed_vector(air.num_transition_constraints());
@@ -53,7 +50,7 @@ pub fn evaluate_constraints<A: Air, C: PublicCoin, E: FieldElement + From<A::Bas
     let z = t_divisor.evaluate_at(x);
     let mut result = t_evaluation / z;
 
-    // ----- evaluate boundary constraints --------------------------------------------------------
+    // 2 ----- evaluate boundary constraints ------------------------------------------------------
 
     // get boundary constraints grouped by common divisor from the AIR
     let b_constraints = air.get_boundary_constraints(coin.get_boundary_coefficient_prng());
@@ -77,29 +74,6 @@ pub fn evaluate_constraints<A: Air, C: PublicCoin, E: FieldElement + From<A::Bas
         let evaluation = group.evaluate_at(&ood_frame.current, x, xp);
         let z = group.divisor().evaluate_at(x);
         result += evaluation / z;
-    }
-
-    result
-}
-
-// CONSTRAINT COMPOSITION
-// ================================================================================================
-
-/// TODO: add comments
-pub fn compose_constraints<B: StarkField, E: FieldElement + From<B>>(
-    evaluations: Vec<E>,
-    x_coordinates: &[B],
-    z: E,
-    evaluation_at_z: E,
-    cc: &CompositionCoefficients<E>,
-) -> Vec<E> {
-    // divide out deep point from the evaluations
-    let mut result = Vec::with_capacity(evaluations.len());
-    for (evaluation, &x) in evaluations.into_iter().zip(x_coordinates) {
-        // compute C(x) = (P(x) - P(z)) / (x - z)
-        let composition = (evaluation - evaluation_at_z) / (E::from(x) - z);
-        // multiply by pseudo-random coefficient for linear combination
-        result.push(composition * cc.constraints);
     }
 
     result

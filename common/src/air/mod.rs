@@ -133,10 +133,10 @@ pub trait Air: Send + Sync {
     ) -> Vec<TransitionConstraintGroup<E>> {
         let context = self.context();
         // We want to make sure that once we divide constraint polynomials by the divisor,
-        // the degree of the resulting polynomial will be exactly equal to the composition_degree.
+        // the degree of the resulting polynomial will be exactly equal to the composition degree.
         // For transition constraints, divisor degree = deg(trace). So, target degree for all
         // transitions constraints is simply: deg(composition) + deg(trace)
-        let target_degree = context.composition_degree() + self.trace_poly_degree();
+        let target_degree = self.composition_degree() + self.trace_poly_degree();
 
         // iterate over all transition constraint degrees, and assign each constraint to the
         // appropriate group based on degree
@@ -191,7 +191,7 @@ pub trait Air: Send + Sync {
                 BoundaryConstraintGroup::new(
                     ConstraintDivisor::from_assertion(&assertion, self.context()),
                     self.trace_poly_degree(),
-                    self.context().composition_degree(),
+                    self.composition_degree(),
                 )
             });
 
@@ -209,6 +209,12 @@ pub trait Air: Send + Sync {
     // CONTEXT PASS-THROUGH METHODS
     // --------------------------------------------------------------------------------------------
 
+    /// Returns options which specify proof generation parameters for an instance of the
+    /// computation described by this AIR.
+    fn options(&self) -> &ProofOptions {
+        &self.context().options()
+    }
+
     /// Returns length of the execution trace for an instance of the computation described by
     /// this AIR. This is guaranteed to be a power of two.
     fn trace_length(&self) -> usize {
@@ -222,13 +228,13 @@ pub trait Air: Send + Sync {
     }
 
     /// Returns degree of trace polynomials for an instance of the computation described by
-    /// this AIR.
+    /// this AIR. The degree is always trace_length - 1.
     fn trace_poly_degree(&self) -> usize {
         self.trace_length() - 1
     }
 
-    /// Returns generator of the trace domain for an instance of the computation described by
-    /// this AIR.
+    /// Returns the generator of the trace domain for an instance of the computation described
+    /// by this AIR.
     fn trace_domain_generator(&self) -> Self::BaseElement {
         self.context().get_trace_domain_generator()
     }
@@ -247,8 +253,15 @@ pub trait Air: Send + Sync {
         self.trace_length() * self.ce_blowup_factor()
     }
 
+    /// Returns the degree to which all constraint polynomials are normalized before they are
+    /// composed together. This degree is one less than the size of constraint evaluation domain.
+    fn composition_degree(&self) -> usize {
+        self.ce_domain_size() - 1
+    }
+
     /// Returns low-degree extension domain blowup factor for the computation described by this
-    /// AIR.
+    /// AIR. This is guaranteed to be a power of two, and is always either equal to or greater
+    /// than ce_blowup_factor.
     fn lde_blowup_factor(&self) -> usize {
         self.context().options().blowup_factor()
     }
@@ -259,7 +272,13 @@ pub trait Air: Send + Sync {
         self.trace_length() * self.lde_blowup_factor()
     }
 
-    /// Returns the offset by which the domain for low degree extension is shifted in relation
+    /// Returns the generator of the low-degree extension domain for an instance of the
+    /// computation described by this AIR.
+    fn lde_domain_generator(&self) -> Self::BaseElement {
+        self.context().get_lde_domain_generator()
+    }
+
+    /// Returns the offset by which the domain for low-degree extension is shifted in relation
     /// to the execution trace domain.
     fn domain_offset(&self) -> Self::BaseElement {
         self.context().options().domain_offset()

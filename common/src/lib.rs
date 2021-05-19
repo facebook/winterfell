@@ -5,7 +5,6 @@
 
 pub mod errors;
 pub mod proof;
-pub mod utils;
 
 mod context;
 pub use context::ComputationContext;

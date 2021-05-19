@@ -29,7 +29,7 @@ mod tests;
 pub fn get_example(options: ExampleOptions, sequence_length: usize) -> Box<dyn Example> {
     Box::new(MulFib8Example::new(
         sequence_length,
-        options.to_proof_options(28, 16),
+        options.to_proof_options(28, 8),
     ))
 }
 

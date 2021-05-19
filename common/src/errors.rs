@@ -35,26 +35,34 @@ impl fmt::Display for ProverError {
 /// Represents an error thrown by the verifier during an execution of the protocol
 #[derive(Debug, PartialEq)]
 pub enum VerifierError {
+    /// Base field of the proof does not match base field of the specified AIR
+    InconsistentBaseField,
     /// Proof deserialization failed: {0}
     ProofDeserializationError(String),
-    /// Verification of low-degree proof failed: {0}
-    FriVerificationFailed(fri::VerifierError),
-    /// Trace query did not match the commitment
+    /// Constraint evaluations over the out-of-domain frame are inconsistent
+    InconsistentOodConstraintEvaluations,
+    /// Trace query does not match the commitment
     TraceQueryDoesNotMatchCommitment,
-    /// Constraint query did not match the commitment
+    /// Constraint query does not match the commitment
     ConstraintQueryDoesNotMatchCommitment,
     /// Query seed proof-of-work verification failed
     QuerySeedProofOfWorkVerificationFailed,
+    /// Verification of low-degree proof failed: {0}
+    FriVerificationFailed(fri::VerifierError),
 }
 
 impl fmt::Display for VerifierError {
+    #[rustfmt::skip]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::InconsistentBaseField =>  {
+                write!(f, "base field of the proof does not match base field of the specified AIR")
+            }
             Self::ProofDeserializationError(msg) => {
                 write!(f, "proof deserialization failed: {}", msg)
             }
-            Self::FriVerificationFailed(err) => {
-                write!(f, "verification of low-degree proof failed: {}", err)
+            Self::InconsistentOodConstraintEvaluations => {
+                write!(f, "constraint evaluations over the out-of-domain frame are inconsistent")
             }
             Self::TraceQueryDoesNotMatchCommitment => {
                 write!(f, "trace query did not match the commitment")
@@ -64,6 +72,9 @@ impl fmt::Display for VerifierError {
             }
             Self::QuerySeedProofOfWorkVerificationFailed => {
                 write!(f, "query seed proof-of-work verification failed")
+            }
+            Self::FriVerificationFailed(err) => {
+                write!(f, "verification of low-degree proof failed: {}", err)
             }
         }
     }
@@ -119,8 +130,10 @@ pub enum ProofSerializationError {
     FailedToParseQueryProofs(String),
     /// Failed to parse out-of-domain evaluation frame: {0}
     FailedToParseOodFrame(String),
-    /// Too many elements in out-of-domain evaluation frame; expected {0}, but was {1}
-    TooManyOodFrameElements(usize, usize),
+    /// Wrong number of out-of-domain trace elements; expected {0}, but was {1}
+    WrongNumberOfOodTraceElements(usize, usize),
+    /// Wrong number of out-of-domain evaluation elements; expected {0}, but was {1}
+    WrongNumberOfOodEvaluationElements(usize, usize),
 }
 
 impl fmt::Display for ProofSerializationError {
@@ -142,8 +155,11 @@ impl fmt::Display for ProofSerializationError {
             Self::FailedToParseOodFrame(msg) => {
                 write!(f, "failed to parse out-of-domain evaluation frame: {}", msg)
             }
-            Self::TooManyOodFrameElements(expected, actual) => {
-                write!(f, "too many elements in out-of-domain evaluation frame; expected {}, but was {}", expected, actual)
+            Self::WrongNumberOfOodTraceElements(expected, actual) => {
+                write!(f, "wrong number of out-of-domain trace elements; expected {}, but was {}", expected, actual)
+            }
+            Self::WrongNumberOfOodEvaluationElements(expected, actual) => {
+                write!(f, "wrong number of out-of-domain evaluation elements; expected {}, but was {}", expected, actual)
             }
         }
     }

@@ -14,8 +14,8 @@ use periodic_table::PeriodicValueTable;
 mod evaluator;
 pub use evaluator::ConstraintEvaluator;
 
-mod constraint_poly;
-pub use constraint_poly::ConstraintPoly;
+mod composition_poly;
+pub use composition_poly::CompositionPoly;
 
 mod evaluation_table;
 pub use evaluation_table::ConstraintEvaluationTable;

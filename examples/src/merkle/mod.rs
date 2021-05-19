@@ -31,7 +31,7 @@ mod tests;
 pub fn get_example(options: ExampleOptions, tree_depth: usize) -> Box<dyn Example> {
     Box::new(MerkleExample::new(
         tree_depth,
-        options.to_proof_options(28, 64),
+        options.to_proof_options(28, 8),
     ))
 }
 
