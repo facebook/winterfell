@@ -80,7 +80,8 @@ fn perform_verification<A: Air, E: FieldElement + From<A::BaseElement>, H: Hashe
     // consistent with evaluations of composition polynomial columns sent by the prover
 
     // first, draw a pseudo-random out-of-domain point
-    let z = channel.draw_deep_point::<E>();
+    let mut deep_prng = channel.get_deep_composition_prng();
+    let z = deep_prng.draw::<E>();
 
     // then, evaluate constraints over the out-of-domain evaluation frame
     let ood_frame = channel.read_ood_evaluation_frame();
@@ -116,8 +117,8 @@ fn perform_verification<A: Air, E: FieldElement + From<A::BaseElement>, H: Hashe
 
     // draw coefficients for computing random linear combination of trace and constraint
     // polynomials, and use them to instantiate a composer for DEEP composition polynomial
-    let coefficients = channel.draw_composition_coefficients();
-    let composer = DeepComposer::new(&air, &query_positions, z, coefficients);
+    let deep_coefficients = air.get_deep_composition_coeffs::<H, E>(&mut deep_prng);
+    let composer = DeepComposer::new(&air, &query_positions, z, deep_coefficients);
 
     // compute evaluations of DEEP composition polynomial by combining compositions of trace
     // registers and constraint evaluations, and raising their degree by one

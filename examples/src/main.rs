@@ -58,6 +58,10 @@ fn main() {
     let proof_bytes = bincode::serialize(&proof).unwrap();
     debug!("Proof size: {:.1} KB", proof_bytes.len() as f64 / 1024f64);
     debug!("Proof security: {} bits", proof.security_level(true));
+    debug!(
+        "Proof hash: {}",
+        hex::encode(blake3::hash(&proof_bytes).as_bytes())
+    );
 
     // verify the proof
     debug!("---------------------");

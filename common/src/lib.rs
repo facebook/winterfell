@@ -14,9 +14,10 @@ pub use options::{FieldExtension, HashFunction, ProofOptions};
 
 mod air;
 pub use air::{
-    Air, Assertion, BoundaryConstraint, BoundaryConstraintGroup, ConstraintDivisor,
-    EvaluationFrame, TraceInfo, TransitionConstraintDegree, TransitionConstraintGroup,
+    Air, Assertion, BoundaryConstraint, BoundaryConstraintGroup, ConstraintCompositionCoefficients,
+    ConstraintDivisor, DeepCompositionCoefficients, EvaluationFrame, TraceInfo,
+    TransitionConstraintDegree, TransitionConstraintGroup,
 };
 
 mod random;
-pub use random::{CompositionCoefficients, PublicCoin};
+pub use random::PublicCoin;

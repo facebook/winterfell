@@ -20,6 +20,9 @@ pub use boundary::{BoundaryConstraint, BoundaryConstraintGroup};
 mod transition;
 pub use transition::{EvaluationFrame, TransitionConstraintDegree, TransitionConstraintGroup};
 
+mod coefficients;
+pub use coefficients::{ConstraintCompositionCoefficients, DeepCompositionCoefficients};
+
 mod divisor;
 pub use divisor::ConstraintDivisor;
 
@@ -288,6 +291,40 @@ pub trait Air: Send + Sync {
     /// by this AIR.
     fn num_transition_constraints(&self) -> usize {
         self.context().transition_constraint_degrees().len()
+    }
+
+    // LINEAR COMBINATION COEFFICIENTS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns coefficients needed for random linear combination during construction of constraint
+    /// composition polynomial.
+    fn get_constraint_composition_coeffs<H: Hasher, E: FieldElement + From<Self::BaseElement>>(
+        &self,
+        mut prng: RandomElementGenerator<H>,
+    ) -> ConstraintCompositionCoefficients<E> {
+        let num_t_constraints = self.num_transition_constraints();
+        let num_b_constraints = 1024; // TODO: replace with actual count
+
+        ConstraintCompositionCoefficients {
+            transition: (0..num_t_constraints).map(|_| prng.draw_pair()).collect(),
+            boundary: (0..num_b_constraints).map(|_| prng.draw_pair()).collect(),
+        }
+    }
+
+    /// Returns coefficients needed for random linear combinations during construction of DEEP
+    /// composition polynomial.
+    fn get_deep_composition_coeffs<H: Hasher, E: FieldElement + From<Self::BaseElement>>(
+        &self,
+        prng: &mut RandomElementGenerator<H>,
+    ) -> DeepCompositionCoefficients<E> {
+        let trace_width = self.trace_width();
+        let num_composition_columns = self.ce_blowup_factor();
+
+        DeepCompositionCoefficients {
+            trace: (0..trace_width).map(|_| prng.draw_triple()).collect(),
+            constraints: (0..num_composition_columns).map(|_| prng.draw()).collect(),
+            degree: prng.draw_pair(),
+        }
     }
 }
 

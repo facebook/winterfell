@@ -89,8 +89,6 @@ fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
     // come from the verifier
     let mut channel = ProverChannel::<H>::new(air.context());
 
-    let context = air.context().clone(); // TODO: find a better way?
-
     // 1 ----- extend execution trace -------------------------------------------------------------
 
     // build computation domain; this is used later for polynomial evaluations
@@ -131,7 +129,7 @@ fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
     // build constraint evaluator; the channel is passed in for the evaluator to draw random
     // values from; these values are used by the evaluator to compute a random linear
     // combination of constraint evaluations
-    let evaluator = ConstraintEvaluator::new(air, &channel);
+    let evaluator = ConstraintEvaluator::new(&air, &channel);
 
     // apply constraint evaluator to the extended trace table to generate a constraint evaluation
     // table
@@ -183,13 +181,15 @@ fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
     // increase security. Soundness is limited by the size of the field that the random point
     // is drawn from, and we can potentially save on performance by only drawing this point
     // from an extension field, rather than increasing the size of the field overall.
-    let z = channel.draw_deep_point::<E>();
+    let mut deep_prng = channel.get_deep_composition_prng();
+
+    let z = deep_prng.draw::<E>();
 
     // draw random coefficients to use during polynomial composition
-    let coefficients = channel.draw_composition_coefficients();
+    let deep_coefficients = air.get_deep_composition_coeffs::<H, E>(&mut deep_prng);
 
     // initialize composition polynomial
-    let mut deep_composition_poly = DeepCompositionPoly::new(&context, z, coefficients);
+    let mut deep_composition_poly = DeepCompositionPoly::new(&air, z, deep_coefficients);
 
     // combine all trace polynomials together and merge them into the DEEP composition polynomial;
     // ood_frame are trace states at two out-of-domain points, and will go into the proof
@@ -224,13 +224,13 @@ fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
     );
     debug!(
         "Evaluated DEEP composition polynomial over LDE domain (2^{} elements) in {} ms",
-        log2(context.lde_domain_size()),
+        log2(domain.lde_domain_size()),
         now.elapsed().as_millis()
     );
 
     // 7 ----- compute FRI layers for the composition polynomial ----------------------------------
     let now = Instant::now();
-    let mut fri_prover = fri::FriProver::new(context.options().to_fri_options());
+    let mut fri_prover = fri::FriProver::new(air.options().to_fri_options());
     fri_prover.build_layers(&mut channel, deep_evaluations, &domain.lde_values());
     debug!(
         "Computed {} FRI layers from composition polynomial evaluations in {} ms",

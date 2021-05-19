@@ -4,39 +4,41 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{constraints::CompositionPoly, StarkDomain, TracePolyTable};
-use common::{CompositionCoefficients, ComputationContext, EvaluationFrame};
+use common::{Air, DeepCompositionCoefficients, EvaluationFrame};
 use math::{
     fft,
     field::{FieldElement, StarkField},
     polynom,
     utils::{self, add_in_place},
 };
+use std::marker::PhantomData;
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
 
 // DEEP COMPOSITION POLYNOMIAL
 // ================================================================================================
-pub struct DeepCompositionPoly<E: FieldElement> {
+pub struct DeepCompositionPoly<A: Air, E: FieldElement + From<A::BaseElement>> {
     coefficients: Vec<E>,
-    cc: CompositionCoefficients<E>,
+    cc: DeepCompositionCoefficients<E>,
     z: E,
     field_extension: bool,
+    _air: PhantomData<A>,
 }
 
-impl<E: FieldElement> DeepCompositionPoly<E> {
+impl<A: Air, E: FieldElement + From<A::BaseElement>> DeepCompositionPoly<A, E> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Returns a new DEEP composition polynomial. Initially, this polynomial will be empty, and
     /// the intent is to populate the coefficients via add_trace_polys() and add_constraint_polys()
     /// methods.
-    pub fn new(context: &ComputationContext, z: E, cc: CompositionCoefficients<E>) -> Self {
-        // TODO: change from context to AIR
+    pub fn new(air: &A, z: E, cc: DeepCompositionCoefficients<E>) -> Self {
         DeepCompositionPoly {
             coefficients: vec![],
             cc,
             z,
-            field_extension: !context.options().field_extension().is_none(),
+            field_extension: !air.options().field_extension().is_none(),
+            _air: PhantomData,
         }
     }
 

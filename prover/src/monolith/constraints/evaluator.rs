@@ -21,8 +21,8 @@ const MIN_CONCURRENT_DOMAIN_SIZE: usize = 8192;
 // CONSTRAINT EVALUATOR
 // ================================================================================================
 
-pub struct ConstraintEvaluator<A: Air, E: FieldElement + From<A::BaseElement>> {
-    air: A,
+pub struct ConstraintEvaluator<'a, A: Air, E: FieldElement + From<A::BaseElement>> {
+    air: &'a A,
     boundary_constraints: Vec<BoundaryConstraintGroup<A::BaseElement, E>>,
     transition_constraints: Vec<TransitionConstraintGroup<E>>,
     periodic_values: PeriodicValueTable<A::BaseElement>,
@@ -32,12 +32,12 @@ pub struct ConstraintEvaluator<A: Air, E: FieldElement + From<A::BaseElement>> {
     transition_constraint_degrees: Vec<usize>,
 }
 
-impl<A: Air, E: FieldElement + From<A::BaseElement>> ConstraintEvaluator<A, E> {
+impl<'a, A: Air, E: FieldElement + From<A::BaseElement>> ConstraintEvaluator<'a, A, E> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Returns a new evaluator which can be used to evaluate transition and boundary constraints
     /// over extended execution trace.
-    pub fn new<C: PublicCoin>(air: A, coin: &C) -> Self {
+    pub fn new<C: PublicCoin>(air: &'a A, coin: &C) -> Self {
         // collect expected degrees for all transition constraints to compare them against actual
         // degrees; we do this in debug mode only because this comparison is expensive
         #[cfg(debug_assertions)]
@@ -54,7 +54,7 @@ impl<A: Air, E: FieldElement + From<A::BaseElement>> ConstraintEvaluator<A, E> {
             air.get_transition_constraints(coin.get_transition_coefficient_prng());
 
         // build periodic value table
-        let periodic_values = PeriodicValueTable::new(&air);
+        let periodic_values = PeriodicValueTable::new(air);
 
         // set divisor for transition constraints; since divisors for all transition constraints
         // are the same: (x^steps - 1) / (x - x_at_last_step), all transition constraints will be
@@ -219,9 +219,8 @@ impl<A: Air, E: FieldElement + From<A::BaseElement>> ConstraintEvaluator<A, E> {
 
                     // evaluate boundary constraints; the results go into remaining slots
                     // of the evaluations buffer
-                    let current_state = &ev_frame.current;
                     self.evaluate_boundary_constraints(
-                        current_state,
+                        &ev_frame.current,
                         x,
                         step,
                         &mut evaluations[1..],

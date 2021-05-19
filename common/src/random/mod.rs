@@ -5,7 +5,6 @@
 
 use crate::ComputationContext;
 use crypto::{Hasher, RandomElementGenerator};
-use math::field::FieldElement;
 use std::{convert::TryInto, mem::size_of};
 
 #[cfg(test)]
@@ -15,8 +14,6 @@ mod tests;
 // ================================================================================================
 const TRANSITION_COEFF_OFFSET: u64 = 0;
 const BOUNDARY_COEFF_OFFSET: u64 = u32::MAX as u64;
-const DEEP_POINT_OFFSET: u64 = 0;
-const COMPOSITION_COEFF_OFFSET: u64 = 1024;
 
 // PUBLIC COIN
 // ================================================================================================
@@ -43,29 +40,12 @@ pub trait PublicCoin: fri::PublicCoin {
         RandomElementGenerator::new(self.constraint_seed(), BOUNDARY_COEFF_OFFSET)
     }
 
+    fn get_deep_composition_prng(&self) -> RandomElementGenerator<Self::Hasher> {
+        RandomElementGenerator::new(self.composition_seed(), 0)
+    }
+
     // DRAW METHODS
     // --------------------------------------------------------------------------------------------
-
-    /// Draws a point from the entire field using PRNG seeded with composition seed.
-    fn draw_deep_point<E: FieldElement>(&self) -> E {
-        let mut generator =
-            RandomElementGenerator::<Self::Hasher>::new(self.composition_seed(), DEEP_POINT_OFFSET);
-        generator.draw()
-    }
-
-    /// Draws coefficients for building composition polynomial using PRNG seeded with
-    /// composition seed.
-    fn draw_composition_coefficients<E: FieldElement>(&self) -> CompositionCoefficients<E> {
-        let generator = RandomElementGenerator::<Self::Hasher>::new(
-            self.composition_seed(),
-            COMPOSITION_COEFF_OFFSET,
-        );
-        CompositionCoefficients::new(
-            generator,
-            self.context().trace_width(),
-            self.context().ce_blowup_factor(),
-        )
-    }
 
     /// Draws a set of unique query positions using PRNG seeded with query seed. The positions
     /// are selected from the range [0, lde_domain_size).
@@ -108,29 +88,5 @@ pub trait PublicCoin: fri::PublicCoin {
         );
 
         result
-    }
-}
-
-// COMPOSITION COEFFICIENTS
-// ================================================================================================
-
-#[derive(Debug)]
-pub struct CompositionCoefficients<E: FieldElement> {
-    pub trace: Vec<(E, E, E)>,
-    pub constraints: Vec<E>,
-    pub degree: (E, E),
-}
-
-impl<E: FieldElement> CompositionCoefficients<E> {
-    pub fn new<H: Hasher>(
-        mut prng: RandomElementGenerator<H>,
-        trace_width: usize,
-        num_composition_columns: usize,
-    ) -> Self {
-        CompositionCoefficients {
-            trace: (0..trace_width).map(|_| prng.draw_triple()).collect(),
-            constraints: (0..num_composition_columns).map(|_| prng.draw()).collect(),
-            degree: prng.draw_pair(),
-        }
     }
 }
