@@ -6,6 +6,7 @@
 use super::Example;
 
 pub mod aggregate;
+pub mod threshold;
 
 mod signature;
 use signature::{message_to_elements, PrivateKey, Signature};
