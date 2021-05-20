@@ -130,11 +130,16 @@ pub trait Air: Send + Sync {
     /// Groups transition constraints together by their degree, and also assigns coefficients
     /// to each constraint. These coefficients will be used to compute random linear combination
     /// of transition constraints during constraint merging.
-    fn get_transition_constraints<E: FieldElement + From<Self::BaseElement>, H: Hasher>(
+    fn get_transition_constraints<E: FieldElement + From<Self::BaseElement>>(
         &self,
-        mut coeff_prng: RandomElementGenerator<H>,
+        coefficients: &[(E, E)],
     ) -> Vec<TransitionConstraintGroup<E>> {
-        let context = self.context();
+        assert_eq!(
+            self.num_transition_constraints(),
+            coefficients.len(),
+            "number of transition constraints must match the number of coefficient tuples"
+        );
+
         // We want to make sure that once we divide constraint polynomials by the divisor,
         // the degree of the resulting polynomial will be exactly equal to the composition degree.
         // For transition constraints, divisor degree = deg(trace). So, target degree for all
@@ -143,6 +148,7 @@ pub trait Air: Send + Sync {
 
         // iterate over all transition constraint degrees, and assign each constraint to the
         // appropriate group based on degree
+        let context = self.context();
         let mut groups = HashMap::new();
         for (i, degree) in context.transition_constraint_degrees().iter().enumerate() {
             let evaluation_degree = degree.get_evaluation_degree(self.trace_length());
@@ -150,7 +156,7 @@ pub trait Air: Send + Sync {
             let group = groups.entry(evaluation_degree).or_insert_with(|| {
                 TransitionConstraintGroup::new(degree.clone(), degree_adjustment)
             });
-            group.add(i, coeff_prng.draw_pair());
+            group.add(i, coefficients[i]);
         }
 
         // convert from hash map into a vector and return
@@ -161,14 +167,10 @@ pub trait Air: Send + Sync {
     /// assign coefficients to each constraint, and group the constraints by denominator. The
     /// coefficients will be used to compute random linear combination of boundary constraints
     /// during constraint merging.
-    fn get_boundary_constraints<E: FieldElement + From<Self::BaseElement>, H: Hasher>(
+    fn get_boundary_constraints<E: FieldElement + From<Self::BaseElement>>(
         &self,
-        mut coeff_prng: RandomElementGenerator<H>,
+        coefficients: &[(E, E)],
     ) -> Vec<BoundaryConstraintGroup<Self::BaseElement, E>> {
-        // group assertions by step - i.e.: assertions for the first step are grouped together,
-        // assertions for the last step are grouped together etc.
-        let mut groups = HashMap::new();
-
         // compute inverse of the trace domain generator; this will be used for offset
         // computations when creating sequence constraints
         let inv_g = self
@@ -185,10 +187,16 @@ pub trait Air: Send + Sync {
         // so that changing the order of assertions does not change random coefficients that
         // get assigned to them
         let assertions = prepare_assertions(self.get_assertions(), self.context());
+        assert_eq!(
+            assertions.len(),
+            coefficients.len(),
+            "number of assertions must match the number of coefficient tuples"
+        );
 
         // iterate over all assertions, which are sorted first by stride and then by first_step
         // in ascending order
-        for assertion in assertions.into_iter() {
+        let mut groups = HashMap::new();
+        for (i, assertion) in assertions.into_iter().enumerate() {
             let key = (assertion.stride(), assertion.first_step());
             let group = groups.entry(key).or_insert_with(|| {
                 BoundaryConstraintGroup::new(
@@ -199,7 +207,7 @@ pub trait Air: Send + Sync {
             });
 
             // add a new assertion constraint to the current group (last group in the list)
-            group.add(assertion, inv_g, &mut twiddle_map, &mut coeff_prng);
+            group.add(assertion, inv_g, &mut twiddle_map, coefficients[i]);
         }
 
         // make sure groups are sorted by adjustment degree
@@ -300,10 +308,10 @@ pub trait Air: Send + Sync {
     /// composition polynomial.
     fn get_constraint_composition_coeffs<H: Hasher, E: FieldElement + From<Self::BaseElement>>(
         &self,
-        mut prng: RandomElementGenerator<H>,
+        prng: &mut RandomElementGenerator<H>,
     ) -> ConstraintCompositionCoefficients<E> {
         let num_t_constraints = self.num_transition_constraints();
-        let num_b_constraints = 1024; // TODO: replace with actual count
+        let num_b_constraints = self.get_assertions().len(); // TODO: this is heavy; do something lighter
 
         ConstraintCompositionCoefficients {
             transition: (0..num_t_constraints).map(|_| prng.draw_pair()).collect(),

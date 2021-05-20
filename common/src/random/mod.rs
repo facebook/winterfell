@@ -10,11 +10,6 @@ use std::{convert::TryInto, mem::size_of};
 #[cfg(test)]
 mod tests;
 
-// CONSTANTS
-// ================================================================================================
-const TRANSITION_COEFF_OFFSET: u64 = 0;
-const BOUNDARY_COEFF_OFFSET: u64 = u32::MAX as u64;
-
 // PUBLIC COIN
 // ================================================================================================
 
@@ -30,16 +25,12 @@ pub trait PublicCoin: fri::PublicCoin {
     // PRNG BUILDERS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a PRNG for transition constraint coefficients.
-    fn get_transition_coefficient_prng(&self) -> RandomElementGenerator<Self::Hasher> {
-        RandomElementGenerator::new(self.constraint_seed(), TRANSITION_COEFF_OFFSET)
+    /// Returns PRNG for generating constraint composition coefficients.
+    fn get_constraint_composition_prng(&self) -> RandomElementGenerator<Self::Hasher> {
+        RandomElementGenerator::new(self.constraint_seed(), 0)
     }
 
-    /// Returns a PRNG for boundary constraint coefficients.
-    fn get_boundary_coefficient_prng(&self) -> RandomElementGenerator<Self::Hasher> {
-        RandomElementGenerator::new(self.constraint_seed(), BOUNDARY_COEFF_OFFSET)
-    }
-
+    /// Returns PRNG for generating DEEP composition coefficients.
     fn get_deep_composition_prng(&self) -> RandomElementGenerator<Self::Hasher> {
         RandomElementGenerator::new(self.composition_seed(), 0)
     }

@@ -3,16 +3,16 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use common::{Air, ConstraintDivisor, EvaluationFrame, PublicCoin};
+use common::{Air, ConstraintCompositionCoefficients, ConstraintDivisor, EvaluationFrame};
 use math::{field::FieldElement, polynom};
 
 // CONSTRAINT EVALUATION
 // ================================================================================================
 
 /// Evaluates constraints for the specified evaluation frame.
-pub fn evaluate_constraints<A: Air, C: PublicCoin, E: FieldElement + From<A::BaseElement>>(
+pub fn evaluate_constraints<A: Air, E: FieldElement + From<A::BaseElement>>(
     air: &A,
-    coin: &C,
+    coefficients: ConstraintCompositionCoefficients<E>,
     ood_frame: &EvaluationFrame<E>,
     x: E,
 ) -> E {
@@ -37,7 +37,7 @@ pub fn evaluate_constraints<A: Air, C: PublicCoin, E: FieldElement + From<A::Bas
 
     // merge all constraint evaluations into a single value by computing their random linear
     // combination using coefficients drawn from the public coin
-    let t_constraints = air.get_transition_constraints(coin.get_transition_coefficient_prng());
+    let t_constraints = air.get_transition_constraints(&coefficients.transition);
     let t_evaluation = t_constraints.iter().fold(E::ZERO, |acc, group| {
         acc + group.merge_evaluations(&t_evaluations, x)
     });
@@ -53,7 +53,7 @@ pub fn evaluate_constraints<A: Air, C: PublicCoin, E: FieldElement + From<A::Bas
     // 2 ----- evaluate boundary constraints ------------------------------------------------------
 
     // get boundary constraints grouped by common divisor from the AIR
-    let b_constraints = air.get_boundary_constraints(coin.get_boundary_coefficient_prng());
+    let b_constraints = air.get_boundary_constraints(&coefficients.boundary);
 
     // iterate over boundary constraint groups (each group has a distinct divisor), evaluate
     // constraints in each group and add them to the evaluations vector

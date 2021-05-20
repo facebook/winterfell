@@ -4,8 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    Air, Assertion, BoundaryConstraintGroup, ComputationContext, EvaluationFrame, ProofOptions,
-    TraceInfo, TransitionConstraintDegree,
+    Air, Assertion, ComputationContext, EvaluationFrame, ProofOptions, TraceInfo,
+    TransitionConstraintDegree,
 };
 use crate::{FieldExtension, HashFunction};
 use crypto::{hash, RandomElementGenerator};
@@ -111,9 +111,11 @@ fn get_boundary_constraints() {
 
     // get boundary constraints from AIR, and sort constraint groups so that the order
     // is stable; the original order is just by degree_adjustment
-    let prng = build_prng();
-    let mut groups: Vec<BoundaryConstraintGroup<BaseElement, BaseElement>> =
-        air.get_boundary_constraints(prng);
+    let mut prng = build_prng();
+    let coefficients = (0..8)
+        .map(|_| prng.draw_pair())
+        .collect::<Vec<(BaseElement, BaseElement)>>();
+    let mut groups = air.get_boundary_constraints(&coefficients);
     groups.sort_by(|g1, g2| {
         if g1.degree_adjustment() == g2.degree_adjustment() {
             let n1 = &g1.divisor().numerator()[0].1;

@@ -30,7 +30,7 @@ fn boundary_constraint_from_single_assertion() {
         assertion,
         inv_g,
         &mut twiddle_map,
-        &mut prng,
+        prng.draw_pair(),
     );
     assert_eq!(0, constraint.register());
     assert_eq!(vec![value], constraint.poly());
@@ -51,7 +51,7 @@ fn boundary_constraint_from_single_assertion() {
         assertion,
         inv_g,
         &mut twiddle_map,
-        &mut prng,
+        prng.draw_pair(),
     );
     assert_eq!(1, constraint.register());
     assert_eq!(vec![value], constraint.poly());
@@ -81,7 +81,7 @@ fn boundary_constraint_from_periodic_assertion() {
         assertion,
         inv_g,
         &mut twiddle_map,
-        &mut prng,
+        prng.draw_pair(),
     );
     assert_eq!(0, constraint.register());
     assert_eq!(vec![value], constraint.poly());
@@ -102,7 +102,7 @@ fn boundary_constraint_from_periodic_assertion() {
         assertion,
         inv_g,
         &mut twiddle_map,
-        &mut prng,
+        prng.draw_pair(),
     );
     assert_eq!(2, constraint.register());
     assert_eq!(vec![value], constraint.poly());
@@ -133,7 +133,7 @@ fn boundary_constraint_from_sequence_assertion() {
         assertion,
         inv_g,
         &mut twiddle_map,
-        &mut prng,
+        prng.draw_pair(),
     );
     assert_eq!(0, constraint.register());
     assert_eq!(constraint_poly, constraint.poly());
@@ -158,7 +158,7 @@ fn boundary_constraint_from_sequence_assertion() {
         assertion,
         inv_g,
         &mut twiddle_map,
-        &mut prng,
+        prng.draw_pair(),
     );
     assert_eq!(0, constraint.register());
     assert_eq!(constraint_poly, constraint.poly());

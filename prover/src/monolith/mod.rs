@@ -126,10 +126,11 @@ fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
     // 3 ----- evaluate constraints ---------------------------------------------------------------
     let now = Instant::now();
 
-    // build constraint evaluator; the channel is passed in for the evaluator to draw random
-    // values from; these values are used by the evaluator to compute a random linear
-    // combination of constraint evaluations
-    let evaluator = ConstraintEvaluator::new(&air, &channel);
+    // build constraint evaluator; first, get a PRNG from the channel to build a set of
+    // coefficients for random linear combinations of constraint evaluations
+    let mut constraint_coeff_prng = channel.get_constraint_composition_prng();
+    let constraint_coeffs = air.get_constraint_composition_coeffs(&mut constraint_coeff_prng);
+    let evaluator = ConstraintEvaluator::new(&air, constraint_coeffs);
 
     // apply constraint evaluator to the extended trace table to generate a constraint evaluation
     // table

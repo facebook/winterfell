@@ -85,7 +85,9 @@ fn perform_verification<A: Air, E: FieldElement + From<A::BaseElement>, H: Hashe
 
     // then, evaluate constraints over the out-of-domain evaluation frame
     let ood_frame = channel.read_ood_evaluation_frame();
-    let ood_constraint_evaluation_1 = evaluate_constraints(&air, &channel, ood_frame, z);
+    let mut constraint_coeff_prng = channel.get_constraint_composition_prng();
+    let constraint_coeffs = air.get_constraint_composition_coeffs(&mut constraint_coeff_prng);
+    let ood_constraint_evaluation_1 = evaluate_constraints(&air, constraint_coeffs, ood_frame, z);
 
     // then, read evaluations of composition polynomial columns and reduce them to a single
     // value by computing sum(z^i * value_i), where value_i is the evaluation of the ith column

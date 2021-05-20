@@ -6,7 +6,10 @@
 use super::{
     BoundaryConstraintGroup, ConstraintEvaluationTable, PeriodicValueTable, StarkDomain, TraceTable,
 };
-use common::{Air, ConstraintDivisor, EvaluationFrame, PublicCoin, TransitionConstraintGroup};
+use common::{
+    Air, ConstraintCompositionCoefficients, ConstraintDivisor, EvaluationFrame,
+    TransitionConstraintGroup,
+};
 use math::field::FieldElement;
 use std::collections::HashMap;
 
@@ -37,7 +40,7 @@ impl<'a, A: Air, E: FieldElement + From<A::BaseElement>> ConstraintEvaluator<'a,
     // --------------------------------------------------------------------------------------------
     /// Returns a new evaluator which can be used to evaluate transition and boundary constraints
     /// over extended execution trace.
-    pub fn new<C: PublicCoin>(air: &'a A, coin: &C) -> Self {
+    pub fn new(air: &'a A, coefficients: ConstraintCompositionCoefficients<E>) -> Self {
         // collect expected degrees for all transition constraints to compare them against actual
         // degrees; we do this in debug mode only because this comparison is expensive
         #[cfg(debug_assertions)]
@@ -50,8 +53,7 @@ impl<'a, A: Air, E: FieldElement + From<A::BaseElement>> ConstraintEvaluator<'a,
 
         // build transition constraint groups; these will be used later to compute a random
         // linear combination of transition constraint evaluations.
-        let transition_constraints =
-            air.get_transition_constraints(coin.get_transition_coefficient_prng());
+        let transition_constraints = air.get_transition_constraints(&coefficients.transition);
 
         // build periodic value table
         let periodic_values = PeriodicValueTable::new(air);
@@ -65,7 +67,7 @@ impl<'a, A: Air, E: FieldElement + From<A::BaseElement>> ConstraintEvaluator<'a,
         // constraints to the divisor list
         let mut twiddle_map = HashMap::new();
         let boundary_constraints = air
-            .get_boundary_constraints(coin.get_boundary_coefficient_prng())
+            .get_boundary_constraints(&coefficients.boundary)
             .into_iter()
             .map(|group| {
                 divisors.push(group.divisor().clone());
