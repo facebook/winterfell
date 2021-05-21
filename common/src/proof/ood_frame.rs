@@ -64,4 +64,16 @@ impl OodFrame {
 
         Ok((EvaluationFrame { current, next }, evaluations))
     }
+
+    // SERIALIZATION
+    // --------------------------------------------------------------------------------------------
+
+    /// Serializes this out-of-domain frame and appends the resulting bytes to the `target` vector.
+    pub fn write_into(&self, target: &mut Vec<u8>) {
+        // we do not append vector lengths because the lengths can be inferred from other proof
+        // and AIR parameters
+        target.extend_from_slice(&self.trace_at_z1);
+        target.extend_from_slice(&self.trace_at_z2);
+        target.extend_from_slice(&self.evaluations)
+    }
 }

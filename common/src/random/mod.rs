@@ -13,14 +13,16 @@ mod tests;
 // PUBLIC COIN
 // ================================================================================================
 
-pub trait PublicCoin: fri::PublicCoin {
+pub trait PublicCoin {
+    type Hasher: Hasher;
+
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
 
     fn context(&self) -> &ComputationContext;
-    fn constraint_seed(&self) -> <<Self as fri::PublicCoin>::Hasher as Hasher>::Digest;
-    fn composition_seed(&self) -> <<Self as fri::PublicCoin>::Hasher as Hasher>::Digest;
-    fn query_seed(&self) -> <<Self as fri::PublicCoin>::Hasher as Hasher>::Digest;
+    fn constraint_seed(&self) -> <<Self as PublicCoin>::Hasher as Hasher>::Digest;
+    fn composition_seed(&self) -> <<Self as PublicCoin>::Hasher as Hasher>::Digest;
+    fn query_seed(&self) -> <<Self as PublicCoin>::Hasher as Hasher>::Digest;
 
     // PRNG BUILDERS
     // --------------------------------------------------------------------------------------------
@@ -45,21 +47,21 @@ pub trait PublicCoin: fri::PublicCoin {
 
         // determine how many bits are needed to represent valid indexes in the domain
         let value_mask = self.context().lde_domain_size() - 1;
-        let value_offset = 32 - size_of::<usize>();
+        let value_offset = size_of::<usize>();
 
         // initialize the seed for PRNG
         let seed = self.query_seed();
 
         // draw values from PRNG until we get as many unique values as specified by num_queries
         let mut result = Vec::new();
-        for i in 0u64..1000 {
+        for i in 1u64..1000 {
             // update the seed with the new counter and hash the result
             let seed_hash = Self::Hasher::merge_with_int(seed, i);
             let value_bytes: &[u8] = seed_hash.as_ref();
 
             // read the required number of bits from the hashed value
             let value =
-                usize::from_le_bytes(value_bytes[value_offset..].try_into().unwrap()) & value_mask;
+                usize::from_le_bytes(value_bytes[..value_offset].try_into().unwrap()) & value_mask;
 
             if result.contains(&value) {
                 continue;

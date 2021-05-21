@@ -7,7 +7,7 @@ use super::{
     super::tests::{build_evaluations, build_lde_domain, build_prover_channel, verify_proof},
     FriProver,
 };
-use crate::{FriOptions, PublicCoin};
+use crate::FriOptions;
 use math::field::{f128::BaseElement, StarkField};
 
 #[test]

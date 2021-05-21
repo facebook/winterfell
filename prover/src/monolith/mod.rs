@@ -6,7 +6,7 @@
 use crate::channel::ProverChannel;
 use common::{
     errors::ProverError, proof::StarkProof, Air, FieldExtension, HashFunction, ProofOptions,
-    PublicCoin, TraceInfo,
+    TraceInfo,
 };
 use crypto::hash::{Blake3_256, Hasher, Sha3_256};
 use log::debug;
@@ -87,7 +87,7 @@ fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
     // create a channel; this simulates interaction between the prover and the verifier;
     // the channel will be used to commit to values and to draw randomness that should
     // come from the verifier
-    let mut channel = ProverChannel::<H>::new(air.context());
+    let mut channel = ProverChannel::<A, E, H>::new(&air);
 
     // 1 ----- extend execution trace -------------------------------------------------------------
 
@@ -128,8 +128,7 @@ fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
 
     // build constraint evaluator; first, get a PRNG from the channel to build a set of
     // coefficients for random linear combinations of constraint evaluations
-    let mut constraint_coeff_prng = channel.get_constraint_composition_prng();
-    let constraint_coeffs = air.get_constraint_composition_coeffs(&mut constraint_coeff_prng);
+    let constraint_coeffs = channel.get_constraint_composition_coeffs();
     let evaluator = ConstraintEvaluator::new(&air, constraint_coeffs);
 
     // apply constraint evaluator to the extended trace table to generate a constraint evaluation
@@ -182,12 +181,11 @@ fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
     // increase security. Soundness is limited by the size of the field that the random point
     // is drawn from, and we can potentially save on performance by only drawing this point
     // from an extension field, rather than increasing the size of the field overall.
-    let mut deep_prng = channel.get_deep_composition_prng();
 
-    let z = deep_prng.draw::<E>();
+    let z = channel.get_ood_point();
 
     // draw random coefficients to use during polynomial composition
-    let deep_coefficients = air.get_deep_composition_coeffs::<H, E>(&mut deep_prng);
+    let deep_coefficients = channel.get_deep_composition_coeffs();
 
     // initialize composition polynomial
     let mut deep_composition_poly = DeepCompositionPoly::new(&air, z, deep_coefficients);
@@ -246,7 +244,7 @@ fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
     channel.grind_query_seed();
 
     // generate pseudo-random query positions
-    let query_positions = channel.draw_query_positions();
+    let query_positions = channel.get_query_positions();
     debug!(
         "Determined {} query positions in {} ms",
         query_positions.len(),
@@ -269,7 +267,7 @@ fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
     let constraint_queries = constraint_commitment.query(&query_positions);
 
     // build the proof object
-    let proof = channel.build_proof::<A::BaseElement, E>(
+    let proof = channel.build_proof(
         trace_queries,
         constraint_queries,
         ood_frame,

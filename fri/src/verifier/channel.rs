@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{folding::quartic, FriProof, ProofSerializationError, PublicCoin, VerifierError};
+use crate::{folding::quartic, FriProof, ProofSerializationError, VerifierError};
 use crypto::{BatchMerkleProof, Hasher, MerkleTree};
 use math::field::FieldElement;
 use utils::group_vector_elements;
@@ -11,10 +11,13 @@ use utils::group_vector_elements;
 // VERIFIER CHANNEL TRAIT
 // ================================================================================================
 
-pub trait VerifierChannel<E: FieldElement>: PublicCoin {
+pub trait VerifierChannel<E: FieldElement> {
+    type Hasher: Hasher;
+
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
 
+    fn fri_layer_commitments(&self) -> &[<<Self as VerifierChannel<E>>::Hasher as Hasher>::Digest];
     fn fri_layer_proofs(&self) -> &[BatchMerkleProof<Self::Hasher>];
     fn fri_layer_queries(&self) -> &[Vec<E>];
     fn fri_remainder(&self) -> &[E];
@@ -107,6 +110,12 @@ impl<E: FieldElement, H: Hasher> DefaultVerifierChannel<E, H> {
 }
 
 impl<E: FieldElement, H: Hasher> VerifierChannel<E> for DefaultVerifierChannel<E, H> {
+    type Hasher = H;
+
+    fn fri_layer_commitments(&self) -> &[H::Digest] {
+        &self.commitments
+    }
+
     fn fri_layer_proofs(&self) -> &[BatchMerkleProof<H>] {
         &self.layer_proofs
     }
@@ -121,13 +130,5 @@ impl<E: FieldElement, H: Hasher> VerifierChannel<E> for DefaultVerifierChannel<E
 
     fn fri_partitioned(&self) -> bool {
         self.partitioned
-    }
-}
-
-impl<E: FieldElement, H: Hasher> PublicCoin for DefaultVerifierChannel<E, H> {
-    type Hasher = H;
-
-    fn fri_layer_commitments(&self) -> &[H::Digest] {
-        &self.commitments
     }
 }

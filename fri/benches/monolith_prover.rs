@@ -37,7 +37,8 @@ pub fn build_layers(c: &mut Criterion) {
                 b.iter_batched(
                     || e.clone(),
                     |evaluations| {
-                        let mut channel = DefaultProverChannel::<Blake3_256>::new(domain_size, 32);
+                        let mut channel =
+                            DefaultProverChannel::<Blake3_256, BaseElement>::new(domain_size, 32);
                         prover.build_layers(&mut channel, evaluations, &domain);
                         prover.reset();
                     },

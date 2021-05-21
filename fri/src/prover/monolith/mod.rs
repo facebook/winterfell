@@ -26,7 +26,7 @@ pub struct FriProver<B, E, C, H>
 where
     B: StarkField,
     E: FieldElement + From<B>,
-    C: ProverChannel<Hasher = H>,
+    C: ProverChannel<E, Hasher = H>,
     H: Hasher,
 {
     options: FriOptions<B>,
@@ -47,7 +47,7 @@ impl<B, E, C, H> FriProver<B, E, C, H>
 where
     B: StarkField,
     E: FieldElement + From<B>,
-    C: ProverChannel<Hasher = H>,
+    C: ProverChannel<E, Hasher = H>,
     H: Hasher,
 {
     pub fn new(options: FriOptions<B>) -> Self {
@@ -96,7 +96,7 @@ where
 
             // draw a pseudo-random coefficient from the channel, and use it in degree-respecting
             // projection to reduce the degree of evaluations by 4
-            let alpha = channel.draw_fri_alpha::<E>(depth as usize);
+            let alpha = channel.draw_fri_alpha();
             evaluations = apply_drp(&transposed_evaluations, domain, depth, alpha);
 
             self.layers.push(FriLayer {

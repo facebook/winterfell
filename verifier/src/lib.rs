@@ -3,14 +3,16 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use common::PublicCoin;
 pub use common::{
     errors::VerifierError, proof::StarkProof, Air, FieldExtension, HashFunction, TraceInfo,
 };
 use fri::VerifierChannel as FriVerifierChannel;
 
 pub use crypto;
-use crypto::hash::{Blake3_256, Hasher, Sha3_256};
+use crypto::{
+    hash::{Blake3_256, Hasher, Sha3_256},
+    PublicCoin,
+};
 
 pub use math;
 use math::field::{FieldElement, QuadExtension};
@@ -33,12 +35,17 @@ pub fn verify<AIR: Air>(
     proof: StarkProof,
     pub_inputs: AIR::PublicInputs,
 ) -> Result<(), VerifierError> {
-    // ----- create AIR instance for the computation specified in the proof -----------------------
+    // create AIR instance for the computation specified in the proof
     let trace_info = TraceInfo {
         length: proof.trace_length(),
         meta: vec![],
     };
     let air = AIR::new(trace_info, pub_inputs, proof.options().clone());
+
+    // build a seed for public coin
+    let mut coin_seed = Vec::new();
+    proof.context.write_into(&mut coin_seed);
+    // TODO: add serialized public inputs to the seed
 
     // ----- instantiate verifier channel and run the verification --------------------------------
     // figure out which version of the generic proof verification procedure to run. this is a sort
@@ -46,22 +53,26 @@ pub fn verify<AIR: Air>(
     match air.context().options().field_extension() {
         FieldExtension::None => match air.context().options().hash_fn() {
             HashFunction::Blake3_256 => {
+                let coin = PublicCoin::new(&coin_seed);
                 let channel = VerifierChannel::new(&air, proof)?;
-                perform_verification::<AIR, AIR::BaseElement, Blake3_256>(air, channel)
+                perform_verification::<AIR, AIR::BaseElement, Blake3_256>(air, channel, coin)
             }
             HashFunction::Sha3_256 => {
+                let coin = PublicCoin::new(&coin_seed);
                 let channel = VerifierChannel::new(&air, proof)?;
-                perform_verification::<AIR, AIR::BaseElement, Sha3_256>(air, channel)
+                perform_verification::<AIR, AIR::BaseElement, Sha3_256>(air, channel, coin)
             }
         },
         FieldExtension::Quadratic => match air.context().options().hash_fn() {
             HashFunction::Blake3_256 => {
+                let coin = PublicCoin::new(&coin_seed);
                 let channel = VerifierChannel::new(&air, proof)?;
-                perform_verification::<AIR, QuadExtension<AIR::BaseElement>, Blake3_256>(air, channel)
+                perform_verification::<AIR, QuadExtension<AIR::BaseElement>, Blake3_256>(air, channel, coin)
             }
             HashFunction::Sha3_256 => {
+                let coin = PublicCoin::new(&coin_seed);
                 let channel = VerifierChannel::new(&air, proof)?;
-                perform_verification::<AIR, QuadExtension<AIR::BaseElement>, Sha3_256>(air, channel)
+                perform_verification::<AIR, QuadExtension<AIR::BaseElement>, Sha3_256>(air, channel, coin)
             }
         },
     }
@@ -74,24 +85,38 @@ pub fn verify<AIR: Air>(
 fn perform_verification<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
     air: A,
     channel: VerifierChannel<A::BaseElement, E, H>,
+    mut coin: PublicCoin<A::BaseElement, H>,
 ) -> Result<(), VerifierError> {
-    // 1 ----- Check consistency of constraint evaluations at OOD point z -------------------------
+    // 1 ----- trace commitment -------------------------------------------------------------------
+    // read the commitment to evaluations of the trace polynomials sent by the prover, use it to
+    // update the public coin, and draw a set of random coefficients from the coin; in the
+    // interactive version of the protocol, the verifier sends these coefficients to the prover,
+    // and prover uses them to compute constraint composition polynomial.
+    let trace_commitment = channel.read_trace_commitment();
+    coin.reseed(trace_commitment);
+    let constraint_coeffs = air.get_constraint_composition_coeffs(&mut coin);
+
+    // 2 ----- constraint commitment --------------------------------------------------------------
+    // read the commitment to evaluations of the constraint composition polynomial sent by the
+    // prover, use it to update the public coin, and draw an out-of-domain point z from the coin;
+    // in the interactive version of the protocol, the verifier sends point z to the prover, and
+    // the prover evaluates trace and constraint composition polynomials at z, and send the results
+    // back to the verifier.
+    let constraint_commitment = channel.read_constraint_commitment();
+    coin.reseed(constraint_commitment);
+    let z = coin.draw::<E>();
+
+    // 3 ----- OOD consistency check --------------------------------------------------------------
     // make sure that evaluations obtained by evaluating constraints over out-of-domain frame are
     // consistent with evaluations of composition polynomial columns sent by the prover
 
-    // first, draw a pseudo-random out-of-domain point
-    let mut deep_prng = channel.get_deep_composition_prng();
-    let z = deep_prng.draw::<E>();
-
-    // then, evaluate constraints over the out-of-domain evaluation frame
+    // the out-of-domain evaluation frame sent by the prover and evaluate constraints over it
     let ood_frame = channel.read_ood_evaluation_frame();
-    let mut constraint_coeff_prng = channel.get_constraint_composition_prng();
-    let constraint_coeffs = air.get_constraint_composition_coeffs(&mut constraint_coeff_prng);
     let ood_constraint_evaluation_1 = evaluate_constraints(&air, constraint_coeffs, ood_frame, z);
 
-    // then, read evaluations of composition polynomial columns and reduce them to a single
-    // value by computing sum(z^i * value_i), where value_i is the evaluation of the ith column
-    // polynomial at z^m, where m is the total number of column polynomials.
+    // read evaluations of composition polynomial columns sent by the prover, and reduce them into
+    // a single value by computing sum(z^i * value_i), where value_i is the evaluation of the ith
+    // column polynomial at z^m, where m is the total number of column polynomials
     let ood_evaluations = channel.read_ood_evaluations();
     let ood_constraint_evaluation_2 = ood_evaluations
         .iter()
@@ -105,35 +130,64 @@ fn perform_verification<A: Air, E: FieldElement + From<A::BaseElement>, H: Hashe
         return Err(VerifierError::InconsistentOodConstraintEvaluations);
     }
 
-    // 2 ----- Read queried trace states and constraint evaluations -------------------------------
+    // TODO: update coin with OOD frame
+    // TODO: update coin with OOD evaluations
 
-    // draw pseudo-random query positions in LDE domain
-    let query_positions = channel.draw_query_positions();
+    // 4 ----- FRI commitments --------------------------------------------------------------------
 
-    // read trace states and constraint evaluations at the queried positions; this also checks
-    // that Merkle authentication paths for the states and evaluations are valid
-    let queried_trace_states = channel.read_trace_states(&query_positions)?;
-    let queried_evaluations = channel.read_constraint_evaluations(&query_positions)?;
+    // draw coefficients for computing DEEP composition polynomial from the public coin; in the
+    // interactive version of the protocol, the verifier sends these coefficients to the prover
+    // and the prover uses them to compute DEEP composition polynomial. the prover, then applies
+    // FRI protocol to the evaluations of the DEEP composition polynomial.
+    let deep_coefficients = air.get_deep_composition_coeffs::<E, H>(&mut coin);
 
-    // 3 ----- Compute composition polynomial evaluations -----------------------------------------
+    // read FRI layer commitments sent by the prover, and use each commitment to update the public
+    // coin and draw random point alpha. in the interactive version of the protocol, the verifier
+    // sends this alpha to the prover, and the prover uses it to compute the next FRI layer.
+    let fri_layer_commitments = channel.fri_layer_commitments();
+    let mut fri_alphas = Vec::with_capacity(fri_layer_commitments.len());
+    for commitment in fri_layer_commitments {
+        coin.reseed(*commitment);
+        fri_alphas.push(coin.draw());
+    }
 
-    // draw coefficients for computing random linear combination of trace and constraint
-    // polynomials, and use them to instantiate a composer for DEEP composition polynomial
-    let deep_coefficients = air.get_deep_composition_coeffs::<H, E>(&mut deep_prng);
-    let composer = DeepComposer::new(&air, &query_positions, z, deep_coefficients);
+    // 5 ----- Trace and constraint queries -------------------------------------------------------
+    // read proof-of-work nonce sent by the prover and update public coin with it
+    let pow_nonce = channel.read_pow_nonce();
+    coin.reseed_with_int(pow_nonce);
 
+    // make sure the proof-of-work specified by the grinding factor is satisfied
+    if coin.leading_zeros() < air.options().grinding_factor() {
+        return Err(VerifierError::QuerySeedProofOfWorkVerificationFailed);
+    }
+
+    // draw pseudo-random query positions in the LDE domain from the public coin; in the
+    // interactive version of the protocol, the verifier sends these query positions to the prover,
+    // and the prover responds with decommitments against these positions for trace and constraint
+    // composition polynomial evaluations.
+    let query_positions = coin.draw_integers(air.options().num_queries(), air.lde_domain_size());
+
+    // read evaluations of trace and constraint composition polynomials at the queried positions;
+    // this also checks that the read values are valid against trace and constraint commitments
+    let queried_trace_states = channel.read_trace_states(&query_positions, &trace_commitment)?;
+    let queried_evaluations =
+        channel.read_constraint_evaluations(&query_positions, &constraint_commitment)?;
+
+    // 6 ----- DEEP composition -------------------------------------------------------------------
     // compute evaluations of DEEP composition polynomial by combining compositions of trace
     // registers and constraint evaluations, and raising their degree by one
+    let composer = DeepComposer::new(&air, &query_positions, z, deep_coefficients);
     let t_composition = composer.compose_registers(queried_trace_states, ood_frame);
     let c_composition = composer.compose_constraints(queried_evaluations, ood_evaluations);
     let deep_evaluations = composer.combine_compositions(t_composition, c_composition);
 
-    // 4 ----- Verify low-degree proof -------------------------------------------------------------
-    // make sure that evaluations we computed in the previous step are in fact evaluations of a
-    // polynomial of degree equal to trace polynomial degree
+    // 7 ----- Verify low-degree proof -------------------------------------------------------------
+    // make sure that evaluations of the DEEP composition polynomial we computed in the previous
+    // step are in fact evaluations of a polynomial of degree equal to trace polynomial degree
     let fri_context = fri::VerifierContext::new(
         air.lde_domain_size(),
         air.trace_poly_degree(),
+        fri_alphas,
         channel.num_fri_partitions(),
         air.options().to_fri_options::<A::BaseElement>(),
     );

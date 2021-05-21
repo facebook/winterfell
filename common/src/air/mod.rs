@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{ComputationContext, ProofOptions};
-use crypto::{Hasher, RandomElementGenerator};
+use crypto::{Hasher, PublicCoin};
 use math::{
     fft,
     field::{FieldElement, StarkField},
@@ -306,32 +306,32 @@ pub trait Air: Send + Sync {
 
     /// Returns coefficients needed for random linear combination during construction of constraint
     /// composition polynomial.
-    fn get_constraint_composition_coeffs<H: Hasher, E: FieldElement + From<Self::BaseElement>>(
+    fn get_constraint_composition_coeffs<E: FieldElement + From<Self::BaseElement>, H: Hasher>(
         &self,
-        prng: &mut RandomElementGenerator<H>,
+        coin: &mut PublicCoin<Self::BaseElement, H>,
     ) -> ConstraintCompositionCoefficients<E> {
         let num_t_constraints = self.num_transition_constraints();
         let num_b_constraints = self.get_assertions().len(); // TODO: this is heavy; do something lighter
 
         ConstraintCompositionCoefficients {
-            transition: (0..num_t_constraints).map(|_| prng.draw_pair()).collect(),
-            boundary: (0..num_b_constraints).map(|_| prng.draw_pair()).collect(),
+            transition: (0..num_t_constraints).map(|_| coin.draw_pair()).collect(),
+            boundary: (0..num_b_constraints).map(|_| coin.draw_pair()).collect(),
         }
     }
 
     /// Returns coefficients needed for random linear combinations during construction of DEEP
     /// composition polynomial.
-    fn get_deep_composition_coeffs<H: Hasher, E: FieldElement + From<Self::BaseElement>>(
+    fn get_deep_composition_coeffs<E: FieldElement + From<Self::BaseElement>, H: Hasher>(
         &self,
-        prng: &mut RandomElementGenerator<H>,
+        coin: &mut PublicCoin<Self::BaseElement, H>,
     ) -> DeepCompositionCoefficients<E> {
         let trace_width = self.trace_width();
         let num_composition_columns = self.ce_blowup_factor();
 
         DeepCompositionCoefficients {
-            trace: (0..trace_width).map(|_| prng.draw_triple()).collect(),
-            constraints: (0..num_composition_columns).map(|_| prng.draw()).collect(),
-            degree: prng.draw_pair(),
+            trace: (0..trace_width).map(|_| coin.draw_triple()).collect(),
+            constraints: (0..num_composition_columns).map(|_| coin.draw()).collect(),
+            degree: coin.draw_pair(),
         }
     }
 }

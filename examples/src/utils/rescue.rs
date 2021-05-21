@@ -102,6 +102,14 @@ impl Rescue128 {
 impl Hasher for Rescue128 {
     type Digest = Hash;
 
+    fn hash(_bytes: &[u8]) -> Self::Digest {
+        unimplemented!("not implemented")
+    }
+
+    fn hash_elements<E: FieldElement>(_elements: &[E]) -> Self::Digest {
+        unimplemented!("not implemented");
+    }
+
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest {
         Self::digest(Hash::hashes_as_elements(values))
     }
@@ -112,10 +120,6 @@ impl Hasher for Rescue128 {
 
     fn merge_with_int(_seed: Self::Digest, _value: u64) -> Self::Digest {
         unimplemented!("not implemented")
-    }
-
-    fn hash_elements<E: FieldElement>(_elements: &[E]) -> Self::Digest {
-        unimplemented!("not implemented");
     }
 
     fn read_digests_into_vec(

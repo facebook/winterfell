@@ -4,20 +4,25 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::FriOptions;
-use math::{field::StarkField, utils::log2};
+use math::{
+    field::{FieldElement, StarkField},
+    utils::log2,
+};
 
-pub struct VerifierContext<B: StarkField> {
+pub struct VerifierContext<B: StarkField, E: FieldElement + From<B>> {
     max_degree: usize,
     domain_size: usize,
+    alphas: Vec<E>,
     domain_generator: B,
     options: FriOptions<B>,
     num_partitions: usize,
 }
 
-impl<B: StarkField> VerifierContext<B> {
+impl<B: StarkField, E: FieldElement + From<B>> VerifierContext<B, E> {
     pub fn new(
         domain_size: usize,
         max_degree: usize,
+        alphas: Vec<E>,
         num_partitions: usize,
         options: FriOptions<B>,
     ) -> Self {
@@ -25,6 +30,7 @@ impl<B: StarkField> VerifierContext<B> {
         VerifierContext {
             max_degree,
             domain_size,
+            alphas,
             domain_generator,
             options,
             num_partitions,
@@ -33,6 +39,10 @@ impl<B: StarkField> VerifierContext<B> {
 
     pub fn max_degree(&self) -> usize {
         self.max_degree
+    }
+
+    pub fn alphas(&self) -> &[E] {
+        &self.alphas
     }
 
     pub fn domain_size(&self) -> usize {

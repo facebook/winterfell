@@ -10,7 +10,7 @@ pub mod merkle;
 pub use merkle::{build_merkle_nodes, BatchMerkleProof, MerkleTree};
 
 mod random;
-pub use random::RandomElementGenerator;
+pub use random::{PublicCoin, RandomElementGenerator};
 
 mod errors;
 pub use errors::{DigestSerializationError, ProofSerializationError};

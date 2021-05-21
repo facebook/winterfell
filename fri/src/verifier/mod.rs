@@ -25,7 +25,7 @@ pub use channel::{DefaultVerifierChannel, VerifierChannel};
 /// evaluation domain is defined by the combination of base field (specified by B type parameter)
 /// and context.domain_size() parameter.
 pub fn verify<B, E, C>(
-    context: &VerifierContext<B>,
+    context: &VerifierContext<B, E>,
     channel: &C,
     evaluations: &[E],
     positions: &[usize],
@@ -100,7 +100,7 @@ where
         let row_polys = quartic::interpolate_batch(&xs, &layer_values);
 
         // calculate the pseudo-random value used for linear combination in layer folding
-        let alpha = channel.draw_fri_alpha(depth);
+        let alpha = context.alphas()[depth];
 
         // check that when the polynomials are evaluated at alpha, the result is equal to
         // the corresponding column value

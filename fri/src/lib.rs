@@ -18,8 +18,5 @@ pub use errors::{ProofSerializationError, VerifierError};
 mod proof;
 pub use proof::{FriProof, FriProofLayer};
 
-mod public_coin;
-pub use public_coin::PublicCoin;
-
 pub mod folding;
 pub mod utils;

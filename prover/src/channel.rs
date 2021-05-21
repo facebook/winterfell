@@ -5,15 +5,13 @@
 
 use common::{
     proof::{Commitments, Context, OodFrame, Queries, StarkProof},
-    ComputationContext, EvaluationFrame, PublicCoin,
+    ConstraintCompositionCoefficients, DeepCompositionCoefficients,
+    EvaluationFrame, Air,
 };
-use crypto::Hasher;
+use crypto::{Hasher, PublicCoin};
 use fri::{self, FriProof};
-use math::{
-    field::{FieldElement, StarkField},
-    utils::log2,
-};
-use std::convert::TryInto;
+use math::field::{FieldElement};
+use std::{marker::PhantomData};
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
@@ -21,28 +19,37 @@ use rayon::prelude::*;
 // TYPES AND INTERFACES
 // ================================================================================================
 
-pub struct ProverChannel<H: Hasher> {
-    context: ComputationContext,
+pub struct ProverChannel<'a, A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher> {
+    air: &'a A,
+    coin: PublicCoin<A::BaseElement, H>,
+    context: Context,
     trace_root: Option<H::Digest>,
     constraint_root: Option<H::Digest>,
     fri_roots: Vec<H::Digest>,
-    query_seed: Option<H::Digest>,
     pow_nonce: u64,
+    _field_element: PhantomData<E>,
 }
 
 // PROVER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-impl<H: Hasher> ProverChannel<H> {
+impl<'a, A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher> ProverChannel<'a, A, E, H> {
     /// Creates a new prover channel for the specified proof `context`.
-    pub fn new(context: &ComputationContext) -> Self {
+    pub fn new(air: &'a A) -> Self {
+        let context = Context::new::<A::BaseElement>(air.lde_domain_size(), air.options().clone());
+
+        let mut coin_seed = Vec::new();
+        context.write_into(&mut coin_seed);
+
         ProverChannel {
-            context: context.clone(),
+            air,
+            coin: PublicCoin::new(&coin_seed),
+            context,
             trace_root: None,
             constraint_root: None,
             fri_roots: Vec::new(),
-            query_seed: None,
             pow_nonce: 0,
+            _field_element: PhantomData,
         }
     }
 
@@ -53,6 +60,7 @@ impl<H: Hasher> ProverChannel<H> {
             "trace root has already been committed"
         );
         self.trace_root = Some(trace_root);
+        self.coin.reseed(trace_root);
     }
 
     /// Commits the prover the the constraint evaluations.
@@ -62,29 +70,55 @@ impl<H: Hasher> ProverChannel<H> {
             "constraint root has already been committed"
         );
         self.constraint_root = Some(constraint_root);
+        self.coin.reseed(constraint_root);
+    }
+
+    pub fn get_constraint_composition_coeffs(&mut self) -> ConstraintCompositionCoefficients<E> {
+        self.air.get_constraint_composition_coeffs(&mut self.coin)
+    }
+
+    pub fn get_ood_point(&mut self) -> E {
+        self.coin.draw()
+    }
+
+    pub fn get_deep_composition_coeffs(&mut self) -> DeepCompositionCoefficients<E> {
+        self.air.get_deep_composition_coeffs(&mut self.coin)
+    }
+
+    pub fn get_query_positions(&mut self) -> Vec<usize> {
+        let num_queries = self.context.options().num_queries();
+        self.coin
+            .draw_integers(num_queries, self.context.lde_domain_size())
     }
 
     /// Computes query seed from a combination of FRI layers and applies PoW to the seed
     /// based on the grinding_factor specified by the options
     pub fn grind_query_seed(&mut self) {
-        assert!(
-            !self.fri_roots.is_empty(),
-            "FRI layers haven't been computed yet"
-        );
-        assert!(
-            self.query_seed.is_none(),
-            "query seed has already been computed"
-        );
-        let options = self.context().options();
-        let seed = H::merge_many(&self.fri_roots);
-        let (seed, nonce) = find_pow_nonce::<H>(seed, options.grinding_factor());
-        self.query_seed = Some(seed);
+
+        let grinding_factor = self.context.options().grinding_factor();
+
+        #[cfg(not(feature = "concurrent"))]
+        let nonce = (1..u64::MAX)
+            .find(|&nonce| {
+                self.coin.check_leading_zeros(nonce) >= grinding_factor
+            })
+            .expect("nonce not found");
+    
+        #[cfg(feature = "concurrent")]
+        let nonce = (1..u64::MAX)
+            .into_par_iter()
+            .find_any(|&nonce| {
+                self.coin.check_leading_zeros(nonce) >= grinding_factor
+            })
+            .expect("nonce not found");
+
         self.pow_nonce = nonce;
+        self.coin.reseed_with_int(nonce);
     }
 
     /// Builds a proof from the previously committed values as well as values passed into
     /// this method.
-    pub fn build_proof<B: StarkField, E: FieldElement + From<B>>(
+    pub fn build_proof(
         self,
         trace_queries: Queries,
         constraint_queries: Queries,
@@ -92,7 +126,6 @@ impl<H: Hasher> ProverChannel<H> {
         ood_evaluations: Vec<E>,
         fri_proof: FriProof,
     ) -> StarkProof {
-        let options = self.context.options().clone();
         let commitments = Commitments::new::<H>(
             self.trace_root.unwrap(),
             self.constraint_root.unwrap(),
@@ -100,11 +133,7 @@ impl<H: Hasher> ProverChannel<H> {
         );
 
         StarkProof {
-            context: Context {
-                lde_domain_depth: log2(self.context.lde_domain_size()) as u8,
-                field_modulus_bytes: B::get_modulus_le_bytes(),
-                options,
-            },
+            context: self.context,
             commitments,
             trace_queries,
             constraint_queries,
@@ -115,71 +144,18 @@ impl<H: Hasher> ProverChannel<H> {
     }
 }
 
-impl<H: Hasher> fri::ProverChannel for ProverChannel<H> {
+impl<'a, A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher> fri::ProverChannel<E>
+    for ProverChannel<'a, A, E, H>
+{
+    type Hasher = H;
+
     /// Commits the prover to the a FRI layer.
     fn commit_fri_layer(&mut self, layer_root: H::Digest) {
         self.fri_roots.push(layer_root);
-    }
-}
-
-// PUBLIC COIN IMPLEMENTATION
-// ================================================================================================
-
-impl<H: Hasher> PublicCoin for ProverChannel<H> {
-    fn context(&self) -> &ComputationContext {
-        &self.context
+        self.coin.reseed(layer_root);
     }
 
-    fn constraint_seed(&self) -> H::Digest {
-        assert!(self.trace_root.is_some(), "constraint seed is not set");
-        self.trace_root.unwrap()
+    fn draw_fri_alpha(&mut self) -> E {
+        self.coin.draw()
     }
-
-    fn composition_seed(&self) -> H::Digest {
-        assert!(
-            self.constraint_root.is_some(),
-            "composition seed is not set"
-        );
-        self.constraint_root.unwrap()
-    }
-
-    fn query_seed(&self) -> H::Digest {
-        assert!(self.query_seed.is_some(), "query seed is not set");
-        self.query_seed.unwrap()
-    }
-}
-
-impl<H: Hasher> fri::PublicCoin for ProverChannel<H> {
-    type Hasher = H;
-
-    fn fri_layer_commitments(&self) -> &[H::Digest] {
-        assert!(!self.fri_roots.is_empty(), "FRI layers are not set");
-        &self.fri_roots
-    }
-}
-
-// HELPER FUNCTIONS
-// ================================================================================================
-fn find_pow_nonce<H: Hasher>(seed: H::Digest, grinding_factor: u32) -> (H::Digest, u64) {
-    #[cfg(not(feature = "concurrent"))]
-    let nonce = (1..u64::MAX)
-        .find(|nonce| {
-            let result = H::merge_with_int(seed, *nonce);
-            let bytes: &[u8] = result.as_ref();
-            u64::from_le_bytes(bytes[..8].try_into().unwrap()).trailing_zeros() >= grinding_factor
-        })
-        .expect("nonce not found");
-
-    #[cfg(feature = "concurrent")]
-    let nonce = (1..u64::MAX)
-        .into_par_iter()
-        .find_any(|nonce| {
-            let result = H::merge_with_int(seed, *nonce);
-            let bytes: &[u8] = result.as_ref();
-            u64::from_le_bytes(bytes[..8].try_into().unwrap()).trailing_zeros() >= grinding_factor
-        })
-        .expect("nonce not found");
-
-    let result = H::merge_with_int(seed, nonce);
-    (result, nonce)
 }

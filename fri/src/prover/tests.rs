@@ -20,7 +20,7 @@ use math::{
 pub fn build_prover_channel(
     trace_length: usize,
     options: &FriOptions<BaseElement>,
-) -> DefaultProverChannel<hash::Blake3_256> {
+) -> DefaultProverChannel<hash::Blake3_256, BaseElement> {
     DefaultProverChannel::new(trace_length * options.blowup_factor(), 32)
 }
 
@@ -65,9 +65,18 @@ pub fn verify_proof(
         domain_size,
     )
     .unwrap();
+    let alphas = channel
+        .fri_layer_commitments()
+        .iter()
+        .map(|com| {
+            let mut generator = crypto::RandomElementGenerator::<hash::Blake3_256>::new(*com, 0);
+            generator.draw()
+        })
+        .collect::<Vec<BaseElement>>();
     let context = VerifierContext::new(
         evaluations.len(),
         max_degree,
+        alphas,
         channel.num_fri_partitions(),
         options.clone(),
     );

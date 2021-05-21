@@ -131,6 +131,18 @@ impl ProofOptions {
     pub fn to_fri_options<B: StarkField>(&self) -> FriOptions<B> {
         FriOptions::new(self.blowup_factor(), self.domain_offset())
     }
+
+    // SERIALIZATION
+    // --------------------------------------------------------------------------------------------
+
+    /// Serializes these options and appends the resulting bytes to the `target` vector.
+    pub fn write_into(&self, target: &mut Vec<u8>) {
+        target.push(self.num_queries);
+        target.push(self.blowup_factor);
+        target.push(self.grinding_factor);
+        target.push(self.hash_fn as u8);
+        target.push(self.field_extension as u8);
+    }
 }
 
 // FIELD EXTENSION IMPLEMENTATION
