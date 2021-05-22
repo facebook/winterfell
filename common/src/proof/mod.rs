@@ -74,7 +74,7 @@ impl StarkProof {
                 self.trace_length() as u64,
             )
         } else {
-            // TODO: implement proven security estimation
+            // TODO: implement provable security estimation
             unimplemented!("proven security estimation has not been implement yet")
         }
     }

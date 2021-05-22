@@ -3,8 +3,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crypto::Hasher;
-use math::field::FieldElement;
+use crypto::{Hasher, PublicCoin};
+use math::field::{FieldElement, StarkField};
 use std::{convert::TryInto, marker::PhantomData, mem::size_of};
 
 // PROVER CHANNEL TRAIT
@@ -24,16 +24,18 @@ pub trait ProverChannel<E: FieldElement> {
 // DEFAULT PROVER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-pub struct DefaultProverChannel<H: Hasher, E: FieldElement> {
+pub struct DefaultProverChannel<B: StarkField, E: FieldElement + From<B>, H: Hasher> {
+    coin: PublicCoin<B, H>,
     commitments: Vec<H::Digest>,
     domain_size: usize,
     num_queries: usize,
     _field_element: PhantomData<E>,
 }
 
-impl<H: Hasher, E: FieldElement> DefaultProverChannel<H, E> {
+impl<B: StarkField, E: FieldElement + From<B>, H: Hasher> DefaultProverChannel<B, E, H> {
     pub fn new(domain_size: usize, num_queries: usize) -> Self {
         DefaultProverChannel {
+            coin: PublicCoin::new(&[]),
             commitments: Vec::new(),
             domain_size,
             num_queries,
@@ -85,14 +87,20 @@ impl<H: Hasher, E: FieldElement> DefaultProverChannel<H, E> {
     }
 }
 
-impl<H: Hasher, E: FieldElement> ProverChannel<E> for DefaultProverChannel<H, E> {
+impl<B, E, H> ProverChannel<E> for DefaultProverChannel<B, E, H>
+where
+    B: StarkField,
+    E: FieldElement + From<B>,
+    H: Hasher,
+{
     type Hasher = H;
 
     fn commit_fri_layer(&mut self, layer_root: H::Digest) {
         self.commitments.push(layer_root);
+        self.coin.reseed(layer_root);
     }
 
     fn draw_fri_alpha(&mut self) -> E {
-        unimplemented!()
+        self.coin.draw()
     }
 }

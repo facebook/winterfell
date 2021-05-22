@@ -140,6 +140,7 @@ impl TransitionConstraintDegree {
 // EVALUATION FRAME
 // ================================================================================================
 
+#[derive(Debug, Clone)]
 pub struct EvaluationFrame<E: FieldElement> {
     pub current: Vec<E>,
     pub next: Vec<E>,

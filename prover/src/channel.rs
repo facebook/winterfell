@@ -5,13 +5,12 @@
 
 use common::{
     proof::{Commitments, Context, OodFrame, Queries, StarkProof},
-    ConstraintCompositionCoefficients, DeepCompositionCoefficients,
-    EvaluationFrame, Air,
+    Air, ConstraintCompositionCoefficients, DeepCompositionCoefficients, EvaluationFrame,
 };
 use crypto::{Hasher, PublicCoin};
 use fri::{self, FriProof};
-use math::field::{FieldElement};
-use std::{marker::PhantomData};
+use math::field::FieldElement;
+use std::marker::PhantomData;
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
@@ -23,9 +22,8 @@ pub struct ProverChannel<'a, A: Air, E: FieldElement + From<A::BaseElement>, H: 
     air: &'a A,
     coin: PublicCoin<A::BaseElement, H>,
     context: Context,
-    trace_root: Option<H::Digest>,
-    constraint_root: Option<H::Digest>,
-    fri_roots: Vec<H::Digest>,
+    commitments: Commitments,
+    ood_frame: OodFrame,
     pow_nonce: u64,
     _field_element: PhantomData<E>,
 }
@@ -34,127 +32,149 @@ pub struct ProverChannel<'a, A: Air, E: FieldElement + From<A::BaseElement>, H: 
 // ================================================================================================
 
 impl<'a, A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher> ProverChannel<'a, A, E, H> {
-    /// Creates a new prover channel for the specified proof `context`.
+    // CONSTRUCTOR
+    // --------------------------------------------------------------------------------------------
+    /// Creates a new prover channel for the specified proof `air` and `public_inputs`.
     pub fn new(air: &'a A) -> Self {
         let context = Context::new::<A::BaseElement>(air.lde_domain_size(), air.options().clone());
 
+        // build a seed for the public coin; the initial seed is the hash of proof context and
+        // public inputs, but as the protocol progresses, the coin will be reseeded with the info
+        // sent to the verifier
         let mut coin_seed = Vec::new();
         context.write_into(&mut coin_seed);
+        // TODO: add public inputs to coin seed
 
         ProverChannel {
             air,
             coin: PublicCoin::new(&coin_seed),
             context,
-            trace_root: None,
-            constraint_root: None,
-            fri_roots: Vec::new(),
+            commitments: Commitments::default(),
+            ood_frame: OodFrame::default(),
             pow_nonce: 0,
             _field_element: PhantomData,
         }
     }
 
+    // COMMITMENT METHODS
+    // --------------------------------------------------------------------------------------------
+
     /// Commits the prover the extended execution trace.
     pub fn commit_trace(&mut self, trace_root: H::Digest) {
-        assert!(
-            self.trace_root.is_none(),
-            "trace root has already been committed"
-        );
-        self.trace_root = Some(trace_root);
+        self.commitments.add::<H>(&trace_root);
         self.coin.reseed(trace_root);
     }
 
-    /// Commits the prover the the constraint evaluations.
+    /// Commits the prover to the evaluations of the constraint composition polynomial.
     pub fn commit_constraints(&mut self, constraint_root: H::Digest) {
-        assert!(
-            self.constraint_root.is_none(),
-            "constraint root has already been committed"
-        );
-        self.constraint_root = Some(constraint_root);
+        self.commitments.add::<H>(&constraint_root);
         self.coin.reseed(constraint_root);
     }
 
+    /// Saves the out-of-domain evaluation frame. This also reseeds the public coin with the
+    /// hashes of the evaluation frame states.
+    pub fn send_ood_evaluation_frame(&mut self, frame: &EvaluationFrame<E>) {
+        self.ood_frame.set_evaluation_frame(frame);
+        self.coin.reseed(H::hash_elements(&frame.current));
+        self.coin.reseed(H::hash_elements(&frame.next));
+    }
+
+    /// Saves the evaluations of constraint composition polynomial columns at the out-of-domain
+    /// point. This also reseeds the public coin wit the hash of the evaluations.
+    pub fn send_ood_constraint_evaluations(&mut self, evaluations: &[E]) {
+        self.ood_frame.set_constraint_evaluations(evaluations);
+        self.coin.reseed(H::hash_elements(evaluations));
+    }
+
+    // PUBLIC COIN METHODS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns a set of coefficients for constructing a constraint composition polynomial drawn
+    /// from the public coin.
     pub fn get_constraint_composition_coeffs(&mut self) -> ConstraintCompositionCoefficients<E> {
         self.air.get_constraint_composition_coeffs(&mut self.coin)
     }
 
+    /// Returns an out-of-domain point drawn from the public coin.
     pub fn get_ood_point(&mut self) -> E {
         self.coin.draw()
     }
 
+    /// Returns a set of coefficients for constructing a DEEP composition polynomial drawn from
+    /// the public coin.
     pub fn get_deep_composition_coeffs(&mut self) -> DeepCompositionCoefficients<E> {
         self.air.get_deep_composition_coeffs(&mut self.coin)
     }
 
+    /// Returns a set of positions in the LDE domain against which the evaluations of trace and
+    /// constraint composition polynomials should be queried.
     pub fn get_query_positions(&mut self) -> Vec<usize> {
         let num_queries = self.context.options().num_queries();
-        self.coin
-            .draw_integers(num_queries, self.context.lde_domain_size())
+        let lde_domain_size = self.context.lde_domain_size();
+        self.coin.draw_integers(num_queries, lde_domain_size)
     }
 
-    /// Computes query seed from a combination of FRI layers and applies PoW to the seed
-    /// based on the grinding_factor specified by the options
+    /// Determines a nonce, which when hashed with the current seed of the public coin results
+    /// in a new seed with the number of leading zeros equal to the grinding_factor specified
+    /// in the proof options.
     pub fn grind_query_seed(&mut self) {
-
         let grinding_factor = self.context.options().grinding_factor();
 
         #[cfg(not(feature = "concurrent"))]
         let nonce = (1..u64::MAX)
-            .find(|&nonce| {
-                self.coin.check_leading_zeros(nonce) >= grinding_factor
-            })
+            .find(|&nonce| self.coin.check_leading_zeros(nonce) >= grinding_factor)
             .expect("nonce not found");
-    
+
         #[cfg(feature = "concurrent")]
         let nonce = (1..u64::MAX)
             .into_par_iter()
-            .find_any(|&nonce| {
-                self.coin.check_leading_zeros(nonce) >= grinding_factor
-            })
+            .find_any(|&nonce| self.coin.check_leading_zeros(nonce) >= grinding_factor)
             .expect("nonce not found");
 
         self.pow_nonce = nonce;
         self.coin.reseed_with_int(nonce);
     }
 
+    // PROOF BUILDER
+    // --------------------------------------------------------------------------------------------
     /// Builds a proof from the previously committed values as well as values passed into
     /// this method.
     pub fn build_proof(
         self,
         trace_queries: Queries,
         constraint_queries: Queries,
-        ood_frame: EvaluationFrame<E>,
-        ood_evaluations: Vec<E>,
         fri_proof: FriProof,
     ) -> StarkProof {
-        let commitments = Commitments::new::<H>(
-            self.trace_root.unwrap(),
-            self.constraint_root.unwrap(),
-            self.fri_roots,
-        );
-
         StarkProof {
             context: self.context,
-            commitments,
+            commitments: self.commitments,
+            ood_frame: self.ood_frame,
             trace_queries,
             constraint_queries,
-            ood_frame: OodFrame::new(ood_frame, ood_evaluations),
             fri_proof,
             pow_nonce: self.pow_nonce,
         }
     }
 }
 
-impl<'a, A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher> fri::ProverChannel<E>
-    for ProverChannel<'a, A, E, H>
+// FRI PROVER CHANNEL IMPLEMENTATION
+// ================================================================================================
+
+impl<'a, A, E, H> fri::ProverChannel<E> for ProverChannel<'a, A, E, H>
+where
+    A: Air,
+    E: FieldElement + From<A::BaseElement>,
+    H: Hasher,
 {
     type Hasher = H;
 
-    /// Commits the prover to the a FRI layer.
+    /// Commits the prover to a FRI layer.
     fn commit_fri_layer(&mut self, layer_root: H::Digest) {
-        self.fri_roots.push(layer_root);
+        self.commitments.add::<H>(&layer_root);
         self.coin.reseed(layer_root);
     }
 
+    /// Returns a new alpha drawn from the public coin.
     fn draw_fri_alpha(&mut self) -> E {
         self.coin.draw()
     }

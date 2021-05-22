@@ -124,7 +124,6 @@ fn apply_sbox<E: FieldElement>(state: &mut [E]) {
 #[inline(always)]
 #[allow(clippy::needless_range_loop)]
 fn apply_inv_sbox(state: &mut [BaseElement]) {
-    // TODO: optimize
     for i in 0..STATE_WIDTH {
         state[i] = state[i].exp(INV_ALPHA);
     }

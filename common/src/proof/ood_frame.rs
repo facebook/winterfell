@@ -18,16 +18,36 @@ pub struct OodFrame {
 }
 
 impl OodFrame {
+    // CONSTRUCTOR
+    // --------------------------------------------------------------------------------------------
     /// Serializes the provided evaluation frame and a vector of out-of-domain constraint
     /// evaluations into vectors of bytes.
     pub fn new<E: FieldElement>(frame: EvaluationFrame<E>, evaluations: Vec<E>) -> Self {
         OodFrame {
-            trace_at_z1: E::elements_as_bytes(&frame.current).to_vec(),
-            trace_at_z2: E::elements_as_bytes(&frame.next).to_vec(),
-            evaluations: E::elements_as_bytes(&evaluations).to_vec(),
+            trace_at_z1: elements_to_canonical_bytes(&frame.current),
+            trace_at_z2: elements_to_canonical_bytes(&frame.next),
+            evaluations: elements_to_canonical_bytes(&evaluations),
         }
     }
 
+    // UPDATERS
+    // --------------------------------------------------------------------------------------------
+
+    /// Updates this evaluation frame potion of this out-of-domain frame.
+    pub fn set_evaluation_frame<E: FieldElement>(&mut self, frame: &EvaluationFrame<E>) {
+        assert!(self.trace_at_z1.is_empty());
+        assert!(self.trace_at_z2.is_empty());
+        self.trace_at_z1 = elements_to_canonical_bytes(&frame.current);
+        self.trace_at_z2 = elements_to_canonical_bytes(&frame.next);
+    }
+
+    pub fn set_constraint_evaluations<E: FieldElement>(&mut self, evaluations: &[E]) {
+        assert!(self.evaluations.is_empty());
+        self.evaluations = elements_to_canonical_bytes(evaluations);
+    }
+
+    // PARSER
+    // --------------------------------------------------------------------------------------------
     /// Returns an evaluation frame and a vector of out-of-domain constraint evaluations parsed
     /// from the serialized byte vectors.
     pub fn parse<E: FieldElement>(
@@ -76,4 +96,26 @@ impl OodFrame {
         target.extend_from_slice(&self.trace_at_z2);
         target.extend_from_slice(&self.evaluations)
     }
+}
+
+impl Default for OodFrame {
+    fn default() -> Self {
+        OodFrame {
+            trace_at_z1: Vec::new(),
+            trace_at_z2: Vec::new(),
+            evaluations: Vec::new(),
+        }
+    }
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+/// TODO: move to math crate and optimize?
+fn elements_to_canonical_bytes<E: FieldElement>(elements: &[E]) -> Vec<u8> {
+    let mut bytes = Vec::with_capacity(elements.len() * E::ELEMENT_BYTES);
+    for element in elements {
+        bytes.extend_from_slice(&element.to_canonical_bytes())
+    }
+    bytes
 }

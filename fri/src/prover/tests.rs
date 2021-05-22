@@ -7,7 +7,7 @@ use crate::{
     verifier, DefaultProverChannel, DefaultVerifierChannel, FriOptions, FriProof, VerifierChannel,
     VerifierContext, VerifierError,
 };
-use crypto::hash;
+use crypto::{hash, PublicCoin};
 use math::{
     fft,
     field::{f128::BaseElement, FieldElement, StarkField},
@@ -20,7 +20,7 @@ use math::{
 pub fn build_prover_channel(
     trace_length: usize,
     options: &FriOptions<BaseElement>,
-) -> DefaultProverChannel<hash::Blake3_256, BaseElement> {
+) -> DefaultProverChannel<BaseElement, BaseElement, hash::Blake3_256> {
     DefaultProverChannel::new(trace_length * options.blowup_factor(), 32)
 }
 
@@ -65,12 +65,13 @@ pub fn verify_proof(
         domain_size,
     )
     .unwrap();
+    let mut coin = PublicCoin::<BaseElement, hash::Blake3_256>::new(&[]);
     let alphas = channel
         .fri_layer_commitments()
         .iter()
-        .map(|com| {
-            let mut generator = crypto::RandomElementGenerator::<hash::Blake3_256>::new(*com, 0);
-            generator.draw()
+        .map(|&com| {
+            coin.reseed(com);
+            coin.draw()
         })
         .collect::<Vec<BaseElement>>();
     let context = VerifierContext::new(

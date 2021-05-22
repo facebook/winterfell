@@ -381,7 +381,7 @@ pub fn build_context(trace_length: usize, trace_width: usize) -> ComputationCont
 }
 
 pub fn build_prng() -> RandomElementGenerator<hash::Blake3_256> {
-    RandomElementGenerator::new([0; 32], 0)
+    RandomElementGenerator::new([0; 32])
 }
 
 pub fn build_sequence_poly(values: &[BaseElement], trace_length: usize) -> Vec<BaseElement> {

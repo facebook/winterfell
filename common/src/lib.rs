@@ -18,6 +18,3 @@ pub use air::{
     ConstraintDivisor, DeepCompositionCoefficients, EvaluationFrame, TraceInfo,
     TransitionConstraintDegree, TransitionConstraintGroup,
 };
-
-mod random;
-pub use random::PublicCoin;

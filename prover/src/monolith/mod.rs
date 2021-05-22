@@ -32,7 +32,7 @@ pub use trace::{ExecutionTrace, ExecutionTraceFragment, TracePolyTable};
 // PROVER
 // ================================================================================================
 /// Generates a STARK proof attesting that the specified `trace` is a valid execution trace of the
-/// computation described by AIR generated using the specified public inputs.
+/// computation described by AIR and generated using the specified public inputs.
 #[rustfmt::skip]
 pub fn prove<AIR: Air>(
     trace: ExecutionTrace<AIR::BaseElement>,
@@ -84,9 +84,9 @@ fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
     air: A,
     trace: ExecutionTrace<A::BaseElement>,
 ) -> Result<StarkProof, ProverError> {
-    // create a channel; this simulates interaction between the prover and the verifier;
-    // the channel will be used to commit to values and to draw randomness that should
-    // come from the verifier
+    // create a channel which is used to simulate interaction between the prover and the verifier;
+    // the channel will be used to commit to values and to draw randomness that should come from
+    // the verifier.
     let mut channel = ProverChannel::<A, E, H>::new(&air);
 
     // 1 ----- extend execution trace -------------------------------------------------------------
@@ -124,15 +124,14 @@ fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
     );
 
     // 3 ----- evaluate constraints ---------------------------------------------------------------
+    // evaluate constraints specified by the AIR over the constraint evaluation domain, and compute
+    // random linear combinations of these evaluations using coefficients drawn from the channel;
+    // this step evaluates only constraint numerators, thus, only constraints with identical
+    // denominators are merged together. the results are saved into a constraint evaluation table
+    // where each column contains merged evaluations of constraints with identical denominators.
     let now = Instant::now();
-
-    // build constraint evaluator; first, get a PRNG from the channel to build a set of
-    // coefficients for random linear combinations of constraint evaluations
     let constraint_coeffs = channel.get_constraint_composition_coeffs();
     let evaluator = ConstraintEvaluator::new(&air, constraint_coeffs);
-
-    // apply constraint evaluator to the extended trace table to generate a constraint evaluation
-    // table
     let constraint_evaluations = evaluator.evaluate(&extended_trace, &domain);
     debug!(
         "Evaluated constraints over domain of 2^{} elements in {} ms",
@@ -142,7 +141,12 @@ fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
 
     // 4 ----- commit to constraint evaluations ---------------------------------------------------
 
-    // first, build constraint composition polynomial from all constraint evaluations
+    // first, build constraint composition polynomial from the constraint evaluation table:
+    // - divide all constraint evaluation columns by their respective divisors
+    // - combine them into a single column of evaluations,
+    // - interpolate the column into a polynomial in coefficient form
+    // - "break" the polynomial into a set of column polynomials each of degree equal to
+    //   trace_length - 1
     let now = Instant::now();
     let composition_poly = constraint_evaluations.into_poly()?;
     debug!(
@@ -181,23 +185,27 @@ fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
     // increase security. Soundness is limited by the size of the field that the random point
     // is drawn from, and we can potentially save on performance by only drawing this point
     // from an extension field, rather than increasing the size of the field overall.
-
     let z = channel.get_ood_point();
 
-    // draw random coefficients to use during polynomial composition
-    let deep_coefficients = channel.get_deep_composition_coeffs();
+    // evaluate trace and constraint polynomials at the OOD point z, and send the results to
+    // the verifier. the trace polynomials are actually evaluated over two points: z and z * g,
+    // where g is the generator of the trace domain.
+    let ood_frame = trace_polys.get_ood_frame(z);
+    channel.send_ood_evaluation_frame(&ood_frame);
 
-    // initialize composition polynomial
+    let ood_evaluations = composition_poly.evaluate_at(z);
+    channel.send_ood_constraint_evaluations(&ood_evaluations);
+
+    // draw random coefficients to use during DEEP polynomial composition, and use them to
+    // initialize the DEPP composition polynomial
+    let deep_coefficients = channel.get_deep_composition_coeffs();
     let mut deep_composition_poly = DeepCompositionPoly::new(&air, z, deep_coefficients);
 
-    // combine all trace polynomials together and merge them into the DEEP composition polynomial;
-    // ood_frame are trace states at two out-of-domain points, and will go into the proof
-    let ood_frame = deep_composition_poly.add_trace_polys(trace_polys);
+    // combine all trace polynomials together and merge them into the DEEP composition polynomial
+    deep_composition_poly.add_trace_polys(trace_polys, ood_frame);
 
     // merge columns of constraint composition polynomial into the DEEP composition polynomial;
-    // ood_evaluations are the evaluations of composition polynomial columns at out-of-domain
-    // point, and will go into the proof
-    let ood_evaluations = deep_composition_poly.add_composition_poly(composition_poly);
+    deep_composition_poly.add_composition_poly(composition_poly, ood_evaluations);
 
     // raise the degree of the DEEP composition polynomial by one to make sure it is equal to
     // trace_length - 1
@@ -267,13 +275,7 @@ fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
     let constraint_queries = constraint_commitment.query(&query_positions);
 
     // build the proof object
-    let proof = channel.build_proof(
-        trace_queries,
-        constraint_queries,
-        ood_frame,
-        ood_evaluations,
-        fri_proof,
-    );
+    let proof = channel.build_proof(trace_queries, constraint_queries, fri_proof);
     debug!("Built proof object in {} ms", now.elapsed().as_millis());
 
     Ok(proof)

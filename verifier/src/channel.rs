@@ -143,6 +143,11 @@ impl<B: StarkField, E: FieldElement + From<B>, H: Hasher> VerifierChannel<B, E, 
         &self.ood_evaluations
     }
 
+    /// Returns commitments to FRI layers sent by the prover.
+    pub fn read_fri_layer_commitments(&self) -> &[H::Digest] {
+        &self.fri_roots
+    }
+
     /// Returns query proof-of-work nonce sent by the prover.
     pub fn read_pow_nonce(&self) -> u64 {
         self.pow_nonce
@@ -178,6 +183,9 @@ impl<B: StarkField, E: FieldElement + From<B>, H: Hasher> VerifierChannel<B, E, 
         Ok(&self.constraint_evaluations)
     }
 }
+
+// FRI VERIFIER CHANNEL IMPLEMENTATION
+// ================================================================================================
 
 impl<B, E, H> FriVerifierChannel<E> for VerifierChannel<B, E, H>
 where

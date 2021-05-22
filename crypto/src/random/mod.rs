@@ -172,16 +172,13 @@ pub struct RandomElementGenerator<H: Hasher> {
 
 impl<H: Hasher> RandomElementGenerator<H> {
     /// Returns a new random element generator instantiated with the provided `seed` and `offset`.
-    pub fn new(seed: H::Digest, offset: u64) -> Self {
-        RandomElementGenerator {
-            seed,
-            counter: offset,
-        }
+    pub fn new(seed: H::Digest) -> Self {
+        RandomElementGenerator { seed, counter: 0 }
     }
 
     /// Generates the next pseudo-random field element.
     pub fn draw<E: FieldElement>(&mut self) -> E {
-        loop {
+        for _ in 0..100 {
             // updated the seed by incrementing its counter and then hash the result
             self.counter += 1;
             let result = H::merge_with_int(self.seed, self.counter);
@@ -192,9 +189,9 @@ impl<H: Hasher> RandomElementGenerator<H> {
             if let Some(element) = E::from_random_bytes(&bytes[..(E::ELEMENT_BYTES as usize)]) {
                 return element;
             }
-
-            // TODO: abort after some number of retries
         }
+
+        panic!("failed to generate a valid field element after 100 tries");
     }
 
     /// Generates the next pair of pseudo-random field element.
