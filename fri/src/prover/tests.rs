@@ -4,8 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{
-    verifier, DefaultProverChannel, DefaultVerifierChannel, FriOptions, FriProof, VerifierChannel,
-    VerifierContext, VerifierError,
+    verifier, DefaultProverChannel, DefaultVerifierChannel, FriOptions, FriProof, VerifierContext,
+    VerifierError,
 };
 use crypto::{hash, PublicCoin};
 use math::{
@@ -19,7 +19,7 @@ use math::{
 
 pub fn build_prover_channel(
     trace_length: usize,
-    options: &FriOptions<BaseElement>,
+    options: &FriOptions,
 ) -> DefaultProverChannel<BaseElement, BaseElement, hash::Blake3_256> {
     DefaultProverChannel::new(trace_length * options.blowup_factor(), 32)
 }
@@ -57,33 +57,29 @@ pub fn verify_proof(
     max_degree: usize,
     domain_size: usize,
     positions: &[usize],
-    options: &FriOptions<BaseElement>,
+    options: &FriOptions,
 ) -> Result<(), VerifierError> {
-    let channel = DefaultVerifierChannel::<BaseElement, hash::Blake3_256>::new(
-        proof,
-        commitments,
-        domain_size,
-    )
-    .unwrap();
+    let mut channel =
+        DefaultVerifierChannel::<BaseElement, hash::Blake3_256>::new(proof, domain_size).unwrap();
     let mut coin = PublicCoin::<BaseElement, hash::Blake3_256>::new(&[]);
-    let alphas = channel
-        .fri_layer_commitments()
+    let alphas = commitments
         .iter()
         .map(|&com| {
             coin.reseed(com);
             coin.draw()
         })
         .collect::<Vec<BaseElement>>();
-    let context = VerifierContext::new(
+    let context = VerifierContext::<BaseElement, BaseElement, hash::Blake3_256>::new(
         evaluations.len(),
         max_degree,
+        commitments,
         alphas,
-        channel.num_fri_partitions(),
+        channel.num_partitions(),
         options.clone(),
     );
     let queried_evaluations = positions
         .iter()
         .map(|&p| evaluations[p])
         .collect::<Vec<_>>();
-    verifier::verify(&context, &channel, &queried_evaluations, &positions)
+    verifier::verify(&context, &mut channel, &queried_evaluations, &positions)
 }

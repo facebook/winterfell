@@ -8,19 +8,17 @@ use super::{
     FriProver,
 };
 use crate::FriOptions;
-use math::field::{f128::BaseElement, StarkField};
 
 #[test]
 fn sequential_fri_prove_verify() {
     let trace_length = 4096;
     let ce_blowup = 2;
     let lde_blowup = 8;
-    let offset = BaseElement::GENERATOR;
 
-    let options = FriOptions::new(lde_blowup, offset);
+    let options = FriOptions::new(lde_blowup, 4, 256);
     let mut channel = build_prover_channel(trace_length, &options);
     let evaluations = build_evaluations(trace_length, lde_blowup, ce_blowup);
-    let lde_domain = build_lde_domain(trace_length, lde_blowup, offset);
+    let lde_domain = build_lde_domain(trace_length, lde_blowup, options.domain_offset());
 
     // instantiate the prover and generate the proof
     let mut prover = FriProver::new(options.clone());

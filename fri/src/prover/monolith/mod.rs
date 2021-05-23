@@ -29,7 +29,7 @@ where
     C: ProverChannel<E, Hasher = H>,
     H: Hasher,
 {
-    options: FriOptions<B>,
+    options: FriOptions,
     layers: Vec<FriLayer<B, E, H>>,
     _coin: PhantomData<C>,
 }
@@ -50,7 +50,7 @@ where
     C: ProverChannel<E, Hasher = H>,
     H: Hasher,
 {
-    pub fn new(options: FriOptions<B>) -> Self {
+    pub fn new(options: FriOptions) -> Self {
         FriProver {
             options,
             layers: Vec::new(),
@@ -60,7 +60,7 @@ where
 
     /// Executes commit phase of FRI protocol which recursively applies a degree-respecting projection
     /// to evaluations of some function F over a larger domain. The degree of the function implied
-    /// but evaluations is reduced by FOLDING_FACTOR at every step until the remaining evaluations
+    /// but evaluations is reduced by folding_factor at every step until the remaining evaluations
     /// can fit into a vector of at most max_remainder_length. At each layer of recursion the
     /// current evaluations are committed to using a Merkle tree, and the root of this tree is used
     /// to derive randomness for the subsequent application of degree-respecting projection.
@@ -74,7 +74,7 @@ where
             domain[0],
             self.options.domain_offset(),
             "inconsistent domain offset; expected {}, but was: {}",
-            self.options.domain_offset(),
+            self.options.domain_offset::<B>(),
             domain[0]
         );
         assert!(
@@ -108,12 +108,12 @@ where
 
         // make sure remainder length does not exceed max allowed value
         let last_layer = &self.layers[self.layers.len() - 1];
-        let remainder_length = last_layer.evaluations.len() * FOLDING_FACTOR;
+        let remainder_size = last_layer.evaluations.len() * FOLDING_FACTOR;
         debug_assert!(
-            remainder_length <= self.options.max_remainder_length(),
+            remainder_size <= self.options.max_remainder_size(),
             "last FRI layer cannot exceed {} elements, but was {} elements",
-            self.options.max_remainder_length(),
-            remainder_length
+            self.options.max_remainder_size(),
+            remainder_size
         );
     }
 
@@ -161,7 +161,7 @@ where
         // clear layers so that another proof can be generated
         self.reset();
 
-        FriProof::new(layers, remainder, false)
+        FriProof::new(layers, remainder, 1)
     }
 
     /// Returns number of FRI layers computed during the last execution of build_layers() method

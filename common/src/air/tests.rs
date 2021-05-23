@@ -317,7 +317,15 @@ impl MockAir {
                 meta: Vec::new(),
             },
             (),
-            ProofOptions::new(32, 8, 0, HashFunction::Blake3_256, FieldExtension::None),
+            ProofOptions::new(
+                32,
+                8,
+                0,
+                HashFunction::Blake3_256,
+                FieldExtension::None,
+                4,
+                256,
+            ),
         );
         result.periodic_columns = column_values;
         result
@@ -330,7 +338,15 @@ impl MockAir {
                 meta: Vec::new(),
             },
             (),
-            ProofOptions::new(32, 8, 0, HashFunction::Blake3_256, FieldExtension::None),
+            ProofOptions::new(
+                32,
+                8,
+                0,
+                HashFunction::Blake3_256,
+                FieldExtension::None,
+                4,
+                256,
+            ),
         );
         result.assertions = assertions;
         result
@@ -375,7 +391,15 @@ impl Air for MockAir {
 // ================================================================================================
 
 pub fn build_context(trace_length: usize, trace_width: usize) -> ComputationContext {
-    let options = ProofOptions::new(32, 8, 0, HashFunction::Blake3_256, FieldExtension::None);
+    let options = ProofOptions::new(
+        32,
+        8,
+        0,
+        HashFunction::Blake3_256,
+        FieldExtension::None,
+        4,
+        256,
+    );
     let t_degrees = vec![TransitionConstraintDegree::new(2)];
     ComputationContext::new(trace_width, trace_length, t_degrees, options)
 }

@@ -9,40 +9,48 @@ use math::field::StarkField;
 // ================================================================================================
 
 // TODO: these are hard-coded for now, but in the future we should make them configurable
-pub const MAX_REMAINDER_LENGTH: usize = 256;
+pub const MAX_REMAINDER_SIZE: usize = 256;
 pub const FOLDING_FACTOR: usize = 4;
 
 // FRI OPTIONS
 // ================================================================================================
 
 #[derive(Clone)]
-pub struct FriOptions<B: StarkField> {
-    domain_offset: B,
+pub struct FriOptions {
     folding_factor: usize,
-    max_remainder_length: usize,
+    max_remainder_size: usize,
     blowup_factor: usize,
 }
 
-impl<B: StarkField> FriOptions<B> {
-    pub fn new(blowup_factor: usize, domain_offset: B) -> Self {
+impl FriOptions {
+    pub fn new(blowup_factor: usize, folding_factor: usize, max_remainder_size: usize) -> Self {
+        assert_eq!(
+            folding_factor, FOLDING_FACTOR,
+            "folding factor {} is not supported yet",
+            folding_factor
+        );
+        assert_eq!(
+            max_remainder_size, MAX_REMAINDER_SIZE,
+            "max remainder size {} is not yet supported",
+            max_remainder_size
+        );
         FriOptions {
-            domain_offset,
-            folding_factor: FOLDING_FACTOR,
-            max_remainder_length: MAX_REMAINDER_LENGTH,
+            folding_factor,
+            max_remainder_size,
             blowup_factor,
         }
     }
 
-    pub fn domain_offset(&self) -> B {
-        self.domain_offset
+    pub fn domain_offset<B: StarkField>(&self) -> B {
+        B::GENERATOR
     }
 
     pub fn folding_factor(&self) -> usize {
         self.folding_factor
     }
 
-    pub fn max_remainder_length(&self) -> usize {
-        self.max_remainder_length
+    pub fn max_remainder_size(&self) -> usize {
+        self.max_remainder_size
     }
 
     pub fn blowup_factor(&self) -> usize {
@@ -51,15 +59,15 @@ impl<B: StarkField> FriOptions<B> {
 
     pub fn num_fri_layers(&self, mut domain_size: usize) -> usize {
         let mut result = 0;
-        while domain_size > self.max_remainder_length {
+        while domain_size > self.max_remainder_size {
             domain_size /= self.folding_factor;
             result += 1;
         }
         result
     }
 
-    pub fn fri_remainder_length(&self, mut domain_size: usize) -> usize {
-        while domain_size > self.max_remainder_length {
+    pub fn fri_remainder_size(&self, mut domain_size: usize) -> usize {
+        while domain_size > self.max_remainder_size {
             domain_size /= self.folding_factor;
         }
         domain_size

@@ -61,8 +61,8 @@ impl<A: Air, E: FieldElement + From<A::BaseElement>> DeepComposer<A, E> {
     /// this function via the `ood_frame` parameter.
     pub fn compose_registers(
         &self,
-        queried_trace_states: &[Vec<A::BaseElement>],
-        ood_frame: &EvaluationFrame<E>,
+        queried_trace_states: Vec<Vec<A::BaseElement>>,
+        ood_frame: EvaluationFrame<E>,
     ) -> Vec<E> {
         let trace_at_z1 = &ood_frame.current;
         let trace_at_z2 = &ood_frame.next;
@@ -115,8 +115,8 @@ impl<A: Air, E: FieldElement + From<A::BaseElement>> DeepComposer<A, E> {
     /// via the `ood_evaluations` parameter.
     pub fn compose_constraints(
         &self,
-        queried_evaluations: &[Vec<E>],
-        ood_evaluations: &[E],
+        queried_evaluations: Vec<Vec<E>>,
+        ood_evaluations: Vec<E>,
     ) -> Vec<E> {
         assert_eq!(queried_evaluations.len(), self.x_coordinates.len());
 

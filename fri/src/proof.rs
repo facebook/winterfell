@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 pub struct FriProof {
     layers: Vec<FriProofLayer>,
     remainder: Vec<u8>,
-    partitioned: bool,
+    num_partitions: u8, // stored as power of 2
 }
 
 impl FriProof {
@@ -27,18 +27,18 @@ impl FriProof {
     pub fn new<E: FieldElement>(
         layers: Vec<FriProofLayer>,
         remainder: Vec<E>,
-        partitioned: bool,
+        num_partitions: usize,
     ) -> Self {
         FriProof {
             layers,
             remainder: E::elements_as_bytes(&remainder).to_vec(),
-            partitioned,
+            num_partitions: num_partitions.trailing_zeros() as u8,
         }
     }
 
-    /// Returns true if this proof was generated in multiple partitions.
-    pub fn is_partitioned(&self) -> bool {
-        self.partitioned
+    /// Returns the number of partitions used during proof generation.
+    pub fn num_partitions(&self) -> usize {
+        2usize.pow(self.num_partitions as u32)
     }
 
     // PARSING

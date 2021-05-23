@@ -15,20 +15,20 @@ pub struct VerifierChannel<B: StarkField, E: FieldElement + From<B>, H: Hasher> 
     // trace queries
     trace_root: H::Digest,
     trace_proof: BatchMerkleProof<H>,
-    trace_states: Vec<Vec<B>>,
+    trace_states: Option<Vec<Vec<B>>>,
     // constraint queries
     constraint_root: H::Digest,
     constraint_proof: BatchMerkleProof<H>,
-    constraint_evaluations: Vec<Vec<E>>,
+    constraint_evaluations: Option<Vec<Vec<E>>>,
     // FRI proof
-    fri_roots: Vec<H::Digest>,
+    fri_roots: Option<Vec<H::Digest>>,
     fri_layer_proofs: Vec<BatchMerkleProof<H>>,
     fri_layer_queries: Vec<Vec<E>>,
-    fri_remainder: Vec<E>,
-    fri_partitioned: bool,
+    fri_remainder: Option<Vec<E>>,
+    fri_num_partitions: usize,
     // out-of-domain evaluation
-    ood_frame: EvaluationFrame<E>,
-    ood_evaluations: Vec<E>,
+    ood_frame: Option<EvaluationFrame<E>>,
+    ood_evaluations: Option<Vec<E>>,
     // query proof-of-work
     pow_nonce: u64,
 }
@@ -48,7 +48,7 @@ impl<B: StarkField, E: FieldElement + From<B>, H: Hasher> VerifierChannel<B, E, 
 
         let lde_domain_size = air.lde_domain_size();
         let num_queries = air.options().num_queries();
-        let fri_options = air.options().to_fri_options::<B>();
+        let fri_options = air.options().to_fri_options();
 
         // --- parse commitments ------------------------------------------------------------------
         let (trace_root, constraint_root, fri_roots) = proof
@@ -79,7 +79,7 @@ impl<B: StarkField, E: FieldElement + From<B>, H: Hasher> VerifierChannel<B, E, 
             })?;
 
         // --- parse FRI proofs -------------------------------------------------------------------
-        let fri_partitioned = proof.fri_proof.is_partitioned();
+        let fri_num_partitions = proof.fri_proof.num_partitions();
         let fri_remainder = proof
             .fri_proof
             .parse_remainder()
@@ -99,20 +99,20 @@ impl<B: StarkField, E: FieldElement + From<B>, H: Hasher> VerifierChannel<B, E, 
             // trace queries
             trace_root,
             trace_proof,
-            trace_states,
+            trace_states: Some(trace_states),
             // constraint queries
             constraint_root,
             constraint_proof,
-            constraint_evaluations,
+            constraint_evaluations: Some(constraint_evaluations),
             // FRI proof
-            fri_roots,
+            fri_roots: Some(fri_roots),
             fri_layer_proofs,
             fri_layer_queries,
-            fri_remainder,
-            fri_partitioned,
+            fri_remainder: Some(fri_remainder),
+            fri_num_partitions,
             // out-of-domain evaluation
-            ood_frame,
-            ood_evaluations,
+            ood_frame: Some(ood_frame),
+            ood_evaluations: Some(ood_evaluations),
             // query seed
             pow_nonce: proof.pow_nonce,
         })
@@ -133,19 +133,24 @@ impl<B: StarkField, E: FieldElement + From<B>, H: Hasher> VerifierChannel<B, E, 
 
     /// Returns trace polynomial evaluations at out-of-domain points z and z * g, where g is the
     /// generator of the LDE domain.
-    pub fn read_ood_evaluation_frame(&self) -> &EvaluationFrame<E> {
-        &self.ood_frame
+    pub fn read_ood_evaluation_frame(&mut self) -> EvaluationFrame<E> {
+        self.ood_frame.take().expect("already read")
     }
 
     /// Returns evaluations of composition polynomial columns at z^m, where z is the out-of-domain
     /// point, and m is the number of composition polynomial columns.
-    pub fn read_ood_evaluations(&self) -> &[E] {
-        &self.ood_evaluations
+    pub fn read_ood_evaluations(&mut self) -> Vec<E> {
+        self.ood_evaluations.take().expect("already read")
     }
 
     /// Returns commitments to FRI layers sent by the prover.
-    pub fn read_fri_layer_commitments(&self) -> &[H::Digest] {
-        &self.fri_roots
+    pub fn read_fri_layer_commitments(&mut self) -> Vec<H::Digest> {
+        self.fri_roots.take().expect("already read")
+    }
+
+    /// Returns the number of partitions used during generation of FRI proof.
+    pub fn read_fri_num_partitions(&self) -> usize {
+        self.fri_num_partitions
     }
 
     /// Returns query proof-of-work nonce sent by the prover.
@@ -156,31 +161,31 @@ impl<B: StarkField, E: FieldElement + From<B>, H: Hasher> VerifierChannel<B, E, 
     /// Returns trace states at the specified positions of the LDE domain. This also checks if
     /// the trace states are valid against the trace commitment sent by the prover.
     pub fn read_trace_states(
-        &self,
+        &mut self,
         positions: &[usize],
         commitment: &H::Digest,
-    ) -> Result<&[Vec<B>], VerifierError> {
+    ) -> Result<Vec<Vec<B>>, VerifierError> {
         // make sure the states included in the proof correspond to the trace commitment
         if !MerkleTree::verify_batch(commitment, positions, &self.trace_proof) {
             return Err(VerifierError::TraceQueryDoesNotMatchCommitment);
         }
 
-        Ok(&self.trace_states)
+        Ok(self.trace_states.take().expect("already read"))
     }
 
     /// Returns constraint evaluations at the specified positions of the LDE domain. This also
     /// checks if the constraint evaluations are valid against the constraint commitment sent by
     /// the prover.
     pub fn read_constraint_evaluations(
-        &self,
+        &mut self,
         positions: &[usize],
         commitment: &H::Digest,
-    ) -> Result<&[Vec<E>], VerifierError> {
+    ) -> Result<Vec<Vec<E>>, VerifierError> {
         if !MerkleTree::verify_batch(commitment, &positions, &self.constraint_proof) {
             return Err(VerifierError::ConstraintQueryDoesNotMatchCommitment);
         }
 
-        Ok(&self.constraint_evaluations)
+        Ok(self.constraint_evaluations.take().expect("already read"))
     }
 }
 
@@ -195,23 +200,15 @@ where
 {
     type Hasher = H;
 
-    fn fri_layer_commitments(&self) -> &[H::Digest] {
-        &self.fri_roots
+    fn take_next_fri_layer_proof(&mut self) -> BatchMerkleProof<H> {
+        self.fri_layer_proofs.remove(0)
     }
 
-    fn fri_layer_proofs(&self) -> &[BatchMerkleProof<H>] {
-        &self.fri_layer_proofs
+    fn take_next_fri_layer_queries(&mut self) -> Vec<E> {
+        self.fri_layer_queries.remove(0)
     }
 
-    fn fri_layer_queries(&self) -> &[Vec<E>] {
-        &self.fri_layer_queries
-    }
-
-    fn fri_remainder(&self) -> &[E] {
-        &self.fri_remainder
-    }
-
-    fn fri_partitioned(&self) -> bool {
-        self.fri_partitioned
+    fn take_fri_remainder(&mut self) -> Vec<E> {
+        self.fri_remainder.take().expect("already read")
     }
 }

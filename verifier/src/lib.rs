@@ -6,7 +6,6 @@
 pub use common::{
     errors::VerifierError, proof::StarkProof, Air, FieldExtension, HashFunction, TraceInfo,
 };
-use fri::VerifierChannel as FriVerifierChannel;
 
 pub use crypto;
 use crypto::{
@@ -85,7 +84,7 @@ pub fn verify<AIR: Air>(
 /// attests to a correct execution of the computation specified by the provided `air`.
 fn perform_verification<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
     air: A,
-    channel: VerifierChannel<A::BaseElement, E, H>,
+    mut channel: VerifierChannel<A::BaseElement, E, H>,
     mut coin: PublicCoin<A::BaseElement, H>,
 ) -> Result<(), VerifierError> {
     // 1 ----- trace commitment -------------------------------------------------------------------
@@ -114,7 +113,7 @@ fn perform_verification<A: Air, E: FieldElement + From<A::BaseElement>, H: Hashe
     // read the out-of-domain evaluation frame sent by the prover and evaluate constraints over it;
     // also, reseed the public coin with the OOD frame received from the prover
     let ood_frame = channel.read_ood_evaluation_frame();
-    let ood_constraint_evaluation_1 = evaluate_constraints(&air, constraint_coeffs, ood_frame, z);
+    let ood_constraint_evaluation_1 = evaluate_constraints(&air, constraint_coeffs, &ood_frame, z);
     coin.reseed(H::hash_elements(&ood_frame.current));
     coin.reseed(H::hash_elements(&ood_frame.next));
 
@@ -129,7 +128,7 @@ fn perform_verification<A: Air, E: FieldElement + From<A::BaseElement>, H: Hashe
         .fold(E::ZERO, |result, (i, &value)| {
             result + z.exp((i as u32).into()) * value
         });
-    coin.reseed(H::hash_elements(ood_evaluations));
+    coin.reseed(H::hash_elements(&ood_evaluations));
 
     // finally, make sure the values are the same
     if ood_constraint_evaluation_1 != ood_constraint_evaluation_2 {
@@ -149,7 +148,7 @@ fn perform_verification<A: Air, E: FieldElement + From<A::BaseElement>, H: Hashe
     // the next FRI layer.
     let fri_layer_commitments = channel.read_fri_layer_commitments();
     let mut fri_alphas = Vec::with_capacity(fri_layer_commitments.len());
-    for commitment in fri_layer_commitments {
+    for commitment in fri_layer_commitments.iter() {
         coin.reseed(*commitment);
         fri_alphas.push(coin.draw());
     }
@@ -186,13 +185,19 @@ fn perform_verification<A: Air, E: FieldElement + From<A::BaseElement>, H: Hashe
     // 7 ----- Verify low-degree proof -------------------------------------------------------------
     // make sure that evaluations of the DEEP composition polynomial we computed in the previous
     // step are in fact evaluations of a polynomial of degree equal to trace polynomial degree
-    let fri_context = fri::VerifierContext::new(
+    let fri_context = fri::VerifierContext::<A::BaseElement, E, H>::new(
         air.lde_domain_size(),
         air.trace_poly_degree(),
+        fri_layer_commitments,
         fri_alphas,
-        channel.num_fri_partitions(),
-        air.options().to_fri_options::<A::BaseElement>(),
+        channel.read_fri_num_partitions(),
+        air.options().to_fri_options(),
     );
-    fri::verify(&fri_context, &channel, &deep_evaluations, &query_positions)
-        .map_err(VerifierError::FriVerificationFailed)
+    fri::verify(
+        &fri_context,
+        &mut channel,
+        &deep_evaluations,
+        &query_positions,
+    )
+    .map_err(VerifierError::FriVerificationFailed)
 }
