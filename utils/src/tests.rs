@@ -22,3 +22,11 @@ fn group_vector_elements() {
         }
     }
 }
+
+#[test]
+fn flatten_slice_elements() {
+    let a = vec![[1, 2, 3, 4], [5, 6, 7, 8]];
+
+    let b = super::flatten_slice_elements(&a);
+    assert_eq!([1, 2, 3, 4, 5, 6, 7, 8], b);
+}

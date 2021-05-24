@@ -10,6 +10,7 @@ use math::{
     field::{FieldElement, StarkField},
 };
 use std::collections::{BTreeSet, HashMap};
+use utils::Serializable;
 
 mod assertions;
 pub use assertions::Assertion;
@@ -47,7 +48,7 @@ pub struct TraceInfo {
 
 pub trait Air: Send + Sync {
     type BaseElement: StarkField;
-    type PublicInputs;
+    type PublicInputs: Serializable;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------

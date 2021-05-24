@@ -9,7 +9,7 @@ use super::{
 use crate::utils::{are_equal, is_binary, is_zero, not, EvaluationResult};
 use prover::{
     math::field::{f128::BaseElement, FieldElement},
-    Air, Assertion, ComputationContext, EvaluationFrame, ProofOptions, TraceInfo,
+    Air, Assertion, ComputationContext, EvaluationFrame, ProofOptions, Serializable, TraceInfo,
     TransitionConstraintDegree,
 };
 
@@ -23,6 +23,13 @@ const TWO: BaseElement = BaseElement::new(2);
 pub struct PublicInputs {
     pub pub_keys: Vec<[BaseElement; 2]>,
     pub messages: Vec<[BaseElement; 2]>,
+}
+
+impl Serializable for PublicInputs {
+    fn write_into(&self, target: &mut Vec<u8>) {
+        BaseElement::write_array_batch_into(&self.pub_keys, target);
+        BaseElement::write_array_batch_into(&self.messages, target);
+    }
 }
 
 pub struct LamportAggregateAir {

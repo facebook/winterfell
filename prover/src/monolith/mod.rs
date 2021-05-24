@@ -16,6 +16,7 @@ use math::{
     utils::log2,
 };
 use std::time::Instant;
+use utils::Serializable;
 
 mod domain;
 use domain::StarkDomain;
@@ -39,6 +40,10 @@ pub fn prove<AIR: Air>(
     pub_inputs: AIR::PublicInputs,
     options: ProofOptions,
 ) -> Result<StarkProof, ProverError> {
+    // serialize public inputs; these will be included in the seed for the public coin
+    let mut pub_inputs_bytes = Vec::new();
+    pub_inputs.write_into(&mut pub_inputs_bytes);
+
     // create an instance of AIR for the provided parameters. this takes a generic description of
     // the computation (provided via AIR type), and creates a description of a specific execution
     // of the computation for the provided public inputs.
@@ -59,18 +64,18 @@ pub fn prove<AIR: Air>(
     match air.context().options().field_extension() {
         FieldExtension::None => match air.context().options().hash_fn() {
             HashFunction::Blake3_256 => {
-                generate_proof::<AIR, AIR::BaseElement, Blake3_256>(air, trace)
+                generate_proof::<AIR, AIR::BaseElement, Blake3_256>(air, trace, pub_inputs_bytes)
             }
             HashFunction::Sha3_256 => {
-                generate_proof::<AIR, AIR::BaseElement, Sha3_256>(air, trace)
+                generate_proof::<AIR, AIR::BaseElement, Sha3_256>(air, trace, pub_inputs_bytes)
             },
         },
         FieldExtension::Quadratic => match air.context().options().hash_fn() {
             HashFunction::Blake3_256 => {
-                generate_proof::<AIR, QuadExtension<AIR::BaseElement>, Blake3_256>(air, trace)
+                generate_proof::<AIR, QuadExtension<AIR::BaseElement>, Blake3_256>(air, trace, pub_inputs_bytes)
             }
             HashFunction::Sha3_256 => {
-                generate_proof::<AIR, QuadExtension<AIR::BaseElement>, Sha3_256>(air, trace)
+                generate_proof::<AIR, QuadExtension<AIR::BaseElement>, Sha3_256>(air, trace, pub_inputs_bytes)
             }
         },
     }
@@ -83,11 +88,12 @@ pub fn prove<AIR: Air>(
 fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
     air: A,
     trace: ExecutionTrace<A::BaseElement>,
+    pub_inputs_bytes: Vec<u8>,
 ) -> Result<StarkProof, ProverError> {
     // create a channel which is used to simulate interaction between the prover and the verifier;
     // the channel will be used to commit to values and to draw randomness that should come from
     // the verifier.
-    let mut channel = ProverChannel::<A, E, H>::new(&air);
+    let mut channel = ProverChannel::<A, E, H>::new(&air, pub_inputs_bytes);
 
     // 1 ----- extend execution trace -------------------------------------------------------------
 

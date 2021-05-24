@@ -14,7 +14,7 @@ use core::{
 };
 use rand::{distributions::Uniform, prelude::*};
 use serde::{Deserialize, Serialize};
-use utils::AsBytes;
+use utils::{AsBytes, Serializable};
 
 #[cfg(test)]
 mod tests;
@@ -74,10 +74,6 @@ impl FieldElement for BaseElement {
 
     fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
         Self::try_from(bytes).ok()
-    }
-
-    fn to_canonical_bytes(self) -> Vec<u8> {
-        self.0.to_le_bytes().to_vec()
     }
 
     fn elements_into_bytes(elements: Vec<Self>) -> Vec<u8> {
@@ -314,6 +310,15 @@ impl AsBytes for BaseElement {
         // TODO: take endianness into account
         let self_ptr: *const BaseElement = self;
         unsafe { slice::from_raw_parts(self_ptr as *const u8, BaseElement::ELEMENT_BYTES) }
+    }
+}
+
+// SERIALIZATION
+// ------------------------------------------------------------------------------------------------
+
+impl Serializable for BaseElement {
+    fn write_into(&self, target: &mut Vec<u8>) {
+        target.extend_from_slice(&self.0.to_le_bytes());
     }
 }
 

@@ -13,8 +13,8 @@ use crate::utils::{
 };
 use prover::{
     math::field::{f128::BaseElement, FieldElement},
-    Air, Assertion, ComputationContext, EvaluationFrame, ExecutionTrace, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
+    Air, Assertion, ComputationContext, EvaluationFrame, ExecutionTrace, ProofOptions,
+    Serializable, TraceInfo, TransitionConstraintDegree,
 };
 
 // CONSTANTS
@@ -27,6 +27,12 @@ const TRACE_WIDTH: usize = 7;
 
 pub struct PublicInputs {
     pub tree_root: [BaseElement; 2],
+}
+
+impl Serializable for PublicInputs {
+    fn write_into(&self, target: &mut Vec<u8>) {
+        BaseElement::write_batch_into(&self.tree_root, target);
+    }
 }
 
 pub struct MerkleAir {

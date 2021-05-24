@@ -12,14 +12,13 @@ use core::{
         SubAssign,
     },
 };
-use utils::AsBytes;
+use utils::{AsBytes, Serializable};
 
 // FIELD ELEMENT
 // ================================================================================================
 
 pub trait FieldElement:
-    AsBytes
-    + Copy
+    Copy
     + Clone
     + Debug
     + Display
@@ -44,6 +43,8 @@ pub trait FieldElement:
     + From<u16>
     + From<u8>
     + for<'a> TryFrom<&'a [u8]>
+    + AsBytes
+    + Serializable
 {
     type PositiveInteger: Debug
         + Copy
@@ -131,9 +132,6 @@ pub trait FieldElement:
 
     // SERIALIZATION / DESERIALIZATION
     // --------------------------------------------------------------------------------------------
-
-    /// Returns a canonical byte representation of this field element.
-    fn to_canonical_bytes(self) -> Vec<u8>;
 
     /// Converts a vector of field elements into a vector of bytes. The elements may be in the
     /// internal representation rather than in the canonical representation. This conversion is

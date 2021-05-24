@@ -8,6 +8,47 @@ use core::{mem, slice};
 #[cfg(test)]
 mod tests;
 
+// SERIALIZABLE
+// ================================================================================================
+
+pub trait Serializable: Sized {
+    // REQUIRED METHODS
+    // --------------------------------------------------------------------------------------------
+    /// Should serialize self into bytes, and append the bytes at the end of the `target` vector.
+    fn write_into(&self, target: &mut Vec<u8>);
+
+    // PROVIDED METHODS
+    // --------------------------------------------------------------------------------------------
+
+    /// Serializes self into a vector of bytes.
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut result = Vec::new(); // TODO: use size hint to initialize with capacity
+        self.write_into(&mut result);
+        result
+    }
+
+    /// Serializes all elements of the `source`, and appends the resulting bytes at the end of
+    /// the `target` vector. This method does not write any metadata (e.g. number of serialized
+    /// elements) into the `target`.
+    fn write_batch_into(source: &[Self], target: &mut Vec<u8>) {
+        for item in source {
+            item.write_into(target);
+        }
+    }
+
+    /// Serializes all individual elements contained in the `source`, and appends the resulting
+    /// bytes at the end of the `target` vector. This method does not write any metadata (e.g.
+    /// number of serialized elements) into the `target`.
+    fn write_array_batch_into<const N: usize>(source: &[[Self; N]], target: &mut Vec<u8>) {
+        let source = flatten_slice_elements(source);
+        Self::write_batch_into(source, target);
+    }
+}
+
+impl Serializable for () {
+    fn write_into(&self, _target: &mut Vec<u8>) {}
+}
+
 // AS BYTES
 // ================================================================================================
 
@@ -80,4 +121,11 @@ pub fn group_slice_elements<T, const N: usize>(source: &[T]) -> &[[T; N]] {
     let p = source.as_ptr();
     let len = source.len() / N;
     unsafe { slice::from_raw_parts(p as *const [T; N], len) }
+}
+
+// Transmutes a slice of n arrays each of length N, into a slice of N * n elements.
+pub fn flatten_slice_elements<T, const N: usize>(source: &[[T; N]]) -> &[T] {
+    let p = source.as_ptr();
+    let len = source.len() * N;
+    unsafe { slice::from_raw_parts(p as *const T, len) }
 }

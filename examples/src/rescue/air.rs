@@ -7,8 +7,8 @@ use super::rescue;
 use crate::utils::{are_equal, is_zero, not, EvaluationResult};
 use prover::{
     math::field::{f128::BaseElement, FieldElement},
-    Air, Assertion, ComputationContext, EvaluationFrame, ExecutionTrace, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
+    Air, Assertion, ComputationContext, EvaluationFrame, ExecutionTrace, ProofOptions,
+    Serializable, TraceInfo, TransitionConstraintDegree,
 };
 
 // CONSTANTS
@@ -44,6 +44,13 @@ const CYCLE_MASK: [BaseElement; CYCLE_LENGTH] = [
 pub struct PublicInputs {
     pub seed: [BaseElement; 2],
     pub result: [BaseElement; 2],
+}
+
+impl Serializable for PublicInputs {
+    fn write_into(&self, target: &mut Vec<u8>) {
+        BaseElement::write_batch_into(&self.seed, target);
+        BaseElement::write_batch_into(&self.result, target);
+    }
 }
 
 pub struct RescueAir {

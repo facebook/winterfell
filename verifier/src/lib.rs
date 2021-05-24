@@ -6,6 +6,7 @@
 pub use common::{
     errors::VerifierError, proof::StarkProof, Air, FieldExtension, HashFunction, TraceInfo,
 };
+pub use utils::Serializable;
 
 pub use crypto;
 use crypto::{
@@ -34,19 +35,19 @@ pub fn verify<AIR: Air>(
     proof: StarkProof,
     pub_inputs: AIR::PublicInputs,
 ) -> Result<(), VerifierError> {
+    // build a seed for the public coin; the initial seed is the hash of public inputs and proof
+    // context, but as the protocol progresses, the coin will be reseeded with the info received
+    // from the prover
+    let mut coin_seed = Vec::new();
+    pub_inputs.write_into(&mut coin_seed);
+    proof.context.write_into(&mut coin_seed);
+
     // create AIR instance for the computation specified in the proof
     let trace_info = TraceInfo {
         length: proof.trace_length(),
         meta: vec![],
     };
     let air = AIR::new(trace_info, pub_inputs, proof.options().clone());
-
-    // build a seed for the public coin; the initial seed is the hash of proof context and public
-    // inputs, but as the protocol progresses, the coin will be reseeded with the info received
-    // from the prover
-    let mut coin_seed = Vec::new();
-    proof.context.write_into(&mut coin_seed);
-    // TODO: add serialized public inputs to the seed
 
     // figure out which version of the generic proof verification procedure to run. this is a sort
     // of static dispatch for selecting two generic parameter: extension field and hash function.
