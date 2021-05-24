@@ -78,6 +78,14 @@ fn batch_inversion() {
     }
 }
 
+#[test]
+fn log2() {
+    assert_eq!(super::log2(1), 0);
+    assert_eq!(super::log2(16), 4);
+    assert_eq!(super::log2(1 << 20), 20);
+    assert_eq!(super::log2(2usize.pow(20)), 20);
+}
+
 // VECTOR FUNCTIONS
 // ================================================================================================
 
