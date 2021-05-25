@@ -24,7 +24,7 @@ const MIN_CONCURRENT_DOMAIN_SIZE: usize = 8192;
 // CONSTRAINT EVALUATOR
 // ================================================================================================
 
-pub struct ConstraintEvaluator<'a, A: Air, E: FieldElement + From<A::BaseElement>> {
+pub struct ConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>> {
     air: &'a A,
     boundary_constraints: Vec<BoundaryConstraintGroup<A::BaseElement, E>>,
     transition_constraints: Vec<TransitionConstraintGroup<E>>,
@@ -35,7 +35,7 @@ pub struct ConstraintEvaluator<'a, A: Air, E: FieldElement + From<A::BaseElement
     transition_constraint_degrees: Vec<usize>,
 }
 
-impl<'a, A: Air, E: FieldElement + From<A::BaseElement>> ConstraintEvaluator<'a, A, E> {
+impl<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>> ConstraintEvaluator<'a, A, E> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Returns a new evaluator which can be used to evaluate transition and boundary constraints

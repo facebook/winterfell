@@ -85,7 +85,7 @@ pub fn prove<AIR: Air>(
 // ================================================================================================
 /// Performs the actual proof generation procedure, generating the proof that the provided
 /// execution `trace` is valid against the provided `air`.
-fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
+fn generate_proof<A: Air, E: FieldElement<BaseField = A::BaseElement>, H: Hasher>(
     air: A,
     trace: ExecutionTrace<A::BaseElement>,
     pub_inputs_bytes: Vec<u8>,

@@ -37,6 +37,7 @@ pub trait FieldElement:
     + MulAssign<Self>
     + DivAssign<Self>
     + Neg<Output = Self>
+    + From<Self::BaseField>
     + From<u128>
     + From<u64>
     + From<u32>
@@ -57,7 +58,7 @@ pub trait FieldElement:
         + From<u32>
         + From<u64>;
 
-    type Base: StarkField;
+    type BaseField: StarkField;
 
     /// Number of bytes needed to encode an element
     const ELEMENT_BYTES: usize;
@@ -173,7 +174,7 @@ pub trait FieldElement:
 // STARK FIELD
 // ================================================================================================
 
-pub trait StarkField: FieldElement + AsBytes {
+pub trait StarkField: FieldElement<BaseField = Self> {
     /// Prime modulus of the field. Must be of the form k * 2^n + 1 (a Proth prime).
     /// This ensures that the field has high 2-adicity.
     const MODULUS: Self::PositiveInteger;

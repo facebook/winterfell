@@ -168,7 +168,7 @@ pub trait Air: Send + Sync {
     /// assign coefficients to each constraint, and group the constraints by denominator. The
     /// coefficients will be used to compute random linear combination of boundary constraints
     /// during constraint merging.
-    fn get_boundary_constraints<E: FieldElement + From<Self::BaseElement>>(
+    fn get_boundary_constraints<E: FieldElement<BaseField = Self::BaseElement>>(
         &self,
         coefficients: &[(E, E)],
     ) -> Vec<BoundaryConstraintGroup<Self::BaseElement, E>> {
@@ -307,10 +307,14 @@ pub trait Air: Send + Sync {
 
     /// Returns coefficients needed for random linear combination during construction of constraint
     /// composition polynomial.
-    fn get_constraint_composition_coeffs<E: FieldElement + From<Self::BaseElement>, H: Hasher>(
+    fn get_constraint_composition_coefficients<E, H>(
         &self,
         coin: &mut PublicCoin<Self::BaseElement, H>,
-    ) -> ConstraintCompositionCoefficients<E> {
+    ) -> ConstraintCompositionCoefficients<E>
+    where
+        E: FieldElement<BaseField = Self::BaseElement>,
+        H: Hasher,
+    {
         let num_t_constraints = self.num_transition_constraints();
         let num_b_constraints = self.get_assertions().len(); // TODO: this is heavy; do something lighter
 
@@ -322,10 +326,14 @@ pub trait Air: Send + Sync {
 
     /// Returns coefficients needed for random linear combinations during construction of DEEP
     /// composition polynomial.
-    fn get_deep_composition_coeffs<E: FieldElement + From<Self::BaseElement>, H: Hasher>(
+    fn get_deep_composition_coefficients<E, H>(
         &self,
         coin: &mut PublicCoin<Self::BaseElement, H>,
-    ) -> DeepCompositionCoefficients<E> {
+    ) -> DeepCompositionCoefficients<E>
+    where
+        E: FieldElement<BaseField = Self::BaseElement>,
+        H: Hasher,
+    {
         let trace_width = self.trace_width();
         let num_composition_columns = self.ce_blowup_factor();
 

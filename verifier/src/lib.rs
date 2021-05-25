@@ -83,7 +83,7 @@ pub fn verify<AIR: Air>(
 // ================================================================================================
 /// Performs the actual verification by reading the data from the `channel` and making sure it
 /// attests to a correct execution of the computation specified by the provided `air`.
-fn perform_verification<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
+fn perform_verification<A: Air, E: FieldElement<BaseField = A::BaseElement>, H: Hasher>(
     air: A,
     mut channel: VerifierChannel<A::BaseElement, E, H>,
     mut coin: PublicCoin<A::BaseElement, H>,
@@ -95,7 +95,7 @@ fn perform_verification<A: Air, E: FieldElement + From<A::BaseElement>, H: Hashe
     // the prover, and prover uses them to compute constraint composition polynomial.
     let trace_commitment = channel.read_trace_commitment();
     coin.reseed(trace_commitment);
-    let constraint_coeffs = air.get_constraint_composition_coeffs(&mut coin);
+    let constraint_coeffs = air.get_constraint_composition_coefficients(&mut coin);
 
     // 2 ----- constraint commitment --------------------------------------------------------------
     // read the commitment to evaluations of the constraint composition polynomial over the LDE
@@ -141,7 +141,7 @@ fn perform_verification<A: Air, E: FieldElement + From<A::BaseElement>, H: Hashe
     // interactive version of the protocol, the verifier sends these coefficients to the prover
     // and the prover uses them to compute the DEEP composition polynomial. the prover, then
     // applies FRI protocol to the evaluations of the DEEP composition polynomial.
-    let deep_coefficients = air.get_deep_composition_coeffs::<E, H>(&mut coin);
+    let deep_coefficients = air.get_deep_composition_coefficients::<E, H>(&mut coin);
 
     // read FRI layer commitments sent by the prover, and use each commitment to update the public
     // coin and draw a random point alpha from it; in the interactive version of the protocol, the

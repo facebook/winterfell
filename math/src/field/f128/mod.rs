@@ -51,7 +51,7 @@ impl BaseElement {
 
 impl FieldElement for BaseElement {
     type PositiveInteger = u128;
-    type Base = Self;
+    type BaseField = Self;
 
     const ZERO: Self = BaseElement(0);
     const ONE: Self = BaseElement(1);

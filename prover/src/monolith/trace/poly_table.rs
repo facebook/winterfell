@@ -46,7 +46,7 @@ impl<B: StarkField> TracePolyTable<B> {
     }
 
     /// Evaluates all trace polynomials the the specified point `x`.
-    pub fn evaluate_at<E: FieldElement + From<B>>(&self, x: E) -> Vec<E> {
+    pub fn evaluate_at<E: FieldElement<BaseField = B>>(&self, x: E) -> Vec<E> {
         #[cfg(not(feature = "concurrent"))]
         let result = self.0.iter().map(|p| polynom::eval(p, x)).collect();
 
@@ -58,7 +58,7 @@ impl<B: StarkField> TracePolyTable<B> {
 
     /// Returns an out-of-domain evaluation frame constructed by evaluating trace polynomials
     /// for all registers at points z and z * g, where g is the generator of the trace domain.
-    pub fn get_ood_frame<E: FieldElement + From<B>>(&self, z: E) -> EvaluationFrame<E> {
+    pub fn get_ood_frame<E: FieldElement<BaseField = B>>(&self, z: E) -> EvaluationFrame<E> {
         let g = E::from(B::get_root_of_unity(log2(self.poly_size())));
         EvaluationFrame {
             current: self.evaluate_at(z),

@@ -18,7 +18,7 @@ use rayon::prelude::*;
 // TYPES AND INTERFACES
 // ================================================================================================
 
-pub struct ProverChannel<'a, A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher> {
+pub struct ProverChannel<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>, H: Hasher> {
     air: &'a A,
     coin: PublicCoin<A::BaseElement, H>,
     context: Context,
@@ -31,7 +31,9 @@ pub struct ProverChannel<'a, A: Air, E: FieldElement + From<A::BaseElement>, H: 
 // PROVER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-impl<'a, A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher> ProverChannel<'a, A, E, H> {
+impl<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>, H: Hasher>
+    ProverChannel<'a, A, E, H>
+{
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Creates a new prover channel for the specified `air` and public inputs.
@@ -91,7 +93,8 @@ impl<'a, A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher> ProverChanne
     /// Returns a set of coefficients for constructing a constraint composition polynomial drawn
     /// from the public coin.
     pub fn get_constraint_composition_coeffs(&mut self) -> ConstraintCompositionCoefficients<E> {
-        self.air.get_constraint_composition_coeffs(&mut self.coin)
+        self.air
+            .get_constraint_composition_coefficients(&mut self.coin)
     }
 
     /// Returns an out-of-domain point drawn from the public coin.
@@ -102,7 +105,7 @@ impl<'a, A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher> ProverChanne
     /// Returns a set of coefficients for constructing a DEEP composition polynomial drawn from
     /// the public coin.
     pub fn get_deep_composition_coeffs(&mut self) -> DeepCompositionCoefficients<E> {
-        self.air.get_deep_composition_coeffs(&mut self.coin)
+        self.air.get_deep_composition_coefficients(&mut self.coin)
     }
 
     /// Returns a set of positions in the LDE domain against which the evaluations of trace and
@@ -162,7 +165,7 @@ impl<'a, A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher> ProverChanne
 impl<'a, A, E, H> fri::ProverChannel<E> for ProverChannel<'a, A, E, H>
 where
     A: Air,
-    E: FieldElement + From<A::BaseElement>,
+    E: FieldElement<BaseField = A::BaseElement>,
     H: Hasher,
 {
     type Hasher = H;

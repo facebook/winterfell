@@ -15,11 +15,7 @@ use utils::uninit_vector;
 
 /// Evaluates polynomial `p` using FFT algorithm; the evaluation is done in-place, meaning
 /// `p` is updated with results of the evaluation.
-pub fn evaluate_poly<B, E>(p: &mut [E], twiddles: &[B])
-where
-    B: StarkField,
-    E: FieldElement + From<B>,
-{
+pub fn evaluate_poly<B: StarkField, E: FieldElement<BaseField = B>>(p: &mut [E], twiddles: &[B]) {
     split_radix_fft(p, twiddles);
     permute(p);
 }
@@ -27,16 +23,12 @@ where
 /// Evaluates polynomial `p` using FFT algorithm and returns the result. The polynomial is
 /// evaluated over domain specified by `twiddles`, expanded by the `blowup_factor`, and shifted
 /// by the `domain_offset`.
-pub fn evaluate_poly_with_offset<B, E>(
+pub fn evaluate_poly_with_offset<B: StarkField, E: FieldElement<BaseField = B>>(
     p: &[E],
     twiddles: &[B],
     domain_offset: B,
     blowup_factor: usize,
-) -> Vec<E>
-where
-    B: StarkField,
-    E: FieldElement + From<B>,
-{
+) -> Vec<E> {
     let domain_size = p.len() * blowup_factor;
     let g = B::get_root_of_unity(log2(domain_size));
     let mut result = uninit_vector(domain_size);
@@ -64,7 +56,7 @@ where
 pub fn interpolate_poly<B, E>(v: &mut [E], inv_twiddles: &[B])
 where
     B: StarkField,
-    E: FieldElement + From<B>,
+    E: FieldElement<BaseField = B>,
 {
     split_radix_fft(v, inv_twiddles);
     let inv_length = E::inv((v.len() as u64).into());
@@ -79,7 +71,7 @@ where
 pub fn interpolate_poly_with_offset<B, E>(values: &mut [E], inv_twiddles: &[B], domain_offset: B)
 where
     B: StarkField,
-    E: FieldElement + From<B>,
+    E: FieldElement<BaseField = B>,
 {
     split_radix_fft(values, inv_twiddles);
     permute(values);
@@ -131,7 +123,7 @@ pub fn permute<E: FieldElement>(v: &mut [E]) {
 
 /// In-place recursive FFT with permuted output.
 /// Adapted from: https://github.com/0xProject/OpenZKP/tree/master/algebra/primefield/src/fft
-pub(super) fn split_radix_fft<B: StarkField, E: FieldElement + From<B>>(
+pub(super) fn split_radix_fft<B: StarkField, E: FieldElement<BaseField = B>>(
     values: &mut [E],
     twiddles: &[B],
 ) {

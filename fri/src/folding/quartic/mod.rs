@@ -53,7 +53,7 @@ pub fn evaluate_batch<E: FieldElement>(polys: &[[E; 4]], x: E) -> Vec<E> {
 pub fn interpolate_batch<B, E>(xs: &[[B; 4]], ys: &[[E; 4]]) -> Vec<[E; 4]>
 where
     B: StarkField,
-    E: FieldElement + From<B>,
+    E: FieldElement<BaseField = B>,
 {
     debug_assert!(
         xs.len() == ys.len(),
@@ -100,7 +100,7 @@ pub fn hash_values<H: Hasher, E: FieldElement>(values: &[[E; 4]]) -> Vec<H::Dige
 fn interpolate_batch_into<B, E>(xs: &[[B; 4]], ys: &[[E; 4]], result: &mut [[E; 4]])
 where
     B: StarkField,
-    E: FieldElement + From<B>,
+    E: FieldElement<BaseField = B>,
 {
     let n = xs.len();
     let mut equations: Vec<[E; 4]> = Vec::with_capacity(n * 4);

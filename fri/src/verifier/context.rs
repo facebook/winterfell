@@ -10,7 +10,7 @@ use math::{
     utils::log2,
 };
 
-pub struct VerifierContext<B: StarkField, E: FieldElement + From<B>, H: Hasher> {
+pub struct VerifierContext<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> {
     max_degree: usize,
     domain_size: usize,
     domain_generator: B,
@@ -20,7 +20,7 @@ pub struct VerifierContext<B: StarkField, E: FieldElement + From<B>, H: Hasher> 
     num_partitions: usize,
 }
 
-impl<B: StarkField, E: FieldElement + From<B>, H: Hasher> VerifierContext<B, E, H> {
+impl<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> VerifierContext<B, E, H> {
     pub fn new(
         domain_size: usize,
         max_degree: usize,

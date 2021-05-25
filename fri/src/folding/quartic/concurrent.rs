@@ -30,7 +30,7 @@ pub fn evaluate_batch<E: FieldElement>(polys: &[[E; FOLDING_FACTOR]], x: E) -> V
 pub fn interpolate_batch<B, E>(xs: &[[B; 4]], ys: &[[E; 4]]) -> Vec<[E; 4]>
 where
     B: StarkField,
-    E: FieldElement + From<B>,
+    E: FieldElement<BaseField = B>,
 {
     debug_assert!(
         xs.len() == ys.len(),

@@ -10,7 +10,7 @@ use math::{field::FieldElement, polynom};
 // ================================================================================================
 
 /// Evaluates constraints for the specified evaluation frame.
-pub fn evaluate_constraints<A: Air, E: FieldElement + From<A::BaseElement>>(
+pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseElement>>(
     air: &A,
     coefficients: ConstraintCompositionCoefficients<E>,
     ood_frame: &EvaluationFrame<E>,
