@@ -3,10 +3,15 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use common::EvaluationFrame;
 use math::{
     field::{FieldElement, StarkField},
     polynom,
+    utils::log2,
 };
+
+#[cfg(feature = "concurrent")]
+use rayon::prelude::*;
 
 // POLYNOMIAL TABLE
 // ================================================================================================
@@ -42,7 +47,23 @@ impl<B: StarkField> TracePolyTable<B> {
 
     /// Evaluates all trace polynomials the the specified point `x`.
     pub fn evaluate_at<E: FieldElement + From<B>>(&self, x: E) -> Vec<E> {
-        self.0.iter().map(|p| polynom::eval(p, x)).collect()
+        #[cfg(not(feature = "concurrent"))]
+        let result = self.0.iter().map(|p| polynom::eval(p, x)).collect();
+
+        #[cfg(feature = "concurrent")]
+        let result = self.0.par_iter().map(|p| polynom::eval(p, x)).collect();
+
+        result
+    }
+
+    /// Returns an out-of-domain evaluation frame constructed by evaluating trace polynomials
+    /// for all registers at points z and z * g, where g is the generator of the trace domain.
+    pub fn get_ood_frame<E: FieldElement + From<B>>(&self, z: E) -> EvaluationFrame<E> {
+        let g = E::from(B::get_root_of_unity(log2(self.poly_size())));
+        EvaluationFrame {
+            current: self.evaluate_at(z),
+            next: self.evaluate_at(z * g),
+        }
     }
 
     /// Returns the number of trace polynomials in the table.

@@ -18,16 +18,35 @@ pub struct OodFrame {
 }
 
 impl OodFrame {
+    // CONSTRUCTOR
+    // --------------------------------------------------------------------------------------------
     /// Serializes the provided evaluation frame and a vector of out-of-domain constraint
     /// evaluations into vectors of bytes.
     pub fn new<E: FieldElement>(frame: EvaluationFrame<E>, evaluations: Vec<E>) -> Self {
-        OodFrame {
-            trace_at_z1: E::elements_as_bytes(&frame.current).to_vec(),
-            trace_at_z2: E::elements_as_bytes(&frame.next).to_vec(),
-            evaluations: E::elements_as_bytes(&evaluations).to_vec(),
-        }
+        let mut result = Self::default();
+        result.set_evaluation_frame(&frame);
+        result.set_constraint_evaluations(&evaluations);
+        result
     }
 
+    // UPDATERS
+    // --------------------------------------------------------------------------------------------
+
+    /// Updates this evaluation frame potion of this out-of-domain frame.
+    pub fn set_evaluation_frame<E: FieldElement>(&mut self, frame: &EvaluationFrame<E>) {
+        assert!(self.trace_at_z1.is_empty());
+        assert!(self.trace_at_z2.is_empty());
+        E::write_batch_into(&frame.current, &mut self.trace_at_z1);
+        E::write_batch_into(&frame.next, &mut self.trace_at_z2);
+    }
+
+    pub fn set_constraint_evaluations<E: FieldElement>(&mut self, evaluations: &[E]) {
+        assert!(self.evaluations.is_empty());
+        E::write_batch_into(evaluations, &mut self.evaluations);
+    }
+
+    // PARSER
+    // --------------------------------------------------------------------------------------------
     /// Returns an evaluation frame and a vector of out-of-domain constraint evaluations parsed
     /// from the serialized byte vectors.
     pub fn parse<E: FieldElement>(
@@ -63,5 +82,27 @@ impl OodFrame {
         }
 
         Ok((EvaluationFrame { current, next }, evaluations))
+    }
+
+    // SERIALIZATION
+    // --------------------------------------------------------------------------------------------
+
+    /// Serializes this out-of-domain frame and appends the resulting bytes to the `target` vector.
+    pub fn write_into(&self, target: &mut Vec<u8>) {
+        // we do not append vector lengths because the lengths can be inferred from other proof
+        // and AIR parameters
+        target.extend_from_slice(&self.trace_at_z1);
+        target.extend_from_slice(&self.trace_at_z2);
+        target.extend_from_slice(&self.evaluations)
+    }
+}
+
+impl Default for OodFrame {
+    fn default() -> Self {
+        OodFrame {
+            trace_at_z1: Vec::new(),
+            trace_at_z2: Vec::new(),
+            evaluations: Vec::new(),
+        }
     }
 }

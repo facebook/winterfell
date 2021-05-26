@@ -7,6 +7,7 @@ use crate::utils::{are_equal, EvaluationResult};
 use prover::{
     crypto::{DigestSerializationError, Hasher},
     math::field::{f128::BaseElement, FieldElement},
+    Serializable,
 };
 use std::slice;
 
@@ -102,6 +103,14 @@ impl Rescue128 {
 impl Hasher for Rescue128 {
     type Digest = Hash;
 
+    fn hash(_bytes: &[u8]) -> Self::Digest {
+        unimplemented!("not implemented")
+    }
+
+    fn hash_elements<E: FieldElement>(_elements: &[E]) -> Self::Digest {
+        unimplemented!("not implemented");
+    }
+
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest {
         Self::digest(Hash::hashes_as_elements(values))
     }
@@ -112,10 +121,6 @@ impl Hasher for Rescue128 {
 
     fn merge_with_int(_seed: Self::Digest, _value: u64) -> Self::Digest {
         unimplemented!("not implemented")
-    }
-
-    fn hash_elements<E: FieldElement>(_elements: &[E]) -> Self::Digest {
-        unimplemented!("not implemented");
     }
 
     fn read_digests_into_vec(
@@ -138,8 +143,8 @@ impl Hash {
     #[allow(clippy::wrong_self_convention)]
     pub fn to_bytes(&self) -> [u8; 32] {
         let mut bytes = [0; 32];
-        bytes[..16].copy_from_slice(&self.0[0].to_canonical_bytes());
-        bytes[16..].copy_from_slice(&self.0[1].to_canonical_bytes());
+        bytes[..16].copy_from_slice(&self.0[0].to_bytes());
+        bytes[16..].copy_from_slice(&self.0[1].to_bytes());
         bytes
     }
 
@@ -265,7 +270,6 @@ fn apply_sbox<E: FieldElement>(state: &mut [E]) {
 #[inline(always)]
 #[allow(clippy::needless_range_loop)]
 fn apply_inv_sbox(state: &mut [BaseElement]) {
-    // TODO: optimize
     for i in 0..STATE_WIDTH {
         state[i] = state[i].exp(INV_ALPHA);
     }

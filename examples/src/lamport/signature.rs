@@ -4,7 +4,10 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::rescue::Rescue128;
-use prover::math::field::{f128::BaseElement, FieldElement, StarkField};
+use prover::{
+    math::field::{f128::BaseElement, FieldElement, StarkField},
+    Serializable,
+};
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, convert::TryInto};
 
@@ -127,8 +130,8 @@ impl PublicKey {
     #[allow(dead_code, clippy::wrong_self_convention)]
     pub fn to_bytes(&self) -> [u8; 32] {
         let mut bytes = [0; 32];
-        bytes[..16].copy_from_slice(&self.0[0].to_canonical_bytes());
-        bytes[16..].copy_from_slice(&self.0[1].to_canonical_bytes());
+        bytes[..16].copy_from_slice(&self.0[0].to_bytes());
+        bytes[16..].copy_from_slice(&self.0[1].to_bytes());
         bytes
     }
 

@@ -4,7 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    AsBytes, BaseElement, ElementDecodingError, FieldElement, SerializationError, StarkField,
+    AsBytes, BaseElement, ElementDecodingError, FieldElement, Serializable, SerializationError,
+    StarkField,
 };
 use num_bigint::BigUint;
 use proptest::prelude::*;
@@ -112,7 +113,7 @@ fn equals() {
     // elements are equal
     assert_eq!(a, b);
     assert_eq!(a.as_int(), b.as_int());
-    assert_eq!(a.to_canonical_bytes(), b.to_canonical_bytes());
+    assert_eq!(a.to_bytes(), b.to_bytes());
 
     // but their internal representation is not
     assert_ne!(a.0, b.0);

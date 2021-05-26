@@ -6,7 +6,7 @@
 use crate::channel::ProverChannel;
 use common::{
     errors::ProverError, proof::StarkProof, Air, FieldExtension, HashFunction, ProofOptions,
-    PublicCoin, TraceInfo,
+    TraceInfo,
 };
 use crypto::hash::{Blake3_256, Hasher, Sha3_256};
 use log::debug;
@@ -16,6 +16,7 @@ use math::{
     utils::log2,
 };
 use std::time::Instant;
+use utils::Serializable;
 
 mod domain;
 use domain::StarkDomain;
@@ -32,13 +33,17 @@ pub use trace::{ExecutionTrace, ExecutionTraceFragment, TracePolyTable};
 // PROVER
 // ================================================================================================
 /// Generates a STARK proof attesting that the specified `trace` is a valid execution trace of the
-/// computation described by AIR generated using the specified public inputs.
+/// computation described by AIR and generated using the specified public inputs.
 #[rustfmt::skip]
 pub fn prove<AIR: Air>(
     trace: ExecutionTrace<AIR::BaseElement>,
     pub_inputs: AIR::PublicInputs,
     options: ProofOptions,
 ) -> Result<StarkProof, ProverError> {
+    // serialize public inputs; these will be included in the seed for the public coin
+    let mut pub_inputs_bytes = Vec::new();
+    pub_inputs.write_into(&mut pub_inputs_bytes);
+
     // create an instance of AIR for the provided parameters. this takes a generic description of
     // the computation (provided via AIR type), and creates a description of a specific execution
     // of the computation for the provided public inputs.
@@ -59,18 +64,18 @@ pub fn prove<AIR: Air>(
     match air.context().options().field_extension() {
         FieldExtension::None => match air.context().options().hash_fn() {
             HashFunction::Blake3_256 => {
-                generate_proof::<AIR, AIR::BaseElement, Blake3_256>(air, trace)
+                generate_proof::<AIR, AIR::BaseElement, Blake3_256>(air, trace, pub_inputs_bytes)
             }
             HashFunction::Sha3_256 => {
-                generate_proof::<AIR, AIR::BaseElement, Sha3_256>(air, trace)
+                generate_proof::<AIR, AIR::BaseElement, Sha3_256>(air, trace, pub_inputs_bytes)
             },
         },
         FieldExtension::Quadratic => match air.context().options().hash_fn() {
             HashFunction::Blake3_256 => {
-                generate_proof::<AIR, QuadExtension<AIR::BaseElement>, Blake3_256>(air, trace)
+                generate_proof::<AIR, QuadExtension<AIR::BaseElement>, Blake3_256>(air, trace, pub_inputs_bytes)
             }
             HashFunction::Sha3_256 => {
-                generate_proof::<AIR, QuadExtension<AIR::BaseElement>, Sha3_256>(air, trace)
+                generate_proof::<AIR, QuadExtension<AIR::BaseElement>, Sha3_256>(air, trace, pub_inputs_bytes)
             }
         },
     }
@@ -83,13 +88,12 @@ pub fn prove<AIR: Air>(
 fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
     air: A,
     trace: ExecutionTrace<A::BaseElement>,
+    pub_inputs_bytes: Vec<u8>,
 ) -> Result<StarkProof, ProverError> {
-    // create a channel; this simulates interaction between the prover and the verifier;
-    // the channel will be used to commit to values and to draw randomness that should
-    // come from the verifier
-    let mut channel = ProverChannel::<H>::new(air.context());
-
-    let context = air.context().clone(); // TODO: find a better way?
+    // create a channel which is used to simulate interaction between the prover and the verifier;
+    // the channel will be used to commit to values and to draw randomness that should come from
+    // the verifier.
+    let mut channel = ProverChannel::<A, E, H>::new(&air, pub_inputs_bytes);
 
     // 1 ----- extend execution trace -------------------------------------------------------------
 
@@ -126,15 +130,14 @@ fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
     );
 
     // 3 ----- evaluate constraints ---------------------------------------------------------------
+    // evaluate constraints specified by the AIR over the constraint evaluation domain, and compute
+    // random linear combinations of these evaluations using coefficients drawn from the channel;
+    // this step evaluates only constraint numerators, thus, only constraints with identical
+    // denominators are merged together. the results are saved into a constraint evaluation table
+    // where each column contains merged evaluations of constraints with identical denominators.
     let now = Instant::now();
-
-    // build constraint evaluator; the channel is passed in for the evaluator to draw random
-    // values from; these values are used by the evaluator to compute a random linear
-    // combination of constraint evaluations
-    let evaluator = ConstraintEvaluator::new(air, &channel);
-
-    // apply constraint evaluator to the extended trace table to generate a constraint evaluation
-    // table
+    let constraint_coeffs = channel.get_constraint_composition_coeffs();
+    let evaluator = ConstraintEvaluator::new(&air, constraint_coeffs);
     let constraint_evaluations = evaluator.evaluate(&extended_trace, &domain);
     debug!(
         "Evaluated constraints over domain of 2^{} elements in {} ms",
@@ -144,7 +147,12 @@ fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
 
     // 4 ----- commit to constraint evaluations ---------------------------------------------------
 
-    // first, build constraint composition polynomial from all constraint evaluations
+    // first, build constraint composition polynomial from the constraint evaluation table:
+    // - divide all constraint evaluation columns by their respective divisors
+    // - combine them into a single column of evaluations,
+    // - interpolate the column into a polynomial in coefficient form
+    // - "break" the polynomial into a set of column polynomials each of degree equal to
+    //   trace_length - 1
     let now = Instant::now();
     let composition_poly = constraint_evaluations.into_poly()?;
     debug!(
@@ -183,22 +191,27 @@ fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
     // increase security. Soundness is limited by the size of the field that the random point
     // is drawn from, and we can potentially save on performance by only drawing this point
     // from an extension field, rather than increasing the size of the field overall.
-    let z = channel.draw_deep_point::<E>();
+    let z = channel.get_ood_point();
 
-    // draw random coefficients to use during polynomial composition
-    let coefficients = channel.draw_composition_coefficients();
+    // evaluate trace and constraint polynomials at the OOD point z, and send the results to
+    // the verifier. the trace polynomials are actually evaluated over two points: z and z * g,
+    // where g is the generator of the trace domain.
+    let ood_frame = trace_polys.get_ood_frame(z);
+    channel.send_ood_evaluation_frame(&ood_frame);
 
-    // initialize composition polynomial
-    let mut deep_composition_poly = DeepCompositionPoly::new(&context, z, coefficients);
+    let ood_evaluations = composition_poly.evaluate_at(z);
+    channel.send_ood_constraint_evaluations(&ood_evaluations);
 
-    // combine all trace polynomials together and merge them into the DEEP composition polynomial;
-    // ood_frame are trace states at two out-of-domain points, and will go into the proof
-    let ood_frame = deep_composition_poly.add_trace_polys(trace_polys);
+    // draw random coefficients to use during DEEP polynomial composition, and use them to
+    // initialize the DEPP composition polynomial
+    let deep_coefficients = channel.get_deep_composition_coeffs();
+    let mut deep_composition_poly = DeepCompositionPoly::new(&air, z, deep_coefficients);
+
+    // combine all trace polynomials together and merge them into the DEEP composition polynomial
+    deep_composition_poly.add_trace_polys(trace_polys, ood_frame);
 
     // merge columns of constraint composition polynomial into the DEEP composition polynomial;
-    // ood_evaluations are the evaluations of composition polynomial columns at out-of-domain
-    // point, and will go into the proof
-    let ood_evaluations = deep_composition_poly.add_composition_poly(composition_poly);
+    deep_composition_poly.add_composition_poly(composition_poly, ood_evaluations);
 
     // raise the degree of the DEEP composition polynomial by one to make sure it is equal to
     // trace_length - 1
@@ -224,13 +237,13 @@ fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
     );
     debug!(
         "Evaluated DEEP composition polynomial over LDE domain (2^{} elements) in {} ms",
-        log2(context.lde_domain_size()),
+        log2(domain.lde_domain_size()),
         now.elapsed().as_millis()
     );
 
     // 7 ----- compute FRI layers for the composition polynomial ----------------------------------
     let now = Instant::now();
-    let mut fri_prover = fri::FriProver::new(context.options().to_fri_options());
+    let mut fri_prover = fri::FriProver::new(air.options().to_fri_options());
     fri_prover.build_layers(&mut channel, deep_evaluations, &domain.lde_values());
     debug!(
         "Computed {} FRI layers from composition polynomial evaluations in {} ms",
@@ -245,7 +258,7 @@ fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
     channel.grind_query_seed();
 
     // generate pseudo-random query positions
-    let query_positions = channel.draw_query_positions();
+    let query_positions = channel.get_query_positions();
     debug!(
         "Determined {} query positions in {} ms",
         query_positions.len(),
@@ -268,13 +281,7 @@ fn generate_proof<A: Air, E: FieldElement + From<A::BaseElement>, H: Hasher>(
     let constraint_queries = constraint_commitment.query(&query_positions);
 
     // build the proof object
-    let proof = channel.build_proof::<A::BaseElement, E>(
-        trace_queries,
-        constraint_queries,
-        ood_frame,
-        ood_evaluations,
-        fri_proof,
-    );
+    let proof = channel.build_proof(trace_queries, constraint_queries, fri_proof);
     debug!("Built proof object in {} ms", now.elapsed().as_millis());
 
     Ok(proof)

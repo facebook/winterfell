@@ -3,32 +3,43 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::PublicCoin;
-use crypto::Hasher;
-use std::{convert::TryInto, mem::size_of};
+use crypto::{Hasher, PublicCoin};
+use math::field::{FieldElement, StarkField};
+use std::{convert::TryInto, marker::PhantomData, mem::size_of};
 
 // PROVER CHANNEL TRAIT
 // ================================================================================================
 
-pub trait ProverChannel: PublicCoin {
-    fn commit_fri_layer(&mut self, layer_root: <<Self as PublicCoin>::Hasher as Hasher>::Digest);
+pub trait ProverChannel<E: FieldElement> {
+    type Hasher: Hasher;
+
+    fn commit_fri_layer(
+        &mut self,
+        layer_root: <<Self as ProverChannel<E>>::Hasher as Hasher>::Digest,
+    );
+
+    fn draw_fri_alpha(&mut self) -> E;
 }
 
 // DEFAULT PROVER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-pub struct DefaultProverChannel<H: Hasher> {
+pub struct DefaultProverChannel<B: StarkField, E: FieldElement + From<B>, H: Hasher> {
+    coin: PublicCoin<B, H>,
     commitments: Vec<H::Digest>,
     domain_size: usize,
     num_queries: usize,
+    _field_element: PhantomData<E>,
 }
 
-impl<H: Hasher> DefaultProverChannel<H> {
+impl<B: StarkField, E: FieldElement + From<B>, H: Hasher> DefaultProverChannel<B, E, H> {
     pub fn new(domain_size: usize, num_queries: usize) -> Self {
         DefaultProverChannel {
+            coin: PublicCoin::new(&[]),
             commitments: Vec::new(),
             domain_size,
             num_queries,
+            _field_element: PhantomData,
         }
     }
 
@@ -70,18 +81,26 @@ impl<H: Hasher> DefaultProverChannel<H> {
 
         result
     }
-}
 
-impl<H: Hasher> ProverChannel for DefaultProverChannel<H> {
-    fn commit_fri_layer(&mut self, layer_root: H::Digest) {
-        self.commitments.push(layer_root);
+    pub fn fri_layer_commitments(&self) -> &[H::Digest] {
+        &self.commitments
     }
 }
 
-impl<H: Hasher> PublicCoin for DefaultProverChannel<H> {
+impl<B, E, H> ProverChannel<E> for DefaultProverChannel<B, E, H>
+where
+    B: StarkField,
+    E: FieldElement + From<B>,
+    H: Hasher,
+{
     type Hasher = H;
 
-    fn fri_layer_commitments(&self) -> &[H::Digest] {
-        &self.commitments
+    fn commit_fri_layer(&mut self, layer_root: H::Digest) {
+        self.commitments.push(layer_root);
+        self.coin.reseed(layer_root);
+    }
+
+    fn draw_fri_alpha(&mut self) -> E {
+        self.coin.draw()
     }
 }

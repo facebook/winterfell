@@ -126,14 +126,22 @@ For more information about the `Air` trait see [common crate](common#Air-trait),
 ```Rust
 use math::field::{f128::BaseElement, FieldElement};
 use prover::{
-    Air, Assertion, ComputationContext, EvaluationFrame, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
+    Air, Assertion, ComputationContext, EvaluationFrame, ProofOptions, Serializable,
+    TraceInfo, TransitionConstraintDegree,
 };
 
 // Public inputs for our computation will consist of the starting value and the end result.
 pub struct PublicInputs {
     start: BaseElement,
     result: BaseElement,
+}
+
+// We need to describe how public inputs can be converted to bytes.
+impl Serializable for PublicInputs {
+    fn write_into(&self, target: &mut Vec<u8>) {
+        self.start.write_into(target);
+        self.result.write_into(target);
+    }
 }
 
 // For a specific instance of our computation, we'll keep track of the public inputs and

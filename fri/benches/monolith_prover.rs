@@ -22,11 +22,11 @@ pub fn build_layers(c: &mut Criterion) {
     fri_group.sample_size(10);
     fri_group.measurement_time(Duration::from_secs(10));
 
-    let options = FriOptions::new(BLOWUP_FACTOR, DOMAIN_OFFSET);
+    let options = FriOptions::new(BLOWUP_FACTOR, 4, 256);
 
     for &domain_size in &BATCH_SIZES {
         let g = BaseElement::get_root_of_unity(log2(domain_size));
-        let domain = get_power_series_with_offset(g, BaseElement::GENERATOR, domain_size);
+        let domain = get_power_series_with_offset(g, DOMAIN_OFFSET, domain_size);
         let evaluations = build_evaluations(domain_size);
 
         fri_group.bench_with_input(
@@ -37,7 +37,11 @@ pub fn build_layers(c: &mut Criterion) {
                 b.iter_batched(
                     || e.clone(),
                     |evaluations| {
-                        let mut channel = DefaultProverChannel::<Blake3_256>::new(domain_size, 32);
+                        let mut channel = DefaultProverChannel::<
+                            BaseElement,
+                            BaseElement,
+                            Blake3_256,
+                        >::new(domain_size, 32);
                         prover.build_layers(&mut channel, evaluations, &domain);
                         prover.reset();
                     },

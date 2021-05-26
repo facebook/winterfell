@@ -113,6 +113,24 @@ impl<E: FieldElement> CompositionPoly<E> {
         result
     }
 
+    /// Returns evaluations of all composition polynomial columns at point z^m, where m is
+    /// the number of column polynomials.
+    pub fn evaluate_at(&self, z: E) -> Vec<E> {
+        let z_m = z.exp((self.0.len() as u32).into());
+
+        #[cfg(not(feature = "concurrent"))]
+        let result = self.0.iter().map(|poly| polynom::eval(poly, z_m)).collect();
+
+        #[cfg(feature = "concurrent")]
+        let result = self
+            .0
+            .par_iter()
+            .map(|poly| polynom::eval(poly, z_m))
+            .collect();
+
+        result
+    }
+
     /// Transforms this composition polynomial into a vector of individual column polynomials.
     pub fn into_columns(self) -> Vec<Vec<E>> {
         self.0

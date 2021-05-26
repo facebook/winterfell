@@ -13,7 +13,7 @@ use prover::{
         field::{f128::BaseElement, FieldElement, StarkField},
         utils::log2,
     },
-    Air, Assertion, ComputationContext, EvaluationFrame, ProofOptions, TraceInfo,
+    Air, Assertion, ComputationContext, EvaluationFrame, ProofOptions, Serializable, TraceInfo,
     TransitionConstraintDegree,
 };
 
@@ -29,6 +29,15 @@ pub struct PublicInputs {
     pub num_pub_keys: usize,
     pub num_signatures: usize,
     pub message: [BaseElement; 2],
+}
+
+impl Serializable for PublicInputs {
+    fn write_into(&self, target: &mut Vec<u8>) {
+        BaseElement::write_batch_into(&self.pub_key_root, target);
+        target.extend_from_slice(&(self.num_pub_keys as u32).to_le_bytes());
+        target.extend_from_slice(&(self.num_signatures as u32).to_le_bytes());
+        BaseElement::write_batch_into(&self.message, target);
+    }
 }
 
 pub struct LamportThresholdAir {

@@ -29,6 +29,11 @@ impl Commitments {
         Commitments(bytes)
     }
 
+    /// Adds the specified commitment to the list of commitments.
+    pub fn add<H: Hasher>(&mut self, commitment: &H::Digest) {
+        self.0.extend_from_slice(commitment.as_ref())
+    }
+
     /// Parses the serialized commitments into distinct parts.
     #[allow(clippy::type_complexity)]
     pub fn parse<H: Hasher>(
@@ -47,5 +52,11 @@ impl Commitments {
             ));
         }
         Ok((commitments[0], commitments[1], commitments[2..].to_vec()))
+    }
+}
+
+impl Default for Commitments {
+    fn default() -> Self {
+        Commitments(Vec::new())
     }
 }

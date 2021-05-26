@@ -4,8 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    Air, Assertion, BoundaryConstraintGroup, ComputationContext, EvaluationFrame, ProofOptions,
-    TraceInfo, TransitionConstraintDegree,
+    Air, Assertion, ComputationContext, EvaluationFrame, ProofOptions, TraceInfo,
+    TransitionConstraintDegree,
 };
 use crate::{FieldExtension, HashFunction};
 use crypto::{hash, RandomElementGenerator};
@@ -111,9 +111,11 @@ fn get_boundary_constraints() {
 
     // get boundary constraints from AIR, and sort constraint groups so that the order
     // is stable; the original order is just by degree_adjustment
-    let prng = build_prng();
-    let mut groups: Vec<BoundaryConstraintGroup<BaseElement, BaseElement>> =
-        air.get_boundary_constraints(prng);
+    let mut prng = build_prng();
+    let coefficients = (0..8)
+        .map(|_| prng.draw_pair())
+        .collect::<Vec<(BaseElement, BaseElement)>>();
+    let mut groups = air.get_boundary_constraints(&coefficients);
     groups.sort_by(|g1, g2| {
         if g1.degree_adjustment() == g2.degree_adjustment() {
             let n1 = &g1.divisor().numerator()[0].1;
@@ -315,7 +317,15 @@ impl MockAir {
                 meta: Vec::new(),
             },
             (),
-            ProofOptions::new(32, 8, 0, HashFunction::Blake3_256, FieldExtension::None),
+            ProofOptions::new(
+                32,
+                8,
+                0,
+                HashFunction::Blake3_256,
+                FieldExtension::None,
+                4,
+                256,
+            ),
         );
         result.periodic_columns = column_values;
         result
@@ -328,7 +338,15 @@ impl MockAir {
                 meta: Vec::new(),
             },
             (),
-            ProofOptions::new(32, 8, 0, HashFunction::Blake3_256, FieldExtension::None),
+            ProofOptions::new(
+                32,
+                8,
+                0,
+                HashFunction::Blake3_256,
+                FieldExtension::None,
+                4,
+                256,
+            ),
         );
         result.assertions = assertions;
         result
@@ -373,13 +391,21 @@ impl Air for MockAir {
 // ================================================================================================
 
 pub fn build_context(trace_length: usize, trace_width: usize) -> ComputationContext {
-    let options = ProofOptions::new(32, 8, 0, HashFunction::Blake3_256, FieldExtension::None);
+    let options = ProofOptions::new(
+        32,
+        8,
+        0,
+        HashFunction::Blake3_256,
+        FieldExtension::None,
+        4,
+        256,
+    );
     let t_degrees = vec![TransitionConstraintDegree::new(2)];
     ComputationContext::new(trace_width, trace_length, t_degrees, options)
 }
 
 pub fn build_prng() -> RandomElementGenerator<hash::Blake3_256> {
-    RandomElementGenerator::new([0; 32], 0)
+    RandomElementGenerator::new([0; 32])
 }
 
 pub fn build_sequence_poly(values: &[BaseElement], trace_length: usize) -> Vec<BaseElement> {

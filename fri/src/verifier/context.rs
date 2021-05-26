@@ -4,28 +4,38 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::FriOptions;
-use math::{field::StarkField, utils::log2};
+use crypto::Hasher;
+use math::{
+    field::{FieldElement, StarkField},
+    utils::log2,
+};
 
-pub struct VerifierContext<B: StarkField> {
+pub struct VerifierContext<B: StarkField, E: FieldElement + From<B>, H: Hasher> {
     max_degree: usize,
     domain_size: usize,
     domain_generator: B,
-    options: FriOptions<B>,
+    layer_commitments: Vec<H::Digest>,
+    layer_alphas: Vec<E>,
+    options: FriOptions,
     num_partitions: usize,
 }
 
-impl<B: StarkField> VerifierContext<B> {
+impl<B: StarkField, E: FieldElement + From<B>, H: Hasher> VerifierContext<B, E, H> {
     pub fn new(
         domain_size: usize,
         max_degree: usize,
+        layer_commitments: Vec<H::Digest>,
+        layer_alphas: Vec<E>,
         num_partitions: usize,
-        options: FriOptions<B>,
+        options: FriOptions,
     ) -> Self {
         let domain_generator = B::get_root_of_unity(log2(domain_size));
         VerifierContext {
             max_degree,
             domain_size,
             domain_generator,
+            layer_commitments,
+            layer_alphas,
             options,
             num_partitions,
         }
@@ -45,6 +55,14 @@ impl<B: StarkField> VerifierContext<B> {
 
     pub fn domain_offset(&self) -> B {
         self.options.domain_offset()
+    }
+
+    pub fn layer_commitments(&self) -> &[H::Digest] {
+        &self.layer_commitments
+    }
+
+    pub fn layer_alphas(&self) -> &[E] {
+        &self.layer_alphas
     }
 
     pub fn num_partitions(&self) -> usize {

@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{folding::quartic, utils, VerifierError};
+use crypto::Hasher;
 use math::{
     field::{FieldElement, StarkField},
     polynom,
@@ -24,16 +25,17 @@ pub use channel::{DefaultVerifierChannel, VerifierChannel};
 /// with degree <= context.max_degree() at x coordinates specified by the `positions` slice. The
 /// evaluation domain is defined by the combination of base field (specified by B type parameter)
 /// and context.domain_size() parameter.
-pub fn verify<B, E, C>(
-    context: &VerifierContext<B>,
-    channel: &C,
+pub fn verify<B, E, H, C>(
+    context: &VerifierContext<B, E, H>,
+    channel: &mut C,
     evaluations: &[E],
     positions: &[usize],
 ) -> Result<(), VerifierError>
 where
     B: StarkField,
     E: FieldElement + From<B>,
-    C: VerifierChannel<E>,
+    H: Hasher,
+    C: VerifierChannel<E, Hasher = H>,
 {
     assert_eq!(
         evaluations.len(),
@@ -43,7 +45,7 @@ where
     let domain_size = context.domain_size();
     let domain_generator = context.domain_generator();
     let domain_offset = context.domain_offset();
-    let num_partitions = channel.num_fri_partitions();
+    let num_partitions = context.num_partitions();
 
     // powers of the given root of unity 1, p, p^2, p^3 such that p^4 = 1
     let quartic_roots = [
@@ -72,7 +74,9 @@ where
             num_partitions,
         );
         // read query values from the specified indexes in the Merkle tree
-        let layer_values = channel.read_layer_queries(depth, &position_indexes)?;
+        let layer_commitment = context.layer_commitments()[depth];
+        let layer_values =
+            channel.read_layer_queries(depth, &position_indexes, &layer_commitment)?;
         let query_values = get_query_values(
             &layer_values,
             &positions,
@@ -100,7 +104,7 @@ where
         let row_polys = quartic::interpolate_batch(&xs, &layer_values);
 
         // calculate the pseudo-random value used for linear combination in layer folding
-        let alpha = channel.draw_fri_alpha(depth);
+        let alpha = context.layer_alphas()[depth];
 
         // check that when the polynomials are evaluated at alpha, the result is equal to
         // the corresponding column value
@@ -117,7 +121,8 @@ where
 
     // read the remainder from the channel and make sure it matches with the columns
     // of the previous layer
-    let remainder = channel.read_remainder()?;
+    let remainder_commitment = context.layer_commitments().last().unwrap();
+    let remainder = channel.read_remainder(&remainder_commitment)?;
     for (&position, evaluation) in positions.iter().zip(evaluations) {
         if remainder[position] != evaluation {
             return Err(VerifierError::RemainderValuesNotConsistent);

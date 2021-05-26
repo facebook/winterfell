@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use common::{Air, CompositionCoefficients, EvaluationFrame, FieldExtension};
+use common::{Air, DeepCompositionCoefficients, EvaluationFrame, FieldExtension};
 use math::field::FieldElement;
 
 // DEEP COMPOSER
@@ -11,7 +11,7 @@ use math::field::FieldElement;
 
 pub struct DeepComposer<A: Air, E: FieldElement + From<A::BaseElement>> {
     field_extension: FieldExtension,
-    cc: CompositionCoefficients<E>,
+    cc: DeepCompositionCoefficients<E>,
     x_coordinates: Vec<A::BaseElement>,
     z: E,
     next_z: E,
@@ -19,7 +19,12 @@ pub struct DeepComposer<A: Air, E: FieldElement + From<A::BaseElement>> {
 
 impl<A: Air, E: FieldElement + From<A::BaseElement>> DeepComposer<A, E> {
     /// Creates a new composer for computing DEEP composition polynomial values.
-    pub fn new(air: &A, query_positions: &[usize], z: E, cc: CompositionCoefficients<E>) -> Self {
+    pub fn new(
+        air: &A,
+        query_positions: &[usize],
+        z: E,
+        cc: DeepCompositionCoefficients<E>,
+    ) -> Self {
         // compute LDE domain coordinates for all query positions
         let g_lde = air.lde_domain_generator();
         let domain_offset = air.domain_offset();
@@ -56,8 +61,8 @@ impl<A: Air, E: FieldElement + From<A::BaseElement>> DeepComposer<A, E> {
     /// this function via the `ood_frame` parameter.
     pub fn compose_registers(
         &self,
-        queried_trace_states: &[Vec<A::BaseElement>],
-        ood_frame: &EvaluationFrame<E>,
+        queried_trace_states: Vec<Vec<A::BaseElement>>,
+        ood_frame: EvaluationFrame<E>,
     ) -> Vec<E> {
         let trace_at_z1 = &ood_frame.current;
         let trace_at_z2 = &ood_frame.next;
@@ -110,8 +115,8 @@ impl<A: Air, E: FieldElement + From<A::BaseElement>> DeepComposer<A, E> {
     /// via the `ood_evaluations` parameter.
     pub fn compose_constraints(
         &self,
-        queried_evaluations: &[Vec<E>],
-        ood_evaluations: &[E],
+        queried_evaluations: Vec<Vec<E>>,
+        ood_evaluations: Vec<E>,
     ) -> Vec<E> {
         assert_eq!(queried_evaluations.len(), self.x_coordinates.len());
 

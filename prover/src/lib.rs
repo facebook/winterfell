@@ -14,6 +14,7 @@ pub use common::{
 };
 pub use crypto;
 pub use math;
+pub use utils::Serializable;
 
 #[cfg(test)]
 pub mod tests;

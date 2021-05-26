@@ -15,7 +15,15 @@ fn fibonacci(c: &mut Criterion) {
     group.sample_size(10);
     group.measurement_time(Duration::from_secs(20));
 
-    let options = ProofOptions::new(32, 8, 0, HashFunction::Blake3_256, FieldExtension::None);
+    let options = ProofOptions::new(
+        32,
+        8,
+        0,
+        HashFunction::Blake3_256,
+        FieldExtension::None,
+        4,
+        256,
+    );
 
     for &size in SIZES.iter() {
         let fib = fibonacci::fib2::FibExample::new(size, options.clone());

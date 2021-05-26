@@ -10,7 +10,7 @@ use core::{
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
     slice,
 };
-use utils::AsBytes;
+use utils::{AsBytes, Serializable};
 
 // QUADRATIC EXTENSION FIELD
 // ================================================================================================
@@ -68,12 +68,6 @@ impl<B: StarkField> FieldElement for QuadExtension<B> {
 
     fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
         Self::try_from(&bytes[..Self::ELEMENT_BYTES as usize]).ok()
-    }
-
-    fn to_canonical_bytes(self) -> Vec<u8> {
-        let mut result = self.0.to_canonical_bytes();
-        result.append(&mut self.1.to_canonical_bytes());
-        result
     }
 
     fn elements_into_bytes(elements: Vec<Self>) -> Vec<u8> {
@@ -268,14 +262,21 @@ impl<'a, B: StarkField> TryFrom<&'a [u8]> for QuadExtension<B> {
     }
 }
 
-// SERIALIZATION
-// ------------------------------------------------------------------------------------------------
-
 impl<B: StarkField> AsBytes for QuadExtension<B> {
     fn as_bytes(&self) -> &[u8] {
         // TODO: take endianness into account
         let self_ptr: *const Self = self;
         unsafe { slice::from_raw_parts(self_ptr as *const u8, Self::ELEMENT_BYTES) }
+    }
+}
+
+// SERIALIZATION
+// ------------------------------------------------------------------------------------------------
+
+impl<B: StarkField> Serializable for QuadExtension<B> {
+    fn write_into(&self, target: &mut Vec<u8>) {
+        self.0.write_into(target);
+        self.1.write_into(target);
     }
 }
 

@@ -67,6 +67,8 @@ impl ExampleOptions {
             self.grinding_factor,
             HashFunction::Blake3_256,
             field_extension,
+            4,
+            256,
         )
     }
 }

@@ -4,39 +4,41 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{constraints::CompositionPoly, StarkDomain, TracePolyTable};
-use common::{CompositionCoefficients, ComputationContext, EvaluationFrame};
+use common::{Air, DeepCompositionCoefficients, EvaluationFrame};
 use math::{
     fft,
     field::{FieldElement, StarkField},
     polynom,
     utils::{self, add_in_place},
 };
+use std::marker::PhantomData;
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
 
 // DEEP COMPOSITION POLYNOMIAL
 // ================================================================================================
-pub struct DeepCompositionPoly<E: FieldElement> {
+pub struct DeepCompositionPoly<A: Air, E: FieldElement + From<A::BaseElement>> {
     coefficients: Vec<E>,
-    cc: CompositionCoefficients<E>,
+    cc: DeepCompositionCoefficients<E>,
     z: E,
     field_extension: bool,
+    _air: PhantomData<A>,
 }
 
-impl<E: FieldElement> DeepCompositionPoly<E> {
+impl<A: Air, E: FieldElement + From<A::BaseElement>> DeepCompositionPoly<A, E> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Returns a new DEEP composition polynomial. Initially, this polynomial will be empty, and
     /// the intent is to populate the coefficients via add_trace_polys() and add_constraint_polys()
     /// methods.
-    pub fn new(context: &ComputationContext, z: E, cc: CompositionCoefficients<E>) -> Self {
-        // TODO: change from context to AIR
+    pub fn new(air: &A, z: E, cc: DeepCompositionCoefficients<E>) -> Self {
         DeepCompositionPoly {
             coefficients: vec![],
             cc,
             z,
-            field_extension: !context.options().field_extension().is_none(),
+            field_extension: !air.options().field_extension().is_none(),
+            _air: PhantomData,
         }
     }
 
@@ -58,19 +60,23 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
     /// Combines all trace polynomials into a single polynomial and saves the result into
     /// the DEEP composition polynomial. The combination is done as follows:
     ///
-    /// - First, state of trace registers at deep points z and z * g are computed.
-    /// - Then, polynomials T'_i(x) = (T_i(x) - T_i(z)) / (x - z) and
-    ///   T''_i(x) = (T_i(x) - T_i(z * g)) / (x - z * g) are computed for all i, where T_i(x) is
-    ///   a trace polynomial for register i.
-    /// - Then, all polynomials are combined together using random liner combination as
+    /// - Compute polynomials T'_i(x) = (T_i(x) - T_i(z)) / (x - z) and
+    ///   T''_i(x) = (T_i(x) - T_i(z * g)) / (x - z * g) for all i, where T_i(x) is a trace
+    ///   polynomial for register i.
+    /// - Then, combine together all T'_i(x) polynomials using random liner combination as
     ///   T(x) = sum(T'_i(x) * cc'_i + T''_i(x) * cc''_i) for all i, where cc'_i and cc''_i are
     ///   the coefficients for the random linear combination drawn from the public coin.
-    /// - In cases when we generate a proof using an extension field, we also compute
+    /// - In cases when we generate the proof using an extension field, we also compute
     ///   T'''_i(x) = (T_i(x) - T_i(z_conjugate)) / (x - z_conjugate), and add it to T(x) similarly
     ///   to the way described above. This is needed in order to verify that the trace is defined
     ///   over the base field, rather than the extension field.
-    pub fn add_trace_polys<B>(&mut self, trace_polys: TracePolyTable<B>) -> EvaluationFrame<E>
-    where
+    ///
+    /// Note that evaluations of T_i(z) and T_i(z * g) are passed in via the `ood_frame` parameter.
+    pub fn add_trace_polys<B>(
+        &mut self,
+        trace_polys: TracePolyTable<B>,
+        ood_frame: EvaluationFrame<E>,
+    ) where
         B: StarkField,
         E: From<B>,
     {
@@ -82,9 +88,9 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
         let g = E::from(B::get_root_of_unity(utils::log2(trace_length)));
         let next_z = self.z * g;
 
-        // compute state of registers at points z and z * g
-        let trace_state1 = trace_polys.evaluate_at(self.z);
-        let trace_state2 = trace_polys.evaluate_at(next_z);
+        // cache state of registers at points z and z * g
+        let trace_state1 = ood_frame.current;
+        let trace_state2 = ood_frame.next;
 
         // combine trace polynomials into 2 composition polynomials T'(x) and T''(x), and if
         // we are using a field extension, also T'''(x)
@@ -138,12 +144,6 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
         // set the coefficients of the DEEP composition polynomial
         self.coefficients = trace_poly;
         assert_eq!(self.poly_size() - 2, self.degree());
-
-        // trace states at OOD points z and z * g are returned to be included in the proof
-        EvaluationFrame {
-            current: trace_state1,
-            next: trace_state2,
-        }
     }
 
     // CONSTRAINT POLYNOMIAL COMPOSITION
@@ -158,8 +158,12 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
     ///   all i, where cc_i is the coefficient for the random linear combination drawn from the
     ///   public coin.
     ///
-    /// This method returns evaluations of the column polynomials H_i(x) at z^m.
-    pub fn add_composition_poly(&mut self, composition_poly: CompositionPoly<E>) -> Vec<E> {
+    /// Note that evaluations of H_i(x) at z^m are passed in via the `ood_evaluations` parameter.
+    pub fn add_composition_poly(
+        &mut self,
+        composition_poly: CompositionPoly<E>,
+        ood_evaluations: Vec<E>,
+    ) {
         assert!(!self.coefficients.is_empty());
 
         // compute z^m
@@ -170,42 +174,30 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
 
         // Divide out the OOD point z from column polynomials
         #[cfg(not(feature = "concurrent"))]
-        let result = column_polys
+        column_polys
             .iter_mut()
-            .map(|poly| {
-                // evaluate the polynomial at point z^m
-                let value_at_z_m = polynom::eval(&poly, z_m);
-
+            .zip(ood_evaluations)
+            .for_each(|(poly, value_at_z_m)| {
                 // compute H'_i(x) = (H_i(x) - H_i(z^m)) / (x - z^m)
                 poly[0] -= value_at_z_m;
                 polynom::syn_div_in_place(poly, 1, z_m);
-
-                value_at_z_m
-            })
-            .collect();
+            });
 
         #[cfg(feature = "concurrent")]
-        let result = column_polys
+        column_polys
             .par_iter_mut()
-            .map(|poly| {
-                // evaluate the polynomial at point z'
-                let value_at_z = polynom::eval(&poly, z_m);
-
-                // compute C(x) = (P(x) - P(z)) / (x - z')
-                poly[0] -= value_at_z;
+            .zip(ood_evaluations)
+            .for_each(|(poly, value_at_z_m)| {
+                // compute H'_i(x) = (H_i(x) - H_i(z^m)) / (x - z^m)
+                poly[0] -= value_at_z_m;
                 polynom::syn_div_in_place(poly, 1, z_m);
-
-                value_at_z
-            })
-            .collect();
+            });
 
         // add H'_i(x) * cc_i for all i into the DEEP composition polynomial
         for (i, poly) in column_polys.into_iter().enumerate() {
             utils::mul_acc(&mut self.coefficients, &poly, self.cc.constraints[i]);
         }
         assert_eq!(self.poly_size() - 2, self.degree());
-
-        result
     }
 
     // FINAL DEGREE ADJUSTMENT

@@ -9,6 +9,9 @@ use fri::FriProof;
 use math::utils::log2;
 use serde::{Deserialize, Serialize};
 
+mod context;
+pub use context::Context;
+
 mod commitments;
 pub use commitments::Commitments;
 
@@ -37,29 +40,22 @@ pub struct StarkProof {
     pub pow_nonce: u64,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
-pub struct Context {
-    pub lde_domain_depth: u8,
-    pub field_modulus_bytes: Vec<u8>,
-    pub options: ProofOptions,
-}
-
 // STARK PROOF IMPLEMENTATION
 // ================================================================================================
 impl StarkProof {
     /// Returns proof options which were used to generate this proof.
     pub fn options(&self) -> &ProofOptions {
-        &self.context.options
+        &self.context.options()
     }
 
     /// Returns trace length for the computation described by this proof.
     pub fn trace_length(&self) -> usize {
-        self.lde_domain_size() / self.context.options.blowup_factor()
+        self.lde_domain_size() / self.context.options().blowup_factor()
     }
 
     /// Returns the size of the LDE domain for the computation described by this proof.
     pub fn lde_domain_size(&self) -> usize {
-        2usize.pow(self.context.lde_domain_depth as u32)
+        self.context.lde_domain_size()
     }
 
     // SECURITY LEVEL
@@ -70,19 +66,15 @@ impl StarkProof {
     /// number of queries needed for provable security is 2x - 3x higher than the number of queries
     /// needed for conjectured security at the same security level.
     pub fn security_level(&self, conjectured: bool) -> u32 {
-        let options = &self.context.options;
-
-        let base_field_size_bits = get_num_modulus_bits(&self.context.field_modulus_bytes);
-
         if conjectured {
             get_conjectured_security(
-                options,
-                base_field_size_bits,
+                &self.context.options(),
+                self.context.num_modulus_bits(),
                 self.lde_domain_size() as u64,
                 self.trace_length() as u64,
             )
         } else {
-            // TODO: implement proven security estimation
+            // TODO: implement provable security estimation
             unimplemented!("proven security estimation has not been implement yet")
         }
     }
@@ -90,21 +82,6 @@ impl StarkProof {
 
 // HELPER FUNCTIONS
 // ================================================================================================
-
-/// Returns number of bits in the provided modulus; the modulus is assumed to be encoded in
-/// little-endian byte order
-fn get_num_modulus_bits(modulus_bytes: &[u8]) -> u32 {
-    let mut num_bits = modulus_bytes.len() as u32 * 8;
-    for &byte in modulus_bytes.iter().rev() {
-        if byte != 0 {
-            num_bits -= byte.leading_zeros();
-            return num_bits;
-        }
-        num_bits -= 8;
-    }
-
-    0
-}
 
 /// Computes conjectured security level for the specified proof parameters.
 fn get_conjectured_security(

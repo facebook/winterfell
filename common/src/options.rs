@@ -32,6 +32,8 @@ pub struct ProofOptions {
     grinding_factor: u8,
     hash_fn: HashFunction,
     field_extension: FieldExtension,
+    fri_folding_factor: u8,
+    fri_max_remainder_size: u8, // stored as power of 2
 }
 
 // PROOF OPTIONS IMPLEMENTATION
@@ -44,31 +46,36 @@ impl ProofOptions {
     /// * num_queries must be an integer between 1 and 128;
     /// * blowup_factor must be an integer which is a power of two between 4 and 256;
     /// * grinding_factor must be an integer between 0 and 32;
-    /// * hash_fn must be blake3 or sha3 functions from crypto crate;
+    /// * hash_fn must a supported hash function (currently BLAKE3 or SHA3);
+    /// * field_extension must be either None or Quadratic;
+    /// * fri_folding_factor must be an integer which is a power of two between 4 and 16;
+    /// * fri_max_remainder_size must be an integer which is a power of two between 32 and 1024;
+    #[rustfmt::skip]
     pub fn new(
         num_queries: usize,
         blowup_factor: usize,
         grinding_factor: u32,
         hash_fn: HashFunction,
         field_extension: FieldExtension,
+        fri_folding_factor: usize,
+        fri_max_remainder_size: usize,
     ) -> ProofOptions {
-        assert!(num_queries > 0, "num_queries must be greater than 0");
-        assert!(num_queries <= 128, "num_queries cannot be greater than 128");
+        assert!(num_queries > 0, "number of queries must be greater than 0");
+        assert!(num_queries <= 128, "number of queries cannot be greater than 128");
 
-        assert!(
-            blowup_factor.is_power_of_two(),
-            "blowup_factor must be a power of 2"
-        );
-        assert!(blowup_factor >= 4, "blowup_factor cannot be smaller than 4");
-        assert!(
-            blowup_factor <= 256,
-            "blowup_factor cannot be greater than 256"
-        );
+        assert!(blowup_factor.is_power_of_two(), "blowup factor must be a power of 2");
+        assert!(blowup_factor >= 4, "blowup factor cannot be smaller than 4");
+        assert!(blowup_factor <= 256, "blowup factor cannot be greater than 256");
 
-        assert!(
-            grinding_factor <= 32,
-            "grinding factor cannot be greater than 32"
-        );
+        assert!(grinding_factor <= 32, "grinding factor cannot be greater than 32");
+
+        assert!(fri_folding_factor.is_power_of_two(), "FRI folding factor must be a power of 2");
+        assert!(fri_folding_factor >= 4, "FRI folding factor cannot be smaller than 4");
+        assert!(fri_folding_factor <= 16, "FRI folding factor cannot be greater than 16");
+
+        assert!(fri_max_remainder_size.is_power_of_two(), "FRI max remainder size must be a power of 2");
+        assert!(fri_max_remainder_size >= 32, "FRI max remainder size cannot be smaller than 32");
+        assert!(fri_max_remainder_size <= 1024, "FRI max remainder size cannot be greater than 1024");
 
         ProofOptions {
             num_queries: num_queries as u8,
@@ -76,6 +83,8 @@ impl ProofOptions {
             grinding_factor: grinding_factor as u8,
             hash_fn,
             field_extension,
+            fri_folding_factor: fri_folding_factor as u8,
+            fri_max_remainder_size: fri_max_remainder_size.trailing_zeros() as u8,
         }
     }
 
@@ -128,8 +137,24 @@ impl ProofOptions {
     }
 
     /// Returns options for FRI protocol instantiated with parameters from this proof options.
-    pub fn to_fri_options<B: StarkField>(&self) -> FriOptions<B> {
-        FriOptions::new(self.blowup_factor(), self.domain_offset())
+    pub fn to_fri_options(&self) -> FriOptions {
+        let folding_factor = self.fri_folding_factor as usize;
+        let max_remainder_size = 2usize.pow(self.fri_max_remainder_size as u32);
+        FriOptions::new(self.blowup_factor(), folding_factor, max_remainder_size)
+    }
+
+    // SERIALIZATION
+    // --------------------------------------------------------------------------------------------
+
+    /// Serializes these options and appends the resulting bytes to the `target` vector.
+    pub fn write_into(&self, target: &mut Vec<u8>) {
+        target.push(self.num_queries);
+        target.push(self.blowup_factor);
+        target.push(self.grinding_factor);
+        target.push(self.hash_fn as u8);
+        target.push(self.field_extension as u8);
+        target.push(self.fri_folding_factor);
+        target.push(self.fri_max_remainder_size);
     }
 }
 

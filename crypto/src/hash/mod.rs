@@ -15,6 +15,9 @@ use utils::{group_slice_elements, AsBytes};
 pub trait Hasher {
     type Digest: Debug + Copy + AsRef<[u8]> + Default + Eq + PartialEq + Send + Sync;
 
+    /// Returns a hash of the provided sequence of bytes.
+    fn hash(bytes: &[u8]) -> Self::Digest;
+
     /// Returns a hash of two digests. This method is intended for use in construction of
     /// Merkle trees.
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest;
@@ -48,6 +51,15 @@ pub struct Blake3_256();
 impl Hasher for Blake3_256 {
     type Digest = [u8; 32];
 
+    fn hash(bytes: &[u8]) -> Self::Digest {
+        blake3::hash(bytes).into()
+    }
+
+    fn hash_elements<E: FieldElement>(elements: &[E]) -> Self::Digest {
+        let bytes = E::elements_as_bytes(elements);
+        blake3::hash(&bytes).into()
+    }
+
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest {
         blake3::hash(values.as_bytes()).into()
     }
@@ -65,11 +77,6 @@ impl Hasher for Blake3_256 {
         data[..32].copy_from_slice(&seed);
         data[32..].copy_from_slice(&value.to_le_bytes());
         blake3::hash(&data).into()
-    }
-
-    fn hash_elements<E: FieldElement>(elements: &[E]) -> Self::Digest {
-        let bytes = E::elements_as_bytes(elements);
-        blake3::hash(&bytes).into()
     }
 
     fn read_digests_into_vec(
@@ -99,6 +106,15 @@ pub struct Sha3_256();
 impl Hasher for Sha3_256 {
     type Digest = [u8; 32];
 
+    fn hash(bytes: &[u8]) -> Self::Digest {
+        sha3::Sha3_256::digest(bytes).into()
+    }
+
+    fn hash_elements<E: FieldElement>(elements: &[E]) -> Self::Digest {
+        let bytes = E::elements_as_bytes(elements);
+        sha3::Sha3_256::digest(bytes).into()
+    }
+
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest {
         sha3::Sha3_256::digest(values.as_bytes()).into()
     }
@@ -116,11 +132,6 @@ impl Hasher for Sha3_256 {
         data[..32].copy_from_slice(&seed);
         data[32..].copy_from_slice(&value.to_le_bytes());
         sha3::Sha3_256::digest(&data).into()
-    }
-
-    fn hash_elements<E: FieldElement>(elements: &[E]) -> Self::Digest {
-        let bytes = E::elements_as_bytes(elements);
-        sha3::Sha3_256::digest(bytes).into()
     }
 
     fn read_digests_into_vec(
