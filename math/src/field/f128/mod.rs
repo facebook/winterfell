@@ -3,7 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::traits::{FieldElement, StarkField};
+use super::{
+    traits::{FieldElement, StarkField},
+    QuadExtension,
+};
 use crate::errors::SerializationError;
 use core::{
     convert::{TryFrom, TryInto},
@@ -132,6 +135,8 @@ impl FieldElement for BaseElement {
 }
 
 impl StarkField for BaseElement {
+    type QuadExtension = QuadExtension<Self>;
+
     /// sage: MODULUS = 2^128 - 45 * 2^40 + 1
     /// sage: GF(MODULUS).is_prime_field()
     /// True
