@@ -12,7 +12,7 @@ use crypto::hash::{Blake3_256, Hasher, Sha3_256};
 use log::debug;
 use math::{
     fft::infer_degree,
-    field::{FieldElement, QuadExtension},
+    field::{FieldElement, StarkField},
     utils::log2,
 };
 use std::time::Instant;
@@ -68,15 +68,15 @@ pub fn prove<AIR: Air>(
             }
             HashFunction::Sha3_256 => {
                 generate_proof::<AIR, AIR::BaseElement, Sha3_256>(air, trace, pub_inputs_bytes)
-            },
+            }
         },
         FieldExtension::Quadratic => match air.context().options().hash_fn() {
-            HashFunction::Blake3_256 => {
-                generate_proof::<AIR, QuadExtension<AIR::BaseElement>, Blake3_256>(air, trace, pub_inputs_bytes)
-            }
-            HashFunction::Sha3_256 => {
-                generate_proof::<AIR, QuadExtension<AIR::BaseElement>, Sha3_256>(air, trace, pub_inputs_bytes)
-            }
+            HashFunction::Blake3_256 => generate_proof::
+                <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Blake3_256>
+                (air, trace, pub_inputs_bytes),
+            HashFunction::Sha3_256 => generate_proof::
+                <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Sha3_256>
+                (air, trace, pub_inputs_bytes),
         },
     }
 }

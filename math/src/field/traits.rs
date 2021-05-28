@@ -175,6 +175,9 @@ pub trait FieldElement:
 // ================================================================================================
 
 pub trait StarkField: FieldElement<BaseField = Self> {
+    /// Type describing quadratic extension of this StarkField.
+    type QuadExtension: FieldElement<BaseField = Self>;
+
     /// Prime modulus of the field. Must be of the form k * 2^n + 1 (a Proth prime).
     /// This ensures that the field has high 2-adicity.
     const MODULUS: Self::PositiveInteger;

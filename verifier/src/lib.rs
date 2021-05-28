@@ -15,7 +15,7 @@ use crypto::{
 };
 
 pub use math;
-use math::field::{FieldElement, QuadExtension};
+use math::field::{FieldElement, StarkField};
 
 mod channel;
 use channel::VerifierChannel;
@@ -68,12 +68,16 @@ pub fn verify<AIR: Air>(
             HashFunction::Blake3_256 => {
                 let coin = PublicCoin::new(&coin_seed);
                 let channel = VerifierChannel::new(&air, proof)?;
-                perform_verification::<AIR, QuadExtension<AIR::BaseElement>, Blake3_256>(air, channel, coin)
+                perform_verification::
+                    <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Blake3_256>
+                    (air, channel, coin)
             }
             HashFunction::Sha3_256 => {
                 let coin = PublicCoin::new(&coin_seed);
                 let channel = VerifierChannel::new(&air, proof)?;
-                perform_verification::<AIR, QuadExtension<AIR::BaseElement>, Sha3_256>(air, channel, coin)
+                perform_verification::
+                    <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Sha3_256>
+                    (air, channel, coin)
             }
         },
     }
