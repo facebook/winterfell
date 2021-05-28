@@ -19,21 +19,13 @@ mod tests;
 
 /// A group of boundary constraints all having the same divisor.
 #[derive(Debug, Clone)]
-pub struct BoundaryConstraintGroup<B, E>
-where
-    B: StarkField,
-    E: FieldElement + From<B>,
-{
+pub struct BoundaryConstraintGroup<B: StarkField, E: FieldElement<BaseField = B>> {
     constraints: Vec<BoundaryConstraint<B, E>>,
     divisor: ConstraintDivisor<B>,
     degree_adjustment: u32,
 }
 
-impl<B, E> BoundaryConstraintGroup<B, E>
-where
-    B: StarkField,
-    E: FieldElement + From<B>,
-{
+impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraintGroup<B, E> {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
     pub fn new(
@@ -120,22 +112,14 @@ where
 
 /// Describes the numerator portion of a boundary constraint.
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct BoundaryConstraint<B, E>
-where
-    B: StarkField,
-    E: FieldElement + From<B>,
-{
+pub struct BoundaryConstraint<B: StarkField, E: FieldElement<BaseField = B>> {
     register: usize,
     poly: Vec<B>,
     poly_offset: (usize, B),
     cc: (E, E),
 }
 
-impl<B, E> BoundaryConstraint<B, E>
-where
-    B: StarkField,
-    E: FieldElement + From<B>,
-{
+impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraint<B, E> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Creates a new boundary constraint from the specified assertion.

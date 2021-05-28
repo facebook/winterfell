@@ -91,7 +91,7 @@ impl<B: StarkField> ConstraintDivisor<B> {
     // --------------------------------------------------------------------------------------------
 
     /// Evaluates the divisor at the provided `x` coordinate.
-    pub fn evaluate_at<E: FieldElement + From<B>>(&self, x: E) -> E {
+    pub fn evaluate_at<E: FieldElement<BaseField = B>>(&self, x: E) -> E {
         // compute the numerator value
         let mut numerator = E::ONE;
         for (degree, constant) in self.numerator.iter() {

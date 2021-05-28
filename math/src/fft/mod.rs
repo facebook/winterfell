@@ -30,11 +30,7 @@ pub const MIN_CONCURRENT_SIZE: usize = 1024;
 /// When `concurrent` feature is enabled, the evaluation uses as many threads as are
 /// available in Rayon's global thread pool (usually as many threads as logical cores).
 /// Otherwise, the evaluation is done in a single thread.
-pub fn evaluate_poly<B, E>(p: &mut [E], twiddles: &[B])
-where
-    B: StarkField,
-    E: FieldElement + From<B>,
-{
+pub fn evaluate_poly<B: StarkField, E: FieldElement<BaseField = B>>(p: &mut [E], twiddles: &[B]) {
     assert!(
         p.len().is_power_of_two(),
         "number of coefficients must be a power of 2"
@@ -64,16 +60,12 @@ where
 /// When `concurrent` feature is enabled, the evaluation uses as many threads as are
 /// available in Rayon's global thread pool (usually as many threads as logical cores).
 /// Otherwise, the evaluation is done in a single thread.
-pub fn evaluate_poly_with_offset<B, E>(
+pub fn evaluate_poly_with_offset<B: StarkField, E: FieldElement<BaseField = B>>(
     p: &[E],
     twiddles: &[B],
     domain_offset: B,
     blowup_factor: usize,
-) -> Vec<E>
-where
-    B: StarkField,
-    E: FieldElement + From<B>,
-{
+) -> Vec<E> {
     assert!(
         p.len().is_power_of_two(),
         "number of coefficients must be a power of 2"
@@ -121,7 +113,7 @@ where
 pub fn interpolate_poly<B, E>(values: &mut [E], inv_twiddles: &[B])
 where
     B: StarkField,
-    E: FieldElement + From<B>,
+    E: FieldElement<BaseField = B>,
 {
     debug_assert!(
         values.len().is_power_of_two(),
@@ -155,7 +147,7 @@ where
 pub fn interpolate_poly_with_offset<B, E>(values: &mut [E], inv_twiddles: &[B], domain_offset: B)
 where
     B: StarkField,
-    E: FieldElement + From<B>,
+    E: FieldElement<BaseField = B>,
 {
     debug_assert!(
         values.len().is_power_of_two(),
@@ -225,7 +217,7 @@ pub fn get_inv_twiddles<B: StarkField>(domain_size: usize) -> Vec<B> {
 pub fn infer_degree<B, E>(evaluations: &[E], domain_offset: B) -> usize
 where
     B: StarkField,
-    E: FieldElement + From<B>,
+    E: FieldElement<BaseField = B>,
 {
     assert!(
         evaluations.len().is_power_of_two(),

@@ -42,7 +42,7 @@ impl<B: StarkField> QuadExtension<B> {
 
 impl<B: StarkField> FieldElement for QuadExtension<B> {
     type PositiveInteger = B::PositiveInteger;
-    type Base = B;
+    type BaseField = B;
 
     const ELEMENT_BYTES: usize = B::ELEMENT_BYTES * 2;
     const ZERO: Self = Self(B::ZERO, B::ZERO);
@@ -98,7 +98,7 @@ impl<B: StarkField> FieldElement for QuadExtension<B> {
         let len = bytes.len() / Self::ELEMENT_BYTES;
 
         // make sure the bytes are aligned on the boundary consistent with base element alignment
-        if (p as usize) % Self::Base::ELEMENT_BYTES != 0 {
+        if (p as usize) % Self::BaseField::ELEMENT_BYTES != 0 {
             return Err(SerializationError::InvalidMemoryAlignment);
         }
 

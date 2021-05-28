@@ -24,7 +24,7 @@ const MIN_FRAGMENT_SIZE: usize = 256;
 // CONSTRAINT EVALUATION TABLE
 // ================================================================================================
 
-pub struct ConstraintEvaluationTable<B: StarkField, E: FieldElement + From<B>> {
+pub struct ConstraintEvaluationTable<B: StarkField, E: FieldElement<BaseField = B>> {
     evaluations: Vec<Vec<E>>,
     divisors: Vec<ConstraintDivisor<B>>,
     domain_offset: B,
@@ -36,7 +36,7 @@ pub struct ConstraintEvaluationTable<B: StarkField, E: FieldElement + From<B>> {
     t_expected_degrees: Vec<usize>,
 }
 
-impl<B: StarkField, E: FieldElement + From<B>> ConstraintEvaluationTable<B, E> {
+impl<B: StarkField, E: FieldElement<BaseField = B>> ConstraintEvaluationTable<B, E> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Returns a new constraint evaluation table with number of columns equal to the number of
@@ -137,7 +137,7 @@ impl<B: StarkField, E: FieldElement + From<B>> ConstraintEvaluationTable<B, E> {
     /// Divides constraint evaluation columns by their respective divisor (in evaluation form),
     /// combines the results into a single column, and interpolates this column into a composition
     /// polynomial in coefficient form.
-    pub fn into_poly(self) -> Result<CompositionPoly<E>, ProverError> {
+    pub fn into_poly(self) -> Result<CompositionPoly<B, E>, ProverError> {
         let domain_offset = self.domain_offset;
 
         // allocate memory for the combined polynomial
@@ -251,7 +251,7 @@ impl<'a, E: FieldElement> TableFragment<'a, E> {
 // ================================================================================================
 
 #[allow(clippy::many_single_char_names)]
-fn acc_column<B: StarkField, E: FieldElement + From<B>>(
+fn acc_column<B: StarkField, E: FieldElement<BaseField = B>>(
     column: Vec<E>,
     divisor: &ConstraintDivisor<B>,
     domain_offset: B,
@@ -390,7 +390,7 @@ fn get_inv_evaluation<B: StarkField>(
 
 /// Makes sure that the post-division degree of the polynomial matches the expected degree
 #[cfg(debug_assertions)]
-fn validate_column_degree<B: StarkField, E: FieldElement + From<B>>(
+fn validate_column_degree<B: StarkField, E: FieldElement<BaseField = B>>(
     column: &[E],
     divisor: &ConstraintDivisor<B>,
     domain_offset: B,

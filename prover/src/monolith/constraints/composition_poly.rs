@@ -9,6 +9,7 @@ use math::{
     field::{FieldElement, StarkField},
     polynom,
 };
+use std::marker::PhantomData;
 use utils::uninit_vector;
 
 #[cfg(feature = "concurrent")]
@@ -19,9 +20,12 @@ use rayon::prelude::*;
 /// Represents a composition polynomial split into columns with each column being of length equal
 /// to trace_length. Thus, for example, if the composition polynomial has degree 2N - 1, where N
 /// is the trace length, it will be stored as two columns of size N (each of degree N - 1).
-pub struct CompositionPoly<E: FieldElement>(Vec<Vec<E>>);
+pub struct CompositionPoly<B: StarkField, E: FieldElement<BaseField = B>> {
+    columns: Vec<Vec<E>>,
+    _base_field: PhantomData<B>,
+}
 
-impl<E: FieldElement> CompositionPoly<E> {
+impl<B: StarkField, E: FieldElement<BaseField = B>> CompositionPoly<B, E> {
     /// Returns a new composition polynomial.
     pub fn new(coefficients: Vec<E>, trace_length: usize) -> Self {
         assert!(
@@ -48,7 +52,10 @@ impl<E: FieldElement> CompositionPoly<E> {
         let num_columns = coefficients.len() / trace_length;
         let polys = transpose(coefficients, num_columns);
 
-        CompositionPoly(polys)
+        CompositionPoly {
+            columns: polys,
+            _base_field: PhantomData,
+        }
     }
 
     // PUBLIC ACCESSORS
@@ -57,12 +64,12 @@ impl<E: FieldElement> CompositionPoly<E> {
     /// Returns the number of individual column polynomials used to describe this composition
     /// polynomial.
     pub fn num_columns(&self) -> usize {
-        self.0.len()
+        self.columns.len()
     }
 
     /// Returns the length of individual column polynomials; this is guaranteed to be a power of 2.
     pub fn column_len(&self) -> usize {
-        self.0[0].len()
+        self.columns[0].len()
     }
 
     /// Returns the degree of individual column polynomial.
@@ -75,7 +82,7 @@ impl<E: FieldElement> CompositionPoly<E> {
     /// Evaluates the columns of the composition polynomial over the specified LDE domain and
     /// returns the result.
     #[rustfmt::skip]
-    pub fn evaluate<B>(&self, domain: &StarkDomain<B>) -> Vec<Vec<E>>
+    pub fn evaluate(&self, domain: &StarkDomain<B>) -> Vec<Vec<E>>
     where
         B: StarkField,
         E: From<B>,
@@ -89,7 +96,7 @@ impl<E: FieldElement> CompositionPoly<E> {
         );
 
         #[cfg(not(feature = "concurrent"))]
-        let result = self.0.iter().map(|poly| {
+        let result = self.columns.iter().map(|poly| {
             fft::evaluate_poly_with_offset(
                 poly,
                 domain.trace_twiddles(),
@@ -100,7 +107,7 @@ impl<E: FieldElement> CompositionPoly<E> {
         .collect();
 
         #[cfg(feature = "concurrent")]
-        let result = self.0.par_iter().map(|poly| {
+        let result = self.columns.par_iter().map(|poly| {
             fft::evaluate_poly_with_offset(
                 poly,
                 domain.trace_twiddles(),
@@ -116,14 +123,18 @@ impl<E: FieldElement> CompositionPoly<E> {
     /// Returns evaluations of all composition polynomial columns at point z^m, where m is
     /// the number of column polynomials.
     pub fn evaluate_at(&self, z: E) -> Vec<E> {
-        let z_m = z.exp((self.0.len() as u32).into());
+        let z_m = z.exp((self.columns.len() as u32).into());
 
         #[cfg(not(feature = "concurrent"))]
-        let result = self.0.iter().map(|poly| polynom::eval(poly, z_m)).collect();
+        let result = self
+            .columns
+            .iter()
+            .map(|poly| polynom::eval(poly, z_m))
+            .collect();
 
         #[cfg(feature = "concurrent")]
         let result = self
-            .0
+            .columns
             .par_iter()
             .map(|poly| polynom::eval(poly, z_m))
             .collect();
@@ -133,7 +144,7 @@ impl<E: FieldElement> CompositionPoly<E> {
 
     /// Transforms this composition polynomial into a vector of individual column polynomials.
     pub fn into_columns(self) -> Vec<Vec<E>> {
-        self.0
+        self.columns
     }
 }
 

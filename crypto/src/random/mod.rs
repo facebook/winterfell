@@ -73,7 +73,7 @@ impl<B: StarkField, H: Hasher> PublicCoin<B, H> {
     /// Returns the next pseudo-random field element.
     ///
     /// Panics if a valid field element could not be generated after 100 calls to PRNG;
-    pub fn draw<E: FieldElement + From<B>>(&mut self) -> E {
+    pub fn draw<E: FieldElement<BaseField = B>>(&mut self) -> E {
         for _ in 0..100 {
             // get the next pseudo-random value and take the first ELEMENT_BYTES from it
             let value = self.next();
@@ -92,14 +92,14 @@ impl<B: StarkField, H: Hasher> PublicCoin<B, H> {
     /// Returns the next pair of pseudo-random field element.
     ///
     /// Panics if valid field elements could not be generated after 200 calls to PRNG;
-    pub fn draw_pair<E: FieldElement + From<B>>(&mut self) -> (E, E) {
+    pub fn draw_pair<E: FieldElement<BaseField = B>>(&mut self) -> (E, E) {
         (self.draw(), self.draw())
     }
 
     /// Returns the next triple of pseudo-random field elements.
     ///
     /// Panics if valid field elements could not be generated after 300 calls to PRNG;
-    pub fn draw_triple<E: FieldElement + From<B>>(&mut self) -> (E, E, E) {
+    pub fn draw_triple<E: FieldElement<BaseField = B>>(&mut self) -> (E, E, E) {
         (self.draw(), self.draw(), self.draw())
     }
 

@@ -63,7 +63,7 @@ impl BaseElement {
 
 impl FieldElement for BaseElement {
     type PositiveInteger = u64;
-    type Base = Self;
+    type BaseField = Self;
 
     const ZERO: Self = BaseElement::new(0);
     const ONE: Self = BaseElement::new(1);

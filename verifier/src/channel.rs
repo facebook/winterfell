@@ -11,7 +11,7 @@ use math::field::{FieldElement, StarkField};
 // TYPES AND INTERFACES
 // ================================================================================================
 
-pub struct VerifierChannel<B: StarkField, E: FieldElement + From<B>, H: Hasher> {
+pub struct VerifierChannel<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> {
     // trace queries
     trace_root: H::Digest,
     trace_proof: BatchMerkleProof<H>,
@@ -36,7 +36,7 @@ pub struct VerifierChannel<B: StarkField, E: FieldElement + From<B>, H: Hasher> 
 // VERIFIER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-impl<B: StarkField, E: FieldElement + From<B>, H: Hasher> VerifierChannel<B, E, H> {
+impl<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> VerifierChannel<B, E, H> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Creates and returns a new verifier channel initialized from the specified `proof`.
@@ -195,7 +195,7 @@ impl<B: StarkField, E: FieldElement + From<B>, H: Hasher> VerifierChannel<B, E, 
 impl<B, E, H> FriVerifierChannel<E> for VerifierChannel<B, E, H>
 where
     B: StarkField,
-    E: FieldElement + From<B>,
+    E: FieldElement<BaseField = B>,
     H: Hasher,
 {
     type Hasher = H;

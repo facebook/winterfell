@@ -25,7 +25,7 @@ const FOLDING_FACTOR: usize = crate::options::FOLDING_FACTOR;
 pub struct FriProver<B, E, C, H>
 where
     B: StarkField,
-    E: FieldElement + From<B>,
+    E: FieldElement<BaseField = B>,
     C: ProverChannel<E, Hasher = H>,
     H: Hasher,
 {
@@ -34,10 +34,10 @@ where
     _coin: PhantomData<C>,
 }
 
-struct FriLayer<B: StarkField, E: FieldElement + From<B>, H: Hasher> {
+struct FriLayer<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> {
     tree: MerkleTree<H>,
     evaluations: Vec<[E; FOLDING_FACTOR]>,
-    _b_marker: PhantomData<B>,
+    _base_field: PhantomData<B>,
 }
 
 // PROVER IMPLEMENTATION
@@ -46,7 +46,7 @@ struct FriLayer<B: StarkField, E: FieldElement + From<B>, H: Hasher> {
 impl<B, E, C, H> FriProver<B, E, C, H>
 where
     B: StarkField,
-    E: FieldElement + From<B>,
+    E: FieldElement<BaseField = B>,
     C: ProverChannel<E, Hasher = H>,
     H: Hasher,
 {
@@ -102,7 +102,7 @@ where
             self.layers.push(FriLayer {
                 tree: evaluation_tree,
                 evaluations: transposed_evaluations,
-                _b_marker: PhantomData,
+                _base_field: PhantomData,
             });
         }
 
@@ -188,16 +188,12 @@ where
 ///   1/4 the size)
 /// note: to compute an x in the new domain, we need 4 values from the old domain:
 /// x^{1/4}, x^{2/4}, x^{3/4}, x
-fn apply_drp<B, E>(
+fn apply_drp<B: StarkField, E: FieldElement<BaseField = B>>(
     evaluations: &[[E; FOLDING_FACTOR]],
     domain: &[B],
     depth: usize,
     alpha: E,
-) -> Vec<E>
-where
-    B: StarkField,
-    E: FieldElement + From<B>,
-{
+) -> Vec<E> {
     let domain_stride = usize::pow(FOLDING_FACTOR, depth as u32);
     let xs = quartic::transpose(domain, domain_stride);
 

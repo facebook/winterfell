@@ -24,7 +24,7 @@ pub trait ProverChannel<E: FieldElement> {
 // DEFAULT PROVER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-pub struct DefaultProverChannel<B: StarkField, E: FieldElement + From<B>, H: Hasher> {
+pub struct DefaultProverChannel<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> {
     coin: PublicCoin<B, H>,
     commitments: Vec<H::Digest>,
     domain_size: usize,
@@ -32,7 +32,7 @@ pub struct DefaultProverChannel<B: StarkField, E: FieldElement + From<B>, H: Has
     _field_element: PhantomData<E>,
 }
 
-impl<B: StarkField, E: FieldElement + From<B>, H: Hasher> DefaultProverChannel<B, E, H> {
+impl<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> DefaultProverChannel<B, E, H> {
     pub fn new(domain_size: usize, num_queries: usize) -> Self {
         DefaultProverChannel {
             coin: PublicCoin::new(&[]),
@@ -90,7 +90,7 @@ impl<B: StarkField, E: FieldElement + From<B>, H: Hasher> DefaultProverChannel<B
 impl<B, E, H> ProverChannel<E> for DefaultProverChannel<B, E, H>
 where
     B: StarkField,
-    E: FieldElement + From<B>,
+    E: FieldElement<BaseField = B>,
     H: Hasher,
 {
     type Hasher = H;

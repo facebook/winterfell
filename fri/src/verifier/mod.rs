@@ -33,7 +33,7 @@ pub fn verify<B, E, H, C>(
 ) -> Result<(), VerifierError>
 where
     B: StarkField,
-    E: FieldElement + From<B>,
+    E: FieldElement<BaseField = B>,
     H: Hasher,
     C: VerifierChannel<E, Hasher = H>,
 {
@@ -140,16 +140,12 @@ where
 
 /// Returns Ok(true) if values in the `remainder` slice represent evaluations of a polynomial
 /// with degree < max_degree_plus_1 against a domain specified by the `domain_generator`.
-fn verify_remainder<B, E>(
+fn verify_remainder<B: StarkField, E: FieldElement<BaseField = B>>(
     remainder: Vec<E>,
     max_degree_plus_1: usize,
     domain_generator: B,
     blowup_factor: usize,
-) -> Result<(), VerifierError>
-where
-    B: StarkField,
-    E: FieldElement + From<B>,
-{
+) -> Result<(), VerifierError> {
     if max_degree_plus_1 > remainder.len() {
         return Err(VerifierError::RemainderDegreeNotValid);
     }
