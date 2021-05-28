@@ -10,7 +10,7 @@ use math::{
     field::{FieldElement, StarkField},
     utils::batch_inversion,
 };
-use utils::uninit_vector;
+use utils::{batch_iter_mut, iter_mut, uninit_vector};
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
@@ -268,8 +268,6 @@ fn acc_column<B: StarkField, E: FieldElement<BaseField = B>>(
     let domain_size = column.len();
     let z = get_inv_evaluation(divisor, domain_size, domain_offset);
 
-    const MIN_CONCURRENT_SIZE: usize = 1024;
-
     // divide column values by the divisor; for boundary constraints this computed simply as
     // multiplication of column value by the inverse of divisor numerator; for transition
     // constraints, it is computed similarly, but the result is also multiplied by the divisor's
@@ -278,26 +276,15 @@ fn acc_column<B: StarkField, E: FieldElement<BaseField = B>>(
         // the column represents merged evaluations of boundary constraints, and divisor has the
         // form of (x^a - b); thus to divide the column by the divisor, we compute: value * z,
         // where z = 1 / (x^a - 1) and has already been computed above.
-
-        if cfg!(feature = "concurrent") && result.len() >= MIN_CONCURRENT_SIZE {
-            #[cfg(feature = "concurrent")]
-            {
-                #[rustfmt::skip]
-                result.par_iter_mut().zip(column).enumerate().for_each(|(i, (acc_value, value))| {
-                    // determine which value of z corresponds to the current domain point
-                    let z = E::from(z[i % z.len()]);
-                    // compute value * z and add it to the result
-                    *acc_value += value * z;
-                });
-            }
-        } else {
-            for (i, (acc_value, value)) in result.iter_mut().zip(column).enumerate() {
+        iter_mut!(result, 1024)
+            .zip(column)
+            .enumerate()
+            .for_each(|(i, (acc_value, value))| {
                 // determine which value of z corresponds to the current domain point
                 let z = E::from(z[i % z.len()]);
                 // compute value * z and add it to the result
                 *acc_value += value * z;
-            }
-        }
+            });
     } else {
         // the column represents merged evaluations of transition constraints, and divisor has the
         // form of (x^a - 1) / (x - b); thus, to divide the column by the divisor, we compute:
@@ -307,37 +294,22 @@ fn acc_column<B: StarkField, E: FieldElement<BaseField = B>>(
         let g = B::get_root_of_unity(domain_size.trailing_zeros());
         let b = divisor.exclude()[0];
 
-        if cfg!(feature = "concurrent") && result.len() >= MIN_CONCURRENT_SIZE {
-            #[cfg(feature = "concurrent")]
-            {
-                let batch_size = result.len() / rayon::current_num_threads().next_power_of_two();
-                #[rustfmt::skip]
-                result.par_chunks_mut(batch_size).enumerate().for_each(|(i, batch)| {
-                    let batch_offset = i * batch_size;
-                    let mut x = domain_offset * g.exp((batch_offset as u64).into());
-                    for (i, acc_value) in batch.iter_mut().enumerate() {
-                        // compute value of (x - b) and compute next value of x
-                        let e = x - b;
-                        x *= g;
-                        // determine which value of z corresponds to the current domain point
-                        let z = z[i % z.len()];
-                        // compute value * (x - b) * z and add it to the result
-                        *acc_value += column[batch_offset + i] * E::from(z * e);
-                    }
-                });
+        batch_iter_mut!(
+            result,
+            128, // min batch size
+            |batch: &mut [E], batch_offset: usize| {
+                let mut x = domain_offset * g.exp((batch_offset as u64).into());
+                for (i, acc_value) in batch.iter_mut().enumerate() {
+                    // compute value of (x - b) and compute next value of x
+                    let e = x - b;
+                    x *= g;
+                    // determine which value of z corresponds to the current domain point
+                    let z = z[i % z.len()];
+                    // compute value * (x - b) * z and add it to the result
+                    *acc_value += column[batch_offset + i] * E::from(z * e);
+                }
             }
-        } else {
-            let mut x = domain_offset;
-            for (i, (acc_value, value)) in result.iter_mut().zip(column).enumerate() {
-                // compute value of (x - b) and compute next value of x
-                let e = x - b;
-                x *= g;
-                // determine which value of z corresponds to the current domain point
-                let z = z[i % z.len()];
-                // compute value * (x - b) * z and add it to the result
-                *acc_value += value * E::from(z * e);
-            }
-        }
+        );
     }
 }
 
@@ -355,31 +327,19 @@ fn get_inv_evaluation<B: StarkField>(
     let n = domain_size / a as usize;
     let g = B::get_root_of_unity(domain_size.trailing_zeros()).exp(a.into());
 
-    // compute x^a - b for all x, either in one thread or in many
+    // compute x^a - b for all x
     let mut evaluations = uninit_vector(n);
-
-    const MIN_CONCURRENT_SIZE: usize = 1024;
-    if cfg!(feature = "concurrent") && n >= MIN_CONCURRENT_SIZE {
-        #[cfg(feature = "concurrent")]
-        {
-            let batch_size = evaluations.len() / rayon::current_num_threads().next_power_of_two();
-            #[rustfmt::skip]
-            evaluations.par_chunks_mut(batch_size).enumerate().for_each(|(i, batch)| {
-                let batch_offset = (i * batch_size) as u64;
-                let mut x = domain_offset.exp(a.into()) * g.exp(batch_offset.into());
-                for evaluation in batch.iter_mut() {
-                    *evaluation = x - b;
-                    x *= g;
-                }
-            });
+    batch_iter_mut!(
+        &mut evaluations,
+        128, // min batch size
+        |batch: &mut [B], batch_offset: usize| {
+            let mut x = domain_offset.exp(a.into()) * g.exp((batch_offset as u64).into());
+            for evaluation in batch.iter_mut() {
+                *evaluation = x - b;
+                x *= g;
+            }
         }
-    } else {
-        let mut x = domain_offset.exp(a.into());
-        for evaluation in evaluations.iter_mut() {
-            *evaluation = x - b;
-            x *= g;
-        }
-    }
+    );
 
     // compute 1 / (x^a - b)
     batch_inversion(&evaluations)

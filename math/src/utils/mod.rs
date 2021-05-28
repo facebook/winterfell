@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{errors::SerializationError, field::FieldElement};
-use utils::uninit_vector;
+use utils::{batch_iter_mut, iter_mut, uninit_vector};
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
@@ -19,23 +19,11 @@ mod tests;
 /// When `concurrent` feature is enabled, series generation is done concurrently in multiple
 /// threads.
 pub fn get_power_series<E: FieldElement>(b: E, n: usize) -> Vec<E> {
-    const MIN_CONCURRENT_SIZE: usize = 1024;
     let mut result = uninit_vector(n);
-    if cfg!(feature = "concurrent") && n >= MIN_CONCURRENT_SIZE && n.is_power_of_two() {
-        #[cfg(feature = "concurrent")]
-        {
-            let batch_size = n / rayon::current_num_threads().next_power_of_two();
-            result
-                .par_chunks_mut(batch_size)
-                .enumerate()
-                .for_each(|(i, batch)| {
-                    let batch_start = i * batch_size;
-                    fill_power_series(batch, b, b.exp((batch_start as u32).into()));
-                });
-        }
-    } else {
-        fill_power_series(&mut result, b, E::ONE);
-    }
+    batch_iter_mut!(&mut result, 1024, |batch: &mut [E], batch_offset: usize| {
+        let start = b.exp((batch_offset as u64).into());
+        fill_power_series(batch, b, start);
+    });
     result
 }
 
@@ -43,24 +31,11 @@ pub fn get_power_series<E: FieldElement>(b: E, n: usize) -> Vec<E> {
 /// When `concurrent` feature is enabled, series generation is done concurrently in multiple
 /// threads.
 pub fn get_power_series_with_offset<E: FieldElement>(b: E, s: E, n: usize) -> Vec<E> {
-    const MIN_CONCURRENT_SIZE: usize = 1024;
     let mut result = uninit_vector(n);
-    if cfg!(feature = "concurrent") && n >= MIN_CONCURRENT_SIZE && n.is_power_of_two() {
-        #[cfg(feature = "concurrent")]
-        {
-            let batch_size = n / rayon::current_num_threads().next_power_of_two();
-            result
-                .par_chunks_mut(batch_size)
-                .enumerate()
-                .for_each(|(i, batch)| {
-                    let batch_start = i * batch_size;
-                    let start = s * b.exp((batch_start as u32).into());
-                    fill_power_series(batch, b, start);
-                });
-        }
-    } else {
-        fill_power_series(&mut result, b, s);
-    }
+    batch_iter_mut!(&mut result, 1024, |batch: &mut [E], batch_offset: usize| {
+        let start = s * b.exp((batch_offset as u64).into());
+        fill_power_series(batch, b, start);
+    });
     result
 }
 
@@ -70,14 +45,7 @@ pub fn add_in_place<E: FieldElement>(a: &mut [E], b: &[E]) {
         a.len() == b.len(),
         "number of values must be the same for both operands"
     );
-
-    #[cfg(not(feature = "concurrent"))]
-    a.iter_mut().zip(b).for_each(|(a, &b)| *a += b);
-
-    #[cfg(feature = "concurrent")]
-    a.par_iter_mut()
-        .zip(b.par_iter())
-        .for_each(|(a, &b)| *a += b);
+    iter_mut!(a).zip(b).for_each(|(a, &b)| *a += b);
 }
 
 /// Computes a[i] + b[i] * c for all i and saves result into a.
@@ -90,38 +58,18 @@ where
         a.len() == b.len(),
         "number of values must be the same for both slices"
     );
-
-    #[cfg(not(feature = "concurrent"))]
-    a.iter_mut().zip(b).for_each(|(a, &b)| {
-        *a += E::from(b) * c;
-    });
-
-    #[cfg(feature = "concurrent")]
-    a.par_iter_mut().zip(b).for_each(|(a, &b)| {
-        *a += E::from(b) * c;
-    });
+    iter_mut!(a).zip(b).for_each(|(a, &b)| *a += E::from(b) * c);
 }
 
 /// Computes a multiplicative inverse of a sequence of elements using batch inversion method.
 /// Any ZEROs in the provided sequence are ignored.
 pub fn batch_inversion<E: FieldElement>(values: &[E]) -> Vec<E> {
-    const MIN_CONCURRENT_SIZE: usize = 1024;
     let mut result: Vec<E> = uninit_vector(values.len());
-    if cfg!(feature = "concurrent") && values.len() >= MIN_CONCURRENT_SIZE {
-        #[cfg(feature = "concurrent")]
-        {
-            let batch_size = values.len() / rayon::current_num_threads().next_power_of_two();
-            result
-                .par_chunks_mut(batch_size)
-                .zip(values.par_chunks(batch_size))
-                .for_each(|(result, values)| {
-                    serial_batch_inversion(values, result);
-                });
-        }
-    } else {
-        serial_batch_inversion(values, &mut result);
-    }
-
+    batch_iter_mut!(&mut result, 1024, |batch: &mut [E], batch_offset: usize| {
+        let start = batch_offset;
+        let end = start + batch.len();
+        serial_batch_inversion(&values[start..end], batch);
+    });
     result
 }
 

@@ -69,7 +69,7 @@ fn mul_acc() {
 
 #[test]
 fn batch_inversion() {
-    let n = 1024 * 4; // big enough for concurrent series generation
+    let n = 1024 * 4; // big enough for concurrent inversion
     let a = BaseElement::prng_vector([1; 32], n);
 
     let b = super::batch_inversion(&a);

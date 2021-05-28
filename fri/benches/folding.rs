@@ -13,16 +13,12 @@ use winter_fri::folding::quartic::{self, to_quartic_vec};
 static BATCH_SIZES: [usize; 3] = [65536, 131072, 262144];
 
 pub fn interpolate_batch(c: &mut Criterion) {
-    let mut interpolate_group = c.benchmark_group("quartic interpolate batch");
+    let mut group = c.benchmark_group("interpolate batch");
 
     for &size in &BATCH_SIZES {
         let (xs, ys) = build_coordinate_batches(size);
-        interpolate_group.bench_function(BenchmarkId::new("sequential", size), |b| {
+        group.bench_function(BenchmarkId::new("quartic", size), |b| {
             b.iter(|| quartic::interpolate_batch(&xs, &ys))
-        });
-
-        interpolate_group.bench_function(BenchmarkId::new("concurrent", size), |b| {
-            b.iter(|| quartic::concurrent::interpolate_batch(&xs, &ys))
         });
     }
 }

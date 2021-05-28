@@ -6,7 +6,7 @@
 use common::proof::Queries;
 use crypto::{Hasher, MerkleTree};
 use math::field::FieldElement;
-use utils::uninit_vector;
+use utils::{batch_iter_mut, uninit_vector};
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
@@ -85,31 +85,17 @@ impl<E: FieldElement, H: Hasher> ConstraintCommitment<E, H> {
 /// Computes hashes of evaluations grouped by row.
 fn hash_evaluations<E: FieldElement, H: Hasher>(evaluations: &[Vec<E>]) -> Vec<H::Digest> {
     let mut result = uninit_vector::<H::Digest>(evaluations[0].len());
-
-    #[cfg(not(feature = "concurrent"))]
-    {
-        let mut row = vec![E::ZERO; evaluations.len()];
-        for (i, result) in result.iter_mut().enumerate() {
-            read_row(evaluations, i, &mut row);
-            *result = H::hash_elements(&row);
+    batch_iter_mut!(
+        &mut result,
+        128, // min batch size
+        |batch: &mut [H::Digest], batch_offset: usize| {
+            let mut row = vec![E::ZERO; evaluations.len()];
+            for (i, result) in batch.iter_mut().enumerate() {
+                read_row(evaluations, batch_offset + i, &mut row);
+                *result = H::hash_elements(&row);
+            }
         }
-    }
-
-    #[cfg(feature = "concurrent")]
-    {
-        let batch_size = result.len() / rayon::current_num_threads().next_power_of_two();
-        result
-            .par_chunks_mut(batch_size)
-            .enumerate()
-            .for_each(|(batch_num, batch)| {
-                let mut row = vec![E::ZERO; evaluations.len()];
-                for (i, result) in batch.iter_mut().enumerate() {
-                    read_row(evaluations, batch_num * batch_size + i, &mut row);
-                    *result = H::hash_elements(&row);
-                }
-            });
-    }
-
+    );
     result
 }
 

@@ -8,11 +8,7 @@ use crypto::{Hasher, MerkleTree};
 use math::field::{FieldElement, StarkField};
 use std::marker::PhantomData;
 
-#[cfg(not(feature = "concurrent"))]
 use crate::folding::quartic;
-
-#[cfg(feature = "concurrent")]
-use crate::folding::quartic::concurrent as quartic;
 
 #[cfg(test)]
 mod tests;

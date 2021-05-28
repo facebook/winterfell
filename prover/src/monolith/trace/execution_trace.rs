@@ -6,7 +6,7 @@
 use super::{StarkDomain, TracePolyTable, TraceTable};
 use common::{Air, EvaluationFrame};
 use math::{fft, field::StarkField, polynom};
-use utils::uninit_vector;
+use utils::{iter_mut, uninit_vector};
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
@@ -268,20 +268,10 @@ impl<B: StarkField> ExecutionTrace<B> {
         // don't have to rebuild these twiddles for every register.
         let inv_twiddles = fft::get_inv_twiddles::<B>(domain.trace_length());
 
-        // extend all registers (either in multiple threads or in a single thread); the extension
-        // procedure first interpolates register traces into polynomials (in-place), then evaluates
-        // these polynomials over a larger domain, and then returns extended evaluations.
-        #[cfg(feature = "concurrent")]
-        let extended_trace = self
-            .0
-            .par_iter_mut()
-            .map(|register_trace| extend_register(register_trace, &domain, &inv_twiddles))
-            .collect();
-
-        #[cfg(not(feature = "concurrent"))]
-        let extended_trace = self
-            .0
-            .iter_mut()
+        // extend all registers; the extension procedure first interpolates register traces into
+        // polynomials (in-place), then evaluates these polynomials over a larger domain, and
+        // then returns extended evaluations.
+        let extended_trace = iter_mut!(self.0)
             .map(|register_trace| extend_register(register_trace, &domain, &inv_twiddles))
             .collect();
 
