@@ -17,7 +17,7 @@ use prover::{
 use std::collections::HashMap;
 
 #[cfg(feature = "concurrent")]
-use rayon::prelude::*;
+use prover::iterators::*;
 
 // CONSTANTS
 // ================================================================================================
@@ -87,9 +87,8 @@ pub fn generate_trace(
     // iterate over all leaves of the aggregated public key; and if a signature exists for the
     // corresponding individual public key, use it go generate signature verification trace;
     // otherwise, use zero signature;
-
-    #[cfg(not(feature = "concurrent"))]
-    for (i, sig_trace) in trace.fragments(SIG_CYCLE_LENGTH).iter_mut().enumerate() {
+    trace.fragments(SIG_CYCLE_LENGTH).for_each(|mut sig_trace| {
+        let i = sig_trace.index();
         let sig_info = match signature_map.get(&i) {
             Some(sig) => build_sig_info(i, &message, &sig, 1, pub_key, sig_count[i]),
             None => build_sig_info(i, &message, &zero_sig, 0, pub_key, sig_count[i]),
@@ -103,28 +102,7 @@ pub fn generate_trace(
                 update_sig_verification_state(step, &sig_info, &powers_of_two, state);
             },
         );
-    }
-
-    #[cfg(feature = "concurrent")]
-    trace
-        .fragments(SIG_CYCLE_LENGTH)
-        .par_iter_mut()
-        .enumerate()
-        .for_each(|(i, sig_trace)| {
-            let sig_info = match signature_map.get(&i) {
-                Some(sig) => build_sig_info(i, &message, &sig, 1, pub_key, sig_count[i]),
-                None => build_sig_info(i, &message, &zero_sig, 0, pub_key, sig_count[i]),
-            };
-
-            sig_trace.fill(
-                |state| {
-                    init_sig_verification_state(&sig_info, state);
-                },
-                |step, state| {
-                    update_sig_verification_state(step, &sig_info, &powers_of_two, state);
-                },
-            );
-        });
+    });
 
     trace
 }

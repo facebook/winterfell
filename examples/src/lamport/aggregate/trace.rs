@@ -13,7 +13,7 @@ use prover::{
 };
 
 #[cfg(feature = "concurrent")]
-use rayon::prelude::*;
+use prover::iterators::*;
 
 // CONSTANTS
 // ================================================================================================
@@ -50,8 +50,8 @@ pub fn generate_trace(
 
     let powers_of_two = get_power_series(TWO, 128);
 
-    #[cfg(not(feature = "concurrent"))]
-    for (i, sig_trace) in trace.fragments(SIG_CYCLE_LENGTH).iter_mut().enumerate() {
+    trace.fragments(SIG_CYCLE_LENGTH).for_each(|mut sig_trace| {
+        let i = sig_trace.index();
         let sig_info = build_sig_info(&messages[i], &signatures[i]);
         sig_trace.fill(
             |state| {
@@ -61,24 +61,7 @@ pub fn generate_trace(
                 update_sig_verification_state(step, &sig_info, &powers_of_two, state);
             },
         );
-    }
-
-    #[cfg(feature = "concurrent")]
-    trace
-        .fragments(SIG_CYCLE_LENGTH)
-        .par_iter_mut()
-        .enumerate()
-        .for_each(|(i, sig_trace)| {
-            let sig_info = build_sig_info(&messages[i], &signatures[i]);
-            sig_trace.fill(
-                |state| {
-                    init_sig_verification_state(&sig_info, state);
-                },
-                |step, state| {
-                    update_sig_verification_state(step, &sig_info, &powers_of_two, state);
-                },
-            );
-        });
+    });
 
     trace
 }

@@ -119,7 +119,28 @@ impl<B: StarkField> ExecutionTrace<B> {
     /// Breaks the execution trace into mutable fragments each having the number of rows
     /// specified by `fragment_length` parameter. The returned fragments can be used to
     /// update data in the trace from multiple threads.
-    pub fn fragments(&mut self, fragment_length: usize) -> Vec<ExecutionTraceFragment<B>> {
+    #[cfg(not(feature = "concurrent"))]
+    pub fn fragments(
+        &mut self,
+        fragment_length: usize,
+    ) -> std::vec::IntoIter<ExecutionTraceFragment<B>> {
+        self.build_fragments(fragment_length).into_iter()
+    }
+
+    /// Breaks the execution trace into mutable fragments each having the number of rows
+    /// specified by `fragment_length` parameter. The returned fragments can be used to
+    /// update data in the trace from multiple threads.
+    #[cfg(feature = "concurrent")]
+    pub fn fragments(
+        &mut self,
+        fragment_length: usize,
+    ) -> rayon::vec::IntoIter<ExecutionTraceFragment<B>> {
+        self.build_fragments(fragment_length).into_par_iter()
+    }
+
+    /// Returns a vector of trace fragments each covering the number of steps specified by the
+    /// `fragment_length` parameter.
+    fn build_fragments(&mut self, fragment_length: usize) -> Vec<ExecutionTraceFragment<B>> {
         assert!(
             fragment_length >= MIN_FRAGMENT_LENGTH,
             "fragment length must be at least {}, but was {}",
@@ -143,6 +164,7 @@ impl<B: StarkField> ExecutionTrace<B> {
             .into_iter()
             .enumerate()
             .map(|(i, data)| ExecutionTraceFragment {
+                index: i,
                 offset: i * fragment_length,
                 data,
             })
@@ -286,6 +308,7 @@ impl<B: StarkField> ExecutionTrace<B> {
 // ================================================================================================
 
 pub struct ExecutionTraceFragment<'a, B: StarkField> {
+    index: usize,
     offset: usize,
     data: Vec<&'a mut [B]>,
 }
@@ -293,6 +316,12 @@ pub struct ExecutionTraceFragment<'a, B: StarkField> {
 impl<'a, B: StarkField> ExecutionTraceFragment<'a, B> {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
+
+    /// Returns the index of this fragment.
+    pub fn index(&self) -> usize {
+        self.index
+    }
+
     /// Returns the step at which the fragment starts.
     pub fn offset(&self) -> usize {
         self.offset
