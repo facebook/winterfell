@@ -3,8 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{field::FieldElement, utils as crate_utils};
+use crate::{field::FieldElement, utils::batch_inversion};
 use std::mem;
+use utils::group_vector_elements;
 
 #[cfg(test)]
 mod tests;
@@ -40,40 +41,79 @@ where
 pub fn interpolate<E: FieldElement>(xs: &[E], ys: &[E], remove_leading_zeros: bool) -> Vec<E> {
     debug_assert!(
         xs.len() == ys.len(),
-        "Number of X and Y coordinates must be the same"
+        "number of X and Y coordinates must be the same"
     );
 
     let roots = get_zero_roots(xs);
-    let mut divisor = [E::ZERO, E::ONE];
-    let mut numerators: Vec<Vec<E>> = Vec::with_capacity(xs.len());
-    for xcoord in xs {
-        divisor[0] = -*xcoord;
-        numerators.push(div(&roots, &divisor));
-    }
+    let numerators: Vec<Vec<E>> = xs.iter().map(|&x| syn_div(&roots, 1, x)).collect();
 
-    let mut denominators: Vec<E> = Vec::with_capacity(xs.len());
-    for i in 0..xs.len() {
-        denominators.push(eval(&numerators[i], xs[i]));
-    }
-    let denominators = crate_utils::batch_inversion(&denominators);
+    let denominators: Vec<E> = numerators
+        .iter()
+        .zip(xs)
+        .map(|(e, &x)| eval(&e, x))
+        .collect();
+    let denominators = batch_inversion(&denominators);
 
     let mut result = E::zeroed_vector(xs.len());
     for i in 0..xs.len() {
         let y_slice = ys[i] * denominators[i];
-        if ys[i] != E::ZERO {
-            for (j, res) in result.iter_mut().enumerate() {
-                if numerators[i][j] != E::ZERO {
-                    *res += numerators[i][j] * y_slice;
-                }
-            }
+        for (j, res) in result.iter_mut().enumerate() {
+            *res += numerators[i][j] * y_slice;
         }
     }
 
     if remove_leading_zeros {
-        crate_utils::remove_leading_zeros(&result)
+        crate::utils::remove_leading_zeros(&result)
     } else {
         result
     }
+}
+
+/// Uses Lagrange interpolation to build polynomials from batches of X and Y coordinates. This
+/// function is significantly faster (>3x) than the generic Lagrange interpolation function above.
+pub fn interpolate_batch<E: FieldElement, const N: usize>(
+    xs: &[[E; N]],
+    ys: &[[E; N]],
+) -> Vec<[E; N]> {
+    debug_assert!(
+        xs.len() == ys.len(),
+        "number of X coordinate batches and Y coordinate batches must be the same"
+    );
+
+    let n = xs.len();
+    let mut equations = group_vector_elements(E::zeroed_vector(n * N * N));
+    let mut inverses = E::zeroed_vector(n * N);
+
+    // TODO: converting this to an array results in about 5% speed-up, but unfortunately, complex
+    // generic constraints are not yet supported: https://github.com/rust-lang/rust/issues/76560
+    let mut roots = vec![E::ZERO; N + 1];
+
+    for (i, xs) in xs.iter().enumerate() {
+        fill_zero_roots(xs, &mut roots);
+        for (j, &x) in xs.iter().enumerate() {
+            let equation = &mut equations[i * N + j];
+            // optimized synthetic division for this context
+            equation[N - 1] = roots[N];
+            for k in (0..N - 1).rev() {
+                equation[k] = roots[k + 1] + equation[k + 1] * x;
+            }
+            inverses[i * N + j] = eval(equation, x);
+        }
+    }
+    let equations = group_vector_elements::<[E; N], N>(equations);
+    let inverses = group_vector_elements::<E, N>(batch_inversion(&inverses));
+
+    let mut result = group_vector_elements(E::zeroed_vector(n * N));
+    for (i, poly) in result.iter_mut().enumerate() {
+        for j in 0..N {
+            let inv_y = ys[i][j] * inverses[i][j];
+            for (res_coeff, &eq_coeff) in poly.iter_mut().zip(equations[i][j].iter()) {
+                *res_coeff += eq_coeff * inv_y;
+            }
+        }
+    }
+
+    result
 }
 
 // POLYNOMIAL MATH OPERATIONS
@@ -255,9 +295,13 @@ pub fn degree_of<E: FieldElement>(poly: &[E]) -> usize {
 // HELPER FUNCTIONS
 // ================================================================================================
 fn get_zero_roots<E: FieldElement>(xs: &[E]) -> Vec<E> {
-    let mut n = xs.len() + 1;
-    let mut result = utils::uninit_vector(n);
+    let mut result = utils::uninit_vector(xs.len() + 1);
+    fill_zero_roots(xs, &mut result);
+    result
+}
 
+fn fill_zero_roots<E: FieldElement>(xs: &[E], result: &mut [E]) {
+    let mut n = result.len();
     n -= 1;
     result[n] = E::ONE;
 
@@ -269,6 +313,4 @@ fn get_zero_roots<E: FieldElement>(xs: &[E]) -> Vec<E> {
             result[j] = result[j] - result[j + 1] * xs[i];
         }
     }
-
-    result
 }

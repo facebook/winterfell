@@ -6,6 +6,7 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use math::{
     field::{f128::BaseElement, FieldElement, StarkField},
+    polynom,
     utils::{get_power_series, log2},
 };
 use winter_fri::folding::quartic::{self, to_quartic_vec};
@@ -17,6 +18,10 @@ pub fn interpolate_batch(c: &mut Criterion) {
 
     for &size in &BATCH_SIZES {
         let (xs, ys) = build_coordinate_batches(size);
+        group.bench_function(BenchmarkId::new("generic", size), |b| {
+            b.iter(|| polynom::interpolate_batch(&xs, &ys))
+        });
+
         group.bench_function(BenchmarkId::new("quartic", size), |b| {
             b.iter(|| quartic::interpolate_batch(&xs, &ys))
         });

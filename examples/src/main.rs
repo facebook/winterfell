@@ -68,7 +68,10 @@ fn main() {
     let proof = bincode::deserialize(&proof_bytes).expect("proof deserialization failed");
     let now = Instant::now();
     match example.verify(proof) {
-        Ok(_) => debug!("Proof verified in {} ms", now.elapsed().as_millis()),
+        Ok(_) => debug!(
+            "Proof verified in {:.1} ms",
+            now.elapsed().as_micros() as f64 / 1000f64
+        ),
         Err(msg) => debug!("Failed to verify proof: {}", msg),
     }
     debug!("============================================================");
