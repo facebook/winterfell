@@ -3,12 +3,16 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{utils, FriOptions, FriProof, FriProofLayer, ProverChannel};
+use crate::{
+    folding::apply_drp, utils::fold_positions, FriOptions, FriProof, FriProofLayer, ProverChannel,
+};
 use crypto::{Hasher, MerkleTree};
 use math::field::{FieldElement, StarkField};
 use std::marker::PhantomData;
+use utils::{iter_mut, transpose_slice, uninit_vector};
 
-use crate::folding::quartic;
+#[cfg(feature = "concurrent")]
+use rayon::prelude::*;
 
 #[cfg(test)]
 mod tests;
@@ -80,20 +84,21 @@ where
 
         // reduce the degree by 4 at each iteration until the remaining polynomial is small enough;
         // + 1 is for the remainder
-        for depth in 0..self.options.num_fri_layers(domain.len()) + 1 {
+        for _ in 0..self.options.num_fri_layers(domain.len()) + 1 {
             // commit to the evaluations at the current layer; we do this by first transposing the
             // evaluations into a matrix of 4 columns, and then building a Merkle tree from the
             // rows of this matrix; we do this so that we could de-commit to 4 values with a sing
             // Merkle authentication path.
-            let transposed_evaluations = quartic::transpose(&evaluations, 1);
-            let hashed_evaluations = quartic::hash_values::<H, E>(&transposed_evaluations);
+            let transposed_evaluations = transpose_slice(&evaluations);
+            let hashed_evaluations = hash_values::<H, E, 4>(&transposed_evaluations);
             let evaluation_tree = MerkleTree::<H>::new(hashed_evaluations);
             channel.commit_fri_layer(*evaluation_tree.root());
 
             // draw a pseudo-random coefficient from the channel, and use it in degree-respecting
             // projection to reduce the degree of evaluations by 4
             let alpha = channel.draw_fri_alpha();
-            evaluations = apply_drp(&transposed_evaluations, domain, depth, alpha);
+            //evaluations = apply_drp(&transposed_evaluations, domain[0], alpha);
+            evaluations = apply_drp(&transposed_evaluations, domain[0], alpha);
 
             self.layers.push(FriLayer {
                 tree: evaluation_tree,
@@ -128,8 +133,7 @@ where
         // to row evaluations, and values for row evaluations
         let mut layers = Vec::with_capacity(self.layers.len());
         for i in 0..self.layers.len() - 1 {
-            positions =
-                utils::fold_positions(&positions, domain_size, self.options.folding_factor());
+            positions = fold_positions(&positions, domain_size, self.options.folding_factor());
 
             let proof = self.layers[i].tree.prove_batch(&positions);
 
@@ -174,26 +178,12 @@ where
 // HELPER FUNCTIONS
 // ================================================================================================
 
-/// Applies degree-respecting projection to the `evaluations` reducing the degree of evaluations
-/// by FOLDING_FACTOR. This is equivalent to the following:
-/// - Let `evaluations` contain the evaluations of polynomial f(x) of degree k
-/// - Group coefficients of f so that f(x) = a(x) + x * b(x) + x^2 * c(x) + x^3 * d(x)
-/// - Compute random linear combination of a, b, c, d as:
-///   f'(x) = a + alpha * b + alpha^2 * c + alpha^3 * d, where alpha is a random coefficient
-/// - evaluate f'(x) on a domain which consists of x^4 from the original domain (and thus is
-///   1/4 the size)
-/// note: to compute an x in the new domain, we need 4 values from the old domain:
-/// x^{1/4}, x^{2/4}, x^{3/4}, x
-fn apply_drp<B: StarkField, E: FieldElement<BaseField = B>>(
-    evaluations: &[[E; FOLDING_FACTOR]],
-    domain: &[B],
-    depth: usize,
-    alpha: E,
-) -> Vec<E> {
-    let domain_stride = usize::pow(FOLDING_FACTOR, depth as u32);
-    let xs = quartic::transpose(domain, domain_stride);
-
-    let polys = quartic::interpolate_batch(&xs, &evaluations);
-
-    quartic::evaluate_batch(&polys, alpha)
+pub fn hash_values<H: Hasher, E: FieldElement, const N: usize>(
+    values: &[[E; N]],
+) -> Vec<H::Digest> {
+    let mut result: Vec<H::Digest> = uninit_vector(values.len());
+    iter_mut!(result, 1024).zip(values).for_each(|(r, v)| {
+        *r = H::hash_elements(v);
+    });
+    result
 }

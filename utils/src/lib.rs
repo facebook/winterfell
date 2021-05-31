@@ -10,6 +10,9 @@ mod iterators;
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "concurrent")]
+use rayon::prelude::*;
+
 // SERIALIZABLE
 // ================================================================================================
 
@@ -130,4 +133,22 @@ pub fn flatten_slice_elements<T, const N: usize>(source: &[[T; N]]) -> &[T] {
     let p = source.as_ptr();
     let len = source.len() * N;
     unsafe { slice::from_raw_parts(p as *const T, len) }
+}
+
+// TRANSPOSING
+// ================================================================================================
+
+/// Transposes a slice of n elements into a matrix with N columns and n/N rows.
+pub fn transpose_slice<T: Copy + Send + Sync, const N: usize>(source: &[T]) -> Vec<[T; N]> {
+    let row_count = source.len() / N;
+
+    let mut result = group_vector_elements(uninit_vector(row_count * N));
+    iter_mut!(result, 1024)
+        .enumerate()
+        .for_each(|(i, element)| {
+            for j in 0..N {
+                element[j] = source[i + j * row_count]
+            }
+        });
+    result
 }

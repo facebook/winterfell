@@ -110,7 +110,7 @@ where
         // build a set of x for each row polynomial
         #[rustfmt::skip]
         let xs = folded_positions.iter().map(|&i| {
-            let xe = domain_generator.exp((i as u32).into()) * domain_offset;
+            let xe = domain_generator.exp((i as u64).into()) * domain_offset;
             folding_roots.iter()
                 .map(|&r| E::from(xe * r))
                 .collect::<Vec<_>>().try_into().unwrap()
@@ -128,7 +128,7 @@ where
         evaluations = row_polys.iter().map(|p| polynom::eval(p, alpha)).collect();
 
         // update variables for the next iteration of the loop
-        domain_generator = domain_generator.exp((N as u64).into());
+        domain_generator = domain_generator.exp((N as u32).into());
         max_degree_plus_1 /= N;
         domain_size /= N;
         mem::swap(&mut positions, &mut folded_positions);

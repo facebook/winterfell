@@ -30,3 +30,12 @@ fn flatten_slice_elements() {
     let b = super::flatten_slice_elements(&a);
     assert_eq!([1, 2, 3, 4, 5, 6, 7, 8], b);
 }
+
+#[test]
+fn transpose_slice() {
+    let n = 8;
+    let a = (0..n).map(|v| v as u64).collect::<Vec<_>>();
+    let b: Vec<[u64; 2]> = super::transpose_slice(&a);
+
+    assert_eq!([[0, 4], [1, 5], [2, 6], [3, 7]].to_vec(), b);
+}
