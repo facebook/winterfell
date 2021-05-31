@@ -3,7 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{utils, VerifierError};
+use crate::{
+    utils::{fold_positions, map_positions_to_indexes},
+    VerifierError,
+};
 use crypto::Hasher;
 use math::{
     field::{FieldElement, StarkField},
@@ -37,14 +40,12 @@ where
     C: VerifierChannel<E, Hasher = H>,
 {
     // static dispatch for folding factor parameter
-    match context.folding_factor() {
+    let folding_factor = context.folding_factor();
+    match folding_factor {
         4 => verify_generic::<B, E, H, C, 4>(context, channel, evaluations, positions),
         8 => verify_generic::<B, E, H, C, 8>(context, channel, evaluations, positions),
         16 => verify_generic::<B, E, H, C, 16>(context, channel, evaluations, positions),
-        _ => unimplemented!(
-            "folding factor {} is not supported",
-            context.folding_factor()
-        ),
+        _ => unimplemented!("folding factor {} is not supported", folding_factor),
     }
 }
 
@@ -89,9 +90,9 @@ where
     for depth in 0..context.num_fri_layers() {
         // determine which evaluations were queried in the folded layer
         let mut folded_positions =
-            utils::fold_positions(&positions, domain_size, context.folding_factor());
+            fold_positions(&positions, domain_size, context.folding_factor());
         // determine where these evaluations are in the commitment Merkle tree
-        let position_indexes = utils::map_positions_to_indexes(
+        let position_indexes = map_positions_to_indexes(
             &folded_positions,
             domain_size,
             context.folding_factor(),
@@ -139,7 +140,7 @@ where
     // read the remainder from the channel and make sure it matches with the columns
     // of the previous layer
     let remainder_commitment = context.layer_commitments().last().unwrap();
-    let remainder = channel.read_remainder(&remainder_commitment)?;
+    let remainder = channel.read_remainder::<N>(&remainder_commitment)?;
     for (&position, evaluation) in positions.iter().zip(evaluations) {
         if remainder[position] != evaluation {
             return Err(VerifierError::RemainderValuesNotConsistent);
@@ -151,6 +152,7 @@ where
         remainder,
         max_degree_plus_1,
         domain_generator,
+        domain_offset,
         context.blowup_factor(),
     )
 }
@@ -158,11 +160,13 @@ where
 // REMAINDER DEGREE VERIFICATION
 // ================================================================================================
 /// Returns Ok(true) if values in the `remainder` slice represent evaluations of a polynomial
-/// with degree < max_degree_plus_1 against a domain specified by the `domain_generator`.
+/// with degree < max_degree_plus_1 against a domain specified by the `domain_generator` and
+/// `domain_offset`.
 fn verify_remainder<B: StarkField, E: FieldElement<BaseField = B>>(
     remainder: Vec<E>,
     max_degree_plus_1: usize,
     domain_generator: B,
+    domain_offset: B,
     blowup_factor: usize,
 ) -> Result<(), VerifierError> {
     if max_degree_plus_1 > remainder.len() {
@@ -178,7 +182,7 @@ fn verify_remainder<B: StarkField, E: FieldElement<BaseField = B>>(
     }
 
     // pick a subset of points from the remainder and interpolate them into a polynomial
-    let domain = get_power_series_with_offset(domain_generator, B::GENERATOR, remainder.len());
+    let domain = get_power_series_with_offset(domain_generator, domain_offset, remainder.len());
     let mut xs = Vec::with_capacity(max_degree_plus_1);
     let mut ys = Vec::with_capacity(max_degree_plus_1);
     for &p in positions.iter().take(max_degree_plus_1) {

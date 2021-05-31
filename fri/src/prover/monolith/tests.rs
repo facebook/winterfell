@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    super::tests::{build_evaluations, build_lde_domain, build_prover_channel, verify_proof},
+    super::tests::{build_evaluations, build_prover_channel, verify_proof},
     FriProver,
 };
 use crate::FriOptions;
@@ -18,11 +18,10 @@ fn sequential_fri_prove_verify() {
     let options = FriOptions::new(lde_blowup, 4, 256);
     let mut channel = build_prover_channel(trace_length, &options);
     let evaluations = build_evaluations(trace_length, lde_blowup, ce_blowup);
-    let lde_domain = build_lde_domain(trace_length, lde_blowup, options.domain_offset());
 
     // instantiate the prover and generate the proof
     let mut prover = FriProver::new(options.clone());
-    prover.build_layers(&mut channel, evaluations.clone(), &lde_domain);
+    prover.build_layers(&mut channel, evaluations.clone());
     let positions = channel.draw_query_positions();
     let proof = prover.build_proof(&positions);
 
@@ -34,7 +33,7 @@ fn sequential_fri_prove_verify() {
         commitments,
         &evaluations,
         max_degree,
-        lde_domain.len(),
+        trace_length * lde_blowup,
         &positions,
         &options,
     );

@@ -49,6 +49,10 @@ pub struct ExampleOptions {
     /// Whether to use field extension for composition polynomial
     #[structopt(short = "e", long = "extension")]
     field_extension: bool,
+
+    /// Folding factor for FRI protocol
+    #[structopt(short = "f", long = "folding", default_value = "4")]
+    folding_factor: usize,
 }
 
 impl ExampleOptions {
@@ -67,7 +71,7 @@ impl ExampleOptions {
             self.grinding_factor,
             HashFunction::Blake3_256,
             field_extension,
-            4,
+            self.folding_factor,
             256,
         )
     }

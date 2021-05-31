@@ -10,7 +10,6 @@ use math::field::StarkField;
 
 // TODO: these are hard-coded for now, but in the future we should make them configurable
 pub const MAX_REMAINDER_SIZE: usize = 256;
-pub const FOLDING_FACTOR: usize = 4;
 
 // FRI OPTIONS
 // ================================================================================================
@@ -24,9 +23,9 @@ pub struct FriOptions {
 
 impl FriOptions {
     pub fn new(blowup_factor: usize, folding_factor: usize, max_remainder_size: usize) -> Self {
-        assert_eq!(
-            folding_factor, FOLDING_FACTOR,
-            "folding factor {} is not supported yet",
+        assert!(
+            folding_factor == 4 || folding_factor == 8 || folding_factor == 16,
+            "folding factor {} is not supported",
             folding_factor
         );
         assert_eq!(

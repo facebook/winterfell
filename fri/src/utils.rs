@@ -3,6 +3,13 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use crypto::Hasher;
+use math::field::FieldElement;
+use utils::{iter_mut, uninit_vector};
+
+#[cfg(feature = "concurrent")]
+use rayon::prelude::*;
+
 /// Maps positions in the current evaluation domain, to positions in the folded domain.
 pub fn fold_positions(
     positions: &[usize],
@@ -47,5 +54,16 @@ pub fn map_positions_to_indexes(
         result.push(position);
     }
 
+    result
+}
+
+/// Hashes each of the arrays in the provided slice and returns a vector of resulting hashes.
+pub fn hash_values<H: Hasher, E: FieldElement, const N: usize>(
+    values: &[[E; N]],
+) -> Vec<H::Digest> {
+    let mut result: Vec<H::Digest> = uninit_vector(values.len());
+    iter_mut!(result, 1024).zip(values).for_each(|(r, v)| {
+        *r = H::hash_elements(v);
+    });
     result
 }

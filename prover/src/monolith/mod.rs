@@ -244,7 +244,7 @@ fn generate_proof<A: Air, E: FieldElement<BaseField = A::BaseElement>, H: Hasher
     // 7 ----- compute FRI layers for the composition polynomial ----------------------------------
     let now = Instant::now();
     let mut fri_prover = fri::FriProver::new(air.options().to_fri_options());
-    fri_prover.build_layers(&mut channel, deep_evaluations, &domain.lde_values());
+    fri_prover.build_layers(&mut channel, deep_evaluations);
     debug!(
         "Computed {} FRI layers from composition polynomial evaluations in {} ms",
         fri_prover.num_layers(),

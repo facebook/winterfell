@@ -135,6 +135,15 @@ pub fn flatten_slice_elements<T, const N: usize>(source: &[[T; N]]) -> &[T] {
     unsafe { slice::from_raw_parts(p as *const T, len) }
 }
 
+// Transmutes a vector of n arrays each of length N, into a vector of N * n elements.
+pub fn flatten_vector_elements<T, const N: usize>(source: Vec<[T; N]>) -> Vec<T> {
+    let v = mem::ManuallyDrop::new(source);
+    let p = v.as_ptr();
+    let len = v.len() * N;
+    let cap = v.capacity() * N;
+    unsafe { Vec::from_raw_parts(p as *mut T, len, cap) }
+}
+
 // TRANSPOSING
 // ================================================================================================
 
