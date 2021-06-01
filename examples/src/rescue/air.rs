@@ -101,7 +101,7 @@ impl Air for RescueAir {
         let ark = &periodic_values[1..];
 
         // when hash_flag = 1, constraints for Rescue round are enforced
-        rescue::enforce_round(result, &frame.current, &frame.next, &ark, hash_flag);
+        rescue::enforce_round(result, &frame.current, &frame.next, ark, hash_flag);
 
         // when hash_flag = 0, constraints for copying hash values to the next
         // step are enforced.

@@ -51,7 +51,7 @@ pub struct ExampleOptions {
     field_extension: bool,
 
     /// Folding factor for FRI protocol
-    #[structopt(short = "f", long = "folding", default_value = "4")]
+    #[structopt(short = "f", long = "folding", default_value = "8")]
     folding_factor: usize,
 }
 

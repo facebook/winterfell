@@ -50,7 +50,7 @@ pub fn interpolate<E: FieldElement>(xs: &[E], ys: &[E], remove_leading_zeros: bo
     let denominators: Vec<E> = numerators
         .iter()
         .zip(xs)
-        .map(|(e, &x)| eval(&e, x))
+        .map(|(e, &x)| eval(e, x))
         .collect();
     let denominators = batch_inversion(&denominators);
 

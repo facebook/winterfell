@@ -86,7 +86,7 @@ impl LamportAggregateExample {
             let pk = private_keys[i].pub_key();
             pub_keys.push(pk.to_elements());
             let msg = format!("test message {}", i);
-            assert!(pk.verify(msg.as_bytes(), &signature));
+            assert!(pk.verify(msg.as_bytes(), signature));
         }
         debug!(
             "Verified {} signature in {} ms",

@@ -142,7 +142,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraint<B, E> {
                 .entry(poly.len())
                 .or_insert_with(|| fft::get_inv_twiddles(poly.len()));
             // interpolate the values into a polynomial
-            fft::interpolate_poly(&mut poly, &inv_twiddles);
+            fft::interpolate_poly(&mut poly, inv_twiddles);
             if assertion.first_step != 0 {
                 // if the assertions don't fall on the steps which are powers of two, we can't
                 // use FFT to interpolate the values into a polynomial. This would make such

@@ -5,12 +5,6 @@
 
 use math::field::StarkField;
 
-// CONSTANTS
-// ================================================================================================
-
-// TODO: these are hard-coded for now, but in the future we should make them configurable
-pub const MAX_REMAINDER_SIZE: usize = 256;
-
 // FRI OPTIONS
 // ================================================================================================
 
@@ -28,9 +22,10 @@ impl FriOptions {
             "folding factor {} is not supported",
             folding_factor
         );
-        assert_eq!(
-            max_remainder_size, MAX_REMAINDER_SIZE,
-            "max remainder size {} is not yet supported",
+        assert!(
+            max_remainder_size >= folding_factor * 2,
+            "expected max remainder size to be at least {}, but was {}",
+            folding_factor * 2,
             max_remainder_size
         );
         FriOptions {

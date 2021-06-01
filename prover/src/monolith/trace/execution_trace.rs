@@ -294,7 +294,7 @@ impl<B: StarkField> ExecutionTrace<B> {
         // polynomials (in-place), then evaluates these polynomials over a larger domain, and
         // then returns extended evaluations.
         let extended_trace = iter_mut!(self.0)
-            .map(|register_trace| extend_register(register_trace, &domain, &inv_twiddles))
+            .map(|register_trace| extend_register(register_trace, domain, &inv_twiddles))
             .collect();
 
         (

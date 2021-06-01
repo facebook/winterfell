@@ -120,7 +120,7 @@ impl<B: StarkField> TraceTable<B> {
         }
 
         // build Merkle authentication paths to the leaves specified by positions
-        let trace_proof = commitment.prove_batch(&positions);
+        let trace_proof = commitment.prove_batch(positions);
 
         Queries::new(trace_proof, trace_states)
     }

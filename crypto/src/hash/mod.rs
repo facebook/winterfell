@@ -57,7 +57,7 @@ impl Hasher for Blake3_256 {
 
     fn hash_elements<E: FieldElement>(elements: &[E]) -> Self::Digest {
         let bytes = E::elements_as_bytes(elements);
-        blake3::hash(&bytes).into()
+        blake3::hash(bytes).into()
     }
 
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest {
@@ -94,7 +94,7 @@ pub fn blake3(values: &[u8], result: &mut [u8]) {
         "expected result to be exactly 32 bytes but received {}",
         result.len()
     );
-    let hash = blake3::hash(&values);
+    let hash = blake3::hash(values);
     result.copy_from_slice(hash.as_bytes());
 }
 

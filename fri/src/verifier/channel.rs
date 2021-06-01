@@ -34,7 +34,7 @@ pub trait VerifierChannel<E: FieldElement> {
         commitment: &<<Self as VerifierChannel<E>>::Hasher as Hasher>::Digest,
     ) -> Result<Vec<[E; N]>, VerifierError> {
         let layer_proof = self.take_next_fri_layer_proof();
-        if !MerkleTree::<Self::Hasher>::verify_batch(commitment, &positions, &layer_proof) {
+        if !MerkleTree::<Self::Hasher>::verify_batch(commitment, positions, &layer_proof) {
             return Err(VerifierError::LayerCommitmentMismatch(layer_idx));
         }
 

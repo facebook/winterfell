@@ -69,7 +69,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraintGroup<B, E
 
                 let values = fft::evaluate_poly_with_offset(
                     constraint.poly(),
-                    &twiddles,
+                    twiddles,
                     context.domain_offset(),
                     context.ce_domain_size() / poly_length,
                 );

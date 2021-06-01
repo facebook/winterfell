@@ -22,6 +22,8 @@ pub enum VerifierError {
     RemainderDegreeNotValid,
     /// "FRI remainder is not a valid degree {0} polynomial
     RemainderDegreeMismatch(usize),
+    /// Degree reduction from {0} by {1} at layer {2} results in degree truncation
+    DegreeTruncation(usize, usize, usize),
 }
 
 impl fmt::Display for VerifierError {
@@ -45,6 +47,9 @@ impl fmt::Display for VerifierError {
             }
             Self::RemainderDegreeMismatch(degree) => {
                 write!(f, "FRI remainder is not a valid degree {} polynomial", degree)
+            }
+            Self::DegreeTruncation(degree, folding, layer) => {
+                write!(f, "degree reduction from {} by {} at layer {} results in degree truncation", degree, folding, layer)
             }
         }
     }

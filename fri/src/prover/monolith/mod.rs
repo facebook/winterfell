@@ -47,6 +47,9 @@ where
     C: ProverChannel<E, Hasher = H>,
     H: Hasher,
 {
+    // CONSTRUCTOR
+    // --------------------------------------------------------------------------------------------
+    /// Returns a new FRI prover instantiated with the provided options.
     pub fn new(options: FriOptions) -> Self {
         FriProver {
             options,
@@ -58,12 +61,12 @@ where
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// TODO: add comment
+    /// Returns folding factor for this prover.
     pub fn folding_factor(&self) -> usize {
         self.options.folding_factor()
     }
 
-    /// TODO: add comment
+    /// Returns offset of the domain over which FRI protocol is executed by this prover.
     pub fn domain_offset(&self) -> B {
         self.options.domain_offset()
     }
@@ -115,13 +118,14 @@ where
         );
     }
 
-    /// TODO: add comment
+    /// Builds a single FRI layer by first committing to the `evaluations`, then drawing a random
+    /// alpha from the channel and using it to perform degree-preserving projection.
     fn build_layer<const N: usize>(&mut self, channel: &mut C, evaluations: &mut Vec<E>) {
         // commit to the evaluations at the current layer; we do this by first transposing the
         // evaluations into a matrix of N columns, and then building a Merkle tree from the
         // rows of this matrix; we do this so that we could de-commit to N values with a single
         // Merkle authentication path.
-        let transposed_evaluations = transpose_slice(&evaluations);
+        let transposed_evaluations = transpose_slice(evaluations);
         let hashed_evaluations = hash_values::<H, E, N>(&transposed_evaluations);
         let evaluation_tree = MerkleTree::<H>::new(hashed_evaluations);
         channel.commit_fri_layer(*evaluation_tree.root());
@@ -152,16 +156,17 @@ where
         let mut domain_size = self.layers[0].evaluations.len();
         let folding_factor = self.options.folding_factor();
 
-        // for all trees, except the last one, record tree root, authentication paths
-        // to row evaluations, and values for row evaluations
+        // for all FRI layers, except the last one, record tree root, determine a set of query
+        // positions, and query the layer at these positions.
         let mut layers = Vec::with_capacity(self.layers.len());
         for i in 0..self.layers.len() - 1 {
             positions = fold_positions(&positions, domain_size, folding_factor);
 
+            // sort of a static dispatch for folding_factor parameter
             let proof_layer = match folding_factor {
-                4 => build_proof_layer::<B, E, H, 4>(&self.layers[i], &positions),
-                8 => build_proof_layer::<B, E, H, 8>(&self.layers[i], &positions),
-                16 => build_proof_layer::<B, E, H, 16>(&self.layers[i], &positions),
+                4 => query_layer::<B, E, H, 4>(&self.layers[i], &positions),
+                8 => query_layer::<B, E, H, 8>(&self.layers[i], &positions),
+                16 => query_layer::<B, E, H, 16>(&self.layers[i], &positions),
                 _ => unimplemented!("folding factor {} is not supported", folding_factor),
             };
 
@@ -190,17 +195,18 @@ where
 // HELPER FUNCTIONS
 // ================================================================================================
 
-fn build_proof_layer<B, E, H, const N: usize>(
+/// Builds a single proof layer by querying the evaluations of the passed in FRI layer at the
+/// specified positions.
+fn query_layer<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher, const N: usize>(
     layer: &FriLayer<B, E, H>,
     positions: &[usize],
-) -> FriProofLayer
-where
-    B: StarkField,
-    E: FieldElement<BaseField = B>,
-    H: Hasher,
-{
-    let proof = layer.tree.prove_batch(&positions);
+) -> FriProofLayer {
+    // build Merkle authentication paths for all query positions
+    let proof = layer.tree.prove_batch(positions);
 
+    // build a list of polynomial evaluations at each position; since evaluations in FRI layers
+    // are stored in transposed form, a position refers to N evaluations which are committed
+    // in a single leaf
     let mut queried_values: Vec<[E; N]> = Vec::with_capacity(positions.len());
     for &position in positions.iter() {
         let evaluations: &[[E; N]] = group_slice_elements(&layer.evaluations);

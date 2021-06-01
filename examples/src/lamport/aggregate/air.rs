@@ -214,9 +214,9 @@ fn evaluate_constraints<E: FieldElement + From<BaseElement>>(
     result.agg_constraint(1, flag, are_equal(current[1], next[1]));
     result.agg_constraint(2, flag, are_equal(current[2], next[2]));
     result.agg_constraint(3, flag, are_equal(current[3], next[3]));
-    rescue::enforce_round(&mut result[4..10],  &current[4..10],  &next[4..10],  &ark, flag);
-    rescue::enforce_round(&mut result[10..16], &current[10..16], &next[10..16], &ark, flag);
-    rescue::enforce_round(&mut result[16..22], &current[16..22], &next[16..22], &ark, flag);
+    rescue::enforce_round(&mut result[4..10],  &current[4..10],  &next[4..10],  ark, flag);
+    rescue::enforce_round(&mut result[10..16], &current[10..16], &next[10..16], ark, flag);
+    rescue::enforce_round(&mut result[16..22], &current[16..22], &next[16..22], ark, flag);
 
     // when hash_flag = 0 (which happens on steps which are one less than a multiple of 8 - e.g. 7,
     // 15, 23 etc.), and we are not on the last step of a signature cycle:

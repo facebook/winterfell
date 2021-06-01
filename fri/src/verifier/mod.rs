@@ -128,6 +128,15 @@ where
         // the corresponding column value
         evaluations = row_polys.iter().map(|p| polynom::eval(p, alpha)).collect();
 
+        // make sure next degree reduction does not result in degree truncation
+        if max_degree_plus_1 % N != 0 {
+            return Err(VerifierError::DegreeTruncation(
+                max_degree_plus_1 - 1,
+                N,
+                depth,
+            ));
+        }
+
         // update variables for the next iteration of the loop
         domain_generator = domain_generator.exp((N as u32).into());
         max_degree_plus_1 /= N;
@@ -140,7 +149,7 @@ where
     // read the remainder from the channel and make sure it matches with the columns
     // of the previous layer
     let remainder_commitment = context.layer_commitments().last().unwrap();
-    let remainder = channel.read_remainder::<N>(&remainder_commitment)?;
+    let remainder = channel.read_remainder::<N>(remainder_commitment)?;
     for (&position, evaluation) in positions.iter().zip(evaluations) {
         if remainder[position] != evaluation {
             return Err(VerifierError::RemainderValuesNotConsistent);

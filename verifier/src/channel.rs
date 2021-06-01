@@ -181,7 +181,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> VerifierChannel<B
         positions: &[usize],
         commitment: &H::Digest,
     ) -> Result<Vec<Vec<E>>, VerifierError> {
-        if !MerkleTree::verify_batch(commitment, &positions, &self.constraint_proof) {
+        if !MerkleTree::verify_batch(commitment, positions, &self.constraint_proof) {
             return Err(VerifierError::ConstraintQueryDoesNotMatchCommitment);
         }
 

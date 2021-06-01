@@ -50,7 +50,7 @@ impl<B: StarkField> PeriodicValueTable<B> {
                     .entry(poly_size)
                     .or_insert_with(|| fft::get_twiddles(poly_size));
 
-                fft::evaluate_poly_with_offset(&poly, twiddles, offset, air.ce_blowup_factor())
+                fft::evaluate_poly_with_offset(poly, twiddles, offset, air.ce_blowup_factor())
             })
             .collect::<Vec<_>>();
 

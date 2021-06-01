@@ -14,8 +14,6 @@ use math::{
 };
 use utils::{iter_mut, uninit_vector};
 
-pub mod quartic;
-
 // DEGREE-RESPECTING PROJECTION
 // ================================================================================================
 /// Applies degree-respecting projection to the `evaluations` reducing the degree of evaluations

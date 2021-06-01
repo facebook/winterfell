@@ -22,10 +22,6 @@ pub fn interpolate_batch(c: &mut Criterion) {
         group.bench_function(BenchmarkId::new("generic", size), |b| {
             b.iter(|| polynom::interpolate_batch(&xs, &ys))
         });
-
-        group.bench_function(BenchmarkId::new("quartic", size), |b| {
-            b.iter(|| folding::quartic::interpolate_batch(&xs, &ys))
-        });
     }
 }
 

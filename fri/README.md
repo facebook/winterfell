@@ -25,13 +25,8 @@ This crates supports executing FRI protocol with dynamically configurable parame
 * Extension field,
 * Domain blowup factor,
 * Hash function (used for Merkle commitments),
-
-Some parameters are currently hard-coded. Specifically:
-
-* Folding factor - i.e. by how much the degree of a polynomial is reduced with each FRI layer. Currently, this is hard-coded to 4.
-* Remainder length - i.e. maximum size of the last FRI layer. This is currently hard-coded to 256.
-
-In the future, these parameters will be dynamically configurable as well.
+* Folding factor (used for degree reduction for each FRI layer),
+* Maximum size of the last FRI layer.
 
 ## References
 

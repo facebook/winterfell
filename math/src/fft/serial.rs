@@ -111,7 +111,7 @@ pub fn permute<T>(values: &mut [T]) {
 pub fn fft<B: StarkField, E: FieldElement<BaseField = B>>(values: &mut [E], twiddles: &[B]) {
     debug_assert!(values.len().is_power_of_two());
     debug_assert_eq!(values.len() / 2, twiddles.len());
-    fft_in_place(values, &twiddles, 1, 1, 0);
+    fft_in_place(values, twiddles, 1, 1, 0);
     permute(values);
 }
 
