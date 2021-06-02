@@ -6,7 +6,7 @@
 use common::{proof::Queries, EvaluationFrame};
 use crypto::{Hasher, MerkleTree};
 use math::field::StarkField;
-use utils::uninit_vector;
+use utils::{batch_iter_mut, uninit_vector};
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
@@ -82,30 +82,17 @@ impl<B: StarkField> TraceTable<B> {
         // iterate though table rows, hashing each row; the hashing is done by first copying
         // the state into trace_state buffer to avoid unneeded allocations, and then by applying
         // the hash function to the buffer.
-        #[cfg(feature = "concurrent")]
-        {
-            let batch_size = hashed_states.len() / rayon::current_num_threads().next_power_of_two();
-            hashed_states
-                .par_chunks_mut(batch_size)
-                .enumerate()
-                .for_each(|(batch_idx, hashed_states_batch)| {
-                    let offset = batch_idx * batch_size;
-                    let mut trace_state = vec![B::ZERO; self.width()];
-                    for (i, row_hash) in hashed_states_batch.iter_mut().enumerate() {
-                        self.read_row_into(i + offset, &mut trace_state);
-                        *row_hash = H::hash_elements(&trace_state);
-                    }
-                });
-        }
-
-        #[cfg(not(feature = "concurrent"))]
-        {
-            let mut trace_state = vec![B::ZERO; self.width()];
-            for (i, row_hash) in hashed_states.iter_mut().enumerate() {
-                self.read_row_into(i, &mut trace_state);
-                *row_hash = H::hash_elements(&trace_state);
+        batch_iter_mut!(
+            &mut hashed_states,
+            128, // min batch size
+            |batch: &mut [H::Digest], batch_offset: usize| {
+                let mut trace_state = vec![B::ZERO; self.width()];
+                for (i, row_hash) in batch.iter_mut().enumerate() {
+                    self.read_row_into(i + batch_offset, &mut trace_state);
+                    *row_hash = H::hash_elements(&trace_state);
+                }
             }
-        }
+        );
 
         // build Merkle tree out of hashed rows
         MerkleTree::new(hashed_states)

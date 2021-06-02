@@ -9,6 +9,7 @@ use math::{
     polynom,
     utils::log2,
 };
+use utils::iter;
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
@@ -47,13 +48,7 @@ impl<B: StarkField> TracePolyTable<B> {
 
     /// Evaluates all trace polynomials the the specified point `x`.
     pub fn evaluate_at<E: FieldElement<BaseField = B>>(&self, x: E) -> Vec<E> {
-        #[cfg(not(feature = "concurrent"))]
-        let result = self.0.iter().map(|p| polynom::eval(p, x)).collect();
-
-        #[cfg(feature = "concurrent")]
-        let result = self.0.par_iter().map(|p| polynom::eval(p, x)).collect();
-
-        result
+        iter!(self.0).map(|p| polynom::eval(p, x)).collect()
     }
 
     /// Returns an out-of-domain evaluation frame constructed by evaluating trace polynomials

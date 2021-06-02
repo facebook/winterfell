@@ -16,5 +16,10 @@ pub use crypto;
 pub use math;
 pub use utils::Serializable;
 
+pub mod iterators {
+    #[cfg(feature = "concurrent")]
+    pub use rayon::prelude::*;
+}
+
 #[cfg(test)]
 pub mod tests;

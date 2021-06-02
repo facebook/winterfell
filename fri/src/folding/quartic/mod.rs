@@ -8,10 +8,10 @@ use math::{
     field::{FieldElement, StarkField},
     utils::batch_inversion,
 };
-use utils::{group_vector_elements, uninit_vector};
+use utils::{batch_iter_mut, group_vector_elements, iter_mut, uninit_vector};
 
 #[cfg(feature = "concurrent")]
-pub mod concurrent;
+use rayon::prelude::*;
 
 #[cfg(test)]
 mod tests;
@@ -36,12 +36,13 @@ pub fn eval<E: FieldElement>(p: &[E], x: E) -> E {
 }
 
 /// Evaluates a batch of degree 3 polynomials at the provided X coordinate.
-pub fn evaluate_batch<E: FieldElement>(polys: &[[E; 4]], x: E) -> Vec<E> {
-    let n = polys.len();
-    let mut result: Vec<E> = uninit_vector(n);
-    for i in 0..n {
-        result[i] = eval(&polys[i], x);
-    }
+pub fn evaluate_batch<E: FieldElement>(polys: &[[E; FOLDING_FACTOR]], x: E) -> Vec<E> {
+    let mut result: Vec<E> = uninit_vector(polys.len());
+    iter_mut!(result, 1024)
+        .zip(polys)
+        .for_each(|(result, poly)| {
+            *result = eval(poly, x);
+        });
     result
 }
 
@@ -59,24 +60,40 @@ where
         xs.len() == ys.len(),
         "number of X coordinates must be equal to number of Y coordinates"
     );
-    let mut result: Vec<[E; 4]> = uninit_vector(xs.len());
-    interpolate_batch_into(xs, ys, &mut result);
+    let mut result: Vec<[E; FOLDING_FACTOR]> = uninit_vector(xs.len());
+    batch_iter_mut!(
+        &mut result,
+        128, // min batch size
+        |batch: &mut [[E; FOLDING_FACTOR]], batch_offset: usize| {
+            let start = batch_offset;
+            let end = start + batch.len();
+            interpolate_batch_into(&xs[start..end], &ys[start..end], batch);
+        }
+    );
+
     result
 }
 
 /// Transposes the source vector into a matrix of quartic elements.
 pub fn transpose<E: FieldElement>(source: &[E], stride: usize) -> Vec<[E; 4]> {
     assert!(
-        source.len() % (4 * stride) == 0,
+        source.len() % (FOLDING_FACTOR * stride) == 0,
         "vector length must be divisible by {}",
-        4 * stride
+        FOLDING_FACTOR * stride
     );
-    let row_count = source.len() / (4 * stride);
+    let row_count = source.len() / (FOLDING_FACTOR * stride);
 
-    let mut result = to_quartic_vec(uninit_vector(row_count * 4));
-    for (i, element) in result.iter_mut().enumerate() {
-        transpose_element(element, &source, i, stride, row_count);
-    }
+    let mut result = to_quartic_vec(uninit_vector(row_count * FOLDING_FACTOR));
+    iter_mut!(result, 1024)
+        .enumerate()
+        .for_each(|(i, element)| {
+            *element = [
+                source[i * stride],
+                source[(i + row_count) * stride],
+                source[(i + 2 * row_count) * stride],
+                source[(i + 3 * row_count) * stride],
+            ];
+        });
     result
 }
 
@@ -88,9 +105,9 @@ pub fn to_quartic_vec<E: FieldElement>(vector: Vec<E>) -> Vec<[E; 4]> {
 /// Computes hashes for all quartic elements using the specified hash function.
 pub fn hash_values<H: Hasher, E: FieldElement>(values: &[[E; 4]]) -> Vec<H::Digest> {
     let mut result: Vec<H::Digest> = uninit_vector(values.len());
-    for (r, v) in result.iter_mut().zip(values) {
+    iter_mut!(result, 1024).zip(values).for_each(|(r, v)| {
         *r = H::hash_elements(v);
-    }
+    });
     result
 }
 
@@ -175,19 +192,4 @@ where
         result[i][2] += inv_y * equations[j + 3][2];
         result[i][3] += inv_y * equations[j + 3][3];
     }
-}
-
-fn transpose_element<E: FieldElement>(
-    target: &mut [E; 4],
-    source: &[E],
-    i: usize,
-    stride: usize,
-    row_count: usize,
-) {
-    *target = [
-        source[i * stride],
-        source[(i + row_count) * stride],
-        source[(i + 2 * row_count) * stride],
-        source[(i + 3 * row_count) * stride],
-    ];
 }

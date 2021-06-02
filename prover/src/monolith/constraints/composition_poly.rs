@@ -10,7 +10,7 @@ use math::{
     polynom,
 };
 use std::marker::PhantomData;
-use utils::uninit_vector;
+use utils::{iter, uninit_vector};
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
@@ -81,7 +81,6 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> CompositionPoly<B, E> {
     // --------------------------------------------------------------------------------------------
     /// Evaluates the columns of the composition polynomial over the specified LDE domain and
     /// returns the result.
-    #[rustfmt::skip]
     pub fn evaluate(&self, domain: &StarkDomain<B>) -> Vec<Vec<E>>
     where
         B: StarkField,
@@ -95,51 +94,25 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> CompositionPoly<B, E> {
             domain.trace_length()
         );
 
-        #[cfg(not(feature = "concurrent"))]
-        let result = self.columns.iter().map(|poly| {
-            fft::evaluate_poly_with_offset(
-                poly,
-                domain.trace_twiddles(),
-                domain.offset(),
-                domain.trace_to_lde_blowup(),
-            )
-        })
-        .collect();
-
-        #[cfg(feature = "concurrent")]
-        let result = self.columns.par_iter().map(|poly| {
-            fft::evaluate_poly_with_offset(
-                poly,
-                domain.trace_twiddles(),
-                domain.offset(),
-                domain.trace_to_lde_blowup(),
-            )
-        })
-        .collect();
-
-        result
+        iter!(self.columns)
+            .map(|poly| {
+                fft::evaluate_poly_with_offset(
+                    poly,
+                    domain.trace_twiddles(),
+                    domain.offset(),
+                    domain.trace_to_lde_blowup(),
+                )
+            })
+            .collect()
     }
 
     /// Returns evaluations of all composition polynomial columns at point z^m, where m is
     /// the number of column polynomials.
     pub fn evaluate_at(&self, z: E) -> Vec<E> {
         let z_m = z.exp((self.columns.len() as u32).into());
-
-        #[cfg(not(feature = "concurrent"))]
-        let result = self
-            .columns
-            .iter()
+        iter!(self.columns)
             .map(|poly| polynom::eval(poly, z_m))
-            .collect();
-
-        #[cfg(feature = "concurrent")]
-        let result = self
-            .columns
-            .par_iter()
-            .map(|poly| polynom::eval(poly, z_m))
-            .collect();
-
-        result
+            .collect()
     }
 
     /// Transforms this composition polynomial into a vector of individual column polynomials.

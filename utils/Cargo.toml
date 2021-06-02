@@ -12,3 +12,9 @@ edition = "2018"
 
 [lib]
 bench = false
+
+[features]
+concurrent = ["rayon"]
+
+[dependencies]
+rayon = { version = "1.5", optional = true }

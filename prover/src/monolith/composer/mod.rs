@@ -9,9 +9,10 @@ use math::{
     fft,
     field::{FieldElement, StarkField},
     polynom,
-    utils::{self, add_in_place},
+    utils::{add_in_place, log2, mul_acc},
 };
 use std::marker::PhantomData;
+use utils::iter_mut;
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
@@ -82,7 +83,7 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseElement>> DeepCompositionPoly<A,
         // compute a second out-of-domain point offset from z by exactly trace generator; this
         // point defines the "next" computation state in relation to point z
         let trace_length = trace_polys.poly_size();
-        let g = E::from(A::BaseElement::get_root_of_unity(utils::log2(trace_length)));
+        let g = E::from(A::BaseElement::get_root_of_unity(log2(trace_length)));
         let next_z = self.z * g;
 
         // cache state of registers at points z and z * g
@@ -170,19 +171,7 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseElement>> DeepCompositionPoly<A,
         let mut column_polys = composition_poly.into_columns();
 
         // Divide out the OOD point z from column polynomials
-        #[cfg(not(feature = "concurrent"))]
-        column_polys
-            .iter_mut()
-            .zip(ood_evaluations)
-            .for_each(|(poly, value_at_z_m)| {
-                // compute H'_i(x) = (H_i(x) - H_i(z^m)) / (x - z^m)
-                poly[0] -= value_at_z_m;
-                polynom::syn_div_in_place(poly, 1, z_m);
-            });
-
-        #[cfg(feature = "concurrent")]
-        column_polys
-            .par_iter_mut()
+        iter_mut!(column_polys)
             .zip(ood_evaluations)
             .for_each(|(poly, value_at_z_m)| {
                 // compute H'_i(x) = (H_i(x) - H_i(z^m)) / (x - z^m)
@@ -192,7 +181,7 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseElement>> DeepCompositionPoly<A,
 
         // add H'_i(x) * cc_i for all i into the DEEP composition polynomial
         for (i, poly) in column_polys.into_iter().enumerate() {
-            utils::mul_acc(&mut self.coefficients, &poly, self.cc.constraints[i]);
+            mul_acc(&mut self.coefficients, &poly, self.cc.constraints[i]);
         }
         assert_eq!(self.poly_size() - 2, self.degree());
     }
@@ -212,9 +201,9 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseElement>> DeepCompositionPoly<A,
         let mut result = E::zeroed_vector(self.coefficients.len());
 
         // this is equivalent to C(x) * cc_0
-        utils::mul_acc(&mut result, &self.coefficients, self.cc.degree.0);
+        mul_acc(&mut result, &self.coefficients, self.cc.degree.0);
         // this is equivalent to C(x) * x * cc_1
-        utils::mul_acc(
+        mul_acc(
             &mut result[1..],
             &self.coefficients[..(self.coefficients.len() - 1)],
             self.cc.degree.1,
@@ -242,40 +231,17 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseElement>> DeepCompositionPoly<A,
 
 /// Divides each polynomial in the list by the corresponding divisor, and computes the
 /// coefficient-wise sum of all resulting polynomials.
-#[cfg(not(feature = "concurrent"))]
 fn merge_trace_compositions<E: FieldElement>(mut polys: Vec<Vec<E>>, divisors: Vec<E>) -> Vec<E> {
     // divide all polynomials by their corresponding divisor
-    for (poly, &divisor) in polys.iter_mut().zip(divisors.iter()) {
+    iter_mut!(polys).zip(divisors).for_each(|(poly, divisor)| {
         // skip empty polynomials; this could happen for conjugate composition polynomial (T3)
         // when extension field is not enabled.
         if !poly.is_empty() {
             polynom::syn_div_in_place(poly, 1, divisor);
         }
-    }
+    });
 
     // add all polynomials together into a single polynomial
-    let mut result = polys.remove(0);
-    for poly in polys.iter() {
-        if !poly.is_empty() {
-            add_in_place(&mut result, poly);
-        }
-    }
-
-    result
-}
-
-/// Same as above function, but performs division in parallel threads.
-#[cfg(feature = "concurrent")]
-fn merge_trace_compositions<E: FieldElement>(mut polys: Vec<Vec<E>>, divisors: Vec<E>) -> Vec<E> {
-    polys
-        .par_iter_mut()
-        .zip(divisors.par_iter())
-        .for_each(|(poly, &divisor)| {
-            if !poly.is_empty() {
-                polynom::syn_div_in_place(poly, 1, divisor);
-            }
-        });
-
     let mut result = polys.remove(0);
     for poly in polys.iter() {
         if !poly.is_empty() {
@@ -292,7 +258,7 @@ where
     B: StarkField,
     E: FieldElement<BaseField = B>,
 {
-    utils::mul_acc(accumulator, poly, k);
+    mul_acc(accumulator, poly, k);
     let adjusted_tz = value * k;
     accumulator[0] -= adjusted_tz;
 }

@@ -60,9 +60,7 @@ where
 {
     split_radix_fft(v, inv_twiddles);
     let inv_length = E::inv((v.len() as u64).into());
-    v.par_iter_mut().for_each(|e| {
-        *e = *e * inv_length;
-    });
+    v.par_iter_mut().for_each(|e| *e *= inv_length);
     permute(v);
 }
 

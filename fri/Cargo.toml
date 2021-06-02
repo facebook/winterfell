@@ -18,8 +18,7 @@ name = "monolith_prover"
 harness = false
 
 [[bench]]
-name = "quartic"
-required-features = ["concurrent"]
+name = "folding"
 harness = false
 
 [features]

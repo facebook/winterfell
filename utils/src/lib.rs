@@ -5,6 +5,8 @@
 
 use core::{mem, slice};
 
+mod iterators;
+
 #[cfg(test)]
 mod tests;
 
