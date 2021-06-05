@@ -3,6 +3,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use utils::group_vector_elements;
+
 use crate::{
     field::{f128::BaseElement, FieldElement, StarkField},
     utils::{get_power_series, log2, remove_leading_zeros},
@@ -331,4 +333,27 @@ fn degree_of() {
             BaseElement::ZERO
         ])
     );
+}
+
+#[test]
+fn interpolate_batch() {
+    let (xs, ys) = build_coordinate_batches::<4>(16);
+    let polys = super::interpolate_batch(&xs, &ys);
+
+    for (i, poly) in polys.iter().enumerate() {
+        let actual = super::eval_many(poly, &xs[i]);
+        assert_eq!(ys[i].to_vec(), actual);
+    }
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+fn build_coordinate_batches<const N: usize>(
+    batch_size: usize,
+) -> (Vec<[BaseElement; N]>, Vec<[BaseElement; N]>) {
+    let r = BaseElement::get_root_of_unity(log2(batch_size));
+    let xs = group_vector_elements(get_power_series(r, batch_size));
+    let ys = group_vector_elements(BaseElement::prng_vector([1; 32], batch_size));
+    (xs, ys)
 }

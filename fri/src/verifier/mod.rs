@@ -3,14 +3,14 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{folding::quartic, utils, VerifierError};
+use crate::{utils, VerifierError};
 use crypto::Hasher;
 use math::{
     field::{FieldElement, StarkField},
     polynom,
     utils::get_power_series_with_offset,
 };
-use std::mem;
+use std::{convert::TryInto, mem};
 
 mod context;
 pub use context::VerifierContext;
@@ -20,12 +20,39 @@ pub use channel::{DefaultVerifierChannel, VerifierChannel};
 
 // VERIFICATION PROCEDURE
 // ================================================================================================
-
 /// Returns OK(()) if values in the `evaluations` slice represent evaluations of a polynomial
 /// with degree <= context.max_degree() at x coordinates specified by the `positions` slice. The
-/// evaluation domain is defined by the combination of base field (specified by B type parameter)
-/// and context.domain_size() parameter.
+/// evaluation domain is defined by the combination of base field (specified by B type parameter),
+/// context.domain_size() parameter, and context.domain_offset() parameter.
 pub fn verify<B, E, H, C>(
+    context: &VerifierContext<B, E, H>,
+    channel: &mut C,
+    evaluations: &[E],
+    positions: &[usize],
+) -> Result<(), VerifierError>
+where
+    B: StarkField,
+    E: FieldElement<BaseField = B>,
+    H: Hasher,
+    C: VerifierChannel<E, Hasher = H>,
+{
+    // static dispatch for folding factor parameter
+    match context.folding_factor() {
+        4 => verify_generic::<B, E, H, C, 4>(context, channel, evaluations, positions),
+        8 => verify_generic::<B, E, H, C, 8>(context, channel, evaluations, positions),
+        16 => verify_generic::<B, E, H, C, 16>(context, channel, evaluations, positions),
+        _ => unimplemented!(
+            "folding factor {} is not supported",
+            context.folding_factor()
+        ),
+    }
+}
+
+// GENERIC VERIFICATION
+// ================================================================================================
+/// This is the actual implementation of the verification procedure described above, but it also
+/// takes folding factor as a generic parameter N.
+fn verify_generic<B, E, H, C, const N: usize>(
     context: &VerifierContext<B, E, H>,
     channel: &mut C,
     evaluations: &[E],
@@ -47,13 +74,10 @@ where
     let domain_offset = context.domain_offset();
     let num_partitions = context.num_partitions();
 
-    // powers of the given root of unity 1, p, p^2, p^3 such that p^4 = 1
-    let quartic_roots = [
-        B::ONE,
-        domain_generator.exp((domain_size as u32 / 4).into()),
-        domain_generator.exp((domain_size as u32 / 2).into()),
-        domain_generator.exp((domain_size as u32 * 3 / 4).into()),
-    ];
+    // pre-compute roots of unity used in computing x coordinates in the folded domain
+    let folding_roots = (0..N)
+        .map(|i| domain_generator.exp(((domain_size / N * i) as u64).into()))
+        .collect::<Vec<_>>();
 
     // 1 ----- verify the recursive components of the FRI proof -----------------------------------
     let mut domain_generator = domain_generator;
@@ -77,43 +101,36 @@ where
         let layer_commitment = context.layer_commitments()[depth];
         let layer_values =
             channel.read_layer_queries(depth, &position_indexes, &layer_commitment)?;
-        let query_values = get_query_values(
-            &layer_values,
-            &positions,
-            &folded_positions,
-            domain_size,
-            context.folding_factor(),
-        );
+        let query_values =
+            get_query_values::<E, N>(&layer_values, &positions, &folded_positions, domain_size);
         if evaluations != query_values {
             return Err(VerifierError::LayerValuesNotConsistent(depth));
         }
 
         // build a set of x for each row polynomial
-        let mut xs = Vec::with_capacity(folded_positions.len());
-        for &i in folded_positions.iter() {
+        #[rustfmt::skip]
+        let xs = folded_positions.iter().map(|&i| {
             let xe = domain_generator.exp((i as u32).into()) * domain_offset;
-            xs.push([
-                quartic_roots[0] * xe,
-                quartic_roots[1] * xe,
-                quartic_roots[2] * xe,
-                quartic_roots[3] * xe,
-            ]);
-        }
+            folding_roots.iter()
+                .map(|&r| E::from(xe * r))
+                .collect::<Vec<_>>().try_into().unwrap()
+        })
+        .collect::<Vec<_>>();
 
         // interpolate x and y values into row polynomials
-        let row_polys = quartic::interpolate_batch(&xs, &layer_values);
+        let row_polys = polynom::interpolate_batch(&xs, &layer_values);
 
         // calculate the pseudo-random value used for linear combination in layer folding
         let alpha = context.layer_alphas()[depth];
 
         // check that when the polynomials are evaluated at alpha, the result is equal to
         // the corresponding column value
-        evaluations = quartic::evaluate_batch(&row_polys, alpha);
+        evaluations = row_polys.iter().map(|p| polynom::eval(p, alpha)).collect();
 
         // update variables for the next iteration of the loop
-        domain_generator = domain_generator.exp(4u32.into());
-        max_degree_plus_1 /= 4;
-        domain_size /= 4;
+        domain_generator = domain_generator.exp((N as u64).into());
+        max_degree_plus_1 /= N;
+        domain_size /= N;
         mem::swap(&mut positions, &mut folded_positions);
     }
 
@@ -138,6 +155,8 @@ where
     )
 }
 
+// REMAINDER DEGREE VERIFICATION
+// ================================================================================================
 /// Returns Ok(true) if values in the `remainder` slice represent evaluations of a polynomial
 /// with degree < max_degree_plus_1 against a domain specified by the `domain_generator`.
 fn verify_remainder<B: StarkField, E: FieldElement<BaseField = B>>(
@@ -181,14 +200,13 @@ fn verify_remainder<B: StarkField, E: FieldElement<BaseField = B>>(
 
 // HELPER FUNCTIONS
 // ================================================================================================
-fn get_query_values<E: FieldElement>(
-    values: &[[E; 4]],
+fn get_query_values<E: FieldElement, const N: usize>(
+    values: &[[E; N]],
     positions: &[usize],
     folded_positions: &[usize],
     domain_size: usize,
-    folding_factor: usize,
 ) -> Vec<E> {
-    let row_length = domain_size / folding_factor;
+    let row_length = domain_size / N;
 
     let mut result = Vec::new();
     for position in positions {
