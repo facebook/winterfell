@@ -3,10 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{folding::quartic, FriProof, ProofSerializationError, VerifierError};
+use crate::{utils::hash_values, FriProof, ProofSerializationError, VerifierError};
 use crypto::{BatchMerkleProof, Hasher, MerkleTree};
 use math::field::FieldElement;
-use utils::group_vector_elements;
+use utils::{group_vector_elements, transpose_slice};
 
 // VERIFIER CHANNEL TRAIT
 // ================================================================================================
@@ -34,7 +34,7 @@ pub trait VerifierChannel<E: FieldElement> {
         commitment: &<<Self as VerifierChannel<E>>::Hasher as Hasher>::Digest,
     ) -> Result<Vec<[E; N]>, VerifierError> {
         let layer_proof = self.take_next_fri_layer_proof();
-        if !MerkleTree::<Self::Hasher>::verify_batch(commitment, &positions, &layer_proof) {
+        if !MerkleTree::<Self::Hasher>::verify_batch(commitment, positions, &layer_proof) {
             return Err(VerifierError::LayerCommitmentMismatch(layer_idx));
         }
 
@@ -44,15 +44,15 @@ pub trait VerifierChannel<E: FieldElement> {
 
     /// Reads FRI remainder values (last FRI layer). This also checks that the remainder is
     /// valid against the provided commitment.
-    fn read_remainder(
+    fn read_remainder<const N: usize>(
         &mut self,
         commitment: &<<Self as VerifierChannel<E>>::Hasher as Hasher>::Digest,
     ) -> Result<Vec<E>, VerifierError> {
         let remainder = self.take_fri_remainder();
 
         // build remainder Merkle tree
-        let remainder_values = quartic::transpose(&remainder, 1);
-        let hashed_values = quartic::hash_values::<Self::Hasher, E>(&remainder_values);
+        let remainder_values = transpose_slice(&remainder);
+        let hashed_values = hash_values::<Self::Hasher, E, N>(&remainder_values);
         let remainder_tree = MerkleTree::<Self::Hasher>::new(hashed_values);
 
         // make sure the root of the tree matches the committed root of the last layer
@@ -76,12 +76,16 @@ pub struct DefaultVerifierChannel<E: FieldElement, H: Hasher> {
 
 impl<E: FieldElement, H: Hasher> DefaultVerifierChannel<E, H> {
     /// Builds a new verifier channel from the specified parameters.
-    pub fn new(proof: FriProof, domain_size: usize) -> Result<Self, ProofSerializationError> {
+    pub fn new(
+        proof: FriProof,
+        domain_size: usize,
+        folding_factor: usize,
+    ) -> Result<Self, ProofSerializationError> {
         let num_partitions = proof.num_partitions();
 
         let remainder = proof.parse_remainder()?;
-        // TODO: don't hard-code folding factor
-        let (layer_queries, layer_proofs) = proof.parse_layers::<H, E>(domain_size, 4)?;
+        let (layer_queries, layer_proofs) =
+            proof.parse_layers::<H, E>(domain_size, folding_factor)?;
 
         Ok(DefaultVerifierChannel {
             layer_proofs,

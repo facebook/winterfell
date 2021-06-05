@@ -134,8 +134,8 @@ fn update_sig_verification_state(
             &mut pub_key_hash,
             m0_bit,
             m1_bit,
-            &sec_key_1_hash,
-            &sec_key_2_hash,
+            sec_key_1_hash,
+            sec_key_2_hash,
             &sig_info.key_schedule.pub_keys1[cycle_num],
             &sig_info.key_schedule.pub_keys2[cycle_num],
         );

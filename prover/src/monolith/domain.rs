@@ -4,20 +4,12 @@
 // LICENSE file in the root directory of this source tree.
 
 use common::ComputationContext;
-use math::{
-    fft,
-    field::StarkField,
-    utils::{get_power_series_with_offset, log2},
-};
+use math::{fft, field::StarkField, utils::log2};
 
 // TYPES AND INTERFACES
 // ================================================================================================
 
 pub struct StarkDomain<B: StarkField> {
-    /// Contains all values in the low-degree extension domain. Length of this vector is the same
-    /// as the size of LDE domain.
-    lde_domain: Vec<B>,
-
     /// Twiddles which can be used to evaluate polynomials in the trace domain. Length of this
     /// vector is half the length of the trace domain size.
     trace_twiddles: Vec<B>,
@@ -26,8 +18,11 @@ pub struct StarkDomain<B: StarkField> {
     /// Length of this vector is half the length of constraint evaluation domain size.
     ce_twiddles: Vec<B>,
 
-    // this is used a lot during constraint evaluation; cache it here to avoid recomputation
+    /// LDE domain size / constraint evaluation domain size
     ce_to_lde_blowup: usize,
+
+    /// Offset of the low-degree extension domain.
+    domain_offset: B,
 }
 
 // STARK DOMAIN IMPLEMENTATION
@@ -36,14 +31,13 @@ pub struct StarkDomain<B: StarkField> {
 impl<B: StarkField> StarkDomain<B> {
     /// Returns a new STARK domain initialized with the provided `context`.
     pub fn new(context: &ComputationContext) -> Self {
-        let lde_domain = build_lde_domain(context.lde_domain_size(), context.domain_offset());
         let trace_twiddles = fft::get_twiddles(context.trace_length());
         let ce_twiddles = fft::get_twiddles(context.ce_domain_size());
         StarkDomain {
-            lde_domain,
             trace_twiddles,
             ce_twiddles,
             ce_to_lde_blowup: context.lde_domain_size() / context.ce_domain_size(),
+            domain_offset: context.domain_offset(),
         }
     }
 
@@ -79,6 +73,11 @@ impl<B: StarkField> StarkDomain<B> {
         &self.ce_twiddles.len() * 2
     }
 
+    /// Returns the generator of constraint evaluation domain.
+    pub fn ce_domain_generator(&self) -> B {
+        B::get_root_of_unity(log2(self.ce_domain_size()))
+    }
+
     /// Returns twiddles which can be used to evaluate constraint polynomials.
     pub fn ce_twiddles(&self) -> &[B] {
         &self.ce_twiddles
@@ -89,34 +88,16 @@ impl<B: StarkField> StarkDomain<B> {
         self.ce_to_lde_blowup
     }
 
-    pub fn ce_step_to_lde_info(&self, ce_step: usize) -> (usize, B) {
-        let lde_step = ce_step * self.ce_to_lde_blowup;
-        (lde_step, self.lde_domain[lde_step])
-    }
-
     // LOW-DEGREE EXTENSION DOMAIN
     // --------------------------------------------------------------------------------------------
 
     /// Returns the size of the low-degree extension domain.
     pub fn lde_domain_size(&self) -> usize {
-        self.lde_domain.len()
-    }
-
-    /// Returns all values in the LDE domain.
-    pub fn lde_values(&self) -> &[B] {
-        &self.lde_domain
+        self.ce_domain_size() * self.ce_to_lde_blowup()
     }
 
     /// Returns LDE domain offset.
     pub fn offset(&self) -> B {
-        self.lde_domain[0]
+        self.domain_offset
     }
-}
-
-// HELPER FUNCTIONS
-// ================================================================================================
-
-fn build_lde_domain<B: StarkField>(domain_size: usize, offset: B) -> Vec<B> {
-    let g = B::get_root_of_unity(log2(domain_size));
-    get_power_series_with_offset(g, offset, domain_size)
 }

@@ -10,8 +10,7 @@ use crate::{
 use crypto::{hash, PublicCoin};
 use math::{
     fft,
-    field::{f128::BaseElement, FieldElement, StarkField},
-    utils::{get_power_series_with_offset, log2},
+    field::{f128::BaseElement, FieldElement},
 };
 
 // TEST UTILS
@@ -22,16 +21,6 @@ pub fn build_prover_channel(
     options: &FriOptions,
 ) -> DefaultProverChannel<BaseElement, BaseElement, hash::Blake3_256> {
     DefaultProverChannel::new(trace_length * options.blowup_factor(), 32)
-}
-
-pub fn build_lde_domain(
-    trace_length: usize,
-    lde_blowup: usize,
-    offset: BaseElement,
-) -> Vec<BaseElement> {
-    let domain_size = trace_length * lde_blowup;
-    let g = BaseElement::get_root_of_unity(log2(domain_size));
-    get_power_series_with_offset(g, offset, domain_size)
 }
 
 pub fn build_evaluations(
@@ -59,8 +48,12 @@ pub fn verify_proof(
     positions: &[usize],
     options: &FriOptions,
 ) -> Result<(), VerifierError> {
-    let mut channel =
-        DefaultVerifierChannel::<BaseElement, hash::Blake3_256>::new(proof, domain_size).unwrap();
+    let mut channel = DefaultVerifierChannel::<BaseElement, hash::Blake3_256>::new(
+        proof,
+        domain_size,
+        options.folding_factor(),
+    )
+    .unwrap();
     let mut coin = PublicCoin::<BaseElement, hash::Blake3_256>::new(&[]);
     let alphas = commitments
         .iter()

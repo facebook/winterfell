@@ -90,7 +90,7 @@ pub fn generate_trace(
     trace.fragments(SIG_CYCLE_LENGTH).for_each(|mut sig_trace| {
         let i = sig_trace.index();
         let sig_info = match signature_map.get(&i) {
-            Some(sig) => build_sig_info(i, &message, &sig, 1, pub_key, sig_count[i]),
+            Some(sig) => build_sig_info(i, &message, sig, 1, pub_key, sig_count[i]),
             None => build_sig_info(i, &message, &zero_sig, 0, pub_key, sig_count[i]),
         };
 
@@ -187,8 +187,8 @@ fn update_sig_verification_state(
             &mut pub_key_hash,
             m0_bit,
             m1_bit,
-            &sec_key_1_hash,
-            &sec_key_2_hash,
+            sec_key_1_hash,
+            sec_key_2_hash,
             &sig_info.key_schedule.pub_keys1[cycle_num],
             &sig_info.key_schedule.pub_keys2[cycle_num],
         );

@@ -65,7 +65,7 @@ impl<E: FieldElement, H: Hasher> ConstraintCommitment<E, H> {
     /// paths from the root of the commitment to these evaluations.
     pub fn query(self, positions: &[usize]) -> Queries {
         // build Merkle authentication paths to the leaves specified by positions
-        let merkle_proof = self.commitment.prove_batch(&positions);
+        let merkle_proof = self.commitment.prove_batch(positions);
 
         // determine a set of evaluations corresponding to each position
         let mut evaluations = Vec::new();

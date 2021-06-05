@@ -269,10 +269,10 @@ fn evaluate_constraints<E: FieldElement + From<BaseElement>>(
     // for other registers, Rescue constraints are applied separately for hashing secret and
     // public keys
     let flag = not(sig_cycle_end_flag) * hash_flag;
-    rescue::enforce_round(&mut result[..6],  &current[..6],  &next[..6],  &ark, flag);
-    rescue::enforce_round(&mut result[6..12], &current[6..12], &next[6..12], &ark, flag);
-    rescue::enforce_round(&mut result[12..18], &current[12..18], &next[12..18], &ark, flag);
-    rescue::enforce_round(&mut result[18..24], &current[18..24], &next[18..24], &ark, flag);
+    rescue::enforce_round(&mut result[..6],  &current[..6],  &next[..6],  ark, flag);
+    rescue::enforce_round(&mut result[6..12], &current[6..12], &next[6..12], ark, flag);
+    rescue::enforce_round(&mut result[12..18], &current[12..18], &next[12..18], ark, flag);
+    rescue::enforce_round(&mut result[18..24], &current[18..24], &next[18..24], ark, flag);
     result.agg_constraint(24, flag, are_equal(current[24], next[24]));
     result.agg_constraint(25, flag, are_equal(current[25], next[25]));
     

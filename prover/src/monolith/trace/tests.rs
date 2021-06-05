@@ -11,7 +11,7 @@ use crypto::{hash::Blake3_256, Hasher, MerkleTree};
 use math::{
     field::{f128::BaseElement, FieldElement, StarkField},
     polynom,
-    utils::{get_power_series, log2},
+    utils::{get_power_series, get_power_series_with_offset, log2},
 };
 
 #[test]
@@ -67,13 +67,14 @@ fn extend_trace_table() {
     );
 
     // make sure register values are consistent with trace polynomials
+    let lde_domain = build_lde_domain(domain.lde_domain_size());
     assert_eq!(
         trace_polys.get_poly(0),
-        polynom::interpolate(&domain.lde_values(), extended_trace.get_register(0), true)
+        polynom::interpolate(&lde_domain, extended_trace.get_register(0), true)
     );
     assert_eq!(
         trace_polys.get_poly(1),
-        polynom::interpolate(&domain.lde_values(), extended_trace.get_register(1), true)
+        polynom::interpolate(&lde_domain, extended_trace.get_register(1), true)
     );
 }
 
@@ -104,4 +105,12 @@ fn commit_trace_table() {
 
     // compare the result
     assert_eq!(expected_tree.root(), trace_tree.root())
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+fn build_lde_domain<B: StarkField>(domain_size: usize) -> Vec<B> {
+    let g = B::get_root_of_unity(log2(domain_size));
+    get_power_series_with_offset(g, B::GENERATOR, domain_size)
 }

@@ -104,6 +104,17 @@ pub fn permute<T>(values: &mut [T]) {
     }
 }
 
+// RAW FFT FUNCTION
+// ================================================================================================
+
+/// Executes the FFT algorithm against the provided `values` using the provided `twiddles`.
+pub fn fft<B: StarkField, E: FieldElement<BaseField = B>>(values: &mut [E], twiddles: &[B]) {
+    debug_assert!(values.len().is_power_of_two());
+    debug_assert_eq!(values.len() / 2, twiddles.len());
+    fft_in_place(values, twiddles, 1, 1, 0);
+    permute(values);
+}
+
 // CORE FFT ALGORITHM
 // ================================================================================================
 

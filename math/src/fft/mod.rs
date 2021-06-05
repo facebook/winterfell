@@ -5,10 +5,10 @@
 
 use crate::{
     field::{FieldElement, StarkField},
-    utils,
+    utils::{get_power_series, log2},
 };
 
-mod serial;
+pub mod serial;
 
 #[cfg(feature = "concurrent")]
 mod concurrent;
@@ -186,8 +186,8 @@ pub fn get_twiddles<B: StarkField>(domain_size: usize) -> Vec<B> {
         domain_size.is_power_of_two(),
         "domain size must be a power of 2"
     );
-    let root = B::get_root_of_unity(utils::log2(domain_size));
-    let mut twiddles = utils::get_power_series(root, domain_size / 2);
+    let root = B::get_root_of_unity(log2(domain_size));
+    let mut twiddles = get_power_series(root, domain_size / 2);
     permute(&mut twiddles);
     twiddles
 }
@@ -203,9 +203,9 @@ pub fn get_inv_twiddles<B: StarkField>(domain_size: usize) -> Vec<B> {
         domain_size.is_power_of_two(),
         "domain size must be a power of 2"
     );
-    let root = B::get_root_of_unity(utils::log2(domain_size));
+    let root = B::get_root_of_unity(log2(domain_size));
     let inv_root = root.exp((domain_size as u32 - 1).into());
-    let mut inv_twiddles = utils::get_power_series(inv_root, domain_size / 2);
+    let mut inv_twiddles = get_power_series(inv_root, domain_size / 2);
     permute(&mut inv_twiddles);
     inv_twiddles
 }

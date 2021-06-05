@@ -45,7 +45,7 @@ pub struct StarkProof {
 impl StarkProof {
     /// Returns proof options which were used to generate this proof.
     pub fn options(&self) -> &ProofOptions {
-        &self.context.options()
+        self.context.options()
     }
 
     /// Returns trace length for the computation described by this proof.
@@ -68,7 +68,7 @@ impl StarkProof {
     pub fn security_level(&self, conjectured: bool) -> u32 {
         if conjectured {
             get_conjectured_security(
-                &self.context.options(),
+                self.context.options(),
                 self.context.num_modulus_bits(),
                 self.lde_domain_size() as u64,
                 self.trace_length() as u64,

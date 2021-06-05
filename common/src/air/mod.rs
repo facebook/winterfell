@@ -122,7 +122,7 @@ pub trait Air: Send + Sync {
                 let inv_twiddles = twiddle_map
                     .entry(cycle_length)
                     .or_insert_with(|| fft::get_inv_twiddles::<Self::BaseElement>(cycle_length));
-                fft::interpolate_poly(&mut column, &inv_twiddles);
+                fft::interpolate_poly(&mut column, inv_twiddles);
                 column
             })
             .collect()
@@ -224,7 +224,7 @@ pub trait Air: Send + Sync {
     /// Returns options which specify proof generation parameters for an instance of the
     /// computation described by this AIR.
     fn options(&self) -> &ProofOptions {
-        &self.context().options()
+        self.context().options()
     }
 
     /// Returns length of the execution trace for an instance of the computation described by

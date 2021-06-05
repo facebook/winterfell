@@ -88,7 +88,7 @@ impl Air for MerkleAir {
             result,
             &current[..HASH_STATE_WIDTH],
             &next[..HASH_STATE_WIDTH],
-            &ark,
+            ark,
             hash_flag,
         );
 

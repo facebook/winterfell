@@ -7,15 +7,13 @@ use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criteri
 use crypto::hash::Blake3_256;
 use math::{
     fft,
-    field::{f128::BaseElement, FieldElement, StarkField},
-    utils::{get_power_series_with_offset, log2},
+    field::{f128::BaseElement, FieldElement},
 };
 use std::time::Duration;
 use winter_fri::{DefaultProverChannel, FriOptions, FriProver};
 
 static BATCH_SIZES: [usize; 3] = [65536, 131072, 262144];
 static BLOWUP_FACTOR: usize = 8;
-static DOMAIN_OFFSET: BaseElement = BaseElement::GENERATOR;
 
 pub fn build_layers(c: &mut Criterion) {
     let mut fri_group = c.benchmark_group("FRI prover");
@@ -25,8 +23,6 @@ pub fn build_layers(c: &mut Criterion) {
     let options = FriOptions::new(BLOWUP_FACTOR, 4, 256);
 
     for &domain_size in &BATCH_SIZES {
-        let g = BaseElement::get_root_of_unity(log2(domain_size));
-        let domain = get_power_series_with_offset(g, DOMAIN_OFFSET, domain_size);
         let evaluations = build_evaluations(domain_size);
 
         fri_group.bench_with_input(
@@ -42,7 +38,7 @@ pub fn build_layers(c: &mut Criterion) {
                             BaseElement,
                             Blake3_256,
                         >::new(domain_size, 32);
-                        prover.build_layers(&mut channel, evaluations, &domain);
+                        prover.build_layers(&mut channel, evaluations);
                         prover.reset();
                     },
                     BatchSize::LargeInput,

@@ -15,11 +15,13 @@ use utils::{batch_iter_mut, iter_mut, uninit_vector};
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
 
+#[cfg(not(debug_assertions))]
+use std::marker::PhantomData;
+
 // CONSTANTS
 // ================================================================================================
 
-#[cfg(feature = "concurrent")]
-const MIN_FRAGMENT_SIZE: usize = 256;
+const MIN_FRAGMENT_SIZE: usize = 16;
 
 // CONSTRAINT EVALUATION TABLE
 // ================================================================================================
@@ -89,24 +91,17 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> ConstraintEvaluationTable<B,
     /// Returns number of columns in this table. The first column always contains the value of
     /// combined transition constraint evaluations; the remaining columns contain values of
     /// assertion constraint evaluations combined based on common divisors.
+    #[allow(dead_code)]
     pub fn num_columns(&self) -> usize {
         self.evaluations.len()
     }
 
-    // DATA MUTATORS
+    // TABLE FRAGMENTS
     // --------------------------------------------------------------------------------------------
 
-    /// Updates a single row in the table with provided data.
-    pub fn update_row(&mut self, row_idx: usize, row_data: &[E]) {
-        for (column, &value) in self.evaluations.iter_mut().zip(row_data) {
-            column[row_idx] = value;
-        }
-    }
-
-    /// In concurrent mode, we break the table into fragments and update each fragment in
-    /// separate threads.
-    #[cfg(feature = "concurrent")]
-    pub fn fragments(&mut self, num_fragments: usize) -> Vec<TableFragment<E>> {
+    /// Break the table into the number of specified fragments. All fragments can be updated
+    /// independently - e.g. in different threads.
+    pub fn fragments(&mut self, num_fragments: usize) -> Vec<EvaluationTableFragment<B, E>> {
         let fragment_size = self.num_rows() / num_fragments;
         assert!(
             fragment_size >= MIN_FRAGMENT_SIZE,
@@ -115,21 +110,52 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> ConstraintEvaluationTable<B,
             fragment_size
         );
 
-        let mut fragment_data = (0..num_fragments).map(|_| Vec::new()).collect::<Vec<_>>();
+        // break evaluations into fragments
+        let mut evaluation_data = (0..num_fragments).map(|_| Vec::new()).collect::<Vec<_>>();
         self.evaluations.iter_mut().for_each(|column| {
             for (i, fragment) in column.chunks_mut(fragment_size).enumerate() {
-                fragment_data[i].push(fragment);
+                evaluation_data[i].push(fragment);
             }
         });
 
-        fragment_data
-            .into_iter()
-            .enumerate()
-            .map(|(i, data)| TableFragment {
-                offset: i * fragment_size,
-                data,
-            })
-            .collect()
+        #[cfg(debug_assertions)]
+        let result = {
+            // in debug mode, also break individual transition evaluations into fragments
+            let mut t_evaluation_data = (0..num_fragments).map(|_| Vec::new()).collect::<Vec<_>>();
+            self.t_evaluations.iter_mut().for_each(|column| {
+                for (i, fragment) in column.chunks_mut(fragment_size).enumerate() {
+                    t_evaluation_data[i].push(fragment);
+                }
+            });
+
+            evaluation_data
+                .into_iter()
+                .zip(t_evaluation_data)
+                .enumerate()
+                .map(
+                    |(i, (evaluations, t_evaluations))| EvaluationTableFragment {
+                        offset: i * fragment_size,
+                        evaluations,
+                        t_evaluations,
+                    },
+                )
+                .collect()
+        };
+
+        #[cfg(not(debug_assertions))]
+        let result = {
+            evaluation_data
+                .into_iter()
+                .enumerate()
+                .map(|(i, evaluations)| EvaluationTableFragment {
+                    offset: i * fragment_size,
+                    evaluations,
+                    _base_field: PhantomData,
+                })
+                .collect()
+        };
+
+        result
     }
 
     // CONSTRAINT COMPOSITION
@@ -150,7 +176,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> ConstraintEvaluationTable<B,
             // in debug mode, make sure post-division degree of each column matches the expected
             // degree
             #[cfg(debug_assertions)]
-            validate_column_degree(&column, &divisor, domain_offset, column.len() - 1)?;
+            validate_column_degree(&column, divisor, domain_offset, column.len() - 1)?;
 
             // divide the column by the divisor and accumulate the result into combined_poly
             acc_column(column, divisor, self.domain_offset, &mut combined_poly);
@@ -166,13 +192,6 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> ConstraintEvaluationTable<B,
 
     // DEBUG HELPERS
     // --------------------------------------------------------------------------------------------
-
-    #[cfg(all(debug_assertions, not(feature = "concurrent")))]
-    pub fn update_transition_evaluations(&mut self, row_idx: usize, row_data: &[B]) {
-        for (column, &value) in self.t_evaluations.iter_mut().zip(row_data) {
-            column[row_idx] = value;
-        }
-    }
 
     #[cfg(debug_assertions)]
     pub fn validate_transition_degrees(&mut self) {
@@ -215,14 +234,18 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> ConstraintEvaluationTable<B,
 // TABLE FRAGMENTS
 // ================================================================================================
 
-#[cfg(feature = "concurrent")]
-pub struct TableFragment<'a, E: FieldElement> {
+pub struct EvaluationTableFragment<'a, B: StarkField, E: FieldElement<BaseField = B>> {
     offset: usize,
-    data: Vec<&'a mut [E]>,
+    evaluations: Vec<&'a mut [E]>,
+
+    #[cfg(debug_assertions)]
+    t_evaluations: Vec<&'a mut [B]>,
+
+    #[cfg(not(debug_assertions))]
+    _base_field: PhantomData<B>,
 }
 
-#[cfg(feature = "concurrent")]
-impl<'a, E: FieldElement> TableFragment<'a, E> {
+impl<'a, B: StarkField, E: FieldElement<BaseField = B>> EvaluationTableFragment<'a, B, E> {
     /// Returns the row at which the fragment starts.
     pub fn offset(&self) -> usize {
         self.offset
@@ -230,18 +253,25 @@ impl<'a, E: FieldElement> TableFragment<'a, E> {
 
     /// Returns the number of evaluation rows in the fragment.
     pub fn num_rows(&self) -> usize {
-        self.data[0].len()
+        self.evaluations[0].len()
     }
 
     /// Returns the number of columns in every evaluation row.
-    #[allow(dead_code)]
     pub fn num_columns(&self) -> usize {
-        self.data.len()
+        self.evaluations.len()
     }
 
     /// Updates a single row in the fragment with provided data.
     pub fn update_row(&mut self, row_idx: usize, row_data: &[E]) {
-        for (column, &value) in self.data.iter_mut().zip(row_data) {
+        for (column, &value) in self.evaluations.iter_mut().zip(row_data) {
+            column[row_idx] = value;
+        }
+    }
+
+    /// Updates transition evaluations row with the provided data; available only in debug mode.
+    #[cfg(debug_assertions)]
+    pub fn update_transition_evaluations(&mut self, row_idx: usize, row_data: &[B]) {
+        for (column, &value) in self.t_evaluations.iter_mut().zip(row_data) {
             column[row_idx] = value;
         }
     }

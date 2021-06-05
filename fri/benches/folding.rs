@@ -9,7 +9,8 @@ use math::{
     polynom,
     utils::{get_power_series, log2},
 };
-use winter_fri::folding::quartic::{self, to_quartic_vec};
+use utils::group_vector_elements;
+use winter_fri::folding;
 
 static BATCH_SIZES: [usize; 3] = [65536, 131072, 262144];
 
@@ -21,14 +22,22 @@ pub fn interpolate_batch(c: &mut Criterion) {
         group.bench_function(BenchmarkId::new("generic", size), |b| {
             b.iter(|| polynom::interpolate_batch(&xs, &ys))
         });
+    }
+}
 
-        group.bench_function(BenchmarkId::new("quartic", size), |b| {
-            b.iter(|| quartic::interpolate_batch(&xs, &ys))
+pub fn apply_drp(c: &mut Criterion) {
+    let mut group = c.benchmark_group("drp");
+
+    for &size in &BATCH_SIZES {
+        let (_, ys) = build_coordinate_batches(size);
+        let alpha = BaseElement::rand();
+        group.bench_function(BenchmarkId::new("base field", size), |b| {
+            b.iter(|| folding::apply_drp(&ys, BaseElement::GENERATOR, alpha))
         });
     }
 }
 
-criterion_group!(quartic_group, interpolate_batch);
+criterion_group!(quartic_group, interpolate_batch, apply_drp);
 criterion_main!(quartic_group);
 
 // HELPER FUNCTIONS
@@ -36,7 +45,7 @@ criterion_main!(quartic_group);
 
 fn build_coordinate_batches(batch_size: usize) -> (Vec<[BaseElement; 4]>, Vec<[BaseElement; 4]>) {
     let r = BaseElement::get_root_of_unity(log2(batch_size));
-    let xs = to_quartic_vec(get_power_series(r, batch_size));
-    let ys = to_quartic_vec(BaseElement::prng_vector([1; 32], batch_size));
+    let xs = group_vector_elements(get_power_series(r, batch_size));
+    let ys = group_vector_elements(BaseElement::prng_vector([1; 32], batch_size));
     (xs, ys)
 }
