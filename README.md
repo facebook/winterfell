@@ -12,7 +12,7 @@ An experimental project for building a distributed STARK prover.
 
 ## Overview
 
-A STARK is a novel proof-of-computation scheme to create efficiently verifiable proofs of the correct execution of a computation. The scheme was developed by Eli Ben-Sasson, Michael Riabzev at al. at Technion - Israel Institute of Technology. STARKs do not require an initial trusted setup, and rely on very few cryptographic assumptions. See [references](#References) for more info.
+A STARK is a novel proof-of-computation scheme to create efficiently verifiable proofs of the correct execution of a computation. The scheme was developed by Eli Ben-Sasson, Michael Riabzev et al. at Technion - Israel Institute of Technology. STARKs do not require an initial trusted setup, and rely on very few cryptographic assumptions. See [references](#References) for more info.
 
 The aim of this project is to build a feature-rich, easy to use, and highly performant STARK prover which can generate integrity proofs for very large computations. STARK proof generation process is massively parallelizable, however, it also requires lots of RAM. For very large computations, amount of RAM available on a single machine may not be sufficient to efficiently generate a proof. Therefore, our final goal is to efficiently distribute proof generation across many machines.
 
@@ -240,7 +240,7 @@ pub fn prove_work() -> (BaseElement, StarkProof) {
     // Define proof options; these will be enough for ~96-bit security level.
     let options = ProofOptions::new(
         32, // number of queries
-        32, // blowup factor
+        8,  // blowup factor
         0,  // grinding factor
         HashFunction::Blake3_256,
         FieldExtension::None,
