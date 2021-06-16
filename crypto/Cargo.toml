@@ -30,7 +30,6 @@ utils = { path = "../utils", package = "winter-utils" }
 math = { path = "../math", package = "winter-math" }
 blake3 = "0.3"
 sha3 = "0.9"
-serde = { version = "1.0", features = ["derive"] }
 rayon = { version = "1.5", optional = true }
 
 [dev-dependencies]

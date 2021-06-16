@@ -59,6 +59,7 @@ impl ProofOptions {
         fri_folding_factor: usize,
         fri_max_remainder_size: usize,
     ) -> ProofOptions {
+        // TODO: return errors instead of panicking
         assert!(num_queries > 0, "number of queries must be greater than 0");
         assert!(num_queries <= 128, "number of queries cannot be greater than 128");
 

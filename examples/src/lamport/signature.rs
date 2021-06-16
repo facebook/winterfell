@@ -8,7 +8,6 @@ use prover::{
     math::field::{f128::BaseElement, FieldElement, StarkField},
     Serializable,
 };
-use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, convert::TryInto};
 
 // CONSTANTS
@@ -27,10 +26,9 @@ pub struct PrivateKey {
     pub_key_hash: PublicKey,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PublicKey(KeyData);
 
-#[derive(Serialize, Deserialize)]
 pub struct Signature {
     pub ones: Vec<KeyData>,
     pub zeros: Vec<KeyData>,

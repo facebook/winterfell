@@ -31,7 +31,6 @@ concurrent = ["rayon"]
 [dependencies]
 utils = { path = "../utils", package = "winter-utils" }
 rayon = { version = "1.5", optional = true }
-serde = { version = "1.0", features = ["derive"] }
 rand = "0.8"
 
 

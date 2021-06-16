@@ -21,6 +21,8 @@ pub struct Queries {
 }
 
 impl Queries {
+    // CONSTRUCTOR
+    // --------------------------------------------------------------------------------------------
     /// Returns a set of queries constructed from a batch Merkle proof and corresponding elements.
     pub fn new<H: Hasher, E: FieldElement>(
         merkle_proof: BatchMerkleProof<H>,
@@ -54,6 +56,8 @@ impl Queries {
         Queries { paths, values }
     }
 
+    // PARSER
+    // --------------------------------------------------------------------------------------------
     /// Convert a set of queries into a batch Merkle proof and corresponding query values.
     pub fn parse<H: Hasher, E: FieldElement>(
         self,

@@ -70,9 +70,6 @@ impl FriProof {
             "folding factor must be a power of two"
         );
 
-        // cache the number of remainder elements here for comparison later
-        let num_remainder_elements = self.remainder.len() / E::ELEMENT_BYTES;
-
         let mut layer_proofs = Vec::new();
         let mut layer_queries = Vec::new();
 
@@ -85,6 +82,7 @@ impl FriProof {
         }
 
         // make sure the remaining domain size matches remainder length
+        let num_remainder_elements = self.remainder.len() / E::ELEMENT_BYTES;
         if domain_size != num_remainder_elements {
             return Err(ProofSerializationError::InvalidRemainderDomain(
                 num_remainder_elements,
@@ -102,10 +100,10 @@ impl FriProof {
         Ok(remainder)
     }
 
-    // SERIALIZATION
+    // SERIALIZATION / DESERIALIZATION
     // --------------------------------------------------------------------------------------------
 
-    /// Serializes proof and appends the resulting bytes to the `target` vector.
+    /// Serializes this proof and appends the resulting bytes to the `target` vector.
     pub fn write_into(&self, target: &mut Vec<u8>) {
         // write layers
         target.push(self.layers.len() as u8);
@@ -157,6 +155,8 @@ pub struct FriProofLayer {
 }
 
 impl FriProofLayer {
+    // CONSTRUCTOR
+    // --------------------------------------------------------------------------------------------
     /// Creates a new proof layer from the specified query values and the corresponding Merkle
     /// paths aggregated into a single batch Merkle proof.
     pub fn new<H: Hasher, E: FieldElement, const N: usize>(
@@ -180,6 +180,9 @@ impl FriProofLayer {
 
         FriProofLayer { values, paths }
     }
+
+    // PARSING
+    // --------------------------------------------------------------------------------------------
 
     /// Decomposes this layer into a combination of query values and corresponding Merkle
     /// paths (grouped together into a single batch Merkle proof).
@@ -233,7 +236,10 @@ impl FriProofLayer {
         Ok((query_values, merkle_proof))
     }
 
-    /// Serializes proof layer context and appends the resulting bytes to the `target` vector.
+    // SERIALIZATION / DESERIALIZATION
+    // --------------------------------------------------------------------------------------------
+
+    /// Serializes this proof layer and appends the resulting bytes to the `target` vector.
     pub fn write_into(&self, target: &mut Vec<u8>) {
         // write value bytes
         target.extend_from_slice(&(self.values.len() as u32).to_le_bytes());
