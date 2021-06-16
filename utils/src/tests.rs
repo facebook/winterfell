@@ -92,6 +92,22 @@ fn read_u32() {
 }
 
 #[test]
+fn read_u64() {
+    let mut a = 12345678910u64.to_le_bytes().to_vec();
+    a.append(&mut 234567891011u64.to_le_bytes().to_vec());
+
+    let mut pos = 0;
+    assert_eq!(12345678910, super::read_u64(&a, &mut pos).unwrap());
+    assert_eq!(8, pos);
+
+    assert_eq!(234567891011, super::read_u64(&a, &mut pos).unwrap());
+    assert_eq!(16, pos);
+
+    pos = 14;
+    assert!(super::read_u64(&a, &mut pos).is_err());
+}
+
+#[test]
 fn read_u8_vec() {
     let a = [1u8, 2, 3, 4, 5, 6, 7, 8];
 

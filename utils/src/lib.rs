@@ -182,7 +182,7 @@ pub fn read_u8(source: &[u8], pos: &mut usize) -> Result<u8, DeserializationErro
 
 /// Reads a u16 value from the specified source starting at the specified position, and increments
 /// `pos` by two. The u16 value is assumed to be in little-endian byte order.
-/// Returns an error if the u16 value could not be read from the specified source.
+/// Returns an error if a u16 value could not be read from the specified source.
 pub fn read_u16(source: &[u8], pos: &mut usize) -> Result<u16, DeserializationError> {
     let end_pos = *pos + 2;
     if end_pos > source.len() {
@@ -201,7 +201,7 @@ pub fn read_u16(source: &[u8], pos: &mut usize) -> Result<u16, DeserializationEr
 
 /// Reads a u32 value from the specified source starting at the specified position, and increments
 /// `pos` by four. The u32 value is assumed to be in little-endian byte order.
-/// Returns an error if the u32 value could not be read from the specified source.
+/// Returns an error if a u32 value could not be read from the specified source.
 pub fn read_u32(source: &[u8], pos: &mut usize) -> Result<u32, DeserializationError> {
     let end_pos = *pos + 4;
     if end_pos > source.len() {
@@ -209,6 +209,25 @@ pub fn read_u32(source: &[u8], pos: &mut usize) -> Result<u32, DeserializationEr
     }
 
     let result = u32::from_le_bytes(
+        source[*pos..end_pos]
+            .try_into()
+            .map_err(|err| DeserializationError::UnknownError(format!("{}", err)))?,
+    );
+
+    *pos = end_pos;
+    Ok(result)
+}
+
+/// Reads a u64 value from the specified source starting at the specified position, and increments
+/// `pos` by eight. The u64 value is assumed to be in little-endian byte order.
+/// Returns an error if a u64 value could not be read from the specified source.
+pub fn read_u64(source: &[u8], pos: &mut usize) -> Result<u64, DeserializationError> {
+    let end_pos = *pos + 8;
+    if end_pos > source.len() {
+        return Err(DeserializationError::UnexpectedEOF);
+    }
+
+    let result = u64::from_le_bytes(
         source[*pos..end_pos]
             .try_into()
             .map_err(|err| DeserializationError::UnknownError(format!("{}", err)))?,

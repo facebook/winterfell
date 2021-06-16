@@ -9,12 +9,12 @@ use math::{
     field::FieldElement,
     utils::{log2, read_elements_into_vec},
 };
-use serde::{Deserialize, Serialize};
+use utils::{read_u32, read_u8_vec, DeserializationError};
 
 // QUERIES
 // ================================================================================================
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Queries {
     paths: Vec<u8>,
     values: Vec<u8>,
@@ -107,5 +107,34 @@ impl Queries {
         })?;
 
         Ok((merkle_proof, query_values))
+    }
+
+    // SERIALIZATION / DESERIALIZATION
+    // --------------------------------------------------------------------------------------------
+
+    /// Serializes this queries struct and appends the resulting bytes to the `target` vector.
+    pub fn write_into(&self, target: &mut Vec<u8>) {
+        // write value bytes
+        target.extend_from_slice(&(self.values.len() as u32).to_le_bytes());
+        target.extend_from_slice(&self.values);
+
+        // write path bytes
+        target.extend_from_slice(&(self.paths.len() as u32).to_le_bytes());
+        target.extend_from_slice(&self.paths);
+    }
+
+    /// Reads a query struct from the specified source starting at the specified position and
+    /// increments `pos` to point to a position right after the end of read-in query bytes.
+    /// Returns an error of a valid query struct could not be read from the specified source.
+    pub fn read_from(source: &[u8], pos: &mut usize) -> Result<Self, DeserializationError> {
+        // read values
+        let num_value_bytes = read_u32(source, pos)?;
+        let values = read_u8_vec(source, pos, num_value_bytes as usize)?;
+
+        // read paths
+        let num_paths_bytes = read_u32(source, pos)?;
+        let paths = read_u8_vec(source, pos, num_paths_bytes as usize)?;
+
+        Ok(Queries { paths, values })
     }
 }

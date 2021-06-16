@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use log::debug;
+use prover::StarkProof;
 use std::io::Write;
 use std::time::Instant;
 use structopt::StructOpt;
@@ -55,7 +56,8 @@ fn main() {
         "---------------------\nProof generated in {} ms",
         now.elapsed().as_millis()
     );
-    let proof_bytes = bincode::serialize(&proof).unwrap();
+
+    let proof_bytes = proof.to_bytes();
     debug!("Proof size: {:.1} KB", proof_bytes.len() as f64 / 1024f64);
     debug!("Proof security: {} bits", proof.security_level(true));
     debug!(
@@ -65,7 +67,8 @@ fn main() {
 
     // verify the proof
     debug!("---------------------");
-    let proof = bincode::deserialize(&proof_bytes).expect("proof deserialization failed");
+    let parsed_proof = StarkProof::from_bytes(&proof_bytes).unwrap();
+    assert_eq!(proof, parsed_proof);
     let now = Instant::now();
     match example.verify(proof) {
         Ok(_) => debug!(

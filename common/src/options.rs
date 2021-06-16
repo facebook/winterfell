@@ -5,30 +5,29 @@
 
 use fri::FriOptions;
 use math::field::StarkField;
-use serde::{Deserialize, Serialize};
+use utils::{read_u8, DeserializationError};
 
 // TYPES AND INTERFACES
 // ================================================================================================
 
 #[repr(u8)]
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum FieldExtension {
     None = 1,
     Quadratic = 2,
 }
 
 #[repr(u8)]
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum HashFunction {
     Blake3_256 = 1,
     Sha3_256 = 2,
 }
 
-// TODO: validate field values on de-serialization
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ProofOptions {
     num_queries: u8,
-    blowup_factor: u8, // stored as power of 2
+    blowup_factor: u8,
     grinding_factor: u8,
     hash_fn: HashFunction,
     field_extension: FieldExtension,
@@ -65,7 +64,7 @@ impl ProofOptions {
 
         assert!(blowup_factor.is_power_of_two(), "blowup factor must be a power of 2");
         assert!(blowup_factor >= 4, "blowup factor cannot be smaller than 4");
-        assert!(blowup_factor <= 256, "blowup factor cannot be greater than 256");
+        assert!(blowup_factor <= 128, "blowup factor cannot be greater than 128");
 
         assert!(grinding_factor <= 32, "grinding factor cannot be greater than 32");
 
@@ -79,7 +78,7 @@ impl ProofOptions {
 
         ProofOptions {
             num_queries: num_queries as u8,
-            blowup_factor: blowup_factor.trailing_zeros() as u8,
+            blowup_factor: blowup_factor as u8,
             grinding_factor: grinding_factor as u8,
             hash_fn,
             field_extension,
@@ -92,19 +91,18 @@ impl ProofOptions {
     // --------------------------------------------------------------------------------------------
 
     /// Returns number of queries for a STARK proof. This directly impacts proof soundness as each
-    /// additional query adds roughly log2(lde_domain_size / constraint_evaluation_domain_size)
-    /// bits of security to a proof. However, each additional query also increases proof size.
+    /// additional query adds roughly log2(blowup_factor) bits of security to a proof. However,
+    /// each additional query also increases proof size.
     pub fn num_queries(&self) -> usize {
         self.num_queries as usize
     }
 
     /// Returns trace blowup factor for a STARK proof (i.e. a factor by which the execution
     /// trace is extended). This directly impacts proof soundness as each query adds roughly
-    /// log2(lde_domain_size / constraint_evaluation_domain_size) bits of security to a proof.
-    /// However, higher blowup factors also increases prover runtime - e.g. doubling blowup
-    /// factor roughly doubles prover time.
+    /// log2(blowup_factor) bits of security to a proof. However, higher blowup factors also
+    /// increases prover runtime.
     pub fn blowup_factor(&self) -> usize {
-        1 << (self.blowup_factor as usize)
+        self.blowup_factor as usize
     }
 
     /// Returns query seed grinding factor for a STARK proof. Grinding applies Proof-of-Work
@@ -143,7 +141,7 @@ impl ProofOptions {
         FriOptions::new(self.blowup_factor(), folding_factor, max_remainder_size)
     }
 
-    // SERIALIZATION
+    // SERIALIZATION / DESERIALIZATION
     // --------------------------------------------------------------------------------------------
 
     /// Serializes these options and appends the resulting bytes to the `target` vector.
@@ -155,6 +153,21 @@ impl ProofOptions {
         target.push(self.field_extension as u8);
         target.push(self.fri_folding_factor);
         target.push(self.fri_max_remainder_size);
+    }
+
+    /// Reads proof options from the specified source starting at the specified position and
+    /// increments `pos` to point to a position right after the end of read-in option bytes.
+    /// Returns an error of a valid proof options could not be read from the specified source.
+    pub fn read_from(source: &[u8], pos: &mut usize) -> Result<Self, DeserializationError> {
+        Ok(ProofOptions::new(
+            read_u8(source, pos)? as usize,
+            read_u8(source, pos)? as usize,
+            read_u8(source, pos)? as u32,
+            HashFunction::read_from(source, pos)?,
+            FieldExtension::read_from(source, pos)?,
+            read_u8(source, pos)? as usize,
+            2usize.pow(read_u8(source, pos)? as u32),
+        ))
     }
 }
 
@@ -174,6 +187,19 @@ impl FieldExtension {
             Self::Quadratic => 2,
         }
     }
+
+    /// Reads a field extension enum from the byte at the specified position and increments
+    /// `pos` by one.
+    pub fn read_from(source: &[u8], pos: &mut usize) -> Result<Self, DeserializationError> {
+        match read_u8(source, pos)? {
+            1 => Ok(FieldExtension::None),
+            2 => Ok(FieldExtension::Quadratic),
+            value => Err(DeserializationError::InvalidValue(
+                value.to_string(),
+                "FieldExtension".to_string(),
+            )),
+        }
+    }
 }
 
 // HASH FUNCTION IMPLEMENTATION
@@ -185,6 +211,19 @@ impl HashFunction {
         match self {
             Self::Blake3_256 => 128,
             Self::Sha3_256 => 128,
+        }
+    }
+
+    /// Reads a hash function enum from the byte at the specified position and increments
+    /// `pos` by one.
+    pub fn read_from(source: &[u8], pos: &mut usize) -> Result<Self, DeserializationError> {
+        match read_u8(source, pos)? {
+            1 => Ok(HashFunction::Blake3_256),
+            2 => Ok(HashFunction::Sha3_256),
+            value => Err(DeserializationError::InvalidValue(
+                value.to_string(),
+                "HashFunction".to_string(),
+            )),
         }
     }
 }

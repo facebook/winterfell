@@ -10,6 +10,8 @@ use core::fmt;
 
 #[derive(Debug, PartialEq)]
 pub enum DeserializationError {
+    /// Value {0} cannot be deserialized as {}
+    InvalidValue(String, String),
     /// Unexpected EOF
     UnexpectedEOF,
     /// Unknown error: {0}
@@ -20,6 +22,9 @@ impl fmt::Display for DeserializationError {
     #[rustfmt::skip]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::InvalidValue(value, type_name) => {
+                write!(f, "value {} cannot be deserialized as {}", value, type_name)
+            }
             Self::UnexpectedEOF => {
                 write!(f, "unexpected EOF")
             }
