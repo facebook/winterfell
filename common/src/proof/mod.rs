@@ -7,7 +7,7 @@ use crate::ProofOptions;
 use core::cmp;
 use fri::FriProof;
 use math::utils::log2;
-use serde::{Deserialize, Serialize};
+use utils::{read_u64, DeserializationError};
 
 mod context;
 pub use context::Context;
@@ -29,7 +29,7 @@ const GRINDING_CONTRIBUTION_FLOOR: u32 = 80;
 // TYPES AND INTERFACES
 // ================================================================================================
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct StarkProof {
     pub context: Context,
     pub commitments: Commitments,
@@ -71,12 +71,42 @@ impl StarkProof {
                 self.context.options(),
                 self.context.num_modulus_bits(),
                 self.lde_domain_size() as u64,
-                self.trace_length() as u64,
             )
         } else {
             // TODO: implement provable security estimation
             unimplemented!("proven security estimation has not been implement yet")
         }
+    }
+
+    // SERIALIZATION / DESERIALIZATION
+    // --------------------------------------------------------------------------------------------
+
+    /// Serializes this proof into a vector of bytes.
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut result = Vec::new();
+        self.context.write_into(&mut result);
+        self.commitments.write_into(&mut result);
+        self.trace_queries.write_into(&mut result);
+        self.constraint_queries.write_into(&mut result);
+        self.ood_frame.write_into(&mut result);
+        self.fri_proof.write_into(&mut result);
+        result.extend_from_slice(&self.pow_nonce.to_le_bytes());
+        result
+    }
+
+    /// Returns a STARK proof read from the specified source starting at position 0.
+    /// Returns an error of a valid STARK proof could not be read from the specified source.
+    pub fn from_bytes(source: &[u8]) -> Result<Self, DeserializationError> {
+        let mut pos = 0;
+        Ok(StarkProof {
+            context: Context::read_from(source, &mut pos)?,
+            commitments: Commitments::read_from(source, &mut pos)?,
+            trace_queries: Queries::read_from(source, &mut pos)?,
+            constraint_queries: Queries::read_from(source, &mut pos)?,
+            ood_frame: OodFrame::read_from(source, &mut pos)?,
+            fri_proof: FriProof::read_from(source, &mut pos)?,
+            pow_nonce: read_u64(source, &mut pos)?,
+        })
     }
 }
 
@@ -86,20 +116,18 @@ impl StarkProof {
 /// Computes conjectured security level for the specified proof parameters.
 fn get_conjectured_security(
     options: &ProofOptions,
-    base_field_size: u32, // in bits
+    base_field_bits: u32,
     lde_domain_size: u64,
-    trace_length: u64,
 ) -> u32 {
     // compute max security we can get for a given field size
-    let field_size = base_field_size * options.field_extension().degree();
+    let field_size = base_field_bits * options.field_extension().degree();
     let field_security = field_size - lde_domain_size.trailing_zeros();
 
     // compute max security we can get for a given hash function
     let hash_fn_security = options.hash_fn().collision_resistance();
 
     // compute security we get by executing multiple query rounds
-    let one_over_rho = lde_domain_size / trace_length;
-    let security_per_query = log2(one_over_rho as usize);
+    let security_per_query = log2(options.blowup_factor());
     let mut query_security = security_per_query * options.num_queries() as u32;
 
     // include grinding factor contributions only for proofs adequate security

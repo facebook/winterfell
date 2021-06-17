@@ -5,12 +5,12 @@
 
 use crate::ProofOptions;
 use math::{field::StarkField, utils::log2};
-use serde::{Deserialize, Serialize};
+use utils::{read_u8, read_u8_vec, DeserializationError};
 
 // PROOF HEADER
 // ================================================================================================
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Context {
     lde_domain_depth: u8,
     field_modulus_bytes: Vec<u8>,
@@ -68,7 +68,7 @@ impl Context {
         &self.options
     }
 
-    // SERIALIZATION
+    // SERIALIZATION / DESERIALIZATION
     // --------------------------------------------------------------------------------------------
 
     /// Serializes this context and appends the resulting bytes to the `target` vector.
@@ -78,5 +78,21 @@ impl Context {
         target.push(self.field_modulus_bytes.len() as u8);
         target.extend_from_slice(&self.field_modulus_bytes);
         self.options.write_into(target);
+    }
+
+    /// Reads proof context from the specified source starting at the specified position and
+    /// increments `pos` to point to a position right after the end of read-in context bytes.
+    /// Returns an error of a valid Context struct could not be read from the specified source.
+    pub fn read_from(source: &[u8], pos: &mut usize) -> Result<Self, DeserializationError> {
+        let lde_domain_depth = read_u8(source, pos)?;
+        let num_modulus_bytes = read_u8(source, pos)? as usize;
+        let field_modulus_bytes = read_u8_vec(source, pos, num_modulus_bytes)?;
+        let options = ProofOptions::read_from(source, pos)?;
+
+        Ok(Context {
+            lde_domain_depth,
+            field_modulus_bytes,
+            options,
+        })
     }
 }

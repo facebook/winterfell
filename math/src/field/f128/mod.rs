@@ -16,7 +16,6 @@ use core::{
     slice,
 };
 use rand::{distributions::Uniform, prelude::*};
-use serde::{Deserialize, Serialize};
 use utils::{AsBytes, Serializable};
 
 #[cfg(test)]
@@ -39,8 +38,7 @@ const ELEMENT_BYTES: usize = std::mem::size_of::<u128>();
 // FIELD ELEMENT
 // ================================================================================================
 
-// TODO: get rid of Serialize and Deserialize derives
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub struct BaseElement(u128);
 
 impl BaseElement {

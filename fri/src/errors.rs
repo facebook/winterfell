@@ -60,26 +60,26 @@ impl fmt::Display for VerifierError {
 
 #[derive(Debug, PartialEq)]
 pub enum ProofSerializationError {
-    /// FRI queries at layer {} could not be deserialized: {0}
-    LayerDeserializationError(usize, String),
+    /// FRI queries at layer {0} could not be parsed: {1}
+    LayerParsingError(usize, String),
     /// FRI remainder domain size must be {0}, but was {1}
     InvalidRemainderDomain(usize, usize),
-    /// FRI remainder could not be deserialized: {0}
-    RemainderDeserializationError(String),
+    /// FRI remainder could not be parsed: {0}
+    RemainderParsingError(String),
 }
 
 impl fmt::Display for ProofSerializationError {
     #[rustfmt::skip]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::LayerDeserializationError(layer, err_msg) => {
-                write!(f, "FRI queries at layer {} could not be deserialized: {}", layer, err_msg)
+            Self::LayerParsingError(layer, err_msg) => {
+                write!(f, "FRI queries at layer {} could not be parsed: {}", layer, err_msg)
             }
             Self::InvalidRemainderDomain(num_remainder_elements, domain_size) => {
                 write!(f, "FRI remainder domain size must be {}, but was {}", num_remainder_elements, domain_size)
             }
-            Self::RemainderDeserializationError(err_msg) => {
-                write!(f, "FRI remainder could not be deserialized: {}", err_msg)
+            Self::RemainderParsingError(err_msg) => {
+                write!(f, "FRI remainder could not be parsed: {}", err_msg)
             }
         }
     }

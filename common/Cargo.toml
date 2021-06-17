@@ -18,7 +18,6 @@ utils = { path = "../utils", package = "winter-utils" }
 math = { path = "../math", package = "winter-math" }
 crypto = { path = "../crypto", package = "winter-crypto" }
 fri = { path = "../fri", package = "winter-fri" }
-serde = { version = "1.0", features = ["derive"] }
 
 [dev-dependencies]
 rand = "0.8"

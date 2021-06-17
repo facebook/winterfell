@@ -48,6 +48,14 @@ pub fn verify_proof(
     positions: &[usize],
     options: &FriOptions,
 ) -> Result<(), VerifierError> {
+    // test proof serialization / deserialization
+    let mut proof_bytes = Vec::new();
+    proof.write_into(&mut proof_bytes);
+
+    let mut pos = 0;
+    let proof = FriProof::read_from(&proof_bytes, &mut pos).unwrap();
+
+    // verify the proof
     let mut channel = DefaultVerifierChannel::<BaseElement, hash::Blake3_256>::new(
         proof,
         domain_size,

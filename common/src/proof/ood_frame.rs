@@ -5,12 +5,12 @@
 
 use crate::{errors::ProofSerializationError, EvaluationFrame};
 use math::{field::FieldElement, utils::read_elements_into_vec};
-use serde::{Deserialize, Serialize};
+use utils::{read_u16, read_u8_vec, DeserializationError};
 
 // OUT-OF-DOMAIN EVALUATION FRAME
 // ================================================================================================
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct OodFrame {
     trace_at_z1: Vec<u8>,
     trace_at_z2: Vec<u8>,
@@ -84,16 +84,39 @@ impl OodFrame {
         Ok((EvaluationFrame { current, next }, evaluations))
     }
 
-    // SERIALIZATION
+    // SERIALIZATION / DESERIALIZATION
     // --------------------------------------------------------------------------------------------
 
     /// Serializes this out-of-domain frame and appends the resulting bytes to the `target` vector.
     pub fn write_into(&self, target: &mut Vec<u8>) {
-        // we do not append vector lengths because the lengths can be inferred from other proof
-        // and AIR parameters
+        // write trace rows (both rows have the same number of bytes)
+        target.extend_from_slice(&(self.trace_at_z1.len() as u16).to_le_bytes());
         target.extend_from_slice(&self.trace_at_z1);
         target.extend_from_slice(&self.trace_at_z2);
+
+        // write constraint evaluations row
+        target.extend_from_slice(&(self.evaluations.len() as u16).to_le_bytes());
         target.extend_from_slice(&self.evaluations)
+    }
+
+    /// Reads a OOD frame from the specified source starting at the specified position and
+    /// increments `pos` to point to a position right after the end of read-in frame bytes.
+    /// Returns an error of a valid OOD frame could not be read from the specified source.
+    pub fn read_from(source: &[u8], pos: &mut usize) -> Result<Self, DeserializationError> {
+        // read trace rows
+        let trace_row_bytes = read_u16(source, pos)? as usize;
+        let trace_at_z1 = read_u8_vec(source, pos, trace_row_bytes)?;
+        let trace_at_z2 = read_u8_vec(source, pos, trace_row_bytes)?;
+
+        // read constraint evaluations row
+        let constraint_row_bytes = read_u16(source, pos)? as usize;
+        let evaluations = read_u8_vec(source, pos, constraint_row_bytes)?;
+
+        Ok(OodFrame {
+            trace_at_z1,
+            trace_at_z2,
+            evaluations,
+        })
     }
 }
 
