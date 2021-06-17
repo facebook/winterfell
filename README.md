@@ -355,7 +355,7 @@ A few remarks about these benchmarks:
 * Not included in the table, the time it takes to verify proofs in all benchmarks above is between 2 ms and 6 ms using a single CPU core.
 * As can be seen from the table, with STARKs, we can dynamically trade off proof size, proof security level, and proving time against each other.
 
-Let's benchmark another example. This time our computation will consist of verifying many Lamport+ signatures (see [example](examples/#LamportPlus-signatures)). This is a much more complication computation. For comparison, execution trace for Rescue hash chain requires only 4 columns, but for Lamport+ signature verification we use 22 columns. The table below shows benchmarks for verifying different numbers of signatures on the same 8-core machine (at 123-bit security level).
+Let's benchmark another example. This time our computation will consist of verifying many Lamport+ signatures (see [example](examples/#LamportPlus-signatures)). This is a much more complicated computation. For comparison, execution trace for Rescue hash chain requires only 4 columns, but for Lamport+ signature verification we use 22 columns. The table below shows benchmarks for verifying different numbers of signatures on the same 8-core machine (at 123-bit security level).
 
 | # of signatures | Trace time | Proving time | Prover RAM | Proof size | Verifier time |
 | --------------- | :--------: | :----------: | :--------: | :--------: | :-----------: |
@@ -368,7 +368,7 @@ Let's benchmark another example. This time our computation will consist of verif
 A few observations about these benchmarks:
 * Trace time and prover RAM (RAM consumed by the prover during proof generation) grow pretty much linearly with the size of the computation.
 * Proving time grows very slightly faster than linearly with the size of the computation.
-* Proof size and verifier time grows much slower than linearly (actually logarithmically) with the size of the computation.
+* Proof size and verifier time grow much slower than linearly (actually logarithmically) with the size of the computation.
 
 Another difference between this example and Rescue hash chain is that we can generate execution trace for each signature verification independently, and thus, we can build the entire trace in parallel using multiple threads. In general, Winterfell prover performance scales nearly linearly with every additional CPU core. This is because nearly all steps of STARK proof generation process can be parallelized. The table below illustrates this relationship on the example of verifying 1024 Lamport+ signatures (at 123-bit security level). This time, our benchmark machine is AMD EPYC 7003 with 64 CPU cores.
 
