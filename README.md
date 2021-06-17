@@ -296,77 +296,92 @@ The computation we benchmark here is a chain of Rescue hash invocations (see [ex
             <td style="text-align:left">2<sup>10</sup></td>
             <td>0.1 sec</td>
             <td>0.04 sec</td>
-            <td>71 KB</td>
+            <td>65 KB</td>
             <td>0.07 sec</td>
-            <td>108 KB</td>
+            <td>102 KB</td>
             <td>2<sup>17</sup> constr.</td>
         </tr>
         <tr>
             <td style="text-align:left">2<sup>12</sup></td>
             <td>0.4 sec</td>
             <td>0.14 sec</td>
-            <td>90 KB</td>
+            <td>81 KB</td>
             <td>0.25 sec</td>
-            <td>135 KB</td>
+            <td>128 KB</td>
             <td>2<sup>19</sup> constr.</td>
         </tr>
         <tr>
             <td style="text-align:left">2<sup>14</sup></td>
             <td>1.4 sec</td>
             <td>0.6 sec</td>
-            <td>114 KB</td>
+            <td>100 KB</td>
             <td>1 sec</td>
-            <td>170 KB</td>
+            <td>156 KB</td>
             <td>2<sup>21</sup> constr.</td>
         </tr>
         <tr>
             <td style="text-align:left">2<sup>16</sup></td>
             <td>6 sec</td>
             <td>2.5 sec</td>
-            <td>142 KB</td>
+            <td>119 KB</td>
             <td>4 sec</td>
-            <td>210 KB</td>
+            <td>184 KB</td>
             <td>2<sup>23</sup> constr.</td>
         </tr>
         <tr>
             <td style="text-align:left">2<sup>18</sup></td>
             <td>24 sec</td>
             <td>11 sec</td>
-            <td>168 KB</td>
-            <td> 18 sec </td>
-            <td> 245 KB </td>
+            <td>141 KB</td>
+            <td>18 sec </td>
+            <td>216 KB </td>
             <td>2<sup>25</sup> constr.</td>
         </tr>
         <tr>
             <td style="text-align:left">2<sup>20</sup></td>
             <td>94 sec</td>
             <td>50 sec</td>
-            <td>199 KB</td>
-            <td> 104 sec </td>
-            <td> 290 KB </td>
+            <td>166 KB</td>
+            <td>89 sec </td>
+            <td>252 KB </td>
             <td>2<sup>27</sup> constr.</td>
         </tr>
     </tbody>
 </table>
 
 A few remarks about these benchmarks:
-* **Trace time** is the time it takes to generate an execution trace for the computation. This time does not depend on the chosen security level. For this specific computation, trace generation must be sequential, and thus, cannot take advantage of multiple cores. However, for other computations, where execution trace can be generated in parallel, trace time would be much smaller in relation to the proving time.
+* **Trace time** is the time it takes to generate an execution trace for the computation. This time does not depend on the chosen security level. For this specific computation, trace generation must be sequential, and thus, cannot take advantage of multiple cores. However, for other computations, where execution trace can be generated in parallel, trace time would be much smaller in relation to the proving time (see below).
 * **R1CS equiv.** is a very rough estimate of how many R1CS constraints would be required for this computation. The assumption here is that a single invocation of Rescue hash function requires ~120 R1CS constraints.
+* Not included in the table, the time it takes to verify proofs in all benchmarks above is between 2 ms and 6 ms using a single CPU core.
 * As can be seen from the table, with STARKs, we can dynamically trade off proof size, proof security level, and proving time against each other.
 
-As mentioned previously, we used all 8 CPU cores for the above benchmark. In general, Winterfell prover performance scales nearly linearly with every additional CPU core. This is because nearly all steps of STARK proof generation process can be parallelized. The table below illustrates this relationship on the example of 2<sup>16</sup> hash invocations.
+Let's benchmark another example. This time our computation will consist of verifying many Lamport+ signatures (see [example](examples/#LamportPlus-signatures)). This is a much more complication computation. For comparison, execution trace for Rescue hash chain requires only 4 columns, but for Lamport+ signature verification we use 22 columns. The table below shows benchmarks for verifying different numbers of signatures on the same 8-core machine (at 123-bit security level).
 
-| Threads | Trace time  | Proving time (100-bit security) | Proving time (128-bit security) |
-| ------- | :---------: | :--------------------: | :--------------------: |
-| 1       | 6 sec       | 16.4 sec               | 26.9 sec               |
-| 2       | 6 sec       | 9 sec                  | 14 sec                 |
-| 4       | 6 sec       | 4.8 sec                | 8 sec                  |
-| 8       | 6 sec       | 3 sec                  | 4.8 sec                |
-| 16      | 6 sec       | 2.6 sec                | 4.2 sec                |
+| # of signatures | Trace time | Proving time | Prover RAM | Proof size | Verifier time |
+| --------------- | :--------: | :----------: | :--------: | :--------: | :-----------: |
+| 64              | 0.2 sec    | 1.2 sec      | 0.5 GB     | 110 KB     | 4.4 ms        |
+| 128             | 0.4 sec    | 2.6 sec      | 1.0 GB     | 121 KB     | 4.4 ms        |
+| 256             | 0.8 sec    | 5.3 sec      | 1.9 GB     | 132 KB     | 4.5 ms        |
+| 512             | 1.6 sec    | 10.9 sec     | 3.8 GB     | 139 KB     | 4.9 ms        |
+| 1024            | 3.2 sec    | 20.5 sec     | 7.6 GB     | 152 KB     | 5.9 ms        |
 
-A few remarks about these benchmarks:
-* We are still using the same 8-core machine - thus, going from 8 to 16 threads has only a minor impact.
-* Utilizing all 8 cores to the fullest, reduces prover time by 5x - 6x as compared to the single-threaded proof generation.
+A few observations about these benchmarks:
+* Trace time and prover RAM (RAM consumed by the prover during proof generation) grow pretty much linearly with the size of the computation.
+* Proving time grows very slightly faster than linearly with the size of the computation.
+* Proof size and verifier time grows much slower than linearly (actually logarithmically) with the size of the computation.
+
+Another difference between this example and Rescue hash chain is that we can generate execution trace for each signature verification independently, and thus, we can build the entire trace in parallel using multiple threads. In general, Winterfell prover performance scales nearly linearly with every additional CPU core. This is because nearly all steps of STARK proof generation process can be parallelized. The table below illustrates this relationship on the example of verifying 1024 Lamport+ signatures (at 123-bit security level). This time, our benchmark machine is AMD EPYC 7003 with 64 CPU cores.
+
+| Threads | Trace time  | Proving time | Total time (trace + proving) | Improvement |
+| ------- | :---------: | :----------: | :--------------------------: | :---------: |
+| 1       | 28 sec      | 127 sec      | 155 sec                      |  1x         |
+| 2       | 14 sec      | 64 sec       | 78 sec                       |  2x         |
+| 4       | 6.7 sec     | 33 sec       | 39.7 sec                     |  3.9x       |
+| 8       | 3.8 sec     | 17 sec       | 20.8 sec                     |  7.5x       |
+| 16      | 2 sec       | 10.3 sec     | 12.3 se                      |  12.6x      |
+| 32      | 1 sec       | 6 sec        | 7 sec                        |  22.1x      |
+| 64      | 0.6 sec     | 3.8 sec      | 4.4 sec                      |  35.2x      |
+
 
 ## References
 If you are interested in learning how STARKs work under the hood, here are a few links to get you started. From the standpoint of this library, *arithmetization* is by far the most important concept to understand.
