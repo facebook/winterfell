@@ -5,7 +5,7 @@
 
 use fri::FriOptions;
 use math::field::StarkField;
-use utils::{read_u8, DeserializationError};
+use utils::{ByteReader, DeserializationError};
 
 // TYPES AND INTERFACES
 // ================================================================================================
@@ -161,13 +161,13 @@ impl ProofOptions {
     /// Returns an error of a valid proof options could not be read from the specified source.
     pub fn read_from(source: &[u8], pos: &mut usize) -> Result<Self, DeserializationError> {
         Ok(ProofOptions::new(
-            read_u8(source, pos)? as usize,
-            read_u8(source, pos)? as usize,
-            read_u8(source, pos)? as u32,
+            source.read_u8(pos)? as usize,
+            source.read_u8(pos)? as usize,
+            source.read_u8(pos)? as u32,
             HashFunction::read_from(source, pos)?,
             FieldExtension::read_from(source, pos)?,
-            read_u8(source, pos)? as usize,
-            2usize.pow(read_u8(source, pos)? as u32),
+            source.read_u8(pos)? as usize,
+            2usize.pow(source.read_u8(pos)? as u32),
         ))
     }
 }
@@ -192,7 +192,7 @@ impl FieldExtension {
     /// Reads a field extension enum from the byte at the specified position and increments
     /// `pos` by one.
     pub fn read_from(source: &[u8], pos: &mut usize) -> Result<Self, DeserializationError> {
-        match read_u8(source, pos)? {
+        match source.read_u8(pos)? {
             1 => Ok(FieldExtension::None),
             2 => Ok(FieldExtension::Quadratic),
             value => Err(DeserializationError::InvalidValue(
@@ -218,7 +218,7 @@ impl HashFunction {
     /// Reads a hash function enum from the byte at the specified position and increments
     /// `pos` by one.
     pub fn read_from(source: &[u8], pos: &mut usize) -> Result<Self, DeserializationError> {
-        match read_u8(source, pos)? {
+        match source.read_u8(pos)? {
             1 => Ok(HashFunction::Blake3_256),
             2 => Ok(HashFunction::Sha3_256),
             value => Err(DeserializationError::InvalidValue(

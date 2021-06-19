@@ -9,7 +9,7 @@ use math::{
     field::FieldElement,
     utils::{log2, read_elements_into_vec},
 };
-use utils::{read_u32, read_u8_vec, DeserializationError};
+use utils::{ByteReader, DeserializationError};
 
 // QUERIES
 // ================================================================================================
@@ -132,12 +132,12 @@ impl Queries {
     /// Returns an error of a valid query struct could not be read from the specified source.
     pub fn read_from(source: &[u8], pos: &mut usize) -> Result<Self, DeserializationError> {
         // read values
-        let num_value_bytes = read_u32(source, pos)?;
-        let values = read_u8_vec(source, pos, num_value_bytes as usize)?;
+        let num_value_bytes = source.read_u32(pos)?;
+        let values = source.read_u8_vec(pos, num_value_bytes as usize)?;
 
         // read paths
-        let num_paths_bytes = read_u32(source, pos)?;
-        let paths = read_u8_vec(source, pos, num_paths_bytes as usize)?;
+        let num_paths_bytes = source.read_u32(pos)?;
+        let paths = source.read_u8_vec(pos, num_paths_bytes as usize)?;
 
         Ok(Queries { paths, values })
     }

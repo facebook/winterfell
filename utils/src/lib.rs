@@ -3,6 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+//! This crate contains utility traits, functions, and macros used by Winterfell STARK prover
+//! and verifier.
+
 use core::{convert::TryInto, mem, slice};
 
 mod iterators;
@@ -55,6 +58,110 @@ pub trait Serializable: Sized {
 
 impl Serializable for () {
     fn write_into(&self, _target: &mut Vec<u8>) {}
+}
+
+
+// BYTE READER
+// ================================================================================================
+
+pub trait ByteReader {
+
+    /// Reads a byte from the specified source at the specified position, and increments `pos`
+    /// by one.
+    /// Returns an error if `pos` is out of bounds.
+    fn read_u8(&self, pos: &mut usize) -> Result<u8, DeserializationError>;
+
+    fn read_u16(&self, pos: &mut usize) -> Result<u16, DeserializationError>;
+
+    fn read_u32(&self, pos: &mut usize) -> Result<u32, DeserializationError>;
+
+    fn read_u64(&self, pos: &mut usize) -> Result<u64, DeserializationError>;
+
+    fn read_u8_vec(&self, pos: &mut usize, len: usize) -> Result<Vec<u8>, DeserializationError>;
+}
+
+impl ByteReader for [u8] {
+
+    fn read_u8(&self, pos: &mut usize) -> Result<u8, DeserializationError> {
+        if *pos >= self.len() {
+            return Err(DeserializationError::UnexpectedEOF);
+        }
+        let result = self[*pos];
+    
+        *pos += 1;
+        Ok(result)
+    }
+
+    /// Reads a u16 value from the specified source starting at the specified position, and
+    /// increments `pos` by two. The u16 value is assumed to be in little-endian byte order.
+    /// Returns an error if a u16 value could not be read from the specified source.
+    fn read_u16(&self, pos: &mut usize) -> Result<u16, DeserializationError> {
+        let end_pos = *pos + 2;
+        if end_pos > self.len() {
+            return Err(DeserializationError::UnexpectedEOF);
+        }
+    
+        let result = u16::from_le_bytes(
+            self[*pos..end_pos]
+                .try_into()
+                .map_err(|err| DeserializationError::UnknownError(format!("{}", err)))?,
+        );
+    
+        *pos = end_pos;
+        Ok(result)
+    }
+
+    /// Reads a u32 value from the specified source starting at the specified position, and
+    /// increments `pos` by four. The u32 value is assumed to be in little-endian byte order.
+    /// Returns an error if a u32 value could not be read from the specified source.
+    fn read_u32(&self, pos: &mut usize) -> Result<u32, DeserializationError> {
+        let end_pos = *pos + 4;
+        if end_pos > self.len() {
+            return Err(DeserializationError::UnexpectedEOF);
+        }
+    
+        let result = u32::from_le_bytes(
+            self[*pos..end_pos]
+                .try_into()
+                .map_err(|err| DeserializationError::UnknownError(format!("{}", err)))?,
+        );
+    
+        *pos = end_pos;
+        Ok(result)
+    }
+
+    /// Reads a u64 value from the specified source starting at the specified position, and
+    /// increments `pos` by eight. The u64 value is assumed to be in little-endian byte order.
+    /// Returns an error if a u64 value could not be read from the specified source.
+    fn read_u64(&self, pos: &mut usize) -> Result<u64, DeserializationError> {
+        let end_pos = *pos + 8;
+        if end_pos > self.len() {
+            return Err(DeserializationError::UnexpectedEOF);
+        }
+
+        let result = u64::from_le_bytes(
+            self[*pos..end_pos]
+                .try_into()
+                .map_err(|err| DeserializationError::UnknownError(format!("{}", err)))?,
+        );
+
+        *pos = end_pos;
+        Ok(result)
+    }
+
+    /// Reads a byte vector of specified from the specified source starting at the specified
+    /// position, and increments `pos` by the length of the vector.
+    /// Returns an error if a vector of the specified length could not be read from the source.
+    fn read_u8_vec(&self, pos: &mut usize, len: usize) -> Result<Vec<u8>, DeserializationError> {
+        let end_pos = *pos + len as usize;
+        if end_pos > self.len() {
+            return Err(DeserializationError::UnexpectedEOF);
+        }
+        let result = self[*pos..end_pos].to_vec();
+        *pos = end_pos;
+        Ok(result)
+        
+    }
 }
 
 // AS BYTES
@@ -131,14 +238,14 @@ pub fn group_slice_elements<T, const N: usize>(source: &[T]) -> &[[T; N]] {
     unsafe { slice::from_raw_parts(p as *const [T; N], len) }
 }
 
-// Transmutes a slice of n arrays each of length N, into a slice of N * n elements.
+/// Transmutes a slice of n arrays each of length N, into a slice of N * n elements.
 pub fn flatten_slice_elements<T, const N: usize>(source: &[[T; N]]) -> &[T] {
     let p = source.as_ptr();
     let len = source.len() * N;
     unsafe { slice::from_raw_parts(p as *const T, len) }
 }
 
-// Transmutes a vector of n arrays each of length N, into a vector of N * n elements.
+/// Transmutes a vector of n arrays each of length N, into a vector of N * n elements.
 pub fn flatten_vector_elements<T, const N: usize>(source: Vec<[T; N]>) -> Vec<T> {
     let v = mem::ManuallyDrop::new(source);
     let p = v.as_ptr();
@@ -163,93 +270,4 @@ pub fn transpose_slice<T: Copy + Send + Sync, const N: usize>(source: &[T]) -> V
             }
         });
     result
-}
-
-// DESERIALIZER FUNCTIONS
-// ================================================================================================
-
-/// Reads a byte from the specified source at the specified position, and increments `pos` by one.
-/// Returns an error if `pos` is out of bounds.
-pub fn read_u8(source: &[u8], pos: &mut usize) -> Result<u8, DeserializationError> {
-    if *pos >= source.len() {
-        return Err(DeserializationError::UnexpectedEOF);
-    }
-    let result = source[*pos];
-
-    *pos += 1;
-    Ok(result)
-}
-
-/// Reads a u16 value from the specified source starting at the specified position, and increments
-/// `pos` by two. The u16 value is assumed to be in little-endian byte order.
-/// Returns an error if a u16 value could not be read from the specified source.
-pub fn read_u16(source: &[u8], pos: &mut usize) -> Result<u16, DeserializationError> {
-    let end_pos = *pos + 2;
-    if end_pos > source.len() {
-        return Err(DeserializationError::UnexpectedEOF);
-    }
-
-    let result = u16::from_le_bytes(
-        source[*pos..end_pos]
-            .try_into()
-            .map_err(|err| DeserializationError::UnknownError(format!("{}", err)))?,
-    );
-
-    *pos = end_pos;
-    Ok(result)
-}
-
-/// Reads a u32 value from the specified source starting at the specified position, and increments
-/// `pos` by four. The u32 value is assumed to be in little-endian byte order.
-/// Returns an error if a u32 value could not be read from the specified source.
-pub fn read_u32(source: &[u8], pos: &mut usize) -> Result<u32, DeserializationError> {
-    let end_pos = *pos + 4;
-    if end_pos > source.len() {
-        return Err(DeserializationError::UnexpectedEOF);
-    }
-
-    let result = u32::from_le_bytes(
-        source[*pos..end_pos]
-            .try_into()
-            .map_err(|err| DeserializationError::UnknownError(format!("{}", err)))?,
-    );
-
-    *pos = end_pos;
-    Ok(result)
-}
-
-/// Reads a u64 value from the specified source starting at the specified position, and increments
-/// `pos` by eight. The u64 value is assumed to be in little-endian byte order.
-/// Returns an error if a u64 value could not be read from the specified source.
-pub fn read_u64(source: &[u8], pos: &mut usize) -> Result<u64, DeserializationError> {
-    let end_pos = *pos + 8;
-    if end_pos > source.len() {
-        return Err(DeserializationError::UnexpectedEOF);
-    }
-
-    let result = u64::from_le_bytes(
-        source[*pos..end_pos]
-            .try_into()
-            .map_err(|err| DeserializationError::UnknownError(format!("{}", err)))?,
-    );
-
-    *pos = end_pos;
-    Ok(result)
-}
-
-/// Reads a byte vector of specified from the specified source starting at the specified
-/// position, and increments `pos` by the length of the vector.
-/// Returns an error if a vector of the specified length could not be read from the source.
-pub fn read_u8_vec(
-    source: &[u8],
-    pos: &mut usize,
-    len: usize,
-) -> Result<Vec<u8>, DeserializationError> {
-    let end_pos = *pos + len as usize;
-    if end_pos > source.len() {
-        return Err(DeserializationError::UnexpectedEOF);
-    }
-    let result = source[*pos..end_pos].to_vec();
-    *pos = end_pos;
-    Ok(result)
 }

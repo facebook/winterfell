@@ -5,7 +5,7 @@
 
 use crate::{errors::ProofSerializationError, EvaluationFrame};
 use math::{field::FieldElement, utils::read_elements_into_vec};
-use utils::{read_u16, read_u8_vec, DeserializationError};
+use utils::{ByteReader, DeserializationError};
 
 // OUT-OF-DOMAIN EVALUATION FRAME
 // ================================================================================================
@@ -104,13 +104,13 @@ impl OodFrame {
     /// Returns an error of a valid OOD frame could not be read from the specified source.
     pub fn read_from(source: &[u8], pos: &mut usize) -> Result<Self, DeserializationError> {
         // read trace rows
-        let trace_row_bytes = read_u16(source, pos)? as usize;
-        let trace_at_z1 = read_u8_vec(source, pos, trace_row_bytes)?;
-        let trace_at_z2 = read_u8_vec(source, pos, trace_row_bytes)?;
+        let trace_row_bytes = source.read_u16(pos)? as usize;
+        let trace_at_z1 = source.read_u8_vec(pos, trace_row_bytes)?;
+        let trace_at_z2 = source.read_u8_vec(pos, trace_row_bytes)?;
 
         // read constraint evaluations row
-        let constraint_row_bytes = read_u16(source, pos)? as usize;
-        let evaluations = read_u8_vec(source, pos, constraint_row_bytes)?;
+        let constraint_row_bytes = source.read_u16(pos)? as usize;
+        let evaluations = source.read_u8_vec(pos, constraint_row_bytes)?;
 
         Ok(OodFrame {
             trace_at_z1,

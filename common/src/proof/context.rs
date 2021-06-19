@@ -5,7 +5,7 @@
 
 use crate::ProofOptions;
 use math::{field::StarkField, utils::log2};
-use utils::{read_u8, read_u8_vec, DeserializationError};
+use utils::{ByteReader, DeserializationError};
 
 // PROOF HEADER
 // ================================================================================================
@@ -84,9 +84,9 @@ impl Context {
     /// increments `pos` to point to a position right after the end of read-in context bytes.
     /// Returns an error of a valid Context struct could not be read from the specified source.
     pub fn read_from(source: &[u8], pos: &mut usize) -> Result<Self, DeserializationError> {
-        let lde_domain_depth = read_u8(source, pos)?;
-        let num_modulus_bytes = read_u8(source, pos)? as usize;
-        let field_modulus_bytes = read_u8_vec(source, pos, num_modulus_bytes)?;
+        let lde_domain_depth = source.read_u8(pos)?;
+        let num_modulus_bytes = source.read_u8(pos)? as usize;
+        let field_modulus_bytes = source.read_u8_vec(pos, num_modulus_bytes)?;
         let options = ProofOptions::read_from(source, pos)?;
 
         Ok(Context {
