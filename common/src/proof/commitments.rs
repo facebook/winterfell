@@ -5,7 +5,7 @@
 
 use crate::errors::ProofSerializationError;
 use crypto::Hasher;
-use utils::{ByteReader, DeserializationError};
+use utils::{ByteReader, ByteWriter, DeserializationError};
 
 // COMMITMENTS
 // ================================================================================================
@@ -65,17 +65,20 @@ impl Commitments {
     // SERIALIZATION / DESERIALIZATION
     // --------------------------------------------------------------------------------------------
 
-    /// Serializes these commitments and appends the resulting bytes to the `target` vector.
-    pub fn write_into(&self, target: &mut Vec<u8>) {
+    /// Serializes `self` and writes the resulting bytes into the `target` writer.
+    pub fn write_into<W: ByteWriter>(&self, target: &mut W) {
         assert!(self.0.len() < u16::MAX as usize);
-        target.extend_from_slice(&(self.0.len() as u16).to_le_bytes());
-        target.extend_from_slice(&self.0);
+        target.write_u16(self.0.len() as u16);
+        target.write_u8_slice(&self.0);
     }
 
     /// Reads commitments from the specified source starting at the specified position and
     /// increments `pos` to point to a position right after the end of read-in commitment bytes.
     /// Returns an error of a valid Commitments struct could not be read from the specified source.
-    pub fn read_from(source: &[u8], pos: &mut usize) -> Result<Self, DeserializationError> {
+    pub fn read_from<R: ByteReader>(
+        source: &R,
+        pos: &mut usize,
+    ) -> Result<Self, DeserializationError> {
         let num_bytes = source.read_u16(pos)? as usize;
         let result = source.read_u8_vec(pos, num_bytes)?;
         Ok(Commitments(result))

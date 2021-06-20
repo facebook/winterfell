@@ -96,7 +96,7 @@ impl StarkProof {
 
     /// Returns a STARK proof read from the specified source starting at position 0.
     /// Returns an error of a valid STARK proof could not be read from the specified source.
-    pub fn from_bytes(source: &[u8]) -> Result<Self, DeserializationError> {
+    pub fn from_bytes<R: ByteReader>(source: &R) -> Result<Self, DeserializationError> {
         let mut pos = 0;
         Ok(StarkProof {
             context: Context::read_from(source, &mut pos)?,

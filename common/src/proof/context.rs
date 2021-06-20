@@ -5,7 +5,7 @@
 
 use crate::ProofOptions;
 use math::{field::StarkField, utils::log2};
-use utils::{ByteReader, DeserializationError};
+use utils::{ByteReader, ByteWriter, DeserializationError};
 
 // PROOF HEADER
 // ================================================================================================
@@ -71,19 +71,22 @@ impl Context {
     // SERIALIZATION / DESERIALIZATION
     // --------------------------------------------------------------------------------------------
 
-    /// Serializes this context and appends the resulting bytes to the `target` vector.
-    pub fn write_into(&self, target: &mut Vec<u8>) {
-        target.push(self.lde_domain_depth);
+    /// Serializes `self` and writes the resulting bytes into the `target` writer.
+    pub fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_u8(self.lde_domain_depth);
         assert!(self.field_modulus_bytes.len() < u8::MAX as usize);
-        target.push(self.field_modulus_bytes.len() as u8);
-        target.extend_from_slice(&self.field_modulus_bytes);
+        target.write_u8(self.field_modulus_bytes.len() as u8);
+        target.write_u8_slice(&self.field_modulus_bytes);
         self.options.write_into(target);
     }
 
     /// Reads proof context from the specified source starting at the specified position and
     /// increments `pos` to point to a position right after the end of read-in context bytes.
     /// Returns an error of a valid Context struct could not be read from the specified source.
-    pub fn read_from(source: &[u8], pos: &mut usize) -> Result<Self, DeserializationError> {
+    pub fn read_from<R: ByteReader>(
+        source: &R,
+        pos: &mut usize,
+    ) -> Result<Self, DeserializationError> {
         let lde_domain_depth = source.read_u8(pos)?;
         let num_modulus_bytes = source.read_u8(pos)? as usize;
         let field_modulus_bytes = source.read_u8_vec(pos, num_modulus_bytes)?;
