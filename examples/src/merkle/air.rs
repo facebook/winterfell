@@ -13,7 +13,7 @@ use crate::utils::{
 };
 use prover::{
     math::field::{f128::BaseElement, FieldElement},
-    Air, Assertion, ComputationContext, EvaluationFrame, ExecutionTrace, ProofOptions,
+    Air, Assertion, ByteWriter, ComputationContext, EvaluationFrame, ExecutionTrace, ProofOptions,
     Serializable, TraceInfo, TransitionConstraintDegree,
 };
 
@@ -30,8 +30,8 @@ pub struct PublicInputs {
 }
 
 impl Serializable for PublicInputs {
-    fn write_into(&self, target: &mut Vec<u8>) {
-        BaseElement::write_batch_into(&self.tree_root, target);
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_slice(&self.tree_root);
     }
 }
 

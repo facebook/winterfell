@@ -84,7 +84,7 @@ impl<E: FieldElement, H: Hasher> ConstraintCommitment<E, H> {
 
 /// Computes hashes of evaluations grouped by row.
 fn hash_evaluations<E: FieldElement, H: Hasher>(evaluations: &[Vec<E>]) -> Vec<H::Digest> {
-    let mut result = uninit_vector::<H::Digest>(evaluations[0].len());
+    let mut result = unsafe { uninit_vector::<H::Digest>(evaluations[0].len()) };
     batch_iter_mut!(
         &mut result,
         128, // min batch size

@@ -131,9 +131,11 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> CompositionPoly<B, E> {
 fn transpose<E: FieldElement>(coefficients: Vec<E>, num_columns: usize) -> Vec<Vec<E>> {
     let column_len = coefficients.len() / num_columns;
 
-    let mut result = (0..num_columns)
-        .map(|_| uninit_vector(column_len))
-        .collect::<Vec<_>>();
+    let mut result = unsafe {
+        (0..num_columns)
+            .map(|_| uninit_vector(column_len))
+            .collect::<Vec<_>>()
+    };
 
     // TODO: implement multi-threaded version
     for (i, coeff) in coefficients.into_iter().enumerate() {

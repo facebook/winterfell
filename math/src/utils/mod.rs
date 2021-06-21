@@ -19,7 +19,7 @@ mod tests;
 /// When `concurrent` feature is enabled, series generation is done concurrently in multiple
 /// threads.
 pub fn get_power_series<E: FieldElement>(b: E, n: usize) -> Vec<E> {
-    let mut result = uninit_vector(n);
+    let mut result = unsafe { uninit_vector(n) };
     batch_iter_mut!(&mut result, 1024, |batch: &mut [E], batch_offset: usize| {
         let start = b.exp((batch_offset as u64).into());
         fill_power_series(batch, b, start);
@@ -31,7 +31,7 @@ pub fn get_power_series<E: FieldElement>(b: E, n: usize) -> Vec<E> {
 /// When `concurrent` feature is enabled, series generation is done concurrently in multiple
 /// threads.
 pub fn get_power_series_with_offset<E: FieldElement>(b: E, s: E, n: usize) -> Vec<E> {
-    let mut result = uninit_vector(n);
+    let mut result = unsafe { uninit_vector(n) };
     batch_iter_mut!(&mut result, 1024, |batch: &mut [E], batch_offset: usize| {
         let start = s * b.exp((batch_offset as u64).into());
         fill_power_series(batch, b, start);
@@ -64,7 +64,7 @@ where
 /// Computes a multiplicative inverse of a sequence of elements using batch inversion method.
 /// Any ZEROs in the provided sequence are ignored.
 pub fn batch_inversion<E: FieldElement>(values: &[E]) -> Vec<E> {
-    let mut result: Vec<E> = uninit_vector(values.len());
+    let mut result: Vec<E> = unsafe { uninit_vector(values.len()) };
     batch_iter_mut!(&mut result, 1024, |batch: &mut [E], batch_offset: usize| {
         let start = batch_offset;
         let end = start + batch.len();
@@ -179,7 +179,7 @@ pub fn read_elements_into_vec<E: FieldElement>(
     }
 
     let num_elements = source.len() / E::ELEMENT_BYTES;
-    let mut result = uninit_vector(num_elements);
+    let mut result = unsafe { uninit_vector(num_elements) };
     read_elements_into(source, &mut result)?;
     Ok(result)
 }

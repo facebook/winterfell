@@ -7,7 +7,7 @@ use crate::ProofOptions;
 use core::cmp;
 use fri::FriProof;
 use math::utils::log2;
-use utils::{read_u64, DeserializationError};
+use utils::{ByteReader, DeserializationError};
 
 mod context;
 pub use context::Context;
@@ -96,7 +96,7 @@ impl StarkProof {
 
     /// Returns a STARK proof read from the specified source starting at position 0.
     /// Returns an error of a valid STARK proof could not be read from the specified source.
-    pub fn from_bytes(source: &[u8]) -> Result<Self, DeserializationError> {
+    pub fn from_bytes<R: ByteReader>(source: &R) -> Result<Self, DeserializationError> {
         let mut pos = 0;
         Ok(StarkProof {
             context: Context::read_from(source, &mut pos)?,
@@ -105,7 +105,7 @@ impl StarkProof {
             constraint_queries: Queries::read_from(source, &mut pos)?,
             ood_frame: OodFrame::read_from(source, &mut pos)?,
             fri_proof: FriProof::read_from(source, &mut pos)?,
-            pow_nonce: read_u64(source, &mut pos)?,
+            pow_nonce: source.read_u64(&mut pos)?,
         })
     }
 }

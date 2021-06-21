@@ -9,7 +9,7 @@ use math::{
     field::FieldElement,
     utils::{log2, read_elements_into_vec},
 };
-use utils::{read_u32, read_u8_vec, DeserializationError};
+use utils::{ByteReader, ByteWriter, DeserializationError};
 
 // QUERIES
 // ================================================================================================
@@ -116,28 +116,31 @@ impl Queries {
     // SERIALIZATION / DESERIALIZATION
     // --------------------------------------------------------------------------------------------
 
-    /// Serializes this queries struct and appends the resulting bytes to the `target` vector.
-    pub fn write_into(&self, target: &mut Vec<u8>) {
+    /// Serializes `self` and writes the resulting bytes into the `target` writer.
+    pub fn write_into<W: ByteWriter>(&self, target: &mut W) {
         // write value bytes
-        target.extend_from_slice(&(self.values.len() as u32).to_le_bytes());
-        target.extend_from_slice(&self.values);
+        target.write_u32(self.values.len() as u32);
+        target.write_u8_slice(&self.values);
 
         // write path bytes
-        target.extend_from_slice(&(self.paths.len() as u32).to_le_bytes());
-        target.extend_from_slice(&self.paths);
+        target.write_u32(self.paths.len() as u32);
+        target.write_u8_slice(&self.paths);
     }
 
     /// Reads a query struct from the specified source starting at the specified position and
     /// increments `pos` to point to a position right after the end of read-in query bytes.
     /// Returns an error of a valid query struct could not be read from the specified source.
-    pub fn read_from(source: &[u8], pos: &mut usize) -> Result<Self, DeserializationError> {
+    pub fn read_from<R: ByteReader>(
+        source: &R,
+        pos: &mut usize,
+    ) -> Result<Self, DeserializationError> {
         // read values
-        let num_value_bytes = read_u32(source, pos)?;
-        let values = read_u8_vec(source, pos, num_value_bytes as usize)?;
+        let num_value_bytes = source.read_u32(pos)?;
+        let values = source.read_u8_vec(pos, num_value_bytes as usize)?;
 
         // read paths
-        let num_paths_bytes = read_u32(source, pos)?;
-        let paths = read_u8_vec(source, pos, num_paths_bytes as usize)?;
+        let num_paths_bytes = source.read_u32(pos)?;
+        let paths = source.read_u8_vec(pos, num_paths_bytes as usize)?;
 
         Ok(Queries { paths, values })
     }

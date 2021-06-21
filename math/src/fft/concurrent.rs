@@ -31,7 +31,7 @@ pub fn evaluate_poly_with_offset<B: StarkField, E: FieldElement<BaseField = B>>(
 ) -> Vec<E> {
     let domain_size = p.len() * blowup_factor;
     let g = B::get_root_of_unity(log2(domain_size));
-    let mut result = uninit_vector(domain_size);
+    let mut result = unsafe { uninit_vector(domain_size) };
 
     result
         .as_mut_slice()

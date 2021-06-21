@@ -9,7 +9,7 @@ use math::{
     field::FieldElement,
     utils::{log2, read_elements_into_vec},
 };
-use utils::{read_u32, read_u8, read_u8_vec, DeserializationError};
+use utils::{ByteReader, ByteWriter, DeserializationError};
 
 // FRI PROOF
 // ================================================================================================
@@ -103,27 +103,30 @@ impl FriProof {
     // SERIALIZATION / DESERIALIZATION
     // --------------------------------------------------------------------------------------------
 
-    /// Serializes this proof and appends the resulting bytes to the `target` vector.
-    pub fn write_into(&self, target: &mut Vec<u8>) {
+    /// Serializes `self` and writes the resulting bytes into the `target` writer.
+    pub fn write_into<W: ByteWriter>(&self, target: &mut W) {
         // write layers
-        target.push(self.layers.len() as u8);
+        target.write_u8(self.layers.len() as u8);
         for layer in self.layers.iter() {
             layer.write_into(target);
         }
 
         // write remainder
-        target.push(self.remainder.len().trailing_zeros() as u8);
-        target.extend_from_slice(&self.remainder);
+        target.write_u8(self.remainder.len().trailing_zeros() as u8);
+        target.write_u8_slice(&self.remainder);
 
         // write number of partitions
-        target.push(self.num_partitions);
+        target.write_u8(self.num_partitions);
     }
 
     /// Reads a FRI proof from the specified source starting at the specified position. Returns
     /// an error if a valid proof could not be read from the source.
-    pub fn read_from(source: &[u8], pos: &mut usize) -> Result<Self, DeserializationError> {
+    pub fn read_from<R: ByteReader>(
+        source: &R,
+        pos: &mut usize,
+    ) -> Result<Self, DeserializationError> {
         // read layers
-        let num_layers = read_u8(source, pos)? as usize;
+        let num_layers = source.read_u8(pos)? as usize;
         let mut layers = Vec::new();
         for _ in 0..num_layers {
             let layer = FriProofLayer::read_from(source, pos)?;
@@ -131,11 +134,11 @@ impl FriProof {
         }
 
         // read remainder
-        let remainder_bytes = 2usize.pow(read_u8(source, pos)? as u32);
-        let remainder = read_u8_vec(source, pos, remainder_bytes)?;
+        let remainder_bytes = 2usize.pow(source.read_u8(pos)? as u32);
+        let remainder = source.read_u8_vec(pos, remainder_bytes)?;
 
         // read number of partitions
-        let num_partitions = read_u8(source, pos)?;
+        let num_partitions = source.read_u8(pos)?;
 
         Ok(FriProof {
             layers,
@@ -239,28 +242,31 @@ impl FriProofLayer {
     // SERIALIZATION / DESERIALIZATION
     // --------------------------------------------------------------------------------------------
 
-    /// Serializes this proof layer and appends the resulting bytes to the `target` vector.
-    pub fn write_into(&self, target: &mut Vec<u8>) {
+    /// Serializes this proof layer and writes the resulting bytes to the specified `target`.
+    pub fn write_into<W: ByteWriter>(&self, target: &mut W) {
         // write value bytes
-        target.extend_from_slice(&(self.values.len() as u32).to_le_bytes());
-        target.extend_from_slice(&self.values);
+        target.write_u32(self.values.len() as u32);
+        target.write_u8_slice(&self.values);
 
         // write path bytes
-        target.extend_from_slice(&(self.paths.len() as u32).to_le_bytes());
-        target.extend_from_slice(&self.paths);
+        target.write_u32(self.paths.len() as u32);
+        target.write_u8_slice(&self.paths);
     }
 
-    /// Reads a single proof layer form the specified source starting at the specified position,
+    /// Reads a single proof layer form the `source` starting at the specified position,
     /// and increments `pos` to point to a position right after the end of read-in layer bytes.
     /// Returns an error if a valid layer could not be read from the specified source.
-    pub fn read_from(source: &[u8], pos: &mut usize) -> Result<Self, DeserializationError> {
+    pub fn read_from<R: ByteReader>(
+        source: &R,
+        pos: &mut usize,
+    ) -> Result<Self, DeserializationError> {
         // read values
-        let num_value_bytes = read_u32(source, pos)?;
-        let values = read_u8_vec(source, pos, num_value_bytes as usize)?;
+        let num_value_bytes = source.read_u32(pos)?;
+        let values = source.read_u8_vec(pos, num_value_bytes as usize)?;
 
         // read paths
-        let num_paths_bytes = read_u32(source, pos)?;
-        let paths = read_u8_vec(source, pos, num_paths_bytes as usize)?;
+        let num_paths_bytes = source.read_u32(pos)?;
+        let paths = source.read_u8_vec(pos, num_paths_bytes as usize)?;
 
         Ok(FriProofLayer { values, paths })
     }

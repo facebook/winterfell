@@ -3,10 +3,14 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+/// Returns either a regular or a parallel iterator depending on whether `concurrent` feature
+/// is enabled.
+///
 /// When `concurrent` feature is enabled, creates a parallel iterator; otherwise, creates a
 /// regular iterator. Optionally, `min_length` can be used to specify the minimum length of
 /// iterator to be processed in each thread.
-/// Adapted from: https://github.com/arkworks-rs/utils/blob/master/src/lib.rs
+///
+/// Adapted from: <https://github.com/arkworks-rs/utils/blob/master/src/lib.rs>
 #[macro_export]
 macro_rules! iter {
     ($e: expr) => {{
@@ -29,10 +33,14 @@ macro_rules! iter {
     }};
 }
 
+/// Returns either a regular or a parallel mutable iterator depending on whether `concurrent`
+/// feature is enabled.
+///
 /// When `concurrent` feature is enabled, creates a mutable parallel iterator; otherwise,
-/// creates a regular iterator. Optionally, `min_length` can be used to specify the minimum
-/// length of iterator to be processed in each thread.
-/// Adapted from: https://github.com/arkworks-rs/utils/blob/master/src/lib.rs
+/// creates a regular mutable iterator. Optionally, `min_length` can be used to specify the
+/// minimum length of iterator to be processed in each thread.
+///
+/// Adapted from: <https://github.com/arkworks-rs/utils/blob/master/src/lib.rs>
 #[macro_export]
 macro_rules! iter_mut {
     ($e: expr) => {{
@@ -55,6 +63,9 @@ macro_rules! iter_mut {
     }};
 }
 
+/// Applies a procedure to the provided slice either in a single thread or multiple threads
+/// based on whether `concurrent` feature is enabled.
+///
 /// When `concurrent` feature is enabled, breaks the slice into batches and processes each
 /// batch in a separate thread; otherwise, the entire slice is processed as a single batch
 /// in one thread. Optionally, `min_batch_size` can be used to specify the minimum size of

@@ -5,7 +5,7 @@
 
 use crate::{errors::ProofSerializationError, EvaluationFrame};
 use math::{field::FieldElement, utils::read_elements_into_vec};
-use utils::{read_u16, read_u8_vec, DeserializationError};
+use utils::{ByteReader, ByteWriter, DeserializationError};
 
 // OUT-OF-DOMAIN EVALUATION FRAME
 // ================================================================================================
@@ -87,30 +87,33 @@ impl OodFrame {
     // SERIALIZATION / DESERIALIZATION
     // --------------------------------------------------------------------------------------------
 
-    /// Serializes this out-of-domain frame and appends the resulting bytes to the `target` vector.
-    pub fn write_into(&self, target: &mut Vec<u8>) {
+    /// Serializes `self` and writes the resulting bytes into the `target` writer.
+    pub fn write_into<W: ByteWriter>(&self, target: &mut W) {
         // write trace rows (both rows have the same number of bytes)
-        target.extend_from_slice(&(self.trace_at_z1.len() as u16).to_le_bytes());
-        target.extend_from_slice(&self.trace_at_z1);
-        target.extend_from_slice(&self.trace_at_z2);
+        target.write_u16(self.trace_at_z1.len() as u16);
+        target.write_u8_slice(&self.trace_at_z1);
+        target.write_u8_slice(&self.trace_at_z2);
 
         // write constraint evaluations row
-        target.extend_from_slice(&(self.evaluations.len() as u16).to_le_bytes());
-        target.extend_from_slice(&self.evaluations)
+        target.write_u16(self.evaluations.len() as u16);
+        target.write_u8_slice(&self.evaluations)
     }
 
     /// Reads a OOD frame from the specified source starting at the specified position and
     /// increments `pos` to point to a position right after the end of read-in frame bytes.
     /// Returns an error of a valid OOD frame could not be read from the specified source.
-    pub fn read_from(source: &[u8], pos: &mut usize) -> Result<Self, DeserializationError> {
+    pub fn read_from<R: ByteReader>(
+        source: &R,
+        pos: &mut usize,
+    ) -> Result<Self, DeserializationError> {
         // read trace rows
-        let trace_row_bytes = read_u16(source, pos)? as usize;
-        let trace_at_z1 = read_u8_vec(source, pos, trace_row_bytes)?;
-        let trace_at_z2 = read_u8_vec(source, pos, trace_row_bytes)?;
+        let trace_row_bytes = source.read_u16(pos)? as usize;
+        let trace_at_z1 = source.read_u8_vec(pos, trace_row_bytes)?;
+        let trace_at_z2 = source.read_u8_vec(pos, trace_row_bytes)?;
 
         // read constraint evaluations row
-        let constraint_row_bytes = read_u16(source, pos)? as usize;
-        let evaluations = read_u8_vec(source, pos, constraint_row_bytes)?;
+        let constraint_row_bytes = source.read_u16(pos)? as usize;
+        let evaluations = source.read_u8_vec(pos, constraint_row_bytes)?;
 
         Ok(OodFrame {
             trace_at_z1,

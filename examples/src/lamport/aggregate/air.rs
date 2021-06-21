@@ -9,8 +9,8 @@ use super::{
 use crate::utils::{are_equal, is_binary, is_zero, not, EvaluationResult};
 use prover::{
     math::field::{f128::BaseElement, FieldElement},
-    Air, Assertion, ComputationContext, EvaluationFrame, ProofOptions, Serializable, TraceInfo,
-    TransitionConstraintDegree,
+    Air, Assertion, ByteWriter, ComputationContext, EvaluationFrame, ProofOptions, Serializable,
+    TraceInfo, TransitionConstraintDegree,
 };
 
 // CONSTANTS
@@ -26,9 +26,9 @@ pub struct PublicInputs {
 }
 
 impl Serializable for PublicInputs {
-    fn write_into(&self, target: &mut Vec<u8>) {
-        BaseElement::write_array_batch_into(&self.pub_keys, target);
-        BaseElement::write_array_batch_into(&self.messages, target);
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_table(&self.pub_keys);
+        target.write_table(&self.messages);
     }
 }
 

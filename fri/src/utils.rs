@@ -61,7 +61,7 @@ pub fn map_positions_to_indexes(
 pub fn hash_values<H: Hasher, E: FieldElement, const N: usize>(
     values: &[[E; N]],
 ) -> Vec<H::Digest> {
-    let mut result: Vec<H::Digest> = uninit_vector(values.len());
+    let mut result: Vec<H::Digest> = unsafe { uninit_vector(values.len()) };
     iter_mut!(result, 1024).zip(values).for_each(|(r, v)| {
         *r = H::hash_elements(v);
     });

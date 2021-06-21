@@ -6,7 +6,7 @@
 pub use common::{
     errors::VerifierError, proof::StarkProof, Air, FieldExtension, HashFunction, TraceInfo,
 };
-pub use utils::Serializable;
+pub use utils::{ByteWriter, Serializable};
 
 pub use crypto;
 use crypto::{

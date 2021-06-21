@@ -77,7 +77,7 @@ impl<B: StarkField> TraceTable<B> {
     /// Builds a Merkle tree out of trace table rows (hash of each row becomes a leaf in the tree).
     pub fn build_commitment<H: Hasher>(&self) -> MerkleTree<H> {
         // allocate vector to store row hashes
-        let mut hashed_states = uninit_vector::<H::Digest>(self.len());
+        let mut hashed_states = unsafe { uninit_vector::<H::Digest>(self.len()) };
 
         // iterate though table rows, hashing each row; the hashing is done by first copying
         // the state into trace_state buffer to avoid unneeded allocations, and then by applying

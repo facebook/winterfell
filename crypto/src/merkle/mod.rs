@@ -186,7 +186,7 @@ pub fn build_merkle_nodes<H: Hasher>(leaves: &[H::Digest]) -> Vec<H::Digest> {
     let n = leaves.len() / 2;
 
     // create un-initialized array to hold all intermediate nodes
-    let mut nodes = utils::uninit_vector::<H::Digest>(2 * n);
+    let mut nodes = unsafe { utils::uninit_vector::<H::Digest>(2 * n) };
     nodes[0] = H::Digest::default();
 
     // re-interpret leaves as an array of two leaves fused together
