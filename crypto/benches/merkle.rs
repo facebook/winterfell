@@ -17,7 +17,7 @@ pub fn merkle_tree_construction(c: &mut Criterion) {
         let mut csprng: ThreadRng = thread_rng();
 
         let data: Vec<[u8; 32]> = {
-            let mut res = uninit_vector(*size);
+            let mut res = unsafe { uninit_vector(*size) };
             for i in 0..*size {
                 let mut v = [0u8; 32];
                 csprng.fill_bytes(&mut v);

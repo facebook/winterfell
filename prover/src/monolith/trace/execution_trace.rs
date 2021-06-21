@@ -44,7 +44,7 @@ impl<B: StarkField> ExecutionTrace<B> {
             "execution trace length must be a power of 2"
         );
 
-        let registers = (0..width).map(|_| uninit_vector(length)).collect();
+        let registers = unsafe { (0..width).map(|_| uninit_vector(length)).collect() };
         ExecutionTrace(registers)
     }
 

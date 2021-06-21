@@ -91,7 +91,7 @@ fn log2() {
 
 #[test]
 fn uninit_vector() {
-    let result = super::uninit_vector::<BaseElement>(16);
+    let result = unsafe { super::uninit_vector::<BaseElement>(16) };
     assert_eq!(16, result.len());
     assert_eq!(16, result.capacity());
 }

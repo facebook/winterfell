@@ -36,7 +36,7 @@ where
     let inv_twiddles = get_inv_twiddles::<B>(N);
     let len_offset = E::inv((N as u64).into());
 
-    let mut result = uninit_vector(values.len());
+    let mut result = unsafe { uninit_vector(values.len()) };
     iter_mut!(result)
         .zip(values)
         .zip(inv_offsets)

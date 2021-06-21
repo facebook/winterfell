@@ -16,7 +16,7 @@ use core::{
     slice,
 };
 use rand::{distributions::Uniform, prelude::*};
-use utils::{AsBytes, Serializable};
+use utils::{AsBytes, ByteWriter, Serializable};
 
 #[cfg(test)]
 mod tests;
@@ -394,9 +394,9 @@ impl AsBytes for BaseElement {
 // ------------------------------------------------------------------------------------------------
 
 impl Serializable for BaseElement {
-    fn write_into(&self, target: &mut Vec<u8>) {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
         // convert from Montgomery representation into canonical representation
-        target.extend_from_slice(&self.as_int().to_le_bytes());
+        target.write_u8_slice(&self.as_int().to_le_bytes());
     }
 }
 

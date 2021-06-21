@@ -27,7 +27,7 @@ pub trait Serializable: Sized {
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
     /// Serializes `self` into bytes and appends the bytes at the end of the `target` vector.
-    fn write_into(&self, target: &mut Vec<u8>);
+    fn write_into<W: ByteWriter>(&self, target: &mut W);
 
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
@@ -44,7 +44,7 @@ pub trait Serializable: Sized {
     ///
     /// This method does not write any metadata (e.g. number of serialized elements) into the
     /// `target`.
-    fn write_batch_into(source: &[Self], target: &mut Vec<u8>) {
+    fn write_batch_into<W: ByteWriter>(source: &[Self], target: &mut W) {
         for item in source {
             item.write_into(target);
         }
@@ -55,7 +55,7 @@ pub trait Serializable: Sized {
     ///
     /// This method does not write any metadata (e.g. number of serialized elements) into the
     /// `target`.
-    fn write_array_batch_into<const N: usize>(source: &[[Self; N]], target: &mut Vec<u8>) {
+    fn write_array_batch_into<W: ByteWriter, const N: usize>(source: &[[Self; N]], target: &mut W) {
         let source = flatten_slice_elements(source);
         Self::write_batch_into(source, target);
     }
@@ -69,7 +69,7 @@ pub trait Serializable: Sized {
 }
 
 impl Serializable for () {
-    fn write_into(&self, _target: &mut Vec<u8>) {}
+    fn write_into<W: ByteWriter>(&self, _target: &mut W) {}
 }
 
 // BYTE READER
@@ -218,53 +218,77 @@ impl ByteReader for Vec<u8> {
 // ================================================================================================
 
 /// Defines how primitive values are to be written into `Self`.
-pub trait ByteWriter {
+pub trait ByteWriter: Sized {
+    // REQUIRED METHODS
+    // --------------------------------------------------------------------------------------------
+
     /// Writes a single byte into `self`.
     ///
     /// # Panics
     /// Panics if the byte could not be written into `self`.
     fn write_u8(&mut self, value: u8);
 
-    /// Writes a u16 value in little-endian byte order into `self`.
-    ///
-    /// # Panics
-    /// Panics if the value could not be written into `self`.
-    fn write_u16(&mut self, value: u16);
-
-    /// Writes a u32 value in little-endian byte order into `self`.
-    ///
-    /// # Panics
-    /// Panics if the value could not be written into `self`.
-    fn write_u32(&mut self, value: u32);
-
-    /// Writes a u64 value in little-endian byte order into `self`.
-    ///
-    /// # Panics
-    /// Panics if the value could not be written into `self`.
-    fn write_u64(&mut self, value: u64);
-
     /// Writes a sequence of bytes into `self`.
     ///
     /// # Panics
     /// Panics if the sequence of bytes could not be written into `self`.
     fn write_u8_slice(&mut self, values: &[u8]);
+
+    // PROVIDED METHODS
+    // --------------------------------------------------------------------------------------------
+
+    /// Writes a u16 value in little-endian byte order into `self`.
+    ///
+    /// # Panics
+    /// Panics if the value could not be written into `self`.
+    fn write_u16(&mut self, value: u16) {
+        self.write_u8_slice(&value.to_le_bytes());
+    }
+
+    /// Writes a u32 value in little-endian byte order into `self`.
+    ///
+    /// # Panics
+    /// Panics if the value could not be written into `self`.
+    fn write_u32(&mut self, value: u32) {
+        self.write_u8_slice(&value.to_le_bytes());
+    }
+
+    /// Writes a u64 value in little-endian byte order into `self`.
+    ///
+    /// # Panics
+    /// Panics if the value could not be written into `self`.
+    fn write_u64(&mut self, value: u64) {
+        self.write_u8_slice(&value.to_le_bytes());
+    }
+
+    /// Writes a single serializable value into `self`.
+    ///
+    /// # Panics
+    /// Panics if the value could not be written into `self`.
+    fn write<S: Serializable>(&mut self, value: S) {
+        value.write_into(self)
+    }
+
+    /// Writes a sequence of serializable values into `self`.
+    ///
+    /// # Panics
+    /// Panics if the values could not be written into `self`.
+    fn write_slice<S: Serializable>(&mut self, values: &[S]) {
+        S::write_batch_into(values, self)
+    }
+
+    /// Writes a table of serializable values into `self`.
+    ///
+    /// # Panics
+    /// Panics if the values could not be written into `self`.
+    fn write_table<S: Serializable, const N: usize>(&mut self, values: &[[S; N]]) {
+        S::write_array_batch_into(values, self);
+    }
 }
 
 impl ByteWriter for Vec<u8> {
     fn write_u8(&mut self, value: u8) {
         self.push(value);
-    }
-
-    fn write_u16(&mut self, value: u16) {
-        self.extend_from_slice(&value.to_le_bytes());
-    }
-
-    fn write_u32(&mut self, value: u32) {
-        self.extend_from_slice(&value.to_le_bytes());
-    }
-
-    fn write_u64(&mut self, value: u64) {
-        self.extend_from_slice(&value.to_le_bytes())
     }
 
     fn write_u8_slice(&mut self, values: &[u8]) {
@@ -312,11 +336,9 @@ impl<const N: usize> AsBytes for [[u8; N]] {
 ///
 /// # Safety
 /// Using values from the returned vector before initializing them will lead to undefined behavior.
-pub fn uninit_vector<T>(length: usize) -> Vec<T> {
+pub unsafe fn uninit_vector<T>(length: usize) -> Vec<T> {
     let mut vector = Vec::with_capacity(length);
-    unsafe {
-        vector.set_len(length);
-    }
+    vector.set_len(length);
     vector
 }
 
@@ -442,7 +464,7 @@ pub fn transpose_slice<T: Copy + Send + Sync, const N: usize>(source: &[T]) -> V
         source.len()
     );
 
-    let mut result = group_vector_elements(uninit_vector(row_count * N));
+    let mut result = unsafe { group_vector_elements(uninit_vector(row_count * N)) };
     iter_mut!(result, 1024)
         .enumerate()
         .for_each(|(i, element)| {

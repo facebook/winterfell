@@ -16,7 +16,7 @@ use core::{
     slice,
 };
 use rand::{distributions::Uniform, prelude::*};
-use utils::{AsBytes, Serializable};
+use utils::{AsBytes, ByteWriter, Serializable};
 
 #[cfg(test)]
 mod tests;
@@ -320,8 +320,8 @@ impl AsBytes for BaseElement {
 // ------------------------------------------------------------------------------------------------
 
 impl Serializable for BaseElement {
-    fn write_into(&self, target: &mut Vec<u8>) {
-        target.extend_from_slice(&self.0.to_le_bytes());
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_u8_slice(&self.0.to_le_bytes());
     }
 }
 

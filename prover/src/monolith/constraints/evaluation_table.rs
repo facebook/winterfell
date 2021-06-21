@@ -48,7 +48,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> ConstraintEvaluationTable<B,
         let num_columns = divisors.len();
         let num_rows = domain.ce_domain_size();
         ConstraintEvaluationTable {
-            evaluations: (0..num_columns).map(|_| uninit_vector(num_rows)).collect(),
+            evaluations: unsafe { (0..num_columns).map(|_| uninit_vector(num_rows)).collect() },
             divisors,
             domain_offset: domain.offset(),
             trace_length: domain.trace_length(),
@@ -68,13 +68,15 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> ConstraintEvaluationTable<B,
         let num_rows = domain.ce_domain_size();
         let num_t_columns = transition_constraint_degrees.len();
         ConstraintEvaluationTable {
-            evaluations: (0..num_columns).map(|_| uninit_vector(num_rows)).collect(),
+            evaluations: unsafe { (0..num_columns).map(|_| uninit_vector(num_rows)).collect() },
             divisors,
             domain_offset: domain.offset(),
             trace_length: domain.trace_length(),
-            t_evaluations: (0..num_t_columns)
-                .map(|_| uninit_vector(num_rows))
-                .collect(),
+            t_evaluations: unsafe {
+                (0..num_t_columns)
+                    .map(|_| uninit_vector(num_rows))
+                    .collect()
+            },
             t_expected_degrees: transition_constraint_degrees,
         }
     }
@@ -358,7 +360,7 @@ fn get_inv_evaluation<B: StarkField>(
     let g = B::get_root_of_unity(domain_size.trailing_zeros()).exp(a.into());
 
     // compute x^a - b for all x
-    let mut evaluations = uninit_vector(n);
+    let mut evaluations = unsafe { uninit_vector(n) };
     batch_iter_mut!(
         &mut evaluations,
         128, // min batch size

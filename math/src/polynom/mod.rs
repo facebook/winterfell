@@ -295,7 +295,7 @@ pub fn degree_of<E: FieldElement>(poly: &[E]) -> usize {
 // HELPER FUNCTIONS
 // ================================================================================================
 fn get_zero_roots<E: FieldElement>(xs: &[E]) -> Vec<E> {
-    let mut result = utils::uninit_vector(xs.len() + 1);
+    let mut result = unsafe { utils::uninit_vector(xs.len() + 1) };
     fill_zero_roots(xs, &mut result);
     result
 }

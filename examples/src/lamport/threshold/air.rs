@@ -13,8 +13,8 @@ use prover::{
         field::{f128::BaseElement, FieldElement, StarkField},
         utils::log2,
     },
-    Air, Assertion, ComputationContext, EvaluationFrame, ProofOptions, Serializable, TraceInfo,
-    TransitionConstraintDegree,
+    Air, Assertion, ByteWriter, ComputationContext, EvaluationFrame, ProofOptions, Serializable,
+    TraceInfo, TransitionConstraintDegree,
 };
 
 // CONSTANTS
@@ -32,11 +32,11 @@ pub struct PublicInputs {
 }
 
 impl Serializable for PublicInputs {
-    fn write_into(&self, target: &mut Vec<u8>) {
-        BaseElement::write_batch_into(&self.pub_key_root, target);
-        target.extend_from_slice(&(self.num_pub_keys as u32).to_le_bytes());
-        target.extend_from_slice(&(self.num_signatures as u32).to_le_bytes());
-        BaseElement::write_batch_into(&self.message, target);
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_slice(&self.pub_key_root);
+        target.write_u32(self.num_pub_keys as u32);
+        target.write_u32(self.num_signatures as u32);
+        target.write_slice(&self.message);
     }
 }
 

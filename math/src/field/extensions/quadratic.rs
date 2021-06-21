@@ -10,7 +10,7 @@ use core::{
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
     slice,
 };
-use utils::{AsBytes, Serializable};
+use utils::{AsBytes, ByteWriter, Serializable};
 
 // QUADRATIC EXTENSION FIELD
 // ================================================================================================
@@ -274,7 +274,7 @@ impl<B: StarkField> AsBytes for QuadExtension<B> {
 // ------------------------------------------------------------------------------------------------
 
 impl<B: StarkField> Serializable for QuadExtension<B> {
-    fn write_into(&self, target: &mut Vec<u8>) {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.0.write_into(target);
         self.1.write_into(target);
     }
