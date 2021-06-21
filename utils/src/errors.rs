@@ -8,13 +8,14 @@ use core::fmt;
 // DESERIALIZATION ERROR
 // ================================================================================================
 
+/// Defines errors which can occur during deserialization.
 #[derive(Debug, PartialEq)]
 pub enum DeserializationError {
-    /// Value {0} cannot be deserialized as {}
+    /// A value read from the input could not be deserialized into a valid value.
     InvalidValue(String, String),
-    /// Unexpected EOF
+    /// An end of input was reached before a valid value could be deserialized.
     UnexpectedEOF,
-    /// Unknown error: {0}
+    /// An unknown error has occurred.
     UnknownError(String),
 }
 
