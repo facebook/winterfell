@@ -8,8 +8,9 @@ use rand::Rng;
 use std::{convert::TryInto, time::Duration};
 use utils::AsBytes;
 use winter_math::{
-    field::{f128, f62, FieldElement, QuadExtension},
+    fields::{f128, f62, QuadExtension},
     utils::batch_inversion,
+    FieldElement,
 };
 
 const SIZES: [usize; 3] = [262_144, 524_288, 1_048_576];

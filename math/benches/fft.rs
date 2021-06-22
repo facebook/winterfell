@@ -8,7 +8,8 @@ use rand::Rng;
 use std::time::Duration;
 use winter_math::{
     fft,
-    field::{f128::BaseElement, FieldElement, QuadExtension, StarkField},
+    fields::{f128::BaseElement, QuadExtension},
+    FieldElement, StarkField,
 };
 
 const SIZES: [usize; 3] = [262_144, 524_288, 1_048_576];

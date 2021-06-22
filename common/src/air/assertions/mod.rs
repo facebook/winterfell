@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::errors::AssertionError;
-use math::field::StarkField;
+use math::StarkField;
 use std::{
     cmp::{Ord, Ordering, PartialOrd},
     fmt::{Display, Formatter},

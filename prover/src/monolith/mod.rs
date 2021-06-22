@@ -10,11 +10,7 @@ use common::{
 };
 use crypto::hash::{Blake3_256, Hasher, Sha3_256};
 use log::debug;
-use math::{
-    fft::infer_degree,
-    field::{FieldElement, StarkField},
-    utils::log2,
-};
+use math::{fft::infer_degree, utils::log2, FieldElement, StarkField};
 use std::time::Instant;
 use utils::Serializable;
 

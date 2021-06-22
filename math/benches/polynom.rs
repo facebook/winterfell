@@ -6,11 +6,7 @@
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use rand::Rng;
 use std::time::Duration;
-use winter_math::{
-    fft,
-    field::{f128::BaseElement, FieldElement},
-    polynom,
-};
+use winter_math::{fft, fields::f128::BaseElement, polynom, FieldElement};
 
 const SIZES: [usize; 3] = [262_144, 524_288, 1_048_576];
 

@@ -5,11 +5,7 @@
 
 use super::{CompositionPoly, StarkDomain};
 use common::{errors::ProverError, ConstraintDivisor};
-use math::{
-    fft,
-    field::{FieldElement, StarkField},
-    utils::batch_inversion,
-};
+use math::{fft, utils::batch_inversion, FieldElement, StarkField};
 use utils::{batch_iter_mut, iter_mut, uninit_vector};
 
 #[cfg(feature = "concurrent")]

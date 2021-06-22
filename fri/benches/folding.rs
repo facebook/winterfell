@@ -5,9 +5,10 @@
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use math::{
-    field::{f128::BaseElement, FieldElement, StarkField},
+    fields::f128::BaseElement,
     polynom,
     utils::{get_power_series, log2},
+    FieldElement, StarkField,
 };
 use utils::group_vector_elements;
 use winter_fri::folding;

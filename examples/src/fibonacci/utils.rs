@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use prover::math::field::{f128::BaseElement, FieldElement};
+use prover::math::{fields::f128::BaseElement, FieldElement};
 
 pub fn compute_fib_term(n: usize) -> BaseElement {
     let mut t0 = BaseElement::ONE;

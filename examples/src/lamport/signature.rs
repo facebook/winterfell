@@ -5,7 +5,7 @@
 
 use super::rescue::Rescue128;
 use prover::{
-    math::field::{f128::BaseElement, FieldElement, StarkField},
+    math::{fields::f128::BaseElement, FieldElement, StarkField},
     Serializable,
 };
 use std::{cmp::Ordering, convert::TryInto};

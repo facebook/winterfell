@@ -25,7 +25,7 @@ mod tests;
 /// # Examples
 /// ```
 /// # use winter_math::utils::*;
-/// # use winter_math::field::{f128::BaseElement, FieldElement};
+/// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
 /// let n = 2048;
 /// let b = BaseElement::from(3u8);
 ///
@@ -36,7 +36,10 @@ mod tests;
 /// let actual = get_power_series(b, n);
 /// assert_eq!(expected, actual);
 /// ```
-pub fn get_power_series<E: FieldElement>(b: E, n: usize) -> Vec<E> {
+pub fn get_power_series<E>(b: E, n: usize) -> Vec<E>
+where
+    E: FieldElement,
+{
     let mut result = unsafe { uninit_vector(n) };
     batch_iter_mut!(&mut result, 1024, |batch: &mut [E], batch_offset: usize| {
         let start = b.exp((batch_offset as u64).into());
@@ -56,7 +59,7 @@ pub fn get_power_series<E: FieldElement>(b: E, n: usize) -> Vec<E> {
 /// # Examples
 /// ```
 /// # use winter_math::utils::*;
-/// # use winter_math::field::{f128::BaseElement, FieldElement};
+/// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
 /// let n = 2048;
 /// let b = BaseElement::from(3u8);
 /// let s = BaseElement::from(7u8);
@@ -68,7 +71,10 @@ pub fn get_power_series<E: FieldElement>(b: E, n: usize) -> Vec<E> {
 /// let actual = get_power_series_with_offset(b, s, n);
 /// assert_eq!(expected, actual);
 /// ```
-pub fn get_power_series_with_offset<E: FieldElement>(b: E, s: E, n: usize) -> Vec<E> {
+pub fn get_power_series_with_offset<E>(b: E, s: E, n: usize) -> Vec<E>
+where
+    E: FieldElement,
+{
     let mut result = unsafe { uninit_vector(n) };
     batch_iter_mut!(&mut result, 1024, |batch: &mut [E], batch_offset: usize| {
         let start = s * b.exp((batch_offset as u64).into());
@@ -88,7 +94,7 @@ pub fn get_power_series_with_offset<E: FieldElement>(b: E, s: E, n: usize) -> Ve
 /// # Examples
 /// ```
 /// # use winter_math::utils::*;
-/// # use winter_math::field::{f128::BaseElement, FieldElement};
+/// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
 /// let a = BaseElement::prng_vector([0; 32], 2048);
 /// let b = BaseElement::prng_vector([1; 32], 2048);
 ///
@@ -99,7 +105,10 @@ pub fn get_power_series_with_offset<E: FieldElement>(b: E, s: E, n: usize) -> Ve
 ///     assert_eq!(a + b, c);
 /// }
 /// ```
-pub fn add_in_place<E: FieldElement>(a: &mut [E], b: &[E]) {
+pub fn add_in_place<E>(a: &mut [E], b: &[E])
+where
+    E: FieldElement,
+{
     assert!(
         a.len() == b.len(),
         "number of values must be the same for both operands"
@@ -120,7 +129,7 @@ pub fn add_in_place<E: FieldElement>(a: &mut [E], b: &[E]) {
 /// # Examples
 /// ```
 /// # use winter_math::utils::*;
-/// # use winter_math::field::{f128::BaseElement, FieldElement};
+/// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
 /// let a = BaseElement::prng_vector([0; 32], 2048);
 /// let b = BaseElement::prng_vector([1; 32], 2048);
 /// let c = BaseElement::new(12345);
@@ -157,7 +166,7 @@ where
 /// # Examples
 /// ```
 /// # use winter_math::utils::*;
-/// # use winter_math::field::{f128::BaseElement, FieldElement};
+/// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
 /// let a = BaseElement::prng_vector([1; 32], 2048);
 /// let b = batch_inversion(&a);
 ///
@@ -165,7 +174,10 @@ where
 ///     assert_eq!(a.inv(), b);
 /// }
 /// ```
-pub fn batch_inversion<E: FieldElement>(values: &[E]) -> Vec<E> {
+pub fn batch_inversion<E>(values: &[E]) -> Vec<E>
+where
+    E: FieldElement,
+{
     let mut result: Vec<E> = unsafe { uninit_vector(values.len()) };
     batch_iter_mut!(&mut result, 1024, |batch: &mut [E], batch_offset: usize| {
         let start = batch_offset;
@@ -225,39 +237,6 @@ fn serial_batch_inversion<E: FieldElement>(values: &[E], result: &mut [E]) {
     }
 }
 
-// VECTOR FUNCTIONS
-// ================================================================================================
-
-/// Returns a vector with ZERO elements removed from the end of the vector.
-///
-/// # Examples
-/// ```
-/// # use winter_math::utils::*;
-/// # use winter_math::field::{f128::BaseElement, FieldElement};
-/// let a = vec![1u128, 2, 3, 4, 5, 6, 0, 0]
-///     .into_iter()
-///     .map(BaseElement::new)
-///     .collect::<Vec<_>>();
-/// let b = remove_leading_zeros(&a);
-/// assert_eq!(6, b.len());
-/// assert_eq!(a[..6], b);
-///
-/// let a = vec![0u128, 0, 0, 0]
-///     .into_iter()
-///     .map(BaseElement::new)
-///     .collect::<Vec<_>>();
-/// let b = remove_leading_zeros(&a);
-/// assert_eq!(0, b.len());
-/// ```
-pub fn remove_leading_zeros<E: FieldElement>(values: &[E]) -> Vec<E> {
-    for i in (0..values.len()).rev() {
-        if values[i] != E::ZERO {
-            return values[..(i + 1)].to_vec();
-        }
-    }
-    vec![]
-}
-
 // SERIALIZATION / DESERIALIZATION
 // ================================================================================================
 
@@ -271,10 +250,13 @@ pub fn remove_leading_zeros<E: FieldElement>(values: &[E]) -> Vec<E> {
 /// * Number of bytes in the `source` does not divide evenly into whole number of elements.
 /// * Size of the destination slice is not sufficient to hold all elements read from the source.
 /// * Underlying `source` bytes do not represent a sequence of valid field elements.
-pub fn read_elements_into<E: FieldElement>(
+pub fn read_elements_into<E>(
     source: &[u8],
     destination: &mut [E],
-) -> Result<usize, SerializationError> {
+) -> Result<usize, SerializationError>
+where
+    E: FieldElement,
+{
     if source.len() % E::ELEMENT_BYTES != 0 {
         return Err(SerializationError::NotEnoughBytesForWholeElements(
             source.len(),
@@ -299,7 +281,7 @@ pub fn read_elements_into<E: FieldElement>(
 }
 
 /// Returns a vector of elements read from the provided slice of bytes.
-/// 
+///
 /// The elements are assumed to be stored in the slice one after the other in little-endian
 /// byte order.
 ///
@@ -307,9 +289,10 @@ pub fn read_elements_into<E: FieldElement>(
 /// Returns an error if:
 /// * Number of bytes in the `source` does not divide evenly into whole number of elements.
 /// * Underlying `source` bytes do not represent a sequence of valid field elements.
-pub fn read_elements_into_vec<E: FieldElement>(
-    source: &[u8],
-) -> Result<Vec<E>, SerializationError> {
+pub fn read_elements_into_vec<E>(source: &[u8]) -> Result<Vec<E>, SerializationError>
+where
+    E: FieldElement,
+{
     if source.len() % E::ELEMENT_BYTES != 0 {
         return Err(SerializationError::NotEnoughBytesForWholeElements(
             source.len(),

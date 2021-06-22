@@ -5,7 +5,7 @@
 
 use crate::Hasher;
 use core::{convert::TryInto, marker::PhantomData};
-use math::field::{FieldElement, StarkField};
+use math::{FieldElement, StarkField};
 
 #[cfg(test)]
 mod tests;

@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use common::Air;
-use math::{fft, field::StarkField};
+use math::{fft, StarkField};
 use std::collections::HashMap;
 use utils::uninit_vector;
 
@@ -97,9 +97,10 @@ mod tests {
     use crate::tests::MockAir;
     use common::Air;
     use math::{
-        field::{f128::BaseElement, FieldElement, StarkField},
+        fields::f128::BaseElement,
         polynom,
         utils::{get_power_series_with_offset, log2},
+        FieldElement, StarkField,
     };
 
     #[test]

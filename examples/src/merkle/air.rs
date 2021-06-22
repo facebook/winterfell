@@ -12,7 +12,7 @@ use crate::utils::{
     EvaluationResult,
 };
 use prover::{
-    math::field::{f128::BaseElement, FieldElement},
+    math::{fields::f128::BaseElement, FieldElement},
     Air, Assertion, ByteWriter, ComputationContext, EvaluationFrame, ExecutionTrace, ProofOptions,
     Serializable, TraceInfo, TransitionConstraintDegree,
 };

@@ -4,11 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::StarkDomain;
-use math::{
-    fft,
-    field::{FieldElement, StarkField},
-    polynom,
-};
+use math::{fft, polynom, FieldElement, StarkField};
 use std::marker::PhantomData;
 use utils::{iter, uninit_vector};
 
@@ -153,7 +149,7 @@ fn transpose<E: FieldElement>(coefficients: Vec<E>, num_columns: usize) -> Vec<V
 #[cfg(test)]
 mod tests {
 
-    use math::field::f128::BaseElement;
+    use math::fields::f128::BaseElement;
 
     #[test]
     fn transpose() {

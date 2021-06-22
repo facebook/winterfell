@@ -8,7 +8,7 @@ use common::{
     Air, Assertion, ComputationContext, EvaluationFrame, FieldExtension, HashFunction,
     ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
-use math::field::{f128::BaseElement, FieldElement};
+use math::{fields::f128::BaseElement, FieldElement};
 
 // FIBONACCI TRACE BUILDER
 // ================================================================================================

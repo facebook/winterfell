@@ -9,7 +9,7 @@ use crate::{
     FriOptions, FriProof, FriProofLayer, ProverChannel,
 };
 use crypto::{Hasher, MerkleTree};
-use math::field::{FieldElement, StarkField};
+use math::{FieldElement, StarkField};
 use std::marker::PhantomData;
 use utils::{flatten_vector_elements, group_slice_elements, transpose_slice};
 

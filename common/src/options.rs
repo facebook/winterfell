@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use fri::FriOptions;
-use math::field::StarkField;
+use math::StarkField;
 use utils::{ByteReader, ByteWriter, DeserializationError};
 
 // TYPES AND INTERFACES

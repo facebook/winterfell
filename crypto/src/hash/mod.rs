@@ -5,7 +5,7 @@
 
 use crate::DigestSerializationError;
 use core::fmt::Debug;
-use math::field::FieldElement;
+use math::FieldElement;
 use sha3::Digest;
 use utils::{group_slice_elements, AsBytes};
 

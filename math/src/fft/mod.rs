@@ -3,6 +3,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+//! FFT-based polynomial evaluation and interpolation.
+
 use crate::{
     field::{FieldElement, StarkField},
     utils::{get_power_series, log2},
@@ -19,7 +21,7 @@ mod tests;
 // CONSTANTS
 // ================================================================================================
 const USIZE_BITS: usize = 0_usize.count_zeros() as usize;
-pub const MIN_CONCURRENT_SIZE: usize = 1024;
+const MIN_CONCURRENT_SIZE: usize = 1024;
 
 // POLYNOMIAL EVALUATION
 // ================================================================================================
@@ -30,7 +32,11 @@ pub const MIN_CONCURRENT_SIZE: usize = 1024;
 /// When `concurrent` feature is enabled, the evaluation uses as many threads as are
 /// available in Rayon's global thread pool (usually as many threads as logical cores).
 /// Otherwise, the evaluation is done in a single thread.
-pub fn evaluate_poly<B: StarkField, E: FieldElement<BaseField = B>>(p: &mut [E], twiddles: &[B]) {
+pub fn evaluate_poly<B, E>(p: &mut [E], twiddles: &[B])
+where
+    B: StarkField,
+    E: FieldElement<BaseField = B>,
+{
     assert!(
         p.len().is_power_of_two(),
         "number of coefficients must be a power of 2"
@@ -60,12 +66,16 @@ pub fn evaluate_poly<B: StarkField, E: FieldElement<BaseField = B>>(p: &mut [E],
 /// When `concurrent` feature is enabled, the evaluation uses as many threads as are
 /// available in Rayon's global thread pool (usually as many threads as logical cores).
 /// Otherwise, the evaluation is done in a single thread.
-pub fn evaluate_poly_with_offset<B: StarkField, E: FieldElement<BaseField = B>>(
+pub fn evaluate_poly_with_offset<B, E>(
     p: &[E],
     twiddles: &[B],
     domain_offset: B,
     blowup_factor: usize,
-) -> Vec<E> {
+) -> Vec<E>
+where
+    B: StarkField,
+    E: FieldElement<BaseField = B>,
+{
     assert!(
         p.len().is_power_of_two(),
         "number of coefficients must be a power of 2"
@@ -181,7 +191,10 @@ where
 /// When `concurrent` feature is enabled, twiddles are generated using as many threads as are
 /// available in Rayon's global thread pool (usually as many threads as logical cores).
 /// Otherwise, the twiddles are generated in a single thread.
-pub fn get_twiddles<B: StarkField>(domain_size: usize) -> Vec<B> {
+pub fn get_twiddles<B>(domain_size: usize) -> Vec<B>
+where
+    B: StarkField,
+{
     debug_assert!(
         domain_size.is_power_of_two(),
         "domain size must be a power of 2"
@@ -198,7 +211,10 @@ pub fn get_twiddles<B: StarkField>(domain_size: usize) -> Vec<B> {
 /// When `concurrent` feature is enabled, twiddles are generated using as many threads as are
 /// available in Rayon's global thread pool (usually as many threads as logical cores).
 /// Otherwise, the twiddles are generated in a single thread.
-pub fn get_inv_twiddles<B: StarkField>(domain_size: usize) -> Vec<B> {
+pub fn get_inv_twiddles<B>(domain_size: usize) -> Vec<B>
+where
+    B: StarkField,
+{
     debug_assert!(
         domain_size.is_power_of_two(),
         "domain size must be a power of 2"

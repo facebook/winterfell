@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{Assertion, AssertionError};
-use math::field::{f128::BaseElement, FieldElement};
+use math::{fields::f128::BaseElement, FieldElement};
 
 // SINGLE ASSERTIONS
 // ================================================================================================

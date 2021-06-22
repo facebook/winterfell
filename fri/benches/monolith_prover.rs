@@ -5,10 +5,7 @@
 
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use crypto::hash::Blake3_256;
-use math::{
-    fft,
-    field::{f128::BaseElement, FieldElement},
-};
+use math::{fft, fields::f128::BaseElement, FieldElement};
 use std::time::Duration;
 use winter_fri::{DefaultProverChannel, FriOptions, FriProver};
 

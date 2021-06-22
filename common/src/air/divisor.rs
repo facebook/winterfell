@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{air::Assertion, ComputationContext};
-use math::field::{FieldElement, StarkField};
+use math::{FieldElement, StarkField};
 use std::fmt::{Display, Formatter};
 
 // CONSTRAINT DIVISOR
@@ -132,7 +132,7 @@ impl<B: StarkField> Display for ConstraintDivisor<B> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use math::field::f128::BaseElement;
+    use math::fields::f128::BaseElement;
 
     #[test]
     fn constraint_divisor_degree() {

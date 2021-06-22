@@ -3,8 +3,19 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-pub mod errors;
 pub mod fft;
-pub mod field;
 pub mod polynom;
 pub mod utils;
+
+mod field;
+pub use field::{FieldElement, StarkField};
+pub mod fields {
+    //! Finite field implementations.
+
+    pub use super::field::f128;
+    pub use super::field::f62;
+    pub use super::field::QuadExtension;
+}
+
+mod errors;
+pub use errors::{ElementDecodingError, SerializationError};

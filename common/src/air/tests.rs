@@ -10,9 +10,10 @@ use super::{
 use crate::{FieldExtension, HashFunction};
 use crypto::{hash, RandomElementGenerator};
 use math::{
-    field::{f128::BaseElement, FieldElement, StarkField},
+    fields::f128::BaseElement,
     polynom,
     utils::{get_power_series, log2},
+    FieldElement, StarkField,
 };
 use rand::{seq::SliceRandom, thread_rng};
 use std::collections::HashMap;

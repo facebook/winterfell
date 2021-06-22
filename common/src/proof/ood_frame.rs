@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{errors::ProofSerializationError, EvaluationFrame};
-use math::{field::FieldElement, utils::read_elements_into_vec};
+use math::{utils::read_elements_into_vec, FieldElement};
 use utils::{ByteReader, ByteWriter, DeserializationError};
 
 // OUT-OF-DOMAIN EVALUATION FRAME

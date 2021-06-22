@@ -9,7 +9,7 @@ use crate::{
 };
 use prover::{
     crypto::{Hasher, MerkleTree},
-    math::field::{f128::BaseElement, FieldElement},
+    math::{fields::f128::BaseElement, FieldElement},
 };
 
 // AGGREGATED PUBLIC KEY

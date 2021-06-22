@@ -6,8 +6,8 @@
 use crate::ProofSerializationError;
 use crypto::{BatchMerkleProof, Hasher};
 use math::{
-    field::FieldElement,
     utils::{log2, read_elements_into_vec},
+    FieldElement,
 };
 use utils::{ByteReader, ByteWriter, DeserializationError};
 

@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::ProofOptions;
-use math::{field::StarkField, utils::log2};
+use math::{utils::log2, StarkField};
 use utils::{ByteReader, ByteWriter, DeserializationError};
 
 // PROOF HEADER

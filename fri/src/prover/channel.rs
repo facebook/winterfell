@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crypto::{Hasher, PublicCoin};
-use math::field::{FieldElement, StarkField};
+use math::{FieldElement, StarkField};
 use std::{convert::TryInto, marker::PhantomData, mem::size_of};
 
 // PROVER CHANNEL TRAIT

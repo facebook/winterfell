@@ -8,10 +8,7 @@ use crate::{
     VerifierError,
 };
 use crypto::{hash, PublicCoin};
-use math::{
-    fft,
-    field::{f128::BaseElement, FieldElement},
-};
+use math::{fft, fields::f128::BaseElement, FieldElement};
 
 // TEST UTILS
 // ================================================================================================
