@@ -7,7 +7,7 @@
 use rayon::prelude::*;
 
 use math::{
-    fft::{get_inv_twiddles, serial},
+    fft::{get_inv_twiddles, serial_fft},
     polynom,
     utils::{batch_inversion, get_power_series_with_offset},
     FieldElement, StarkField,
@@ -44,7 +44,7 @@ where
             // interpolate the values into a polynomial; this is similar to interpolation with
             // offset implemented in math::fft module
             let mut poly = *values;
-            serial::fft(&mut poly, &inv_twiddles);
+            serial_fft(&mut poly, &inv_twiddles);
 
             let mut offset = len_offset;
             let domain_offset = E::from(domain_offset);
