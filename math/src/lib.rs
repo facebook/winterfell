@@ -11,10 +11,13 @@ mod field;
 pub use field::{FieldElement, StarkField};
 pub mod fields {
     //! Finite field implementations.
+    //!
+    //! This module contains concrete implementations of base STARK field as well as extensions
+    //! these field.
 
     pub use super::field::f128;
     pub use super::field::f62;
-    pub use super::field::QuadExtension;
+    pub use super::field::QuadExtensionA;
 }
 
 mod errors;

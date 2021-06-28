@@ -3,9 +3,15 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+//! An implementation of a 62-bit STARK-friendly prime field with modulus 2^62 - 111 * 2^39 + 1.
+//!
+//! All operations in this field are implemented using Montgomery arithmetic. It supports very
+//! fast modular arithmetic including branchless multiplication and addition. Base elements are
+//! stored in the Montgomery form using `u64` as the backing type.
+
 use super::{
     traits::{FieldElement, StarkField},
-    QuadExtension,
+    QuadExtensionA,
 };
 use crate::errors::{ElementDecodingError, SerializationError};
 use core::{
@@ -47,8 +53,10 @@ const RANGE: Range<u64> = Range { start: 0, end: M };
 // FIELD ELEMENT
 // ================================================================================================
 
-/// Base field element; internal values are stored in Montgomery representation and can be in
-/// the range [0; 2M)
+/// Represents base field element in the field.
+///
+/// Internal values are stored in Montgomery representation and can be in the range [0; 2M). The
+/// backing type is `u64`.
 #[derive(Copy, Clone, Debug, Default)]
 pub struct BaseElement(u64);
 
@@ -166,26 +174,26 @@ impl FieldElement for BaseElement {
 }
 
 impl StarkField for BaseElement {
-    type QuadExtension = QuadExtension<Self>;
+    type QuadExtension = QuadExtensionA<Self>;
 
-    /// sage: MODULUS = 2^62 - 111 * 2^39 + 1
-    /// sage: GF(MODULUS).is_prime_field()
-    /// True
-    /// sage: GF(MODULUS).order()
+    /// sage: MODULUS = 2^62 - 111 * 2^39 + 1 \
+    /// sage: GF(MODULUS).is_prime_field() \
+    /// True \
+    /// sage: GF(MODULUS).order() \
     /// 4611624995532046337
     const MODULUS: Self::PositiveInteger = M;
     const MODULUS_BITS: u32 = 64;
 
-    /// sage: GF(MODULUS).primitive_element()
+    /// sage: GF(MODULUS).primitive_element() \
     /// 3
     const GENERATOR: Self = BaseElement::new(3);
 
-    /// sage: is_odd((MODULUS - 1) / 2^39)
+    /// sage: is_odd((MODULUS - 1) / 2^39) \
     /// True
     const TWO_ADICITY: u32 = 39;
 
-    /// sage: k = (MODULUS - 1) / 2^39
-    /// sage: GF(MODULUS).primitive_element()^k
+    /// sage: k = (MODULUS - 1) / 2^39 \
+    /// sage: GF(MODULUS).primitive_element()^k \
     /// 4421547261963328785
     const TWO_ADIC_ROOT_OF_UNITY: Self = BaseElement::new(G);
 

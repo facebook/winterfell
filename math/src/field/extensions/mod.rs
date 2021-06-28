@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 mod quadratic;
-pub use quadratic::QuadExtension;
+pub use quadratic::QuadExtensionA;
 
 use super::{FieldElement, StarkField};
 use crate::errors::SerializationError;

@@ -16,7 +16,15 @@ use utils::{AsBytes, Serializable};
 
 // FIELD ELEMENT
 // ================================================================================================
-
+/// Defines an element in a finite field.
+///
+/// This trait defines basic arithmetic operations for elements in
+/// [finite fields](https://en.wikipedia.org/wiki/Finite_field) (e.g. addition subtraction,
+/// multiplication, division) as well as several convenience functions (e.g. double, square cube).
+/// Moreover, it defines interfaces for serializing and deserializing field elements.
+///
+/// The elements could be in a prime field or an extension of a prime field. Currently, only
+/// quadratic field extensions are supported.
 pub trait FieldElement:
     Copy
     + Clone
@@ -47,6 +55,8 @@ pub trait FieldElement:
     + AsBytes
     + Serializable
 {
+    /// A type defining positive integers big enough to describe a field modulus for
+    /// `Self::BaseField` with no loss of precision.
     type PositiveInteger: Debug
         + Copy
         + PartialEq
@@ -58,6 +68,8 @@ pub trait FieldElement:
         + From<u32>
         + From<u64>;
 
+    /// Base field type for this finite field. For prime fields, `BaseField` should be set
+    /// to `Self`.
     type BaseField: StarkField;
 
     /// Number of bytes needed to encode an element
@@ -148,6 +160,7 @@ pub trait FieldElement:
     /// encoded in the internal representation rather than in the canonical representation. The
     /// conversion is intended to be zero-copy (i.e. by re-interpreting the underlying memory).
     ///
+    /// # Errors
     /// An error is returned if:
     /// * Memory alignment of `bytes` does not match memory alignment of field element data.
     /// * Length of `bytes` does not divide into whole number of elements.
@@ -160,25 +173,31 @@ pub trait FieldElement:
     // INITIALIZATION
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a vector initialized with all zero elements; specialized implementations of this
-    /// function may be faster than the generic implementation.
+    /// Returns a vector of length `n` initialized with all ZERO elements.
+    ///
+    /// Specialized implementations of this function may be faster than the generic implementation.
     fn zeroed_vector(n: usize) -> Vec<Self> {
         vec![Self::ZERO; n]
     }
 
-    /// Returns a vector of n pseudo-random elements drawn uniformly from the entire
-    /// field based on the provided seed.
+    /// Returns a vector of `n` pseudo-random elements drawn uniformly from the entire
+    /// field based on the provided `seed`.
     fn prng_vector(seed: [u8; 32], n: usize) -> Vec<Self>;
 }
 
 // STARK FIELD
 // ================================================================================================
 
+/// Defines an element in a STARK-friendly finite field.
+///
+/// A STARK-friendly field is defined as a prime field with high two-addicity. That is, the
+/// the modulus of the field should be a prime number of the form `k` * 2^`n` + 1 (a Proth prime),
+/// where `n` is relatively larger (e.g., greater than 32).
 pub trait StarkField: FieldElement<BaseField = Self> {
     /// Type describing quadratic extension of this StarkField.
     type QuadExtension: FieldElement<BaseField = Self>;
 
-    /// Prime modulus of the field. Must be of the form k * 2^n + 1 (a Proth prime).
+    /// Prime modulus of the field. Must be of the form `k` * 2^`n` + 1 (a Proth prime).
     /// This ensures that the field has high 2-adicity.
     const MODULUS: Self::PositiveInteger;
 
@@ -188,15 +207,17 @@ pub trait StarkField: FieldElement<BaseField = Self> {
     /// A multiplicative generator of the field.
     const GENERATOR: Self;
 
-    /// Let Self::MODULUS = k * 2^n + 1; then, TWO_ADICITY is n.
+    /// Let Self::MODULUS = `k` * 2^`n` + 1; then, TWO_ADICITY is `n`.
     const TWO_ADICITY: u32;
 
-    /// Let Self::MODULUS = k * 2^n + 1; then, TWO_ADIC_ROOT_OF_UNITY is 2^n root of unity
-    /// computed as Self::GENERATOR^k.
+    /// Let Self::MODULUS = `k` * 2^`n` + 1; then, TWO_ADIC_ROOT_OF_UNITY is 2^`n` root of unity
+    /// computed as Self::GENERATOR^`k`.
     const TWO_ADIC_ROOT_OF_UNITY: Self;
 
-    /// Returns the root of unity of order 2^n. Panics if the root of unity for
-    /// the specified order does not exist in this field.
+    /// Returns the root of unity of order 2^`n`.
+    ///
+    /// # Panics
+    /// Panics if the root of unity for the specified order does not exist in this field.
     fn get_root_of_unity(n: u32) -> Self {
         assert!(n != 0, "cannot get root of unity for n = 0");
         assert!(

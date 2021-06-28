@@ -8,7 +8,7 @@ use rand::Rng;
 use std::{convert::TryInto, time::Duration};
 use utils::AsBytes;
 use winter_math::{
-    fields::{f128, f62, QuadExtension},
+    fields::{f128, f62, QuadExtensionA},
     utils::batch_inversion,
     FieldElement,
 };
@@ -52,8 +52,8 @@ pub fn f128_extension_ops(c: &mut Criterion) {
     let mut group = c.benchmark_group("f128_quad");
 
     group.bench_function("mul", |bench| {
-        let x = QuadExtension::<f128::BaseElement>::rand();
-        let y = QuadExtension::<f128::BaseElement>::rand();
+        let x = QuadExtensionA::<f128::BaseElement>::rand();
+        let y = QuadExtensionA::<f128::BaseElement>::rand();
         bench.iter(|| black_box(x) * black_box(y))
     });
 }
@@ -95,8 +95,8 @@ pub fn f62_extension_ops(c: &mut Criterion) {
     let mut group = c.benchmark_group("f62_quad");
 
     group.bench_function("mul", |bench| {
-        let x = QuadExtension::<f62::BaseElement>::rand();
-        let y = QuadExtension::<f62::BaseElement>::rand();
+        let x = QuadExtensionA::<f62::BaseElement>::rand();
+        let y = QuadExtensionA::<f62::BaseElement>::rand();
         bench.iter(|| black_box(x) * black_box(y))
     });
 }
