@@ -65,12 +65,12 @@
 //!   - [mul_acc()]
 //!   - [batch_inversion()]
 //! * `fft` module:
-//!   - [evaluate_poly](fft::evaluate_poly())
-//!   - [evaluate_poly_with_offset](fft::evaluate_poly_with_offset())
-//!   - [interpolate_poly](fft::interpolate_poly())
-//!   - [interpolate_poly_with_offset][fft::interpolate_poly_with_offset()]
-//!   - [get_twiddles](fft::get_twiddles())
-//!   - [get_inv_twiddles](fft::get_twiddles())
+//!   - [evaluate_poly()](fft::evaluate_poly())
+//!   - [evaluate_poly_with_offset()](fft::evaluate_poly_with_offset())
+//!   - [interpolate_poly()](fft::interpolate_poly())
+//!   - [interpolate_poly_with_offset()][fft::interpolate_poly_with_offset()]
+//!   - [get_twiddles()](fft::get_twiddles())
+//!   - [get_inv_twiddles()](fft::get_twiddles())
 //!
 //! Number of threads can be configured via `RAYON_NUM_THREADS` environment variable
 
@@ -93,8 +93,4 @@ pub mod fields {
 mod utils;
 pub use crate::utils::{
     add_in_place, batch_inversion, get_power_series, get_power_series_with_offset, log2, mul_acc,
-    read_elements_into, read_elements_into_vec,
 };
-
-mod errors;
-pub use errors::{ElementDecodingError, SerializationError};

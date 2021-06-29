@@ -4,8 +4,10 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{errors::ProofSerializationError, EvaluationFrame};
-use math::{read_elements_into_vec, FieldElement};
-use utils::{ByteReader, ByteWriter, DeserializationError};
+use math::FieldElement;
+use utils::{
+    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
+};
 
 // OUT-OF-DOMAIN EVALUATION FRAME
 // ================================================================================================
@@ -54,27 +56,30 @@ impl OodFrame {
         trace_width: usize,
         num_evaluations: usize,
     ) -> Result<(EvaluationFrame<E>, Vec<E>), ProofSerializationError> {
-        let current = read_elements_into_vec(&self.trace_at_z1)
+        let mut reader = SliceReader::new(&self.trace_at_z1);
+        let current = E::read_batch_from(&mut reader, trace_width)
             .map_err(|err| ProofSerializationError::FailedToParseOodFrame(err.to_string()))?;
-        if current.len() != trace_width {
+        if reader.has_more_bytes() {
             return Err(ProofSerializationError::WrongNumberOfOodTraceElements(
                 trace_width,
                 current.len(),
             ));
         }
 
-        let next = read_elements_into_vec(&self.trace_at_z2)
+        let mut reader = SliceReader::new(&self.trace_at_z2);
+        let next = E::read_batch_from(&mut reader, trace_width)
             .map_err(|err| ProofSerializationError::FailedToParseOodFrame(err.to_string()))?;
-        if next.len() != trace_width {
+        if reader.has_more_bytes() {
             return Err(ProofSerializationError::WrongNumberOfOodTraceElements(
                 trace_width,
                 next.len(),
             ));
         }
 
-        let evaluations = read_elements_into_vec(&self.evaluations)
+        let mut reader = SliceReader::new(&self.evaluations);
+        let evaluations = E::read_batch_from(&mut reader, num_evaluations)
             .map_err(|err| ProofSerializationError::FailedToParseOodFrame(err.to_string()))?;
-        if evaluations.len() != num_evaluations {
+        if reader.has_more_bytes() {
             return Err(ProofSerializationError::WrongNumberOfOodEvaluationElements(
                 num_evaluations,
                 evaluations.len(),
@@ -82,44 +87,6 @@ impl OodFrame {
         }
 
         Ok((EvaluationFrame { current, next }, evaluations))
-    }
-
-    // SERIALIZATION / DESERIALIZATION
-    // --------------------------------------------------------------------------------------------
-
-    /// Serializes `self` and writes the resulting bytes into the `target` writer.
-    pub fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        // write trace rows (both rows have the same number of bytes)
-        target.write_u16(self.trace_at_z1.len() as u16);
-        target.write_u8_slice(&self.trace_at_z1);
-        target.write_u8_slice(&self.trace_at_z2);
-
-        // write constraint evaluations row
-        target.write_u16(self.evaluations.len() as u16);
-        target.write_u8_slice(&self.evaluations)
-    }
-
-    /// Reads a OOD frame from the specified source starting at the specified position and
-    /// increments `pos` to point to a position right after the end of read-in frame bytes.
-    /// Returns an error of a valid OOD frame could not be read from the specified source.
-    pub fn read_from<R: ByteReader>(
-        source: &R,
-        pos: &mut usize,
-    ) -> Result<Self, DeserializationError> {
-        // read trace rows
-        let trace_row_bytes = source.read_u16(pos)? as usize;
-        let trace_at_z1 = source.read_u8_vec(pos, trace_row_bytes)?;
-        let trace_at_z2 = source.read_u8_vec(pos, trace_row_bytes)?;
-
-        // read constraint evaluations row
-        let constraint_row_bytes = source.read_u16(pos)? as usize;
-        let evaluations = source.read_u8_vec(pos, constraint_row_bytes)?;
-
-        Ok(OodFrame {
-            trace_at_z1,
-            trace_at_z2,
-            evaluations,
-        })
     }
 }
 
@@ -130,5 +97,42 @@ impl Default for OodFrame {
             trace_at_z2: Vec::new(),
             evaluations: Vec::new(),
         }
+    }
+}
+
+impl Serializable for OodFrame {
+    /// Serializes `self` and writes the resulting bytes into the `target`.
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        // write trace rows (both rows have the same number of bytes)
+        target.write_u16(self.trace_at_z1.len() as u16);
+        target.write_u8_slice(&self.trace_at_z1);
+        target.write_u8_slice(&self.trace_at_z2);
+
+        // write constraint evaluations row
+        target.write_u16(self.evaluations.len() as u16);
+        target.write_u8_slice(&self.evaluations)
+    }
+}
+
+impl Deserializable for OodFrame {
+    /// Reads a OOD frame from the specified `source` and returns the result
+    ///
+    /// # Errors
+    /// Returns an error of a valid OOD frame could not be read from the specified `source`.
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        // read trace rows
+        let trace_row_bytes = source.read_u16()? as usize;
+        let trace_at_z1 = source.read_u8_vec(trace_row_bytes)?;
+        let trace_at_z2 = source.read_u8_vec(trace_row_bytes)?;
+
+        // read constraint evaluations row
+        let constraint_row_bytes = source.read_u16()? as usize;
+        let evaluations = source.read_u8_vec(constraint_row_bytes)?;
+
+        Ok(OodFrame {
+            trace_at_z1,
+            trace_at_z2,
+            evaluations,
+        })
     }
 }

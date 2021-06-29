@@ -26,7 +26,7 @@ use rayon::prelude::*;
 pub trait Serializable: Sized {
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
-    /// Serializes `self` into bytes and appends the bytes at the end of the `target` vector.
+    /// Serializes `self` into bytes and writes these bytes into the `target`.
     fn write_into<W: ByteWriter>(&self, target: &mut W);
 
     // PROVIDED METHODS
@@ -39,8 +39,7 @@ pub trait Serializable: Sized {
         result
     }
 
-    /// Serializes all elements of the `source` and appends the resulting bytes at the end of
-    /// the `target` vector.
+    /// Serializes all elements of the `source` and writes these bytes into the `target`.
     ///
     /// This method does not write any metadata (e.g. number of serialized elements) into the
     /// `target`.
@@ -50,8 +49,8 @@ pub trait Serializable: Sized {
         }
     }
 
-    /// Serializes all individual elements contained in the `source` and appends the resulting
-    /// bytes at the end of the `target` vector.
+    /// Serializes all individual elements contained in the `source` and writes the resulting
+    /// bytes into `target`.
     ///
     /// This method does not write any metadata (e.g. number of serialized elements) into the
     /// `target`.
@@ -72,145 +71,200 @@ impl Serializable for () {
     fn write_into<W: ByteWriter>(&self, _target: &mut W) {}
 }
 
+// DESERIALIZABLE
+// ================================================================================================
+
+/// Defines how to deserialize `Self` from bytes.
+pub trait Deserializable: Sized {
+    // REQUIRED METHODS
+    // --------------------------------------------------------------------------------------------
+
+    /// Reads a sequence of bytes from the provided `source`, attempts to deserialize these bytes
+    /// into `Self`, and returns the result.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// * The `source` does not contain enough bytes to deserialize `Self`.
+    /// * Bytes read from the `source` do not represent a valid value for `Self`.
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError>;
+
+    // PROVIDED METHODS
+    // --------------------------------------------------------------------------------------------
+
+    /// Reads a sequence of bytes from the provided `source`, attempts to deserialize these bytes
+    /// into a vector with the specified number of `Self` elements, and returns the result.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// * The `source` does not contain enough bytes to deserialize the specified number of
+    ///   elements.
+    /// * Bytes read from the `source` do not represent a valid value for `Self` for any of the
+    ///   elements.
+    ///
+    /// Note: if the error occurs, the reader is not rolled back to the state prior calling
+    /// this function.
+    fn read_batch_from<R: ByteReader>(
+        source: &mut R,
+        num_elements: usize,
+    ) -> Result<Vec<Self>, DeserializationError> {
+        let mut result = Vec::new();
+        for _ in 0..num_elements {
+            let element = Self::read_from(source)?;
+            result.push(element)
+        }
+        Ok(result)
+    }
+}
+
 // BYTE READER
 // ================================================================================================
 
 /// Defines how primitive values are to be read from `Self`.
 pub trait ByteReader {
-    /// Returns a single byte read from `self` at the specified position.
-    ///
-    /// After the byte is read, `pos` is incremented by one.
+    /// Returns a single byte read from `self`.
     ///
     /// # Errors
-    /// Returns a `DeserializationError` error if `pos` is out of bounds.
-    fn read_u8(&self, pos: &mut usize) -> Result<u8, DeserializationError>;
+    /// Returns a [DeserializationError] error the reader is at EOF.
+    fn read_u8(&mut self) -> Result<u8, DeserializationError>;
 
-    /// Returns a u16 value read from `self` in little-endian byte order starting at the specified
-    /// position.
-    ///
-    /// After the value is read, `pos` is incremented by two.
+    /// Returns a u16 value read from `self` in little-endian byte order.
     ///
     /// # Errors
-    /// Returns an error if a u16 value could not be read from `self`.
-    fn read_u16(&self, pos: &mut usize) -> Result<u16, DeserializationError>;
+    /// Returns a [DeserializationError] if a u16 value could not be read from `self`.
+    fn read_u16(&mut self) -> Result<u16, DeserializationError>;
 
-    /// Returns a u32 value read from `self` in little-endian byte order starting at the specified
-    /// position.
-    ///
-    /// After the value is read, `pos` is incremented by four.
+    /// Returns a u32 value read from `self` in little-endian byte order.
     ///
     /// # Errors
-    /// Returns an error if a u32 value could not be read from `self`.
-    fn read_u32(&self, pos: &mut usize) -> Result<u32, DeserializationError>;
+    /// Returns a [DeserializationError] if a u32 value could not be read from `self`.
+    fn read_u32(&mut self) -> Result<u32, DeserializationError>;
 
-    /// Returns a u64 value read from `self` in little-endian byte order starting at the specified
-    /// position.
-    ///
-    /// After the value is read, `pos` is incremented by eight.
+    /// Returns a u64 value read from `self` in little-endian byte order.
     ///
     /// # Errors
-    /// Returns an error if a u64 value could not be read from `self`.
-    fn read_u64(&self, pos: &mut usize) -> Result<u64, DeserializationError>;
+    /// Returns a [DeserializationError] if a u64 value could not be read from `self`.
+    fn read_u64(&mut self) -> Result<u64, DeserializationError>;
 
-    /// Returns a byte vector of the specified length read from `self` starting at the specified
-    /// position.
-    ///
-    /// After the vector is read, `pos` is incremented by the length of the vector.
+    /// Returns a u128 value read from `self` in little-endian byte order.
     ///
     /// # Errors
-    /// Returns an error if a vector of the specified length could not be read from `self`.
-    fn read_u8_vec(&self, pos: &mut usize, len: usize) -> Result<Vec<u8>, DeserializationError>;
+    /// Returns a [DeserializationError] if a u128 value could not be read from `self`.
+    fn read_u128(&mut self) -> Result<u128, DeserializationError>;
+
+    /// Returns a byte vector of the specified length read from `self`.
+    ///
+    /// # Errors
+    /// Returns a [DeserializationError] if a vector of the specified length could not be read
+    /// from `self`.
+    fn read_u8_vec(&mut self, len: usize) -> Result<Vec<u8>, DeserializationError>;
+
+    /// Returns true if there are more bytes left to be read from `self`.
+    fn has_more_bytes(&self) -> bool;
 }
 
-impl ByteReader for [u8] {
-    fn read_u8(&self, pos: &mut usize) -> Result<u8, DeserializationError> {
-        if *pos >= self.len() {
+// SLICE READER
+// ================================================================================================
+
+/// Implements [ByteReader] trait for a slice of bytes.
+pub struct SliceReader<'a> {
+    source: &'a [u8],
+    pos: usize,
+}
+
+impl<'a> SliceReader<'a> {
+    /// Creates a new slice reader from the specified slice.
+    pub fn new(source: &'a [u8]) -> Self {
+        SliceReader { source, pos: 0 }
+    }
+}
+
+impl<'a> ByteReader for SliceReader<'a> {
+    fn read_u8(&mut self) -> Result<u8, DeserializationError> {
+        if self.pos >= self.source.len() {
             return Err(DeserializationError::UnexpectedEOF);
         }
-        let result = self[*pos];
+        let result = self.source[self.pos];
 
-        *pos += 1;
+        self.pos += 1;
         Ok(result)
     }
 
-    fn read_u16(&self, pos: &mut usize) -> Result<u16, DeserializationError> {
-        let end_pos = *pos + 2;
-        if end_pos > self.len() {
+    fn read_u16(&mut self) -> Result<u16, DeserializationError> {
+        let end_pos = self.pos + 2;
+        if end_pos > self.source.len() {
             return Err(DeserializationError::UnexpectedEOF);
         }
 
         let result = u16::from_le_bytes(
-            self[*pos..end_pos]
+            self.source[self.pos..end_pos]
                 .try_into()
                 .map_err(|err| DeserializationError::UnknownError(format!("{}", err)))?,
         );
 
-        *pos = end_pos;
+        self.pos = end_pos;
         Ok(result)
     }
 
-    fn read_u32(&self, pos: &mut usize) -> Result<u32, DeserializationError> {
-        let end_pos = *pos + 4;
-        if end_pos > self.len() {
+    fn read_u32(&mut self) -> Result<u32, DeserializationError> {
+        let end_pos = self.pos + 4;
+        if end_pos > self.source.len() {
             return Err(DeserializationError::UnexpectedEOF);
         }
 
         let result = u32::from_le_bytes(
-            self[*pos..end_pos]
+            self.source[self.pos..end_pos]
                 .try_into()
                 .map_err(|err| DeserializationError::UnknownError(format!("{}", err)))?,
         );
 
-        *pos = end_pos;
+        self.pos = end_pos;
         Ok(result)
     }
 
-    fn read_u64(&self, pos: &mut usize) -> Result<u64, DeserializationError> {
-        let end_pos = *pos + 8;
-        if end_pos > self.len() {
+    fn read_u64(&mut self) -> Result<u64, DeserializationError> {
+        let end_pos = self.pos + 8;
+        if end_pos > self.source.len() {
             return Err(DeserializationError::UnexpectedEOF);
         }
 
         let result = u64::from_le_bytes(
-            self[*pos..end_pos]
+            self.source[self.pos..end_pos]
                 .try_into()
                 .map_err(|err| DeserializationError::UnknownError(format!("{}", err)))?,
         );
 
-        *pos = end_pos;
+        self.pos = end_pos;
         Ok(result)
     }
 
-    fn read_u8_vec(&self, pos: &mut usize, len: usize) -> Result<Vec<u8>, DeserializationError> {
-        let end_pos = *pos + len as usize;
-        if end_pos > self.len() {
+    fn read_u128(&mut self) -> Result<u128, DeserializationError> {
+        let end_pos = self.pos + 16;
+        if end_pos > self.source.len() {
             return Err(DeserializationError::UnexpectedEOF);
         }
-        let result = self[*pos..end_pos].to_vec();
-        *pos = end_pos;
+
+        let result = u128::from_le_bytes(
+            self.source[self.pos..end_pos]
+                .try_into()
+                .map_err(|err| DeserializationError::UnknownError(format!("{}", err)))?,
+        );
+
+        self.pos = end_pos;
         Ok(result)
     }
-}
 
-impl ByteReader for Vec<u8> {
-    fn read_u8(&self, pos: &mut usize) -> Result<u8, DeserializationError> {
-        self.as_slice().read_u8(pos)
+    fn read_u8_vec(&mut self, len: usize) -> Result<Vec<u8>, DeserializationError> {
+        let end_pos = self.pos + len as usize;
+        if end_pos > self.source.len() {
+            return Err(DeserializationError::UnexpectedEOF);
+        }
+        let result = self.source[self.pos..end_pos].to_vec();
+        self.pos = end_pos;
+        Ok(result)
     }
 
-    fn read_u16(&self, pos: &mut usize) -> Result<u16, DeserializationError> {
-        self.as_slice().read_u16(pos)
-    }
-
-    fn read_u32(&self, pos: &mut usize) -> Result<u32, DeserializationError> {
-        self.as_slice().read_u32(pos)
-    }
-
-    fn read_u64(&self, pos: &mut usize) -> Result<u64, DeserializationError> {
-        self.as_slice().read_u64(pos)
-    }
-
-    fn read_u8_vec(&self, pos: &mut usize, len: usize) -> Result<Vec<u8>, DeserializationError> {
-        self.as_slice().read_u8_vec(pos, len)
+    fn has_more_bytes(&self) -> bool {
+        self.pos < self.source.len()
     }
 }
 

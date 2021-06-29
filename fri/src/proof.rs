@@ -5,8 +5,10 @@
 
 use crate::ProofSerializationError;
 use crypto::{BatchMerkleProof, Hasher};
-use math::{log2, read_elements_into_vec, FieldElement};
-use utils::{ByteReader, ByteWriter, DeserializationError};
+use math::{log2, FieldElement};
+use utils::{
+    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
+};
 
 // FRI PROOF
 // ================================================================================================
@@ -92,16 +94,20 @@ impl FriProof {
 
     /// Returns a vector of remainder values (last FRI layer)
     pub fn parse_remainder<E: FieldElement>(&self) -> Result<Vec<E>, ProofSerializationError> {
-        let remainder = read_elements_into_vec(&self.remainder)
+        let num_elements = self.remainder.len() / E::ELEMENT_BYTES;
+        let mut reader = SliceReader::new(&self.remainder);
+        let remainder = E::read_batch_from(&mut reader, num_elements)
             .map_err(|err| ProofSerializationError::RemainderParsingError(err.to_string()))?;
         Ok(remainder)
     }
+}
 
-    // SERIALIZATION / DESERIALIZATION
-    // --------------------------------------------------------------------------------------------
+// SERIALIZATION / DESERIALIZATION
+// ------------------------------------------------------------------------------------------------
 
+impl Serializable for FriProof {
     /// Serializes `self` and writes the resulting bytes into the `target` writer.
-    pub fn write_into<W: ByteWriter>(&self, target: &mut W) {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
         // write layers
         target.write_u8(self.layers.len() as u8);
         for layer in self.layers.iter() {
@@ -115,27 +121,24 @@ impl FriProof {
         // write number of partitions
         target.write_u8(self.num_partitions);
     }
+}
 
-    /// Reads a FRI proof from the specified source starting at the specified position. Returns
-    /// an error if a valid proof could not be read from the source.
-    pub fn read_from<R: ByteReader>(
-        source: &R,
-        pos: &mut usize,
-    ) -> Result<Self, DeserializationError> {
+impl Deserializable for FriProof {
+    /// Reads a FRI proof from the specified `source` and returns the result.
+    ///
+    /// # Errors
+    /// Returns an error if a valid proof could not be read from the source.
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         // read layers
-        let num_layers = source.read_u8(pos)? as usize;
-        let mut layers = Vec::new();
-        for _ in 0..num_layers {
-            let layer = FriProofLayer::read_from(source, pos)?;
-            layers.push(layer);
-        }
+        let num_layers = source.read_u8()? as usize;
+        let layers = FriProofLayer::read_batch_from(source, num_layers)?;
 
         // read remainder
-        let remainder_bytes = 2usize.pow(source.read_u8(pos)? as u32);
-        let remainder = source.read_u8_vec(pos, remainder_bytes)?;
+        let remainder_bytes = 2usize.pow(source.read_u8()? as u32);
+        let remainder = source.read_u8_vec(remainder_bytes)?;
 
         // read number of partitions
-        let num_partitions = source.read_u8(pos)?;
+        let num_partitions = source.read_u8()?;
 
         Ok(FriProof {
             layers,
@@ -214,12 +217,9 @@ impl FriProofLayer {
 
         // read bytes corresponding to each query, convert them into field elements,
         // and also hash them to build leaf nodes of the batch Merkle proof
-        for (query_bytes, query_hash) in self
-            .values
-            .chunks(num_query_bytes)
-            .zip(hashed_queries.iter_mut())
-        {
-            let mut qe = read_elements_into_vec::<E>(query_bytes).map_err(|err| {
+        let mut reader = SliceReader::new(&self.values);
+        for query_hash in hashed_queries.iter_mut() {
+            let mut qe = E::read_batch_from(&mut reader, folding_factor).map_err(|err| {
                 ProofSerializationError::LayerParsingError(layer_depth, err.to_string())
             })?;
             *query_hash = H::hash_elements(&qe);
@@ -235,12 +235,14 @@ impl FriProofLayer {
 
         Ok((query_values, merkle_proof))
     }
+}
 
-    // SERIALIZATION / DESERIALIZATION
-    // --------------------------------------------------------------------------------------------
+// SERIALIZATION / DESERIALIZATION
+// ------------------------------------------------------------------------------------------------
 
+impl Serializable for FriProofLayer {
     /// Serializes this proof layer and writes the resulting bytes to the specified `target`.
-    pub fn write_into<W: ByteWriter>(&self, target: &mut W) {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
         // write value bytes
         target.write_u32(self.values.len() as u32);
         target.write_u8_slice(&self.values);
@@ -249,21 +251,21 @@ impl FriProofLayer {
         target.write_u32(self.paths.len() as u32);
         target.write_u8_slice(&self.paths);
     }
+}
 
-    /// Reads a single proof layer form the `source` starting at the specified position,
-    /// and increments `pos` to point to a position right after the end of read-in layer bytes.
+impl Deserializable for FriProofLayer {
+    /// Reads a single proof layer form the `source` and returns it.
+    ///
+    /// # Errors
     /// Returns an error if a valid layer could not be read from the specified source.
-    pub fn read_from<R: ByteReader>(
-        source: &R,
-        pos: &mut usize,
-    ) -> Result<Self, DeserializationError> {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         // read values
-        let num_value_bytes = source.read_u32(pos)?;
-        let values = source.read_u8_vec(pos, num_value_bytes as usize)?;
+        let num_value_bytes = source.read_u32()?;
+        let values = source.read_u8_vec(num_value_bytes as usize)?;
 
         // read paths
-        let num_paths_bytes = source.read_u32(pos)?;
-        let paths = source.read_u8_vec(pos, num_paths_bytes as usize)?;
+        let num_paths_bytes = source.read_u32()?;
+        let paths = source.read_u8_vec(num_paths_bytes as usize)?;
 
         Ok(FriProofLayer { values, paths })
     }

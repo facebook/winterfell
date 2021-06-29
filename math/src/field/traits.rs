@@ -3,7 +3,6 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::errors::SerializationError;
 use core::{
     convert::TryFrom,
     fmt::{Debug, Display},
@@ -12,7 +11,7 @@ use core::{
         SubAssign,
     },
 };
-use utils::{AsBytes, Serializable};
+use utils::{AsBytes, Deserializable, DeserializationError, Serializable};
 
 // FIELD ELEMENT
 // ================================================================================================
@@ -54,6 +53,7 @@ pub trait FieldElement:
     + for<'a> TryFrom<&'a [u8]>
     + AsBytes
     + Serializable
+    + Deserializable
 {
     /// A type defining positive integers big enough to describe a field modulus for
     /// `Self::BaseField` with no loss of precision.
@@ -168,7 +168,7 @@ pub trait FieldElement:
     /// # Safety
     /// This function is unsafe because it does not check whether underlying bytes represent valid
     /// field elements according to their internal representation.
-    unsafe fn bytes_as_elements(bytes: &[u8]) -> Result<&[Self], SerializationError>;
+    unsafe fn bytes_as_elements(bytes: &[u8]) -> Result<&[Self], DeserializationError>;
 
     // INITIALIZATION
     // --------------------------------------------------------------------------------------------

@@ -13,7 +13,6 @@ use super::{
     traits::{FieldElement, StarkField},
     QuadExtensionA,
 };
-use crate::errors::{ElementDecodingError, SerializationError};
 use core::{
     convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter},
@@ -22,7 +21,7 @@ use core::{
     slice,
 };
 use rand::{distributions::Uniform, prelude::*};
-use utils::{AsBytes, ByteWriter, Serializable};
+use utils::{AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 #[cfg(test)]
 mod tests;
@@ -134,18 +133,21 @@ impl FieldElement for BaseElement {
         unsafe { slice::from_raw_parts(p as *const u8, len) }
     }
 
-    unsafe fn bytes_as_elements(bytes: &[u8]) -> Result<&[Self], SerializationError> {
+    unsafe fn bytes_as_elements(bytes: &[u8]) -> Result<&[Self], DeserializationError> {
         if bytes.len() % Self::ELEMENT_BYTES != 0 {
-            return Err(SerializationError::NotEnoughBytesForWholeElements(
+            return Err(DeserializationError::InvalidValue(format!(
+                "number of bytes ({}) does not divide into whole number of field elements",
                 bytes.len(),
-            ));
+            )));
         }
 
         let p = bytes.as_ptr();
         let len = bytes.len() / Self::ELEMENT_BYTES;
 
         if (p as usize) % mem::align_of::<u64>() != 0 {
-            return Err(SerializationError::InvalidMemoryAlignment);
+            return Err(DeserializationError::InvalidValue(
+                "slice memory alignment is not valid for this field element type".to_string(),
+            ));
         }
 
         Ok(slice::from_raw_parts(p as *const Self, len))
@@ -361,30 +363,35 @@ impl From<[u8; 8]> for BaseElement {
 }
 
 impl<'a> TryFrom<&'a [u8]> for BaseElement {
-    type Error = ElementDecodingError;
+    type Error = DeserializationError;
 
     /// Converts a slice of bytes into a field element; returns error if the value encoded in bytes
     /// is not a valid field element. The bytes are assumed to encode the element in the canonical
     /// representation in little-endian byte order.
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         if bytes.len() < ELEMENT_BYTES {
-            return Err(ElementDecodingError::NotEnoughBytes(
+            return Err(DeserializationError::InvalidValue(format!(
+                "not enough bytes for a full field element; expected {} bytes, but was {} bytes",
                 ELEMENT_BYTES,
                 bytes.len(),
-            ));
+            )));
         }
         if bytes.len() > ELEMENT_BYTES {
-            return Err(ElementDecodingError::TooManyBytes(
+            return Err(DeserializationError::InvalidValue(format!(
+                "too many bytes for a field element; expected {} bytes, but was {} bytes",
                 ELEMENT_BYTES,
                 bytes.len(),
-            ));
+            )));
         }
         let value = bytes
             .try_into()
             .map(u64::from_le_bytes)
-            .map_err(|error| ElementDecodingError::UnknownError(format!("{}", error)))?;
+            .map_err(|error| DeserializationError::UnknownError(format!("{}", error)))?;
         if value >= M {
-            return Err(ElementDecodingError::ValueTooLarger(format!("{}", value)));
+            return Err(DeserializationError::InvalidValue(format!(
+                "invalid field element: value {} is greater than or equal to the field modulus",
+                value
+            )));
         }
         Ok(BaseElement::new(value))
     }
@@ -398,13 +405,26 @@ impl AsBytes for BaseElement {
     }
 }
 
-// SERIALIZATION
+// SERIALIZATION / DESERIALIZATION
 // ------------------------------------------------------------------------------------------------
 
 impl Serializable for BaseElement {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         // convert from Montgomery representation into canonical representation
         target.write_u8_slice(&self.as_int().to_le_bytes());
+    }
+}
+
+impl Deserializable for BaseElement {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let value = source.read_u64()?;
+        if value >= M {
+            return Err(DeserializationError::InvalidValue(format!(
+                "invalid field element: value {} is greater than or equal to the field modulus",
+                value
+            )));
+        }
+        Ok(BaseElement::new(value))
     }
 }
 

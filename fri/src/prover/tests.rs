@@ -9,6 +9,7 @@ use crate::{
 };
 use crypto::{hash, PublicCoin};
 use math::{fft, fields::f128::BaseElement, FieldElement};
+use utils::{Deserializable, Serializable, SliceReader};
 
 // TEST UTILS
 // ================================================================================================
@@ -49,8 +50,8 @@ pub fn verify_proof(
     let mut proof_bytes = Vec::new();
     proof.write_into(&mut proof_bytes);
 
-    let mut pos = 0;
-    let proof = FriProof::read_from(&proof_bytes, &mut pos).unwrap();
+    let mut reader = SliceReader::new(&proof_bytes);
+    let proof = FriProof::read_from(&mut reader).unwrap();
 
     // verify the proof
     let mut channel = DefaultVerifierChannel::<BaseElement, hash::Blake3_256>::new(

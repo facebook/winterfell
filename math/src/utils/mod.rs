@@ -3,14 +3,11 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{errors::SerializationError, field::FieldElement};
+use crate::field::FieldElement;
 use utils::{batch_iter_mut, iter_mut, uninit_vector};
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
-
-#[cfg(test)]
-mod tests;
 
 // MATH FUNCTIONS
 // ================================================================================================
@@ -235,72 +232,4 @@ fn serial_batch_inversion<E: FieldElement>(values: &[E], result: &mut [E]) {
             last *= values[i];
         }
     }
-}
-
-// SERIALIZATION / DESERIALIZATION
-// ================================================================================================
-
-/// Reads elements from the specified `source` and copies them into the provided `destination`.
-///
-/// The elements are assumed to be stored in the slice one after the other in little-endian
-/// byte order. When no errors are encountered, returns the number of read elements.
-///
-/// # Errors
-/// Returns an error if:
-/// * Number of bytes in the `source` does not divide evenly into whole number of elements.
-/// * Size of the destination slice is not sufficient to hold all elements read from the source.
-/// * Underlying `source` bytes do not represent a sequence of valid field elements.
-pub fn read_elements_into<E>(
-    source: &[u8],
-    destination: &mut [E],
-) -> Result<usize, SerializationError>
-where
-    E: FieldElement,
-{
-    if source.len() % E::ELEMENT_BYTES != 0 {
-        return Err(SerializationError::NotEnoughBytesForWholeElements(
-            source.len(),
-        ));
-    }
-    let num_elements = source.len() / E::ELEMENT_BYTES;
-    if destination.len() < num_elements {
-        return Err(SerializationError::DestinationTooSmall(
-            num_elements,
-            destination.len(),
-        ));
-    }
-
-    for i in (0..source.len()).step_by(E::ELEMENT_BYTES) {
-        match E::try_from(&source[i..i + E::ELEMENT_BYTES]) {
-            Ok(value) => destination[i / E::ELEMENT_BYTES] = value,
-            Err(_) => return Err(SerializationError::FailedToReadElement(i)),
-        }
-    }
-
-    Ok(num_elements)
-}
-
-/// Returns a vector of elements read from the provided slice of bytes.
-///
-/// The elements are assumed to be stored in the slice one after the other in little-endian
-/// byte order.
-///
-/// # Errors
-/// Returns an error if:
-/// * Number of bytes in the `source` does not divide evenly into whole number of elements.
-/// * Underlying `source` bytes do not represent a sequence of valid field elements.
-pub fn read_elements_into_vec<E>(source: &[u8]) -> Result<Vec<E>, SerializationError>
-where
-    E: FieldElement,
-{
-    if source.len() % E::ELEMENT_BYTES != 0 {
-        return Err(SerializationError::NotEnoughBytesForWholeElements(
-            source.len(),
-        ));
-    }
-
-    let num_elements = source.len() / E::ELEMENT_BYTES;
-    let mut result = unsafe { uninit_vector(num_elements) };
-    read_elements_into(source, &mut result)?;
-    Ok(result)
 }

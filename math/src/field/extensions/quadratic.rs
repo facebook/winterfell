@@ -3,14 +3,14 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{FieldElement, SerializationError, StarkField};
+use super::{FieldElement, StarkField};
 use core::{
     convert::TryFrom,
     fmt::{Debug, Display, Formatter},
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
     slice,
 };
-use utils::{AsBytes, ByteWriter, Serializable};
+use utils::{AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 // QUADRATIC EXTENSION FIELD
 // ================================================================================================
@@ -88,11 +88,12 @@ impl<B: StarkField> FieldElement for QuadExtensionA<B> {
         }
     }
 
-    unsafe fn bytes_as_elements(bytes: &[u8]) -> Result<&[Self], SerializationError> {
+    unsafe fn bytes_as_elements(bytes: &[u8]) -> Result<&[Self], DeserializationError> {
         if bytes.len() % Self::ELEMENT_BYTES != 0 {
-            return Err(SerializationError::NotEnoughBytesForWholeElements(
+            return Err(DeserializationError::InvalidValue(format!(
+                "number of bytes ({}) does not divide into whole number of field elements",
                 bytes.len(),
-            ));
+            )));
         }
 
         let p = bytes.as_ptr();
@@ -100,7 +101,9 @@ impl<B: StarkField> FieldElement for QuadExtensionA<B> {
 
         // make sure the bytes are aligned on the boundary consistent with base element alignment
         if (p as usize) % Self::BaseField::ELEMENT_BYTES != 0 {
-            return Err(SerializationError::InvalidMemoryAlignment);
+            return Err(DeserializationError::InvalidValue(
+                "slice memory alignment is not valid for this field element type".to_string(),
+            ));
         }
 
         Ok(slice::from_raw_parts(p as *const Self, len))
@@ -271,7 +274,7 @@ impl<B: StarkField> AsBytes for QuadExtensionA<B> {
     }
 }
 
-// SERIALIZATION
+// SERIALIZATION / DESERIALIZATION
 // ------------------------------------------------------------------------------------------------
 
 impl<B: StarkField> Serializable for QuadExtensionA<B> {
@@ -281,12 +284,20 @@ impl<B: StarkField> Serializable for QuadExtensionA<B> {
     }
 }
 
+impl<B: StarkField> Deserializable for QuadExtensionA<B> {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let value0 = B::read_from(source)?;
+        let value1 = B::read_from(source)?;
+        Ok(Self(value0, value1))
+    }
+}
+
 // TESTS
 // ================================================================================================
 
 #[cfg(test)]
 mod tests {
-    use super::{AsBytes, FieldElement, QuadExtensionA, SerializationError};
+    use super::{AsBytes, DeserializationError, FieldElement, QuadExtensionA};
     use crate::field::f128::BaseElement;
 
     // BASIC ALGEBRA
@@ -458,13 +469,10 @@ mod tests {
         assert_eq!(expected, result.unwrap());
 
         let result = unsafe { QuadExtensionA::<BaseElement>::bytes_as_elements(&bytes) };
-        assert_eq!(
-            result,
-            Err(SerializationError::NotEnoughBytesForWholeElements(65))
-        );
+        assert!(matches!(result, Err(DeserializationError::InvalidValue(_))));
 
         let result = unsafe { QuadExtensionA::<BaseElement>::bytes_as_elements(&bytes[1..]) };
-        assert_eq!(result, Err(SerializationError::InvalidMemoryAlignment));
+        assert!(matches!(result, Err(DeserializationError::InvalidValue(_))));
     }
 
     // HELPER FUNCTIONS
