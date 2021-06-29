@@ -9,9 +9,7 @@ use crate::{
 };
 use crypto::{hash::Blake3_256, Hasher, MerkleTree};
 use math::{
-    fields::f128::BaseElement,
-    polynom,
-    utils::{get_power_series, get_power_series_with_offset, log2},
+    fields::f128::BaseElement, get_power_series, get_power_series_with_offset, log2, polynom,
     FieldElement, StarkField,
 };
 

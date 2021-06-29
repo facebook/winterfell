@@ -24,7 +24,7 @@ mod tests;
 ///
 /// # Examples
 /// ```
-/// # use winter_math::utils::*;
+/// # use winter_math::get_power_series;
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
 /// let n = 2048;
 /// let b = BaseElement::from(3u8);
@@ -58,7 +58,7 @@ where
 ///
 /// # Examples
 /// ```
-/// # use winter_math::utils::*;
+/// # use winter_math::get_power_series_with_offset;
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
 /// let n = 2048;
 /// let b = BaseElement::from(3u8);
@@ -93,7 +93,7 @@ where
 ///
 /// # Examples
 /// ```
-/// # use winter_math::utils::*;
+/// # use winter_math::add_in_place;
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
 /// let a = BaseElement::prng_vector([0; 32], 2048);
 /// let b = BaseElement::prng_vector([1; 32], 2048);
@@ -128,7 +128,7 @@ where
 ///
 /// # Examples
 /// ```
-/// # use winter_math::utils::*;
+/// # use winter_math::mul_acc;
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
 /// let a = BaseElement::prng_vector([0; 32], 2048);
 /// let b = BaseElement::prng_vector([1; 32], 2048);
@@ -165,7 +165,7 @@ where
 ///
 /// # Examples
 /// ```
-/// # use winter_math::utils::*;
+/// # use winter_math::batch_inversion;
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
 /// let a = BaseElement::prng_vector([1; 32], 2048);
 /// let b = batch_inversion(&a);
@@ -194,7 +194,7 @@ where
 ///
 /// # Examples
 /// ```
-/// # use winter_math::utils::*;
+/// # use winter_math::log2;
 /// assert_eq!(log2(1), 0);
 /// assert_eq!(log2(16), 4);
 /// assert_eq!(log2(1 << 20), 20);

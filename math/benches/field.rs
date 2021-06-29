@@ -8,8 +8,8 @@ use rand::Rng;
 use std::{convert::TryInto, time::Duration};
 use utils::AsBytes;
 use winter_math::{
+    batch_inversion,
     fields::{f128, f62, QuadExtensionA},
-    utils::batch_inversion,
     FieldElement,
 };
 

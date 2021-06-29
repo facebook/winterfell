@@ -8,7 +8,7 @@ use super::{
     TRACE_WIDTH,
 };
 use prover::{
-    math::{fields::f128::BaseElement, utils::get_power_series, FieldElement, StarkField},
+    math::{fields::f128::BaseElement, get_power_series, FieldElement, StarkField},
     ExecutionTrace,
 };
 use std::collections::HashMap;

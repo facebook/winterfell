@@ -97,10 +97,8 @@ mod tests {
     use crate::tests::MockAir;
     use common::Air;
     use math::{
-        fields::f128::BaseElement,
-        polynom,
-        utils::{get_power_series_with_offset, log2},
-        FieldElement, StarkField,
+        fields::f128::BaseElement, get_power_series_with_offset, log2, polynom, FieldElement,
+        StarkField,
     };
 
     #[test]

@@ -5,10 +5,7 @@
 
 use crate::ProofSerializationError;
 use crypto::{BatchMerkleProof, Hasher};
-use math::{
-    utils::{log2, read_elements_into_vec},
-    FieldElement,
-};
+use math::{log2, read_elements_into_vec, FieldElement};
 use utils::{ByteReader, ByteWriter, DeserializationError};
 
 // FRI PROOF

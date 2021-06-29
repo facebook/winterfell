@@ -8,7 +8,7 @@ use super::{
     Assertion, BoundaryConstraint,
 };
 use crypto::{hash, RandomElementGenerator};
-use math::{fields::f128::BaseElement, polynom, utils::log2, FieldElement, StarkField};
+use math::{fields::f128::BaseElement, log2, polynom, FieldElement, StarkField};
 use std::collections::HashMap;
 
 // BOUNDARY CONSTRAINT TESTS

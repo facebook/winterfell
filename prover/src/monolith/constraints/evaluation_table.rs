@@ -5,7 +5,7 @@
 
 use super::{CompositionPoly, StarkDomain};
 use common::{errors::ProverError, ConstraintDivisor};
-use math::{fft, utils::batch_inversion, FieldElement, StarkField};
+use math::{batch_inversion, fft, FieldElement, StarkField};
 use utils::{batch_iter_mut, iter_mut, uninit_vector};
 
 #[cfg(feature = "concurrent")]
@@ -386,7 +386,7 @@ fn validate_column_degree<B: StarkField, E: FieldElement<BaseField = B>>(
 ) -> Result<(), ProverError> {
     // build domain for divisor evaluation, and evaluate it over this domain
     let g = B::get_root_of_unity(column.len().trailing_zeros());
-    let domain = math::utils::get_power_series_with_offset(g, domain_offset, column.len());
+    let domain = math::get_power_series_with_offset(g, domain_offset, column.len());
     let div_values = domain
         .into_iter()
         .map(|x| E::from(divisor.evaluate_at(x)))

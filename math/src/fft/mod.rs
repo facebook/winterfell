@@ -59,7 +59,7 @@ const MIN_CONCURRENT_SIZE: usize = 1024;
 ///
 /// # Examples
 /// ```
-/// # use winter_math::{polynom, utils, fft::*};
+/// # use winter_math::{polynom, fft::*, get_power_series, log2};
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement, StarkField};
 /// let n = 2048;
 ///
@@ -67,8 +67,8 @@ const MIN_CONCURRENT_SIZE: usize = 1024;
 /// let mut p = BaseElement::prng_vector([1; 32], n);
 ///
 /// // evaluate the polynomial over the domain using regular polynomial evaluation
-/// let g = BaseElement::get_root_of_unity(utils::log2(n));
-/// let domain = utils::get_power_series(g, n);
+/// let g = BaseElement::get_root_of_unity(log2(n));
+/// let domain = get_power_series(g, n);
 /// let expected = polynom::eval_many(&p, &domain);
 ///
 /// // evaluate the polynomial over the domain using FFT-based evaluation
@@ -141,7 +141,7 @@ where
 ///
 /// # Examples
 /// ```
-/// # use winter_math::{polynom, utils, fft::*};
+/// # use winter_math::{polynom, fft::*, log2, get_power_series};
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement, StarkField};
 /// let n = 2048;
 /// let offset = BaseElement::GENERATOR;
@@ -151,8 +151,8 @@ where
 /// let mut p = BaseElement::prng_vector([1; 32], n / blowup_factor);
 ///
 /// // evaluate the polynomial over the domain using regular polynomial evaluation
-/// let g = BaseElement::get_root_of_unity(utils::log2(n));
-/// let domain = utils::get_power_series(g, n);
+/// let g = BaseElement::get_root_of_unity(log2(n));
+/// let domain = get_power_series(g, n);
 /// let shifted_domain = domain.iter().map(|&x| x * offset).collect::<Vec<_>>();
 /// let expected = polynom::eval_many(&p, &shifted_domain);
 ///
@@ -246,7 +246,7 @@ where
 ///
 /// # Examples
 /// ```
-/// # use winter_math::{polynom, utils, fft::*};
+/// # use winter_math::{polynom, fft::*, get_power_series, log2};
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement, StarkField};
 /// let n = 2048;
 ///
@@ -254,8 +254,8 @@ where
 /// let p = BaseElement::prng_vector([1; 32], n);
 ///
 /// // evaluate the polynomial over the domain using regular polynomial evaluation
-/// let g = BaseElement::get_root_of_unity(utils::log2(n));
-/// let domain = utils::get_power_series(g, n);
+/// let g = BaseElement::get_root_of_unity(log2(n));
+/// let domain = get_power_series(g, n);
 /// let mut ys = polynom::eval_many(&p, &domain);
 ///
 /// // interpolate the evaluations into a polynomial
@@ -331,7 +331,7 @@ where
 ///
 /// # Examples
 /// ```
-/// # use winter_math::{polynom, utils, fft::*};
+/// # use winter_math::{polynom, fft::*, get_power_series, log2};
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement, StarkField};
 /// let n = 2048;
 /// let offset = BaseElement::GENERATOR;
@@ -340,8 +340,8 @@ where
 /// let p = BaseElement::prng_vector([1; 32], n);
 ///
 /// // evaluate the polynomial over the domain using regular polynomial evaluation
-/// let g = BaseElement::get_root_of_unity(utils::log2(n));
-/// let domain = utils::get_power_series(g, n);
+/// let g = BaseElement::get_root_of_unity(log2(n));
+/// let domain = get_power_series(g, n);
 /// let shifted_domain = domain.iter().map(|&x| x * offset).collect::<Vec<_>>();
 /// let mut ys = polynom::eval_many(&p, &shifted_domain);
 ///
@@ -448,7 +448,7 @@ where
 ///
 /// # Examples
 /// ```
-/// # use winter_math::{utils, fft::*};
+/// # use winter_math::fft::*;
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement, StarkField};
 /// let n = 2048;
 /// let twiddles = get_twiddles::<BaseElement>(n);
@@ -488,7 +488,7 @@ where
 ///
 /// # Examples
 /// ```
-/// # use winter_math::{utils, fft::*};
+/// # use winter_math::fft::*;
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement, StarkField};
 /// let n = 2048;
 /// let inv_twiddles = get_inv_twiddles::<BaseElement>(n);
@@ -538,7 +538,7 @@ where
 ///
 /// # Examples
 /// ```
-/// # use winter_math::{utils, polynom, fft::*};
+/// # use winter_math::{polynom, fft::*, get_power_series, log2};
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement, StarkField};
 /// let offset = BaseElement::GENERATOR;
 /// // p(x) = x^2 + 1
@@ -549,8 +549,8 @@ where
 ///     BaseElement::ZERO,
 /// ];
 ///
-/// let g = BaseElement::get_root_of_unity(utils::log2(p.len()));
-/// let domain = utils::get_power_series(g, p.len());
+/// let g = BaseElement::get_root_of_unity(log2(p.len()));
+/// let domain = get_power_series(g, p.len());
 /// let shifted_domain = domain.iter().map(|&x| x * offset).collect::<Vec<_>>();
 /// let evaluations = polynom::eval_many(&p, &shifted_domain);
 ///

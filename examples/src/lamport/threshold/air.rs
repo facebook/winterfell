@@ -9,7 +9,7 @@ use super::{
 };
 use crate::utils::{are_equal, is_binary, is_zero, not, EvaluationResult};
 use prover::{
-    math::{fields::f128::BaseElement, utils::log2, FieldElement, StarkField},
+    math::{fields::f128::BaseElement, log2, FieldElement, StarkField},
     Air, Assertion, ByteWriter, ComputationContext, EvaluationFrame, ProofOptions, Serializable,
     TraceInfo, TransitionConstraintDegree,
 };

@@ -5,7 +5,7 @@
 
 use crate::FriOptions;
 use crypto::Hasher;
-use math::{utils::log2, FieldElement, StarkField};
+use math::{log2, FieldElement, StarkField};
 
 pub struct VerifierContext<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> {
     max_degree: usize,

@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{air::TransitionConstraintDegree, ProofOptions};
-use math::{utils::log2, StarkField};
+use math::{log2, StarkField};
 
 // TYPES AND INTERFACES
 // ================================================================================================

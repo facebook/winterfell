@@ -5,7 +5,7 @@
 
 use super::{rescue, Signature, CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH, TRACE_WIDTH};
 use prover::{
-    math::{fields::f128::BaseElement, utils::get_power_series, FieldElement, StarkField},
+    math::{fields::f128::BaseElement, get_power_series, FieldElement, StarkField},
     ExecutionTrace,
 };
 

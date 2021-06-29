@@ -11,7 +11,7 @@ use log::debug;
 use prover::{
     self,
     crypto::{Hasher, MerkleTree},
-    math::{fields::f128::BaseElement, utils::log2, FieldElement, StarkField},
+    math::{fields::f128::BaseElement, log2, FieldElement, StarkField},
     ProofOptions, StarkProof,
 };
 use std::time::Instant;

@@ -6,7 +6,7 @@
 use crate::ProofOptions;
 use core::cmp;
 use fri::FriProof;
-use math::utils::log2;
+use math::log2;
 use utils::{ByteReader, DeserializationError};
 
 mod context;

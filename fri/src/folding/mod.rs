@@ -7,10 +7,9 @@
 use rayon::prelude::*;
 
 use math::{
+    batch_inversion,
     fft::{get_inv_twiddles, serial_fft},
-    polynom,
-    utils::{batch_inversion, get_power_series_with_offset},
-    FieldElement, StarkField,
+    get_power_series_with_offset, polynom, FieldElement, StarkField,
 };
 use utils::{iter_mut, uninit_vector};
 
