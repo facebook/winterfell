@@ -10,4 +10,4 @@ pub mod f128;
 pub mod f62;
 
 mod extensions;
-pub use extensions::QuadExtension;
+pub use extensions::QuadExtensionA;

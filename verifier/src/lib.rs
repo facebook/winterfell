@@ -15,7 +15,7 @@ use crypto::{
 };
 
 pub use math;
-use math::field::{FieldElement, StarkField};
+use math::{FieldElement, StarkField};
 
 mod channel;
 use channel::VerifierChannel;

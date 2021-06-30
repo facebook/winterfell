@@ -4,8 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use fri::FriOptions;
-use math::field::StarkField;
-use utils::{ByteReader, ByteWriter, DeserializationError};
+use math::StarkField;
+use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 // TYPES AND INTERFACES
 // ================================================================================================
@@ -141,12 +141,11 @@ impl ProofOptions {
         let max_remainder_size = 2usize.pow(self.fri_max_remainder_size as u32);
         FriOptions::new(self.blowup_factor(), folding_factor, max_remainder_size)
     }
+}
 
-    // SERIALIZATION / DESERIALIZATION
-    // --------------------------------------------------------------------------------------------
-
-    /// Serializes `self` and writes the resulting bytes into the `target` writer.
-    pub fn write_into<W: ByteWriter>(&self, target: &mut W) {
+impl Serializable for ProofOptions {
+    /// Serializes `self` and writes the resulting bytes into the `target`.
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_u8(self.num_queries);
         target.write_u8(self.blowup_factor);
         target.write_u8(self.grinding_factor);
@@ -155,22 +154,22 @@ impl ProofOptions {
         target.write_u8(self.fri_folding_factor);
         target.write_u8(self.fri_max_remainder_size);
     }
+}
 
-    /// Reads proof options from the specified source starting at the specified position and
-    /// increments `pos` to point to a position right after the end of read-in option bytes.
-    /// Returns an error of a valid proof options could not be read from the specified source.
-    pub fn read_from<R: ByteReader>(
-        source: &R,
-        pos: &mut usize,
-    ) -> Result<Self, DeserializationError> {
+impl Deserializable for ProofOptions {
+    /// Reads proof options from the specified `source` and returns the result.
+    ///
+    /// # Errors
+    /// Returns an error of a valid proof options could not be read from the specified `source`.
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         Ok(ProofOptions::new(
-            source.read_u8(pos)? as usize,
-            source.read_u8(pos)? as usize,
-            source.read_u8(pos)? as u32,
-            HashFunction::read_from(source, pos)?,
-            FieldExtension::read_from(source, pos)?,
-            source.read_u8(pos)? as usize,
-            2usize.pow(source.read_u8(pos)? as u32),
+            source.read_u8()? as usize,
+            source.read_u8()? as usize,
+            source.read_u8()? as u32,
+            HashFunction::read_from(source)?,
+            FieldExtension::read_from(source)?,
+            source.read_u8()? as usize,
+            2usize.pow(source.read_u8()? as u32),
         ))
     }
 }
@@ -191,25 +190,25 @@ impl FieldExtension {
             Self::Quadratic => 2,
         }
     }
+}
 
-    /// Serializes `self` and writes the resulting bytes into the `target` writer.
-    pub fn write_into<W: ByteWriter>(&self, target: &mut W) {
+impl Serializable for FieldExtension {
+    /// Serializes `self` and writes the resulting bytes into the `target`.
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_u8(*self as u8);
     }
+}
 
-    /// Reads a field extension enum from the byte at the specified position and increments
-    /// `pos` by one.
-    pub fn read_from<R: ByteReader>(
-        source: &R,
-        pos: &mut usize,
-    ) -> Result<Self, DeserializationError> {
-        match source.read_u8(pos)? {
+impl Deserializable for FieldExtension {
+    /// Reads a field extension enum from the specified `source`.
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        match source.read_u8()? {
             1 => Ok(FieldExtension::None),
             2 => Ok(FieldExtension::Quadratic),
-            value => Err(DeserializationError::InvalidValue(
-                value.to_string(),
-                "FieldExtension".to_string(),
-            )),
+            value => Err(DeserializationError::InvalidValue(format!(
+                "value {} cannot be deserialized as FieldExtension enum",
+                value.to_string()
+            ))),
         }
     }
 }
@@ -225,25 +224,25 @@ impl HashFunction {
             Self::Sha3_256 => 128,
         }
     }
+}
 
-    /// Serializes `self` and writes the resulting bytes into the `target` writer.
-    pub fn write_into<W: ByteWriter>(&self, target: &mut W) {
+impl Serializable for HashFunction {
+    /// Serializes `self` and writes the resulting bytes into the `target`.
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_u8(*self as u8);
     }
+}
 
-    /// Reads a hash function enum from the reader at the specified position and increments
-    /// `pos` by one.
-    pub fn read_from<R: ByteReader>(
-        source: &R,
-        pos: &mut usize,
-    ) -> Result<Self, DeserializationError> {
-        match source.read_u8(pos)? {
+impl Deserializable for HashFunction {
+    /// Reads a hash function enum from the specified `source`.
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        match source.read_u8()? {
             1 => Ok(HashFunction::Blake3_256),
             2 => Ok(HashFunction::Sha3_256),
-            value => Err(DeserializationError::InvalidValue(
-                value.to_string(),
-                "HashFunction".to_string(),
-            )),
+            value => Err(DeserializationError::InvalidValue(format!(
+                "value {} cannot be deserialized as HashFunction enum",
+                value.to_string()
+            ))),
         }
     }
 }

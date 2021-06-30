@@ -5,7 +5,7 @@
 
 use crate::errors::ProofSerializationError;
 use crypto::Hasher;
-use utils::{ByteReader, ByteWriter, DeserializationError};
+use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 // COMMITMENTS
 // ================================================================================================
@@ -61,32 +61,32 @@ impl Commitments {
         }
         Ok((commitments[0], commitments[1], commitments[2..].to_vec()))
     }
-
-    // SERIALIZATION / DESERIALIZATION
-    // --------------------------------------------------------------------------------------------
-
-    /// Serializes `self` and writes the resulting bytes into the `target` writer.
-    pub fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        assert!(self.0.len() < u16::MAX as usize);
-        target.write_u16(self.0.len() as u16);
-        target.write_u8_slice(&self.0);
-    }
-
-    /// Reads commitments from the specified source starting at the specified position and
-    /// increments `pos` to point to a position right after the end of read-in commitment bytes.
-    /// Returns an error of a valid Commitments struct could not be read from the specified source.
-    pub fn read_from<R: ByteReader>(
-        source: &R,
-        pos: &mut usize,
-    ) -> Result<Self, DeserializationError> {
-        let num_bytes = source.read_u16(pos)? as usize;
-        let result = source.read_u8_vec(pos, num_bytes)?;
-        Ok(Commitments(result))
-    }
 }
 
 impl Default for Commitments {
     fn default() -> Self {
         Commitments(Vec::new())
+    }
+}
+
+impl Serializable for Commitments {
+    /// Serializes `self` and writes the resulting bytes into the `target`.
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        assert!(self.0.len() < u16::MAX as usize);
+        target.write_u16(self.0.len() as u16);
+        target.write_u8_slice(&self.0);
+    }
+}
+
+impl Deserializable for Commitments {
+    /// Reads commitments from the specified `source` and returns the result.
+    ///
+    /// # Errors
+    /// Returns an error of a valid Commitments struct could not be read from the specified
+    /// `source`.
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let num_bytes = source.read_u16()? as usize;
+        let result = source.read_u8_vec(num_bytes)?;
+        Ok(Commitments(result))
     }
 }

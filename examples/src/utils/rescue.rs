@@ -6,7 +6,7 @@
 use crate::utils::{are_equal, EvaluationResult};
 use prover::{
     crypto::{DigestSerializationError, Hasher},
-    math::field::{f128::BaseElement, FieldElement},
+    math::{fields::f128::BaseElement, FieldElement},
     Serializable,
 };
 use std::slice;

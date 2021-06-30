@@ -5,7 +5,7 @@
 
 use crate::{utils::hash_values, FriProof, ProofSerializationError, VerifierError};
 use crypto::{BatchMerkleProof, Hasher, MerkleTree};
-use math::field::FieldElement;
+use math::FieldElement;
 use utils::{group_vector_elements, transpose_slice};
 
 // VERIFIER CHANNEL TRAIT

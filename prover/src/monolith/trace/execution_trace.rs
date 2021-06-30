@@ -5,7 +5,7 @@
 
 use super::{StarkDomain, TracePolyTable, TraceTable};
 use common::{Air, EvaluationFrame};
-use math::{fft, field::StarkField, polynom};
+use math::{fft, polynom, StarkField};
 use utils::{iter_mut, uninit_vector};
 
 #[cfg(feature = "concurrent")]

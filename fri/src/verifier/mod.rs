@@ -8,11 +8,7 @@ use crate::{
     VerifierError,
 };
 use crypto::Hasher;
-use math::{
-    field::{FieldElement, StarkField},
-    polynom,
-    utils::get_power_series_with_offset,
-};
+use math::{get_power_series_with_offset, polynom, FieldElement, StarkField};
 use std::{convert::TryInto, mem};
 
 mod context;

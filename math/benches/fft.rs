@@ -8,7 +8,8 @@ use rand::Rng;
 use std::time::Duration;
 use winter_math::{
     fft,
-    field::{f128::BaseElement, FieldElement, QuadExtension, StarkField},
+    fields::{f128::BaseElement, QuadExtensionA},
+    FieldElement, StarkField,
 };
 
 const SIZES: [usize; 3] = [262_144, 524_288, 1_048_576];
@@ -51,10 +52,10 @@ fn fft_evaluate_poly(c: &mut Criterion) {
 
     for &size in SIZES.iter() {
         let twiddles = fft::get_twiddles::<BaseElement>(size);
-        let p = QuadExtension::<BaseElement>::prng_vector(get_seed(), size / blowup_factor);
+        let p = QuadExtensionA::<BaseElement>::prng_vector(get_seed(), size / blowup_factor);
         group.bench_function(BenchmarkId::new("extension", size), |bench| {
             bench.iter_with_large_drop(|| {
-                let mut result = QuadExtension::<BaseElement>::zeroed_vector(size);
+                let mut result = QuadExtensionA::<BaseElement>::zeroed_vector(size);
                 result[..p.len()].copy_from_slice(&p);
                 fft::evaluate_poly(&mut result, &twiddles);
                 result

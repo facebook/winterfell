@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use common::ComputationContext;
-use math::{fft, field::StarkField, utils::log2};
+use math::{fft, log2, StarkField};
 
 // TYPES AND INTERFACES
 // ================================================================================================

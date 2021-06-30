@@ -5,10 +5,7 @@
 
 use crate::{ComputationContext, ProofOptions};
 use crypto::{Hasher, PublicCoin};
-use math::{
-    fft,
-    field::{FieldElement, StarkField},
-};
+use math::{fft, FieldElement, StarkField};
 use std::collections::{BTreeSet, HashMap};
 use utils::Serializable;
 

@@ -5,12 +5,7 @@
 
 use super::{constraints::CompositionPoly, StarkDomain, TracePolyTable};
 use common::{Air, DeepCompositionCoefficients, EvaluationFrame};
-use math::{
-    fft,
-    field::{FieldElement, StarkField},
-    polynom,
-    utils::{add_in_place, log2, mul_acc},
-};
+use math::{add_in_place, fft, log2, mul_acc, polynom, FieldElement, StarkField};
 use std::marker::PhantomData;
 use utils::iter_mut;
 

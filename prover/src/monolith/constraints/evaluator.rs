@@ -11,7 +11,7 @@ use common::{
     Air, ConstraintCompositionCoefficients, ConstraintDivisor, EvaluationFrame,
     TransitionConstraintGroup,
 };
-use math::field::FieldElement;
+use math::FieldElement;
 use std::collections::HashMap;
 use utils::iter_mut;
 

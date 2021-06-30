@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use common::{Air, ConstraintCompositionCoefficients, ConstraintDivisor, EvaluationFrame};
-use math::{field::FieldElement, polynom};
+use math::{polynom, FieldElement};
 
 // CONSTRAINT EVALUATION
 // ================================================================================================

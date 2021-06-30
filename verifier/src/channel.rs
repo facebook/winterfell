@@ -6,7 +6,7 @@
 use common::{errors::VerifierError, proof::StarkProof, Air, EvaluationFrame};
 use crypto::{BatchMerkleProof, Hasher, MerkleTree};
 use fri::VerifierChannel as FriVerifierChannel;
-use math::field::{FieldElement, StarkField};
+use math::{FieldElement, StarkField};
 
 // TYPES AND INTERFACES
 // ================================================================================================

@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crypto::Hasher;
-use math::field::FieldElement;
+use math::FieldElement;
 use utils::{iter_mut, uninit_vector};
 
 #[cfg(feature = "concurrent")]

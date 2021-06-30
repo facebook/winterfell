@@ -5,7 +5,7 @@
 
 use common::{proof::Queries, EvaluationFrame};
 use crypto::{Hasher, MerkleTree};
-use math::field::StarkField;
+use math::StarkField;
 use utils::{batch_iter_mut, uninit_vector};
 
 #[cfg(feature = "concurrent")]

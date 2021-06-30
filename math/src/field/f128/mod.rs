@@ -3,11 +3,17 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+//! An implementation of a 128-bit STARK-friendly prime field with modulus 2^128 - 45 * 2^40 + 1.
+//!
+//! Operations in this field are implemented using Barret reduction and are stored in their
+//! canonical form using `u128` as the backing type. However, this field was not chosen with any
+//! significant thought given to performance, and the implementations of most operations are
+//! sub-optimal as well.
+
 use super::{
     traits::{FieldElement, StarkField},
-    QuadExtension,
+    QuadExtensionA,
 };
-use crate::errors::SerializationError;
 use core::{
     convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter},
@@ -16,7 +22,7 @@ use core::{
     slice,
 };
 use rand::{distributions::Uniform, prelude::*};
-use utils::{AsBytes, ByteWriter, Serializable};
+use utils::{AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 #[cfg(test)]
 mod tests;
@@ -38,6 +44,10 @@ const ELEMENT_BYTES: usize = std::mem::size_of::<u128>();
 // FIELD ELEMENT
 // ================================================================================================
 
+/// Represents a base field element.
+///
+/// Internal values are stored in their canonical form in the range [0, M). The backing type is
+/// `u128`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub struct BaseElement(u128);
 
@@ -92,18 +102,21 @@ impl FieldElement for BaseElement {
         unsafe { slice::from_raw_parts(p as *const u8, len) }
     }
 
-    unsafe fn bytes_as_elements(bytes: &[u8]) -> Result<&[Self], SerializationError> {
+    unsafe fn bytes_as_elements(bytes: &[u8]) -> Result<&[Self], DeserializationError> {
         if bytes.len() % Self::ELEMENT_BYTES != 0 {
-            return Err(SerializationError::NotEnoughBytesForWholeElements(
+            return Err(DeserializationError::InvalidValue(format!(
+                "number of bytes ({}) does not divide into whole number of field elements",
                 bytes.len(),
-            ));
+            )));
         }
 
         let p = bytes.as_ptr();
         let len = bytes.len() / Self::ELEMENT_BYTES;
 
         if (p as usize) % mem::align_of::<u128>() != 0 {
-            return Err(SerializationError::InvalidMemoryAlignment);
+            return Err(DeserializationError::InvalidValue(
+                "slice memory alignment is not valid for this field element type".to_string(),
+            ));
         }
 
         Ok(slice::from_raw_parts(p as *const Self, len))
@@ -133,26 +146,26 @@ impl FieldElement for BaseElement {
 }
 
 impl StarkField for BaseElement {
-    type QuadExtension = QuadExtension<Self>;
+    type QuadExtension = QuadExtensionA<Self>;
 
-    /// sage: MODULUS = 2^128 - 45 * 2^40 + 1
-    /// sage: GF(MODULUS).is_prime_field()
-    /// True
-    /// sage: GF(MODULUS).order()
+    /// sage: MODULUS = 2^128 - 45 * 2^40 + 1 \
+    /// sage: GF(MODULUS).is_prime_field() \
+    /// True \
+    /// sage: GF(MODULUS).order() \
     /// 340282366920938463463374557953744961537
     const MODULUS: Self::PositiveInteger = M;
     const MODULUS_BITS: u32 = 128;
 
-    /// sage: GF(MODULUS).primitive_element()
+    /// sage: GF(MODULUS).primitive_element() \
     /// 3
     const GENERATOR: Self = BaseElement(3);
 
-    /// sage: is_odd((MODULUS - 1) / 2^40)
+    /// sage: is_odd((MODULUS - 1) / 2^40) \
     /// True
     const TWO_ADICITY: u32 = 40;
 
-    /// sage: k = (MODULUS - 1) / 2^40
-    /// sage: GF(MODULUS).primitive_element()^k
+    /// sage: k = (MODULUS - 1) / 2^40 \
+    /// sage: GF(MODULUS).primitive_element()^k \
     /// 23953097886125630542083529559205016746
     const TWO_ADIC_ROOT_OF_UNITY: Self = BaseElement(G);
 
@@ -316,12 +329,25 @@ impl AsBytes for BaseElement {
     }
 }
 
-// SERIALIZATION
+// SERIALIZATION / DESERIALIZATION
 // ------------------------------------------------------------------------------------------------
 
 impl Serializable for BaseElement {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_u8_slice(&self.0.to_le_bytes());
+    }
+}
+
+impl Deserializable for BaseElement {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let value = source.read_u128()?;
+        if value >= M {
+            return Err(DeserializationError::InvalidValue(format!(
+                "invalid field element: value {} is greater than or equal to the field modulus",
+                value
+            )));
+        }
+        Ok(BaseElement(value))
     }
 }
 
@@ -534,7 +560,7 @@ fn add_192x192(a0: u64, a1: u64, a2: u64, b0: u64, b1: u64, b2: u64) -> (u64, u6
 }
 
 #[inline]
-pub const fn add64_with_carry(a: u64, b: u64, carry: u64) -> (u64, u64) {
+const fn add64_with_carry(a: u64, b: u64, carry: u64) -> (u64, u64) {
     let ret = (a as u128) + (b as u128) + (carry as u128);
     (ret as u64, (ret >> 64) as u64)
 }

@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use common::{Air, DeepCompositionCoefficients, EvaluationFrame, FieldExtension};
-use math::field::FieldElement;
+use math::FieldElement;
 
 // DEEP COMPOSER
 // ================================================================================================

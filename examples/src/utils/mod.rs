@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use prover::{
-    math::field::{f128::BaseElement, FieldElement, StarkField},
+    math::{fields::f128::BaseElement, FieldElement, StarkField},
     ExecutionTrace,
 };
 use std::ops::Range;

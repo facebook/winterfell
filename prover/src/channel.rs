@@ -9,8 +9,9 @@ use common::{
 };
 use crypto::{Hasher, PublicCoin};
 use fri::{self, FriProof};
-use math::field::FieldElement;
+use math::FieldElement;
 use std::marker::PhantomData;
+use utils::Serializable;
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;

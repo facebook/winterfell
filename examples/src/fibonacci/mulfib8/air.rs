@@ -5,7 +5,7 @@
 
 use crate::utils::are_equal;
 use prover::{
-    math::field::{f128::BaseElement, FieldElement},
+    math::{fields::f128::BaseElement, FieldElement},
     Air, Assertion, ComputationContext, EvaluationFrame, ExecutionTrace, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };

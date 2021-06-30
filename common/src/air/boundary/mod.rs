@@ -4,11 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{Assertion, ConstraintDivisor};
-use math::{
-    fft,
-    field::{FieldElement, StarkField},
-    polynom,
-};
+use math::{fft, polynom, FieldElement, StarkField};
 use std::collections::HashMap;
 
 #[cfg(test)]

@@ -4,11 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use common::EvaluationFrame;
-use math::{
-    field::{FieldElement, StarkField},
-    polynom,
-    utils::log2,
-};
+use math::{log2, polynom, FieldElement, StarkField};
 use utils::iter;
 
 #[cfg(feature = "concurrent")]

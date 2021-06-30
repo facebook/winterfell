@@ -4,8 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::ProofOptions;
-use math::{field::StarkField, utils::log2};
-use utils::{ByteReader, ByteWriter, DeserializationError};
+use math::{log2, StarkField};
+use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 // PROOF HEADER
 // ================================================================================================
@@ -67,30 +67,29 @@ impl Context {
     pub fn options(&self) -> &ProofOptions {
         &self.options
     }
+}
 
-    // SERIALIZATION / DESERIALIZATION
-    // --------------------------------------------------------------------------------------------
-
-    /// Serializes `self` and writes the resulting bytes into the `target` writer.
-    pub fn write_into<W: ByteWriter>(&self, target: &mut W) {
+impl Serializable for Context {
+    /// Serializes `self` and writes the resulting bytes into the `target`.
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_u8(self.lde_domain_depth);
         assert!(self.field_modulus_bytes.len() < u8::MAX as usize);
         target.write_u8(self.field_modulus_bytes.len() as u8);
         target.write_u8_slice(&self.field_modulus_bytes);
         self.options.write_into(target);
     }
+}
 
-    /// Reads proof context from the specified source starting at the specified position and
-    /// increments `pos` to point to a position right after the end of read-in context bytes.
-    /// Returns an error of a valid Context struct could not be read from the specified source.
-    pub fn read_from<R: ByteReader>(
-        source: &R,
-        pos: &mut usize,
-    ) -> Result<Self, DeserializationError> {
-        let lde_domain_depth = source.read_u8(pos)?;
-        let num_modulus_bytes = source.read_u8(pos)? as usize;
-        let field_modulus_bytes = source.read_u8_vec(pos, num_modulus_bytes)?;
-        let options = ProofOptions::read_from(source, pos)?;
+impl Deserializable for Context {
+    /// Reads proof context from the specified `source` and returns the result.
+    ///
+    /// # Errors
+    /// Returns an error of a valid Context struct could not be read from the specified `source`.
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let lde_domain_depth = source.read_u8()?;
+        let num_modulus_bytes = source.read_u8()? as usize;
+        let field_modulus_bytes = source.read_u8_vec(num_modulus_bytes)?;
+        let options = ProofOptions::read_from(source)?;
 
         Ok(Context {
             lde_domain_depth,

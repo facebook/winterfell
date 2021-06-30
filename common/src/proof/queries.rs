@@ -5,11 +5,10 @@
 
 use crate::errors::ProofSerializationError;
 use crypto::{BatchMerkleProof, Hasher};
-use math::{
-    field::FieldElement,
-    utils::{log2, read_elements_into_vec},
+use math::{log2, FieldElement};
+use utils::{
+    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
 };
-use utils::{ByteReader, ByteWriter, DeserializationError};
 
 // QUERIES
 // ================================================================================================
@@ -91,12 +90,9 @@ impl Queries {
 
         // read bytes corresponding to each query, convert them into field elements,
         // and also hash them to build leaf nodes of the batch Merkle proof
-        for (query_bytes, query_hash) in self
-            .values
-            .chunks(num_query_bytes)
-            .zip(hashed_queries.iter_mut())
-        {
-            let elements = read_elements_into_vec::<E>(query_bytes).map_err(|err| {
+        let mut reader = SliceReader::new(&self.values);
+        for query_hash in hashed_queries.iter_mut() {
+            let elements = E::read_batch_from(&mut reader, elements_per_query).map_err(|err| {
                 ProofSerializationError::FailedToParseQueryValues(err.to_string())
             })?;
             *query_hash = H::hash_elements(&elements);
@@ -112,12 +108,11 @@ impl Queries {
 
         Ok((merkle_proof, query_values))
     }
+}
 
-    // SERIALIZATION / DESERIALIZATION
-    // --------------------------------------------------------------------------------------------
-
-    /// Serializes `self` and writes the resulting bytes into the `target` writer.
-    pub fn write_into<W: ByteWriter>(&self, target: &mut W) {
+impl Serializable for Queries {
+    /// Serializes `self` and writes the resulting bytes into the `target`.
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
         // write value bytes
         target.write_u32(self.values.len() as u32);
         target.write_u8_slice(&self.values);
@@ -126,21 +121,21 @@ impl Queries {
         target.write_u32(self.paths.len() as u32);
         target.write_u8_slice(&self.paths);
     }
+}
 
-    /// Reads a query struct from the specified source starting at the specified position and
-    /// increments `pos` to point to a position right after the end of read-in query bytes.
+impl Deserializable for Queries {
+    /// Reads a query struct from the specified `source` and returns the result
+    ///
+    /// # Errors
     /// Returns an error of a valid query struct could not be read from the specified source.
-    pub fn read_from<R: ByteReader>(
-        source: &R,
-        pos: &mut usize,
-    ) -> Result<Self, DeserializationError> {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         // read values
-        let num_value_bytes = source.read_u32(pos)?;
-        let values = source.read_u8_vec(pos, num_value_bytes as usize)?;
+        let num_value_bytes = source.read_u32()?;
+        let values = source.read_u8_vec(num_value_bytes as usize)?;
 
         // read paths
-        let num_paths_bytes = source.read_u32(pos)?;
-        let paths = source.read_u8_vec(pos, num_paths_bytes as usize)?;
+        let num_paths_bytes = source.read_u32()?;
+        let paths = source.read_u8_vec(num_paths_bytes as usize)?;
 
         Ok(Queries { paths, values })
     }

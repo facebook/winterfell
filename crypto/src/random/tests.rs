@@ -6,7 +6,7 @@
 use std::collections::HashSet;
 
 use crate::{hash::Blake3_256, Hasher};
-use math::field::f128::BaseElement;
+use math::fields::f128::BaseElement;
 
 #[test]
 fn draw_elements() {

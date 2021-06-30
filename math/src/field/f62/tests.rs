@@ -3,10 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{
-    AsBytes, BaseElement, ElementDecodingError, FieldElement, Serializable, SerializationError,
-    StarkField,
-};
+use super::{AsBytes, BaseElement, DeserializationError, FieldElement, Serializable, StarkField};
 use num_bigint::BigUint;
 use proptest::prelude::*;
 use std::convert::TryFrom;
@@ -154,20 +151,15 @@ fn try_from_slice() {
 
     let bytes = vec![1, 0, 0, 0, 0, 0, 0];
     let result = BaseElement::try_from(bytes.as_slice());
-    assert_eq!(Err(ElementDecodingError::NotEnoughBytes(8, 7)), result);
+    assert!(result.is_err());
 
     let bytes = vec![1, 0, 0, 0, 0, 0, 0, 0, 0];
     let result = BaseElement::try_from(bytes.as_slice());
-    assert_eq!(Err(ElementDecodingError::TooManyBytes(8, 9)), result);
+    assert!(result.is_err());
 
     let bytes = vec![255, 255, 255, 255, 255, 255, 255, 255];
     let result = BaseElement::try_from(bytes.as_slice());
-    assert_eq!(
-        Err(ElementDecodingError::ValueTooLarger(
-            "18446744073709551615".to_string()
-        )),
-        result
-    );
+    assert!(result.is_err());
 }
 
 #[test]
@@ -227,13 +219,10 @@ fn bytes_as_elements() {
     assert_eq!(elements, result.unwrap());
 
     let result = unsafe { BaseElement::bytes_as_elements(&bytes[..33]) };
-    assert_eq!(
-        result,
-        Err(SerializationError::NotEnoughBytesForWholeElements(33))
-    );
+    assert!(matches!(result, Err(DeserializationError::InvalidValue(_))));
 
     let result = unsafe { BaseElement::bytes_as_elements(&bytes[1..33]) };
-    assert_eq!(result, Err(SerializationError::InvalidMemoryAlignment));
+    assert!(matches!(result, Err(DeserializationError::InvalidValue(_))));
 }
 
 // INITIALIZATION

@@ -7,10 +7,7 @@ use crate::{Example, ExampleOptions};
 use log::debug;
 use prover::{
     self,
-    math::{
-        field::{f128::BaseElement, FieldElement},
-        utils::log2,
-    },
+    math::{fields::f128::BaseElement, log2, FieldElement},
     ProofOptions, StarkProof,
 };
 use std::time::Instant;

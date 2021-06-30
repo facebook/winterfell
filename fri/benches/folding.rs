@@ -4,11 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use math::{
-    field::{f128::BaseElement, FieldElement, StarkField},
-    polynom,
-    utils::{get_power_series, log2},
-};
+use math::{fields::f128::BaseElement, get_power_series, log2, polynom, FieldElement, StarkField};
 use utils::group_vector_elements;
 use winter_fri::folding;
 

@@ -5,6 +5,7 @@
 
 use super::*;
 use num_bigint::BigUint;
+use utils::SliceReader;
 
 // BASIC ALGEBRA
 // ================================================================================================
@@ -199,13 +200,50 @@ fn bytes_as_elements() {
     assert_eq!(expected, result.unwrap());
 
     let result = unsafe { BaseElement::bytes_as_elements(&bytes) };
-    assert_eq!(
-        result,
-        Err(SerializationError::NotEnoughBytesForWholeElements(65))
-    );
+    assert!(matches!(result, Err(DeserializationError::InvalidValue(_))));
 
     let result = unsafe { BaseElement::bytes_as_elements(&bytes[1..]) };
-    assert_eq!(result, Err(SerializationError::InvalidMemoryAlignment));
+    assert!(matches!(result, Err(DeserializationError::InvalidValue(_))));
+}
+
+#[test]
+fn read_elements_from() {
+    let bytes: Vec<u8> = vec![
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    ];
+    let expected = vec![
+        BaseElement::new(1),
+        BaseElement::new(2),
+        BaseElement::new(3),
+        BaseElement::new(4),
+    ];
+
+    // fill whole target
+    let mut reader = SliceReader::new(&bytes[..64]);
+    let result = BaseElement::read_batch_from(&mut reader, 4);
+    assert!(result.is_ok());
+    assert_eq!(expected, result.unwrap());
+    assert_eq!(false, reader.has_more_bytes());
+
+    // partial number of elements
+    let mut reader = SliceReader::new(&bytes[..65]);
+    let result = BaseElement::read_batch_from(&mut reader, 4);
+    assert!(result.is_ok());
+    assert_eq!(expected, result.unwrap());
+    assert_eq!(true, reader.has_more_bytes());
+
+    // invalid element
+    let mut reader = SliceReader::new(&bytes[16..]);
+    let result = BaseElement::read_batch_from(&mut reader, 4);
+    assert!(result.is_err());
+    match result {
+        Err(err) => {
+            assert!(matches!(err, DeserializationError::InvalidValue(_)));
+        }
+        _ => (),
+    }
 }
 
 // INITIALIZATION
