@@ -65,7 +65,7 @@ pub fn verify_proof(
         .iter()
         .map(|&com| {
             coin.reseed(com);
-            coin.draw()
+            coin.draw().unwrap()
         })
         .collect::<Vec<BaseElement>>();
     let context = VerifierContext::<BaseElement, BaseElement, Blake3_256>::new(

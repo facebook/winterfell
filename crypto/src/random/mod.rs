@@ -3,17 +3,63 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::Hasher;
+use crate::{errors::PublicCoinError, Hasher};
 use core::{convert::TryInto, marker::PhantomData};
 use math::{FieldElement, StarkField};
-
-#[cfg(test)]
-mod tests;
 
 // PUBLIC COIN
 // ================================================================================================
 
-pub struct PublicCoin<B: StarkField, H: Hasher> {
+/// Pseudo-random element generator for finite fields.
+///
+/// A public coin can be used to draws elements uniformly at random from the specified base field
+// (which is specified via the `B` type parameter) or from any extension of the base field.
+///
+/// Internally we use a cryptographic hash function (which is specified via the `H` type parameter),
+/// to draw elements from the field. The coin works roughly as follows:
+/// - The internal state of the coin consists of a `seed` and a `counter`. At instantiation
+///   time, the `seed` is set to a hash of the provided bytes, and the `counter` is set to 0.
+/// - To draw the next element, we increment the `counter` and compute hash(`seed` || `counter`).
+///   If the resulting value is a valid field element, we return the result; otherwise we try
+///   again until a valid element is found or the number of allowed tries is exceeded.
+/// - We can also re-seed the coin with a new value. During the reseeding procedure, the
+///   seed is set to hash(`old_seed` || `new_seed`), and the counter is reset to 0.
+///
+/// # Examples
+/// ```
+/// # use winter_crypto::{PublicCoin, hashers::Blake3_256};
+/// # use math::fields::f128::BaseElement;
+/// // instantiate a public coin using BLAKE3 as the hash function
+/// let mut coin = PublicCoin::<BaseElement, Blake3_256>::new(&[1, 2, 3, 4]);
+///
+/// // should draw different elements each time
+/// let e1 = coin.draw::<BaseElement>().unwrap();;
+/// let e2 = coin.draw::<BaseElement>().unwrap();;
+/// assert_ne!(e1, e2);
+///
+/// let e3 = coin.draw::<BaseElement>().unwrap();;
+/// assert_ne!(e1, e3);
+/// assert_ne!(e2, e3);
+///
+/// // should draw same elements for the same seed
+/// let mut coin1 = PublicCoin::<BaseElement, Blake3_256>::new(&[1, 2, 3, 4]);
+/// let mut coin2 = PublicCoin::<BaseElement, Blake3_256>::new(&[1, 2, 3, 4]);
+/// let e1 = coin1.draw::<BaseElement>().unwrap();;
+/// let e2 = coin2.draw::<BaseElement>().unwrap();;
+/// assert_eq!(e1, e2);
+///
+/// // should draw different elements based on seed
+/// let mut coin1 = PublicCoin::<BaseElement, Blake3_256>::new(&[1, 2, 3, 4]);
+/// let mut coin2 = PublicCoin::<BaseElement, Blake3_256>::new(&[2, 3, 4, 5]);
+/// let e1 = coin1.draw::<BaseElement>().unwrap();;
+/// let e2 = coin2.draw::<BaseElement>().unwrap();;
+/// assert_ne!(e1, e2);
+/// ```
+pub struct PublicCoin<B, H>
+where
+    B: StarkField,
+    H: Hasher,
+{
     seed: H::Digest,
     counter: u64,
     _base_field: PhantomData<B>,
@@ -35,13 +81,52 @@ impl<B: StarkField, H: Hasher> PublicCoin<B, H> {
     // RESEEDING
     // --------------------------------------------------------------------------------------------
 
-    /// Reseeds the coin with the specified data by setting the new seed to hash(seed || data).
+    /// Reseeds the coin with the specified data by setting the new seed to hash(`seed` || `data`).
+    ///
+    /// # Examples
+    /// ```
+    /// # use winter_crypto::{PublicCoin, Hasher, hashers::Blake3_256};
+    /// # use math::fields::f128::BaseElement;
+    /// let mut coin1 = PublicCoin::<BaseElement, Blake3_256>::new(&[1, 2, 3, 4]);
+    /// let mut coin2 = PublicCoin::<BaseElement, Blake3_256>::new(&[1, 2, 3, 4]);
+    ///
+    /// // should draw the same element form both coins
+    /// let e1 = coin1.draw::<BaseElement>().unwrap();
+    /// let e2 = coin2.draw::<BaseElement>().unwrap();;
+    /// assert_eq!(e1, e2);
+    ///
+    /// // after reseeding should draw different elements
+    /// coin2.reseed(Blake3_256::hash(&[2, 3, 4, 5]));
+    /// let e1 = coin1.draw::<BaseElement>().unwrap();;
+    /// let e2 = coin2.draw::<BaseElement>().unwrap();;
+    /// assert_ne!(e1, e2);
+    /// ```
     pub fn reseed(&mut self, data: H::Digest) {
         self.seed = H::merge(&[self.seed, data]);
         self.counter = 0;
     }
 
-    /// Reseeds the coin with the specified value by setting the new seed to hash(seed || value).
+    /// Reseeds the coin with the specified value by setting the new seed to hash(`seed` ||
+    /// `value`).
+    ///
+    /// # Examples
+    /// ```
+    /// # use winter_crypto::{PublicCoin, Hasher, hashers::Blake3_256};
+    /// # use math::fields::f128::BaseElement;
+    /// let mut coin1 = PublicCoin::<BaseElement, Blake3_256>::new(&[1, 2, 3, 4]);
+    /// let mut coin2 = PublicCoin::<BaseElement, Blake3_256>::new(&[1, 2, 3, 4]);
+    ///
+    /// // should draw the same element form both coins
+    /// let e1 = coin1.draw::<BaseElement>().unwrap();;
+    /// let e2 = coin2.draw::<BaseElement>().unwrap();;
+    /// assert_eq!(e1, e2);
+    ///
+    /// // after reseeding should draw different elements
+    /// coin2.reseed_with_int(42);
+    /// let e1 = coin1.draw::<BaseElement>().unwrap();;
+    /// let e2 = coin2.draw::<BaseElement>().unwrap();;
+    /// assert_ne!(e1, e2);
+    /// ```
     pub fn reseed_with_int(&mut self, value: u64) {
         self.seed = H::merge_with_int(self.seed, value);
         self.counter = 0;
@@ -52,13 +137,28 @@ impl<B: StarkField, H: Hasher> PublicCoin<B, H> {
 
     /// Returns the number of leading zeros in the seed if it is interpreted as an integer in
     /// big-endian byte order.
+    ///
+    /// # Examples
+    /// ```
+    /// # use winter_crypto::{PublicCoin, hashers::Blake3_256};
+    /// # use math::fields::f128::BaseElement;
+    /// let mut coin = PublicCoin::<BaseElement, Blake3_256>::new(&[1, 2, 3, 4]);
+    ///
+    /// let mut value = 0;
+    /// while coin.check_leading_zeros(value) < 2 {
+    ///     value += 1;
+    /// }
+    ///
+    /// coin.reseed_with_int(value);
+    /// assert!(coin.leading_zeros() >= 2);
+    /// ```
     pub fn leading_zeros(&self) -> u32 {
         let bytes = self.seed.as_ref();
         let seed_head = u64::from_le_bytes(bytes[..8].try_into().unwrap());
         seed_head.trailing_zeros()
     }
 
-    /// Computes hash(seed || value) and returns the number of leading zeros in the resulting
+    /// Computes hash(`seed` || `value`) and returns the number of leading zeros in the resulting
     /// value if it is interpreted as an integer in big-endian byte order.
     pub fn check_leading_zeros(&self, value: u64) -> u32 {
         let new_seed = H::merge_with_int(self.seed, value);
@@ -72,9 +172,14 @@ impl<B: StarkField, H: Hasher> PublicCoin<B, H> {
 
     /// Returns the next pseudo-random field element.
     ///
-    /// Panics if a valid field element could not be generated after 100 calls to PRNG;
-    pub fn draw<E: FieldElement<BaseField = B>>(&mut self) -> E {
-        for _ in 0..100 {
+    /// # Errors
+    /// Returns an error if a valid field element could not be generated after 100 calls to the
+    /// PRNG.
+    pub fn draw<E>(&mut self) -> Result<E, PublicCoinError>
+    where
+        E: FieldElement<BaseField = B>,
+    {
+        for _ in 0..200 {
             // get the next pseudo-random value and take the first ELEMENT_BYTES from it
             let value = self.next();
             let bytes = &value.as_ref()[..E::ELEMENT_BYTES as usize];
@@ -82,34 +187,72 @@ impl<B: StarkField, H: Hasher> PublicCoin<B, H> {
             // check if the bytes can be converted into a valid field element; if they can,
             // return; otherwise try again
             if let Some(element) = E::from_random_bytes(bytes) {
-                return element;
+                return Ok(element);
             }
         }
 
-        panic!("failed to generate a valid field element after 100 tries");
+        Err(PublicCoinError::FailedToDrawFieldElement(100))
     }
 
-    /// Returns the next pair of pseudo-random field element.
+    /// Returns the next pair of pseudo-random field elements.
     ///
-    /// Panics if valid field elements could not be generated after 200 calls to PRNG;
-    pub fn draw_pair<E: FieldElement<BaseField = B>>(&mut self) -> (E, E) {
-        (self.draw(), self.draw())
+    /// # Errors
+    /// Returns an error if any of the field elements could not be generated after 100 calls to
+    /// the PRNG;
+    pub fn draw_pair<E>(&mut self) -> Result<(E, E), PublicCoinError>
+    where
+        E: FieldElement<BaseField = B>,
+    {
+        Ok((self.draw()?, self.draw()?))
     }
 
-    /// Returns the next triple of pseudo-random field elements.
+    /// Returns the next triplet of pseudo-random field elements.
     ///
-    /// Panics if valid field elements could not be generated after 300 calls to PRNG;
-    pub fn draw_triple<E: FieldElement<BaseField = B>>(&mut self) -> (E, E, E) {
-        (self.draw(), self.draw(), self.draw())
+    /// # Errors
+    /// Returns an error if any of the field elements could not be generated after 100 calls to
+    /// the PRNG;
+    pub fn draw_triple<E>(&mut self) -> Result<(E, E, E), PublicCoinError>
+    where
+        E: FieldElement<BaseField = B>,
+    {
+        Ok((self.draw()?, self.draw()?, self.draw()?))
     }
 
     /// Returns a vector of unique integers selected from the range [0, domain_size).
     ///
+    /// # Errors
+    /// Returns an error if the specified number of unique integers could not be generated
+    /// after 1000 calls to the PRNG.
+    ///
+    /// # Panics
     /// Panics if:
     /// - `domain_size` is not a power of two.
     /// - `num_values` is greater than or equal to `domain_size`.
-    /// - the specified number of unique integers could not be generated after 1000 calls to PRNG.
-    pub fn draw_integers(&mut self, num_values: usize, domain_size: usize) -> Vec<usize> {
+    ///
+    /// # Examples
+    /// ```
+    /// # use std::collections::HashSet;
+    /// # use winter_crypto::{PublicCoin, hashers::Blake3_256};
+    /// # use math::fields::f128::BaseElement;
+    /// let mut coin = PublicCoin::<BaseElement, Blake3_256>::new(&[1, 2, 3, 4]);
+    ///
+    /// let num_values = 20;
+    /// let domain_size = 64;
+    /// let values = coin.draw_integers(num_values, domain_size).unwrap();
+    ///
+    /// assert_eq!(num_values, values.len());
+    ///
+    /// let mut value_set = HashSet::new();
+    /// for value in values {
+    ///     assert!(value < domain_size);
+    ///     assert!(value_set.insert(value));
+    /// }
+    /// ```
+    pub fn draw_integers(
+        &mut self,
+        num_values: usize,
+        domain_size: usize,
+    ) -> Result<Vec<usize>, PublicCoinError> {
         assert!(
             domain_size.is_power_of_two(),
             "domain size must be a power of two"
@@ -141,15 +284,15 @@ impl<B: StarkField, H: Hasher> PublicCoin<B, H> {
             }
         }
 
-        assert_eq!(
-            values.len(),
-            num_values,
-            "needed to generate {} values, but generated only {}",
-            num_values,
-            values.len()
-        );
+        if values.len() < num_values {
+            return Err(PublicCoinError::FailedToDrawIntegers(
+                num_values,
+                values.len(),
+                1000,
+            ));
+        }
 
-        values
+        Ok(values)
     }
 
     // HELPER METHODS
@@ -159,48 +302,5 @@ impl<B: StarkField, H: Hasher> PublicCoin<B, H> {
     fn next(&mut self) -> H::Digest {
         self.counter += 1;
         H::merge_with_int(self.seed, self.counter)
-    }
-}
-
-// RANDOM FIELD ELEMENT GENERATOR
-// ================================================================================================
-
-pub struct RandomElementGenerator<H: Hasher> {
-    seed: H::Digest,
-    counter: u64,
-}
-
-impl<H: Hasher> RandomElementGenerator<H> {
-    /// Returns a new random element generator instantiated with the provided `seed` and `offset`.
-    pub fn new(seed: H::Digest) -> Self {
-        RandomElementGenerator { seed, counter: 0 }
-    }
-
-    /// Generates the next pseudo-random field element.
-    pub fn draw<E: FieldElement>(&mut self) -> E {
-        for _ in 0..100 {
-            // updated the seed by incrementing its counter and then hash the result
-            self.counter += 1;
-            let result = H::merge_with_int(self.seed, self.counter);
-            let bytes: &[u8] = result.as_ref();
-
-            // take the first ELEMENT_BYTES from the hashed seed and check if they can be
-            // converted into a valid field element; if the can, return; otherwise try again
-            if let Some(element) = E::from_random_bytes(&bytes[..(E::ELEMENT_BYTES as usize)]) {
-                return element;
-            }
-        }
-
-        panic!("failed to generate a valid field element after 100 tries");
-    }
-
-    /// Generates the next pair of pseudo-random field element.
-    pub fn draw_pair<E: FieldElement>(&mut self) -> (E, E) {
-        (self.draw(), self.draw())
-    }
-
-    /// Generate the next triple of pseudo-random field elements.
-    pub fn draw_triple<E: FieldElement>(&mut self) -> (E, E, E) {
-        (self.draw(), self.draw(), self.draw())
     }
 }

@@ -39,6 +39,8 @@ pub enum VerifierError {
     InconsistentBaseField,
     /// Proof deserialization failed: {0}
     ProofDeserializationError(String),
+    /// Failed to draw a random value from a public coin.
+    PublicCoinError,
     /// Constraint evaluations over the out-of-domain frame are inconsistent
     InconsistentOodConstraintEvaluations,
     /// Trace query does not match the commitment
@@ -60,6 +62,9 @@ impl fmt::Display for VerifierError {
             }
             Self::ProofDeserializationError(msg) => {
                 write!(f, "proof deserialization failed: {}", msg)
+            }
+            Self::PublicCoinError => {
+                write!(f, "failed to draw a random value from a public coin")
             }
             Self::InconsistentOodConstraintEvaluations => {
                 write!(f, "constraint evaluations over the out-of-domain frame are inconsistent")

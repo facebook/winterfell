@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{ComputationContext, ProofOptions};
-use crypto::{Hasher, PublicCoin};
+use crypto::{Hasher, PublicCoin, PublicCoinError};
 use math::{fft, FieldElement, StarkField};
 use std::collections::{BTreeSet, HashMap};
 use utils::Serializable;
@@ -307,18 +307,26 @@ pub trait Air: Send + Sync {
     fn get_constraint_composition_coefficients<E, H>(
         &self,
         coin: &mut PublicCoin<Self::BaseElement, H>,
-    ) -> ConstraintCompositionCoefficients<E>
+    ) -> Result<ConstraintCompositionCoefficients<E>, PublicCoinError>
     where
         E: FieldElement<BaseField = Self::BaseElement>,
         H: Hasher,
     {
-        let num_t_constraints = self.num_transition_constraints();
-        let num_b_constraints = self.get_assertions().len(); // TODO: this is heavy; do something lighter
-
-        ConstraintCompositionCoefficients {
-            transition: (0..num_t_constraints).map(|_| coin.draw_pair()).collect(),
-            boundary: (0..num_b_constraints).map(|_| coin.draw_pair()).collect(),
+        let mut t_coefficients = Vec::new();
+        for _ in 0..self.num_transition_constraints() {
+            t_coefficients.push(coin.draw_pair()?);
         }
+
+        // TODO: calling self.get_assertions() is heavy; do something lighter
+        let mut b_coefficients = Vec::new();
+        for _ in 0..self.get_assertions().len() {
+            b_coefficients.push(coin.draw_pair()?);
+        }
+
+        Ok(ConstraintCompositionCoefficients {
+            transition: t_coefficients,
+            boundary: b_coefficients,
+        })
     }
 
     /// Returns coefficients needed for random linear combinations during construction of DEEP
@@ -326,19 +334,27 @@ pub trait Air: Send + Sync {
     fn get_deep_composition_coefficients<E, H>(
         &self,
         coin: &mut PublicCoin<Self::BaseElement, H>,
-    ) -> DeepCompositionCoefficients<E>
+    ) -> Result<DeepCompositionCoefficients<E>, PublicCoinError>
     where
         E: FieldElement<BaseField = Self::BaseElement>,
         H: Hasher,
     {
-        let trace_width = self.trace_width();
-        let num_composition_columns = self.ce_blowup_factor();
-
-        DeepCompositionCoefficients {
-            trace: (0..trace_width).map(|_| coin.draw_triple()).collect(),
-            constraints: (0..num_composition_columns).map(|_| coin.draw()).collect(),
-            degree: coin.draw_pair(),
+        let mut t_coefficients = Vec::new();
+        for _ in 0..self.trace_width() {
+            t_coefficients.push(coin.draw_triple()?);
         }
+
+        // self.ce_blowup_factor() is the same as number of composition columns
+        let mut c_coefficients = Vec::new();
+        for _ in 0..self.ce_blowup_factor() {
+            c_coefficients.push(coin.draw()?);
+        }
+
+        Ok(DeepCompositionCoefficients {
+            trace: t_coefficients,
+            constraints: c_coefficients,
+            degree: coin.draw_pair()?,
+        })
     }
 }
 

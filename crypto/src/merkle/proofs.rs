@@ -6,11 +6,14 @@
 use crate::{DigestSerializationError, Hasher, ProofSerializationError};
 use std::collections::{BTreeMap, HashMap};
 
+/// Multiple Merkle paths aggregated into a single proof.
+///
+///
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BatchMerkleProof<H: Hasher> {
-    pub values: Vec<H::Digest>,
-    pub nodes: Vec<Vec<H::Digest>>,
-    pub depth: u8,
+    pub(super) values: Vec<H::Digest>,
+    pub(super) nodes: Vec<Vec<H::Digest>>,
+    pub(super) depth: u8,
 }
 
 impl<H: Hasher> BatchMerkleProof<H> {

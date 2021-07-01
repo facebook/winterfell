@@ -12,6 +12,7 @@ use utils::{group_slice_elements, AsBytes};
 // HASHER TRAIT
 // ================================================================================================
 
+/// Defines a cryptographic hash function.
 pub trait Hasher {
     type Digest: Debug + Copy + AsRef<[u8]> + Default + Eq + PartialEq + Send + Sync;
 
@@ -21,9 +22,6 @@ pub trait Hasher {
     /// Returns a hash of two digests. This method is intended for use in construction of
     /// Merkle trees.
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest;
-
-    /// Returns a hash of the provided digests concatenated together.
-    fn merge_many(data: &[Self::Digest]) -> Self::Digest;
 
     /// Returns hash(seed || value). This method is intended for use in PRNG and PoW contexts.
     fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest;
@@ -45,6 +43,8 @@ pub trait Hasher {
 // BLAKE3
 // ================================================================================================
 
+/// Implementation of the [Hasher](super::Hasher) trait for BLAKE3 hash function with 256-bit
+/// output.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Blake3_256();
 
@@ -62,14 +62,6 @@ impl Hasher for Blake3_256 {
 
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest {
         blake3::hash(values.as_bytes()).into()
-    }
-
-    fn merge_many(data: &[Self::Digest]) -> Self::Digest {
-        let mut hasher = blake3::Hasher::new();
-        for data in data.iter() {
-            hasher.update(data);
-        }
-        hasher.finalize().into()
     }
 
     fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest {
@@ -90,6 +82,8 @@ impl Hasher for Blake3_256 {
 // SHA3
 // ================================================================================================
 
+/// Implementation of the [Hasher](super::Hasher) trait for SHA3 hash function with 256-bit
+/// output.
 pub struct Sha3_256();
 
 impl Hasher for Sha3_256 {
@@ -106,14 +100,6 @@ impl Hasher for Sha3_256 {
 
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest {
         sha3::Sha3_256::digest(values.as_bytes()).into()
-    }
-
-    fn merge_many(data: &[Self::Digest]) -> Self::Digest {
-        let mut hasher = sha3::Sha3_256::new();
-        for data in data.iter() {
-            hasher.update(data);
-        }
-        hasher.finalize().into()
     }
 
     fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest {

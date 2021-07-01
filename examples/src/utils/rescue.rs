@@ -115,10 +115,6 @@ impl Hasher for Rescue128 {
         Self::digest(Hash::hashes_as_elements(values))
     }
 
-    fn merge_many(data: &[Self::Digest]) -> Self::Digest {
-        Self::digest(Hash::hashes_as_elements(data))
-    }
-
     fn merge_with_int(_seed: Self::Digest, _value: u64) -> Self::Digest {
         unimplemented!("not implemented")
     }

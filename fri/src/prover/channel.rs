@@ -49,7 +49,10 @@ impl<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> DefaultProverChan
         let value_offset = 32 - size_of::<usize>();
 
         // initialize the seed for PRNG
-        let seed = H::merge_many(&self.commitments);
+        let mut seed = self.commitments[0];
+        for &com in self.commitments.iter().skip(1) {
+            seed = H::merge(&[seed, com]);
+        }
 
         // draw values from PRNG until we get as many unique values as specified by num_queries
         let mut result = Vec::new();
@@ -101,6 +104,6 @@ where
     }
 
     fn draw_fri_alpha(&mut self) -> E {
-        self.coin.draw()
+        self.coin.draw().expect("failed to draw FRI alpha")
     }
 }

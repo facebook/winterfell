@@ -19,6 +19,15 @@ mod tests;
 // TYPES AND INTERFACES
 // ================================================================================================
 
+/// A fully-balanced Merkle tree.
+///
+/// ```text
+///      o        <- tree root
+///    /    \
+///   o      o    <- internal nodes
+///  / \    / \
+/// *   *  *   *  <- leaves
+/// ```
 #[derive(Debug)]
 pub struct MerkleTree<H: Hasher> {
     nodes: Vec<H::Digest>,
@@ -31,11 +40,15 @@ pub struct MerkleTree<H: Hasher> {
 impl<H: Hasher> MerkleTree<H> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
-    /// Returns new merkle tree built from the provide leaves using hash function specified by the
-    /// `H` generic parameter. Panics if the number of leaves is not a power of two.
-    /// When `concurrent` feature is enabled, the tree is built using as many threads as are
-    /// available in Rayon's global thread pool (usually as many threads as logical cores).
-    /// Otherwise, the tree is built using a single thread.
+    /// Returns new Merkle tree built from the provide leaves using hash function specified by the
+    /// `H` generic parameter.
+    ///
+    /// When `concurrent` feature is enabled, the tree is built using multiple threads.
+    ///
+    /// # Panics
+    /// Panics if:
+    /// * Fewer than two leaves were provided.
+    /// * Number of leaves is not a power of two.
     pub fn new(leaves: Vec<H::Digest>) -> Self {
         assert!(
             leaves.len().is_power_of_two(),
@@ -77,7 +90,10 @@ impl<H: Hasher> MerkleTree<H> {
     // PROVING METHODS
     // --------------------------------------------------------------------------------------------
 
-    /// Computes merkle path the given leaf index.
+    /// Computes a Merkle path to a leaf at the specified `index`.
+    ///
+    /// # Panics
+    /// Panics if the specified index is greater than or equal to the number of leaves in the tree.
     pub fn prove(&self, index: usize) -> Vec<H::Digest> {
         assert!(index < self.leaves.len(), "invalid index {}", index);
 
@@ -92,7 +108,13 @@ impl<H: Hasher> MerkleTree<H> {
         proof
     }
 
-    /// Computes merkle paths for the provided indexes and compresses the paths into a single proof.
+    /// Computes Merkle paths for the provided indexes and compresses the paths into a single proof.
+    ///
+    /// # Panics
+    /// Panics if:
+    /// * Any of the provided indexes are greater than or equal to the number of leaves in the
+    ///   tree.
+    /// * There are duplicates in the list of indexes.
     pub fn prove_batch(&self, indexes: &[usize]) -> BatchMerkleProof<H> {
         let n = self.leaves.len();
 
@@ -182,6 +204,10 @@ impl<H: Hasher> MerkleTree<H> {
 // HELPER FUNCTIONS
 // ================================================================================================
 
+/// Returns the internal nodes of a Merkle tree defined by the specified leaves.
+///
+/// The internal nodes are turned as a vector where the root is stored at position 1, its children
+/// are stored at positions 2, 3, their children are stored at positions 4, 5, 6, 7 etc.
 pub fn build_merkle_nodes<H: Hasher>(leaves: &[H::Digest]) -> Vec<H::Digest> {
     let n = leaves.len() / 2;
 

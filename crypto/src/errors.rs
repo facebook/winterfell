@@ -49,3 +49,37 @@ impl fmt::Display for ProofSerializationError {
         }
     }
 }
+
+// PUBLIC COIN ERROR
+// ================================================================================================
+
+/// Defines errors which can occur when drawing values from a public coin.
+#[derive(Debug, PartialEq)]
+pub enum PublicCoinError {
+    /// A valid element could not be drawn from the field after the specified number of tries.
+    FailedToDrawFieldElement(usize),
+    /// The required number of integer values could not be drawn from the specified domain after
+    /// the specified number of tries.
+    FailedToDrawIntegers(usize, usize, usize),
+}
+
+impl fmt::Display for PublicCoinError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::FailedToDrawFieldElement(num_tries) => {
+                write!(
+                    f,
+                    "failed to generate a valid field element after {} tries",
+                    num_tries
+                )
+            }
+            Self::FailedToDrawIntegers(num_expected, num_actual, num_tries) => {
+                write!(
+                    f,
+                    "needed to draw {} integers from a domain, but drew only {} after {} tries",
+                    num_expected, num_actual, num_tries
+                )
+            }
+        }
+    }
+}
