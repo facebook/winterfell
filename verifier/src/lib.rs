@@ -10,8 +10,8 @@ pub use utils::{ByteWriter, Serializable};
 
 pub use crypto;
 use crypto::{
-    hash::{Blake3_256, Hasher, Sha3_256},
-    PublicCoin,
+    hashers::{Blake3_256, Sha3_256},
+    Hasher, PublicCoin,
 };
 
 pub use math;

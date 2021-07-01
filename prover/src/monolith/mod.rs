@@ -8,7 +8,10 @@ use common::{
     errors::ProverError, proof::StarkProof, Air, FieldExtension, HashFunction, ProofOptions,
     TraceInfo,
 };
-use crypto::hash::{Blake3_256, Hasher, Sha3_256};
+use crypto::{
+    hashers::{Blake3_256, Sha3_256},
+    Hasher,
+};
 use log::debug;
 use math::{fft::infer_degree, log2, FieldElement, StarkField};
 use std::time::Instant;

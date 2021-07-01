@@ -7,7 +7,7 @@ use crate::{
     monolith::StarkDomain,
     tests::{build_context, build_fib_trace},
 };
-use crypto::{hash::Blake3_256, Hasher, MerkleTree};
+use crypto::{hashers::Blake3_256, Hasher, MerkleTree};
 use math::{
     fields::f128::BaseElement, get_power_series, get_power_series_with_offset, log2, polynom,
     FieldElement, StarkField,

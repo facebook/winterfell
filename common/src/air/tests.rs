@@ -8,7 +8,7 @@ use super::{
     TransitionConstraintDegree,
 };
 use crate::{FieldExtension, HashFunction};
-use crypto::{hash, RandomElementGenerator};
+use crypto::{hashers::Blake3_256, RandomElementGenerator};
 use math::{fields::f128::BaseElement, get_power_series, log2, polynom, FieldElement, StarkField};
 use rand::{seq::SliceRandom, thread_rng};
 use std::collections::HashMap;
@@ -400,7 +400,7 @@ pub fn build_context(trace_length: usize, trace_width: usize) -> ComputationCont
     ComputationContext::new(trace_width, trace_length, t_degrees, options)
 }
 
-pub fn build_prng() -> RandomElementGenerator<hash::Blake3_256> {
+pub fn build_prng() -> RandomElementGenerator<Blake3_256> {
     RandomElementGenerator::new([0; 32])
 }
 
