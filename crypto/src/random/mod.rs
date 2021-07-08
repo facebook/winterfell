@@ -30,7 +30,7 @@ use math::{FieldElement, StarkField};
 /// # use winter_crypto::{PublicCoin, hashers::Blake3_256};
 /// # use math::fields::f128::BaseElement;
 /// // instantiate a public coin using BLAKE3 as the hash function
-/// let mut coin = PublicCoin::<BaseElement, Blake3_256>::new(&[1, 2, 3, 4]);
+/// let mut coin = PublicCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
 ///
 /// // should draw different elements each time
 /// let e1 = coin.draw::<BaseElement>().unwrap();;
@@ -42,15 +42,15 @@ use math::{FieldElement, StarkField};
 /// assert_ne!(e2, e3);
 ///
 /// // should draw same elements for the same seed
-/// let mut coin1 = PublicCoin::<BaseElement, Blake3_256>::new(&[1, 2, 3, 4]);
-/// let mut coin2 = PublicCoin::<BaseElement, Blake3_256>::new(&[1, 2, 3, 4]);
+/// let mut coin1 = PublicCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
+/// let mut coin2 = PublicCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
 /// let e1 = coin1.draw::<BaseElement>().unwrap();;
 /// let e2 = coin2.draw::<BaseElement>().unwrap();;
 /// assert_eq!(e1, e2);
 ///
 /// // should draw different elements based on seed
-/// let mut coin1 = PublicCoin::<BaseElement, Blake3_256>::new(&[1, 2, 3, 4]);
-/// let mut coin2 = PublicCoin::<BaseElement, Blake3_256>::new(&[2, 3, 4, 5]);
+/// let mut coin1 = PublicCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
+/// let mut coin2 = PublicCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[2, 3, 4, 5]);
 /// let e1 = coin1.draw::<BaseElement>().unwrap();;
 /// let e2 = coin2.draw::<BaseElement>().unwrap();;
 /// assert_ne!(e1, e2);
@@ -87,8 +87,8 @@ impl<B: StarkField, H: Hasher> PublicCoin<B, H> {
     /// ```
     /// # use winter_crypto::{PublicCoin, Hasher, hashers::Blake3_256};
     /// # use math::fields::f128::BaseElement;
-    /// let mut coin1 = PublicCoin::<BaseElement, Blake3_256>::new(&[1, 2, 3, 4]);
-    /// let mut coin2 = PublicCoin::<BaseElement, Blake3_256>::new(&[1, 2, 3, 4]);
+    /// let mut coin1 = PublicCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
+    /// let mut coin2 = PublicCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
     ///
     /// // should draw the same element form both coins
     /// let e1 = coin1.draw::<BaseElement>().unwrap();
@@ -96,7 +96,7 @@ impl<B: StarkField, H: Hasher> PublicCoin<B, H> {
     /// assert_eq!(e1, e2);
     ///
     /// // after reseeding should draw different elements
-    /// coin2.reseed(Blake3_256::hash(&[2, 3, 4, 5]));
+    /// coin2.reseed(Blake3_256::<BaseElement>::hash(&[2, 3, 4, 5]));
     /// let e1 = coin1.draw::<BaseElement>().unwrap();;
     /// let e2 = coin2.draw::<BaseElement>().unwrap();;
     /// assert_ne!(e1, e2);
@@ -113,8 +113,8 @@ impl<B: StarkField, H: Hasher> PublicCoin<B, H> {
     /// ```
     /// # use winter_crypto::{PublicCoin, Hasher, hashers::Blake3_256};
     /// # use math::fields::f128::BaseElement;
-    /// let mut coin1 = PublicCoin::<BaseElement, Blake3_256>::new(&[1, 2, 3, 4]);
-    /// let mut coin2 = PublicCoin::<BaseElement, Blake3_256>::new(&[1, 2, 3, 4]);
+    /// let mut coin1 = PublicCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
+    /// let mut coin2 = PublicCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
     ///
     /// // should draw the same element form both coins
     /// let e1 = coin1.draw::<BaseElement>().unwrap();;
@@ -142,7 +142,7 @@ impl<B: StarkField, H: Hasher> PublicCoin<B, H> {
     /// ```
     /// # use winter_crypto::{PublicCoin, hashers::Blake3_256};
     /// # use math::fields::f128::BaseElement;
-    /// let mut coin = PublicCoin::<BaseElement, Blake3_256>::new(&[1, 2, 3, 4]);
+    /// let mut coin = PublicCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
     ///
     /// let mut value = 0;
     /// while coin.check_leading_zeros(value) < 2 {
@@ -234,7 +234,7 @@ impl<B: StarkField, H: Hasher> PublicCoin<B, H> {
     /// # use std::collections::HashSet;
     /// # use winter_crypto::{PublicCoin, hashers::Blake3_256};
     /// # use math::fields::f128::BaseElement;
-    /// let mut coin = PublicCoin::<BaseElement, Blake3_256>::new(&[1, 2, 3, 4]);
+    /// let mut coin = PublicCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
     ///
     /// let num_values = 20;
     /// let domain_size = 64;

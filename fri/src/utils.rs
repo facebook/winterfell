@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crypto::Hasher;
+use crypto::ElementHasher;
 use math::FieldElement;
 use utils::{iter_mut, uninit_vector};
 
@@ -58,9 +58,11 @@ pub fn map_positions_to_indexes(
 }
 
 /// Hashes each of the arrays in the provided slice and returns a vector of resulting hashes.
-pub fn hash_values<H: Hasher, E: FieldElement, const N: usize>(
-    values: &[[E; N]],
-) -> Vec<H::Digest> {
+pub fn hash_values<H, E, const N: usize>(values: &[[E; N]]) -> Vec<H::Digest>
+where
+    E: FieldElement,
+    H: ElementHasher<BaseField = E::BaseField>,
+{
     let mut result: Vec<H::Digest> = unsafe { uninit_vector(values.len()) };
     iter_mut!(result, 1024).zip(values).for_each(|(r, v)| {
         *r = H::hash_elements(v);

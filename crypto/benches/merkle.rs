@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use math::fields::f128::BaseElement;
 use rand::{rngs::ThreadRng, thread_rng, RngCore};
 use utils::uninit_vector;
 use winter_crypto::{build_merkle_nodes, concurrent, hashers::Blake3_256};
@@ -26,10 +27,10 @@ pub fn merkle_tree_construction(c: &mut Criterion) {
             res
         };
         merkle_group.bench_with_input(BenchmarkId::new("sequential", size), &data, |b, i| {
-            b.iter(|| build_merkle_nodes::<Blake3_256>(&i))
+            b.iter(|| build_merkle_nodes::<Blake3_256<BaseElement>>(&i))
         });
         merkle_group.bench_with_input(BenchmarkId::new("concurrent", size), &data, |b, i| {
-            b.iter(|| concurrent::build_merkle_nodes::<Blake3_256>(&i))
+            b.iter(|| concurrent::build_merkle_nodes::<Blake3_256<BaseElement>>(&i))
         });
     }
 }

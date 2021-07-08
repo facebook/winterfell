@@ -400,7 +400,7 @@ pub fn build_context(trace_length: usize, trace_width: usize) -> ComputationCont
     ComputationContext::new(trace_width, trace_length, t_degrees, options)
 }
 
-pub fn build_prng() -> PublicCoin<BaseElement, Blake3_256> {
+pub fn build_prng() -> PublicCoin<BaseElement, Blake3_256<BaseElement>> {
     PublicCoin::new(&[0; 32])
 }
 

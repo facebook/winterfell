@@ -33,7 +33,7 @@ pub fn build_layers(c: &mut Criterion) {
                         let mut channel = DefaultProverChannel::<
                             BaseElement,
                             BaseElement,
-                            Blake3_256,
+                            Blake3_256<BaseElement>,
                         >::new(domain_size, 32);
                         prover.build_layers(&mut channel, evaluations);
                         prover.reset();

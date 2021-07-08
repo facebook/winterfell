@@ -17,7 +17,7 @@ use utils::{Deserializable, Serializable, SliceReader};
 pub fn build_prover_channel(
     trace_length: usize,
     options: &FriOptions,
-) -> DefaultProverChannel<BaseElement, BaseElement, Blake3_256> {
+) -> DefaultProverChannel<BaseElement, BaseElement, Blake3_256<BaseElement>> {
     DefaultProverChannel::new(trace_length * options.blowup_factor(), 32)
 }
 
@@ -54,13 +54,13 @@ pub fn verify_proof(
     let proof = FriProof::read_from(&mut reader).unwrap();
 
     // verify the proof
-    let mut channel = DefaultVerifierChannel::<BaseElement, Blake3_256>::new(
+    let mut channel = DefaultVerifierChannel::<BaseElement, Blake3_256<BaseElement>>::new(
         proof,
         domain_size,
         options.folding_factor(),
     )
     .unwrap();
-    let mut coin = PublicCoin::<BaseElement, Blake3_256>::new(&[]);
+    let mut coin = PublicCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[]);
     let alphas = commitments
         .iter()
         .map(|&com| {
@@ -68,7 +68,7 @@ pub fn verify_proof(
             coin.draw().unwrap()
         })
         .collect::<Vec<BaseElement>>();
-    let context = VerifierContext::<BaseElement, BaseElement, Blake3_256>::new(
+    let context = VerifierContext::<BaseElement, BaseElement, Blake3_256<BaseElement>>::new(
         evaluations.len(),
         max_degree,
         commitments,

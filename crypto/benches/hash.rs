@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use math::fields::f128::BaseElement;
 use winter_crypto::{
     hashers::{Blake3_256, Sha3_256},
     Hasher,
@@ -21,7 +22,7 @@ pub fn blake3(c: &mut Criterion) {
         ],
     ];
     c.bench_function("hash_blake3", |bench| {
-        bench.iter(|| Blake3_256::merge(black_box(&v)))
+        bench.iter(|| Blake3_256::<BaseElement>::merge(black_box(&v)))
     });
 }
 
@@ -37,7 +38,7 @@ pub fn sha3(c: &mut Criterion) {
         ],
     ];
     c.bench_function("hash_sha3", |bench| {
-        bench.iter(|| Sha3_256::merge(black_box(&v)))
+        bench.iter(|| Sha3_256::<BaseElement>::merge(black_box(&v)))
     });
 }
 

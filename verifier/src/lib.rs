@@ -11,7 +11,7 @@ pub use utils::{ByteWriter, Serializable};
 pub use crypto;
 use crypto::{
     hashers::{Blake3_256, Sha3_256},
-    Hasher, PublicCoin,
+    ElementHasher, PublicCoin,
 };
 
 pub use math;
@@ -56,12 +56,16 @@ pub fn verify<AIR: Air>(
             HashFunction::Blake3_256 => {
                 let coin = PublicCoin::new(&coin_seed);
                 let channel = VerifierChannel::new(&air, proof)?;
-                perform_verification::<AIR, AIR::BaseElement, Blake3_256>(air, channel, coin)
+                perform_verification::
+                    <AIR, AIR::BaseElement, Blake3_256<AIR::BaseElement>>
+                    (air, channel, coin)
             }
             HashFunction::Sha3_256 => {
                 let coin = PublicCoin::new(&coin_seed);
                 let channel = VerifierChannel::new(&air, proof)?;
-                perform_verification::<AIR, AIR::BaseElement, Sha3_256>(air, channel, coin)
+                perform_verification::
+                    <AIR, AIR::BaseElement, Sha3_256<AIR::BaseElement>>
+                    (air, channel, coin)
             }
         },
         FieldExtension::Quadratic => match air.context().options().hash_fn() {
@@ -69,14 +73,14 @@ pub fn verify<AIR: Air>(
                 let coin = PublicCoin::new(&coin_seed);
                 let channel = VerifierChannel::new(&air, proof)?;
                 perform_verification::
-                    <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Blake3_256>
+                    <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Blake3_256<AIR::BaseElement>>
                     (air, channel, coin)
             }
             HashFunction::Sha3_256 => {
                 let coin = PublicCoin::new(&coin_seed);
                 let channel = VerifierChannel::new(&air, proof)?;
                 perform_verification::
-                    <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Sha3_256>
+                    <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Sha3_256<AIR::BaseElement>>
                     (air, channel, coin)
             }
         },
@@ -87,11 +91,16 @@ pub fn verify<AIR: Air>(
 // ================================================================================================
 /// Performs the actual verification by reading the data from the `channel` and making sure it
 /// attests to a correct execution of the computation specified by the provided `air`.
-fn perform_verification<A: Air, E: FieldElement<BaseField = A::BaseElement>, H: Hasher>(
+fn perform_verification<A, E, H>(
     air: A,
     mut channel: VerifierChannel<A::BaseElement, E, H>,
     mut coin: PublicCoin<A::BaseElement, H>,
-) -> Result<(), VerifierError> {
+) -> Result<(), VerifierError>
+where
+    A: Air,
+    E: FieldElement<BaseField = A::BaseElement>,
+    H: ElementHasher<BaseField = A::BaseElement>,
+{
     // 1 ----- trace commitment -------------------------------------------------------------------
     // read the commitment to evaluations of the trace polynomials over the LDE domain sent by the
     // prover, use it to update the public coin, and draw a set of random coefficients from the

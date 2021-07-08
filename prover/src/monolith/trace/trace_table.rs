@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use common::{proof::Queries, EvaluationFrame};
-use crypto::{Hasher, MerkleTree};
+use crypto::{ElementHasher, Hasher, MerkleTree};
 use math::StarkField;
 use utils::{batch_iter_mut, uninit_vector};
 
@@ -75,7 +75,7 @@ impl<B: StarkField> TraceTable<B> {
     // TRACE COMMITMENT
     // --------------------------------------------------------------------------------------------
     /// Builds a Merkle tree out of trace table rows (hash of each row becomes a leaf in the tree).
-    pub fn build_commitment<H: Hasher>(&self) -> MerkleTree<H> {
+    pub fn build_commitment<H: ElementHasher<BaseField = B>>(&self) -> MerkleTree<H> {
         // allocate vector to store row hashes
         let mut hashed_states = unsafe { uninit_vector::<H::Digest>(self.len()) };
 

@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::errors::ProofSerializationError;
-use crypto::{BatchMerkleProof, Hasher};
+use crypto::{BatchMerkleProof, ElementHasher, Hasher};
 use math::{log2, FieldElement};
 use utils::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
@@ -58,12 +58,16 @@ impl Queries {
     // PARSER
     // --------------------------------------------------------------------------------------------
     /// Convert a set of queries into a batch Merkle proof and corresponding query values.
-    pub fn parse<H: Hasher, E: FieldElement>(
+    pub fn parse<H, E>(
         self,
         domain_size: usize,
         num_queries: usize,
         elements_per_query: usize,
-    ) -> Result<(BatchMerkleProof<H>, Vec<Vec<E>>), ProofSerializationError> {
+    ) -> Result<(BatchMerkleProof<H>, Vec<Vec<E>>), ProofSerializationError>
+    where
+        E: FieldElement,
+        H: ElementHasher<BaseField = E::BaseField>,
+    {
         assert!(
             domain_size.is_power_of_two(),
             "domain size must be a power of two"

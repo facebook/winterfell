@@ -4,14 +4,19 @@
 // LICENSE file in the root directory of this source tree.
 
 use common::{errors::VerifierError, proof::StarkProof, Air, EvaluationFrame};
-use crypto::{BatchMerkleProof, Hasher, MerkleTree};
+use crypto::{BatchMerkleProof, ElementHasher, MerkleTree};
 use fri::VerifierChannel as FriVerifierChannel;
 use math::{FieldElement, StarkField};
 
 // TYPES AND INTERFACES
 // ================================================================================================
 
-pub struct VerifierChannel<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> {
+pub struct VerifierChannel<B, E, H>
+where
+    B: StarkField,
+    E: FieldElement<BaseField = B>,
+    H: ElementHasher<BaseField = B>,
+{
     // trace queries
     trace_root: H::Digest,
     trace_proof: BatchMerkleProof<H>,
@@ -36,7 +41,12 @@ pub struct VerifierChannel<B: StarkField, E: FieldElement<BaseField = B>, H: Has
 // VERIFIER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-impl<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> VerifierChannel<B, E, H> {
+impl<B, E, H> VerifierChannel<B, E, H>
+where
+    B: StarkField,
+    E: FieldElement<BaseField = B>,
+    H: ElementHasher<BaseField = B>,
+{
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Creates and returns a new verifier channel initialized from the specified `proof`.
@@ -196,7 +206,7 @@ impl<B, E, H> FriVerifierChannel<E> for VerifierChannel<B, E, H>
 where
     B: StarkField,
     E: FieldElement<BaseField = B>,
-    H: Hasher,
+    H: ElementHasher<BaseField = B>,
 {
     type Hasher = H;
 

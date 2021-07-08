@@ -17,7 +17,7 @@
 //!   elements form a seed.
 
 mod hash;
-pub use hash::Hasher;
+pub use hash::{ElementHasher, Hasher};
 pub mod hashers {
     //! Contains implementations of currently supported hash functions.
 
@@ -35,4 +35,4 @@ mod random;
 pub use random::PublicCoin;
 
 mod errors;
-pub use errors::{DigestSerializationError, ProofSerializationError, PublicCoinError};
+pub use errors::{ProofSerializationError, PublicCoinError};

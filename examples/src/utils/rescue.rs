@@ -5,9 +5,9 @@
 
 use crate::utils::{are_equal, EvaluationResult};
 use prover::{
-    crypto::{DigestSerializationError, Hasher},
+    crypto::Hasher,
     math::{fields::f128::BaseElement, FieldElement},
-    Serializable,
+    DeserializationError, Serializable,
 };
 use std::slice;
 
@@ -107,10 +107,6 @@ impl Hasher for Rescue128 {
         unimplemented!("not implemented")
     }
 
-    fn hash_elements<E: FieldElement>(_elements: &[E]) -> Self::Digest {
-        unimplemented!("not implemented");
-    }
-
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest {
         Self::digest(Hash::hashes_as_elements(values))
     }
@@ -122,7 +118,7 @@ impl Hasher for Rescue128 {
     fn read_digests_into_vec(
         _source: &[u8],
         _num_digests: usize,
-    ) -> Result<(Vec<Self::Digest>, usize), DigestSerializationError> {
+    ) -> Result<(Vec<Self::Digest>, usize), DeserializationError> {
         unimplemented!("not implemented");
     }
 }

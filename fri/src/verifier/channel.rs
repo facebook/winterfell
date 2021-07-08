@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{utils::hash_values, FriProof, ProofSerializationError, VerifierError};
-use crypto::{BatchMerkleProof, Hasher, MerkleTree};
+use crypto::{BatchMerkleProof, ElementHasher, Hasher, MerkleTree};
 use math::FieldElement;
 use utils::{group_vector_elements, transpose_slice};
 
@@ -12,7 +12,7 @@ use utils::{group_vector_elements, transpose_slice};
 // ================================================================================================
 
 pub trait VerifierChannel<E: FieldElement> {
-    type Hasher: Hasher;
+    type Hasher: ElementHasher<BaseField = E::BaseField>;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -67,14 +67,18 @@ pub trait VerifierChannel<E: FieldElement> {
 // DEFAULT VERIFIER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-pub struct DefaultVerifierChannel<E: FieldElement, H: Hasher> {
+pub struct DefaultVerifierChannel<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> {
     layer_proofs: Vec<BatchMerkleProof<H>>,
     layer_queries: Vec<Vec<E>>,
     remainder: Vec<E>,
     num_partitions: usize,
 }
 
-impl<E: FieldElement, H: Hasher> DefaultVerifierChannel<E, H> {
+impl<E, H> DefaultVerifierChannel<E, H>
+where
+    E: FieldElement,
+    H: ElementHasher<BaseField = E::BaseField>,
+{
     /// Builds a new verifier channel from the specified parameters.
     pub fn new(
         proof: FriProof,
@@ -100,7 +104,11 @@ impl<E: FieldElement, H: Hasher> DefaultVerifierChannel<E, H> {
     }
 }
 
-impl<E: FieldElement, H: Hasher> VerifierChannel<E> for DefaultVerifierChannel<E, H> {
+impl<E, H> VerifierChannel<E> for DefaultVerifierChannel<E, H>
+where
+    E: FieldElement,
+    H: ElementHasher<BaseField = E::BaseField>,
+{
     type Hasher = H;
 
     fn take_next_fri_layer_proof(&mut self) -> BatchMerkleProof<H> {

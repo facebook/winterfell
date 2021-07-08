@@ -179,7 +179,7 @@ fn build_constraint_params(
 ) -> (
     BaseElement,
     HashMap<usize, Vec<BaseElement>>,
-    PublicCoin<BaseElement, Blake3_256>,
+    PublicCoin<BaseElement, Blake3_256<BaseElement>>,
 ) {
     let inv_g = BaseElement::get_root_of_unity(log2(trace_length)).inv();
     let prng = build_prng();

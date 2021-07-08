@@ -7,7 +7,7 @@ use common::{
     proof::{Commitments, Context, OodFrame, Queries, StarkProof},
     Air, ConstraintCompositionCoefficients, DeepCompositionCoefficients, EvaluationFrame,
 };
-use crypto::{Hasher, PublicCoin};
+use crypto::{ElementHasher, PublicCoin};
 use fri::{self, FriProof};
 use math::FieldElement;
 use std::marker::PhantomData;
@@ -19,7 +19,12 @@ use rayon::prelude::*;
 // TYPES AND INTERFACES
 // ================================================================================================
 
-pub struct ProverChannel<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>, H: Hasher> {
+pub struct ProverChannel<'a, A, E, H>
+where
+    A: Air,
+    E: FieldElement<BaseField = A::BaseElement>,
+    H: ElementHasher<BaseField = A::BaseElement>,
+{
     air: &'a A,
     coin: PublicCoin<A::BaseElement, H>,
     context: Context,
@@ -32,8 +37,11 @@ pub struct ProverChannel<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>
 // PROVER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-impl<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>, H: Hasher>
-    ProverChannel<'a, A, E, H>
+impl<'a, A, E, H> ProverChannel<'a, A, E, H>
+where
+    A: Air,
+    E: FieldElement<BaseField = A::BaseElement>,
+    H: ElementHasher<BaseField = A::BaseElement>,
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -172,7 +180,7 @@ impl<'a, A, E, H> fri::ProverChannel<E> for ProverChannel<'a, A, E, H>
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseElement>,
-    H: Hasher,
+    H: ElementHasher<BaseField = A::BaseElement>,
 {
     type Hasher = H;
 

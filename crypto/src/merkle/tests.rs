@@ -3,10 +3,11 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use super::*;
+use math::fields::f128::BaseElement;
 use proptest::prelude::*;
 
-use super::*;
-use crate::hash::Blake3_256;
+type Blake3_256 = crate::hash::Blake3_256<BaseElement>;
 
 static LEAVES4: [[u8; 32]; 4] = [
     [

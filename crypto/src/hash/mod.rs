@@ -3,13 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::DigestSerializationError;
-use core::fmt::Debug;
-use math::FieldElement;
+use core::{fmt::Debug, marker::PhantomData};
+use math::{FieldElement, StarkField};
 use sha3::Digest;
-use utils::{group_slice_elements, AsBytes};
+use utils::{group_slice_elements, AsBytes, DeserializationError};
 
-// HASHER TRAIT
+// HASHER TRAITS
 // ================================================================================================
 
 /// Defines a cryptographic hash function.
@@ -26,9 +25,6 @@ pub trait Hasher {
     /// Returns hash(seed || value). This method is intended for use in PRNG and PoW contexts.
     fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest;
 
-    /// Returns a hash of the provided field elements.
-    fn hash_elements<E: FieldElement>(elements: &[E]) -> Self::Digest;
-
     /// Reads the specified number of digests from the provided source, and returns the vector
     /// with the parsed digests as well as the number of bytes read from the source.
     ///
@@ -37,7 +33,17 @@ pub trait Hasher {
     fn read_digests_into_vec(
         source: &[u8],
         num_digests: usize,
-    ) -> Result<(Vec<Self::Digest>, usize), DigestSerializationError>;
+    ) -> Result<(Vec<Self::Digest>, usize), DeserializationError>;
+}
+
+/// Defines a hash function for hashing field elements.
+pub trait ElementHasher: Hasher {
+    type BaseField: StarkField;
+
+    /// Returns a hash of the provided field elements.
+    fn hash_elements<E>(elements: &[E]) -> Self::Digest
+    where
+        E: FieldElement<BaseField = Self::BaseField>;
 }
 
 // BLAKE3
@@ -46,17 +52,12 @@ pub trait Hasher {
 /// Implementation of the [Hasher](super::Hasher) trait for BLAKE3 hash function with 256-bit
 /// output.
 #[derive(Debug, PartialEq, Eq)]
-pub struct Blake3_256();
+pub struct Blake3_256<B: StarkField>(PhantomData<B>);
 
-impl Hasher for Blake3_256 {
+impl<B: StarkField> Hasher for Blake3_256<B> {
     type Digest = [u8; 32];
 
     fn hash(bytes: &[u8]) -> Self::Digest {
-        blake3::hash(bytes).into()
-    }
-
-    fn hash_elements<E: FieldElement>(elements: &[E]) -> Self::Digest {
-        let bytes = E::elements_as_bytes(elements);
         blake3::hash(bytes).into()
     }
 
@@ -74,8 +75,17 @@ impl Hasher for Blake3_256 {
     fn read_digests_into_vec(
         source: &[u8],
         num_digests: usize,
-    ) -> Result<(Vec<Self::Digest>, usize), DigestSerializationError> {
+    ) -> Result<(Vec<Self::Digest>, usize), DeserializationError> {
         read_32_byte_digests(source, num_digests)
+    }
+}
+
+impl<B: StarkField> ElementHasher for Blake3_256<B> {
+    type BaseField = B;
+
+    fn hash_elements<E: FieldElement<BaseField = Self::BaseField>>(elements: &[E]) -> Self::Digest {
+        let bytes = E::elements_as_bytes(elements);
+        blake3::hash(bytes).into()
     }
 }
 
@@ -84,17 +94,12 @@ impl Hasher for Blake3_256 {
 
 /// Implementation of the [Hasher](super::Hasher) trait for SHA3 hash function with 256-bit
 /// output.
-pub struct Sha3_256();
+pub struct Sha3_256<B: StarkField>(PhantomData<B>);
 
-impl Hasher for Sha3_256 {
+impl<B: StarkField> Hasher for Sha3_256<B> {
     type Digest = [u8; 32];
 
     fn hash(bytes: &[u8]) -> Self::Digest {
-        sha3::Sha3_256::digest(bytes).into()
-    }
-
-    fn hash_elements<E: FieldElement>(elements: &[E]) -> Self::Digest {
-        let bytes = E::elements_as_bytes(elements);
         sha3::Sha3_256::digest(bytes).into()
     }
 
@@ -112,8 +117,17 @@ impl Hasher for Sha3_256 {
     fn read_digests_into_vec(
         source: &[u8],
         num_digests: usize,
-    ) -> Result<(Vec<Self::Digest>, usize), DigestSerializationError> {
+    ) -> Result<(Vec<Self::Digest>, usize), DeserializationError> {
         read_32_byte_digests(source, num_digests)
+    }
+}
+
+impl<B: StarkField> ElementHasher for Sha3_256<B> {
+    type BaseField = B;
+
+    fn hash_elements<E: FieldElement<BaseField = Self::BaseField>>(elements: &[E]) -> Self::Digest {
+        let bytes = E::elements_as_bytes(elements);
+        sha3::Sha3_256::digest(bytes).into()
     }
 }
 
@@ -123,18 +137,19 @@ impl Hasher for Sha3_256 {
 fn read_32_byte_digests(
     source: &[u8],
     num_digests: usize,
-) -> Result<(Vec<[u8; 32]>, usize), DigestSerializationError> {
+) -> Result<(Vec<[u8; 32]>, usize), DeserializationError> {
     if num_digests == 0 {
         return Ok((Vec::new(), 0));
     }
 
     let num_bytes = num_digests * 32;
     if num_bytes > source.len() {
-        return Err(DigestSerializationError::TooFewBytesForDigests(
+        return Err(DeserializationError::InvalidValue(format!(
+            "Not enough bytes for {} digests; expected {} bytes, but was {}",
             num_digests,
             num_bytes,
-            source.len(),
-        ));
+            source.len()
+        )));
     }
 
     let result = group_slice_elements(&source[..num_bytes]).to_vec();

@@ -8,7 +8,7 @@ use crate::{
     utils::{fold_positions, hash_values},
     FriOptions, FriProof, FriProofLayer, ProverChannel,
 };
-use crypto::{Hasher, MerkleTree};
+use crypto::{ElementHasher, Hasher, MerkleTree};
 use math::{FieldElement, StarkField};
 use std::marker::PhantomData;
 use utils::{flatten_vector_elements, group_slice_elements, transpose_slice};
@@ -24,7 +24,7 @@ where
     B: StarkField,
     E: FieldElement<BaseField = B>,
     C: ProverChannel<E, Hasher = H>,
-    H: Hasher,
+    H: ElementHasher<BaseField = B>,
 {
     options: FriOptions,
     layers: Vec<FriLayer<B, E, H>>,
@@ -45,7 +45,7 @@ where
     B: StarkField,
     E: FieldElement<BaseField = B>,
     C: ProverChannel<E, Hasher = H>,
-    H: Hasher,
+    H: ElementHasher<BaseField = B>,
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------

@@ -7,7 +7,7 @@ use crate::{
     monolith::StarkDomain,
     tests::{build_context, build_fib_trace},
 };
-use crypto::{hashers::Blake3_256, Hasher, MerkleTree};
+use crypto::{hashers::Blake3_256, ElementHasher, MerkleTree};
 use math::{
     fields::f128::BaseElement, get_power_series, get_power_series_with_offset, log2, polynom,
     FieldElement, StarkField,
@@ -87,7 +87,7 @@ fn commit_trace_table() {
     let (extended_trace, _) = trace.extend(&domain);
 
     // commit to the trace
-    let trace_tree = extended_trace.build_commitment::<Blake3_256>();
+    let trace_tree = extended_trace.build_commitment::<Blake3_256<BaseElement>>();
 
     // build Merkle tree from trace rows
     let mut hashed_states = Vec::new();
@@ -97,10 +97,10 @@ fn commit_trace_table() {
         for j in 0..extended_trace.width() {
             trace_state[j] = extended_trace.get(j, i);
         }
-        let buf = Blake3_256::hash_elements(&trace_state);
+        let buf = Blake3_256::<BaseElement>::hash_elements(&trace_state);
         hashed_states.push(buf);
     }
-    let expected_tree = MerkleTree::<Blake3_256>::new(hashed_states);
+    let expected_tree = MerkleTree::<Blake3_256<BaseElement>>::new(hashed_states);
 
     // compare the result
     assert_eq!(expected_tree.root(), trace_tree.root())

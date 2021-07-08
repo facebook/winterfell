@@ -5,28 +5,6 @@
 
 use core::fmt;
 
-// DIGEST SERIALIZATION ERROR
-// ================================================================================================
-#[derive(Debug, PartialEq)]
-pub enum DigestSerializationError {
-    /// Not enough bytes for {0} digests; expected {1} bytes, but was {2}
-    TooFewBytesForDigests(usize, usize, usize),
-}
-
-impl fmt::Display for DigestSerializationError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::TooFewBytesForDigests(num_digests, expected, actual) => {
-                write!(
-                    f,
-                    "Not enough bytes for {} digests; expected {} bytes, but was {}",
-                    num_digests, expected, actual
-                )
-            }
-        }
-    }
-}
-
 // PROOF SERIALIZATION ERROR
 // ================================================================================================
 #[derive(Debug, PartialEq)]

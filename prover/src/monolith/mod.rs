@@ -10,7 +10,7 @@ use common::{
 };
 use crypto::{
     hashers::{Blake3_256, Sha3_256},
-    Hasher,
+    ElementHasher,
 };
 use log::debug;
 use math::{fft::infer_degree, log2, FieldElement, StarkField};
@@ -62,19 +62,20 @@ pub fn prove<AIR: Air>(
     // of static dispatch for selecting two generic parameter: extension field and hash function.
     match air.context().options().field_extension() {
         FieldExtension::None => match air.context().options().hash_fn() {
-            HashFunction::Blake3_256 => {
-                generate_proof::<AIR, AIR::BaseElement, Blake3_256>(air, trace, pub_inputs_bytes)
-            }
-            HashFunction::Sha3_256 => {
-                generate_proof::<AIR, AIR::BaseElement, Sha3_256>(air, trace, pub_inputs_bytes)
-            }
+            HashFunction::Blake3_256 => generate_proof::
+                <AIR, AIR::BaseElement, Blake3_256<AIR::BaseElement>>
+                (air, trace, pub_inputs_bytes),
+            HashFunction::Sha3_256 => generate_proof::
+                <AIR, AIR::BaseElement, Sha3_256<AIR::BaseElement>>
+                (air, trace, pub_inputs_bytes)
+            
         },
         FieldExtension::Quadratic => match air.context().options().hash_fn() {
             HashFunction::Blake3_256 => generate_proof::
-                <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Blake3_256>
+                <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Blake3_256<AIR::BaseElement>>
                 (air, trace, pub_inputs_bytes),
             HashFunction::Sha3_256 => generate_proof::
-                <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Sha3_256>
+                <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Sha3_256<AIR::BaseElement>>
                 (air, trace, pub_inputs_bytes),
         },
     }
@@ -84,11 +85,16 @@ pub fn prove<AIR: Air>(
 // ================================================================================================
 /// Performs the actual proof generation procedure, generating the proof that the provided
 /// execution `trace` is valid against the provided `air`.
-fn generate_proof<A: Air, E: FieldElement<BaseField = A::BaseElement>, H: Hasher>(
+fn generate_proof<A, E, H>(
     air: A,
     trace: ExecutionTrace<A::BaseElement>,
     pub_inputs_bytes: Vec<u8>,
-) -> Result<StarkProof, ProverError> {
+) -> Result<StarkProof, ProverError>
+where
+    A: Air,
+    E: FieldElement<BaseField = A::BaseElement>,
+    H: ElementHasher<BaseField = A::BaseElement>,
+{
     // create a channel which is used to simulate interaction between the prover and the verifier;
     // the channel will be used to commit to values and to draw randomness that should come from
     // the verifier.

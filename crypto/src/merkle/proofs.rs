@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{DigestSerializationError, Hasher, ProofSerializationError};
+use crate::{Hasher, ProofSerializationError};
 use std::collections::{BTreeMap, HashMap};
 
 /// Multiple Merkle paths aggregated into a single proof.
@@ -252,12 +252,9 @@ impl<H: Hasher> BatchMerkleProof<H> {
             pos += 1;
 
             // read the digests and advance head pointer
-            let (digests, bytes_read) = H::read_digests_into_vec(&node_bytes[pos..], num_digests)
-                .map_err(|err| match err {
-                DigestSerializationError::TooFewBytesForDigests(_, _, _) => {
-                    ProofSerializationError::UnexpectedEof(node_bytes.len())
-                }
-            })?;
+            let (digests, bytes_read) =
+                H::read_digests_into_vec(&node_bytes[pos..], num_digests)
+                    .map_err(|_| ProofSerializationError::UnexpectedEof(node_bytes.len()))?;
             nodes.push(digests);
             pos += bytes_read;
         }
