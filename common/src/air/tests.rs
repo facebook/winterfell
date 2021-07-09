@@ -8,7 +8,7 @@ use super::{
     TransitionConstraintDegree,
 };
 use crate::{FieldExtension, HashFunction};
-use crypto::{hash, RandomElementGenerator};
+use crypto::{hashers::Blake3_256, PublicCoin};
 use math::{fields::f128::BaseElement, get_power_series, log2, polynom, FieldElement, StarkField};
 use rand::{seq::SliceRandom, thread_rng};
 use std::collections::HashMap;
@@ -96,20 +96,20 @@ fn get_boundary_constraints() {
     // of assertions above
     let mut prng = build_prng();
     let mut expected_cc = HashMap::<usize, (BaseElement, BaseElement)>::new();
-    expected_cc.insert(0, prng.draw_pair());
-    expected_cc.insert(1, prng.draw_pair());
-    expected_cc.insert(2, prng.draw_pair());
-    expected_cc.insert(6, prng.draw_pair());
-    expected_cc.insert(7, prng.draw_pair());
-    expected_cc.insert(3, prng.draw_pair());
-    expected_cc.insert(4, prng.draw_pair());
-    expected_cc.insert(5, prng.draw_pair());
+    expected_cc.insert(0, prng.draw_pair().unwrap());
+    expected_cc.insert(1, prng.draw_pair().unwrap());
+    expected_cc.insert(2, prng.draw_pair().unwrap());
+    expected_cc.insert(6, prng.draw_pair().unwrap());
+    expected_cc.insert(7, prng.draw_pair().unwrap());
+    expected_cc.insert(3, prng.draw_pair().unwrap());
+    expected_cc.insert(4, prng.draw_pair().unwrap());
+    expected_cc.insert(5, prng.draw_pair().unwrap());
 
     // get boundary constraints from AIR, and sort constraint groups so that the order
     // is stable; the original order is just by degree_adjustment
     let mut prng = build_prng();
     let coefficients = (0..8)
-        .map(|_| prng.draw_pair())
+        .map(|_| prng.draw_pair().unwrap())
         .collect::<Vec<(BaseElement, BaseElement)>>();
     let mut groups = air.get_boundary_constraints(&coefficients);
     groups.sort_by(|g1, g2| {
@@ -400,8 +400,8 @@ pub fn build_context(trace_length: usize, trace_width: usize) -> ComputationCont
     ComputationContext::new(trace_width, trace_length, t_degrees, options)
 }
 
-pub fn build_prng() -> RandomElementGenerator<hash::Blake3_256> {
-    RandomElementGenerator::new([0; 32])
+pub fn build_prng() -> PublicCoin<BaseElement, Blake3_256<BaseElement>> {
+    PublicCoin::new(&[0; 32])
 }
 
 pub fn build_sequence_poly(values: &[BaseElement], trace_length: usize) -> Vec<BaseElement> {

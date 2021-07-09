@@ -10,8 +10,8 @@ pub use utils::{ByteWriter, Serializable};
 
 pub use crypto;
 use crypto::{
-    hash::{Blake3_256, Hasher, Sha3_256},
-    PublicCoin,
+    hashers::{Blake3_256, Sha3_256},
+    ElementHasher, PublicCoin,
 };
 
 pub use math;
@@ -56,12 +56,16 @@ pub fn verify<AIR: Air>(
             HashFunction::Blake3_256 => {
                 let coin = PublicCoin::new(&coin_seed);
                 let channel = VerifierChannel::new(&air, proof)?;
-                perform_verification::<AIR, AIR::BaseElement, Blake3_256>(air, channel, coin)
+                perform_verification::
+                    <AIR, AIR::BaseElement, Blake3_256<AIR::BaseElement>>
+                    (air, channel, coin)
             }
             HashFunction::Sha3_256 => {
                 let coin = PublicCoin::new(&coin_seed);
                 let channel = VerifierChannel::new(&air, proof)?;
-                perform_verification::<AIR, AIR::BaseElement, Sha3_256>(air, channel, coin)
+                perform_verification::
+                    <AIR, AIR::BaseElement, Sha3_256<AIR::BaseElement>>
+                    (air, channel, coin)
             }
         },
         FieldExtension::Quadratic => match air.context().options().hash_fn() {
@@ -69,14 +73,14 @@ pub fn verify<AIR: Air>(
                 let coin = PublicCoin::new(&coin_seed);
                 let channel = VerifierChannel::new(&air, proof)?;
                 perform_verification::
-                    <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Blake3_256>
+                    <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Blake3_256<AIR::BaseElement>>
                     (air, channel, coin)
             }
             HashFunction::Sha3_256 => {
                 let coin = PublicCoin::new(&coin_seed);
                 let channel = VerifierChannel::new(&air, proof)?;
                 perform_verification::
-                    <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Sha3_256>
+                    <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Sha3_256<AIR::BaseElement>>
                     (air, channel, coin)
             }
         },
@@ -87,11 +91,16 @@ pub fn verify<AIR: Air>(
 // ================================================================================================
 /// Performs the actual verification by reading the data from the `channel` and making sure it
 /// attests to a correct execution of the computation specified by the provided `air`.
-fn perform_verification<A: Air, E: FieldElement<BaseField = A::BaseElement>, H: Hasher>(
+fn perform_verification<A, E, H>(
     air: A,
     mut channel: VerifierChannel<A::BaseElement, E, H>,
     mut coin: PublicCoin<A::BaseElement, H>,
-) -> Result<(), VerifierError> {
+) -> Result<(), VerifierError>
+where
+    A: Air,
+    E: FieldElement<BaseField = A::BaseElement>,
+    H: ElementHasher<BaseField = A::BaseElement>,
+{
     // 1 ----- trace commitment -------------------------------------------------------------------
     // read the commitment to evaluations of the trace polynomials over the LDE domain sent by the
     // prover, use it to update the public coin, and draw a set of random coefficients from the
@@ -99,7 +108,9 @@ fn perform_verification<A: Air, E: FieldElement<BaseField = A::BaseElement>, H: 
     // the prover, and prover uses them to compute constraint composition polynomial.
     let trace_commitment = channel.read_trace_commitment();
     coin.reseed(trace_commitment);
-    let constraint_coeffs = air.get_constraint_composition_coefficients(&mut coin);
+    let constraint_coeffs = air
+        .get_constraint_composition_coefficients(&mut coin)
+        .map_err(|_| VerifierError::PublicCoinError)?;
 
     // 2 ----- constraint commitment --------------------------------------------------------------
     // read the commitment to evaluations of the constraint composition polynomial over the LDE
@@ -109,7 +120,9 @@ fn perform_verification<A: Air, E: FieldElement<BaseField = A::BaseElement>, H: 
     // and send the results back to the verifier.
     let constraint_commitment = channel.read_constraint_commitment();
     coin.reseed(constraint_commitment);
-    let z = coin.draw::<E>();
+    let z = coin
+        .draw::<E>()
+        .map_err(|_| VerifierError::PublicCoinError)?;
 
     // 3 ----- OOD consistency check --------------------------------------------------------------
     // make sure that evaluations obtained by evaluating constraints over the out-of-domain frame
@@ -145,7 +158,9 @@ fn perform_verification<A: Air, E: FieldElement<BaseField = A::BaseElement>, H: 
     // interactive version of the protocol, the verifier sends these coefficients to the prover
     // and the prover uses them to compute the DEEP composition polynomial. the prover, then
     // applies FRI protocol to the evaluations of the DEEP composition polynomial.
-    let deep_coefficients = air.get_deep_composition_coefficients::<E, H>(&mut coin);
+    let deep_coefficients = air
+        .get_deep_composition_coefficients::<E, H>(&mut coin)
+        .map_err(|_| VerifierError::PublicCoinError)?;
 
     // read FRI layer commitments sent by the prover, and use each commitment to update the public
     // coin and draw a random point alpha from it; in the interactive version of the protocol, the
@@ -155,7 +170,8 @@ fn perform_verification<A: Air, E: FieldElement<BaseField = A::BaseElement>, H: 
     let mut fri_alphas = Vec::with_capacity(fri_layer_commitments.len());
     for commitment in fri_layer_commitments.iter() {
         coin.reseed(*commitment);
-        fri_alphas.push(coin.draw());
+        let alpha = coin.draw().map_err(|_| VerifierError::PublicCoinError)?;
+        fri_alphas.push(alpha);
     }
 
     // 5 ----- trace and constraint queries -------------------------------------------------------
@@ -172,7 +188,9 @@ fn perform_verification<A: Air, E: FieldElement<BaseField = A::BaseElement>, H: 
     // interactive version of the protocol, the verifier sends these query positions to the prover,
     // and the prover responds with decommitments against these positions for trace and constraint
     // composition polynomial evaluations.
-    let query_positions = coin.draw_integers(air.options().num_queries(), air.lde_domain_size());
+    let query_positions = coin
+        .draw_integers(air.options().num_queries(), air.lde_domain_size())
+        .map_err(|_| VerifierError::PublicCoinError)?;
 
     // read evaluations of trace and constraint composition polynomials at the queried positions;
     // this also checks that the read values are valid against trace and constraint commitments

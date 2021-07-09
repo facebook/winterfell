@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
-use crypto::hash::Blake3_256;
+use crypto::hashers::Blake3_256;
 use math::{fft, fields::f128::BaseElement, FieldElement};
 use std::time::Duration;
 use winter_fri::{DefaultProverChannel, FriOptions, FriProver};
@@ -33,7 +33,7 @@ pub fn build_layers(c: &mut Criterion) {
                         let mut channel = DefaultProverChannel::<
                             BaseElement,
                             BaseElement,
-                            Blake3_256,
+                            Blake3_256<BaseElement>,
                         >::new(domain_size, 32);
                         prover.build_layers(&mut channel, evaluations);
                         prover.reset();

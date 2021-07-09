@@ -8,7 +8,7 @@ use crate::{
     utils::rescue::{Hash, Rescue128},
 };
 use prover::{
-    crypto::{Hasher, MerkleTree},
+    crypto::MerkleTree,
     math::{fields::f128::BaseElement, FieldElement},
 };
 
@@ -29,10 +29,7 @@ impl AggPublicKey {
         // initial hashing makes the AIR design a little simpler
         let mut leaves: Vec<Hash> = Vec::new();
         for key in keys.iter() {
-            let key = key.to_elements();
-            // TODO: should use Rescue128::hash_elements()
-            let value = Hash::new(key[0], key[1]);
-            leaves.push(Rescue128::merge_many(&[value]));
+            leaves.push(Rescue128::digest(&key.to_elements()));
         }
 
         // pad the list of keys with zero keys to make sure the number of leaves is greater than
@@ -42,13 +39,13 @@ impl AggPublicKey {
         } else {
             leaves.len().next_power_of_two()
         };
-        let zero_hash = Rescue128::merge_many(&[Hash::new(BaseElement::ZERO, BaseElement::ZERO)]);
+        let zero_hash = Rescue128::digest(&[BaseElement::ZERO, BaseElement::ZERO]);
         for _ in leaves.len()..num_leaves {
             leaves.push(zero_hash);
         }
 
         // build a Merkle tree of all leaves
-        let tree = MerkleTree::new(leaves);
+        let tree = MerkleTree::new(leaves).unwrap();
 
         AggPublicKey { keys, tree }
     }
@@ -80,6 +77,6 @@ impl AggPublicKey {
 
     /// Returns a Merkle path to the specified leaf.
     pub fn get_leaf_path(&self, index: usize) -> Vec<Hash> {
-        self.tree.prove(index)
+        self.tree.prove(index).unwrap()
     }
 }

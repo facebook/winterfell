@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::ProofSerializationError;
-use crypto::{BatchMerkleProof, Hasher};
+use crypto::{BatchMerkleProof, ElementHasher, Hasher};
 use math::{log2, FieldElement};
 use utils::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
@@ -55,11 +55,15 @@ impl FriProof {
     /// Decomposes this proof into vectors of query values for each FRI layer and corresponding
     /// Merkle paths for each query (grouped into batch Merkle proofs)
     #[allow(clippy::type_complexity)]
-    pub fn parse_layers<H: Hasher, E: FieldElement>(
+    pub fn parse_layers<H, E>(
         self,
         mut domain_size: usize,
         folding_factor: usize,
-    ) -> Result<(Vec<Vec<E>>, Vec<BatchMerkleProof<H>>), ProofSerializationError> {
+    ) -> Result<(Vec<Vec<E>>, Vec<BatchMerkleProof<H>>), ProofSerializationError>
+    where
+        E: FieldElement,
+        H: ElementHasher<BaseField = E::BaseField>,
+    {
         assert!(
             domain_size.is_power_of_two(),
             "domain size must be a power of two"
@@ -189,12 +193,16 @@ impl FriProofLayer {
 
     /// Decomposes this layer into a combination of query values and corresponding Merkle
     /// paths (grouped together into a single batch Merkle proof).
-    pub fn parse<H: Hasher, E: FieldElement>(
+    pub fn parse<H, E>(
         self,
         layer_depth: usize,
         domain_size: usize,
         folding_factor: usize,
-    ) -> Result<(Vec<E>, BatchMerkleProof<H>), ProofSerializationError> {
+    ) -> Result<(Vec<E>, BatchMerkleProof<H>), ProofSerializationError>
+    where
+        E: FieldElement,
+        H: ElementHasher<BaseField = E::BaseField>,
+    {
         // these will fail only if the struct was constructed incorrectly
         assert!(!self.values.is_empty(), "empty values vector");
         assert!(!self.paths.is_empty(), "empty paths vector");

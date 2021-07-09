@@ -39,6 +39,8 @@ pub enum VerifierError {
     InconsistentBaseField,
     /// Proof deserialization failed: {0}
     ProofDeserializationError(String),
+    /// Failed to draw a random value from a public coin.
+    PublicCoinError,
     /// Constraint evaluations over the out-of-domain frame are inconsistent
     InconsistentOodConstraintEvaluations,
     /// Trace query does not match the commitment
@@ -60,6 +62,9 @@ impl fmt::Display for VerifierError {
             }
             Self::ProofDeserializationError(msg) => {
                 write!(f, "proof deserialization failed: {}", msg)
+            }
+            Self::PublicCoinError => {
+                write!(f, "failed to draw a random value from a public coin")
             }
             Self::InconsistentOodConstraintEvaluations => {
                 write!(f, "constraint evaluations over the out-of-domain frame are inconsistent")
@@ -123,7 +128,7 @@ pub enum ProofSerializationError {
     /// Failed to parse commitments: {0}
     FailedToParseCommitments(String),
     /// Too many commitment bytes; expected {0}, but was {1}
-    TooManyCommitmentBytes(usize, usize),
+    TooManyCommitmentBytes,
     /// Failed to parse query values: {0}
     FailedToParseQueryValues(String),
     /// Failed to parse query authentication paths: {0}
@@ -143,8 +148,8 @@ impl fmt::Display for ProofSerializationError {
             Self::FailedToParseCommitments(msg) => {
                 write!(f, "failed to parse commitments: {}", msg)
             }
-            Self::TooManyCommitmentBytes(expected, actual) => {
-                write!(f, "too many commitment bytes; expected {}, but was {}", expected, actual)
+            Self::TooManyCommitmentBytes => {
+                write!(f, "not all bytes were consumed when deserializing commitments")
             }
             Self::FailedToParseQueryValues(msg) => {
                 write!(f, "failed to parse query values: {}", msg)

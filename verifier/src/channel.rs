@@ -4,14 +4,19 @@
 // LICENSE file in the root directory of this source tree.
 
 use common::{errors::VerifierError, proof::StarkProof, Air, EvaluationFrame};
-use crypto::{BatchMerkleProof, Hasher, MerkleTree};
+use crypto::{BatchMerkleProof, ElementHasher, MerkleTree};
 use fri::VerifierChannel as FriVerifierChannel;
 use math::{FieldElement, StarkField};
 
 // TYPES AND INTERFACES
 // ================================================================================================
 
-pub struct VerifierChannel<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> {
+pub struct VerifierChannel<B, E, H>
+where
+    B: StarkField,
+    E: FieldElement<BaseField = B>,
+    H: ElementHasher<BaseField = B>,
+{
     // trace queries
     trace_root: H::Digest,
     trace_proof: BatchMerkleProof<H>,
@@ -36,7 +41,12 @@ pub struct VerifierChannel<B: StarkField, E: FieldElement<BaseField = B>, H: Has
 // VERIFIER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-impl<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> VerifierChannel<B, E, H> {
+impl<B, E, H> VerifierChannel<B, E, H>
+where
+    B: StarkField,
+    E: FieldElement<BaseField = B>,
+    H: ElementHasher<BaseField = B>,
+{
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Creates and returns a new verifier channel initialized from the specified `proof`.
@@ -166,9 +176,8 @@ impl<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> VerifierChannel<B
         commitment: &H::Digest,
     ) -> Result<Vec<Vec<B>>, VerifierError> {
         // make sure the states included in the proof correspond to the trace commitment
-        if !MerkleTree::verify_batch(commitment, positions, &self.trace_proof) {
-            return Err(VerifierError::TraceQueryDoesNotMatchCommitment);
-        }
+        MerkleTree::verify_batch(commitment, positions, &self.trace_proof)
+            .map_err(|_| VerifierError::TraceQueryDoesNotMatchCommitment)?;
 
         Ok(self.trace_states.take().expect("already read"))
     }
@@ -181,9 +190,8 @@ impl<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> VerifierChannel<B
         positions: &[usize],
         commitment: &H::Digest,
     ) -> Result<Vec<Vec<E>>, VerifierError> {
-        if !MerkleTree::verify_batch(commitment, positions, &self.constraint_proof) {
-            return Err(VerifierError::ConstraintQueryDoesNotMatchCommitment);
-        }
+        MerkleTree::verify_batch(commitment, positions, &self.constraint_proof)
+            .map_err(|_| VerifierError::ConstraintQueryDoesNotMatchCommitment)?;
 
         Ok(self.constraint_evaluations.take().expect("already read"))
     }
@@ -196,7 +204,7 @@ impl<B, E, H> FriVerifierChannel<E> for VerifierChannel<B, E, H>
 where
     B: StarkField,
     E: FieldElement<BaseField = B>,
-    H: Hasher,
+    H: ElementHasher<BaseField = B>,
 {
     type Hasher = H;
 

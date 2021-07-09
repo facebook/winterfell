@@ -7,7 +7,7 @@ use super::{
     super::tests::{build_prng, build_sequence_poly},
     Assertion, BoundaryConstraint,
 };
-use crypto::{hash, RandomElementGenerator};
+use crypto::{hashers::Blake3_256, PublicCoin};
 use math::{fields::f128::BaseElement, log2, polynom, FieldElement, StarkField};
 use std::collections::HashMap;
 
@@ -26,12 +26,12 @@ fn boundary_constraint_from_single_assertion() {
         assertion,
         inv_g,
         &mut twiddle_map,
-        prng.draw_pair(),
+        prng.draw_pair().unwrap(),
     );
     assert_eq!(0, constraint.register());
     assert_eq!(vec![value], constraint.poly());
     assert_eq!((0, BaseElement::ONE), constraint.poly_offset());
-    assert_eq!(test_prng.draw_pair::<BaseElement>(), constraint.cc);
+    assert_eq!(test_prng.draw_pair::<BaseElement>().unwrap(), constraint.cc);
 
     // single value constraints should evaluate to trace_value - value
     let trace_value = BaseElement::rand();
@@ -47,12 +47,12 @@ fn boundary_constraint_from_single_assertion() {
         assertion,
         inv_g,
         &mut twiddle_map,
-        prng.draw_pair(),
+        prng.draw_pair().unwrap(),
     );
     assert_eq!(1, constraint.register());
     assert_eq!(vec![value], constraint.poly());
     assert_eq!((0, BaseElement::ONE), constraint.poly_offset());
-    assert_eq!(test_prng.draw_pair::<BaseElement>(), constraint.cc);
+    assert_eq!(test_prng.draw_pair::<BaseElement>().unwrap(), constraint.cc);
 
     // single value constraints should evaluate to trace_value - value
     let trace_value = BaseElement::rand();
@@ -77,12 +77,12 @@ fn boundary_constraint_from_periodic_assertion() {
         assertion,
         inv_g,
         &mut twiddle_map,
-        prng.draw_pair(),
+        prng.draw_pair().unwrap(),
     );
     assert_eq!(0, constraint.register());
     assert_eq!(vec![value], constraint.poly());
     assert_eq!((0, BaseElement::ONE), constraint.poly_offset());
-    assert_eq!(test_prng.draw_pair::<BaseElement>(), constraint.cc);
+    assert_eq!(test_prng.draw_pair::<BaseElement>().unwrap(), constraint.cc);
 
     // periodic value constraints should evaluate to trace_value - value
     let trace_value = BaseElement::rand();
@@ -98,12 +98,12 @@ fn boundary_constraint_from_periodic_assertion() {
         assertion,
         inv_g,
         &mut twiddle_map,
-        prng.draw_pair(),
+        prng.draw_pair().unwrap(),
     );
     assert_eq!(2, constraint.register());
     assert_eq!(vec![value], constraint.poly());
     assert_eq!((0, BaseElement::ONE), constraint.poly_offset());
-    assert_eq!(test_prng.draw_pair::<BaseElement>(), constraint.cc);
+    assert_eq!(test_prng.draw_pair::<BaseElement>().unwrap(), constraint.cc);
 
     // periodic value constraints should evaluate to trace_value - value
     let trace_value = BaseElement::rand();
@@ -129,12 +129,12 @@ fn boundary_constraint_from_sequence_assertion() {
         assertion,
         inv_g,
         &mut twiddle_map,
-        prng.draw_pair(),
+        prng.draw_pair().unwrap(),
     );
     assert_eq!(0, constraint.register());
     assert_eq!(constraint_poly, constraint.poly());
     assert_eq!((0, BaseElement::ONE), constraint.poly_offset());
-    assert_eq!(test_prng.draw_pair::<BaseElement>(), constraint.cc);
+    assert_eq!(test_prng.draw_pair::<BaseElement>().unwrap(), constraint.cc);
     assert_eq!(1, twiddle_map.len());
 
     // sequence value constraints with no offset should evaluate to
@@ -154,12 +154,12 @@ fn boundary_constraint_from_sequence_assertion() {
         assertion,
         inv_g,
         &mut twiddle_map,
-        prng.draw_pair(),
+        prng.draw_pair().unwrap(),
     );
     assert_eq!(0, constraint.register());
     assert_eq!(constraint_poly, constraint.poly());
     assert_eq!((3, inv_g.exp(3)), constraint.poly_offset());
-    assert_eq!(test_prng.draw_pair::<BaseElement>(), constraint.cc);
+    assert_eq!(test_prng.draw_pair::<BaseElement>().unwrap(), constraint.cc);
     assert_eq!(2, twiddle_map.len());
 
     // sequence value constraints with offset should evaluate to
@@ -179,7 +179,7 @@ fn build_constraint_params(
 ) -> (
     BaseElement,
     HashMap<usize, Vec<BaseElement>>,
-    RandomElementGenerator<hash::Blake3_256>,
+    PublicCoin<BaseElement, Blake3_256<BaseElement>>,
 ) {
     let inv_g = BaseElement::get_root_of_unity(log2(trace_length)).inv();
     let prng = build_prng();

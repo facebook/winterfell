@@ -7,7 +7,7 @@ use common::{
     proof::{Commitments, Context, OodFrame, Queries, StarkProof},
     Air, ConstraintCompositionCoefficients, DeepCompositionCoefficients, EvaluationFrame,
 };
-use crypto::{Hasher, PublicCoin};
+use crypto::{ElementHasher, PublicCoin};
 use fri::{self, FriProof};
 use math::FieldElement;
 use std::marker::PhantomData;
@@ -19,7 +19,12 @@ use rayon::prelude::*;
 // TYPES AND INTERFACES
 // ================================================================================================
 
-pub struct ProverChannel<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>, H: Hasher> {
+pub struct ProverChannel<'a, A, E, H>
+where
+    A: Air,
+    E: FieldElement<BaseField = A::BaseElement>,
+    H: ElementHasher<BaseField = A::BaseElement>,
+{
     air: &'a A,
     coin: PublicCoin<A::BaseElement, H>,
     context: Context,
@@ -32,8 +37,11 @@ pub struct ProverChannel<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>
 // PROVER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-impl<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>, H: Hasher>
-    ProverChannel<'a, A, E, H>
+impl<'a, A, E, H> ProverChannel<'a, A, E, H>
+where
+    A: Air,
+    E: FieldElement<BaseField = A::BaseElement>,
+    H: ElementHasher<BaseField = A::BaseElement>,
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -96,17 +104,20 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>, H: Hasher>
     pub fn get_constraint_composition_coeffs(&mut self) -> ConstraintCompositionCoefficients<E> {
         self.air
             .get_constraint_composition_coefficients(&mut self.coin)
+            .expect("failed to draw composition coefficients")
     }
 
     /// Returns an out-of-domain point drawn from the public coin.
     pub fn get_ood_point(&mut self) -> E {
-        self.coin.draw()
+        self.coin.draw().expect("failed to draw OOD point")
     }
 
     /// Returns a set of coefficients for constructing a DEEP composition polynomial drawn from
     /// the public coin.
     pub fn get_deep_composition_coeffs(&mut self) -> DeepCompositionCoefficients<E> {
-        self.air.get_deep_composition_coefficients(&mut self.coin)
+        self.air
+            .get_deep_composition_coefficients(&mut self.coin)
+            .expect("failed to draw DEEP composition coefficients")
     }
 
     /// Returns a set of positions in the LDE domain against which the evaluations of trace and
@@ -114,7 +125,9 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>, H: Hasher>
     pub fn get_query_positions(&mut self) -> Vec<usize> {
         let num_queries = self.context.options().num_queries();
         let lde_domain_size = self.context.lde_domain_size();
-        self.coin.draw_integers(num_queries, lde_domain_size)
+        self.coin
+            .draw_integers(num_queries, lde_domain_size)
+            .expect("failed to draw query position")
     }
 
     /// Determines a nonce, which when hashed with the current seed of the public coin results
@@ -167,7 +180,7 @@ impl<'a, A, E, H> fri::ProverChannel<E> for ProverChannel<'a, A, E, H>
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseElement>,
-    H: Hasher,
+    H: ElementHasher<BaseField = A::BaseElement>,
 {
     type Hasher = H;
 
@@ -179,6 +192,6 @@ where
 
     /// Returns a new alpha drawn from the public coin.
     fn draw_fri_alpha(&mut self) -> E {
-        self.coin.draw()
+        self.coin.draw().expect("failed to draw FRI alpha")
     }
 }

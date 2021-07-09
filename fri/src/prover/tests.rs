@@ -7,9 +7,11 @@ use crate::{
     verifier, DefaultProverChannel, DefaultVerifierChannel, FriOptions, FriProof, VerifierContext,
     VerifierError,
 };
-use crypto::{hash, PublicCoin};
+use crypto::{hashers::Blake3_256, Hasher, PublicCoin};
 use math::{fft, fields::f128::BaseElement, FieldElement};
 use utils::{Deserializable, Serializable, SliceReader};
+
+type Blake3 = Blake3_256<BaseElement>;
 
 // TEST UTILS
 // ================================================================================================
@@ -17,7 +19,7 @@ use utils::{Deserializable, Serializable, SliceReader};
 pub fn build_prover_channel(
     trace_length: usize,
     options: &FriOptions,
-) -> DefaultProverChannel<BaseElement, BaseElement, hash::Blake3_256> {
+) -> DefaultProverChannel<BaseElement, BaseElement, Blake3> {
     DefaultProverChannel::new(trace_length * options.blowup_factor(), 32)
 }
 
@@ -39,7 +41,7 @@ pub fn build_evaluations(
 
 pub fn verify_proof(
     proof: FriProof,
-    commitments: Vec<[u8; 32]>,
+    commitments: Vec<<Blake3 as Hasher>::Digest>,
     evaluations: &[BaseElement],
     max_degree: usize,
     domain_size: usize,
@@ -54,21 +56,21 @@ pub fn verify_proof(
     let proof = FriProof::read_from(&mut reader).unwrap();
 
     // verify the proof
-    let mut channel = DefaultVerifierChannel::<BaseElement, hash::Blake3_256>::new(
+    let mut channel = DefaultVerifierChannel::<BaseElement, Blake3>::new(
         proof,
         domain_size,
         options.folding_factor(),
     )
     .unwrap();
-    let mut coin = PublicCoin::<BaseElement, hash::Blake3_256>::new(&[]);
+    let mut coin = PublicCoin::<BaseElement, Blake3>::new(&[]);
     let alphas = commitments
         .iter()
         .map(|&com| {
             coin.reseed(com);
-            coin.draw()
+            coin.draw().unwrap()
         })
         .collect::<Vec<BaseElement>>();
-    let context = VerifierContext::<BaseElement, BaseElement, hash::Blake3_256>::new(
+    let context = VerifierContext::<BaseElement, BaseElement, Blake3>::new(
         evaluations.len(),
         max_degree,
         commitments,

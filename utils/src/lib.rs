@@ -158,6 +158,9 @@ pub trait ByteReader {
     /// from `self`.
     fn read_u8_vec(&mut self, len: usize) -> Result<Vec<u8>, DeserializationError>;
 
+    /// Returns a byte array of length `N` reade from `self`.
+    fn read_u8_array<const N: usize>(&mut self) -> Result<[u8; N], DeserializationError>;
+
     /// Returns true if there are more bytes left to be read from `self`.
     fn has_more_bytes(&self) -> bool;
 }
@@ -259,6 +262,18 @@ impl<'a> ByteReader for SliceReader<'a> {
             return Err(DeserializationError::UnexpectedEOF);
         }
         let result = self.source[self.pos..end_pos].to_vec();
+        self.pos = end_pos;
+        Ok(result)
+    }
+
+    fn read_u8_array<const N: usize>(&mut self) -> Result<[u8; N], DeserializationError> {
+        let end_pos = self.pos + N;
+        if end_pos > self.source.len() {
+            return Err(DeserializationError::UnexpectedEOF);
+        }
+        let result = self.source[self.pos..end_pos].try_into().map_err(|_| {
+            DeserializationError::UnknownError("failed to convert slide into an array".to_string())
+        })?;
         self.pos = end_pos;
         Ok(result)
     }

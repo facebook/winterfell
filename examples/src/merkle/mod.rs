@@ -10,7 +10,7 @@ use crate::{
 use log::debug;
 use prover::{
     self,
-    crypto::{Hasher, MerkleTree},
+    crypto::MerkleTree,
     math::{fields::f128::BaseElement, log2, FieldElement, StarkField},
     ProofOptions, StarkProof,
 };
@@ -60,7 +60,7 @@ impl MerkleExample {
 
         // compute Merkle path form the leaf specified by the index
         let now = Instant::now();
-        let path = tree.prove(index);
+        let path = tree.prove(index).unwrap();
         debug!(
             "Computed Merkle path from leaf {} to root {} in {} ms",
             index,
@@ -132,9 +132,6 @@ fn build_merkle_tree(depth: usize, value: [BaseElement; 2], index: usize) -> Mer
         leaves.push(Hash::new(leaf_elements[i], leaf_elements[i + 1]));
     }
 
-    // TODO: should use Rescue128::hash_elements()
-    let value = Hash::new(value[0], value[1]);
-    leaves[index] = Rescue128::merge_many(&[value]);
-
-    MerkleTree::new(leaves)
+    leaves[index] = Rescue128::digest(&value);
+    MerkleTree::new(leaves).unwrap()
 }

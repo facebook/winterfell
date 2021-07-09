@@ -3,8 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::hash::Hasher;
+use crate::{errors::MerkleTreeError, hash::Hasher};
 use core::slice;
+use math::log2;
 use std::collections::{BTreeSet, HashMap};
 
 mod proofs;
@@ -19,6 +20,70 @@ mod tests;
 // TYPES AND INTERFACES
 // ================================================================================================
 
+/// A fully-balanced Merkle tree.
+///
+/// In this implementation, a Merkle tree consists of two types of nodes: leaves and internal nodes
+/// (one of which is a tree root). All nodes must be instances of the digest specified by the
+/// [Hasher] used to build the tree.
+///
+/// ```text
+///       *        <- tree root
+///     /   \
+///    /     \
+///   *       *    <- internal nodes
+///  / \     / \
+/// o   o   o   o  <- leaves
+/// |   |   |   |
+/// #   #   #   #  <- values
+/// ```
+///
+/// A tree can be built from a slice of leaves using [MerkleTree::new()] function. Thus, the user
+/// is responsible for performing the first level of hashing (i.e., hashing values into leaf
+/// nodes). The number of leaves must always be a power of two so that the tree is fully balanced,
+/// and a tree must contain at least two leaves.
+///
+/// The depth of a tree is zero-based. Thus, a tree with two leaves has depth 1, a tree with four
+/// leaves has depth 2 etc.
+///
+/// When the crate is compiled with `concurrent` feature enabled, tree construction will be
+/// performed in multiple threads (usually, as many threads as there are logical cores on the
+/// machine). The number of threads can be configured via `RAYON_NUM_THREADS` environment variable.
+///
+/// To generate an inclusion proof for a given leaf, [MerkleTree::prove()] method can be used.
+/// You can also use [MerkleTree::prove_batch()] method to generate inclusion proofs for multiple
+/// leaves. The advantage of the batch method is that redundant internal nodes are removed from
+/// the batch proof, thereby compressing it (we use a variation of the
+/// [Octopus](https://eprint.iacr.org/2017/933) algorithm).
+///
+/// To verify proofs, [MerkleTree::verify()] and [MerkleTree::verify_batch()] functions can be
+/// used respectively.
+///
+/// # Examples
+/// ```
+/// # use winter_crypto::{MerkleTree, Hasher, hashers::Blake3_256};
+/// # use math::fields::f128::BaseElement;
+/// type Blake3 = Blake3_256::<BaseElement>;
+///
+/// // build a tree
+/// let leaves = [
+///     Blake3::hash(&[1u8]),
+///     Blake3::hash(&[2u8]),
+///     Blake3::hash(&[3u8]),
+///     Blake3::hash(&[4u8]),
+/// ];
+/// let tree = MerkleTree::<Blake3>::new(leaves.to_vec()).unwrap();
+/// assert_eq!(2, tree.depth());
+/// assert_eq!(leaves, tree.leaves());
+///
+/// // generate a proof
+/// let proof = tree.prove(2).unwrap();
+/// assert_eq!(3, proof.len());
+/// assert_eq!(leaves[2], proof[0]);
+///
+/// // verify proof
+/// assert!(MerkleTree::<Blake3>::verify(*tree.root(), 2, &proof).is_ok());
+/// assert!(MerkleTree::<Blake3>::verify(*tree.root(), 1, &proof).is_err());
+/// ```
 #[derive(Debug)]
 pub struct MerkleTree<H: Hasher> {
     nodes: Vec<H::Digest>,
@@ -31,17 +96,22 @@ pub struct MerkleTree<H: Hasher> {
 impl<H: Hasher> MerkleTree<H> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
-    /// Returns new merkle tree built from the provide leaves using hash function specified by the
-    /// `H` generic parameter. Panics if the number of leaves is not a power of two.
-    /// When `concurrent` feature is enabled, the tree is built using as many threads as are
-    /// available in Rayon's global thread pool (usually as many threads as logical cores).
-    /// Otherwise, the tree is built using a single thread.
-    pub fn new(leaves: Vec<H::Digest>) -> Self {
-        assert!(
-            leaves.len().is_power_of_two(),
-            "number of leaves must be a power of 2"
-        );
-        assert!(leaves.len() >= 2, "a tree must contain at least 2 leaves");
+    /// Returns new Merkle tree built from the provide leaves using hash function specified by the
+    /// `H` generic parameter.
+    ///
+    /// When `concurrent` feature is enabled, the tree is built using multiple threads.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// * Fewer than two leaves were provided.
+    /// * Number of leaves is not a power of two.
+    pub fn new(leaves: Vec<H::Digest>) -> Result<Self, MerkleTreeError> {
+        if leaves.len() < 2 {
+            return Err(MerkleTreeError::TooFewLeaves(2, leaves.len()));
+        }
+        if !leaves.len().is_power_of_two() {
+            return Err(MerkleTreeError::NumberOfLeavesNotPowerOfTwo(leaves.len()));
+        }
 
         #[cfg(not(feature = "concurrent"))]
         let nodes = build_merkle_nodes::<H>(&leaves);
@@ -53,7 +123,7 @@ impl<H: Hasher> MerkleTree<H> {
             concurrent::build_merkle_nodes::<H>(&leaves)
         };
 
-        MerkleTree { nodes, leaves }
+        Ok(MerkleTree { nodes, leaves })
     }
 
     // PUBLIC ACCESSORS
@@ -65,8 +135,11 @@ impl<H: Hasher> MerkleTree<H> {
     }
 
     /// Returns depth of the tree.
+    ///
+    /// The depth of a tree is zero-based. Thus, a tree with two leaves has depth 1, a tree with
+    /// four leaves has depth 2 etc.
     pub fn depth(&self) -> usize {
-        self.leaves.len().trailing_zeros() as usize
+        log2(self.leaves.len()) as usize
     }
 
     /// Returns leaf nodes of the tree.
@@ -77,9 +150,20 @@ impl<H: Hasher> MerkleTree<H> {
     // PROVING METHODS
     // --------------------------------------------------------------------------------------------
 
-    /// Computes merkle path the given leaf index.
-    pub fn prove(&self, index: usize) -> Vec<H::Digest> {
-        assert!(index < self.leaves.len(), "invalid index {}", index);
+    /// Returns a Merkle path to a leaf at the specified `index`.
+    ///
+    /// The leaf itself will be the first element in the path.
+    ///
+    /// # Errors
+    /// Returns an error if the specified index is greater than or equal to the number of leaves
+    /// in the tree.
+    pub fn prove(&self, index: usize) -> Result<Vec<H::Digest>, MerkleTreeError> {
+        if index >= self.leaves.len() {
+            return Err(MerkleTreeError::LeafIndexOutOfBounds(
+                self.leaves.len(),
+                index,
+            ));
+        }
 
         let mut proof = vec![self.leaves[index], self.leaves[index ^ 1]];
 
@@ -89,26 +173,43 @@ impl<H: Hasher> MerkleTree<H> {
             index >>= 1;
         }
 
-        proof
+        Ok(proof)
     }
 
-    /// Computes merkle paths for the provided indexes and compresses the paths into a single proof.
-    pub fn prove_batch(&self, indexes: &[usize]) -> BatchMerkleProof<H> {
-        let n = self.leaves.len();
+    /// Computes Merkle paths for the provided indexes and compresses the paths into a single proof.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// * No indexes were provided (i.e., `indexes` is an empty slice).
+    /// * Number of provided indexes is greater than 255.
+    /// * Any of the provided indexes are greater than or equal to the number of leaves in the
+    ///   tree.
+    /// * List of indexes contains duplicates.
+    pub fn prove_batch(&self, indexes: &[usize]) -> Result<BatchMerkleProof<H>, MerkleTreeError> {
+        if indexes.is_empty() {
+            return Err(MerkleTreeError::TooFewLeafIndexes);
+        }
+        if indexes.len() > proofs::MAX_PATHS {
+            return Err(MerkleTreeError::TooManyLeafIndexes(
+                proofs::MAX_PATHS,
+                indexes.len(),
+            ));
+        }
 
-        let index_map = map_indexes(indexes, n);
+        let index_map = map_indexes(indexes, self.depth())?;
         let indexes = normalize_indexes(indexes);
-        let mut values = vec![H::Digest::default(); index_map.len()];
+        let mut leaves = vec![H::Digest::default(); index_map.len()];
         let mut nodes: Vec<Vec<H::Digest>> = Vec::with_capacity(indexes.len());
 
         // populate the proof with leaf node values
+        let n = self.leaves.len();
         let mut next_indexes: Vec<usize> = Vec::new();
         for index in indexes {
             let missing: Vec<H::Digest> = (index..index + 2)
                 .flat_map(|i| {
                     let v = self.leaves[i];
                     if let Some(idx) = index_map.get(&i) {
-                        values[*idx] = v;
+                        leaves[*idx] = v;
                         None
                     } else {
                         Some(v)
@@ -121,8 +222,7 @@ impl<H: Hasher> MerkleTree<H> {
         }
 
         // add required internal nodes to the proof, skipping redundancies
-        let depth = self.leaves.len().trailing_zeros() as u8;
-        for _ in 1..depth {
+        for _ in 1..self.depth() {
             let indexes = next_indexes.clone();
             next_indexes.truncate(0);
 
@@ -142,22 +242,30 @@ impl<H: Hasher> MerkleTree<H> {
             }
         }
 
-        BatchMerkleProof {
-            values,
+        Ok(BatchMerkleProof {
+            leaves,
             nodes,
-            depth,
-        }
+            depth: self.depth() as u8,
+        })
     }
 
     // VERIFICATION METHODS
     // --------------------------------------------------------------------------------------------
 
-    /// Checks whether the path for the specified index is valid.
-    pub fn verify(root: H::Digest, index: usize, proof: &[H::Digest]) -> bool {
+    /// Checks whether the `proof` for the specified `index` is valid.
+    ///
+    /// # Errors
+    /// Returns an error if the specified `proof` (which is a Merkle path) does not resolve to the
+    /// specified `root`.
+    pub fn verify(
+        root: H::Digest,
+        index: usize,
+        proof: &[H::Digest],
+    ) -> Result<(), MerkleTreeError> {
         let r = index & 1;
         let mut v = H::merge(&[proof[r], proof[1 - r]]);
 
-        let mut index = (index + usize::pow(2, (proof.len() - 1) as u32)) >> 1;
+        let mut index = (index + 2usize.pow((proof.len() - 1) as u32)) >> 1;
         for &p in proof.iter().skip(2) {
             v = if index & 1 == 0 {
                 H::merge(&[v, p])
@@ -167,21 +275,44 @@ impl<H: Hasher> MerkleTree<H> {
             index >>= 1;
         }
 
-        v == root
+        if v != root {
+            return Err(MerkleTreeError::InvalidProof);
+        }
+        Ok(())
     }
 
-    /// Checks whether the batch proof contains merkle paths for the of the specified indexes.
-    pub fn verify_batch(root: &H::Digest, indexes: &[usize], proof: &BatchMerkleProof<H>) -> bool {
-        match proof.get_root(indexes) {
-            Some(proof_root) => *root == proof_root,
-            None => false,
+    /// Checks whether the batch proof contains Merkle paths for the of the specified `indexes`.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// * No indexes were provided (i.e., `indexes` is an empty slice).
+    /// * Number of provided indexes is greater than 255.
+    /// * Any of the specified `indexes` is greater than or equal to the number of leaves in the
+    ///   tree from which the batch proof was generated.
+    /// * List of indexes contains duplicates.
+    /// * Any of the paths in the batch proof does not resolve to the specified `root`.
+    pub fn verify_batch(
+        root: &H::Digest,
+        indexes: &[usize],
+        proof: &BatchMerkleProof<H>,
+    ) -> Result<(), MerkleTreeError> {
+        if *root != proof.get_root(indexes)? {
+            return Err(MerkleTreeError::InvalidProof);
         }
+        Ok(())
     }
 }
 
 // HELPER FUNCTIONS
 // ================================================================================================
 
+/// Returns the internal nodes of a Merkle tree defined by the specified leaves.
+///
+/// The internal nodes are turned as a vector where the root is stored at position 1, its children
+/// are stored at positions 2, 3, their children are stored at positions 4, 5, 6, 7 etc.
+///
+/// This function is exposed primarily for benchmarking purposes. It is not intended to be used
+/// directly by the end users of the crate.
 pub fn build_merkle_nodes<H: Hasher>(leaves: &[H::Digest]) -> Vec<H::Digest> {
     let n = leaves.len() / 2;
 
@@ -208,14 +339,24 @@ pub fn build_merkle_nodes<H: Hasher>(leaves: &[H::Digest]) -> Vec<H::Digest> {
     nodes
 }
 
-fn map_indexes(indexes: &[usize], max_valid: usize) -> HashMap<usize, usize> {
+fn map_indexes(
+    indexes: &[usize],
+    tree_depth: usize,
+) -> Result<HashMap<usize, usize>, MerkleTreeError> {
+    let num_leaves = 2usize.pow(tree_depth as u32);
     let mut map = HashMap::new();
     for (i, index) in indexes.iter().cloned().enumerate() {
         map.insert(index, i);
-        assert!(index <= max_valid, "invalid index {}", index);
+        if index >= num_leaves {
+            return Err(MerkleTreeError::LeafIndexOutOfBounds(num_leaves, index));
+        }
     }
-    assert_eq!(indexes.len(), map.len(), "repeating indexes detected");
-    map
+
+    if indexes.len() != map.len() {
+        return Err(MerkleTreeError::DuplicateLeafIndex);
+    }
+
+    Ok(map)
 }
 
 fn normalize_indexes(indexes: &[usize]) -> Vec<usize> {

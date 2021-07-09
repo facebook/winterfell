@@ -8,7 +8,7 @@ use crate::{
     utils::{fold_positions, hash_values},
     FriOptions, FriProof, FriProofLayer, ProverChannel,
 };
-use crypto::{Hasher, MerkleTree};
+use crypto::{ElementHasher, Hasher, MerkleTree};
 use math::{FieldElement, StarkField};
 use std::marker::PhantomData;
 use utils::{flatten_vector_elements, group_slice_elements, transpose_slice};
@@ -24,7 +24,7 @@ where
     B: StarkField,
     E: FieldElement<BaseField = B>,
     C: ProverChannel<E, Hasher = H>,
-    H: Hasher,
+    H: ElementHasher<BaseField = B>,
 {
     options: FriOptions,
     layers: Vec<FriLayer<B, E, H>>,
@@ -45,7 +45,7 @@ where
     B: StarkField,
     E: FieldElement<BaseField = B>,
     C: ProverChannel<E, Hasher = H>,
-    H: Hasher,
+    H: ElementHasher<BaseField = B>,
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -127,7 +127,8 @@ where
         // Merkle authentication path.
         let transposed_evaluations = transpose_slice(evaluations);
         let hashed_evaluations = hash_values::<H, E, N>(&transposed_evaluations);
-        let evaluation_tree = MerkleTree::<H>::new(hashed_evaluations);
+        let evaluation_tree =
+            MerkleTree::<H>::new(hashed_evaluations).expect("failed to construct FRI layer tree");
         channel.commit_fri_layer(*evaluation_tree.root());
 
         // draw a pseudo-random coefficient from the channel, and use it in degree-respecting
@@ -202,7 +203,10 @@ fn query_layer<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher, const N
     positions: &[usize],
 ) -> FriProofLayer {
     // build Merkle authentication paths for all query positions
-    let proof = layer.tree.prove_batch(positions);
+    let proof = layer
+        .tree
+        .prove_batch(positions)
+        .expect("failed to generate a Merkle proof for FRI layer queries");
 
     // build a list of polynomial evaluations at each position; since evaluations in FRI layers
     // are stored in transposed form, a position refers to N evaluations which are committed

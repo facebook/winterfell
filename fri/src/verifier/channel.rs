@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{utils::hash_values, FriProof, ProofSerializationError, VerifierError};
-use crypto::{BatchMerkleProof, Hasher, MerkleTree};
+use crypto::{BatchMerkleProof, ElementHasher, Hasher, MerkleTree};
 use math::FieldElement;
 use utils::{group_vector_elements, transpose_slice};
 
@@ -12,7 +12,7 @@ use utils::{group_vector_elements, transpose_slice};
 // ================================================================================================
 
 pub trait VerifierChannel<E: FieldElement> {
-    type Hasher: Hasher;
+    type Hasher: ElementHasher<BaseField = E::BaseField>;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -34,9 +34,8 @@ pub trait VerifierChannel<E: FieldElement> {
         commitment: &<<Self as VerifierChannel<E>>::Hasher as Hasher>::Digest,
     ) -> Result<Vec<[E; N]>, VerifierError> {
         let layer_proof = self.take_next_fri_layer_proof();
-        if !MerkleTree::<Self::Hasher>::verify_batch(commitment, positions, &layer_proof) {
-            return Err(VerifierError::LayerCommitmentMismatch(layer_idx));
-        }
+        MerkleTree::<Self::Hasher>::verify_batch(commitment, positions, &layer_proof)
+            .map_err(|_| VerifierError::LayerCommitmentMismatch(layer_idx))?;
 
         let layer_queries = self.take_next_fri_layer_queries();
         Ok(group_vector_elements(layer_queries))
@@ -53,7 +52,8 @@ pub trait VerifierChannel<E: FieldElement> {
         // build remainder Merkle tree
         let remainder_values = transpose_slice(&remainder);
         let hashed_values = hash_values::<Self::Hasher, E, N>(&remainder_values);
-        let remainder_tree = MerkleTree::<Self::Hasher>::new(hashed_values);
+        let remainder_tree = MerkleTree::<Self::Hasher>::new(hashed_values)
+            .expect("failed to construct FRI remainder tree");
 
         // make sure the root of the tree matches the committed root of the last layer
         if commitment != remainder_tree.root() {
@@ -67,14 +67,18 @@ pub trait VerifierChannel<E: FieldElement> {
 // DEFAULT VERIFIER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-pub struct DefaultVerifierChannel<E: FieldElement, H: Hasher> {
+pub struct DefaultVerifierChannel<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> {
     layer_proofs: Vec<BatchMerkleProof<H>>,
     layer_queries: Vec<Vec<E>>,
     remainder: Vec<E>,
     num_partitions: usize,
 }
 
-impl<E: FieldElement, H: Hasher> DefaultVerifierChannel<E, H> {
+impl<E, H> DefaultVerifierChannel<E, H>
+where
+    E: FieldElement,
+    H: ElementHasher<BaseField = E::BaseField>,
+{
     /// Builds a new verifier channel from the specified parameters.
     pub fn new(
         proof: FriProof,
@@ -100,7 +104,11 @@ impl<E: FieldElement, H: Hasher> DefaultVerifierChannel<E, H> {
     }
 }
 
-impl<E: FieldElement, H: Hasher> VerifierChannel<E> for DefaultVerifierChannel<E, H> {
+impl<E, H> VerifierChannel<E> for DefaultVerifierChannel<E, H>
+where
+    E: FieldElement,
+    H: ElementHasher<BaseField = E::BaseField>,
+{
     type Hasher = H;
 
     fn take_next_fri_layer_proof(&mut self) -> BatchMerkleProof<H> {

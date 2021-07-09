@@ -5,7 +5,9 @@
 
 use crate::errors::ProofSerializationError;
 use crypto::Hasher;
-use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+use utils::{
+    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
+};
 
 // COMMITMENTS
 // ================================================================================================
@@ -48,16 +50,14 @@ impl Commitments {
         self,
         num_fri_layers: usize,
     ) -> Result<(H::Digest, H::Digest, Vec<H::Digest>), ProofSerializationError> {
-        let num_bytes = self.0.len();
         // +1 for trace_root, +1 for constraint root, +1 for FRI remainder commitment
         let num_commitments = num_fri_layers + 3;
-        let (commitments, read_bytes) = H::read_digests_into_vec(&self.0, num_commitments)
+        let mut reader = SliceReader::new(&self.0);
+        let commitments = H::Digest::read_batch_from(&mut reader, num_commitments)
             .map_err(|err| ProofSerializationError::FailedToParseCommitments(err.to_string()))?;
         // make sure we consumed all available commitment bytes
-        if read_bytes != num_bytes {
-            return Err(ProofSerializationError::TooManyCommitmentBytes(
-                read_bytes, num_bytes,
-            ));
+        if reader.has_more_bytes() {
+            return Err(ProofSerializationError::TooManyCommitmentBytes);
         }
         Ok((commitments[0], commitments[1], commitments[2..].to_vec()))
     }
