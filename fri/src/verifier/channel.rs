@@ -34,9 +34,8 @@ pub trait VerifierChannel<E: FieldElement> {
         commitment: &<<Self as VerifierChannel<E>>::Hasher as Hasher>::Digest,
     ) -> Result<Vec<[E; N]>, VerifierError> {
         let layer_proof = self.take_next_fri_layer_proof();
-        if !MerkleTree::<Self::Hasher>::verify_batch(commitment, positions, &layer_proof) {
-            return Err(VerifierError::LayerCommitmentMismatch(layer_idx));
-        }
+        MerkleTree::<Self::Hasher>::verify_batch(commitment, positions, &layer_proof)
+            .map_err(|_| VerifierError::LayerCommitmentMismatch(layer_idx))?;
 
         let layer_queries = self.take_next_fri_layer_queries();
         Ok(group_vector_elements(layer_queries))
@@ -53,7 +52,8 @@ pub trait VerifierChannel<E: FieldElement> {
         // build remainder Merkle tree
         let remainder_values = transpose_slice(&remainder);
         let hashed_values = hash_values::<Self::Hasher, E, N>(&remainder_values);
-        let remainder_tree = MerkleTree::<Self::Hasher>::new(hashed_values);
+        let remainder_tree = MerkleTree::<Self::Hasher>::new(hashed_values)
+            .expect("failed to construct FRI remainder tree");
 
         // make sure the root of the tree matches the committed root of the last layer
         if commitment != remainder_tree.root() {

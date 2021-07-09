@@ -176,9 +176,8 @@ where
         commitment: &H::Digest,
     ) -> Result<Vec<Vec<B>>, VerifierError> {
         // make sure the states included in the proof correspond to the trace commitment
-        if !MerkleTree::verify_batch(commitment, positions, &self.trace_proof) {
-            return Err(VerifierError::TraceQueryDoesNotMatchCommitment);
-        }
+        MerkleTree::verify_batch(commitment, positions, &self.trace_proof)
+            .map_err(|_| VerifierError::TraceQueryDoesNotMatchCommitment)?;
 
         Ok(self.trace_states.take().expect("already read"))
     }
@@ -191,9 +190,8 @@ where
         positions: &[usize],
         commitment: &H::Digest,
     ) -> Result<Vec<Vec<E>>, VerifierError> {
-        if !MerkleTree::verify_batch(commitment, positions, &self.constraint_proof) {
-            return Err(VerifierError::ConstraintQueryDoesNotMatchCommitment);
-        }
+        MerkleTree::verify_batch(commitment, positions, &self.constraint_proof)
+            .map_err(|_| VerifierError::ConstraintQueryDoesNotMatchCommitment)?;
 
         Ok(self.constraint_evaluations.take().expect("already read"))
     }

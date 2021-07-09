@@ -35,4 +35,4 @@ mod random;
 pub use random::PublicCoin;
 
 mod errors;
-pub use errors::{ProofSerializationError, PublicCoinError};
+pub use errors::{MerkleTreeError, PublicCoinError};

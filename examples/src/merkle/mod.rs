@@ -60,7 +60,7 @@ impl MerkleExample {
 
         // compute Merkle path form the leaf specified by the index
         let now = Instant::now();
-        let path = tree.prove(index);
+        let path = tree.prove(index).unwrap();
         debug!(
             "Computed Merkle path from leaf {} to root {} in {} ms",
             index,
@@ -133,5 +133,5 @@ fn build_merkle_tree(depth: usize, value: [BaseElement; 2], index: usize) -> Mer
     }
 
     leaves[index] = Rescue128::digest(&value);
-    MerkleTree::new(leaves)
+    MerkleTree::new(leaves).unwrap()
 }

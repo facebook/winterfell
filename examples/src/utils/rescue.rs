@@ -7,7 +7,7 @@ use crate::utils::{are_equal, EvaluationResult};
 use prover::{
     crypto::Hasher,
     math::{fields::f128::BaseElement, FieldElement},
-    DeserializationError, Serializable,
+    ByteReader, DeserializationError, Serializable,
 };
 use std::slice;
 
@@ -115,10 +115,10 @@ impl Hasher for Rescue128 {
         unimplemented!("not implemented")
     }
 
-    fn read_digests_into_vec(
-        _source: &[u8],
+    fn read_digests_into_vec<R: ByteReader>(
+        _source: &mut R,
         _num_digests: usize,
-    ) -> Result<(Vec<Self::Digest>, usize), DeserializationError> {
+    ) -> Result<Vec<Self::Digest>, DeserializationError> {
         unimplemented!("not implemented");
     }
 }

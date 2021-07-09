@@ -128,7 +128,7 @@ pub enum ProofSerializationError {
     /// Failed to parse commitments: {0}
     FailedToParseCommitments(String),
     /// Too many commitment bytes; expected {0}, but was {1}
-    TooManyCommitmentBytes(usize, usize),
+    TooManyCommitmentBytes,
     /// Failed to parse query values: {0}
     FailedToParseQueryValues(String),
     /// Failed to parse query authentication paths: {0}
@@ -148,8 +148,8 @@ impl fmt::Display for ProofSerializationError {
             Self::FailedToParseCommitments(msg) => {
                 write!(f, "failed to parse commitments: {}", msg)
             }
-            Self::TooManyCommitmentBytes(expected, actual) => {
-                write!(f, "too many commitment bytes; expected {}, but was {}", expected, actual)
+            Self::TooManyCommitmentBytes => {
+                write!(f, "not all bytes were consumed when deserializing commitments")
             }
             Self::FailedToParseQueryValues(msg) => {
                 write!(f, "failed to parse query values: {}", msg)

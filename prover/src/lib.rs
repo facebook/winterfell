@@ -14,7 +14,7 @@ pub use common::{
 };
 pub use crypto;
 pub use math;
-pub use utils::{ByteWriter, Deserializable, DeserializationError, Serializable};
+pub use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 pub mod iterators {
     #[cfg(feature = "concurrent")]

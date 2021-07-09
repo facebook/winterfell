@@ -13,6 +13,8 @@ use math::{
     FieldElement, StarkField,
 };
 
+type Blake3 = Blake3_256<BaseElement>;
+
 #[test]
 fn new_trace_table() {
     let trace_length = 8;
@@ -87,7 +89,7 @@ fn commit_trace_table() {
     let (extended_trace, _) = trace.extend(&domain);
 
     // commit to the trace
-    let trace_tree = extended_trace.build_commitment::<Blake3_256<BaseElement>>();
+    let trace_tree = extended_trace.build_commitment::<Blake3>();
 
     // build Merkle tree from trace rows
     let mut hashed_states = Vec::new();
@@ -100,7 +102,7 @@ fn commit_trace_table() {
         let buf = Blake3_256::<BaseElement>::hash_elements(&trace_state);
         hashed_states.push(buf);
     }
-    let expected_tree = MerkleTree::<Blake3_256<BaseElement>>::new(hashed_states);
+    let expected_tree = MerkleTree::<Blake3>::new(hashed_states).unwrap();
 
     // compare the result
     assert_eq!(expected_tree.root(), trace_tree.root())

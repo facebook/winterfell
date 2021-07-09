@@ -95,7 +95,7 @@ impl<B: StarkField> TraceTable<B> {
         );
 
         // build Merkle tree out of hashed rows
-        MerkleTree::new(hashed_states)
+        MerkleTree::new(hashed_states).expect("failed to construct trace Merkle tree")
     }
 
     // QUERY TRACE
@@ -120,7 +120,9 @@ impl<B: StarkField> TraceTable<B> {
         }
 
         // build Merkle authentication paths to the leaves specified by positions
-        let trace_proof = commitment.prove_batch(positions);
+        let trace_proof = commitment
+            .prove_batch(positions)
+            .expect("failed to generate a Merkle proof for trace queries");
 
         Queries::new(trace_proof, trace_states)
     }

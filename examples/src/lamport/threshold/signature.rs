@@ -45,7 +45,7 @@ impl AggPublicKey {
         }
 
         // build a Merkle tree of all leaves
-        let tree = MerkleTree::new(leaves);
+        let tree = MerkleTree::new(leaves).unwrap();
 
         AggPublicKey { keys, tree }
     }
@@ -77,6 +77,6 @@ impl AggPublicKey {
 
     /// Returns a Merkle path to the specified leaf.
     pub fn get_leaf_path(&self, index: usize) -> Vec<Hash> {
-        self.tree.prove(index)
+        self.tree.prove(index).unwrap()
     }
 }

@@ -3,50 +3,78 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{Hasher, ProofSerializationError};
+use crate::{errors::MerkleTreeError, Hasher};
 use std::collections::{BTreeMap, HashMap};
+use utils::{ByteReader, DeserializationError, SliceReader};
+
+// CONSTANTS
+// ================================================================================================
+
+pub(super) const MAX_PATHS: usize = 255;
+
+// BATCH MERKLE PROOF
+// ================================================================================================
 
 /// Multiple Merkle paths aggregated into a single proof.
 ///
+/// The aggregation is done in a way which removes all duplicate internal nodes, and thus,
+/// it is possible to achieve non-negligible compression as compared to naively concatenating
+/// individual Merkle paths. The algorithm is for aggregation is a variation of
+/// [Octopus](https://eprint.iacr.org/2017/933).
 ///
+/// Currently, at most 255 paths can be aggregated into a single proof. This limitation is
+/// imposed primarily for serialization purposes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BatchMerkleProof<H: Hasher> {
-    pub(super) values: Vec<H::Digest>,
+    pub(super) leaves: Vec<H::Digest>,
     pub(super) nodes: Vec<Vec<H::Digest>>,
     pub(super) depth: u8,
 }
 
 impl<H: Hasher> BatchMerkleProof<H> {
     /// Constructs a batch Merkle proof from individual Merkle authentication paths.
-    /// TODO: optimize this to reduce amount of vector cloning.
+    ///
+    /// # Panics
+    /// Panics if:
+    /// * No paths have been provided (i.e., `paths` is an empty slice).
+    /// * More than 255 paths have been provided.
+    /// * Number of paths is not equal to the number of indexes.
+    /// * Not all paths have the same length.
     pub fn from_paths(paths: &[Vec<H::Digest>], indexes: &[usize]) -> BatchMerkleProof<H> {
+        // TODO: optimize this to reduce amount of vector cloning.
+        assert!(!paths.is_empty(), "at least one path must be provided");
+        assert!(
+            paths.len() <= MAX_PATHS,
+            "number of paths cannot exceed {}",
+            MAX_PATHS
+        );
         assert_eq!(
             paths.len(),
             indexes.len(),
             "number of paths must equal number of indexes"
         );
-        assert!(!paths.is_empty(), "at least one path must be provided");
 
         let depth = paths[0].len();
 
         // sort indexes in ascending order, and also re-arrange paths accordingly
         let mut path_map = BTreeMap::new();
         for (&index, path) in indexes.iter().zip(paths.iter().cloned()) {
+            assert_eq!(depth, path.len(), "not all paths have the same length");
             path_map.insert(index, path);
         }
         let indexes = path_map.keys().cloned().collect::<Vec<_>>();
         let paths = path_map.values().cloned().collect::<Vec<_>>();
         path_map.clear();
 
-        let mut values = vec![H::Digest::default(); indexes.len()];
+        let mut leaves = vec![H::Digest::default(); indexes.len()];
         let mut nodes: Vec<Vec<H::Digest>> = Vec::with_capacity(indexes.len());
 
         // populate values and the first layer of proof nodes
         let mut i = 0;
         while i < indexes.len() {
-            values[i] = paths[i][0];
+            leaves[i] = paths[i][0];
             if indexes.len() > i + 1 && are_siblings(indexes[i], indexes[i + 1]) {
-                values[i + 1] = paths[i][1];
+                leaves[i + 1] = paths[i][1];
                 nodes.push(vec![]);
                 i += 1;
             } else {
@@ -78,47 +106,66 @@ impl<H: Hasher> BatchMerkleProof<H> {
         }
 
         BatchMerkleProof {
-            values,
+            leaves,
             nodes,
             depth: (depth - 1) as u8,
         }
     }
 
     /// Computes a node to which all Merkle paths aggregated in this proof resolve.
-    pub fn get_root(&self, indexes: &[usize]) -> Option<H::Digest> {
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// * No indexes were provided (i.e., `indexes` is an empty slice).
+    /// * Number of provided indexes is greater than 255.
+    /// * Any of the specified `indexes` is greater than or equal to the number of leaves in the
+    ///   tree for which this batch proof was generated.
+    /// * List of indexes contains duplicates.
+    /// * The proof does not resolve to a single root.
+    pub fn get_root(&self, indexes: &[usize]) -> Result<H::Digest, MerkleTreeError> {
+        if indexes.is_empty() {
+            return Err(MerkleTreeError::TooFewLeafIndexes);
+        }
+        if indexes.len() > MAX_PATHS {
+            return Err(MerkleTreeError::TooManyLeafIndexes(
+                MAX_PATHS,
+                indexes.len(),
+            ));
+        }
+
         let mut buf = [H::Digest::default(); 2];
         let mut v = HashMap::new();
 
         // replace odd indexes, offset, and sort in ascending order
-        let offset = usize::pow(2, self.depth as u32);
-        let index_map = super::map_indexes(indexes, offset - 1);
+        let index_map = super::map_indexes(indexes, self.depth as usize)?;
         let indexes = super::normalize_indexes(indexes);
         if indexes.len() != self.nodes.len() {
-            return None;
+            return Err(MerkleTreeError::InvalidProof);
         }
 
         // for each index use values to compute parent nodes
+        let offset = 2usize.pow(self.depth as u32);
         let mut next_indexes: Vec<usize> = Vec::new();
         let mut proof_pointers: Vec<usize> = Vec::with_capacity(indexes.len());
         for (i, index) in indexes.into_iter().enumerate() {
             // copy values of leaf sibling leaf nodes into the buffer
             match index_map.get(&index) {
                 Some(&index1) => {
-                    if self.values.len() <= index1 {
-                        return None;
+                    if self.leaves.len() <= index1 {
+                        return Err(MerkleTreeError::InvalidProof);
                     }
-                    buf[0] = self.values[index1];
+                    buf[0] = self.leaves[index1];
                     match index_map.get(&(index + 1)) {
                         Some(&index2) => {
-                            if self.values.len() <= index2 {
-                                return None;
+                            if self.leaves.len() <= index2 {
+                                return Err(MerkleTreeError::InvalidProof);
                             }
-                            buf[1] = self.values[index2];
+                            buf[1] = self.leaves[index2];
                             proof_pointers.push(0);
                         }
                         None => {
                             if self.nodes[i].is_empty() {
-                                return None;
+                                return Err(MerkleTreeError::InvalidProof);
                             }
                             buf[1] = self.nodes[i][0];
                             proof_pointers.push(1);
@@ -127,17 +174,17 @@ impl<H: Hasher> BatchMerkleProof<H> {
                 }
                 None => {
                     if self.nodes[i].is_empty() {
-                        return None;
+                        return Err(MerkleTreeError::InvalidProof);
                     }
                     buf[0] = self.nodes[i][0];
                     match index_map.get(&(index + 1)) {
                         Some(&index2) => {
-                            if self.values.len() <= index2 {
-                                return None;
+                            if self.leaves.len() <= index2 {
+                                return Err(MerkleTreeError::InvalidProof);
                             }
-                            buf[1] = self.values[index2];
+                            buf[1] = self.leaves[index2];
                         }
-                        None => return None,
+                        None => return Err(MerkleTreeError::InvalidProof),
                     }
                     proof_pointers.push(1);
                 }
@@ -166,13 +213,13 @@ impl<H: Hasher> BatchMerkleProof<H> {
                 if i + 1 < indexes.len() && indexes[i + 1] == sibling_index {
                     sibling = match v.get(&sibling_index) {
                         Some(sibling) => *sibling,
-                        None => return None,
+                        None => return Err(MerkleTreeError::InvalidProof),
                     };
                     i += 1;
                 } else {
                     let pointer = proof_pointers[i];
                     if self.nodes[i].len() <= pointer {
-                        return None;
+                        return Err(MerkleTreeError::InvalidProof);
                     }
                     sibling = self.nodes[i][pointer];
                     proof_pointers[i] += 1;
@@ -181,7 +228,7 @@ impl<H: Hasher> BatchMerkleProof<H> {
                 // get the node from the map of hashed nodes
                 let node = match v.get(&node_index) {
                     Some(node) => node,
-                    None => return None,
+                    None => return Err(MerkleTreeError::InvalidProof),
                 };
 
                 // compute parent node from node and sibling
@@ -202,14 +249,18 @@ impl<H: Hasher> BatchMerkleProof<H> {
                 i += 1;
             }
         }
-
-        v.remove(&1)
+        v.remove(&1).ok_or(MerkleTreeError::InvalidProof)
     }
 
     // SERIALIZATION / DESERIALIZATION
     // --------------------------------------------------------------------------------------------
 
     /// Converts all internal proof nodes into a vector of bytes.
+    ///
+    /// # Panics
+    /// Panics if:
+    /// * The proof contains more than 255 Merkle paths.
+    /// * The Merkle paths consist of more than 255 nodes.
     pub fn serialize_nodes(&self) -> Vec<u8> {
         let mut result = Vec::new();
 
@@ -230,38 +281,60 @@ impl<H: Hasher> BatchMerkleProof<H> {
         result
     }
 
-    /// Parses internal nodes from the vector of bytes, and constructs a batch Merkle proof
-    /// from these nodes, leaf values, and provided tree depth.
+    /// Parses internal nodes from the provided `node_bytes`, and constructs a batch Merkle proof
+    /// from these nodes, provided `leaves`, and provided tree `depth`.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// * No leaves were provided (i.e., `leaves` is an empty slice).
+    /// * Number of provided leaves is greater than 255.
+    /// * Tree `depth` was set to zero.
+    /// * `node_bytes` could not be deserialized into a valid set of internal nodes.
+    /// * Not all bytes have been consumed from `node_bytes` while build a set of internal nodes.
     pub fn deserialize(
         node_bytes: &[u8],
         leaves: Vec<H::Digest>,
         depth: u8,
-    ) -> Result<Self, ProofSerializationError> {
-        if node_bytes.is_empty() {
-            return Err(ProofSerializationError::NoNodeBytes);
+    ) -> Result<Self, DeserializationError> {
+        if depth == 0 {
+            return Err(DeserializationError::InvalidValue(
+                "tree depth must be greater than zero".to_string(),
+            ));
         }
-        let num_node_vectors = node_bytes[0] as usize;
+        if leaves.is_empty() {
+            return Err(DeserializationError::InvalidValue(
+                "at lease one leaf must be provided".to_string(),
+            ));
+        }
+        if leaves.len() > MAX_PATHS {
+            return Err(DeserializationError::InvalidValue(format!(
+                "number of leaves cannot exceed {}, but {} were provided",
+                MAX_PATHS,
+                leaves.len()
+            )));
+        }
+
+        let mut reader = SliceReader::new(node_bytes);
+
+        let num_node_vectors = reader.read_u8()? as usize;
         let mut nodes = Vec::with_capacity(num_node_vectors);
-        let mut pos = 1;
         for _ in 0..num_node_vectors {
             // read the number of digests in the vector
-            if pos >= node_bytes.len() {
-                return Err(ProofSerializationError::UnexpectedEof(pos));
-            }
-            let num_digests = node_bytes[pos] as usize;
-            pos += 1;
+            let num_digests = reader.read_u8()? as usize;
 
-            // read the digests and advance head pointer
-            let (digests, bytes_read) =
-                H::read_digests_into_vec(&node_bytes[pos..], num_digests)
-                    .map_err(|_| ProofSerializationError::UnexpectedEof(node_bytes.len()))?;
+            // read the digests and add them to the node vector
+            let digests = H::read_digests_into_vec(&mut reader, num_digests)?;
             nodes.push(digests);
-            pos += bytes_read;
+        }
+
+        // make sure all bytes have been consumed
+        if reader.has_more_bytes() {
+            return Err(DeserializationError::UnconsumedBytes);
         }
 
         Ok(BatchMerkleProof {
+            leaves,
             nodes,
-            values: leaves,
             depth,
         })
     }

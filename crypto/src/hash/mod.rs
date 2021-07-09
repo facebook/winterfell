@@ -6,7 +6,7 @@
 use core::{fmt::Debug, marker::PhantomData};
 use math::{FieldElement, StarkField};
 use sha3::Digest;
-use utils::{group_slice_elements, AsBytes, DeserializationError};
+use utils::{AsBytes, ByteReader, DeserializationError};
 
 // HASHER TRAITS
 // ================================================================================================
@@ -30,10 +30,10 @@ pub trait Hasher {
     ///
     /// Returns an error if there are not enough bytes in the source to read the specified
     /// number of digests.
-    fn read_digests_into_vec(
-        source: &[u8],
+    fn read_digests_into_vec<R: ByteReader>(
+        source: &mut R,
         num_digests: usize,
-    ) -> Result<(Vec<Self::Digest>, usize), DeserializationError>;
+    ) -> Result<Vec<Self::Digest>, DeserializationError>;
 }
 
 /// Defines a hash function for hashing field elements.
@@ -72,10 +72,10 @@ impl<B: StarkField> Hasher for Blake3_256<B> {
         blake3::hash(&data).into()
     }
 
-    fn read_digests_into_vec(
-        source: &[u8],
+    fn read_digests_into_vec<R: ByteReader>(
+        source: &mut R,
         num_digests: usize,
-    ) -> Result<(Vec<Self::Digest>, usize), DeserializationError> {
+    ) -> Result<Vec<Self::Digest>, DeserializationError> {
         read_32_byte_digests(source, num_digests)
     }
 }
@@ -114,10 +114,10 @@ impl<B: StarkField> Hasher for Sha3_256<B> {
         sha3::Sha3_256::digest(&data).into()
     }
 
-    fn read_digests_into_vec(
-        source: &[u8],
+    fn read_digests_into_vec<R: ByteReader>(
+        source: &mut R,
         num_digests: usize,
-    ) -> Result<(Vec<Self::Digest>, usize), DeserializationError> {
+    ) -> Result<Vec<Self::Digest>, DeserializationError> {
         read_32_byte_digests(source, num_digests)
     }
 }
@@ -134,24 +134,13 @@ impl<B: StarkField> ElementHasher for Sha3_256<B> {
 // HELPER FUNCTIONS
 // ================================================================================================
 
-fn read_32_byte_digests(
-    source: &[u8],
+fn read_32_byte_digests<R: ByteReader>(
+    source: &mut R,
     num_digests: usize,
-) -> Result<(Vec<[u8; 32]>, usize), DeserializationError> {
-    if num_digests == 0 {
-        return Ok((Vec::new(), 0));
+) -> Result<Vec<[u8; 32]>, DeserializationError> {
+    let mut result = Vec::with_capacity(num_digests);
+    for _ in 0..num_digests {
+        result.push(source.read_u8_array()?)
     }
-
-    let num_bytes = num_digests * 32;
-    if num_bytes > source.len() {
-        return Err(DeserializationError::InvalidValue(format!(
-            "Not enough bytes for {} digests; expected {} bytes, but was {}",
-            num_digests,
-            num_bytes,
-            source.len()
-        )));
-    }
-
-    let result = group_slice_elements(&source[..num_bytes]).to_vec();
-    Ok((result, num_bytes))
+    Ok(result)
 }
