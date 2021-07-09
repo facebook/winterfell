@@ -53,7 +53,7 @@ impl Commitments {
         // +1 for trace_root, +1 for constraint root, +1 for FRI remainder commitment
         let num_commitments = num_fri_layers + 3;
         let mut reader = SliceReader::new(&self.0);
-        let commitments = H::read_digests_into_vec(&mut reader, num_commitments)
+        let commitments = H::Digest::read_batch_from(&mut reader, num_commitments)
             .map_err(|err| ProofSerializationError::FailedToParseCommitments(err.to_string()))?;
         // make sure we consumed all available commitment bytes
         if reader.has_more_bytes() {

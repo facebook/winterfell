@@ -5,7 +5,7 @@
 
 use crate::{errors::MerkleTreeError, Hasher};
 use std::collections::{BTreeMap, HashMap};
-use utils::{ByteReader, DeserializationError, SliceReader};
+use utils::{ByteReader, Deserializable, DeserializationError, Serializable, SliceReader};
 
 // CONSTANTS
 // ================================================================================================
@@ -274,7 +274,7 @@ impl<H: Hasher> BatchMerkleProof<H> {
             // record the number of nodes, and append all nodes to the paths buffer
             result.push(nodes.len() as u8);
             for node in nodes.iter() {
-                result.extend_from_slice(node.as_ref());
+                result.append(&mut node.to_bytes());
             }
         }
 
@@ -323,7 +323,7 @@ impl<H: Hasher> BatchMerkleProof<H> {
             let num_digests = reader.read_u8()? as usize;
 
             // read the digests and add them to the node vector
-            let digests = H::read_digests_into_vec(&mut reader, num_digests)?;
+            let digests = H::Digest::read_batch_from(&mut reader, num_digests)?;
             nodes.push(digests);
         }
 

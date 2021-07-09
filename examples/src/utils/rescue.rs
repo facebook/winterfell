@@ -7,7 +7,7 @@ use crate::utils::{are_equal, EvaluationResult};
 use prover::{
     crypto::Hasher,
     math::{fields::f128::BaseElement, FieldElement},
-    ByteReader, DeserializationError, Serializable,
+    ByteReader, Deserializable, DeserializationError, Serializable,
 };
 use std::slice;
 
@@ -114,13 +114,6 @@ impl Hasher for Rescue128 {
     fn merge_with_int(_seed: Self::Digest, _value: u64) -> Self::Digest {
         unimplemented!("not implemented")
     }
-
-    fn read_digests_into_vec<R: ByteReader>(
-        _source: &mut R,
-        _num_digests: usize,
-    ) -> Result<Vec<Self::Digest>, DeserializationError> {
-        unimplemented!("not implemented");
-    }
 }
 
 // HASH IMPLEMENTATION
@@ -155,6 +148,21 @@ impl Hash {
 impl AsRef<[u8]> for Hash {
     fn as_ref(&self) -> &[u8] {
         BaseElement::elements_as_bytes(&self.0)
+    }
+}
+
+impl Serializable for Hash {
+    fn write_into<W: prover::ByteWriter>(&self, target: &mut W) {
+        target.write(self.0[0]);
+        target.write(self.0[1]);
+    }
+}
+
+impl Deserializable for Hash {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let v1 = BaseElement::read_from(source)?;
+        let v2 = BaseElement::read_from(source)?;
+        Ok(Self([v1, v2]))
     }
 }
 

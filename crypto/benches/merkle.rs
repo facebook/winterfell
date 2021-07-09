@@ -7,7 +7,10 @@ use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use math::fields::f128::BaseElement;
 use rand::{rngs::ThreadRng, thread_rng, RngCore};
 use utils::uninit_vector;
-use winter_crypto::{build_merkle_nodes, concurrent, hashers::Blake3_256};
+use winter_crypto::{build_merkle_nodes, concurrent, hashers::Blake3_256, Hasher};
+
+type Blake3 = Blake3_256<BaseElement>;
+type Blake3Digest = <Blake3 as Hasher>::Digest;
 
 pub fn merkle_tree_construction(c: &mut Criterion) {
     let mut merkle_group = c.benchmark_group("merkle tree construction");
@@ -17,20 +20,20 @@ pub fn merkle_tree_construction(c: &mut Criterion) {
     for size in &BATCH_SIZES {
         let mut csprng: ThreadRng = thread_rng();
 
-        let data: Vec<[u8; 32]> = {
+        let data: Vec<Blake3Digest> = {
             let mut res = unsafe { uninit_vector(*size) };
             for i in 0..*size {
                 let mut v = [0u8; 32];
                 csprng.fill_bytes(&mut v);
-                res[i] = v;
+                res[i] = Blake3::hash(&v);
             }
             res
         };
         merkle_group.bench_with_input(BenchmarkId::new("sequential", size), &data, |b, i| {
-            b.iter(|| build_merkle_nodes::<Blake3_256<BaseElement>>(&i))
+            b.iter(|| build_merkle_nodes::<Blake3>(&i))
         });
         merkle_group.bench_with_input(BenchmarkId::new("concurrent", size), &data, |b, i| {
-            b.iter(|| concurrent::build_merkle_nodes::<Blake3_256<BaseElement>>(&i))
+            b.iter(|| concurrent::build_merkle_nodes::<Blake3>(&i))
         });
     }
 }

@@ -74,7 +74,7 @@ pub fn build_merkle_nodes<H: Hasher>(leaves: &[H::Digest]) -> Vec<H::Digest> {
 
 #[cfg(test)]
 mod tests {
-    use crate::hash::Sha3_256;
+    use crate::hash::{Digest256, Sha3_256};
     use math::fields::f128::BaseElement;
     use proptest::collection::vec;
     use proptest::prelude::*;
@@ -82,8 +82,9 @@ mod tests {
     proptest! {
         #[test]
         fn build_merkle_nodes_concurrent(ref data in vec(any::<[u8; 32]>(), 256..257).no_shrink()) {
-            let sequential = super::super::build_merkle_nodes::<Sha3_256<BaseElement>>(&data);
-            let concurrent = super::build_merkle_nodes::<Sha3_256<BaseElement>>(&data);
+            let leaves = Digest256::bytes_to_digests(&data).to_vec();
+            let sequential = super::super::build_merkle_nodes::<Sha3_256<BaseElement>>(&leaves);
+            let concurrent = super::build_merkle_nodes::<Sha3_256<BaseElement>>(&leaves);
             assert_eq!(concurrent, sequential);
         }
     }

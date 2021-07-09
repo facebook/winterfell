@@ -3,17 +3,33 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use core::{fmt::Debug, marker::PhantomData};
+use core::{fmt::Debug, marker::PhantomData, slice};
 use math::{FieldElement, StarkField};
 use sha3::Digest;
-use utils::{AsBytes, ByteReader, DeserializationError};
+use utils::{ByteReader, Deserializable, DeserializationError, Serializable};
 
 // HASHER TRAITS
 // ================================================================================================
 
 /// Defines a cryptographic hash function.
+///
+/// This trait defined hash procedures for the following inputs:
+/// * A sequence of bytes.
+/// * Two digests - this is intended for use in Merkle tree constructions.
+/// * A digests and a u64 value - this intended for use in PRNG or PoW contexts.
 pub trait Hasher {
-    type Digest: Debug + Copy + AsRef<[u8]> + Default + Eq + PartialEq + Send + Sync;
+    /// Specifies a digest type returned by this hasher.
+    type Digest: Debug
+        + Default
+        + Copy
+        + Clone
+        + Eq
+        + PartialEq
+        + Send
+        + Sync
+        + AsRef<[u8]> // TODO: ideally, this should be remove in favor of returning arrays
+        + Serializable
+        + Deserializable;
 
     /// Returns a hash of the provided sequence of bytes.
     fn hash(bytes: &[u8]) -> Self::Digest;
@@ -22,22 +38,16 @@ pub trait Hasher {
     /// Merkle trees.
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest;
 
-    /// Returns hash(seed || value). This method is intended for use in PRNG and PoW contexts.
+    /// Returns hash(`seed` || `value`). This method is intended for use in PRNG and PoW contexts.
     fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest;
-
-    /// Reads the specified number of digests from the provided source, and returns the vector
-    /// with the parsed digests as well as the number of bytes read from the source.
-    ///
-    /// Returns an error if there are not enough bytes in the source to read the specified
-    /// number of digests.
-    fn read_digests_into_vec<R: ByteReader>(
-        source: &mut R,
-        num_digests: usize,
-    ) -> Result<Vec<Self::Digest>, DeserializationError>;
 }
 
-/// Defines a hash function for hashing field elements.
+/// Defines a cryptographic hash function for hashing field elements.
+///
+/// This trait defines a hash procedure for a sequence of field elements. The elements can be
+/// either in the base field specified for this hasher, or in an extension of the base field.
 pub trait ElementHasher: Hasher {
+    /// Specifies a base field for elements which can be hashed with this hasher.
     type BaseField: StarkField;
 
     /// Returns a hash of the provided field elements.
@@ -55,28 +65,21 @@ pub trait ElementHasher: Hasher {
 pub struct Blake3_256<B: StarkField>(PhantomData<B>);
 
 impl<B: StarkField> Hasher for Blake3_256<B> {
-    type Digest = [u8; 32];
+    type Digest = Digest256;
 
     fn hash(bytes: &[u8]) -> Self::Digest {
-        blake3::hash(bytes).into()
+        Digest256(blake3::hash(bytes).into())
     }
 
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest {
-        blake3::hash(values.as_bytes()).into()
+        Digest256(blake3::hash(Digest256::digests_as_bytes(values)).into())
     }
 
     fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest {
         let mut data = [0; 40];
-        data[..32].copy_from_slice(&seed);
+        data[..32].copy_from_slice(&seed.0);
         data[32..].copy_from_slice(&value.to_le_bytes());
-        blake3::hash(&data).into()
-    }
-
-    fn read_digests_into_vec<R: ByteReader>(
-        source: &mut R,
-        num_digests: usize,
-    ) -> Result<Vec<Self::Digest>, DeserializationError> {
-        read_32_byte_digests(source, num_digests)
+        Digest256(blake3::hash(&data).into())
     }
 }
 
@@ -85,7 +88,7 @@ impl<B: StarkField> ElementHasher for Blake3_256<B> {
 
     fn hash_elements<E: FieldElement<BaseField = Self::BaseField>>(elements: &[E]) -> Self::Digest {
         let bytes = E::elements_as_bytes(elements);
-        blake3::hash(bytes).into()
+        Digest256(blake3::hash(bytes).into())
     }
 }
 
@@ -97,28 +100,21 @@ impl<B: StarkField> ElementHasher for Blake3_256<B> {
 pub struct Sha3_256<B: StarkField>(PhantomData<B>);
 
 impl<B: StarkField> Hasher for Sha3_256<B> {
-    type Digest = [u8; 32];
+    type Digest = Digest256;
 
     fn hash(bytes: &[u8]) -> Self::Digest {
-        sha3::Sha3_256::digest(bytes).into()
+        Digest256(sha3::Sha3_256::digest(bytes).into())
     }
 
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest {
-        sha3::Sha3_256::digest(values.as_bytes()).into()
+        Digest256(sha3::Sha3_256::digest(Digest256::digests_as_bytes(values)).into())
     }
 
     fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest {
         let mut data = [0; 40];
-        data[..32].copy_from_slice(&seed);
+        data[..32].copy_from_slice(&seed.0);
         data[32..].copy_from_slice(&value.to_le_bytes());
-        sha3::Sha3_256::digest(&data).into()
-    }
-
-    fn read_digests_into_vec<R: ByteReader>(
-        source: &mut R,
-        num_digests: usize,
-    ) -> Result<Vec<Self::Digest>, DeserializationError> {
-        read_32_byte_digests(source, num_digests)
+        Digest256(sha3::Sha3_256::digest(&data).into())
     }
 }
 
@@ -127,20 +123,51 @@ impl<B: StarkField> ElementHasher for Sha3_256<B> {
 
     fn hash_elements<E: FieldElement<BaseField = Self::BaseField>>(elements: &[E]) -> Self::Digest {
         let bytes = E::elements_as_bytes(elements);
-        sha3::Sha3_256::digest(bytes).into()
+        Digest256(sha3::Sha3_256::digest(bytes).into())
     }
 }
 
-// HELPER FUNCTIONS
+// DIGESTS
 // ================================================================================================
 
-fn read_32_byte_digests<R: ByteReader>(
-    source: &mut R,
-    num_digests: usize,
-) -> Result<Vec<[u8; 32]>, DeserializationError> {
-    let mut result = Vec::with_capacity(num_digests);
-    for _ in 0..num_digests {
-        result.push(source.read_u8_array()?)
+#[derive(Debug, Default, Copy, Clone, Eq, PartialEq)]
+pub struct Digest256([u8; 32]);
+
+impl Digest256 {
+    pub fn new(value: [u8; 32]) -> Self {
+        Self(value)
     }
-    Ok(result)
+
+    #[inline(always)]
+    pub fn bytes_to_digests(bytes: &[[u8; 32]]) -> &[Digest256] {
+        let p = bytes.as_ptr();
+        let len = bytes.len();
+        unsafe { slice::from_raw_parts(p as *const Digest256, len) }
+    }
+
+    #[inline(always)]
+    pub fn digests_as_bytes(digests: &[Digest256]) -> &[u8] {
+        let p = digests.as_ptr();
+        let len = digests.len() * 32;
+        unsafe { slice::from_raw_parts(p as *const u8, len) }
+    }
+}
+
+impl AsRef<[u8]> for Digest256 {
+    #[inline(always)]
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+impl Serializable for Digest256 {
+    fn write_into<W: utils::ByteWriter>(&self, target: &mut W) {
+        target.write_u8_slice(&self.0);
+    }
+}
+
+impl Deserializable for Digest256 {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        Ok(Digest256(source.read_u8_array()?))
+    }
 }
