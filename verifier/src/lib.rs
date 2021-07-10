@@ -13,6 +13,7 @@ use crypto::{
     hashers::{Blake3_256, Sha3_256},
     ElementHasher, PublicCoin,
 };
+use fri::verifier::VerifierContext as FriVerifierContext;
 
 pub use math;
 use math::{FieldElement, StarkField};
@@ -208,15 +209,16 @@ where
     // 7 ----- Verify low-degree proof -------------------------------------------------------------
     // make sure that evaluations of the DEEP composition polynomial we computed in the previous
     // step are in fact evaluations of a polynomial of degree equal to trace polynomial degree
-    let fri_context = fri::VerifierContext::<A::BaseElement, E, H>::new(
-        air.lde_domain_size(),
+    let fri_context = FriVerifierContext::<A::BaseElement, E, H>::new(
         air.trace_poly_degree(),
         fri_layer_commitments,
         fri_alphas,
         channel.read_fri_num_partitions(),
         air.options().to_fri_options(),
     );
-    fri::verify(
+    // TODO: make sure air.lde_domain_size() == fri_context.domain_size()
+
+    fri::verifier::verify(
         &fri_context,
         &mut channel,
         &deep_evaluations,

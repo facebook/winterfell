@@ -7,7 +7,10 @@ use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criteri
 use crypto::hashers::Blake3_256;
 use math::{fft, fields::f128::BaseElement, FieldElement};
 use std::time::Duration;
-use winter_fri::{DefaultProverChannel, FriOptions, FriProver};
+use winter_fri::{
+    prover::{DefaultProverChannel, FriProver},
+    FriOptions,
+};
 
 static BATCH_SIZES: [usize; 3] = [65536, 131072, 262144];
 static BLOWUP_FACTOR: usize = 8;

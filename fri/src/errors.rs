@@ -8,12 +8,20 @@ use core::fmt;
 // VERIFIER ERROR
 // ================================================================================================
 
+/// Defines errors which can occur during FRI proof verification.
 #[derive(Debug, PartialEq)]
 pub enum VerifierError {
-    /// FRI queries did not match the commitment at layer {0}
-    LayerCommitmentMismatch(usize),
+    /// Folding factor specified by the verifier context is not supported. Currently supported
+    /// folding factors are: 4, 8, and 16.
+    UnsupportedFoldingFactor(usize),
+    /// Number of query positions did not match the number of query evaluations.
+    NumPositionEvaluationMismatch(usize, usize),
+    /// Evaluations at queried positions did not match layer commitment made by the prover.
+    LayerCommitmentMismatch,
     /// FRI evaluations did not match query values at depth {0}
     LayerValuesNotConsistent(usize),
+    /// Failed to construct a Merkle tree out of FRI remainder values.
+    RemainderTreeConstructionFailed(String),
     /// FRI remainder did not match the commitment
     RemainderCommitmentMismatch,
     /// FRI remainder values are inconsistent with values of the last column
@@ -30,11 +38,21 @@ impl fmt::Display for VerifierError {
     #[rustfmt::skip]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::LayerCommitmentMismatch(layer) => {
-                write!(f, "FRI queries did not match the commitment at layer {}", layer)
+            Self::UnsupportedFoldingFactor(value) => {
+                write!(f, "folding factor {} is not currently supported", value)
+            }
+            Self::NumPositionEvaluationMismatch(num_positions, num_evaluations) => write!(f,
+                "the number of query positions must be the same as the number of query evaluations, but {} and {} were provided",
+                num_positions, num_evaluations
+            ),
+            Self::LayerCommitmentMismatch => {
+                write!(f, "FRI queries did not match layer commitment made by the prover")
             }
             Self::LayerValuesNotConsistent(layer) => {
-                write!(f, "FRI evaluations did not match query values at depth {}", layer)
+                write!(f, "FRI evaluations did not match query values at layer {}", layer)
+            }
+            Self::RemainderTreeConstructionFailed(err_msg) => {
+                write!(f, "FRI remainder Merkle tree could not be constructed: {}", err_msg)
             }
             Self::RemainderCommitmentMismatch => {
                 write!(f, "FRI remainder did not match the commitment")
@@ -50,36 +68,6 @@ impl fmt::Display for VerifierError {
             }
             Self::DegreeTruncation(degree, folding, layer) => {
                 write!(f, "degree reduction from {} by {} at layer {} results in degree truncation", degree, folding, layer)
-            }
-        }
-    }
-}
-
-// PROOF SERIALIZATION ERROR
-// ================================================================================================
-
-#[derive(Debug, PartialEq)]
-pub enum ProofSerializationError {
-    /// FRI queries at layer {0} could not be parsed: {1}
-    LayerParsingError(usize, String),
-    /// FRI remainder domain size must be {0}, but was {1}
-    InvalidRemainderDomain(usize, usize),
-    /// FRI remainder could not be parsed: {0}
-    RemainderParsingError(String),
-}
-
-impl fmt::Display for ProofSerializationError {
-    #[rustfmt::skip]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::LayerParsingError(layer, err_msg) => {
-                write!(f, "FRI queries at layer {} could not be parsed: {}", layer, err_msg)
-            }
-            Self::InvalidRemainderDomain(num_remainder_elements, domain_size) => {
-                write!(f, "FRI remainder domain size must be {}, but was {}", num_remainder_elements, domain_size)
-            }
-            Self::RemainderParsingError(err_msg) => {
-                write!(f, "FRI remainder could not be parsed: {}", err_msg)
             }
         }
     }

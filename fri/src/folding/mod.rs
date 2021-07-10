@@ -59,6 +59,28 @@ where
     result
 }
 
+// POSITION FOLDING
+// ================================================================================================
+/// Maps positions in the current evaluation domain, to positions in the folded domain.
+pub fn fold_positions(
+    positions: &[usize],
+    source_domain_size: usize,
+    folding_factor: usize,
+) -> Vec<usize> {
+    let target_domain_size = source_domain_size / folding_factor;
+
+    let mut result = Vec::new();
+    for position in positions {
+        let position = position % target_domain_size;
+        // make sure we don't record duplicated values
+        if !result.contains(&position) {
+            result.push(position);
+        }
+    }
+
+    result
+}
+
 // HELPER FUNCTIONS
 // ================================================================================================
 

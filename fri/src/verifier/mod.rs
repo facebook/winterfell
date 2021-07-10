@@ -3,10 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{
-    utils::{fold_positions, map_positions_to_indexes},
-    VerifierError,
-};
+use crate::{folding::fold_positions, utils::map_positions_to_indexes, VerifierError};
 use crypto::Hasher;
 use math::{get_power_series_with_offset, polynom, FieldElement, StarkField};
 use std::{convert::TryInto, mem};
@@ -19,10 +16,16 @@ pub use channel::{DefaultVerifierChannel, VerifierChannel};
 
 // VERIFICATION PROCEDURE
 // ================================================================================================
+/// Verifies a FRI proof read from the specified channel.
+///
 /// Returns OK(()) if values in the `evaluations` slice represent evaluations of a polynomial
-/// with degree <= context.max_degree() at x coordinates specified by the `positions` slice. The
+/// with degree <= `context.max_degree()` at x coordinates specified by the `positions` slice. The
 /// evaluation domain is defined by the combination of base field (specified by B type parameter),
 /// context.domain_size() parameter, and context.domain_offset() parameter.
+///
+/// # Errors
+/// Returns an error if:
+///
 pub fn verify<B, E, H, C>(
     context: &VerifierContext<B, E, H>,
     channel: &mut C,
@@ -41,7 +44,7 @@ where
         4 => verify_generic::<B, E, H, C, 4>(context, channel, evaluations, positions),
         8 => verify_generic::<B, E, H, C, 8>(context, channel, evaluations, positions),
         16 => verify_generic::<B, E, H, C, 16>(context, channel, evaluations, positions),
-        _ => unimplemented!("folding factor {} is not supported", folding_factor),
+        _ => Err(VerifierError::UnsupportedFoldingFactor(folding_factor)),
     }
 }
 
@@ -61,11 +64,12 @@ where
     H: Hasher,
     C: VerifierChannel<E, Hasher = H>,
 {
-    assert_eq!(
-        evaluations.len(),
-        positions.len(),
-        "number of positions must match the number of evaluations"
-    );
+    if evaluations.len() != positions.len() {
+        return Err(VerifierError::NumPositionEvaluationMismatch(
+            positions.len(),
+            evaluations.len(),
+        ));
+    }
     let domain_size = context.domain_size();
     let domain_generator = context.domain_generator();
     let domain_offset = context.domain_offset();
@@ -79,7 +83,7 @@ where
     // 1 ----- verify the recursive components of the FRI proof -----------------------------------
     let mut domain_generator = domain_generator;
     let mut domain_size = domain_size;
-    let mut max_degree_plus_1 = context.max_degree() + 1;
+    let mut max_degree_plus_1 = context.max_poly_degree() + 1;
     let mut positions = positions.to_vec();
     let mut evaluations = evaluations.to_vec();
 
@@ -96,8 +100,8 @@ where
         );
         // read query values from the specified indexes in the Merkle tree
         let layer_commitment = context.layer_commitments()[depth];
-        let layer_values =
-            channel.read_layer_queries(depth, &position_indexes, &layer_commitment)?;
+        // TODO: add layer depth to the potential error message
+        let layer_values = channel.read_layer_queries(&position_indexes, &layer_commitment)?;
         let query_values =
             get_query_values::<E, N>(&layer_values, &positions, &folded_positions, domain_size);
         if evaluations != query_values {

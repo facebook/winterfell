@@ -3,7 +3,6 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::ProofSerializationError;
 use crypto::{BatchMerkleProof, ElementHasher, Hasher};
 use math::{log2, FieldElement};
 use utils::{
@@ -59,7 +58,7 @@ impl FriProof {
         self,
         mut domain_size: usize,
         folding_factor: usize,
-    ) -> Result<(Vec<Vec<E>>, Vec<BatchMerkleProof<H>>), ProofSerializationError>
+    ) -> Result<(Vec<Vec<E>>, Vec<BatchMerkleProof<H>>), DeserializationError>
     where
         E: FieldElement,
         H: ElementHasher<BaseField = E::BaseField>,
@@ -75,34 +74,48 @@ impl FriProof {
 
         let mut layer_proofs = Vec::new();
         let mut layer_queries = Vec::new();
+        let num_remainder_elements = self.num_remainder_elements::<E>();
 
         // parse all layers
         for (i, layer) in self.layers.into_iter().enumerate() {
             domain_size /= folding_factor;
-            let (qv, mp) = layer.parse::<H, E>(i, domain_size, folding_factor)?;
+            let (qv, mp) = layer
+                .parse::<H, E>(domain_size, folding_factor)
+                .map_err(|err| {
+                    DeserializationError::InvalidValue(format!(
+                        "failed to parse FRI layer {}: {}",
+                        i, err
+                    ))
+                })?;
             layer_proofs.push(mp);
             layer_queries.push(qv);
         }
 
         // make sure the remaining domain size matches remainder length
-        let num_remainder_elements = self.remainder.len() / E::ELEMENT_BYTES;
         if domain_size != num_remainder_elements {
-            return Err(ProofSerializationError::InvalidRemainderDomain(
-                num_remainder_elements,
-                domain_size,
-            ));
+            return Err(DeserializationError::InvalidValue(format!(
+                "FRI remainder domain size must be {}, but was {}",
+                num_remainder_elements, domain_size,
+            )));
         }
 
         Ok((layer_queries, layer_proofs))
     }
 
     /// Returns a vector of remainder values (last FRI layer)
-    pub fn parse_remainder<E: FieldElement>(&self) -> Result<Vec<E>, ProofSerializationError> {
-        let num_elements = self.remainder.len() / E::ELEMENT_BYTES;
+    pub fn parse_remainder<E: FieldElement>(&self) -> Result<Vec<E>, DeserializationError> {
+        let num_elements = self.num_remainder_elements::<E>();
         let mut reader = SliceReader::new(&self.remainder);
-        let remainder = E::read_batch_from(&mut reader, num_elements)
-            .map_err(|err| ProofSerializationError::RemainderParsingError(err.to_string()))?;
+        let remainder = E::read_batch_from(&mut reader, num_elements).map_err(|err| {
+            DeserializationError::InvalidValue(format!("failed to parse FRI remainder: {}", err))
+        })?;
         Ok(remainder)
+    }
+
+    /// Returns the number of remainder field elements implied by remainder bytes and field
+    // element size.
+    fn num_remainder_elements<E: FieldElement>(&self) -> usize {
+        self.remainder.len() / E::ELEMENT_BYTES
     }
 }
 
@@ -195,10 +208,9 @@ impl FriProofLayer {
     /// paths (grouped together into a single batch Merkle proof).
     pub fn parse<H, E>(
         self,
-        layer_depth: usize,
         domain_size: usize,
         folding_factor: usize,
-    ) -> Result<(Vec<E>, BatchMerkleProof<H>), ProofSerializationError>
+    ) -> Result<(Vec<E>, BatchMerkleProof<H>), DeserializationError>
     where
         E: FieldElement,
         H: ElementHasher<BaseField = E::BaseField>,
@@ -210,13 +222,10 @@ impl FriProofLayer {
         // make sure the number of value bytes can be parsed into a whole number of queries
         let num_query_bytes = E::ELEMENT_BYTES * folding_factor;
         if self.values.len() % num_query_bytes != 0 {
-            return Err(ProofSerializationError::LayerParsingError(
-                layer_depth,
-                format!(
-                    "number of value bytes ({}) does not divide into whole number of queries",
-                    self.values.len()
-                ),
-            ));
+            return Err(DeserializationError::InvalidValue(format!(
+                "number of value bytes ({}) does not divide into whole number of queries",
+                self.values.len(),
+            )));
         }
 
         let num_queries = self.values.len() / num_query_bytes;
@@ -227,19 +236,14 @@ impl FriProofLayer {
         // and also hash them to build leaf nodes of the batch Merkle proof
         let mut reader = SliceReader::new(&self.values);
         for query_hash in hashed_queries.iter_mut() {
-            let mut qe = E::read_batch_from(&mut reader, folding_factor).map_err(|err| {
-                ProofSerializationError::LayerParsingError(layer_depth, err.to_string())
-            })?;
+            let mut qe = E::read_batch_from(&mut reader, folding_factor)?;
             *query_hash = H::hash_elements(&qe);
             query_values.append(&mut qe);
         }
 
         // build batch Merkle proof
         let tree_depth = log2(domain_size) as u8;
-        let merkle_proof = BatchMerkleProof::deserialize(&self.paths, hashed_queries, tree_depth)
-            .map_err(|err| {
-            ProofSerializationError::LayerParsingError(layer_depth, err.to_string())
-        })?;
+        let merkle_proof = BatchMerkleProof::deserialize(&self.paths, hashed_queries, tree_depth)?;
 
         Ok((query_values, merkle_proof))
     }

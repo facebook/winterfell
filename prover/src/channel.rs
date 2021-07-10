@@ -176,7 +176,7 @@ where
 // FRI PROVER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-impl<'a, A, E, H> fri::ProverChannel<E> for ProverChannel<'a, A, E, H>
+impl<'a, A, E, H> fri::prover::ProverChannel<E> for ProverChannel<'a, A, E, H>
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseElement>,
