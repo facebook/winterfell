@@ -44,7 +44,7 @@ pub trait FieldElement:
     + MulAssign<Self>
     + DivAssign<Self>
     + Neg<Output = Self>
-    + From<Self::BaseField>
+    + From<<Self as FieldElement>::BaseField>
     + From<u128>
     + From<u64>
     + From<u32>
