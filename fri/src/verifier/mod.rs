@@ -3,6 +3,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+//! Contains an implementation of FRI verifier and associated components.
+
 use crate::{folding::fold_positions, utils::map_positions_to_indexes, VerifierError};
 use crypto::Hasher;
 use math::{get_power_series_with_offset, polynom, FieldElement, StarkField};

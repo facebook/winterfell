@@ -8,7 +8,7 @@ use math::StarkField;
 // FRI OPTIONS
 // ================================================================================================
 
-/// Protocol config options for FRI proof generation and verification.
+/// FRI protocol config options for proof generation and verification.
 #[derive(Clone, PartialEq, Eq)]
 pub struct FriOptions {
     folding_factor: usize,
@@ -89,7 +89,7 @@ impl FriOptions {
     /// The remainder layer (the last FRI layer) is not included in the returned value.
     ///
     /// The number of layers for a given domain size is defined by the `folding_factor` and
-    /// `max_remainder_length` settings.
+    /// `max_remainder_size` settings.
     pub fn num_fri_layers(&self, mut domain_size: usize) -> usize {
         let mut result = 0;
         while domain_size > self.max_remainder_size {
@@ -103,7 +103,7 @@ impl FriOptions {
     /// the specified size.
     ///
     /// The size of the remainder layer for a given domain size is defined by the `folding_factor`
-    /// and `max_remainder_length` settings.
+    /// and `max_remainder_size` settings.
     pub fn fri_remainder_size(&self, mut domain_size: usize) -> usize {
         while domain_size > self.max_remainder_size {
             domain_size /= self.folding_factor;

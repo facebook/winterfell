@@ -134,7 +134,7 @@ where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
 {
-    /// Builds a new verifier channel from the specified [FirProof].
+    /// Builds a new verifier channel from the specified [FriProof].
     ///
     /// # Errors
     /// Returns an error if the specified `proof` could not be parsed correctly.

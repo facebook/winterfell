@@ -104,11 +104,17 @@ impl Queries {
         }
 
         // build batch Merkle proof
+        let mut reader = SliceReader::new(&self.paths);
         let tree_depth = log2(domain_size) as u8;
-        let merkle_proof = BatchMerkleProof::deserialize(&self.paths, hashed_queries, tree_depth)
+        let merkle_proof = BatchMerkleProof::deserialize(&mut reader, hashed_queries, tree_depth)
             .map_err(|err| {
             ProofSerializationError::FailedToParseQueryProofs(err.to_string())
         })?;
+        if reader.has_more_bytes() {
+            return Err(ProofSerializationError::FailedToParseQueryProofs(
+                "not all bytes were consumed".to_string(),
+            ));
+        }
 
         Ok((merkle_proof, query_values))
     }

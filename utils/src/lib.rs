@@ -63,7 +63,7 @@ impl Serializable for () {
 
 impl<T: Serializable> Serializable for Vec<T> {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        T::write_batch_into(&self, target);
+        T::write_batch_into(self, target);
     }
 }
 
@@ -75,15 +75,15 @@ impl<T: Serializable> Serializable for &Vec<T> {
 
 impl<T: Serializable, const N: usize> Serializable for Vec<[T; N]> {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        let source = flatten_slice_elements(&self);
-        T::write_batch_into(&source, target);
+        let source = flatten_slice_elements(self);
+        T::write_batch_into(source, target);
     }
 }
 
 impl<T: Serializable, const N: usize> Serializable for &Vec<[T; N]> {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         let source = flatten_slice_elements(self);
-        T::write_batch_into(&source, target);
+        T::write_batch_into(source, target);
     }
 }
 
@@ -96,7 +96,7 @@ impl<T: Serializable> Serializable for &[T] {
 impl<T: Serializable, const N: usize> Serializable for &[[T; N]] {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         let source = flatten_slice_elements(self);
-        T::write_batch_into(&source, target);
+        T::write_batch_into(source, target);
     }
 }
 
