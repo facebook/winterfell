@@ -27,8 +27,8 @@ pub struct PublicInputs {
 
 impl Serializable for PublicInputs {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write_table(&self.pub_keys);
-        target.write_table(&self.messages);
+        target.write(&self.pub_keys);
+        target.write(&self.messages);
     }
 }
 

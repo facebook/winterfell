@@ -8,7 +8,7 @@ use math::StarkField;
 // FRI OPTIONS
 // ================================================================================================
 
-/// Defines a set of options for FRI proof generation and verification.
+/// Protocol config options for FRI proof generation and verification.
 #[derive(Clone, PartialEq, Eq)]
 pub struct FriOptions {
     folding_factor: usize,

@@ -30,10 +30,10 @@ pub struct PublicInputs {
 
 impl Serializable for PublicInputs {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write_slice(&self.pub_key_root);
+        target.write(&self.pub_key_root[..]);
         target.write_u32(self.num_pub_keys as u32);
         target.write_u32(self.num_signatures as u32);
-        target.write_slice(&self.message);
+        target.write(&self.message[..]);
     }
 }
 

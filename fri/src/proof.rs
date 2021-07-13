@@ -12,6 +12,7 @@ use utils::{
 // FRI PROOF
 // ================================================================================================
 
+///
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct FriProof {
     layers: Vec<FriProofLayer>,
@@ -23,14 +24,14 @@ impl FriProof {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Creates a new FRI proof from the provided layers and remainder values.
-    pub fn new<E: FieldElement>(
+    pub(crate) fn new<E: FieldElement>(
         layers: Vec<FriProofLayer>,
         remainder: Vec<E>,
         num_partitions: usize,
     ) -> Self {
         FriProof {
             layers,
-            remainder: E::elements_as_bytes(&remainder).to_vec(),
+            remainder: remainder.to_bytes(),
             num_partitions: num_partitions.trailing_zeros() as u8,
         }
     }
