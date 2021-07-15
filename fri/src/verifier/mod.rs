@@ -7,7 +7,7 @@
 
 use crate::{folding::fold_positions, utils::map_positions_to_indexes, VerifierError};
 use crypto::Hasher;
-use math::{get_power_series_with_offset, polynom, FieldElement, StarkField};
+use math::{fft, polynom, FieldElement, StarkField};
 use std::{convert::TryInto, mem};
 
 mod context;
@@ -110,7 +110,7 @@ where
             return Err(VerifierError::LayerValuesNotConsistent(depth));
         }
 
-        // build a set of x for each row polynomial
+        // build a set of x coordinates for each row polynomial
         #[rustfmt::skip]
         let xs = folded_positions.iter().map(|&i| {
             let xe = domain_generator.exp((i as u64).into()) * domain_offset;
@@ -159,13 +159,7 @@ where
     }
 
     // make sure the remainder values satisfy the degree
-    verify_remainder(
-        remainder,
-        max_degree_plus_1,
-        domain_generator,
-        domain_offset,
-        context.blowup_factor(),
-    )
+    verify_remainder(remainder, max_degree_plus_1 - 1)
 }
 
 // REMAINDER DEGREE VERIFICATION
@@ -174,43 +168,22 @@ where
 /// with degree < max_degree_plus_1 against a domain specified by the `domain_generator` and
 /// `domain_offset`.
 fn verify_remainder<B: StarkField, E: FieldElement<BaseField = B>>(
-    remainder: Vec<E>,
-    max_degree_plus_1: usize,
-    domain_generator: B,
-    domain_offset: B,
-    blowup_factor: usize,
+    mut remainder: Vec<E>,
+    max_degree: usize,
 ) -> Result<(), VerifierError> {
-    if max_degree_plus_1 > remainder.len() {
+    if max_degree + 1 >= remainder.len() {
         return Err(VerifierError::RemainderDegreeNotValid);
     }
 
-    // exclude points which should be skipped during evaluation
-    let mut positions = Vec::new();
-    for i in 0..remainder.len() {
-        if i % blowup_factor != 0 {
-            positions.push(i);
-        }
-    }
+    let inv_twiddles = fft::get_inv_twiddles(remainder.len());
+    fft::interpolate_poly(&mut remainder, &inv_twiddles);
+    let poly = remainder;
 
-    // pick a subset of points from the remainder and interpolate them into a polynomial
-    let domain = get_power_series_with_offset(domain_generator, domain_offset, remainder.len());
-    let mut xs = Vec::with_capacity(max_degree_plus_1);
-    let mut ys = Vec::with_capacity(max_degree_plus_1);
-    for &p in positions.iter().take(max_degree_plus_1) {
-        xs.push(E::from(domain[p]));
-        ys.push(remainder[p]);
+    if max_degree < polynom::degree_of(&poly) {
+        Err(VerifierError::RemainderDegreeMismatch(max_degree))
+    } else {
+        Ok(())
     }
-    let poly = polynom::interpolate(&xs, &ys, false);
-
-    // check that polynomial evaluates correctly for all other points in the remainder
-    for &p in positions.iter().skip(max_degree_plus_1) {
-        if polynom::eval(&poly, E::from(domain[p])) != remainder[p] {
-            return Err(VerifierError::RemainderDegreeMismatch(
-                max_degree_plus_1 - 1,
-            ));
-        }
-    }
-    Ok(())
 }
 
 // HELPER FUNCTIONS

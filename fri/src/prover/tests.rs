@@ -33,11 +33,11 @@ fn fri_prove_verify() {
     let proof = prover.build_proof(&positions);
 
     // make sure the proof can be verified
-    let commitments = channel.fri_layer_commitments().to_vec();
+    let commitments = channel.layer_commitments().to_vec();
     let max_degree = trace_length - 1;
     let result = verify_proof(
-        proof,
-        commitments,
+        proof.clone(),
+        commitments.clone(),
         &evaluations,
         max_degree,
         trace_length * lde_blowup,
@@ -45,6 +45,18 @@ fn fri_prove_verify() {
         &options,
     );
     assert!(result.is_ok(), "{:}", result.err().unwrap());
+
+    // make sure proof fails for invalid degree
+    let result = verify_proof(
+        proof,
+        commitments,
+        &evaluations,
+        max_degree - 256,
+        trace_length * lde_blowup,
+        &positions,
+        &options,
+    );
+    assert!(result.is_err());
 }
 
 // TEST UTILS

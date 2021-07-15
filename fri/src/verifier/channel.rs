@@ -11,7 +11,7 @@ use utils::{group_vector_elements, transpose_slice, DeserializationError};
 // VERIFIER CHANNEL TRAIT
 // ================================================================================================
 
-/// Defines an abstraction for reading data sent by the prover during query phase of the FRI
+/// Defines an abstraction for reading data sent by the prover during the query phase of the FRI
 /// protocol.
 ///
 /// This trait abstracts away implementation specifics of the [FriProof] struct. Thus, instead of

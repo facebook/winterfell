@@ -4,6 +4,15 @@
 // LICENSE file in the root directory of this source tree.
 
 //! Contains an implementation of FRI prover and associated components.
+//!
+//! Given evaluations of a function *f* over domain *D* (`evaluations`), a FRI prover generates
+//! a proof that *f* is a polynomial of some bounded degree *d*, such that *d* < |*D*|.
+//!
+//! # Commit phase
+//! During the commit phase, the prover
+//!
+//! # Query phase
+//!
 
 use crate::{
     folding::{apply_drp, fold_positions},
@@ -25,6 +34,9 @@ mod tests;
 // TYPES AND INTERFACES
 // ================================================================================================
 
+/// Implements the prover component of the FRI protocol.
+///
+///
 pub struct FriProver<B, E, C, H>
 where
     B: StarkField,
@@ -34,7 +46,7 @@ where
 {
     options: FriOptions,
     layers: Vec<FriLayer<B, E, H>>,
-    _coin: PhantomData<C>,
+    _channel: PhantomData<C>,
 }
 
 struct FriLayer<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> {
@@ -55,12 +67,12 @@ where
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
-    /// Returns a new FRI prover instantiated with the provided options.
+    /// Returns a new FRI prover instantiated with the provided `options`.
     pub fn new(options: FriOptions) -> Self {
         FriProver {
             options,
             layers: Vec::new(),
-            _coin: PhantomData,
+            _channel: PhantomData,
         }
     }
 
@@ -89,13 +101,15 @@ where
 
     // COMMIT PHASE
     // --------------------------------------------------------------------------------------------
-    /// Executes commit phase of FRI protocol which recursively applies a degree-respecting
-    /// projection to evaluations of some function F over a larger domain. The degree of the
-    /// function implied by evaluations is reduced by folding_factor at every step until the
-    /// remaining evaluations can fit into a vector of at most max_remainder_length. At each layer
-    /// of recursion the current evaluations are committed to using a Merkle tree, and the root of
-    /// this tree is used to derive randomness for the subsequent application of degree-respecting
-    /// projection.
+    /// Executes the commit phase of the FRI protocol.
+    ///
+    /// During this phase we repeatedly apply degree-respecting projection (DRP) to `evaluations`
+    /// which contain evaluations some function *F* over domain *D*. With every application of the
+    /// DRP the degree of the function (and size of the domain) is reduced by `folding_factor`
+    /// until the remaining evaluations can fit into a vector of at most `max_remainder_size`. At
+    /// each layer of reduction the current evaluations are committed to using a Merkle tree, and
+    /// the root of this tree is written into the channel. After this the prover draws a random
+    /// field element α from the channel, and uses it in the next application of DRP.
     pub fn build_layers(&mut self, channel: &mut C, mut evaluations: Vec<E>) {
         assert!(
             self.layers.is_empty(),
@@ -217,9 +231,9 @@ fn query_layer<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher, const N
     // build a list of polynomial evaluations at each position; since evaluations in FRI layers
     // are stored in transposed form, a position refers to N evaluations which are committed
     // in a single leaf
+    let evaluations: &[[E; N]] = group_slice_elements(&layer.evaluations);
     let mut queried_values: Vec<[E; N]> = Vec::with_capacity(positions.len());
     for &position in positions.iter() {
-        let evaluations: &[[E; N]] = group_slice_elements(&layer.evaluations);
         queried_values.push(evaluations[position]);
     }
 
