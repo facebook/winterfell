@@ -12,15 +12,25 @@ use std::marker::PhantomData;
 
 /// Defines an interface for a channel over which a prover communicates with a verifier.
 ///
-/// The prover uses this channel
+/// The prover uses this channel to send commitments to FRI layer polynomials to the verifier, and
+/// then to draw a random value α from the channel after each commitment is sent. The prover then
+/// uses this α to construct the next FRI layer.
+///
+/// In the interactive version of the protocol, the verifier chooses α uniformly at random from
+/// the entire field. In the non-interactive version, the α is drawn pseudo-randomly based on the
+/// commitments the prover has written into the channel up to this point.
 pub trait ProverChannel<E: FieldElement> {
     /// Hash function used by the prover to commit to polynomial evaluations.
     type Hasher: Hasher;
 
     /// Sends a layer commitment to the verifier.
     ///
-    /// A layer commitment is a root of a Merkle tree built from evaluations of a polynomial at
-    /// a given layer.
+    /// A layer commitment is a root of a Merkle tree built from evaluations of a polynomial
+    /// at a given layer. The Merkle tree is built by first transposing evaluations into a
+    /// two-dimensional matrix where each row contains values needed to compute a single
+    /// value of the next FRI layer, and then putting each row of the matrix into a single
+    /// leaf of the Merkle tree. Thus, the number of elements grouped into a single leaf is
+    /// equal to the `folding_factor` used for FRI layer construction.
     fn commit_fri_layer(
         &mut self,
         layer_root: <<Self as ProverChannel<E>>::Hasher as Hasher>::Digest,
@@ -82,15 +92,16 @@ impl<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> DefaultProverChan
         }
     }
 
-    /// Draws a set of positions for the domain specified by
+    /// Draws a set of positions at which the polynomial evaluations committed at the first FRI
+    /// layer should be queried.
     ///
-    /// In the interactive version of the protocol, the verifier draws these positions
-    /// uniformly at random in the beginning of the query phase and sends them to the prover.
-    /// In the non-interactive version, the positions are pseudo-randomly generated based on
-    /// the values the prover has written into this channel.
+    /// The positions are pseudo-randomly generated based on the values the prover has written
+    /// into this channel.
     ///
-    /// # Panics if:
-    ///
+    /// # Panics
+    /// Panics if the specified number of unique positions could not be drawn from the specified
+    /// domain. Both number of queried positions and domain size are specified during
+    /// construction of the channel.
     pub fn draw_query_positions(&mut self) -> Vec<usize> {
         self.coin
             .draw_integers(self.num_queries, self.domain_size)

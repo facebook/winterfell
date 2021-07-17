@@ -13,7 +13,7 @@ use crypto::{
     hashers::{Blake3_256, Sha3_256},
     ElementHasher, PublicCoin,
 };
-use fri::verifier::VerifierContext as FriVerifierContext;
+use fri::verifier::FriVerifier;
 
 pub use math;
 use math::{FieldElement, StarkField};
@@ -163,17 +163,20 @@ where
         .get_deep_composition_coefficients::<E, H>(&mut coin)
         .map_err(|_| VerifierError::PublicCoinError)?;
 
-    // read FRI layer commitments sent by the prover, and use each commitment to update the public
-    // coin and draw a random point alpha from it; in the interactive version of the protocol, the
-    // verifier sends this alpha to the prover, and the prover uses it to compute and commit to
-    // the next FRI layer.
-    let fri_layer_commitments = channel.read_fri_layer_commitments();
-    let mut fri_alphas = Vec::with_capacity(fri_layer_commitments.len());
-    for commitment in fri_layer_commitments.iter() {
-        coin.reseed(*commitment);
-        let alpha = coin.draw().map_err(|_| VerifierError::PublicCoinError)?;
-        fri_alphas.push(alpha);
-    }
+    // instantiates a FRI verifier with the FRI layer commitments read from the channel. From the 
+    // verifier's perspective, this is equivalent to executing the commit phase of the FRI protocol.
+    // The verifier uses these commitments to update the public coin and draw random points alpha
+    // from them; in the interactive version of the protocol, the verifier sends these alphas to
+    // the prover, and the prover uses them to compute and commit to the subsequent FRI layers.
+    let fri_verifier = FriVerifier::<A::BaseElement, E, H>::new(
+        air.trace_poly_degree(),
+        channel.read_fri_layer_commitments(),
+        &mut coin,
+        channel.read_fri_num_partitions(),
+        air.options().to_fri_options(),
+    )
+    .map_err(VerifierError::FriVerificationFailed)?;
+    // TODO: make sure air.lde_domain_size() == fri_verifier.domain_size()
 
     // 5 ----- trace and constraint queries -------------------------------------------------------
     // read proof-of-work nonce sent by the prover and update the public coin with it
@@ -209,20 +212,7 @@ where
     // 7 ----- Verify low-degree proof -------------------------------------------------------------
     // make sure that evaluations of the DEEP composition polynomial we computed in the previous
     // step are in fact evaluations of a polynomial of degree equal to trace polynomial degree
-    let fri_context = FriVerifierContext::<A::BaseElement, E, H>::new(
-        air.trace_poly_degree(),
-        fri_layer_commitments,
-        fri_alphas,
-        channel.read_fri_num_partitions(),
-        air.options().to_fri_options(),
-    );
-    // TODO: make sure air.lde_domain_size() == fri_context.domain_size()
-
-    fri::verifier::verify(
-        &fri_context,
-        &mut channel,
-        &deep_evaluations,
-        &query_positions,
-    )
-    .map_err(VerifierError::FriVerificationFailed)
+    fri_verifier
+        .verify(&mut channel, &deep_evaluations, &query_positions)
+        .map_err(VerifierError::FriVerificationFailed)
 }

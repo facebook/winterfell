@@ -18,7 +18,9 @@
 //!    [build_layers()](prover::FriProver::build_layers()) function. During this phase, the degree
 //!    of the polynomial is repeatedly reduced by applying a degree-respecting projection, until
 //!    the size of domain over which the polynomial is evaluated falls under `max_remainder_size`
-//!    parameter.
+//!    parameter. While performing the reduction, the prover outputs a set of layer commitments.
+//!    These commitments should be recorded and sent to the verifier as they will be needed during
+//!    the proof verification procedure.
 //! 2. Then, the query phase of the protocol is executed via
 //!    [build_proof()](prover::FriProver::build_proof()) function. The output of this function is
 //!    an instance of the [FriProof] struct. When FRI is executed as a part of the STARK protocol,
@@ -29,11 +31,13 @@
 //! machine). The number of threads can be configured via `RAYON_NUM_THREADS` environment variable.
 //!
 //! # Proof verification
-//! FRI proofs can be verified via [verifier::verify()] function. This function assumes that a
+//! FRI proofs can be verified via [verifier::verify()] function. This function assumes that the
 //! proof has already been parsed into relevant components - e.g.,
 //! [VerifierContext](verifier::VerifierContext) and [VerifierChannel](verifier::VerifierChannel).
-//! When FRI proof verification is executed as a part of larger STARK protocol, STARK verifier
-//! handles parsing of the FRI proof into these components.
+//! To instantiate a verifier context we also need the data output by the prover during the commit
+//! phase of the protocol (i.e. layer commitments). When FRI proof verification is executed as a
+//! part of larger STARK protocol, STARK verifier handles parsing of the FRI proof into these
+//! components.
 //!
 //! # Protocol parameters
 //! The current implementation supports executing FRI protocol with dynamically configurable

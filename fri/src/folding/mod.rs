@@ -22,7 +22,7 @@ use utils::{iter_mut, uninit_vector};
 // ================================================================================================
 /// Applies degree-respecting projection to evaluations of a polynomial.
 ///
-/// This projection reduces the  degree of the polynomial implied by the `evaluations` by `N`.
+/// This process reduces the  degree of the polynomial implied by the `evaluations` by `N`.
 /// For example, for `N` = 4, this is equivalent to the following:
 /// - Let `evaluations` contain the evaluations of polynomial *f*(x) of degree *k*.
 /// - Group coefficients of *f* so that *f*(x) = a(x) + x * b(x) + x^2 * c(x) + x^3 * d(x)

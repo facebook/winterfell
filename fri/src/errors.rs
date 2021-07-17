@@ -11,6 +11,8 @@ use core::fmt;
 /// Defines errors which can occur during FRI proof verification.
 #[derive(Debug, PartialEq)]
 pub enum VerifierError {
+    ///
+    PublicCoinError,
     /// Folding factor specified by the verifier context is not supported. Currently supported
     /// folding factors are: 4, 8, and 16.
     UnsupportedFoldingFactor(usize),
@@ -38,6 +40,9 @@ impl fmt::Display for VerifierError {
     #[rustfmt::skip]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::PublicCoinError => {
+                write!(f, "failed to draw a random value from a public coin")
+            }
             Self::UnsupportedFoldingFactor(value) => {
                 write!(f, "folding factor {} is not currently supported", value)
             }

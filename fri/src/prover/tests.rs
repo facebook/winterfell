@@ -5,7 +5,7 @@
 
 use super::{DefaultProverChannel, FriProver};
 use crate::{
-    verifier::{self, DefaultVerifierChannel, VerifierContext},
+    verifier::{DefaultVerifierChannel, FriVerifier},
     FriOptions, FriProof, VerifierError,
 };
 use crypto::{hashers::Blake3_256, Hasher, PublicCoin};
@@ -106,24 +106,17 @@ pub fn verify_proof(
     )
     .unwrap();
     let mut coin = PublicCoin::<BaseElement, Blake3>::new(&[]);
-    let alphas = commitments
-        .iter()
-        .map(|&com| {
-            coin.reseed(com);
-            coin.draw().unwrap()
-        })
-        .collect::<Vec<BaseElement>>();
-    let context = VerifierContext::<BaseElement, BaseElement, Blake3>::new(
+    let verifier = FriVerifier::<BaseElement, BaseElement, Blake3>::new(
         max_degree,
         commitments,
-        alphas,
+        &mut coin,
         channel.num_partitions(),
         options.clone(),
-    );
-    assert_eq!(evaluations.len(), context.domain_size());
+    )
+    .unwrap();
     let queried_evaluations = positions
         .iter()
         .map(|&p| evaluations[p])
         .collect::<Vec<_>>();
-    verifier::verify(&context, &mut channel, &queried_evaluations, &positions)
+    verifier.verify(&mut channel, &queried_evaluations, &positions)
 }
