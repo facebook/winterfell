@@ -101,19 +101,13 @@ pub fn verify_proof(
     // verify the proof
     let mut channel = DefaultVerifierChannel::<BaseElement, Blake3>::new(
         proof,
+        commitments,
         domain_size,
         options.folding_factor(),
     )
     .unwrap();
     let mut coin = RandomCoin::<BaseElement, Blake3>::new(&[]);
-    let verifier = FriVerifier::<BaseElement, BaseElement, Blake3>::new(
-        max_degree,
-        commitments,
-        &mut coin,
-        channel.num_partitions(),
-        options.clone(),
-    )
-    .unwrap();
+    let verifier = FriVerifier::new(&mut channel, &mut coin, options.clone(), max_degree).unwrap();
     let queried_evaluations = positions
         .iter()
         .map(|&p| evaluations[p])

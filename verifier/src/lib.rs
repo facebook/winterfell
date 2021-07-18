@@ -13,7 +13,7 @@ use crypto::{
     hashers::{Blake3_256, Sha3_256},
     ElementHasher, RandomCoin,
 };
-use fri::verifier::FriVerifier;
+use fri::FriVerifier;
 
 pub use math;
 use math::{FieldElement, StarkField};
@@ -168,12 +168,11 @@ where
     // The verifier uses these commitments to update the public coin and draw random points alpha
     // from them; in the interactive version of the protocol, the verifier sends these alphas to
     // the prover, and the prover uses them to compute and commit to the subsequent FRI layers.
-    let fri_verifier = FriVerifier::<A::BaseElement, E, H>::new(
-        air.trace_poly_degree(),
-        channel.read_fri_layer_commitments(),
+    let fri_verifier = FriVerifier::new(
+        &mut channel,
         &mut public_coin,
-        channel.read_fri_num_partitions(),
         air.options().to_fri_options(),
+        air.trace_poly_degree(),
     )
     .map_err(VerifierError::FriVerificationFailed)?;
     // TODO: make sure air.lde_domain_size() == fri_verifier.domain_size()

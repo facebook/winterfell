@@ -11,23 +11,34 @@ use utils::{group_vector_elements, transpose_slice, DeserializationError};
 // VERIFIER CHANNEL TRAIT
 // ================================================================================================
 
-/// Defines an abstraction for reading data sent by the prover during the query phase of the FRI
-/// protocol.
+/// Defines an interface for a channel over which a verifier communicates with a prover.
 ///
 /// This trait abstracts away implementation specifics of the [FriProof] struct. Thus, instead of
 /// dealing with FRI proofs directly, the verifier can read the data as if it was sent by the
 /// prover via an interactive channel.
 ///
-/// The implementors of this trait should provide implementations for `take*()` methods, while the
-/// users of the trait, should call `read*()` methods to read the desired data. Note, that reading
-/// removes the read data from the channel. Thus, reading duplicated values from the channel
-/// should not be possible.
+/// Note: that reading removes the data from the channel. Thus, reading duplicated values from
+/// the channel should not be possible.
 pub trait VerifierChannel<E: FieldElement> {
     /// Hash function used by the prover to commit to polynomial evaluations.
     type Hasher: ElementHasher<BaseField = E::BaseField>;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
+
+    /// Returns the number of partitions used during proof generation.
+    fn read_fri_num_partitions(&self) -> usize;
+
+    /// Reads and removes from the channel all FRI layer commitments sent by the prover.
+    ///
+    /// In the interactive version of the protocol, the prover sends layer commitments to the
+    /// verifier one-by-one, and the verifier responds with a value α drawn uniformly at random
+    /// from the entire field after each layer commitment is received. In the non-interactive
+    /// version, the verifier can read all layer commitments at once, and then generate α values
+    /// locally.
+    fn read_fri_layer_commitments(
+        &mut self,
+    ) -> Vec<<<Self as VerifierChannel<E>>::Hasher as Hasher>::Digest>;
 
     /// Reads and removes from the channel evaluations of the polynomial at the queried positions
     /// for the next FRI layer.
@@ -52,9 +63,6 @@ pub trait VerifierChannel<E: FieldElement> {
     fn take_next_fri_layer_proof(&mut self) -> BatchMerkleProof<Self::Hasher>;
 
     /// Reads and removes the remainder (last FRI layer) values from the channel.
-    ///
-    /// In the interactive version of the protocol, the remainder is sent from the prover to the
-    /// verifier during the query phase of the FRI protocol.
     fn take_fri_remainder(&mut self) -> Vec<E>;
 
     // PROVIDED METHODS
@@ -123,6 +131,7 @@ pub trait VerifierChannel<E: FieldElement> {
 /// Though this implementation is primarily intended for testing purposes, it can be used in
 /// production use cases as well.
 pub struct DefaultVerifierChannel<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> {
+    layer_commitments: Vec<H::Digest>,
     layer_proofs: Vec<BatchMerkleProof<H>>,
     layer_queries: Vec<Vec<E>>,
     remainder: Vec<E>,
@@ -140,6 +149,7 @@ where
     /// Returns an error if the specified `proof` could not be parsed correctly.
     pub fn new(
         proof: FriProof,
+        layer_commitments: Vec<H::Digest>,
         domain_size: usize,
         folding_factor: usize,
     ) -> Result<Self, DeserializationError> {
@@ -150,16 +160,12 @@ where
             proof.parse_layers::<H, E>(domain_size, folding_factor)?;
 
         Ok(DefaultVerifierChannel {
+            layer_commitments,
             layer_proofs,
             layer_queries,
             remainder,
             num_partitions,
         })
-    }
-
-    /// Returns the number of partitions used during proof generation.
-    pub fn num_partitions(&self) -> usize {
-        self.num_partitions
     }
 }
 
@@ -169,6 +175,14 @@ where
     H: ElementHasher<BaseField = E::BaseField>,
 {
     type Hasher = H;
+
+    fn read_fri_num_partitions(&self) -> usize {
+        self.num_partitions
+    }
+
+    fn read_fri_layer_commitments(&mut self) -> Vec<H::Digest> {
+        self.layer_commitments.drain(..).collect()
+    }
 
     fn take_next_fri_layer_proof(&mut self) -> BatchMerkleProof<H> {
         self.layer_proofs.remove(0)

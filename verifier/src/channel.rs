@@ -5,7 +5,7 @@
 
 use common::{errors::VerifierError, proof::StarkProof, Air, EvaluationFrame};
 use crypto::{BatchMerkleProof, ElementHasher, MerkleTree};
-use fri::verifier::VerifierChannel as FriVerifierChannel;
+use fri::VerifierChannel as FriVerifierChannel;
 use math::{FieldElement, StarkField};
 
 // TYPES AND INTERFACES
@@ -153,16 +153,6 @@ where
         self.ood_evaluations.take().expect("already read")
     }
 
-    /// Returns commitments to FRI layers sent by the prover.
-    pub fn read_fri_layer_commitments(&mut self) -> Vec<H::Digest> {
-        self.fri_roots.take().expect("already read")
-    }
-
-    /// Returns the number of partitions used during generation of FRI proof.
-    pub fn read_fri_num_partitions(&self) -> usize {
-        self.fri_num_partitions
-    }
-
     /// Returns query proof-of-work nonce sent by the prover.
     pub fn read_pow_nonce(&self) -> u64 {
         self.pow_nonce
@@ -207,6 +197,14 @@ where
     H: ElementHasher<BaseField = B>,
 {
     type Hasher = H;
+
+    fn read_fri_num_partitions(&self) -> usize {
+        self.fri_num_partitions
+    }
+
+    fn read_fri_layer_commitments(&mut self) -> Vec<H::Digest> {
+        self.fri_roots.take().expect("already read")
+    }
 
     fn take_next_fri_layer_proof(&mut self) -> BatchMerkleProof<H> {
         self.fri_layer_proofs.remove(0)

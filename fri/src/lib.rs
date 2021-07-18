@@ -17,10 +17,10 @@
 //! 1. First, the commit phase of the protocol is executed via
 //!    [build_layers()](prover::FriProver::build_layers()) function. During this phase, the degree
 //!    of the polynomial is repeatedly reduced by applying a degree-respecting projection, until
-//!    the size of domain over which the polynomial is evaluated falls under `max_remainder_size`
-//!    parameter. While performing the reduction, the prover outputs a set of layer commitments.
-//!    These commitments should be recorded and sent to the verifier as they will be needed during
-//!    the proof verification procedure.
+//!    the size of the domain over which the polynomial is evaluated falls under
+//!    `max_remainder_size` parameter. While performing the reduction, the prover writes a set of
+//!    layer commitments into the [ProverChannel]. These commitments should be recorded and sent
+//!    to the verifier as they will be needed during the proof verification procedure.
 //! 2. Then, the query phase of the protocol is executed via
 //!    [build_proof()](prover::FriProver::build_proof()) function. The output of this function is
 //!    an instance of the [FriProof] struct. When FRI is executed as a part of the STARK protocol,
@@ -31,13 +31,18 @@
 //! machine). The number of threads can be configured via `RAYON_NUM_THREADS` environment variable.
 //!
 //! # Proof verification
-//! FRI proofs can be verified via [verifier::verify()] function. This function assumes that the
-//! proof has already been parsed into relevant components - e.g.,
-//! [VerifierContext](verifier::VerifierContext) and [VerifierChannel](verifier::VerifierChannel).
-//! To instantiate a verifier context we also need the data output by the prover during the commit
-//! phase of the protocol (i.e. layer commitments). When FRI proof verification is executed as a
-//! part of larger STARK protocol, STARK verifier handles parsing of the FRI proof into these
-//! components.
+//! FRI proofs are verified by a [FriVerifier] as follows:
+//! 1. First, a FRI proof needs to be converted into a [VerifierChannel]. This crate provides a
+//!    default implementation of the verifier channel, but when FRI proof verification is executed
+//!    as a part of the larger STARK protocol, STARK verifier handles this conversion.
+//! 2. Then, a [FriVerifier] should be instantiated (via [new()](FriVerifier::new()) function).
+//!    This will execute the commit phase of the FRI protocol from the verifier's perspective -
+//!    i.e., the verifier will read FRI layer commitments from the channel, and generates
+//!    random values needed for layer folding.
+//! 3. Finally, the query phase of the FRI protocol should be executed via
+//!    [verify()](FriVerifier::verify()) function. Note that query values at the first FRI layer
+//!    are provided to the [verify()](FriVerifier::verify()) function directly. The values at
+//!    remaining layers, the verifier reads from the specified verifier channel.
 //!
 //! # Protocol parameters
 //! The current implementation supports executing FRI protocol with dynamically configurable
@@ -57,8 +62,12 @@
 //! * Swastik Kooparty's [talk on DEEP-FRI](https://www.youtube.com/watch?v=txo_kPSn59Y&list=PLcIyXLwiPilWvjvNkhMn283LV370Pk5CT&index=6)
 
 pub mod folding;
-pub mod prover;
-pub mod verifier;
+
+mod prover;
+pub use prover::{DefaultProverChannel, FriProver, ProverChannel};
+
+mod verifier;
+pub use verifier::{DefaultVerifierChannel, FriVerifier, VerifierChannel};
 
 mod options;
 pub use options::FriOptions;

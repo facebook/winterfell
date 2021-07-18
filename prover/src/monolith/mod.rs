@@ -12,7 +12,7 @@ use crypto::{
     hashers::{Blake3_256, Sha3_256},
     ElementHasher,
 };
-use fri::prover::FriProver;
+use fri::FriProver;
 use log::debug;
 use math::{fft::infer_degree, log2, FieldElement, StarkField};
 use std::time::Instant;

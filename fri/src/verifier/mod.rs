@@ -6,9 +6,9 @@
 //! Contains an implementation of FRI verifier and associated components.
 
 use crate::{folding::fold_positions, utils::map_positions_to_indexes, FriOptions, VerifierError};
-use crypto::{Hasher, RandomCoin};
+use core::{convert::TryInto, marker::PhantomData, mem};
+use crypto::{ElementHasher, RandomCoin};
 use math::{fft, log2, polynom, FieldElement, StarkField};
-use std::{convert::TryInto, mem};
 
 mod channel;
 pub use channel::{DefaultVerifierChannel, VerifierChannel};
@@ -17,25 +17,50 @@ pub use channel::{DefaultVerifierChannel, VerifierChannel};
 // ================================================================================================
 /// Implements the verifier component of the FRI protocol.
 ///
+/// Given a small number of evaluations of some function *f* over domain *D* and a FRI proof, a
+/// FRI verifier determines whether *f* is a polynomial of some bounded degree *d*, such that *d*
+/// < |*D*| / 2.
+///
 /// The verifier is parametrized by the following types:
 ///
 /// * `B` specifies the base field of the STARK protocol.
 /// * `E` specifies the filed in which the FRI protocol is executed. This can be the same as the
 ///   base field `B`, but it can also be an extension of the base field in cases when the base
 ///   field is too small to provide desired security level for the FRI protocol.
+/// * `C` specifies the type used to simulate prover-verifier interaction. This type is used
+///   as an abstraction for a [FriProof](crate::FriProof). Meaning, the verifier does not consume
+///   a FRI proof directly, but reads it via [VerifierChannel] interface.
 /// * `H` specifies the Hash function used by the prover to commit to polynomial evaluations.
 ///
-/// These properties include:
-/// * A set of parameters for the protocol such as `folding_factor` and `blowup_factor`
-///   (specified via [FriOptions] parameter) as well as the number of partitions used during
-///   proof generation (specified via `num_partitions` parameter).
-/// * Maximum degree of a polynomial accepted by this instantiation of FRI (specified via
-///   `max_poly_degree` parameter). In combination with `blowup_factor` parameter, this also
-///   defines the domain over which the tested polynomial is evaluated.
-/// * Information exchanged between the prover and the verifier during the commit phase of
-///   the FRI protocol. This includes `layer_commitments` sent from the prover to the
-///   verifier, and `layer_alphas` sent from the verifier to the prover.
-pub struct FriVerifier<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> {
+/// Proof verification is performed in two phases: commit phase and query phase.
+///
+/// # Commit phase
+/// During the commit phase, which is executed when the verifier is instantiated via
+/// [new()](FriVerifier::new()) function, the verifier receives a list of FRI layer commitments
+/// from the prover (via [VerifierChannel]). After each received commitment, the verifier
+/// draws a random value α from the entire field, and sends it to the prover. In the
+/// non-interactive version of the protocol, α values are derived pseudo-randomly from FRI
+/// layer commitments.
+///
+/// # Query phase
+/// During the query phase, which is executed via [verify()](FriVerifier::verify()) function,
+/// the verifier sends a set of positions in the domain *D* to the prover, and the prover responds
+/// with polynomial evaluations at these positions (together with corresponding Merkle paths)
+/// across all FRI layers. The verifier then checks that:
+/// * The Merkle paths are valid against the layer commitments the verifier received during
+///   the commit phase.
+/// * The evaluations are consistent across FRI layers (i.e., the degree-respecting projection
+///   was applied correctly).
+/// * The degree of the polynomial implied by evaluations at the last FRI layer (the remainder)
+///   is smaller than the degree resulting from reducing degree *d* by `folding_factor` at each
+///   FRI layer.
+pub struct FriVerifier<B, E, C, H>
+where
+    B: StarkField,
+    E: FieldElement<BaseField = B>,
+    C: VerifierChannel<E, Hasher = H>,
+    H: ElementHasher<BaseField = B>,
+{
     max_poly_degree: usize,
     domain_size: usize,
     domain_generator: B,
@@ -43,27 +68,68 @@ pub struct FriVerifier<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher>
     layer_alphas: Vec<E>,
     options: FriOptions,
     num_partitions: usize,
+    _channel: PhantomData<C>,
 }
 
-impl<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> FriVerifier<B, E, H> {
+impl<B, E, C, H> FriVerifier<B, E, C, H>
+where
+    B: StarkField,
+    E: FieldElement<BaseField = B>,
+    C: VerifierChannel<E, Hasher = H>,
+    H: ElementHasher<BaseField = B>,
+{
     /// Returns a new instance of FRI verifier created from the specified parameters.
+    ///
+    /// The `max_poly_degree` parameter specifies the highest polynomial degree accepted by the
+    /// returned verifier. In combination with `blowup_factor` from the `options` parameter,
+    /// `max_poly_degree` also defines the domain over which the tested polynomial is evaluated.
+    ///
+    /// Creating a FRI verifier executes the commit phase of the FRI protocol from the verifier's
+    /// perspective. Specifically, the verifier reads FRI layer commitments from the `channel`,
+    /// and for each commitment, updates the `public_coin` with this commitment and then draws
+    /// a random value α from the coin.
+    ///
+    /// The verifier stores layer commitments and corresponding α values in its internal state,
+    /// and, thus, an instance of FRI verifier can be used to verify only a single proof.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// * `max_poly_degree` is inconsistent with the number of FRI layers read from the channel
+    ///   and `folding_factor` specified in the `options` parameter.
+    /// * An error was encountered while drawing a random α value from the coin.
     pub fn new(
-        max_poly_degree: usize,
-        layer_commitments: Vec<H::Digest>,
+        channel: &mut C,
         public_coin: &mut RandomCoin<B, H>,
-        num_partitions: usize,
         options: FriOptions,
+        max_poly_degree: usize,
     ) -> Result<Self, VerifierError> {
+        // infer evaluation domain info
         let domain_size = max_poly_degree.next_power_of_two() * options.blowup_factor();
         let domain_generator = B::get_root_of_unity(log2(domain_size));
 
+        let num_partitions = channel.read_fri_num_partitions();
+
+        // read layer commitments from the channel and use them to build a list of alphas
+        let layer_commitments = channel.read_fri_layer_commitments();
         let mut layer_alphas = Vec::with_capacity(layer_commitments.len());
-        for commitment in layer_commitments.iter() {
+        let mut max_degree_plus_1 = max_poly_degree + 1;
+        for (depth, commitment) in layer_commitments.iter().enumerate() {
             public_coin.reseed(*commitment);
-            let alpha = public_coin
-                .draw()
-                .map_err(|_| VerifierError::PublicCoinError)?;
+            let alpha = public_coin.draw().map_err(VerifierError::PublicCoinError)?;
             layer_alphas.push(alpha);
+
+            // make sure the degree can be reduced by the folding factor at all layers
+            // but the remainder layer
+            if depth != layer_commitments.len() - 1
+                && max_degree_plus_1 % options.folding_factor() != 0
+            {
+                return Err(VerifierError::DegreeTruncation(
+                    max_degree_plus_1 - 1,
+                    options.folding_factor(),
+                    depth,
+                ));
+            }
+            max_degree_plus_1 /= options.folding_factor();
         }
 
         Ok(FriVerifier {
@@ -74,18 +140,19 @@ impl<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> FriVerifier<B, E,
             layer_alphas,
             options,
             num_partitions,
+            _channel: PhantomData,
         })
     }
 
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns maximum degree of a polynomial accepted by this FRI verifier.
+    /// Returns maximum degree of a polynomial accepted by this verifier.
     pub fn max_poly_degree(&self) -> usize {
         self.max_poly_degree
     }
 
-    /// Returns size of the domain over which a polynomial commitment checked by this FRI verifier
+    /// Returns size of the domain over which a polynomial commitment checked by this verifier
     /// has been evaluated.
     ///
     /// The domain size can be computed by rounding `max_poly_degree` to the next power of two
@@ -101,42 +168,37 @@ impl<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> FriVerifier<B, E,
         self.num_partitions
     }
 
-    /// Returns protocol configuration options for this FRI verifier.
+    /// Returns protocol configuration options for this verifier.
     pub fn options(&self) -> &FriOptions {
         &self.options
     }
 
     // VERIFICATION PROCEDURE
     // --------------------------------------------------------------------------------------------
-    /// Verifies a FRI proof read from the specified channel.
+    /// Executes the query phase of the FRI protocol.
     ///
-    /// Returns OK(()) if values in the `evaluations` slice represent evaluations of a polynomial
-    /// with degree <= `context.max_degree()` at x coordinates specified by the `positions` slice. The
-    /// evaluation domain is defined by the combination of base field (specified by B type parameter),
-    /// context.domain_size() parameter, and context.domain_offset() parameter.
+    /// Returns `Ok(())` if values in the `evaluations` slice represent evaluations of a polynomial
+    /// with degree <= `max_poly_degree` at x coordinates specified by the `positions` slice.
+    ///
+    /// Thus, `positions` parameter represents the positions in the evaluation domain at which the
+    /// verifier queries the prover at the first FRI layer. Similarly, the `evaluations` parameter
+    /// specifies the evaluations of the polynomial at the first FRI layer returned by the prover
+    /// for these positions.
+    ///
+    /// Evaluations of layer polynomials for all subsequent FRI layers the verifier reads from the
+    /// specified `channel`.
     ///
     /// # Errors
     /// Returns an error if:
-    ///
-    pub fn verify<C: VerifierChannel<E, Hasher = H>>(
-        &self,
-        channel: &mut C,
-        evaluations: &[E],
-        positions: &[usize],
-    ) -> Result<(), VerifierError> {
-        // static dispatch for folding factor parameter
-        let folding_factor = self.options.folding_factor();
-        match folding_factor {
-            4 => self.verify_generic::<C, 4>(channel, evaluations, positions),
-            8 => self.verify_generic::<C, 8>(channel, evaluations, positions),
-            16 => self.verify_generic::<C, 16>(channel, evaluations, positions),
-            _ => Err(VerifierError::UnsupportedFoldingFactor(folding_factor)),
-        }
-    }
-
-    /// This is the actual implementation of the verification procedure described above, but it
-    /// also takes folding factor as a generic parameter N.
-    fn verify_generic<C: VerifierChannel<E, Hasher = H>, const N: usize>(
+    /// * The length of `evaluations` is not equal to the length of `positions`.
+    /// * An unsupported folding factor was specified by the `options` for this verifier.
+    /// * Decommitments to polynomial evaluations don't match the commitment value at any of the
+    ///   FRI layers.
+    /// * The verifier detects an error in how the degree-respecting projection was applied
+    ///   at any of the FRI layers.
+    /// * The degree of the remainder at the last FRI layer is greater than the degree implied by
+    ///   `max_poly_degree` reduced by the folding factor at each FRI layer.
+    pub fn verify(
         &self,
         channel: &mut C,
         evaluations: &[E],
@@ -149,6 +211,24 @@ impl<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> FriVerifier<B, E,
             ));
         }
 
+        // static dispatch for folding factor parameter
+        let folding_factor = self.options.folding_factor();
+        match folding_factor {
+            4 => self.verify_generic::<4>(channel, evaluations, positions),
+            8 => self.verify_generic::<8>(channel, evaluations, positions),
+            16 => self.verify_generic::<16>(channel, evaluations, positions),
+            _ => Err(VerifierError::UnsupportedFoldingFactor(folding_factor)),
+        }
+    }
+
+    /// This is the actual implementation of the verification procedure described above, but it
+    /// also takes folding factor as a generic parameter N.
+    fn verify_generic<const N: usize>(
+        &self,
+        channel: &mut C,
+        evaluations: &[E],
+        positions: &[usize],
+    ) -> Result<(), VerifierError> {
         // pre-compute roots of unity used in computing x coordinates in the folded domain
         let folding_roots = (0..N)
             .map(|i| {
@@ -182,7 +262,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> FriVerifier<B, E,
             let query_values =
                 get_query_values::<E, N>(&layer_values, &positions, &folded_positions, domain_size);
             if evaluations != query_values {
-                return Err(VerifierError::LayerValuesNotConsistent(depth));
+                return Err(VerifierError::InvalidLayerFolding(depth));
             }
 
             // build a set of x coordinates for each row polynomial
@@ -229,7 +309,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> FriVerifier<B, E,
         let remainder = channel.read_remainder::<N>(remainder_commitment)?;
         for (&position, evaluation) in positions.iter().zip(evaluations) {
             if remainder[position] != evaluation {
-                return Err(VerifierError::RemainderValuesNotConsistent);
+                return Err(VerifierError::InvalidRemainderFolding);
             }
         }
 
@@ -241,20 +321,23 @@ impl<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> FriVerifier<B, E,
 // REMAINDER DEGREE VERIFICATION
 // ================================================================================================
 /// Returns Ok(true) if values in the `remainder` slice represent evaluations of a polynomial
-/// with degree < max_degree_plus_1 against a domain specified by the `domain_generator` and
-/// `domain_offset`.
+/// with degree <= `max_degree` against a domain of the same size as `remainder`.
 fn verify_remainder<B: StarkField, E: FieldElement<BaseField = B>>(
     mut remainder: Vec<E>,
     max_degree: usize,
 ) -> Result<(), VerifierError> {
-    if max_degree + 1 >= remainder.len() {
+    if max_degree >= remainder.len() - 1 {
         return Err(VerifierError::RemainderDegreeNotValid);
     }
 
+    // interpolate remainder polynomial from its evaluations; we don't shift the domain here
+    // because the degree of the polynomial will not change as long as we interpolate over a
+    // coset of the original domain.
     let inv_twiddles = fft::get_inv_twiddles(remainder.len());
     fft::interpolate_poly(&mut remainder, &inv_twiddles);
     let poly = remainder;
 
+    // make sure the degree is valid
     if max_degree < polynom::degree_of(&poly) {
         Err(VerifierError::RemainderDegreeMismatch(max_degree))
     } else {
