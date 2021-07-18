@@ -6,7 +6,7 @@
 //! Contains an implementation of FRI verifier and associated components.
 
 use crate::{folding::fold_positions, utils::map_positions_to_indexes, FriOptions, VerifierError};
-use crypto::{Hasher, PublicCoin};
+use crypto::{Hasher, RandomCoin};
 use math::{fft, log2, polynom, FieldElement, StarkField};
 use std::{convert::TryInto, mem};
 
@@ -50,7 +50,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> FriVerifier<B, E,
     pub fn new(
         max_poly_degree: usize,
         layer_commitments: Vec<H::Digest>,
-        coin: &mut PublicCoin<B, H>,
+        public_coin: &mut RandomCoin<B, H>,
         num_partitions: usize,
         options: FriOptions,
     ) -> Result<Self, VerifierError> {
@@ -59,8 +59,10 @@ impl<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> FriVerifier<B, E,
 
         let mut layer_alphas = Vec::with_capacity(layer_commitments.len());
         for commitment in layer_commitments.iter() {
-            coin.reseed(*commitment);
-            let alpha = coin.draw().map_err(|_| VerifierError::PublicCoinError)?;
+            public_coin.reseed(*commitment);
+            let alpha = public_coin
+                .draw()
+                .map_err(|_| VerifierError::PublicCoinError)?;
             layer_alphas.push(alpha);
         }
 

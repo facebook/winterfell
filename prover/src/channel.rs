@@ -7,7 +7,7 @@ use common::{
     proof::{Commitments, Context, OodFrame, Queries, StarkProof},
     Air, ConstraintCompositionCoefficients, DeepCompositionCoefficients, EvaluationFrame,
 };
-use crypto::{ElementHasher, PublicCoin};
+use crypto::{ElementHasher, RandomCoin};
 use fri::{self, FriProof};
 use math::FieldElement;
 use std::marker::PhantomData;
@@ -26,7 +26,7 @@ where
     H: ElementHasher<BaseField = A::BaseElement>,
 {
     air: &'a A,
-    coin: PublicCoin<A::BaseElement, H>,
+    public_coin: RandomCoin<A::BaseElement, H>,
     context: Context,
     commitments: Commitments,
     ood_frame: OodFrame,
@@ -57,7 +57,7 @@ where
 
         ProverChannel {
             air,
-            coin: PublicCoin::new(&coin_seed),
+            public_coin: RandomCoin::new(&coin_seed),
             context,
             commitments: Commitments::default(),
             ood_frame: OodFrame::default(),
@@ -72,28 +72,28 @@ where
     /// Commits the prover the extended execution trace.
     pub fn commit_trace(&mut self, trace_root: H::Digest) {
         self.commitments.add::<H>(&trace_root);
-        self.coin.reseed(trace_root);
+        self.public_coin.reseed(trace_root);
     }
 
     /// Commits the prover to the evaluations of the constraint composition polynomial.
     pub fn commit_constraints(&mut self, constraint_root: H::Digest) {
         self.commitments.add::<H>(&constraint_root);
-        self.coin.reseed(constraint_root);
+        self.public_coin.reseed(constraint_root);
     }
 
     /// Saves the out-of-domain evaluation frame. This also reseeds the public coin with the
     /// hashes of the evaluation frame states.
     pub fn send_ood_evaluation_frame(&mut self, frame: &EvaluationFrame<E>) {
         self.ood_frame.set_evaluation_frame(frame);
-        self.coin.reseed(H::hash_elements(&frame.current));
-        self.coin.reseed(H::hash_elements(&frame.next));
+        self.public_coin.reseed(H::hash_elements(&frame.current));
+        self.public_coin.reseed(H::hash_elements(&frame.next));
     }
 
     /// Saves the evaluations of constraint composition polynomial columns at the out-of-domain
     /// point. This also reseeds the public coin wit the hash of the evaluations.
     pub fn send_ood_constraint_evaluations(&mut self, evaluations: &[E]) {
         self.ood_frame.set_constraint_evaluations(evaluations);
-        self.coin.reseed(H::hash_elements(evaluations));
+        self.public_coin.reseed(H::hash_elements(evaluations));
     }
 
     // PUBLIC COIN METHODS
@@ -103,20 +103,20 @@ where
     /// from the public coin.
     pub fn get_constraint_composition_coeffs(&mut self) -> ConstraintCompositionCoefficients<E> {
         self.air
-            .get_constraint_composition_coefficients(&mut self.coin)
+            .get_constraint_composition_coefficients(&mut self.public_coin)
             .expect("failed to draw composition coefficients")
     }
 
     /// Returns an out-of-domain point drawn from the public coin.
     pub fn get_ood_point(&mut self) -> E {
-        self.coin.draw().expect("failed to draw OOD point")
+        self.public_coin.draw().expect("failed to draw OOD point")
     }
 
     /// Returns a set of coefficients for constructing a DEEP composition polynomial drawn from
     /// the public coin.
     pub fn get_deep_composition_coeffs(&mut self) -> DeepCompositionCoefficients<E> {
         self.air
-            .get_deep_composition_coefficients(&mut self.coin)
+            .get_deep_composition_coefficients(&mut self.public_coin)
             .expect("failed to draw DEEP composition coefficients")
     }
 
@@ -125,7 +125,7 @@ where
     pub fn get_query_positions(&mut self) -> Vec<usize> {
         let num_queries = self.context.options().num_queries();
         let lde_domain_size = self.context.lde_domain_size();
-        self.coin
+        self.public_coin
             .draw_integers(num_queries, lde_domain_size)
             .expect("failed to draw query position")
     }
@@ -138,17 +138,17 @@ where
 
         #[cfg(not(feature = "concurrent"))]
         let nonce = (1..u64::MAX)
-            .find(|&nonce| self.coin.check_leading_zeros(nonce) >= grinding_factor)
+            .find(|&nonce| self.public_coin.check_leading_zeros(nonce) >= grinding_factor)
             .expect("nonce not found");
 
         #[cfg(feature = "concurrent")]
         let nonce = (1..u64::MAX)
             .into_par_iter()
-            .find_any(|&nonce| self.coin.check_leading_zeros(nonce) >= grinding_factor)
+            .find_any(|&nonce| self.public_coin.check_leading_zeros(nonce) >= grinding_factor)
             .expect("nonce not found");
 
         self.pow_nonce = nonce;
-        self.coin.reseed_with_int(nonce);
+        self.public_coin.reseed_with_int(nonce);
     }
 
     // PROOF BUILDER
@@ -187,11 +187,11 @@ where
     /// Commits the prover to a FRI layer.
     fn commit_fri_layer(&mut self, layer_root: H::Digest) {
         self.commitments.add::<H>(&layer_root);
-        self.coin.reseed(layer_root);
+        self.public_coin.reseed(layer_root);
     }
 
     /// Returns a new alpha drawn from the public coin.
     fn draw_fri_alpha(&mut self) -> E {
-        self.coin.draw().expect("failed to draw FRI alpha")
+        self.public_coin.draw().expect("failed to draw FRI alpha")
     }
 }

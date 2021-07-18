@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crypto::{Hasher, PublicCoin};
+use crypto::{Hasher, RandomCoin};
 use math::{FieldElement, StarkField};
 use std::marker::PhantomData;
 
@@ -54,7 +54,7 @@ pub trait ProverChannel<E: FieldElement> {
 /// Though this implementation is intended primarily for testing purposes, it can be used in
 /// production use cases as well.
 pub struct DefaultProverChannel<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> {
-    coin: PublicCoin<B, H>,
+    public_coin: RandomCoin<B, H>,
     commitments: Vec<H::Digest>,
     domain_size: usize,
     num_queries: usize,
@@ -84,7 +84,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> DefaultProverChan
             "number of queries must be greater than zero"
         );
         DefaultProverChannel {
-            coin: PublicCoin::new(&[]),
+            public_coin: RandomCoin::new(&[]),
             commitments: Vec::new(),
             domain_size,
             num_queries,
@@ -103,7 +103,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> DefaultProverChan
     /// domain. Both number of queried positions and domain size are specified during
     /// construction of the channel.
     pub fn draw_query_positions(&mut self) -> Vec<usize> {
-        self.coin
+        self.public_coin
             .draw_integers(self.num_queries, self.domain_size)
             .expect("failed to draw query position")
     }
@@ -124,10 +124,10 @@ where
 
     fn commit_fri_layer(&mut self, layer_root: H::Digest) {
         self.commitments.push(layer_root);
-        self.coin.reseed(layer_root);
+        self.public_coin.reseed(layer_root);
     }
 
     fn draw_fri_alpha(&mut self) -> E {
-        self.coin.draw().expect("failed to draw FRI alpha")
+        self.public_coin.draw().expect("failed to draw FRI alpha")
     }
 }

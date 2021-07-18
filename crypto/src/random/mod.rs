@@ -3,16 +3,16 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{errors::PublicCoinError, Hasher};
+use crate::{errors::RandomCoinError, Hasher};
 use core::{convert::TryInto, marker::PhantomData};
 use math::{FieldElement, StarkField};
 
-// PUBLIC COIN
+// RANDOM COIN
 // ================================================================================================
 
 /// Pseudo-random element generator for finite fields.
 ///
-/// A public coin can be used to draws elements uniformly at random from the specified base field
+/// A random coin can be used to draws elements uniformly at random from the specified base field
 // (which is specified via the `B` type parameter) or from any extension of the base field.
 ///
 /// Internally we use a cryptographic hash function (which is specified via the `H` type parameter),
@@ -27,10 +27,10 @@ use math::{FieldElement, StarkField};
 ///
 /// # Examples
 /// ```
-/// # use winter_crypto::{PublicCoin, hashers::Blake3_256};
+/// # use winter_crypto::{RandomCoin, hashers::Blake3_256};
 /// # use math::fields::f128::BaseElement;
-/// // instantiate a public coin using BLAKE3 as the hash function
-/// let mut coin = PublicCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
+/// // instantiate a random coin using BLAKE3 as the hash function
+/// let mut coin = RandomCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
 ///
 /// // should draw different elements each time
 /// let e1 = coin.draw::<BaseElement>().unwrap();;
@@ -42,20 +42,20 @@ use math::{FieldElement, StarkField};
 /// assert_ne!(e2, e3);
 ///
 /// // should draw same elements for the same seed
-/// let mut coin1 = PublicCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
-/// let mut coin2 = PublicCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
+/// let mut coin1 = RandomCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
+/// let mut coin2 = RandomCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
 /// let e1 = coin1.draw::<BaseElement>().unwrap();;
 /// let e2 = coin2.draw::<BaseElement>().unwrap();;
 /// assert_eq!(e1, e2);
 ///
 /// // should draw different elements based on seed
-/// let mut coin1 = PublicCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
-/// let mut coin2 = PublicCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[2, 3, 4, 5]);
+/// let mut coin1 = RandomCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
+/// let mut coin2 = RandomCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[2, 3, 4, 5]);
 /// let e1 = coin1.draw::<BaseElement>().unwrap();;
 /// let e2 = coin2.draw::<BaseElement>().unwrap();;
 /// assert_ne!(e1, e2);
 /// ```
-pub struct PublicCoin<B, H>
+pub struct RandomCoin<B, H>
 where
     B: StarkField,
     H: Hasher,
@@ -65,13 +65,13 @@ where
     _base_field: PhantomData<B>,
 }
 
-impl<B: StarkField, H: Hasher> PublicCoin<B, H> {
+impl<B: StarkField, H: Hasher> RandomCoin<B, H> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
-    /// Returns a new public coin instantiated with the provided `seed`.
+    /// Returns a new random coin instantiated with the provided `seed`.
     pub fn new(seed: &[u8]) -> Self {
         let seed = H::hash(seed);
-        PublicCoin {
+        RandomCoin {
             seed,
             counter: 0,
             _base_field: PhantomData,
@@ -85,10 +85,10 @@ impl<B: StarkField, H: Hasher> PublicCoin<B, H> {
     ///
     /// # Examples
     /// ```
-    /// # use winter_crypto::{PublicCoin, Hasher, hashers::Blake3_256};
+    /// # use winter_crypto::{RandomCoin, Hasher, hashers::Blake3_256};
     /// # use math::fields::f128::BaseElement;
-    /// let mut coin1 = PublicCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
-    /// let mut coin2 = PublicCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
+    /// let mut coin1 = RandomCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
+    /// let mut coin2 = RandomCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
     ///
     /// // should draw the same element form both coins
     /// let e1 = coin1.draw::<BaseElement>().unwrap();
@@ -111,10 +111,10 @@ impl<B: StarkField, H: Hasher> PublicCoin<B, H> {
     ///
     /// # Examples
     /// ```
-    /// # use winter_crypto::{PublicCoin, Hasher, hashers::Blake3_256};
+    /// # use winter_crypto::{RandomCoin, Hasher, hashers::Blake3_256};
     /// # use math::fields::f128::BaseElement;
-    /// let mut coin1 = PublicCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
-    /// let mut coin2 = PublicCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
+    /// let mut coin1 = RandomCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
+    /// let mut coin2 = RandomCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
     ///
     /// // should draw the same element form both coins
     /// let e1 = coin1.draw::<BaseElement>().unwrap();;
@@ -140,9 +140,9 @@ impl<B: StarkField, H: Hasher> PublicCoin<B, H> {
     ///
     /// # Examples
     /// ```
-    /// # use winter_crypto::{PublicCoin, hashers::Blake3_256};
+    /// # use winter_crypto::{RandomCoin, hashers::Blake3_256};
     /// # use math::fields::f128::BaseElement;
-    /// let mut coin = PublicCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
+    /// let mut coin = RandomCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
     ///
     /// let mut value = 0;
     /// while coin.check_leading_zeros(value) < 2 {
@@ -175,7 +175,7 @@ impl<B: StarkField, H: Hasher> PublicCoin<B, H> {
     /// # Errors
     /// Returns an error if a valid field element could not be generated after 100 calls to the
     /// PRNG.
-    pub fn draw<E>(&mut self) -> Result<E, PublicCoinError>
+    pub fn draw<E>(&mut self) -> Result<E, RandomCoinError>
     where
         E: FieldElement<BaseField = B>,
     {
@@ -191,7 +191,7 @@ impl<B: StarkField, H: Hasher> PublicCoin<B, H> {
             }
         }
 
-        Err(PublicCoinError::FailedToDrawFieldElement(100))
+        Err(RandomCoinError::FailedToDrawFieldElement(100))
     }
 
     /// Returns the next pair of pseudo-random field elements.
@@ -199,7 +199,7 @@ impl<B: StarkField, H: Hasher> PublicCoin<B, H> {
     /// # Errors
     /// Returns an error if any of the field elements could not be generated after 100 calls to
     /// the PRNG;
-    pub fn draw_pair<E>(&mut self) -> Result<(E, E), PublicCoinError>
+    pub fn draw_pair<E>(&mut self) -> Result<(E, E), RandomCoinError>
     where
         E: FieldElement<BaseField = B>,
     {
@@ -211,7 +211,7 @@ impl<B: StarkField, H: Hasher> PublicCoin<B, H> {
     /// # Errors
     /// Returns an error if any of the field elements could not be generated after 100 calls to
     /// the PRNG;
-    pub fn draw_triple<E>(&mut self) -> Result<(E, E, E), PublicCoinError>
+    pub fn draw_triple<E>(&mut self) -> Result<(E, E, E), RandomCoinError>
     where
         E: FieldElement<BaseField = B>,
     {
@@ -232,9 +232,9 @@ impl<B: StarkField, H: Hasher> PublicCoin<B, H> {
     /// # Examples
     /// ```
     /// # use std::collections::HashSet;
-    /// # use winter_crypto::{PublicCoin, hashers::Blake3_256};
+    /// # use winter_crypto::{RandomCoin, hashers::Blake3_256};
     /// # use math::fields::f128::BaseElement;
-    /// let mut coin = PublicCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
+    /// let mut coin = RandomCoin::<BaseElement, Blake3_256<BaseElement>>::new(&[1, 2, 3, 4]);
     ///
     /// let num_values = 20;
     /// let domain_size = 64;
@@ -252,7 +252,7 @@ impl<B: StarkField, H: Hasher> PublicCoin<B, H> {
         &mut self,
         num_values: usize,
         domain_size: usize,
-    ) -> Result<Vec<usize>, PublicCoinError> {
+    ) -> Result<Vec<usize>, RandomCoinError> {
         assert!(
             domain_size.is_power_of_two(),
             "domain size must be a power of two"
@@ -285,7 +285,7 @@ impl<B: StarkField, H: Hasher> PublicCoin<B, H> {
         }
 
         if values.len() < num_values {
-            return Err(PublicCoinError::FailedToDrawIntegers(
+            return Err(RandomCoinError::FailedToDrawIntegers(
                 num_values,
                 values.len(),
                 1000,

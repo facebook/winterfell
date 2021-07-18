@@ -8,7 +8,7 @@ use crate::{
     verifier::{DefaultVerifierChannel, FriVerifier},
     FriOptions, FriProof, VerifierError,
 };
-use crypto::{hashers::Blake3_256, Hasher, PublicCoin};
+use crypto::{hashers::Blake3_256, Hasher, RandomCoin};
 use math::{fft, fields::f128::BaseElement, FieldElement};
 use utils::{Deserializable, Serializable, SliceReader};
 
@@ -105,7 +105,7 @@ pub fn verify_proof(
         options.folding_factor(),
     )
     .unwrap();
-    let mut coin = PublicCoin::<BaseElement, Blake3>::new(&[]);
+    let mut coin = RandomCoin::<BaseElement, Blake3>::new(&[]);
     let verifier = FriVerifier::<BaseElement, BaseElement, Blake3>::new(
         max_degree,
         commitments,
