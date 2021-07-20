@@ -7,7 +7,7 @@ use core::fmt;
 
 // PROVER ERROR
 // ================================================================================================
-/// Represents an error thrown by the prover during an execution of the protocol
+/// Represents an error thrown by the prover during an execution of the protocol.
 #[derive(Debug, PartialEq)]
 pub enum ProverError {
     /// A transition constraint was not satisfied at step {0}
@@ -32,7 +32,7 @@ impl fmt::Display for ProverError {
 
 // VERIFIER ERROR
 // ================================================================================================
-/// Represents an error thrown by the verifier during an execution of the protocol
+/// Represents an error thrown by the verifier during an execution of the protocol.
 #[derive(Debug, PartialEq)]
 pub enum VerifierError {
     /// Base field of the proof does not match base field of the specified AIR
@@ -87,7 +87,7 @@ impl fmt::Display for VerifierError {
 
 // ASSERTION ERROR
 // ================================================================================================
-/// Represents an error thrown during evaluation
+/// Represents an error thrown during assertion evaluation.
 #[derive(Debug, PartialEq)]
 pub enum AssertionError {
     /// Expected trace width to be at least {0}, but was {1}
@@ -115,56 +115,6 @@ impl fmt::Display for AssertionError {
             }
             Self::TraceLengthNotExact(expected, actual) => {
                 write!(f, "expected trace length to be exactly {}, but was {}", expected, actual)
-            }
-        }
-    }
-}
-
-// PROOF SERIALIZATION ERROR
-// ================================================================================================
-
-#[derive(Debug, PartialEq)]
-pub enum ProofSerializationError {
-    /// Failed to parse commitments: {0}
-    FailedToParseCommitments(String),
-    /// Too many commitment bytes; expected {0}, but was {1}
-    TooManyCommitmentBytes,
-    /// Failed to parse query values: {0}
-    FailedToParseQueryValues(String),
-    /// Failed to parse query authentication paths: {0}
-    FailedToParseQueryProofs(String),
-    /// Failed to parse out-of-domain evaluation frame: {0}
-    FailedToParseOodFrame(String),
-    /// Wrong number of out-of-domain trace elements; expected {0}, but was {1}
-    WrongNumberOfOodTraceElements(usize, usize),
-    /// Wrong number of out-of-domain evaluation elements; expected {0}, but was {1}
-    WrongNumberOfOodEvaluationElements(usize, usize),
-}
-
-impl fmt::Display for ProofSerializationError {
-    #[rustfmt::skip]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::FailedToParseCommitments(msg) => {
-                write!(f, "failed to parse commitments: {}", msg)
-            }
-            Self::TooManyCommitmentBytes => {
-                write!(f, "not all bytes were consumed when deserializing commitments")
-            }
-            Self::FailedToParseQueryValues(msg) => {
-                write!(f, "failed to parse query values: {}", msg)
-            }
-            Self::FailedToParseQueryProofs(msg) => {
-                write!(f, "failed to parse query authentication paths: {}", msg)
-            }
-            Self::FailedToParseOodFrame(msg) => {
-                write!(f, "failed to parse out-of-domain evaluation frame: {}", msg)
-            }
-            Self::WrongNumberOfOodTraceElements(expected, actual) => {
-                write!(f, "wrong number of out-of-domain trace elements; expected {}, but was {}", expected, actual)
-            }
-            Self::WrongNumberOfOodEvaluationElements(expected, actual) => {
-                write!(f, "wrong number of out-of-domain evaluation elements; expected {}, but was {}", expected, actual)
             }
         }
     }

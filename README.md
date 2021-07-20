@@ -126,7 +126,7 @@ For more information about the `Air` trait see [common crate](common#Air-trait),
 ```Rust
 use math::field::{f128::BaseElement, FieldElement};
 use prover::{
-    Air, Assertion, ByteWriter, ComputationContext, EvaluationFrame, ProofOptions,
+    Air, Assertion, ByteWriter, AirContext, EvaluationFrame, ProofOptions,
     Serializable, TraceInfo, TransitionConstraintDegree,
 };
 
@@ -148,7 +148,7 @@ impl Serializable for PublicInputs {
 // the computation's context which we'll build in the constructor. The context is used
 // internally by the Winterfell prover/verifier when interpreting this AIR.
 pub struct WorkAir {
-    context: ComputationContext,
+    context: AirContext,
     start: BaseElement,
     result: BaseElement,
 }
@@ -176,7 +176,7 @@ impl Air for WorkAir {
         // mode, an invalid proof will be generated which will not be accepted by any verifier.
         let degrees = vec![TransitionConstraintDegree::new(3)];
         WorkAir {
-            context: ComputationContext::new(trace_width, trace_length, degrees, options),
+            context: AirContext::new(trace_width, trace_length, degrees, options),
             start: pub_inputs.start,
             result: pub_inputs.result,
         }
@@ -216,7 +216,7 @@ impl Air for WorkAir {
 
     // This is just boilerplate which is used by the Winterfell prover/verifier to retrieve
     // the context of the computation.
-    fn context(&self) -> &ComputationContext {
+    fn context(&self) -> &AirContext {
         &self.context
     }
 }

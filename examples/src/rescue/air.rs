@@ -7,7 +7,7 @@ use super::rescue;
 use crate::utils::{are_equal, is_zero, not, EvaluationResult};
 use prover::{
     math::{fields::f128::BaseElement, FieldElement},
-    Air, Assertion, ByteWriter, ComputationContext, EvaluationFrame, ExecutionTrace, ProofOptions,
+    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ExecutionTrace, ProofOptions,
     Serializable, TraceInfo, TransitionConstraintDegree,
 };
 
@@ -54,7 +54,7 @@ impl Serializable for PublicInputs {
 }
 
 pub struct RescueAir {
-    context: ComputationContext,
+    context: AirContext,
     seed: [BaseElement; 2],
     result: [BaseElement; 2],
 }
@@ -72,7 +72,7 @@ impl Air for RescueAir {
             TransitionConstraintDegree::with_cycles(3, vec![CYCLE_LENGTH]),
             TransitionConstraintDegree::with_cycles(3, vec![CYCLE_LENGTH]),
         ];
-        let context = ComputationContext::new(TRACE_WIDTH, trace_info.length, degrees, options);
+        let context = AirContext::new(TRACE_WIDTH, trace_info.length, degrees, options);
         RescueAir {
             context,
             seed: pub_inputs.seed,
@@ -80,7 +80,7 @@ impl Air for RescueAir {
         }
     }
 
-    fn context(&self) -> &ComputationContext {
+    fn context(&self) -> &AirContext {
         &self.context
     }
 

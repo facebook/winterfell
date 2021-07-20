@@ -3,11 +3,14 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{ComputationContext, ProofOptions};
+use crate::ProofOptions;
 use crypto::{Hasher, RandomCoin, RandomCoinError};
 use math::{fft, FieldElement, StarkField};
 use std::collections::{BTreeSet, HashMap};
 use utils::Serializable;
+
+mod context;
+pub use context::AirContext;
 
 mod assertions;
 pub use assertions::Assertion;
@@ -60,7 +63,7 @@ pub trait Air: Send + Sync {
     fn new(trace_info: TraceInfo, pub_inputs: Self::PublicInputs, options: ProofOptions) -> Self;
 
     /// Should return context for this instance of the computation.
-    fn context(&self) -> &ComputationContext;
+    fn context(&self) -> &AirContext;
 
     /// Should evaluate transition constraints over the specified evaluation frame. The evaluations
     /// should be saved into the `results` slice.
@@ -365,7 +368,7 @@ pub trait Air: Send + Sync {
 /// each other - i.e. no two assertions are placed against the same register and step combination.
 fn prepare_assertions<B: StarkField>(
     assertions: Vec<Assertion<B>>,
-    context: &ComputationContext,
+    context: &AirContext,
 ) -> Vec<Assertion<B>> {
     // we use a sorted set to help us sort the assertions by their 'natural' order. The natural
     // order is defined as sorting first by stride, then by first step, and finally by register,

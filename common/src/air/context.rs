@@ -10,7 +10,7 @@ use math::{log2, StarkField};
 // ================================================================================================
 
 #[derive(Clone)]
-pub struct ComputationContext {
+pub struct AirContext {
     options: ProofOptions,
     trace_width: usize,
     trace_length: usize,
@@ -18,10 +18,10 @@ pub struct ComputationContext {
     ce_blowup_factor: usize,
 }
 
-// COMPUTATION CONTEXT
+// AIR CONTEXT
 // ================================================================================================
 
-impl ComputationContext {
+impl AirContext {
     // CONSTANTS
     // --------------------------------------------------------------------------------------------
     pub const MIN_TRACE_LENGTH: usize = 8;
@@ -72,7 +72,7 @@ impl ComputationContext {
             options.blowup_factor()
         );
 
-        ComputationContext {
+        AirContext {
             options,
             trace_width,
             trace_length,

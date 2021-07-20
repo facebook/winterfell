@@ -3,7 +3,6 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::errors::ProofSerializationError;
 use crypto::Hasher;
 use utils::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
@@ -49,15 +48,14 @@ impl Commitments {
     pub fn parse<H: Hasher>(
         self,
         num_fri_layers: usize,
-    ) -> Result<(H::Digest, H::Digest, Vec<H::Digest>), ProofSerializationError> {
+    ) -> Result<(H::Digest, H::Digest, Vec<H::Digest>), DeserializationError> {
         // +1 for trace_root, +1 for constraint root, +1 for FRI remainder commitment
         let num_commitments = num_fri_layers + 3;
         let mut reader = SliceReader::new(&self.0);
-        let commitments = H::Digest::read_batch_from(&mut reader, num_commitments)
-            .map_err(|err| ProofSerializationError::FailedToParseCommitments(err.to_string()))?;
+        let commitments = H::Digest::read_batch_from(&mut reader, num_commitments)?;
         // make sure we consumed all available commitment bytes
         if reader.has_more_bytes() {
-            return Err(ProofSerializationError::TooManyCommitmentBytes);
+            return Err(DeserializationError::UnconsumedBytes);
         }
         Ok((commitments[0], commitments[1], commitments[2..].to_vec()))
     }

@@ -13,7 +13,7 @@ use crate::utils::{
 };
 use prover::{
     math::{fields::f128::BaseElement, FieldElement},
-    Air, Assertion, ByteWriter, ComputationContext, EvaluationFrame, ExecutionTrace, ProofOptions,
+    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ExecutionTrace, ProofOptions,
     Serializable, TraceInfo, TransitionConstraintDegree,
 };
 
@@ -36,7 +36,7 @@ impl Serializable for PublicInputs {
 }
 
 pub struct MerkleAir {
-    context: ComputationContext,
+    context: AirContext,
     tree_root: [BaseElement; 2],
 }
 
@@ -56,14 +56,14 @@ impl Air for MerkleAir {
             TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN]),
             TransitionConstraintDegree::new(2),
         ];
-        let context = ComputationContext::new(TRACE_WIDTH, trace_info.length, degrees, options);
+        let context = AirContext::new(TRACE_WIDTH, trace_info.length, degrees, options);
         MerkleAir {
             context,
             tree_root: pub_inputs.tree_root,
         }
     }
 
-    fn context(&self) -> &ComputationContext {
+    fn context(&self) -> &AirContext {
         &self.context
     }
 

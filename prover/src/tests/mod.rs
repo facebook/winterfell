@@ -5,8 +5,8 @@
 
 use crate::ExecutionTrace;
 use common::{
-    Air, Assertion, ComputationContext, EvaluationFrame, FieldExtension, HashFunction,
-    ProofOptions, TraceInfo, TransitionConstraintDegree,
+    Air, AirContext, Assertion, EvaluationFrame, FieldExtension, HashFunction, ProofOptions,
+    TraceInfo, TransitionConstraintDegree,
 };
 use math::{fields::f128::BaseElement, FieldElement};
 
@@ -31,7 +31,7 @@ pub fn build_fib_trace(length: usize) -> ExecutionTrace<BaseElement> {
 // ================================================================================================
 
 pub struct MockAir {
-    context: ComputationContext,
+    context: AirContext,
     assertions: Vec<Assertion<BaseElement>>,
     periodic_columns: Vec<Vec<BaseElement>>,
 }
@@ -96,7 +96,7 @@ impl Air for MockAir {
         }
     }
 
-    fn context(&self) -> &ComputationContext {
+    fn context(&self) -> &AirContext {
         &self.context
     }
 
@@ -120,11 +120,7 @@ impl Air for MockAir {
 // HELPER FUNCTIONS
 // ================================================================================================
 
-pub fn build_context(
-    trace_length: usize,
-    trace_width: usize,
-    blowup_factor: usize,
-) -> ComputationContext {
+pub fn build_context(trace_length: usize, trace_width: usize, blowup_factor: usize) -> AirContext {
     let options = ProofOptions::new(
         32,
         blowup_factor,
@@ -135,5 +131,5 @@ pub fn build_context(
         256,
     );
     let t_degrees = vec![TransitionConstraintDegree::new(2)];
-    ComputationContext::new(trace_width, trace_length, t_degrees, options)
+    AirContext::new(trace_width, trace_length, t_degrees, options)
 }

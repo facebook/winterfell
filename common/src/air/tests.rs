@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    Air, Assertion, ComputationContext, EvaluationFrame, ProofOptions, TraceInfo,
+    Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
 use crate::{FieldExtension, HashFunction};
@@ -297,7 +297,7 @@ fn prepare_assertions_with_invalid_trace_width() {
 // ================================================================================================
 
 struct MockAir {
-    context: ComputationContext,
+    context: AirContext,
     assertions: Vec<Assertion<BaseElement>>,
     periodic_columns: Vec<Vec<BaseElement>>,
 }
@@ -362,7 +362,7 @@ impl Air for MockAir {
         }
     }
 
-    fn context(&self) -> &ComputationContext {
+    fn context(&self) -> &AirContext {
         &self.context
     }
 
@@ -386,7 +386,7 @@ impl Air for MockAir {
 // UTILITY FUNCTIONS
 // ================================================================================================
 
-pub fn build_context(trace_length: usize, trace_width: usize) -> ComputationContext {
+pub fn build_context(trace_length: usize, trace_width: usize) -> AirContext {
     let options = ProofOptions::new(
         32,
         8,
@@ -397,7 +397,7 @@ pub fn build_context(trace_length: usize, trace_width: usize) -> ComputationCont
         256,
     );
     let t_degrees = vec![TransitionConstraintDegree::new(2)];
-    ComputationContext::new(trace_width, trace_length, t_degrees, options)
+    AirContext::new(trace_width, trace_length, t_degrees, options)
 }
 
 pub fn build_prng() -> RandomCoin<BaseElement, Blake3_256<BaseElement>> {

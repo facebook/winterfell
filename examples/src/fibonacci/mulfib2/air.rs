@@ -6,7 +6,7 @@
 use crate::utils::are_equal;
 use prover::{
     math::{fields::f128::BaseElement, FieldElement},
-    Air, Assertion, ComputationContext, EvaluationFrame, ExecutionTrace, ProofOptions, TraceInfo,
+    Air, AirContext, Assertion, EvaluationFrame, ExecutionTrace, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
 
@@ -16,7 +16,7 @@ use prover::{
 const TRACE_WIDTH: usize = 2;
 
 pub struct MulFib2Air {
-    context: ComputationContext,
+    context: AirContext,
     result: BaseElement,
 }
 
@@ -31,14 +31,14 @@ impl Air for MulFib2Air {
             TransitionConstraintDegree::new(2),
             TransitionConstraintDegree::new(2),
         ];
-        let context = ComputationContext::new(TRACE_WIDTH, trace_info.length, degrees, options);
+        let context = AirContext::new(TRACE_WIDTH, trace_info.length, degrees, options);
         MulFib2Air {
             context,
             result: pub_inputs,
         }
     }
 
-    fn context(&self) -> &ComputationContext {
+    fn context(&self) -> &AirContext {
         &self.context
     }
 

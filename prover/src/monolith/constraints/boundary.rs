@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use common::ComputationContext;
+use common::AirContext;
 use math::{fft, polynom, FieldElement, StarkField};
 use std::collections::HashMap;
 
@@ -31,7 +31,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraintGroup<B, E
     /// evaluating large polynomial constraints (if any).
     pub fn new(
         group: common::BoundaryConstraintGroup<B, E>,
-        context: &ComputationContext,
+        context: &AirContext,
         twiddle_map: &mut HashMap<usize, Vec<B>>,
     ) -> BoundaryConstraintGroup<B, E> {
         let mut result = BoundaryConstraintGroup {

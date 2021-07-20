@@ -3,7 +3,6 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::errors::ProofSerializationError;
 use crypto::{BatchMerkleProof, ElementHasher, Hasher};
 use math::{log2, FieldElement};
 use utils::{
@@ -63,7 +62,7 @@ impl Queries {
         domain_size: usize,
         num_queries: usize,
         elements_per_query: usize,
-    ) -> Result<(BatchMerkleProof<H>, Vec<Vec<E>>), ProofSerializationError>
+    ) -> Result<(BatchMerkleProof<H>, Vec<Vec<E>>), DeserializationError>
     where
         E: FieldElement,
         H: ElementHasher<BaseField = E::BaseField>,
@@ -82,8 +81,8 @@ impl Queries {
         let num_query_bytes = E::ELEMENT_BYTES * elements_per_query;
         let expected_bytes = num_queries * num_query_bytes;
         if self.values.len() != expected_bytes {
-            return Err(ProofSerializationError::FailedToParseQueryValues(format!(
-                "expected {} bytes, but was {}",
+            return Err(DeserializationError::InvalidValue(format!(
+                "expected {} query value bytes, but was {}",
                 expected_bytes,
                 self.values.len()
             )));
@@ -96,9 +95,7 @@ impl Queries {
         // and also hash them to build leaf nodes of the batch Merkle proof
         let mut reader = SliceReader::new(&self.values);
         for query_hash in hashed_queries.iter_mut() {
-            let elements = E::read_batch_from(&mut reader, elements_per_query).map_err(|err| {
-                ProofSerializationError::FailedToParseQueryValues(err.to_string())
-            })?;
+            let elements = E::read_batch_from(&mut reader, elements_per_query)?;
             *query_hash = H::hash_elements(&elements);
             query_values.push(elements);
         }
@@ -106,14 +103,9 @@ impl Queries {
         // build batch Merkle proof
         let mut reader = SliceReader::new(&self.paths);
         let tree_depth = log2(domain_size) as u8;
-        let merkle_proof = BatchMerkleProof::deserialize(&mut reader, hashed_queries, tree_depth)
-            .map_err(|err| {
-            ProofSerializationError::FailedToParseQueryProofs(err.to_string())
-        })?;
+        let merkle_proof = BatchMerkleProof::deserialize(&mut reader, hashed_queries, tree_depth)?;
         if reader.has_more_bytes() {
-            return Err(ProofSerializationError::FailedToParseQueryProofs(
-                "not all bytes were consumed".to_string(),
-            ));
+            return Err(DeserializationError::UnconsumedBytes);
         }
 
         Ok((merkle_proof, query_values))

@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{air::Assertion, ComputationContext};
+use crate::{air::Assertion, AirContext};
 use math::{FieldElement, StarkField};
 use std::fmt::{Display, Formatter};
 
@@ -31,7 +31,7 @@ impl<B: StarkField> ConstraintDivisor<B> {
     /// (x^trace_length - 1) / (x - x_at_last_step)
     /// this specifies that transition constraints must hold on all steps of the execution trace
     /// except for the last one.
-    pub fn from_transition(context: &ComputationContext) -> Self {
+    pub fn from_transition(context: &AirContext) -> Self {
         let trace_length = context.trace_length();
         let x_at_last_step = context.get_trace_domain_value_at::<B>(trace_length - 1);
         ConstraintDivisor {
@@ -53,7 +53,7 @@ impl<B: StarkField> ConstraintDivisor<B> {
     ///   it is (x^n - g^(n * offset)), where `offset` is the number of steps by which the
     ///   assertion steps deviate from a power of two. This is equivalent to
     ///   (x - g^first_step) * (x - g^(first_step + stride)) * (x - g^(first_step + 2 * stride))..
-    pub fn from_assertion(assertion: &Assertion<B>, context: &ComputationContext) -> Self {
+    pub fn from_assertion(assertion: &Assertion<B>, context: &AirContext) -> Self {
         let trace_length = context.trace_length();
         let num_steps = assertion.get_num_steps(trace_length);
         let trace_offset = num_steps * assertion.first_step;

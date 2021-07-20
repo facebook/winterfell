@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{errors::ProofSerializationError, EvaluationFrame};
+use crate::EvaluationFrame;
 use math::FieldElement;
 use utils::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
@@ -55,35 +55,23 @@ impl OodFrame {
         self,
         trace_width: usize,
         num_evaluations: usize,
-    ) -> Result<(EvaluationFrame<E>, Vec<E>), ProofSerializationError> {
+    ) -> Result<(EvaluationFrame<E>, Vec<E>), DeserializationError> {
         let mut reader = SliceReader::new(&self.trace_at_z1);
-        let current = E::read_batch_from(&mut reader, trace_width)
-            .map_err(|err| ProofSerializationError::FailedToParseOodFrame(err.to_string()))?;
+        let current = E::read_batch_from(&mut reader, trace_width)?;
         if reader.has_more_bytes() {
-            return Err(ProofSerializationError::WrongNumberOfOodTraceElements(
-                trace_width,
-                current.len(),
-            ));
+            return Err(DeserializationError::UnconsumedBytes);
         }
 
         let mut reader = SliceReader::new(&self.trace_at_z2);
-        let next = E::read_batch_from(&mut reader, trace_width)
-            .map_err(|err| ProofSerializationError::FailedToParseOodFrame(err.to_string()))?;
+        let next = E::read_batch_from(&mut reader, trace_width)?;
         if reader.has_more_bytes() {
-            return Err(ProofSerializationError::WrongNumberOfOodTraceElements(
-                trace_width,
-                next.len(),
-            ));
+            return Err(DeserializationError::UnconsumedBytes);
         }
 
         let mut reader = SliceReader::new(&self.evaluations);
-        let evaluations = E::read_batch_from(&mut reader, num_evaluations)
-            .map_err(|err| ProofSerializationError::FailedToParseOodFrame(err.to_string()))?;
+        let evaluations = E::read_batch_from(&mut reader, num_evaluations)?;
         if reader.has_more_bytes() {
-            return Err(ProofSerializationError::WrongNumberOfOodEvaluationElements(
-                num_evaluations,
-                evaluations.len(),
-            ));
+            return Err(DeserializationError::UnconsumedBytes);
         }
 
         Ok((EvaluationFrame { current, next }, evaluations))

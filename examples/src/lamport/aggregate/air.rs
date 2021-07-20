@@ -9,8 +9,8 @@ use super::{
 use crate::utils::{are_equal, is_binary, is_zero, not, EvaluationResult};
 use prover::{
     math::{fields::f128::BaseElement, FieldElement},
-    Air, Assertion, ByteWriter, ComputationContext, EvaluationFrame, ProofOptions, Serializable,
-    TraceInfo, TransitionConstraintDegree,
+    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ProofOptions, Serializable, TraceInfo,
+    TransitionConstraintDegree,
 };
 
 // CONSTANTS
@@ -33,7 +33,7 @@ impl Serializable for PublicInputs {
 }
 
 pub struct LamportAggregateAir {
-    context: ComputationContext,
+    context: AirContext,
     pub_keys: Vec<[BaseElement; 2]>,
     messages: Vec<[BaseElement; 2]>,
 }
@@ -79,7 +79,7 @@ impl Air for LamportAggregateAir {
             TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
             TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
         ];
-        let context = ComputationContext::new(TRACE_WIDTH, trace_info.length, degrees, options);
+        let context = AirContext::new(TRACE_WIDTH, trace_info.length, degrees, options);
 
         LamportAggregateAir {
             context,
@@ -88,7 +88,7 @@ impl Air for LamportAggregateAir {
         }
     }
 
-    fn context(&self) -> &ComputationContext {
+    fn context(&self) -> &AirContext {
         &self.context
     }
 

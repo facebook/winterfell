@@ -7,7 +7,7 @@ This crate contains common components used in STARK proof generation and verific
 1. Hash function - proof security is limited by the collision resistance of the hash function used by the protocol. For example, if a hash function with 128-bit collision resistance is used, security of a STARK proof cannot exceed 128 bits.
 2. Finite field - proof security is limited by the finite field used by the protocol. This means, that for small fields (e.g. smaller than ~128 bits), field extensions must be used to achieve adequate security. And even for ~128 bit fields, to achieve security over 100 bits, a field extension may be required.
 3. Number of queries - higher values increase proof security, but also increase proof size.
-4. Blowup factor - higher values increase proof security, but also increase proof generation time and proof size. However, higher blowup factors require fewer queries for the same security level. Thus, it is frequently possible to increase blowup factor and at the same time decrease the number of queries in such  a way that the proofs become smaller.
+4. Blowup factor - higher values increase proof security, but also increase proof generation time and proof size. However, higher blowup factors require fewer queries for the same security level. Thus, it is frequently possible to increase blowup factor and at the same time decrease the number of queries in such a way that the proofs become smaller.
 5. Grinding factor - higher values increase proof security, but also may increase proof generation time.
 
 See [options.rs](src/options.rs) for more info on currently available options and their meaning. Additionally, security level of a proof can be estimated using `StarkProof::security_level()` function.
@@ -25,8 +25,8 @@ To define AIR for a given computation, you'll need to implement the `Air` trait 
 
 1. Define base field for your computation via the `BaseElement` associated type (see [math crate](../math) for available field options).
 2. Define a set of public inputs which are required for your computation via the `PublicInputs` associated type.
-3. Implement `Air::new()` function. As a part of this function you should create a `ComputationContext` struct which takes degrees for all transition constraints as one of the constructor parameters.
-4. Implement `context()` method which should return a reference to the `ComputationContext` struct created in `Air::new()` function.
+3. Implement `Air::new()` function. As a part of this function you should create a `AirContext` struct which takes degrees for all transition constraints as one of the constructor parameters.
+4. Implement `context()` method which should return a reference to the `AirContext` struct created in `Air::new()` function.
 5. Implement `evaluate_transition()` method which should evaluate [transition constraints](#Transition-constraints) over a given evaluation frame.
 6. Implement `get_assertions()` method which should return a vector of [assertions](#Trace-assertions) for a given instance of your computation.
 7. If your computation requires [periodic values](#Periodic-values), you can also override the default `get_periodic_column_values()` method.
