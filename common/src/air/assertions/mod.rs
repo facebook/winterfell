@@ -22,6 +22,7 @@ const NO_STRIDE: usize = 0;
 // ASSERTION
 // ================================================================================================
 
+/// Represents
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Assertion<B: StarkField> {
     pub(super) register: usize,
@@ -33,7 +34,6 @@ pub struct Assertion<B: StarkField> {
 impl<B: StarkField> Assertion<B> {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
-
     /// Returns an assertion requiring that the value in the specified `register` at the specified
     /// `step` is equal to the provided `value`.
     pub fn single(register: usize, step: usize, value: B) -> Self {
