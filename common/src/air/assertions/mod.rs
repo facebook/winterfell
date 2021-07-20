@@ -22,7 +22,7 @@ const NO_STRIDE: usize = 0;
 // ASSERTION
 // ================================================================================================
 
-/// Represents
+/// An assertion made against an execution trace.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Assertion<B: StarkField> {
     pub(super) register: usize,

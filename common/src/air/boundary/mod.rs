@@ -106,7 +106,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraintGroup<B, E
 // BOUNDARY CONSTRAINT
 // ================================================================================================
 
-/// Describes the numerator portion of a boundary constraint.
+/// The numerator portion of a boundary constraint.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct BoundaryConstraint<B: StarkField, E: FieldElement<BaseField = B>> {
     register: usize,

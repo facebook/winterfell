@@ -14,6 +14,9 @@ const MIN_BLOWUP_FACTOR: usize = 2;
 // TRANSITION CONSTRAINT GROUP
 // ================================================================================================
 
+/// A group of transition constraints all having the same degree.
+///
+/// TODO: add detailed description
 #[derive(Clone, Debug)]
 pub struct TransitionConstraintGroup<E: FieldElement> {
     degree: TransitionConstraintDegree,
@@ -67,13 +70,14 @@ impl<E: FieldElement> TransitionConstraintGroup<E> {
 
 // TRANSITION CONSTRAINT DEGREE
 // ================================================================================================
-
+/// Degree descriptor of a transition constraint.
+///
 /// Describes constraint degree as a combination of multiplications of periodic and trace
 /// registers. For example, degree of a constraint which requires multiplication of two trace
 /// registers, and a periodic register with a period of 32 steps can be represented as:
 ///   base: 2
 ///   cycles: [32]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TransitionConstraintDegree {
     base: usize,
     cycles: Vec<usize>,
@@ -139,7 +143,9 @@ impl TransitionConstraintDegree {
 
 // EVALUATION FRAME
 // ================================================================================================
-
+/// A set of execution trace rows required for evaluation of transition constraints.
+///
+/// TODO: add more detail
 #[derive(Debug, Clone)]
 pub struct EvaluationFrame<E: FieldElement> {
     pub current: Vec<E>,

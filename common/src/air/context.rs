@@ -6,10 +6,10 @@
 use crate::{air::TransitionConstraintDegree, ProofOptions};
 use math::{log2, StarkField};
 
-// TYPES AND INTERFACES
+// AIR CONTEXT
 // ================================================================================================
-
-#[derive(Clone)]
+/// STARK parameters and trace properties for a specific execution of a computation.
+#[derive(Clone, PartialEq, Eq)]
 pub struct AirContext<B: StarkField> {
     pub(super) options: ProofOptions,
     pub(super) trace_width: usize,
@@ -20,17 +20,13 @@ pub struct AirContext<B: StarkField> {
     pub(super) lde_domain_generator: B,
 }
 
-// AIR CONTEXT
-// ================================================================================================
-
 impl<B: StarkField> AirContext<B> {
-    // CONSTANTS
-    // --------------------------------------------------------------------------------------------
+    ///
     pub const MIN_TRACE_LENGTH: usize = 8;
 
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
-
+    ///
     pub fn new(
         trace_width: usize,
         trace_length: usize,

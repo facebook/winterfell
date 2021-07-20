@@ -60,7 +60,7 @@
 //! 6. Implement [Air::get_assertions()] method which should return a vector of
 //!    [assertions](#trace-assertions) for a given instance of your computation.
 //! 7. If your computation requires [periodic values](#periodic-values), you can also override
-//!    the default `get_periodic_column_values()` method.
+//!    the default [Air::get_periodic_column_values()] method.
 //!
 //! ### Transition constraints
 //! Transition constraints define algebraic relations between two consecutive steps of a

@@ -7,7 +7,9 @@ use math::FieldElement;
 
 // CONSTRAINT COMPOSITION COEFFICIENTS
 // ================================================================================================
-
+/// Coefficients used in construction of constraint composition polynomial.
+///
+/// TODO: add more detail
 #[derive(Debug, Clone)]
 pub struct ConstraintCompositionCoefficients<E: FieldElement> {
     pub transition: Vec<(E, E)>,
@@ -16,7 +18,9 @@ pub struct ConstraintCompositionCoefficients<E: FieldElement> {
 
 // DEEP COMPOSITION COEFFICIENTS
 // ================================================================================================
-
+/// Coefficients used in construction of DEEP composition polynomial.
+///
+/// TODO: add more detail
 #[derive(Debug, Clone)]
 pub struct DeepCompositionCoefficients<E: FieldElement> {
     pub trace: Vec<(E, E, E)>,

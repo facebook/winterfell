@@ -10,7 +10,15 @@ use utils::{
 
 // COMMITMENTS
 // ================================================================================================
-
+/// Commitments made by the prover during commit phase of the protocol.
+///
+/// These commitments include:
+/// * Commitment to the extended execution trace.
+/// * Commitment to the evaluations of constraint composition polynomial over LDE domain.
+/// * Commitments to the evaluations of polynomials at all FRI layers.
+///
+/// Internally, the commitments are stored as a sequence of bytes. Thus, to retrieve the
+/// commitments, [parse()](Commitments::parse) function should be used.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Commitments(Vec<u8>);
 
@@ -44,6 +52,15 @@ impl Commitments {
     // --------------------------------------------------------------------------------------------
 
     /// Parses the serialized commitments into distinct parts.
+    ///
+    /// The parts are (in the order in which they appear in the tuple):
+    /// 1. Extended execution trace commitment.
+    /// 2. Constraint composition polynomial evaluation commitment.
+    /// 3. FRI layer commitments.
+    ///
+    /// # Errors
+    /// Returns an error if the bytes stored in self could not be parsed into the requested number
+    /// of commitments, or if there are any unconsumed bytes remaining after the parsing completes.
     #[allow(clippy::type_complexity)]
     pub fn parse<H: Hasher>(
         self,

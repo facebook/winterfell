@@ -47,7 +47,7 @@ pub enum FieldExtension {
     Quadratic = 2,
 }
 
-/// Defines STARK protocol parameters.
+/// STARK protocol parameters.
 ///
 /// These parameters have a direct impact on proof soundness, proof generation time, and proof
 /// size. Specifically:

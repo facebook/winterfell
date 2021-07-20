@@ -9,7 +9,8 @@ use std::fmt::{Display, Formatter};
 
 // CONSTRAINT DIVISOR
 // ================================================================================================
-
+/// The denominator portion of boundary and transition constraints.
+///
 /// Describes constraint divisor as a combination of a sparse polynomial and exclusion points.
 /// For example (x^a - 1) * (x^b - 2) / (x - 3) can be represented as:
 ///   numerator: vec![(a, 1), (b, 2)]

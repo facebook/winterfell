@@ -37,7 +37,7 @@ const MIN_CYCLE_LENGTH: usize = 2;
 
 // TRACE INFO
 // ================================================================================================
-
+/// Metadata of a specific execution trace.
 pub struct TraceInfo {
     pub length: usize,
     pub meta: Vec<u8>,
@@ -45,7 +45,7 @@ pub struct TraceInfo {
 
 // AIR TRAIT
 // ================================================================================================
-
+/// Describes algebraic intermediate representation of a computation.
 pub trait Air: Send + Sync {
     type BaseElement: StarkField;
     type PublicInputs: Serializable;

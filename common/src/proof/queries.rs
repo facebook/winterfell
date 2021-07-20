@@ -11,7 +11,20 @@ use utils::{
 
 // QUERIES
 // ================================================================================================
-
+/// Decommitments to evaluations of a set of functions at multiple points.
+///
+/// Given a set of functions evaluated over a domain *D*, a commitment is assumed to be a Merkle
+/// tree where a leaf at position *i* contains evaluations of all functions at *x<sub>i</sub>*.
+/// Thus, a query (i.e. a single decommitment) for position *i* includes evaluations of all
+/// functions at *x<sub>i</sub>*, accompanied by a Merkle authentication path from the leaf *i* to
+/// the tree root.
+///
+/// This struct can contain one or more queries. In cases when more than one query is stored,
+/// Merkle authentication paths are compressed to remove redundant nodes.
+///
+/// Internally, all Merkle paths and query values are stored as a sequence of bytes. Thus, to
+/// retrieve query values and the corresponding Merkle authentication paths,
+/// [parse()](Queries::parse) function should be used.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Queries {
     paths: Vec<u8>,
@@ -21,7 +34,17 @@ pub struct Queries {
 impl Queries {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
-    /// Returns a set of queries constructed from a batch Merkle proof and corresponding elements.
+    /// Returns queries constructed from evaluations of a set of functions at some number of points
+    /// in a domain and their corresponding Merkle authentication paths.
+    ///
+    /// For each evaluation point, the same number of values must be provided, and a hash of
+    /// these values must be equal to a leaf node in the corresponding Merkle authentication path.
+    ///
+    /// # Panics
+    /// Panics if:
+    /// * No queries were provided (`query_values` is an empty vector).
+    /// * Any of the queries does not contain any evaluations.
+    /// * Not all queries contain the same number of evaluations.
     pub fn new<H: Hasher, E: FieldElement>(
         merkle_proof: BatchMerkleProof<H>,
         query_values: Vec<Vec<E>>,
@@ -30,7 +53,7 @@ impl Queries {
         let elements_per_query = query_values[0].len();
         assert_ne!(
             elements_per_query, 0,
-            "a query must contain at least one value"
+            "a query must contain at least one evaluation"
         );
 
         // TODO: add debug check that values actually hash into the leaf nodes of the batch proof
@@ -42,7 +65,7 @@ impl Queries {
             assert_eq!(
                 elements.len(),
                 elements_per_query,
-                "all queries must contain the same number of values"
+                "all queries must contain the same number of evaluations"
             );
             values.extend_from_slice(E::elements_as_bytes(elements));
         }
@@ -56,12 +79,19 @@ impl Queries {
 
     // PARSER
     // --------------------------------------------------------------------------------------------
-    /// Convert a set of queries into a batch Merkle proof and corresponding query values.
+    /// Convert internally stored bytes into a set of query values and the corresponding Merkle
+    /// authentication paths.
+    ///
+    /// # Panics
+    /// Panics if:
+    /// * `domain_size` is not a power of two.
+    /// * `num_queries` is zero.
+    /// * `values_per_query` is zero.
     pub fn parse<H, E>(
         self,
         domain_size: usize,
         num_queries: usize,
-        elements_per_query: usize,
+        values_per_query: usize,
     ) -> Result<(BatchMerkleProof<H>, Vec<Vec<E>>), DeserializationError>
     where
         E: FieldElement,
@@ -73,12 +103,12 @@ impl Queries {
         );
         assert!(num_queries > 0, "there must be at least one query");
         assert!(
-            elements_per_query > 0,
-            "a query must contain at least one element"
+            values_per_query > 0,
+            "a query must contain at least one value"
         );
 
         // make sure we have enough bytes to read the expected number of queries
-        let num_query_bytes = E::ELEMENT_BYTES * elements_per_query;
+        let num_query_bytes = E::ELEMENT_BYTES * values_per_query;
         let expected_bytes = num_queries * num_query_bytes;
         if self.values.len() != expected_bytes {
             return Err(DeserializationError::InvalidValue(format!(
@@ -95,7 +125,7 @@ impl Queries {
         // and also hash them to build leaf nodes of the batch Merkle proof
         let mut reader = SliceReader::new(&self.values);
         for query_hash in hashed_queries.iter_mut() {
-            let elements = E::read_batch_from(&mut reader, elements_per_query)?;
+            let elements = E::read_batch_from(&mut reader, values_per_query)?;
             *query_hash = H::hash_elements(&elements);
             query_values.push(elements);
         }
