@@ -3,8 +3,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{air::Assertion, AirContext};
-use math::{FieldElement, StarkField};
+use crate::air::Assertion;
+use math::{log2, FieldElement, StarkField};
 use std::fmt::{Display, Formatter};
 
 // CONSTRAINT DIVISOR
@@ -31,9 +31,8 @@ impl<B: StarkField> ConstraintDivisor<B> {
     /// (x^trace_length - 1) / (x - x_at_last_step)
     /// this specifies that transition constraints must hold on all steps of the execution trace
     /// except for the last one.
-    pub fn from_transition(context: &AirContext) -> Self {
-        let trace_length = context.trace_length();
-        let x_at_last_step = context.get_trace_domain_value_at::<B>(trace_length - 1);
+    pub fn from_transition(trace_length: usize) -> Self {
+        let x_at_last_step = get_trace_domain_value_at::<B>(trace_length, trace_length - 1);
         ConstraintDivisor {
             numerator: vec![(trace_length, B::ONE)],
             exclude: vec![x_at_last_step],
@@ -53,11 +52,10 @@ impl<B: StarkField> ConstraintDivisor<B> {
     ///   it is (x^n - g^(n * offset)), where `offset` is the number of steps by which the
     ///   assertion steps deviate from a power of two. This is equivalent to
     ///   (x - g^first_step) * (x - g^(first_step + stride)) * (x - g^(first_step + 2 * stride))..
-    pub fn from_assertion(assertion: &Assertion<B>, context: &AirContext) -> Self {
-        let trace_length = context.trace_length();
+    pub fn from_assertion(assertion: &Assertion<B>, trace_length: usize) -> Self {
         let num_steps = assertion.get_num_steps(trace_length);
         let trace_offset = num_steps * assertion.first_step;
-        let offset = context.get_trace_domain_value_at::<B>(trace_offset);
+        let offset = get_trace_domain_value_at::<B>(trace_length, trace_offset);
         ConstraintDivisor {
             numerator: vec![(num_steps, offset)],
             exclude: vec![],
@@ -124,6 +122,20 @@ impl<B: StarkField> Display for ConstraintDivisor<B> {
         }
         Ok(())
     }
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+/// Returns g^step, where g is the generator of trace domain.
+pub fn get_trace_domain_value_at<B: StarkField>(trace_length: usize, step: usize) -> B {
+    debug_assert!(
+        step < trace_length,
+        "step must be in the trace domain [0, {})",
+        trace_length
+    );
+    let g = B::get_root_of_unity(log2(trace_length));
+    g.exp((step as u64).into())
 }
 
 // TESTS

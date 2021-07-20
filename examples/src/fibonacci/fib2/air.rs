@@ -16,7 +16,7 @@ use prover::{
 const TRACE_WIDTH: usize = 2;
 
 pub struct FibAir {
-    context: AirContext,
+    context: AirContext<BaseElement>,
     result: BaseElement,
 }
 
@@ -38,7 +38,7 @@ impl Air for FibAir {
         }
     }
 
-    fn context(&self) -> &AirContext {
+    fn context(&self) -> &AirContext<Self::BaseElement> {
         &self.context
     }
 

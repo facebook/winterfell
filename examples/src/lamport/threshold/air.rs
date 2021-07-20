@@ -38,7 +38,7 @@ impl Serializable for PublicInputs {
 }
 
 pub struct LamportThresholdAir {
-    context: AirContext,
+    context: AirContext<BaseElement>,
     pub_key_root: [BaseElement; 2],
     num_pub_keys: usize,
     num_signatures: usize,
@@ -239,7 +239,7 @@ impl Air for LamportThresholdAir {
         result
     }
 
-    fn context(&self) -> &AirContext {
+    fn context(&self) -> &AirContext<Self::BaseElement> {
         &self.context
     }
 }

@@ -10,18 +10,20 @@ use math::{log2, StarkField};
 // ================================================================================================
 
 #[derive(Clone)]
-pub struct AirContext {
-    options: ProofOptions,
-    trace_width: usize,
-    trace_length: usize,
-    transition_constraint_degrees: Vec<TransitionConstraintDegree>,
-    ce_blowup_factor: usize,
+pub struct AirContext<B: StarkField> {
+    pub(super) options: ProofOptions,
+    pub(super) trace_width: usize,
+    pub(super) trace_length: usize,
+    pub(super) transition_constraint_degrees: Vec<TransitionConstraintDegree>,
+    pub(super) ce_blowup_factor: usize,
+    pub(super) trace_domain_generator: B,
+    pub(super) lde_domain_generator: B,
 }
 
 // AIR CONTEXT
 // ================================================================================================
 
-impl AirContext {
+impl<B: StarkField> AirContext<B> {
     // CONSTANTS
     // --------------------------------------------------------------------------------------------
     pub const MIN_TRACE_LENGTH: usize = 8;
@@ -72,81 +74,16 @@ impl AirContext {
             options.blowup_factor()
         );
 
+        let lde_domain_size = trace_length * options.blowup_factor();
+
         AirContext {
             options,
             trace_width,
             trace_length,
             transition_constraint_degrees,
             ce_blowup_factor,
+            trace_domain_generator: B::get_root_of_unity(log2(trace_length)),
+            lde_domain_generator: B::get_root_of_unity(log2(lde_domain_size)),
         }
-    }
-
-    // TRACE INFO
-    // --------------------------------------------------------------------------------------------
-
-    pub fn trace_width(&self) -> usize {
-        self.trace_width
-    }
-
-    pub fn trace_length(&self) -> usize {
-        self.trace_length
-    }
-
-    // CONSTRAINT INFO
-    // --------------------------------------------------------------------------------------------
-
-    pub fn lde_blowup_factor(&self) -> usize {
-        self.options.blowup_factor()
-    }
-
-    pub fn lde_domain_size(&self) -> usize {
-        self.trace_length * self.lde_blowup_factor()
-    }
-
-    pub fn ce_blowup_factor(&self) -> usize {
-        self.ce_blowup_factor
-    }
-
-    pub fn ce_domain_size(&self) -> usize {
-        self.trace_length * self.ce_blowup_factor()
-    }
-
-    pub fn transition_constraint_degrees(&self) -> &[TransitionConstraintDegree] {
-        &self.transition_constraint_degrees
-    }
-
-    // OTHER PROPERTIES
-    // --------------------------------------------------------------------------------------------
-
-    pub fn options(&self) -> &ProofOptions {
-        &self.options
-    }
-
-    pub fn domain_offset<B: StarkField>(&self) -> B {
-        self.options.domain_offset()
-    }
-
-    // UTILITY FUNCTIONS
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns a generator of the trace domain in the specified STARK field.
-    pub fn get_trace_domain_generator<B: StarkField>(&self) -> B {
-        B::get_root_of_unity(log2(self.trace_length()))
-    }
-
-    /// Returns a generator of the LDE domain in the specified STARK field.
-    pub fn get_lde_domain_generator<B: StarkField>(&self) -> B {
-        B::get_root_of_unity(log2(self.lde_domain_size()))
-    }
-
-    /// Returns g^step, where g is the generator of trace domain.
-    pub fn get_trace_domain_value_at<B: StarkField>(&self, step: usize) -> B {
-        debug_assert!(
-            step < self.trace_length,
-            "step must be in the trace domain [0, {})",
-            self.trace_length
-        );
-        let g = self.get_trace_domain_generator::<B>();
-        g.exp((step as u64).into())
     }
 }

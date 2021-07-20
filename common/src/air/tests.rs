@@ -297,7 +297,7 @@ fn prepare_assertions_with_invalid_trace_width() {
 // ================================================================================================
 
 struct MockAir {
-    context: AirContext,
+    context: AirContext<BaseElement>,
     assertions: Vec<Assertion<BaseElement>>,
     periodic_columns: Vec<Vec<BaseElement>>,
 }
@@ -362,7 +362,7 @@ impl Air for MockAir {
         }
     }
 
-    fn context(&self) -> &AirContext {
+    fn context(&self) -> &AirContext<Self::BaseElement> {
         &self.context
     }
 
@@ -386,7 +386,7 @@ impl Air for MockAir {
 // UTILITY FUNCTIONS
 // ================================================================================================
 
-pub fn build_context(trace_length: usize, trace_width: usize) -> AirContext {
+pub fn build_context<B: StarkField>(trace_length: usize, trace_width: usize) -> AirContext<B> {
     let options = ProofOptions::new(
         32,
         8,

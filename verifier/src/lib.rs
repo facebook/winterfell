@@ -52,8 +52,8 @@ pub fn verify<AIR: Air>(
 
     // figure out which version of the generic proof verification procedure to run. this is a sort
     // of static dispatch for selecting two generic parameter: extension field and hash function.
-    match air.context().options().field_extension() {
-        FieldExtension::None => match air.context().options().hash_fn() {
+    match air.options().field_extension() {
+        FieldExtension::None => match air.options().hash_fn() {
             HashFunction::Blake3_256 => {
                 let public_coin = RandomCoin::new(&public_coin_seed);
                 let channel = VerifierChannel::new(&air, proof)?;
@@ -69,7 +69,7 @@ pub fn verify<AIR: Air>(
                     (air, channel, public_coin)
             }
         },
-        FieldExtension::Quadratic => match air.context().options().hash_fn() {
+        FieldExtension::Quadratic => match air.options().hash_fn() {
             HashFunction::Blake3_256 => {
                 let public_coin = RandomCoin::new(&public_coin_seed);
                 let channel = VerifierChannel::new(&air, proof)?;

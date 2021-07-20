@@ -54,7 +54,7 @@ impl Serializable for PublicInputs {
 }
 
 pub struct RescueAir {
-    context: AirContext,
+    context: AirContext<BaseElement>,
     seed: [BaseElement; 2],
     result: [BaseElement; 2],
 }
@@ -80,7 +80,7 @@ impl Air for RescueAir {
         }
     }
 
-    fn context(&self) -> &AirContext {
+    fn context(&self) -> &AirContext<Self::BaseElement> {
         &self.context
     }
 

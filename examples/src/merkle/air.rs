@@ -36,7 +36,7 @@ impl Serializable for PublicInputs {
 }
 
 pub struct MerkleAir {
-    context: AirContext,
+    context: AirContext<BaseElement>,
     tree_root: [BaseElement; 2],
 }
 
@@ -63,7 +63,7 @@ impl Air for MerkleAir {
         }
     }
 
-    fn context(&self) -> &AirContext {
+    fn context(&self) -> &AirContext<Self::BaseElement> {
         &self.context
     }
 

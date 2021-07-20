@@ -63,7 +63,7 @@ pub trait Air: Send + Sync {
     fn new(trace_info: TraceInfo, pub_inputs: Self::PublicInputs, options: ProofOptions) -> Self;
 
     /// Should return context for this instance of the computation.
-    fn context(&self) -> &AirContext;
+    fn context(&self) -> &AirContext<Self::BaseElement>;
 
     /// Should evaluate transition constraints over the specified evaluation frame. The evaluations
     /// should be saved into the `results` slice.
@@ -151,7 +151,7 @@ pub trait Air: Send + Sync {
         // appropriate group based on degree
         let context = self.context();
         let mut groups = HashMap::new();
-        for (i, degree) in context.transition_constraint_degrees().iter().enumerate() {
+        for (i, degree) in context.transition_constraint_degrees.iter().enumerate() {
             let evaluation_degree = degree.get_evaluation_degree(self.trace_length());
             let degree_adjustment = (target_degree - evaluation_degree) as u32;
             let group = groups.entry(evaluation_degree).or_insert_with(|| {
@@ -174,10 +174,7 @@ pub trait Air: Send + Sync {
     ) -> Vec<BoundaryConstraintGroup<Self::BaseElement, E>> {
         // compute inverse of the trace domain generator; this will be used for offset
         // computations when creating sequence constraints
-        let inv_g = self
-            .context()
-            .get_trace_domain_generator::<Self::BaseElement>()
-            .inv();
+        let inv_g = self.trace_domain_generator().inv();
 
         // cache inverse twiddles for multi-value assertions in this map so that we don't have
         // to re-build them for assertions with identical strides
@@ -201,7 +198,7 @@ pub trait Air: Send + Sync {
             let key = (assertion.stride(), assertion.first_step());
             let group = groups.entry(key).or_insert_with(|| {
                 BoundaryConstraintGroup::new(
-                    ConstraintDivisor::from_assertion(&assertion, self.context()),
+                    ConstraintDivisor::from_assertion(&assertion, self.trace_length()),
                     self.trace_poly_degree(),
                     self.composition_degree(),
                 )
@@ -224,19 +221,19 @@ pub trait Air: Send + Sync {
     /// Returns options which specify proof generation parameters for an instance of the
     /// computation described by this AIR.
     fn options(&self) -> &ProofOptions {
-        self.context().options()
+        &self.context().options
     }
 
     /// Returns length of the execution trace for an instance of the computation described by
     /// this AIR. This is guaranteed to be a power of two.
     fn trace_length(&self) -> usize {
-        self.context().trace_length()
+        self.context().trace_length
     }
 
     /// Returns width of the execution trace for an instance of the computation described by
     /// this AIR.
     fn trace_width(&self) -> usize {
-        self.context().trace_width()
+        self.context().trace_width
     }
 
     /// Returns degree of trace polynomials for an instance of the computation described by
@@ -248,7 +245,7 @@ pub trait Air: Send + Sync {
     /// Returns the generator of the trace domain for an instance of the computation described
     /// by this AIR.
     fn trace_domain_generator(&self) -> Self::BaseElement {
-        self.context().get_trace_domain_generator()
+        self.context().trace_domain_generator
     }
 
     /// Returns constraint evaluation domain blowup factor for the computation described by this
@@ -256,7 +253,7 @@ pub trait Air: Send + Sync {
     /// the hightest transition constraint degree. For example, if the hightest transition
     /// constraint degree = 3, ce_blowup_factor will be set to 4.
     fn ce_blowup_factor(&self) -> usize {
-        self.context().ce_blowup_factor()
+        self.context().ce_blowup_factor
     }
 
     /// Returns size of the constraint evaluation domain. This is guaranteed to be a power of
@@ -275,7 +272,7 @@ pub trait Air: Send + Sync {
     /// AIR. This is guaranteed to be a power of two, and is always either equal to or greater
     /// than ce_blowup_factor.
     fn lde_blowup_factor(&self) -> usize {
-        self.context().options().blowup_factor()
+        self.context().options.blowup_factor()
     }
 
     /// Returns the size of the low-degree extension domain. This is guaranteed to be a power of
@@ -287,19 +284,25 @@ pub trait Air: Send + Sync {
     /// Returns the generator of the low-degree extension domain for an instance of the
     /// computation described by this AIR.
     fn lde_domain_generator(&self) -> Self::BaseElement {
-        self.context().get_lde_domain_generator()
+        self.context().lde_domain_generator
     }
 
     /// Returns the offset by which the domain for low-degree extension is shifted in relation
     /// to the execution trace domain.
     fn domain_offset(&self) -> Self::BaseElement {
-        self.context().options().domain_offset()
+        self.context().options.domain_offset()
+    }
+
+    /// Returns a list of transition constraint degree description for an instance of the
+    /// computation described by this AIR.
+    fn transition_constraint_degrees(&self) -> &[TransitionConstraintDegree] {
+        &self.context().transition_constraint_degrees
     }
 
     /// Returns the number of transition constraints for an instance of the computation described
     /// by this AIR.
     fn num_transition_constraints(&self) -> usize {
-        self.context().transition_constraint_degrees().len()
+        self.context().transition_constraint_degrees.len()
     }
 
     // LINEAR COMBINATION COEFFICIENTS
@@ -368,7 +371,7 @@ pub trait Air: Send + Sync {
 /// each other - i.e. no two assertions are placed against the same register and step combination.
 fn prepare_assertions<B: StarkField>(
     assertions: Vec<Assertion<B>>,
-    context: &AirContext,
+    context: &AirContext<B>,
 ) -> Vec<Assertion<B>> {
     // we use a sorted set to help us sort the assertions by their 'natural' order. The natural
     // order is defined as sorting first by stride, then by first step, and finally by register,
@@ -377,12 +380,12 @@ fn prepare_assertions<B: StarkField>(
 
     for assertion in assertions.into_iter() {
         assertion
-            .validate_trace_width(context.trace_width())
+            .validate_trace_width(context.trace_width)
             .unwrap_or_else(|err| {
                 panic!("assertion {} is invalid: {}", assertion, err);
             });
         assertion
-            .validate_trace_length(context.trace_length())
+            .validate_trace_length(context.trace_length)
             .unwrap_or_else(|err| {
                 panic!("assertion {} is invalid: {}", assertion, err);
             });

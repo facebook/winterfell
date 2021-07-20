@@ -16,7 +16,7 @@ use prover::{
 const TRACE_WIDTH: usize = 8;
 
 pub struct MulFib8Air {
-    context: AirContext,
+    context: AirContext<BaseElement>,
     result: BaseElement,
 }
 
@@ -44,7 +44,7 @@ impl Air for MulFib8Air {
         }
     }
 
-    fn context(&self) -> &AirContext {
+    fn context(&self) -> &AirContext<Self::BaseElement> {
         &self.context
     }
 

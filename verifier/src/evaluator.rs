@@ -44,7 +44,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseElement>>
 
     // build the divisor for transition constraints; divisors for all transition constraints are
     // the same and have the form: (x^steps - 1) / (x - x_at_last_step)
-    let t_divisor = ConstraintDivisor::<A::BaseElement>::from_transition(air.context());
+    let t_divisor = ConstraintDivisor::<A::BaseElement>::from_transition(air.trace_length());
 
     // divide out the evaluation of divisor at x
     let z = t_divisor.evaluate_at(x);

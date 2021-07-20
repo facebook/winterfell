@@ -8,7 +8,7 @@ use common::{
     Air, AirContext, Assertion, EvaluationFrame, FieldExtension, HashFunction, ProofOptions,
     TraceInfo, TransitionConstraintDegree,
 };
-use math::{fields::f128::BaseElement, FieldElement};
+use math::{fields::f128::BaseElement, FieldElement, StarkField};
 
 // FIBONACCI TRACE BUILDER
 // ================================================================================================
@@ -31,12 +31,31 @@ pub fn build_fib_trace(length: usize) -> ExecutionTrace<BaseElement> {
 // ================================================================================================
 
 pub struct MockAir {
-    context: AirContext,
+    context: AirContext<BaseElement>,
     assertions: Vec<Assertion<BaseElement>>,
     periodic_columns: Vec<Vec<BaseElement>>,
 }
 
 impl MockAir {
+    pub fn with_trace_length(trace_length: usize) -> Self {
+        Self::new(
+            TraceInfo {
+                length: trace_length,
+                meta: Vec::new(),
+            },
+            (),
+            ProofOptions::new(
+                32,
+                8,
+                0,
+                HashFunction::Blake3_256,
+                FieldExtension::None,
+                4,
+                256,
+            ),
+        )
+    }
+
     pub fn with_periodic_columns(
         column_values: Vec<Vec<BaseElement>>,
         trace_length: usize,
@@ -96,7 +115,7 @@ impl Air for MockAir {
         }
     }
 
-    fn context(&self) -> &AirContext {
+    fn context(&self) -> &AirContext<Self::BaseElement> {
         &self.context
     }
 
@@ -120,7 +139,11 @@ impl Air for MockAir {
 // HELPER FUNCTIONS
 // ================================================================================================
 
-pub fn build_context(trace_length: usize, trace_width: usize, blowup_factor: usize) -> AirContext {
+fn build_context<B: StarkField>(
+    trace_length: usize,
+    trace_width: usize,
+    blowup_factor: usize,
+) -> AirContext<B> {
     let options = ProofOptions::new(
         32,
         blowup_factor,

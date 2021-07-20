@@ -33,7 +33,7 @@ impl Serializable for PublicInputs {
 }
 
 pub struct LamportAggregateAir {
-    context: AirContext,
+    context: AirContext<BaseElement>,
     pub_keys: Vec<[BaseElement; 2]>,
     messages: Vec<[BaseElement; 2]>,
 }
@@ -88,7 +88,7 @@ impl Air for LamportAggregateAir {
         }
     }
 
-    fn context(&self) -> &AirContext {
+    fn context(&self) -> &AirContext<Self::BaseElement> {
         &self.context
     }
 

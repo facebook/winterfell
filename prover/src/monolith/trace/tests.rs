@@ -5,7 +5,7 @@
 
 use crate::{
     monolith::StarkDomain,
-    tests::{build_context, build_fib_trace},
+    tests::{build_fib_trace, MockAir},
 };
 use crypto::{hashers::Blake3_256, ElementHasher, MerkleTree};
 use math::{
@@ -40,13 +40,13 @@ fn new_trace_table() {
 fn extend_trace_table() {
     // build and extend trace table
     let trace_length = 8;
-    let context = build_context(trace_length, 2, 4);
+    let air = MockAir::with_trace_length(trace_length);
     let trace = build_fib_trace(trace_length * 2);
-    let domain = StarkDomain::new(&context);
+    let domain = StarkDomain::new(&air);
     let (extended_trace, trace_polys) = trace.extend(&domain);
 
     assert_eq!(2, extended_trace.width());
-    assert_eq!(32, extended_trace.len());
+    assert_eq!(64, extended_trace.len());
 
     // make sure trace polynomials evaluate to Fibonacci trace
     let trace_root = BaseElement::get_root_of_unity(log2(trace_length));
@@ -83,9 +83,9 @@ fn extend_trace_table() {
 fn commit_trace_table() {
     // build and extend trace table
     let trace_length = 8;
-    let context = build_context(trace_length, 2, 4);
+    let air = MockAir::with_trace_length(trace_length);
     let trace = build_fib_trace(trace_length * 2);
-    let domain = StarkDomain::new(&context);
+    let domain = StarkDomain::new(&air);
     let (extended_trace, _) = trace.extend(&domain);
 
     // commit to the trace
@@ -99,7 +99,7 @@ fn commit_trace_table() {
         for j in 0..extended_trace.width() {
             trace_state[j] = extended_trace.get(j, i);
         }
-        let buf = Blake3_256::<BaseElement>::hash_elements(&trace_state);
+        let buf = Blake3::hash_elements(&trace_state);
         hashed_states.push(buf);
     }
     let expected_tree = MerkleTree::<Blake3>::new(hashed_states).unwrap();

@@ -61,8 +61,8 @@ pub fn prove<AIR: Air>(
 
     // figure out which version of the generic proof generation procedure to run. this is a sort
     // of static dispatch for selecting two generic parameter: extension field and hash function.
-    match air.context().options().field_extension() {
-        FieldExtension::None => match air.context().options().hash_fn() {
+    match air.options().field_extension() {
+        FieldExtension::None => match air.options().hash_fn() {
             HashFunction::Blake3_256 => generate_proof::
                 <AIR, AIR::BaseElement, Blake3_256<AIR::BaseElement>>
                 (air, trace, pub_inputs_bytes),
@@ -71,7 +71,7 @@ pub fn prove<AIR: Air>(
                 (air, trace, pub_inputs_bytes)
             
         },
-        FieldExtension::Quadratic => match air.context().options().hash_fn() {
+        FieldExtension::Quadratic => match air.options().hash_fn() {
             HashFunction::Blake3_256 => generate_proof::
                 <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Blake3_256<AIR::BaseElement>>
                 (air, trace, pub_inputs_bytes),
@@ -105,7 +105,7 @@ where
 
     // build computation domain; this is used later for polynomial evaluations
     let now = Instant::now();
-    let domain = StarkDomain::new(air.context());
+    let domain = StarkDomain::new(&air);
     debug!(
         "Built domain of 2^{} elements in {} ms",
         log2(domain.lde_domain_size()),
