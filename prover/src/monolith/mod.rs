@@ -12,6 +12,7 @@ use crypto::{
     hashers::{Blake3_256, Sha3_256},
     ElementHasher,
 };
+use fri::FriProver;
 use log::debug;
 use math::{fft::infer_degree, log2, FieldElement, StarkField};
 use std::time::Instant;
@@ -248,7 +249,7 @@ where
 
     // 7 ----- compute FRI layers for the composition polynomial ----------------------------------
     let now = Instant::now();
-    let mut fri_prover = fri::FriProver::new(air.options().to_fri_options());
+    let mut fri_prover = FriProver::new(air.options().to_fri_options());
     fri_prover.build_layers(&mut channel, deep_evaluations);
     debug!(
         "Computed {} FRI layers from composition polynomial evaluations in {} ms",

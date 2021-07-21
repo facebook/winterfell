@@ -71,12 +71,12 @@ impl fmt::Display for MerkleTreeError {
     }
 }
 
-// PUBLIC COIN ERROR
+// RANDOM COIN ERROR
 // ================================================================================================
 
-/// Defines errors which can occur when drawing values from a public coin.
+/// Defines errors which can occur when drawing values from a random coin.
 #[derive(Debug, PartialEq)]
-pub enum PublicCoinError {
+pub enum RandomCoinError {
     /// A valid element could not be drawn from the field after the specified number of tries.
     FailedToDrawFieldElement(usize),
     /// The required number of integer values could not be drawn from the specified domain after
@@ -84,7 +84,7 @@ pub enum PublicCoinError {
     FailedToDrawIntegers(usize, usize, usize),
 }
 
-impl fmt::Display for PublicCoinError {
+impl fmt::Display for RandomCoinError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::FailedToDrawFieldElement(num_tries) => {

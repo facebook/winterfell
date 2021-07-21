@@ -13,7 +13,7 @@
 //!   aggregation of Merkle paths implemented using a variation of the
 //!   [Octopus](https://eprint.iacr.org/2017/933) algorithm.
 //! * **PRNG** - which is used to generate pseudo-random elements in a finite field. The
-//!   [PublicCoin] implementation uses a cryptographic hash function to generate pseudo-random
+//!   [RandomCoin] implementation uses a cryptographic hash function to generate pseudo-random
 //!   elements form a seed.
 
 mod hash;
@@ -32,7 +32,7 @@ pub use merkle::{build_merkle_nodes, BatchMerkleProof, MerkleTree};
 pub use merkle::concurrent;
 
 mod random;
-pub use random::PublicCoin;
+pub use random::RandomCoin;
 
 mod errors;
-pub use errors::{MerkleTreeError, PublicCoinError};
+pub use errors::{MerkleTreeError, RandomCoinError};

@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{ByteReader, SliceReader};
+use super::{ByteReader, ByteWriter, Serializable, SliceReader};
 
 // VECTOR UTILS TESTS
 // ================================================================================================
@@ -86,4 +86,64 @@ fn read_u8_vec() {
     assert_eq!(vec![6, 7], a.read_u8_vec(2).unwrap());
     assert_eq!(vec![8], a.read_u8_vec(1).unwrap());
     assert!(a.read_u8_vec(2).is_err());
+}
+
+// SERIALIZATION TESTS
+// ================================================================================================
+
+impl Serializable for u128 {
+    fn write_into<W: crate::ByteWriter>(&self, target: &mut W) {
+        target.write_u8_slice(&self.to_le_bytes());
+    }
+}
+
+#[test]
+fn write_serializable() {
+    let mut target: Vec<u8> = Vec::new();
+
+    123456u128.write_into(&mut target);
+    assert_eq!(16, target.len());
+
+    target.write(234567u128);
+    assert_eq!(32, target.len());
+
+    let mut reader = SliceReader::new(&target);
+    assert_eq!(123456u128, reader.read_u128().unwrap());
+    assert_eq!(234567u128, reader.read_u128().unwrap());
+}
+
+#[test]
+fn write_serializable_batch() {
+    let mut target: Vec<u8> = Vec::new();
+
+    let batch1 = vec![1u128, 2, 3, 4];
+    batch1.write_into(&mut target);
+    assert_eq!(64, target.len());
+
+    let batch2 = [5u128, 6, 7, 8];
+    target.write(&batch2[..]);
+    assert_eq!(128, target.len());
+
+    let mut reader = SliceReader::new(&target);
+    for i in 1u128..9 {
+        assert_eq!(i, reader.read_u128().unwrap());
+    }
+}
+
+#[test]
+fn write_serializable_array_batch() {
+    let mut target: Vec<u8> = Vec::new();
+
+    let batch1 = vec![[1u128, 2], [3, 4]];
+    batch1.write_into(&mut target);
+    assert_eq!(64, target.len());
+
+    let batch2 = [[5u128, 6], [7, 8]];
+    target.write(&batch2[..]);
+    assert_eq!(128, target.len());
+
+    let mut reader = SliceReader::new(&target);
+    for i in 1u128..9 {
+        assert_eq!(i, reader.read_u128().unwrap());
+    }
 }

@@ -7,7 +7,7 @@ use super::{
     super::tests::{build_prng, build_sequence_poly},
     Assertion, BoundaryConstraint,
 };
-use crypto::{hashers::Blake3_256, PublicCoin};
+use crypto::{hashers::Blake3_256, RandomCoin};
 use math::{fields::f128::BaseElement, log2, polynom, FieldElement, StarkField};
 use std::collections::HashMap;
 
@@ -179,7 +179,7 @@ fn build_constraint_params(
 ) -> (
     BaseElement,
     HashMap<usize, Vec<BaseElement>>,
-    PublicCoin<BaseElement, Blake3_256<BaseElement>>,
+    RandomCoin<BaseElement, Blake3_256<BaseElement>>,
 ) {
     let inv_g = BaseElement::get_root_of_unity(log2(trace_length)).inv();
     let prng = build_prng();

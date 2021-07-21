@@ -31,7 +31,7 @@ pub struct PublicInputs {
 
 impl Serializable for PublicInputs {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write_slice(&self.tree_root);
+        target.write(&self.tree_root[..]);
     }
 }
 

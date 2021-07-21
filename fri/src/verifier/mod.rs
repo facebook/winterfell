@@ -3,208 +3,346 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{
-    utils::{fold_positions, map_positions_to_indexes},
-    VerifierError,
-};
-use crypto::Hasher;
-use math::{get_power_series_with_offset, polynom, FieldElement, StarkField};
-use std::{convert::TryInto, mem};
+//! Contains an implementation of FRI verifier and associated components.
 
-mod context;
-pub use context::VerifierContext;
+use crate::{folding::fold_positions, utils::map_positions_to_indexes, FriOptions, VerifierError};
+use core::{convert::TryInto, marker::PhantomData, mem};
+use crypto::{ElementHasher, RandomCoin};
+use math::{fft, log2, polynom, FieldElement, StarkField};
 
 mod channel;
 pub use channel::{DefaultVerifierChannel, VerifierChannel};
 
-// VERIFICATION PROCEDURE
+// FRI VERIFIER
 // ================================================================================================
-/// Returns OK(()) if values in the `evaluations` slice represent evaluations of a polynomial
-/// with degree <= context.max_degree() at x coordinates specified by the `positions` slice. The
-/// evaluation domain is defined by the combination of base field (specified by B type parameter),
-/// context.domain_size() parameter, and context.domain_offset() parameter.
-pub fn verify<B, E, H, C>(
-    context: &VerifierContext<B, E, H>,
-    channel: &mut C,
-    evaluations: &[E],
-    positions: &[usize],
-) -> Result<(), VerifierError>
+/// Implements the verifier component of the FRI protocol.
+///
+/// Given a small number of evaluations of some function *f* over domain *D* and a FRI proof, a
+/// FRI verifier determines whether *f* is a polynomial of some bounded degree *d*, such that *d*
+/// < |*D*| / 2.
+///
+/// The verifier is parametrized by the following types:
+///
+/// * `B` specifies the base field of the STARK protocol.
+/// * `E` specifies the filed in which the FRI protocol is executed. This can be the same as the
+///   base field `B`, but it can also be an extension of the base field in cases when the base
+///   field is too small to provide desired security level for the FRI protocol.
+/// * `C` specifies the type used to simulate prover-verifier interaction. This type is used
+///   as an abstraction for a [FriProof](crate::FriProof). Meaning, the verifier does not consume
+///   a FRI proof directly, but reads it via [VerifierChannel] interface.
+/// * `H` specifies the Hash function used by the prover to commit to polynomial evaluations.
+///
+/// Proof verification is performed in two phases: commit phase and query phase.
+///
+/// # Commit phase
+/// During the commit phase, which is executed when the verifier is instantiated via
+/// [new()](FriVerifier::new()) function, the verifier receives a list of FRI layer commitments
+/// from the prover (via [VerifierChannel]). After each received commitment, the verifier
+/// draws a random value α from the entire field, and sends it to the prover. In the
+/// non-interactive version of the protocol, α values are derived pseudo-randomly from FRI
+/// layer commitments.
+///
+/// # Query phase
+/// During the query phase, which is executed via [verify()](FriVerifier::verify()) function,
+/// the verifier sends a set of positions in the domain *D* to the prover, and the prover responds
+/// with polynomial evaluations at these positions (together with corresponding Merkle paths)
+/// across all FRI layers. The verifier then checks that:
+/// * The Merkle paths are valid against the layer commitments the verifier received during
+///   the commit phase.
+/// * The evaluations are consistent across FRI layers (i.e., the degree-respecting projection
+///   was applied correctly).
+/// * The degree of the polynomial implied by evaluations at the last FRI layer (the remainder)
+///   is smaller than the degree resulting from reducing degree *d* by `folding_factor` at each
+///   FRI layer.
+pub struct FriVerifier<B, E, C, H>
 where
     B: StarkField,
     E: FieldElement<BaseField = B>,
-    H: Hasher,
     C: VerifierChannel<E, Hasher = H>,
+    H: ElementHasher<BaseField = B>,
 {
-    // static dispatch for folding factor parameter
-    let folding_factor = context.folding_factor();
-    match folding_factor {
-        4 => verify_generic::<B, E, H, C, 4>(context, channel, evaluations, positions),
-        8 => verify_generic::<B, E, H, C, 8>(context, channel, evaluations, positions),
-        16 => verify_generic::<B, E, H, C, 16>(context, channel, evaluations, positions),
-        _ => unimplemented!("folding factor {} is not supported", folding_factor),
-    }
+    max_poly_degree: usize,
+    domain_size: usize,
+    domain_generator: B,
+    layer_commitments: Vec<H::Digest>,
+    layer_alphas: Vec<E>,
+    options: FriOptions,
+    num_partitions: usize,
+    _channel: PhantomData<C>,
 }
 
-// GENERIC VERIFICATION
-// ================================================================================================
-/// This is the actual implementation of the verification procedure described above, but it also
-/// takes folding factor as a generic parameter N.
-fn verify_generic<B, E, H, C, const N: usize>(
-    context: &VerifierContext<B, E, H>,
-    channel: &mut C,
-    evaluations: &[E],
-    positions: &[usize],
-) -> Result<(), VerifierError>
+impl<B, E, C, H> FriVerifier<B, E, C, H>
 where
     B: StarkField,
     E: FieldElement<BaseField = B>,
-    H: Hasher,
     C: VerifierChannel<E, Hasher = H>,
+    H: ElementHasher<BaseField = B>,
 {
-    assert_eq!(
-        evaluations.len(),
-        positions.len(),
-        "number of positions must match the number of evaluations"
-    );
-    let domain_size = context.domain_size();
-    let domain_generator = context.domain_generator();
-    let domain_offset = context.domain_offset();
-    let num_partitions = context.num_partitions();
+    /// Returns a new instance of FRI verifier created from the specified parameters.
+    ///
+    /// The `max_poly_degree` parameter specifies the highest polynomial degree accepted by the
+    /// returned verifier. In combination with `blowup_factor` from the `options` parameter,
+    /// `max_poly_degree` also defines the domain over which the tested polynomial is evaluated.
+    ///
+    /// Creating a FRI verifier executes the commit phase of the FRI protocol from the verifier's
+    /// perspective. Specifically, the verifier reads FRI layer commitments from the `channel`,
+    /// and for each commitment, updates the `public_coin` with this commitment and then draws
+    /// a random value α from the coin.
+    ///
+    /// The verifier stores layer commitments and corresponding α values in its internal state,
+    /// and, thus, an instance of FRI verifier can be used to verify only a single proof.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// * `max_poly_degree` is inconsistent with the number of FRI layers read from the channel
+    ///   and `folding_factor` specified in the `options` parameter.
+    /// * An error was encountered while drawing a random α value from the coin.
+    pub fn new(
+        channel: &mut C,
+        public_coin: &mut RandomCoin<B, H>,
+        options: FriOptions,
+        max_poly_degree: usize,
+    ) -> Result<Self, VerifierError> {
+        // infer evaluation domain info
+        let domain_size = max_poly_degree.next_power_of_two() * options.blowup_factor();
+        let domain_generator = B::get_root_of_unity(log2(domain_size));
 
-    // pre-compute roots of unity used in computing x coordinates in the folded domain
-    let folding_roots = (0..N)
-        .map(|i| domain_generator.exp(((domain_size / N * i) as u64).into()))
-        .collect::<Vec<_>>();
+        let num_partitions = channel.read_fri_num_partitions();
 
-    // 1 ----- verify the recursive components of the FRI proof -----------------------------------
-    let mut domain_generator = domain_generator;
-    let mut domain_size = domain_size;
-    let mut max_degree_plus_1 = context.max_degree() + 1;
-    let mut positions = positions.to_vec();
-    let mut evaluations = evaluations.to_vec();
+        // read layer commitments from the channel and use them to build a list of alphas
+        let layer_commitments = channel.read_fri_layer_commitments();
+        let mut layer_alphas = Vec::with_capacity(layer_commitments.len());
+        let mut max_degree_plus_1 = max_poly_degree + 1;
+        for (depth, commitment) in layer_commitments.iter().enumerate() {
+            public_coin.reseed(*commitment);
+            let alpha = public_coin.draw().map_err(VerifierError::PublicCoinError)?;
+            layer_alphas.push(alpha);
 
-    for depth in 0..context.num_fri_layers() {
-        // determine which evaluations were queried in the folded layer
-        let mut folded_positions =
-            fold_positions(&positions, domain_size, context.folding_factor());
-        // determine where these evaluations are in the commitment Merkle tree
-        let position_indexes = map_positions_to_indexes(
-            &folded_positions,
-            domain_size,
-            context.folding_factor(),
-            num_partitions,
-        );
-        // read query values from the specified indexes in the Merkle tree
-        let layer_commitment = context.layer_commitments()[depth];
-        let layer_values =
-            channel.read_layer_queries(depth, &position_indexes, &layer_commitment)?;
-        let query_values =
-            get_query_values::<E, N>(&layer_values, &positions, &folded_positions, domain_size);
-        if evaluations != query_values {
-            return Err(VerifierError::LayerValuesNotConsistent(depth));
+            // make sure the degree can be reduced by the folding factor at all layers
+            // but the remainder layer
+            if depth != layer_commitments.len() - 1
+                && max_degree_plus_1 % options.folding_factor() != 0
+            {
+                return Err(VerifierError::DegreeTruncation(
+                    max_degree_plus_1 - 1,
+                    options.folding_factor(),
+                    depth,
+                ));
+            }
+            max_degree_plus_1 /= options.folding_factor();
         }
 
-        // build a set of x for each row polynomial
-        #[rustfmt::skip]
-        let xs = folded_positions.iter().map(|&i| {
-            let xe = domain_generator.exp((i as u64).into()) * domain_offset;
-            folding_roots.iter()
-                .map(|&r| E::from(xe * r))
-                .collect::<Vec<_>>().try_into().unwrap()
+        Ok(FriVerifier {
+            max_poly_degree,
+            domain_size,
+            domain_generator,
+            layer_commitments,
+            layer_alphas,
+            options,
+            num_partitions,
+            _channel: PhantomData,
         })
-        .collect::<Vec<_>>();
+    }
 
-        // interpolate x and y values into row polynomials
-        let row_polys = polynom::interpolate_batch(&xs, &layer_values);
+    // PUBLIC ACCESSORS
+    // --------------------------------------------------------------------------------------------
 
-        // calculate the pseudo-random value used for linear combination in layer folding
-        let alpha = context.layer_alphas()[depth];
+    /// Returns maximum degree of a polynomial accepted by this verifier.
+    pub fn max_poly_degree(&self) -> usize {
+        self.max_poly_degree
+    }
 
-        // check that when the polynomials are evaluated at alpha, the result is equal to
-        // the corresponding column value
-        evaluations = row_polys.iter().map(|p| polynom::eval(p, alpha)).collect();
+    /// Returns size of the domain over which a polynomial commitment checked by this verifier
+    /// has been evaluated.
+    ///
+    /// The domain size can be computed by rounding `max_poly_degree` to the next power of two
+    /// and multiplying the result by the `blowup_factor` from the protocol options.
+    pub fn domain_size(&self) -> usize {
+        self.domain_size
+    }
 
-        // make sure next degree reduction does not result in degree truncation
-        if max_degree_plus_1 % N != 0 {
-            return Err(VerifierError::DegreeTruncation(
-                max_degree_plus_1 - 1,
-                N,
-                depth,
+    /// Returns number of partitions used during FRI proof generation.
+    ///
+    /// For non-distributed proof generation, number of partitions is usually set to 1.
+    pub fn num_partitions(&self) -> usize {
+        self.num_partitions
+    }
+
+    /// Returns protocol configuration options for this verifier.
+    pub fn options(&self) -> &FriOptions {
+        &self.options
+    }
+
+    // VERIFICATION PROCEDURE
+    // --------------------------------------------------------------------------------------------
+    /// Executes the query phase of the FRI protocol.
+    ///
+    /// Returns `Ok(())` if values in the `evaluations` slice represent evaluations of a polynomial
+    /// with degree <= `max_poly_degree` at x coordinates specified by the `positions` slice.
+    ///
+    /// Thus, `positions` parameter represents the positions in the evaluation domain at which the
+    /// verifier queries the prover at the first FRI layer. Similarly, the `evaluations` parameter
+    /// specifies the evaluations of the polynomial at the first FRI layer returned by the prover
+    /// for these positions.
+    ///
+    /// Evaluations of layer polynomials for all subsequent FRI layers the verifier reads from the
+    /// specified `channel`.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// * The length of `evaluations` is not equal to the length of `positions`.
+    /// * An unsupported folding factor was specified by the `options` for this verifier.
+    /// * Decommitments to polynomial evaluations don't match the commitment value at any of the
+    ///   FRI layers.
+    /// * The verifier detects an error in how the degree-respecting projection was applied
+    ///   at any of the FRI layers.
+    /// * The degree of the remainder at the last FRI layer is greater than the degree implied by
+    ///   `max_poly_degree` reduced by the folding factor at each FRI layer.
+    pub fn verify(
+        &self,
+        channel: &mut C,
+        evaluations: &[E],
+        positions: &[usize],
+    ) -> Result<(), VerifierError> {
+        if evaluations.len() != positions.len() {
+            return Err(VerifierError::NumPositionEvaluationMismatch(
+                positions.len(),
+                evaluations.len(),
             ));
         }
 
-        // update variables for the next iteration of the loop
-        domain_generator = domain_generator.exp((N as u32).into());
-        max_degree_plus_1 /= N;
-        domain_size /= N;
-        mem::swap(&mut positions, &mut folded_positions);
-    }
-
-    // 2 ----- verify the remainder of the FRI proof ----------------------------------------------
-
-    // read the remainder from the channel and make sure it matches with the columns
-    // of the previous layer
-    let remainder_commitment = context.layer_commitments().last().unwrap();
-    let remainder = channel.read_remainder::<N>(remainder_commitment)?;
-    for (&position, evaluation) in positions.iter().zip(evaluations) {
-        if remainder[position] != evaluation {
-            return Err(VerifierError::RemainderValuesNotConsistent);
+        // static dispatch for folding factor parameter
+        let folding_factor = self.options.folding_factor();
+        match folding_factor {
+            4 => self.verify_generic::<4>(channel, evaluations, positions),
+            8 => self.verify_generic::<8>(channel, evaluations, positions),
+            16 => self.verify_generic::<16>(channel, evaluations, positions),
+            _ => Err(VerifierError::UnsupportedFoldingFactor(folding_factor)),
         }
     }
 
-    // make sure the remainder values satisfy the degree
-    verify_remainder(
-        remainder,
-        max_degree_plus_1,
-        domain_generator,
-        domain_offset,
-        context.blowup_factor(),
-    )
+    /// This is the actual implementation of the verification procedure described above, but it
+    /// also takes folding factor as a generic parameter N.
+    fn verify_generic<const N: usize>(
+        &self,
+        channel: &mut C,
+        evaluations: &[E],
+        positions: &[usize],
+    ) -> Result<(), VerifierError> {
+        // pre-compute roots of unity used in computing x coordinates in the folded domain
+        let folding_roots = (0..N)
+            .map(|i| {
+                self.domain_generator
+                    .exp(((self.domain_size / N * i) as u64).into())
+            })
+            .collect::<Vec<_>>();
+
+        // 1 ----- verify the recursive components of the FRI proof -----------------------------------
+        let mut domain_generator = self.domain_generator;
+        let mut domain_size = self.domain_size;
+        let mut max_degree_plus_1 = self.max_poly_degree + 1;
+        let mut positions = positions.to_vec();
+        let mut evaluations = evaluations.to_vec();
+
+        for depth in 0..self.options.num_fri_layers(self.domain_size) {
+            // determine which evaluations were queried in the folded layer
+            let mut folded_positions =
+                fold_positions(&positions, domain_size, self.options.folding_factor());
+            // determine where these evaluations are in the commitment Merkle tree
+            let position_indexes = map_positions_to_indexes(
+                &folded_positions,
+                domain_size,
+                self.options.folding_factor(),
+                self.num_partitions,
+            );
+            // read query values from the specified indexes in the Merkle tree
+            let layer_commitment = self.layer_commitments[depth];
+            // TODO: add layer depth to the potential error message
+            let layer_values = channel.read_layer_queries(&position_indexes, &layer_commitment)?;
+            let query_values =
+                get_query_values::<E, N>(&layer_values, &positions, &folded_positions, domain_size);
+            if evaluations != query_values {
+                return Err(VerifierError::InvalidLayerFolding(depth));
+            }
+
+            // build a set of x coordinates for each row polynomial
+            #[rustfmt::skip]
+            let xs = folded_positions.iter().map(|&i| {
+                let xe = domain_generator.exp((i as u64).into()) * self.options.domain_offset();
+                folding_roots.iter()
+                    .map(|&r| E::from(xe * r))
+                    .collect::<Vec<_>>().try_into().unwrap()
+            })
+            .collect::<Vec<_>>();
+
+            // interpolate x and y values into row polynomials
+            let row_polys = polynom::interpolate_batch(&xs, &layer_values);
+
+            // calculate the pseudo-random value used for linear combination in layer folding
+            let alpha = self.layer_alphas[depth];
+
+            // check that when the polynomials are evaluated at alpha, the result is equal to
+            // the corresponding column value
+            evaluations = row_polys.iter().map(|p| polynom::eval(p, alpha)).collect();
+
+            // make sure next degree reduction does not result in degree truncation
+            if max_degree_plus_1 % N != 0 {
+                return Err(VerifierError::DegreeTruncation(
+                    max_degree_plus_1 - 1,
+                    N,
+                    depth,
+                ));
+            }
+
+            // update variables for the next iteration of the loop
+            domain_generator = domain_generator.exp((N as u32).into());
+            max_degree_plus_1 /= N;
+            domain_size /= N;
+            mem::swap(&mut positions, &mut folded_positions);
+        }
+
+        // 2 ----- verify the remainder of the FRI proof ----------------------------------------------
+
+        // read the remainder from the channel and make sure it matches with the columns
+        // of the previous layer
+        let remainder_commitment = self.layer_commitments.last().unwrap();
+        let remainder = channel.read_remainder::<N>(remainder_commitment)?;
+        for (&position, evaluation) in positions.iter().zip(evaluations) {
+            if remainder[position] != evaluation {
+                return Err(VerifierError::InvalidRemainderFolding);
+            }
+        }
+
+        // make sure the remainder values satisfy the degree
+        verify_remainder(remainder, max_degree_plus_1 - 1)
+    }
 }
 
 // REMAINDER DEGREE VERIFICATION
 // ================================================================================================
 /// Returns Ok(true) if values in the `remainder` slice represent evaluations of a polynomial
-/// with degree < max_degree_plus_1 against a domain specified by the `domain_generator` and
-/// `domain_offset`.
+/// with degree <= `max_degree` against a domain of the same size as `remainder`.
 fn verify_remainder<B: StarkField, E: FieldElement<BaseField = B>>(
-    remainder: Vec<E>,
-    max_degree_plus_1: usize,
-    domain_generator: B,
-    domain_offset: B,
-    blowup_factor: usize,
+    mut remainder: Vec<E>,
+    max_degree: usize,
 ) -> Result<(), VerifierError> {
-    if max_degree_plus_1 > remainder.len() {
+    if max_degree >= remainder.len() - 1 {
         return Err(VerifierError::RemainderDegreeNotValid);
     }
 
-    // exclude points which should be skipped during evaluation
-    let mut positions = Vec::new();
-    for i in 0..remainder.len() {
-        if i % blowup_factor != 0 {
-            positions.push(i);
-        }
-    }
+    // interpolate remainder polynomial from its evaluations; we don't shift the domain here
+    // because the degree of the polynomial will not change as long as we interpolate over a
+    // coset of the original domain.
+    let inv_twiddles = fft::get_inv_twiddles(remainder.len());
+    fft::interpolate_poly(&mut remainder, &inv_twiddles);
+    let poly = remainder;
 
-    // pick a subset of points from the remainder and interpolate them into a polynomial
-    let domain = get_power_series_with_offset(domain_generator, domain_offset, remainder.len());
-    let mut xs = Vec::with_capacity(max_degree_plus_1);
-    let mut ys = Vec::with_capacity(max_degree_plus_1);
-    for &p in positions.iter().take(max_degree_plus_1) {
-        xs.push(E::from(domain[p]));
-        ys.push(remainder[p]);
+    // make sure the degree is valid
+    if max_degree < polynom::degree_of(&poly) {
+        Err(VerifierError::RemainderDegreeMismatch(max_degree))
+    } else {
+        Ok(())
     }
-    let poly = polynom::interpolate(&xs, &ys, false);
-
-    // check that polynomial evaluates correctly for all other points in the remainder
-    for &p in positions.iter().skip(max_degree_plus_1) {
-        if polynom::eval(&poly, E::from(domain[p])) != remainder[p] {
-            return Err(VerifierError::RemainderDegreeMismatch(
-                max_degree_plus_1 - 1,
-            ));
-        }
-    }
-    Ok(())
 }
 
 // HELPER FUNCTIONS

@@ -38,13 +38,13 @@ impl OodFrame {
     pub fn set_evaluation_frame<E: FieldElement>(&mut self, frame: &EvaluationFrame<E>) {
         assert!(self.trace_at_z1.is_empty());
         assert!(self.trace_at_z2.is_empty());
-        E::write_batch_into(&frame.current, &mut self.trace_at_z1);
-        E::write_batch_into(&frame.next, &mut self.trace_at_z2);
+        frame.current.write_into(&mut self.trace_at_z1);
+        frame.next.write_into(&mut self.trace_at_z2);
     }
 
     pub fn set_constraint_evaluations<E: FieldElement>(&mut self, evaluations: &[E]) {
         assert!(self.evaluations.is_empty());
-        E::write_batch_into(evaluations, &mut self.evaluations);
+        evaluations.write_into(&mut self.evaluations)
     }
 
     // PARSER

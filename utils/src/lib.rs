@@ -49,16 +49,6 @@ pub trait Serializable: Sized {
         }
     }
 
-    /// Serializes all individual elements contained in the `source` and writes the resulting
-    /// bytes into `target`.
-    ///
-    /// This method does not write any metadata (e.g. number of serialized elements) into the
-    /// `target`.
-    fn write_array_batch_into<W: ByteWriter, const N: usize>(source: &[[Self; N]], target: &mut W) {
-        let source = flatten_slice_elements(source);
-        Self::write_batch_into(source, target);
-    }
-
     /// Returns an estimate of how many bytes are needed to represent self.
     ///
     /// The default implementation returns zero.
@@ -69,6 +59,45 @@ pub trait Serializable: Sized {
 
 impl Serializable for () {
     fn write_into<W: ByteWriter>(&self, _target: &mut W) {}
+}
+
+impl<T: Serializable> Serializable for Vec<T> {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        T::write_batch_into(self, target);
+    }
+}
+
+impl<T: Serializable> Serializable for &Vec<T> {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        T::write_batch_into(self, target);
+    }
+}
+
+impl<T: Serializable, const N: usize> Serializable for Vec<[T; N]> {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        let source = flatten_slice_elements(self);
+        T::write_batch_into(source, target);
+    }
+}
+
+impl<T: Serializable, const N: usize> Serializable for &Vec<[T; N]> {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        let source = flatten_slice_elements(self);
+        T::write_batch_into(source, target);
+    }
+}
+
+impl<T: Serializable> Serializable for &[T] {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        T::write_batch_into(self, target);
+    }
+}
+
+impl<T: Serializable, const N: usize> Serializable for &[[T; N]] {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        let source = flatten_slice_elements(self);
+        T::write_batch_into(source, target);
+    }
 }
 
 // DESERIALIZABLE
@@ -330,28 +359,12 @@ pub trait ByteWriter: Sized {
         self.write_u8_slice(&value.to_le_bytes());
     }
 
-    /// Writes a single serializable value into `self`.
+    /// Writes a serializable value into `self`.
     ///
     /// # Panics
     /// Panics if the value could not be written into `self`.
     fn write<S: Serializable>(&mut self, value: S) {
         value.write_into(self)
-    }
-
-    /// Writes a sequence of serializable values into `self`.
-    ///
-    /// # Panics
-    /// Panics if the values could not be written into `self`.
-    fn write_slice<S: Serializable>(&mut self, values: &[S]) {
-        S::write_batch_into(values, self)
-    }
-
-    /// Writes a table of serializable values into `self`.
-    ///
-    /// # Panics
-    /// Panics if the values could not be written into `self`.
-    fn write_table<S: Serializable, const N: usize>(&mut self, values: &[[S; N]]) {
-        S::write_array_batch_into(values, self);
     }
 }
 

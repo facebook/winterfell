@@ -8,7 +8,7 @@ use super::{
     TransitionConstraintDegree,
 };
 use crate::{FieldExtension, HashFunction};
-use crypto::{hashers::Blake3_256, PublicCoin};
+use crypto::{hashers::Blake3_256, RandomCoin};
 use math::{fields::f128::BaseElement, get_power_series, log2, polynom, FieldElement, StarkField};
 use rand::{seq::SliceRandom, thread_rng};
 use std::collections::HashMap;
@@ -400,8 +400,8 @@ pub fn build_context(trace_length: usize, trace_width: usize) -> ComputationCont
     ComputationContext::new(trace_width, trace_length, t_degrees, options)
 }
 
-pub fn build_prng() -> PublicCoin<BaseElement, Blake3_256<BaseElement>> {
-    PublicCoin::new(&[0; 32])
+pub fn build_prng() -> RandomCoin<BaseElement, Blake3_256<BaseElement>> {
+    RandomCoin::new(&[0; 32])
 }
 
 pub fn build_sequence_poly(values: &[BaseElement], trace_length: usize) -> Vec<BaseElement> {

@@ -48,8 +48,8 @@ pub struct PublicInputs {
 
 impl Serializable for PublicInputs {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write_slice(&self.seed);
-        target.write_slice(&self.result);
+        target.write(&self.seed[..]);
+        target.write(&self.result[..]);
     }
 }
 

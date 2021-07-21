@@ -5,7 +5,7 @@
 
 use crate::{errors::MerkleTreeError, Hasher};
 use std::collections::{BTreeMap, HashMap};
-use utils::{ByteReader, Deserializable, DeserializationError, Serializable, SliceReader};
+use utils::{ByteReader, Deserializable, DeserializationError, Serializable};
 
 // CONSTANTS
 // ================================================================================================
@@ -290,9 +290,8 @@ impl<H: Hasher> BatchMerkleProof<H> {
     /// * Number of provided leaves is greater than 255.
     /// * Tree `depth` was set to zero.
     /// * `node_bytes` could not be deserialized into a valid set of internal nodes.
-    /// * Not all bytes have been consumed from `node_bytes` while build a set of internal nodes.
-    pub fn deserialize(
-        node_bytes: &[u8],
+    pub fn deserialize<R: ByteReader>(
+        node_bytes: &mut R,
         leaves: Vec<H::Digest>,
         depth: u8,
     ) -> Result<Self, DeserializationError> {
@@ -314,22 +313,15 @@ impl<H: Hasher> BatchMerkleProof<H> {
             )));
         }
 
-        let mut reader = SliceReader::new(node_bytes);
-
-        let num_node_vectors = reader.read_u8()? as usize;
+        let num_node_vectors = node_bytes.read_u8()? as usize;
         let mut nodes = Vec::with_capacity(num_node_vectors);
         for _ in 0..num_node_vectors {
             // read the number of digests in the vector
-            let num_digests = reader.read_u8()? as usize;
+            let num_digests = node_bytes.read_u8()? as usize;
 
             // read the digests and add them to the node vector
-            let digests = H::Digest::read_batch_from(&mut reader, num_digests)?;
+            let digests = H::Digest::read_batch_from(node_bytes, num_digests)?;
             nodes.push(digests);
-        }
-
-        // make sure all bytes have been consumed
-        if reader.has_more_bytes() {
-            return Err(DeserializationError::UnconsumedBytes);
         }
 
         Ok(BatchMerkleProof {
