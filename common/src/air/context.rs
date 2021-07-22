@@ -21,12 +21,25 @@ pub struct AirContext<B: StarkField> {
 }
 
 impl<B: StarkField> AirContext<B> {
-    ///
+    /// Minimum length of an execution trace. Currently set to 8.
     pub const MIN_TRACE_LENGTH: usize = 8;
 
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
+    /// Returns a new instance of [AirContext] instantiated from the specified parameters.
     ///
+    /// The list of transition constraint degrees defines the total number of transition
+    /// constraints and their expected degrees. Constraint evaluations computed by
+    /// [Air::evaluate_transition()](crate::Air::evaluate_transition) function are expected to be
+    /// in the order defined by this list.
+    ///
+    /// # Panics
+    /// Panics if:
+    /// * `trace_width` is zero.
+    /// * `trace_length` smaller than 8 or is not a power of two.
+    /// * `transition_constraint_degrees` is an empty vector.
+    /// * `blowup_factor` specified in the `options` is not sufficient for the specified
+    ///   transition constraint degrees.
     pub fn new(
         trace_width: usize,
         trace_length: usize,

@@ -69,11 +69,8 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseElement>>
             degree_adjustment = group.degree_adjustment();
             xp = x.exp(degree_adjustment.into());
         }
-        // evaluate all constraints in the group, and the divide out the value implied
-        // by the divisor
-        let evaluation = group.evaluate_at(&ood_frame.current, x, xp);
-        let z = group.divisor().evaluate_at(x);
-        result += evaluation / z;
+        // evaluate all constraints in the group, and add the evaluation to the result
+        result += group.evaluate_at(&ood_frame.current, x, xp);
     }
 
     result

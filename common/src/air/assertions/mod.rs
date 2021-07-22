@@ -23,6 +23,27 @@ const NO_STRIDE: usize = 0;
 // ================================================================================================
 
 /// An assertion made against an execution trace.
+///
+/// An assertion is always placed against a single register of an execution trace, but can cover
+/// multiple steps and multiple values. Specifically, there are three kinds of assertions:
+///
+/// 1. **Single** assertion - which requires that a value in a single cell of an execution trace
+///    is equal to the specified value.
+/// 2. **Periodic** assertion - which requires that values in multiple cells of a single register
+///   are equal to the specified value. The cells must be evenly spaced at intervals with lengths
+///   equal to powers of two. For example, we can specify that values in a register must be equal
+///   to 0 at steps 0, 8, 16, 24, 32 etc. Steps can also start at some offset - e.g., 1, 9, 17,
+///   25, 33 is also a valid sequence of steps.
+/// 3. **Sequence** assertion - which requires that multiple cells in a single register are equal
+///   to the values from the provided list. The cells must be evenly spaced at intervals with
+///   lengths equal to powers of two. For example, we can specify that values in a register must
+///   be equal to a sequence 1, 2, 3, 4 at steps 0, 8, 16, 24. That is, value at step 0 should be
+///   equal to 1, value at step 8 should be equal to 2 etc.
+///
+/// Note that single and periodic assertions are succinct. That is, a verifier can evaluate them
+/// very efficiently. However, sequence assertions have liner complexity in the number of
+/// asserted values. Though, unless many thousands of values are asserted, practical impact of
+/// this linear complexity should be negligible.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Assertion<B: StarkField> {
     pub(super) register: usize,
@@ -34,7 +55,9 @@ pub struct Assertion<B: StarkField> {
 impl<B: StarkField> Assertion<B> {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
-    /// Returns an assertion requiring that the value in the specified `register` at the specified
+    /// Returns an assertion against a single cell of an execution trace.
+    ///
+    /// The returned assertion requires that the value in the specified `register` at the specified
     /// `step` is equal to the provided `value`.
     pub fn single(register: usize, step: usize, value: B) -> Self {
         Assertion {
@@ -45,14 +68,16 @@ impl<B: StarkField> Assertion<B> {
         }
     }
 
-    /// Returns an assertion requiring that values in the specified `register` must be equal to
-    /// the specified `value` at the steps which start at `first_step` and repeat in equal
-    /// intervals specified by `stride`.
+    /// Returns an single-value assertion against multiple cells of a single register.
     ///
+    /// The returned assertion requires that values in the specified `register` must be equal to
+    /// the specified `value` at steps which start at `first_step` and repeat in equal intervals
+    /// specified by `stride`.
+    ///
+    /// # Panics
     /// Panics if:
-    /// * `stride` is not a power of two, or is smaller than 2;
-    /// * `first_step` is greater than `stride`;
-    /// * `first_step` > `stride`;
+    /// * `stride` is not a power of two, or is smaller than 2.
+    /// * `first_step` is greater than `stride`.
     pub fn periodic(register: usize, first_step: usize, stride: usize, value: B) -> Self {
         validate_stride(stride, first_step, register);
         Assertion {
@@ -63,14 +88,17 @@ impl<B: StarkField> Assertion<B> {
         }
     }
 
-    /// Returns an assertion requiring that values in the specified `register` must be equal to
+    /// Returns a multi-value assertion against multiple cells of a single register.
+    ///
+    /// The returned assertion requires that values in the specified `register` must be equal to
     /// the provided `values` at steps which start at `first_step` and repeat in equal intervals
     /// specified by `stride` until all values have been consumed.
     ///
+    /// # Panics
     /// Panics if:
-    /// * `stride` is not a power of two, or is smaller than 2;
-    /// * `first_step` is greater than `stride`;
-    /// * `values` is empty or number of values in not a power of two;
+    /// * `stride` is not a power of two, or is smaller than 2.
+    /// * `first_step` is greater than `stride`.
+    /// * `values` is empty or number of values in not a power of two.
     pub fn sequence(register: usize, first_step: usize, stride: usize, values: Vec<B>) -> Self {
         validate_stride(stride, first_step, register);
         assert!(
@@ -95,25 +123,28 @@ impl<B: StarkField> Assertion<B> {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns index of the register against which this assertion was placed.
+    /// Returns index of the register against which this assertion is placed.
     pub fn register(&self) -> usize {
         self.register
     }
 
     /// Returns the first step of the execution trace against which this assertion is placed.
+    ///
     /// For single value assertions this is equivalent to the assertion step.
     pub fn first_step(&self) -> usize {
         self.first_step
     }
 
-    /// Returns the interval at which the assertion repeats in the execution trace. For single
-    /// value assertions, this will be 0.
+    /// Returns the interval at which the assertion repeats in the execution trace.
+    ///
+    /// For single value assertions, this will be 0.
     pub fn stride(&self) -> usize {
         self.stride
     }
 
-    /// Returns asserted values. For single value and periodic assertions this will be a vector
-    /// containing one value.
+    /// Returns asserted values.
+    ///
+    /// For single value and periodic assertions this will be a slice containing one value.
     pub fn values(&self) -> &[B] {
         &self.values
     }
@@ -136,8 +167,9 @@ impl<B: StarkField> Assertion<B> {
     // PUBLIC METHODS
     // --------------------------------------------------------------------------------------------
 
-    /// Checks if this assertion overlaps with the provided assertion. Overlap is defined as
-    /// asserting a value for the same step in the same register.
+    /// Checks if this assertion overlaps with the provided assertion.
+    ///
+    /// Overlap is defined as asserting a value for the same step in the same register.
     pub fn overlaps_with(&self, other: &Assertion<B>) -> bool {
         if self.register != other.register {
             return false;
@@ -185,11 +217,13 @@ impl<B: StarkField> Assertion<B> {
     }
 
     /// Checks if the assertion is valid against an execution trace of the specified length.
+    ///
+    /// # Errors
     /// Returns an error if:
-    /// * trace_length is not a power of two;
-    /// * For single assertion, first_step >= trace_length;
-    /// * For periodic assertion, stride > trace_length;
-    /// * For sequence assertion, num_values * stride != trace_length;
+    /// * `trace_length` is not a power of two.
+    /// * For single assertion, `first_step` >= `trace_length`.
+    /// * For periodic assertion, `stride` > `trace_length`.
+    /// * For sequence assertion, `num_values` * `stride` != `trace_length`;
     pub fn validate_trace_length(&self, trace_length: usize) -> Result<(), AssertionError> {
         if !trace_length.is_power_of_two() {
             return Err(AssertionError::TraceLengthNotPowerOfTwo(trace_length));
@@ -223,7 +257,8 @@ impl<B: StarkField> Assertion<B> {
     /// Executes the provided closure for all possible instantiations of this assertions against
     /// a execution trace of the specified length.
     ///
-    /// Panics if the trace length is not valid for this assertion.
+    /// # Panics
+    /// Panics if the specified trace length is not valid for this assertion.
     pub fn apply<F>(&self, trace_length: usize, mut f: F)
     where
         F: FnMut(usize, B),
@@ -246,11 +281,14 @@ impl<B: StarkField> Assertion<B> {
     }
 
     /// Returns the number of steps against which this assertion will be applied given an
-    /// execution trace of the specified length. For single-value assertions, this will always
-    /// be one. For periodic assertions this will be equal to trace_length / stride; For
-    /// sequence assertions this will be equal to the number of asserted values.
+    /// execution trace of the specified length.
     ///
-    /// Panics if the trace length is not valid for this assertion.
+    /// * For single-value assertions, this will always be one.
+    /// * For periodic assertions this will be equal to `trace_length` / `stride`.
+    /// * For sequence assertions this will be equal to the number of asserted values.
+    ///
+    /// # Panics
+    /// Panics if the specified trace length is not valid for this assertion.
     pub fn get_num_steps(&self, trace_length: usize) -> usize {
         self.validate_trace_length(trace_length)
             .unwrap_or_else(|err| {
