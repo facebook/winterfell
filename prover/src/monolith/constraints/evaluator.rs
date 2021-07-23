@@ -60,10 +60,8 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>> ConstraintEvaluato
         // build periodic value table
         let periodic_values = PeriodicValueTable::new(air);
 
-        // set divisor for transition constraints; since divisors for all transition constraints
-        // are the same: (x^steps - 1) / (x - x_at_last_step), all transition constraints will be
-        // merged into a single value, and the divisor for that value will be first in the list
-        let mut divisors = vec![ConstraintDivisor::from_transition(air.trace_length())];
+        // set divisor for transition constraints; all transition constraints have the same divisor
+        let mut divisors = vec![air.transition_constraint_divisor()];
 
         // build boundary constraints and also append divisors for each group of boundary
         // constraints to the divisor list
@@ -184,7 +182,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>> ConstraintEvaluato
 
             // evaluate boundary constraints; the results go into remaining slots of the
             // evaluations buffer
-            self.evaluate_boundary_constraints(&ev_frame.current, x, step, &mut evaluations[1..]);
+            self.evaluate_boundary_constraints(ev_frame.current(), x, step, &mut evaluations[1..]);
 
             // record the result in the evaluation table
             fragment.update_row(i, &evaluations);

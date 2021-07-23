@@ -68,8 +68,8 @@ impl<B: StarkField> TraceTable<B> {
         // at the end of the trace, next state wraps around and we read the first step again
         let next_lde_step = (lde_step + self.blowup()) % self.len();
 
-        self.read_row_into(lde_step, &mut frame.current);
-        self.read_row_into(next_lde_step, &mut frame.next);
+        self.read_row_into(lde_step, frame.current_mut());
+        self.read_row_into(next_lde_step, frame.next_mut());
     }
 
     // TRACE COMMITMENT

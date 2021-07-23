@@ -51,10 +51,7 @@ impl<B: StarkField> TracePolyTable<B> {
     /// for all registers at points z and z * g, where g is the generator of the trace domain.
     pub fn get_ood_frame<E: FieldElement<BaseField = B>>(&self, z: E) -> EvaluationFrame<E> {
         let g = E::from(B::get_root_of_unity(log2(self.poly_size())));
-        EvaluationFrame {
-            current: self.evaluate_at(z),
-            next: self.evaluate_at(z * g),
-        }
+        EvaluationFrame::from_rows(self.evaluate_at(z), self.evaluate_at(z * g))
     }
 
     /// Returns the number of trace polynomials in the table.

@@ -60,8 +60,8 @@ impl OodFrame {
             self.trace_at_z2.is_empty(),
             "evaluation frame has already been set"
         );
-        frame.current.write_into(&mut self.trace_at_z1);
-        frame.next.write_into(&mut self.trace_at_z2);
+        frame.current().write_into(&mut self.trace_at_z1);
+        frame.next().write_into(&mut self.trace_at_z2);
     }
 
     /// Updates constraint evaluation portion of this out-of-domain frame.
@@ -123,7 +123,7 @@ impl OodFrame {
             return Err(DeserializationError::UnconsumedBytes);
         }
 
-        Ok((EvaluationFrame { current, next }, evaluations))
+        Ok((EvaluationFrame::from_rows(current, next), evaluations))
     }
 }
 

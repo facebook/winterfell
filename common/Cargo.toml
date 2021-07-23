@@ -21,3 +21,7 @@ fri = { path = "../fri", package = "winter-fri" }
 
 [dev-dependencies]
 rand = "0.8"
+
+# Allow math in docs
+[package.metadata.docs.rs]
+rustdoc-args = ["--html-in-header", ".cargo/katex-header.html"]

@@ -133,8 +133,8 @@ where
     // also, reseed the public coin with the OOD frame received from the prover
     let ood_frame = channel.read_ood_evaluation_frame();
     let ood_constraint_evaluation_1 = evaluate_constraints(&air, constraint_coeffs, &ood_frame, z);
-    public_coin.reseed(H::hash_elements(&ood_frame.current));
-    public_coin.reseed(H::hash_elements(&ood_frame.next));
+    public_coin.reseed(H::hash_elements(ood_frame.current()));
+    public_coin.reseed(H::hash_elements(ood_frame.next()));
 
     // read evaluations of composition polynomial columns sent by the prover, and reduce them into
     // a single value by computing sum(z^i * value_i), where value_i is the evaluation of the ith

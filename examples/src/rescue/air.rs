@@ -90,8 +90,8 @@ impl Air for RescueAir {
         periodic_values: &[E],
         result: &mut [E],
     ) {
-        let current = &frame.current;
-        let next = &frame.next;
+        let current = frame.current();
+        let next = frame.next();
         // expected state width is 4 field elements
         debug_assert_eq!(TRACE_WIDTH, current.len());
         debug_assert_eq!(TRACE_WIDTH, next.len());
@@ -101,12 +101,12 @@ impl Air for RescueAir {
         let ark = &periodic_values[1..];
 
         // when hash_flag = 1, constraints for Rescue round are enforced
-        rescue::enforce_round(result, &frame.current, &frame.next, ark, hash_flag);
+        rescue::enforce_round(result, current, next, ark, hash_flag);
 
         // when hash_flag = 0, constraints for copying hash values to the next
         // step are enforced.
         let copy_flag = not(hash_flag);
-        enforce_hash_copy(result, &frame.current, &frame.next, copy_flag);
+        enforce_hash_copy(result, current, next, copy_flag);
     }
 
     fn get_assertions(&self) -> Vec<Assertion<Self::BaseElement>> {

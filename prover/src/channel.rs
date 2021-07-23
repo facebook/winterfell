@@ -85,8 +85,8 @@ where
     /// hashes of the evaluation frame states.
     pub fn send_ood_evaluation_frame(&mut self, frame: &EvaluationFrame<E>) {
         self.ood_frame.set_evaluation_frame(frame);
-        self.public_coin.reseed(H::hash_elements(&frame.current));
-        self.public_coin.reseed(H::hash_elements(&frame.next));
+        self.public_coin.reseed(H::hash_elements(frame.current()));
+        self.public_coin.reseed(H::hash_elements(frame.next()));
     }
 
     /// Saves the evaluations of constraint composition polynomial columns at the out-of-domain

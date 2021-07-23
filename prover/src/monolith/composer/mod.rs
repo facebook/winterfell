@@ -82,8 +82,8 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseElement>> DeepCompositionPoly<A,
         let next_z = self.z * g;
 
         // cache state of registers at points z and z * g
-        let trace_state1 = ood_frame.current;
-        let trace_state2 = ood_frame.next;
+        let trace_state1 = ood_frame.current();
+        let trace_state2 = ood_frame.next();
 
         // combine trace polynomials into 2 composition polynomials T'(x) and T''(x), and if
         // we are using a field extension, also T'''(x)

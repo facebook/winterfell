@@ -108,8 +108,8 @@ impl Air for LamportThresholdAir {
         periodic_values: &[E],
         result: &mut [E],
     ) {
-        let current = &frame.current;
-        let next = &frame.next;
+        let current = frame.current();
+        let next = frame.next();
 
         // expected state width is 4 field elements
         debug_assert_eq!(TRACE_WIDTH, current.len());
@@ -126,8 +126,8 @@ impl Air for LamportThresholdAir {
         // evaluate the constraints
         evaluate_constraints(
             result,
-            &frame.current,
-            &frame.next,
+            current,
+            next,
             ark,
             hash_flag,
             sig_cycle_end_flag,

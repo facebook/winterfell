@@ -141,21 +141,18 @@ pub trait Air: Send + Sync {
             "number of transition constraints must match the number of coefficient tuples"
         );
 
-        // We want to make sure that once we divide constraint polynomials by the divisor,
-        // the degree of the resulting polynomial will be exactly equal to the composition degree.
-        // For transition constraints, divisor degree = deg(trace). So, target degree for all
-        // transitions constraints is simply: deg(composition) + deg(trace)
-        let target_degree = self.composition_degree() + self.trace_poly_degree();
-
         // iterate over all transition constraint degrees, and assign each constraint to the
         // appropriate group based on degree
         let context = self.context();
         let mut groups = HashMap::new();
         for (i, degree) in context.transition_constraint_degrees.iter().enumerate() {
             let evaluation_degree = degree.get_evaluation_degree(self.trace_length());
-            let degree_adjustment = (target_degree - evaluation_degree) as u32;
             let group = groups.entry(evaluation_degree).or_insert_with(|| {
-                TransitionConstraintGroup::new(degree.clone(), degree_adjustment)
+                TransitionConstraintGroup::new(
+                    degree.clone(),
+                    self.trace_poly_degree(),
+                    self.composition_degree(),
+                )
             });
             group.add(i, coefficients[i]);
         }
@@ -303,6 +300,19 @@ pub trait Air: Send + Sync {
     /// by this AIR.
     fn num_transition_constraints(&self) -> usize {
         self.context().transition_constraint_degrees.len()
+    }
+
+    /// Returns a divisor for transition constraints.
+    ///
+    /// All transition constraints have the same divisor which has the form:
+    /// $$
+    /// z(x) = \frac{x^n - 1}{x - g^{n - 1}}
+    /// $$
+    /// where: $n$ is the length of the execution trace and $g$ is the generator of the trace
+    /// domain. This divisor specifies that transition constraints must hold on all steps of
+    /// the execution trace except for the last one.
+    fn transition_constraint_divisor(&self) -> ConstraintDivisor<Self::BaseElement> {
+        ConstraintDivisor::from_transition(self.trace_length())
     }
 
     // LINEAR COMBINATION COEFFICIENTS

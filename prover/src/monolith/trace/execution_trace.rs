@@ -254,8 +254,8 @@ impl<B: StarkField> ExecutionTrace<B> {
             }
 
             // build evaluation frame
-            self.read_row_into(step, &mut ev_frame.current);
-            self.read_row_into(step + 1, &mut ev_frame.next);
+            self.read_row_into(step, ev_frame.current_mut());
+            self.read_row_into(step + 1, ev_frame.next_mut());
 
             // evaluate transition constraints
             air.evaluate_transition(&ev_frame, &periodic_values, &mut evaluations);

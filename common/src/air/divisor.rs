@@ -11,11 +11,17 @@ use std::fmt::{Display, Formatter};
 // ================================================================================================
 /// The denominator portion of boundary and transition constraints.
 ///
-/// Describes constraint divisor as a combination of a sparse polynomial and exclusion points.
-/// For example (x^a - 1) * (x^b - 2) / (x - 3) can be represented as:
-///   numerator: vec![(a, 1), (b, 2)]
-///   exclude: vec![3]
-#[derive(Clone, Debug)]
+/// A divisor is described by a combination of a sparse polynomial, which describes the numerator
+/// of the divisor and a set of exclusion points, which describe the denominator of the divisor.
+/// The numerator polynomial is described as multiplication of tuples where each tuple encodes
+/// an expression $(x^a - b)$. The exclusion points encode expressions $(x - a)$.
+///
+/// For example divisor $(x^a - 1) \cdot (x^b - 2) / (x - 3)$ can be represented as:
+/// numerator: `[(a, 1), (b, 2)]`, exclude: `[3]`.
+///
+/// A divisor cannot be instantiated directly, and instead must be created either for an
+/// [Assertion] or for a transition constraint.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ConstraintDivisor<B: StarkField> {
     pub(super) numerator: Vec<(usize, B)>,
     pub(super) exclude: Vec<B>,
@@ -24,42 +30,61 @@ pub struct ConstraintDivisor<B: StarkField> {
 impl<B: StarkField> ConstraintDivisor<B> {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
-    pub fn new(numerator: Vec<(usize, B)>, exclude: Vec<B>) -> Self {
+
+    /// Returns a new divisor instantiated from the provided parameters.
+    fn new(numerator: Vec<(usize, B)>, exclude: Vec<B>) -> Self {
         ConstraintDivisor { numerator, exclude }
     }
 
-    /// Builds divisor for transition constraints; the resulting divisor polynomial will be:
-    /// (x^trace_length - 1) / (x - x_at_last_step)
-    /// this specifies that transition constraints must hold on all steps of the execution trace
-    /// except for the last one.
+    /// Builds a divisor for transition constraints.
+    ///
+    /// For transition constraints, the divisor polynomial $z(x)$ is always the same:
+    ///
+    /// $$
+    /// z(x) = \frac{x^n - 1}{x - g^{n-1}}
+    /// $$
+    ///
+    /// where, $n$ is the length of the execution trace, and $g$ is the generator of the trace
+    /// domain.
+    ///
+    /// The above divisor specifies that transition constraints must hold on all steps of the
+    /// execution trace except for the last one.
     pub fn from_transition(trace_length: usize) -> Self {
         let x_at_last_step = get_trace_domain_value_at::<B>(trace_length, trace_length - 1);
-        ConstraintDivisor {
-            numerator: vec![(trace_length, B::ONE)],
-            exclude: vec![x_at_last_step],
-        }
+        Self::new(vec![(trace_length, B::ONE)], vec![x_at_last_step])
     }
 
-    /// Builds a divisor for an assertion constraint. The divisor polynomial is defined as:
-    /// (x^n - g^(a * n)), where `g` is the generator of the trace domain, `n` is the number
-    /// of asserted steps, and `a` is the step offset in the trace domain.
-    /// Specifically:
-    /// * For an assertion against a single step, the polynomial is (x - g^step), where `step`
-    ///   is the step on which the assertion should hold;
+    /// Builds a divisor for a boundary constraint described by the assertion.
+    ///
+    /// For boundary constraints, the divisor polynomial is defined as:
+    ///
+    /// $$
+    /// z(x) = x^k - g^{a \cdot k}
+    /// $$
+    ///
+    /// where $g$ is the generator of the trace domain, $k$ is the number of asserted steps, and
+    /// $a$ is the step offset in the trace domain. Specifically:
+    /// * For an assertion against a single step, the polynomial is $(x - g^a)$, where $a$ is the
+    ///   step on which the assertion should hold.
     /// * For an assertion against a sequence of steps which fall on powers of two, it is
-    ///   (x^n - g^n) where `n` is the number of asserted steps;
+    ///   $(x^k - 1)$ where $k$ is the number of asserted steps.
     /// * For assertions against a sequence of steps which repeat with a period that is a power
-    ///   of two but don't fall exactly on steps which are powers of two (e.g. 1, 7, 15 ...)
-    ///   it is (x^n - g^(n * offset)), where `offset` is the number of steps by which the
-    ///   assertion steps deviate from a power of two. This is equivalent to
-    ///   (x - g^first_step) * (x - g^(first_step + stride)) * (x - g^(first_step + 2 * stride))..
+    ///   of two but don't fall exactly on steps which are powers of two (e.g. 1, 9, 17, ... )
+    ///   it is $(x^k - g^{a \cdot k})$, where $a$ is the number of steps by which the assertion steps
+    ///   deviate from a power of two, and $k$ is the number of asserted steps. This is equivalent to
+    ///   $(x - g^a) \cdot (x - g^{a + j}) \cdot (x - g^{a + 2 \cdot j}) ... (x - g^{a + (k  - 1) \cdot j})$,
+    ///   where $j$ is the length of interval between asserted steps (e.g. 8).
+    ///
+    /// # Panics
+    /// Panics of the specified `trace_length` is inconsistent with the specified `assertion`.
     pub fn from_assertion(assertion: &Assertion<B>, trace_length: usize) -> Self {
         let num_steps = assertion.get_num_steps(trace_length);
-        let trace_offset = num_steps * assertion.first_step;
-        let offset = get_trace_domain_value_at::<B>(trace_length, trace_offset);
-        ConstraintDivisor {
-            numerator: vec![(num_steps, offset)],
-            exclude: vec![],
+        if assertion.first_step == 0 {
+            Self::new(vec![(num_steps, B::ONE)], vec![])
+        } else {
+            let trace_offset = num_steps * assertion.first_step;
+            let offset = get_trace_domain_value_at::<B>(trace_length, trace_offset);
+            Self::new(vec![(num_steps, offset)], vec![])
         }
     }
 
@@ -88,8 +113,7 @@ impl<B: StarkField> ConstraintDivisor<B> {
 
     // EVALUATOR
     // --------------------------------------------------------------------------------------------
-
-    /// Evaluates the divisor at the provided `x` coordinate.
+    /// Evaluates the divisor polynomial at the provided `x` coordinate.
     pub fn evaluate_at<E: FieldElement<BaseField = B>>(&self, x: E) -> E {
         // compute the numerator value
         let mut numerator = E::ONE;
@@ -145,7 +169,7 @@ pub fn get_trace_domain_value_at<B: StarkField>(trace_length: usize, step: usize
 #[cfg(test)]
 mod tests {
     use super::*;
-    use math::fields::f128::BaseElement;
+    use math::{fields::f128::BaseElement, polynom};
 
     #[test]
     fn constraint_divisor_degree() {
@@ -207,5 +231,98 @@ mod tests {
         let expected = BaseElement::new(255) * BaseElement::new(14) * BaseElement::new(61)
             / BaseElement::new(6);
         assert_eq!(expected, div.evaluate_at(BaseElement::new(4)));
+    }
+
+    #[test]
+    fn constraint_divisor_equivalence() {
+        let n = 8_usize;
+        let g = BaseElement::get_root_of_unity(n.trailing_zeros());
+        let k = 4 as u32;
+        let j = n as u32 / k;
+
+        // ----- periodic assertion divisor, no offset --------------------------------------------
+
+        // create a divisor for assertion which repeats every 2 steps starting at step 0
+        let assertion = Assertion::periodic(0, 0, j as usize, BaseElement::ONE);
+        let divisor = ConstraintDivisor::from_assertion(&assertion, n);
+
+        // z(x) = x^4 - 1 = (x - 1) * (x - g^2) * (x - g^4) * (x - g^6)
+        let poly = polynom::mul(
+            &polynom::mul(
+                &[-BaseElement::ONE, BaseElement::ONE],
+                &[-g.exp(j.into()), BaseElement::ONE],
+            ),
+            &polynom::mul(
+                &[-g.exp((2 * j).into()), BaseElement::ONE],
+                &[-g.exp((3 * j).into()), BaseElement::ONE],
+            ),
+        );
+
+        for i in 0..n {
+            let expected = polynom::eval(&poly, g.exp((i as u32).into()));
+            let actual = divisor.evaluate_at(g.exp((i as u32).into()));
+            assert_eq!(expected, actual);
+            if i % (j as usize) == 0 {
+                assert_eq!(BaseElement::ZERO, actual);
+            }
+        }
+
+        // ----- periodic assertion divisor, with offset ------------------------------------------
+
+        // create a divisor for assertion which repeats every 2 steps starting at step 1
+        let offset = 1u32;
+        let assertion = Assertion::periodic(0, offset as usize, j as usize, BaseElement::ONE);
+        let divisor = ConstraintDivisor::from_assertion(&assertion, n);
+        assert_eq!(
+            ConstraintDivisor::new(vec![(k as usize, g.exp(k.into()))], vec![]),
+            divisor
+        );
+
+        // z(x) = x^4 - g^4 = (x - g) * (x - g^3) * (x - g^5) * (x - g^7)
+        let poly = polynom::mul(
+            &polynom::mul(
+                &[-g.exp(offset.into()), BaseElement::ONE],
+                &[-g.exp((offset + j).into()), BaseElement::ONE],
+            ),
+            &polynom::mul(
+                &[-g.exp((offset + 2 * j).into()), BaseElement::ONE],
+                &[-g.exp((offset + 3 * j).into()), BaseElement::ONE],
+            ),
+        );
+
+        for i in 0..n {
+            let expected = polynom::eval(&poly, g.exp((i as u32).into()));
+            let actual = divisor.evaluate_at(g.exp((i as u32).into()));
+            assert_eq!(expected, actual);
+            if i % (j as usize) == offset as usize {
+                assert_eq!(BaseElement::ZERO, actual);
+            }
+        }
+
+        // create a divisor for assertion which repeats every 4 steps starting at step 3
+        let offset = 3u32;
+        let k = 2 as u32;
+        let j = n as u32 / k;
+        let assertion = Assertion::periodic(0, offset as usize, j as usize, BaseElement::ONE);
+        let divisor = ConstraintDivisor::from_assertion(&assertion, n);
+        assert_eq!(
+            ConstraintDivisor::new(vec![(k as usize, g.exp((offset * k).into()))], vec![]),
+            divisor
+        );
+
+        // z(x) = x^2 - g^6 = (x - g^3) * (x - g^7)
+        let poly = polynom::mul(
+            &[-g.exp(offset.into()), BaseElement::ONE],
+            &[-g.exp((offset + j).into()), BaseElement::ONE],
+        );
+
+        for i in 0..n {
+            let expected = polynom::eval(&poly, g.exp((i as u32).into()));
+            let actual = divisor.evaluate_at(g.exp((i as u32).into()));
+            assert_eq!(expected, actual);
+            if i % (j as usize) == offset as usize {
+                assert_eq!(BaseElement::ZERO, actual);
+            }
+        }
     }
 }
