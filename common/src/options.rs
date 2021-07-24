@@ -51,13 +51,22 @@ pub enum FieldExtension {
 ///
 /// These parameters have a direct impact on proof soundness, proof generation time, and proof
 /// size. Specifically:
-/// * Proof soundness is bounded by `num_queries * log2(blowup_factor) + grinding_factor`.
-/// * Proof soundness is also bounded by the collision resistance of the hash function used
-///   by the protocol.
-/// * For small field, a field extension may need to be used to achieve adequate proof soundness.
 ///
-/// However, increasing any of the parameters listed above will increase prover time, proof size,
-/// or frequently both.
+/// 1. Hash function - proof soundness is limited by the collision resistance of the hash function
+///    used by the protocol. For example, if a hash function with 128-bit collision resistance is
+///    used, soundness of a STARK proof cannot exceed 128 bits.
+/// 2. Finite field - proof soundness depends on the size of finite field used by the protocol.
+///    This means, that for small fields (e.g. smaller than ~128 bits), field extensions must be
+///    used to achieve adequate security. And even for ~128 bit fields, to achieve security over
+///    100 bits, a field extension may be required.
+/// 3. Number of queries - higher values increase proof soundness, but also increase proof size.
+/// 4. Blowup factor - higher values increase proof soundness, but also increase proof generation
+///    time and proof size. However, higher blowup factors require fewer queries for the same
+///    security level. Thus, it is frequently possible to increase blowup factor and at the same
+///    time decrease the number of queries in such a way that the proofs become smaller.
+/// 5. Grinding factor - higher values increase proof soundness, but also may increase proof
+///    generation time. More precisely, proof soundness is bounded by
+///    `num_queries * log2(blowup_factor) + grinding_factor`.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ProofOptions {
     num_queries: u8,

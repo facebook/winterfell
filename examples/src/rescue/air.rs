@@ -72,9 +72,9 @@ impl Air for RescueAir {
             TransitionConstraintDegree::with_cycles(3, vec![CYCLE_LENGTH]),
             TransitionConstraintDegree::with_cycles(3, vec![CYCLE_LENGTH]),
         ];
-        let context = AirContext::new(TRACE_WIDTH, trace_info.length, degrees, options);
+        assert_eq!(TRACE_WIDTH, trace_info.width());
         RescueAir {
-            context,
+            context: AirContext::new(trace_info, degrees, options),
             seed: pub_inputs.seed,
             result: pub_inputs.result,
         }

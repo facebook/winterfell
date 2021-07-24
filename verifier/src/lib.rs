@@ -44,11 +44,7 @@ pub fn verify<AIR: Air>(
     proof.context.write_into(&mut public_coin_seed);
 
     // create AIR instance for the computation specified in the proof
-    let trace_info = TraceInfo {
-        length: proof.trace_length(),
-        meta: vec![],
-    };
-    let air = AIR::new(trace_info, pub_inputs, proof.options().clone());
+    let air = AIR::new(proof.get_trace_info(), pub_inputs, proof.options().clone());
 
     // figure out which version of the generic proof verification procedure to run. this is a sort
     // of static dispatch for selecting two generic parameter: extension field and hash function.

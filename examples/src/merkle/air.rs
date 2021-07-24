@@ -56,9 +56,9 @@ impl Air for MerkleAir {
             TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN]),
             TransitionConstraintDegree::new(2),
         ];
-        let context = AirContext::new(TRACE_WIDTH, trace_info.length, degrees, options);
+        assert_eq!(TRACE_WIDTH, trace_info.width());
         MerkleAir {
-            context,
+            context: AirContext::new(trace_info, degrees, options),
             tree_root: pub_inputs.tree_root,
         }
     }

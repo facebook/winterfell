@@ -5,7 +5,7 @@
 
 //! Contains STARK proof struct and associated components.
 
-use crate::ProofOptions;
+use crate::{ProofOptions, TraceInfo};
 use core::cmp;
 use fri::FriProof;
 use math::log2;
@@ -69,7 +69,17 @@ impl StarkProof {
 
     /// Returns trace length for the computation described by this proof.
     pub fn trace_length(&self) -> usize {
-        self.lde_domain_size() / self.context.options().blowup_factor()
+        self.context.trace_length()
+    }
+
+    /// Returns trace width for the computation described by this proof.
+    pub fn trace_width(&self) -> usize {
+        self.context.trace_width()
+    }
+
+    /// Returns trace info for the computation described by this proof.
+    pub fn get_trace_info(&self) -> TraceInfo {
+        self.context.get_trace_info()
     }
 
     /// Returns the size of the LDE domain for the computation described by this proof.

@@ -6,7 +6,6 @@
 use crate::channel::ProverChannel;
 use common::{
     errors::ProverError, proof::StarkProof, Air, FieldExtension, HashFunction, ProofOptions,
-    TraceInfo,
 };
 use crypto::{
     hashers::{Blake3_256, Sha3_256},
@@ -47,11 +46,7 @@ pub fn prove<AIR: Air>(
     // create an instance of AIR for the provided parameters. this takes a generic description of
     // the computation (provided via AIR type), and creates a description of a specific execution
     // of the computation for the provided public inputs.
-    let trace_info = TraceInfo {
-        length: trace.len(),
-        meta: Vec::new(),
-    };
-    let air = AIR::new(trace_info, pub_inputs, options);
+    let air = AIR::new(trace.get_info(), pub_inputs, options);
 
     // make sure the specified trace is valid against the AIR. This checks validity of both,
     // assertions and state transitions. we do this in debug mode only because this is a very

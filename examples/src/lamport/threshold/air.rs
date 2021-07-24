@@ -92,9 +92,9 @@ impl Air for LamportThresholdAir {
             TransitionConstraintDegree::with_cycles(2, vec![SIG_CYCLE_LEN]),
             TransitionConstraintDegree::with_cycles(2, vec![SIG_CYCLE_LEN]),
         ];
-
+        assert_eq!(TRACE_WIDTH, trace_info.width());
         LamportThresholdAir {
-            context: AirContext::new(TRACE_WIDTH, trace_info.length, degrees, options),
+            context: AirContext::new(trace_info, degrees, options),
             pub_key_root: pub_inputs.pub_key_root,
             num_pub_keys: pub_inputs.num_pub_keys,
             num_signatures: pub_inputs.num_signatures,

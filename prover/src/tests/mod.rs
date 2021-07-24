@@ -39,10 +39,7 @@ pub struct MockAir {
 impl MockAir {
     pub fn with_trace_length(trace_length: usize) -> Self {
         Self::new(
-            TraceInfo {
-                length: trace_length,
-                meta: Vec::new(),
-            },
+            TraceInfo::new(4, trace_length),
             (),
             ProofOptions::new(
                 32,
@@ -61,10 +58,7 @@ impl MockAir {
         trace_length: usize,
     ) -> Self {
         let mut result = Self::new(
-            TraceInfo {
-                length: trace_length,
-                meta: Vec::new(),
-            },
+            TraceInfo::new(4, trace_length),
             (),
             ProofOptions::new(
                 32,
@@ -82,10 +76,7 @@ impl MockAir {
 
     pub fn with_assertions(assertions: Vec<Assertion<BaseElement>>, trace_length: usize) -> Self {
         let mut result = Self::new(
-            TraceInfo {
-                length: trace_length,
-                meta: Vec::new(),
-            },
+            TraceInfo::new(4, trace_length),
             (),
             ProofOptions::new(
                 32,
@@ -107,7 +98,7 @@ impl Air for MockAir {
     type PublicInputs = ();
 
     fn new(trace_info: TraceInfo, _pub_inputs: (), _options: ProofOptions) -> Self {
-        let context = build_context(trace_info.length, 4, 8);
+        let context = build_context(trace_info, 8);
         MockAir {
             context,
             assertions: Vec::new(),
@@ -139,11 +130,7 @@ impl Air for MockAir {
 // HELPER FUNCTIONS
 // ================================================================================================
 
-fn build_context<B: StarkField>(
-    trace_length: usize,
-    trace_width: usize,
-    blowup_factor: usize,
-) -> AirContext<B> {
+fn build_context<B: StarkField>(trace_info: TraceInfo, blowup_factor: usize) -> AirContext<B> {
     let options = ProofOptions::new(
         32,
         blowup_factor,
@@ -154,5 +141,5 @@ fn build_context<B: StarkField>(
         256,
     );
     let t_degrees = vec![TransitionConstraintDegree::new(2)];
-    AirContext::new(trace_width, trace_length, t_degrees, options)
+    AirContext::new(trace_info, t_degrees, options)
 }

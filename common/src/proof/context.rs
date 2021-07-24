@@ -3,22 +3,18 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::ProofOptions;
+use crate::{ProofOptions, TraceInfo};
 use math::{log2, StarkField};
 use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
-
-// CONSTANTS
-// ================================================================================================
-
-const MIN_LDE_DOMAIN_SIZE: usize = 16;
-const MAX_LDE_DOMAIN_SIZE: usize = 1_099_511_627_776; // 2^40
 
 // PROOF CONTEXT
 // ================================================================================================
 /// Basic metadata about a specific execution of a computation.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Context {
-    lde_domain_depth: u8,
+    trace_width: u8,
+    trace_length: u8, // stored as power of two
+    trace_meta: Vec<u8>,
     field_modulus_bytes: Vec<u8>,
     options: ProofOptions,
 }
@@ -26,34 +22,13 @@ pub struct Context {
 impl Context {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
-    /// Creates a new context for a computation described by the specified field, domain, and
+    /// Creates a new context for a computation described by the specified field, trace info, and
     /// proof options.
-    ///
-    /// # Panics
-    /// Panics if:
-    /// * `lde_domain_size` is less than 16.
-    /// * `lde_domain_size` is greater than 2^40.
-    /// * `lde_domain_size` is not a power of two.
-    pub fn new<B: StarkField>(lde_domain_size: usize, options: ProofOptions) -> Self {
-        assert!(
-            lde_domain_size >= MIN_LDE_DOMAIN_SIZE,
-            "LDE domain must contain at least {} elements, but had {}",
-            MIN_LDE_DOMAIN_SIZE,
-            lde_domain_size
-        );
-        assert!(
-            lde_domain_size <= MAX_LDE_DOMAIN_SIZE,
-            "LDE domain can contain at most {} elements, but had {}",
-            MAX_LDE_DOMAIN_SIZE,
-            lde_domain_size
-        );
-        assert!(
-            lde_domain_size.is_power_of_two(),
-            "LDE domain size must be a power of two, but was {}",
-            lde_domain_size
-        );
+    pub fn new<B: StarkField>(trace_info: &TraceInfo, options: ProofOptions) -> Self {
         Context {
-            lde_domain_depth: log2(lde_domain_size) as u8,
+            trace_width: trace_info.width() as u8,
+            trace_length: log2(trace_info.length()) as u8,
+            trace_meta: trace_info.meta().to_vec(),
             field_modulus_bytes: B::get_modulus_le_bytes(),
             options,
         }
@@ -62,9 +37,28 @@ impl Context {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
+    /// Returns execution trace length of the computation described by this context.
+    pub fn trace_length(&self) -> usize {
+        2_usize.pow(self.trace_length as u32)
+    }
+
+    /// Returns execution trace width of the computation described by this context.
+    pub fn trace_width(&self) -> usize {
+        self.trace_width as usize
+    }
+
+    /// Returns execution trace info for the computation described by this context.
+    pub fn get_trace_info(&self) -> TraceInfo {
+        TraceInfo::with_meta(
+            self.trace_width(),
+            self.trace_length(),
+            self.trace_meta.clone(),
+        )
+    }
+
     /// Returns the size of the LDE domain for the computation described by this context.
     pub fn lde_domain_size(&self) -> usize {
-        2usize.pow(self.lde_domain_depth as u32)
+        self.trace_length() * self.options.blowup_factor()
     }
 
     /// Returns modulus of the field for the computation described by this context.
@@ -98,7 +92,10 @@ impl Context {
 impl Serializable for Context {
     /// Serializes `self` and writes the resulting bytes into the `target`.
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write_u8(self.lde_domain_depth);
+        target.write_u8(self.trace_width);
+        target.write_u8(self.trace_length);
+        target.write_u16(self.trace_meta.len() as u16);
+        target.write_u8_slice(&self.trace_meta);
         assert!(self.field_modulus_bytes.len() < u8::MAX as usize);
         target.write_u8(self.field_modulus_bytes.len() as u8);
         target.write_u8_slice(&self.field_modulus_bytes);
@@ -112,22 +109,38 @@ impl Deserializable for Context {
     /// # Errors
     /// Returns an error of a valid Context struct could not be read from the specified `source`.
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        // read and validate domain depth
-        let lde_domain_depth = source.read_u8()?;
-        if lde_domain_depth <= log2(MIN_LDE_DOMAIN_SIZE) as u8 {
+        // read and validate trace width
+        let trace_width = source.read_u8()?;
+        if trace_width == 0 {
+            return Err(DeserializationError::InvalidValue(
+                "trace width must be greater than zero".to_string(),
+            ));
+        }
+        if trace_width as usize >= TraceInfo::MAX_TRACE_WIDTH {
             return Err(DeserializationError::InvalidValue(format!(
-                "LDE domain must contain at least {} elements, but had {}",
-                MIN_LDE_DOMAIN_SIZE,
-                2usize.pow(lde_domain_depth as u32)
+                "Trace width cannot be greater than {}, but had {}",
+                TraceInfo::MAX_TRACE_WIDTH,
+                trace_width
             )));
         }
-        if lde_domain_depth >= log2(MAX_LDE_DOMAIN_SIZE) as u8 {
+
+        // read and validate trace length
+        let trace_length = source.read_u8()?;
+        if 2_usize.pow(trace_length as u32) < TraceInfo::MIN_TRACE_LENGTH {
             return Err(DeserializationError::InvalidValue(format!(
-                "LDE domain can contain at most {} elements, but had {}",
-                MAX_LDE_DOMAIN_SIZE,
-                2usize.pow(lde_domain_depth as u32)
+                "Trace length cannot be smaller than {}, but had {}",
+                TraceInfo::MIN_TRACE_LENGTH,
+                2_usize.pow(trace_length as u32)
             )));
         }
+
+        // read trace metadata
+        let num_meta_bytes = source.read_u16()? as usize;
+        let trace_meta = if num_meta_bytes != 0 {
+            source.read_u8_vec(num_meta_bytes)?
+        } else {
+            vec![]
+        };
 
         // read and validate field modulus bytes
         let num_modulus_bytes = source.read_u8()? as usize;
@@ -142,7 +155,9 @@ impl Deserializable for Context {
         let options = ProofOptions::read_from(source)?;
 
         Ok(Context {
-            lde_domain_depth,
+            trace_width,
+            trace_length,
+            trace_meta,
             field_modulus_bytes,
             options,
         })
