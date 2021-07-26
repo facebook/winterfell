@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    Air, Assertion, ComputationContext, EvaluationFrame, ProofOptions, TraceInfo,
+    Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
 use crate::{FieldExtension, HashFunction};
@@ -297,7 +297,7 @@ fn prepare_assertions_with_invalid_trace_width() {
 // ================================================================================================
 
 struct MockAir {
-    context: ComputationContext,
+    context: AirContext<BaseElement>,
     assertions: Vec<Assertion<BaseElement>>,
     periodic_columns: Vec<Vec<BaseElement>>,
 }
@@ -308,10 +308,7 @@ impl MockAir {
         trace_length: usize,
     ) -> Self {
         let mut result = Self::new(
-            TraceInfo {
-                length: trace_length,
-                meta: Vec::new(),
-            },
+            TraceInfo::new(4, trace_length),
             (),
             ProofOptions::new(
                 32,
@@ -329,10 +326,7 @@ impl MockAir {
 
     pub fn with_assertions(assertions: Vec<Assertion<BaseElement>>, trace_length: usize) -> Self {
         let mut result = Self::new(
-            TraceInfo {
-                length: trace_length,
-                meta: Vec::new(),
-            },
+            TraceInfo::new(4, trace_length),
             (),
             ProofOptions::new(
                 32,
@@ -354,7 +348,7 @@ impl Air for MockAir {
     type PublicInputs = ();
 
     fn new(trace_info: TraceInfo, _pub_inputs: (), _options: ProofOptions) -> Self {
-        let context = build_context(trace_info.length, 4);
+        let context = build_context(trace_info.length(), trace_info.width());
         MockAir {
             context,
             assertions: Vec::new(),
@@ -362,7 +356,7 @@ impl Air for MockAir {
         }
     }
 
-    fn context(&self) -> &ComputationContext {
+    fn context(&self) -> &AirContext<Self::BaseElement> {
         &self.context
     }
 
@@ -386,7 +380,7 @@ impl Air for MockAir {
 // UTILITY FUNCTIONS
 // ================================================================================================
 
-pub fn build_context(trace_length: usize, trace_width: usize) -> ComputationContext {
+pub fn build_context<B: StarkField>(trace_length: usize, trace_width: usize) -> AirContext<B> {
     let options = ProofOptions::new(
         32,
         8,
@@ -397,7 +391,8 @@ pub fn build_context(trace_length: usize, trace_width: usize) -> ComputationCont
         256,
     );
     let t_degrees = vec![TransitionConstraintDegree::new(2)];
-    ComputationContext::new(trace_width, trace_length, t_degrees, options)
+    let trace_info = TraceInfo::new(trace_width, trace_length);
+    AirContext::new(trace_info, t_degrees, options)
 }
 
 pub fn build_prng() -> RandomCoin<BaseElement, Blake3_256<BaseElement>> {

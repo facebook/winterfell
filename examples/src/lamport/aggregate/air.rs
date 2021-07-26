@@ -9,8 +9,8 @@ use super::{
 use crate::utils::{are_equal, is_binary, is_zero, not, EvaluationResult};
 use prover::{
     math::{fields::f128::BaseElement, FieldElement},
-    Air, Assertion, ByteWriter, ComputationContext, EvaluationFrame, ProofOptions, Serializable,
-    TraceInfo, TransitionConstraintDegree,
+    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ProofOptions, Serializable, TraceInfo,
+    TransitionConstraintDegree,
 };
 
 // CONSTANTS
@@ -33,7 +33,7 @@ impl Serializable for PublicInputs {
 }
 
 pub struct LamportAggregateAir {
-    context: ComputationContext,
+    context: AirContext<BaseElement>,
     pub_keys: Vec<[BaseElement; 2]>,
     messages: Vec<[BaseElement; 2]>,
 }
@@ -79,16 +79,15 @@ impl Air for LamportAggregateAir {
             TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
             TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
         ];
-        let context = ComputationContext::new(TRACE_WIDTH, trace_info.length, degrees, options);
-
+        assert_eq!(TRACE_WIDTH, trace_info.width());
         LamportAggregateAir {
-            context,
+            context: AirContext::new(trace_info, degrees, options),
             pub_keys: pub_inputs.pub_keys,
             messages: pub_inputs.messages,
         }
     }
 
-    fn context(&self) -> &ComputationContext {
+    fn context(&self) -> &AirContext<Self::BaseElement> {
         &self.context
     }
 
@@ -98,8 +97,8 @@ impl Air for LamportAggregateAir {
         periodic_values: &[E],
         result: &mut [E],
     ) {
-        let current = &frame.current;
-        let next = &frame.next;
+        let current = frame.current();
+        let next = frame.next();
         // expected state width is 4 field elements
         debug_assert_eq!(TRACE_WIDTH, current.len());
         debug_assert_eq!(TRACE_WIDTH, next.len());
@@ -113,8 +112,8 @@ impl Air for LamportAggregateAir {
         // evaluate the constraints
         evaluate_constraints(
             result,
-            &frame.current,
-            &frame.next,
+            current,
+            next,
             ark,
             hash_flag,
             sig_cycle_end_flag,

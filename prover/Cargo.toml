@@ -21,6 +21,6 @@ utils = { path = "../utils", package = "winter-utils" }
 math = { path = "../math", package = "winter-math" }
 crypto = { path = "../crypto", package = "winter-crypto" }
 fri = { path = '../fri', package = "winter-fri" }
-common = { path = "../common", package = "winter-common" }
+air = { path = "../air", package = "winter-air" }
 rayon = { version = "1.5", optional = true }
 log = "0.4"

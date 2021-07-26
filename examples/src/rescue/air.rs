@@ -7,7 +7,7 @@ use super::rescue;
 use crate::utils::{are_equal, is_zero, not, EvaluationResult};
 use prover::{
     math::{fields::f128::BaseElement, FieldElement},
-    Air, Assertion, ByteWriter, ComputationContext, EvaluationFrame, ExecutionTrace, ProofOptions,
+    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ExecutionTrace, ProofOptions,
     Serializable, TraceInfo, TransitionConstraintDegree,
 };
 
@@ -54,7 +54,7 @@ impl Serializable for PublicInputs {
 }
 
 pub struct RescueAir {
-    context: ComputationContext,
+    context: AirContext<BaseElement>,
     seed: [BaseElement; 2],
     result: [BaseElement; 2],
 }
@@ -72,15 +72,15 @@ impl Air for RescueAir {
             TransitionConstraintDegree::with_cycles(3, vec![CYCLE_LENGTH]),
             TransitionConstraintDegree::with_cycles(3, vec![CYCLE_LENGTH]),
         ];
-        let context = ComputationContext::new(TRACE_WIDTH, trace_info.length, degrees, options);
+        assert_eq!(TRACE_WIDTH, trace_info.width());
         RescueAir {
-            context,
+            context: AirContext::new(trace_info, degrees, options),
             seed: pub_inputs.seed,
             result: pub_inputs.result,
         }
     }
 
-    fn context(&self) -> &ComputationContext {
+    fn context(&self) -> &AirContext<Self::BaseElement> {
         &self.context
     }
 
@@ -90,8 +90,8 @@ impl Air for RescueAir {
         periodic_values: &[E],
         result: &mut [E],
     ) {
-        let current = &frame.current;
-        let next = &frame.next;
+        let current = frame.current();
+        let next = frame.next();
         // expected state width is 4 field elements
         debug_assert_eq!(TRACE_WIDTH, current.len());
         debug_assert_eq!(TRACE_WIDTH, next.len());
@@ -101,12 +101,12 @@ impl Air for RescueAir {
         let ark = &periodic_values[1..];
 
         // when hash_flag = 1, constraints for Rescue round are enforced
-        rescue::enforce_round(result, &frame.current, &frame.next, ark, hash_flag);
+        rescue::enforce_round(result, current, next, ark, hash_flag);
 
         // when hash_flag = 0, constraints for copying hash values to the next
         // step are enforced.
         let copy_flag = not(hash_flag);
-        enforce_hash_copy(result, &frame.current, &frame.next, copy_flag);
+        enforce_hash_copy(result, current, next, copy_flag);
     }
 
     fn get_assertions(&self) -> Vec<Assertion<Self::BaseElement>> {

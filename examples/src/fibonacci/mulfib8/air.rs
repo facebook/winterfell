@@ -6,7 +6,7 @@
 use crate::utils::are_equal;
 use prover::{
     math::{fields::f128::BaseElement, FieldElement},
-    Air, Assertion, ComputationContext, EvaluationFrame, ExecutionTrace, ProofOptions, TraceInfo,
+    Air, AirContext, Assertion, EvaluationFrame, ExecutionTrace, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
 
@@ -16,7 +16,7 @@ use prover::{
 const TRACE_WIDTH: usize = 8;
 
 pub struct MulFib8Air {
-    context: ComputationContext,
+    context: AirContext<BaseElement>,
     result: BaseElement,
 }
 
@@ -37,14 +37,14 @@ impl Air for MulFib8Air {
             TransitionConstraintDegree::new(2),
             TransitionConstraintDegree::new(2),
         ];
-        let context = ComputationContext::new(TRACE_WIDTH, trace_info.length, degrees, options);
+        assert_eq!(TRACE_WIDTH, trace_info.width());
         MulFib8Air {
-            context,
+            context: AirContext::new(trace_info, degrees, options),
             result: pub_inputs,
         }
     }
 
-    fn context(&self) -> &ComputationContext {
+    fn context(&self) -> &AirContext<Self::BaseElement> {
         &self.context
     }
 
@@ -54,8 +54,8 @@ impl Air for MulFib8Air {
         _periodic_values: &[E],
         result: &mut [E],
     ) {
-        let current = &frame.current;
-        let next = &frame.next;
+        let current = frame.current();
+        let next = frame.next();
         // expected state width is 2 field elements
         debug_assert_eq!(TRACE_WIDTH, current.len());
         debug_assert_eq!(TRACE_WIDTH, next.len());

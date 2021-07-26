@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use common::{
+use air::{
     proof::{Commitments, Context, OodFrame, Queries, StarkProof},
     Air, ConstraintCompositionCoefficients, DeepCompositionCoefficients, EvaluationFrame,
 };
@@ -47,7 +47,7 @@ where
     // --------------------------------------------------------------------------------------------
     /// Creates a new prover channel for the specified `air` and public inputs.
     pub fn new(air: &'a A, pub_inputs_bytes: Vec<u8>) -> Self {
-        let context = Context::new::<A::BaseElement>(air.lde_domain_size(), air.options().clone());
+        let context = Context::new::<A::BaseElement>(air.trace_info(), air.options().clone());
 
         // build a seed for the public coin; the initial seed is the hash of public inputs and proof
         // context, but as the protocol progresses, the coin will be reseeded with the info sent to
@@ -85,8 +85,8 @@ where
     /// hashes of the evaluation frame states.
     pub fn send_ood_evaluation_frame(&mut self, frame: &EvaluationFrame<E>) {
         self.ood_frame.set_evaluation_frame(frame);
-        self.public_coin.reseed(H::hash_elements(&frame.current));
-        self.public_coin.reseed(H::hash_elements(&frame.next));
+        self.public_coin.reseed(H::hash_elements(frame.current()));
+        self.public_coin.reseed(H::hash_elements(frame.next()));
     }
 
     /// Saves the evaluations of constraint composition polynomial columns at the out-of-domain

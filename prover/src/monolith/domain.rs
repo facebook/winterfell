@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use common::ComputationContext;
+use air::Air;
 use math::{fft, log2, StarkField};
 
 // TYPES AND INTERFACES
@@ -30,14 +30,14 @@ pub struct StarkDomain<B: StarkField> {
 
 impl<B: StarkField> StarkDomain<B> {
     /// Returns a new STARK domain initialized with the provided `context`.
-    pub fn new(context: &ComputationContext) -> Self {
-        let trace_twiddles = fft::get_twiddles(context.trace_length());
-        let ce_twiddles = fft::get_twiddles(context.ce_domain_size());
+    pub fn new<A: Air<BaseElement = B>>(air: &A) -> Self {
+        let trace_twiddles = fft::get_twiddles(air.trace_length());
+        let ce_twiddles = fft::get_twiddles(air.ce_domain_size());
         StarkDomain {
             trace_twiddles,
             ce_twiddles,
-            ce_to_lde_blowup: context.lde_domain_size() / context.ce_domain_size(),
-            domain_offset: context.domain_offset(),
+            ce_to_lde_blowup: air.lde_domain_size() / air.ce_domain_size(),
+            domain_offset: air.domain_offset(),
         }
     }
 

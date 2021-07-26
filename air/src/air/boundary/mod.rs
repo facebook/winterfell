@@ -12,8 +12,18 @@ mod tests;
 
 // BOUNDARY CONSTRAINT GROUP
 // ================================================================================================
-
 /// A group of boundary constraints all having the same divisor.
+///
+/// A boundary constraint is described by a rational function $\frac{f(x) - b(x)}{z(x)}$, where:
+///
+/// * $f(x)$ is a trace polynomial for the register against which the constraint is placed.
+/// * $b(x)$ is the value polynomial for the constraint.
+/// * $z(x)$ is the constraint divisor polynomial.
+///
+/// A boundary constraint group groups together all boundary constraints where polynomial $z$ is
+/// the same. The constraints stored in the group describe polynomials $b$. At the time of
+/// constraint evaluation, a prover or a verifier provides evaluations of the relevant polynomial
+/// $f$ so that the value of the constraint can be computed.
 #[derive(Debug, Clone)]
 pub struct BoundaryConstraintGroup<B: StarkField, E: FieldElement<BaseField = B>> {
     constraints: Vec<BoundaryConstraint<B, E>>,
@@ -22,16 +32,17 @@ pub struct BoundaryConstraintGroup<B: StarkField, E: FieldElement<BaseField = B>
 }
 
 impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraintGroup<B, E> {
-    // CONSTRUCTORS
+    // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
-    pub fn new(
+    /// Returns a new  boundary constraint group to hold constraints with the specified divisor.
+    pub(super) fn new(
         divisor: ConstraintDivisor<B>,
         trace_poly_degree: usize,
         composition_degree: usize,
     ) -> Self {
         // We want to make sure that once we divide a constraint polynomial by its divisor, the
-        // degree of the resulting polynomials will be exactly equal to the composition_degree.
-        // Boundary constraint degree is always deg(trace). So, the adjustment degree is simply:
+        // degree of the resulting polynomial will be exactly equal to the composition_degree.
+        // Boundary constraint degree is always deg(trace). So, the degree adjustment is simply:
         // deg(composition) + deg(divisor) - deg(trace)
         let target_degree = composition_degree + divisor.degree();
         let degree_adjustment = (target_degree - trace_poly_degree) as u32;
@@ -61,22 +72,11 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraintGroup<B, E
         self.degree_adjustment
     }
 
-    // Returns degree of the largest constraint polynomial in this group.
-    pub fn max_poly_degree(&self) -> usize {
-        let mut poly_size = 0;
-        for constraint in self.constraints.iter() {
-            if constraint.poly().len() > poly_size {
-                poly_size = constraint.poly().len();
-            }
-        }
-        poly_size - 1
-    }
-
     // PUBLIC METHODS
     // --------------------------------------------------------------------------------------------
 
     /// Creates a new boundary constraint from the specified assertion and adds it to the group.
-    pub fn add(
+    pub(super) fn add(
         &mut self,
         assertion: Assertion<B>,
         inv_g: B,
@@ -91,22 +91,61 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraintGroup<B, E
         ));
     }
 
-    /// Evaluates all constraints in this group at the specified point `x`, and merges the
-    /// results into a single value by computing a random linear combination of the results.
+    /// Evaluates all constraints in this group at the specified point `x`.
+    ///
+    /// `xp` is a degree adjustment multiplier which must be computed as `x^degree_adjustment`.
+    /// This value is provided as an argument to this function for optimization purposes.
+    ///
+    /// Constraint evaluations are merges into a single value by computing their random linear
+    /// combination and dividing the result by the divisor of this constraint group as follows:
+    /// $$
+    /// \frac{\sum_{i=0}^{k-1}{C_i(x) \cdot (\alpha_i + \beta_i \cdot x^d)}}{z(x)}
+    /// $$
+    /// where:
+    /// * $C_i(x)$ is the evaluation of the $i$th constraint at `x` computed as $f(x) - b(x)$.
+    /// * $\alpha$ and $\beta$ are random field elements. In the interactive version of the
+    ///   protocol, these are provided by the verifier.
+    /// * $z(x)$ is the evaluation of the divisor polynomial for this group at $x$.
+    /// * $d$ is the degree adjustment factor computed as $D - deg(C_i(x)) + deg(z(x))$, where
+    ///   $D$ is the degree of the composition polynomial.
+    ///
+    /// Thus, the merged evaluations represent a polynomial of degree $D$, as the degree of the
+    /// numerator is $D + deg(z(x))$, and the division by $z(x)$ reduces the degree by $deg(z(x))$.
     pub fn evaluate_at(&self, state: &[E], x: E, xp: E) -> E {
-        let mut result = E::ZERO;
+        debug_assert_eq!(
+            x.exp(self.degree_adjustment.into()),
+            xp,
+            "inconsistent degree adjustment"
+        );
+        let mut numerator = E::ZERO;
         for constraint in self.constraints().iter() {
-            let evaluation = constraint.evaluate_at(x, state[constraint.register()]);
-            result += evaluation * (constraint.cc().0 + constraint.cc().1 * xp);
+            let trace_value = state[constraint.register()];
+            let evaluation = constraint.evaluate_at(x, trace_value);
+            numerator += evaluation * (constraint.cc().0 + constraint.cc().1 * xp);
         }
-        result
+
+        let denominator = self.divisor.evaluate_at(x);
+
+        numerator / denominator
     }
 }
 
 // BOUNDARY CONSTRAINT
 // ================================================================================================
-
-/// Describes the numerator portion of a boundary constraint.
+/// The numerator portion of a boundary constraint.
+///
+/// A boundary constraint is described by a rational function $\frac{f(x) - b(x)}{z(x)}$, where:
+///
+/// * $f(x)$ is a trace polynomial for the register against which the constraint is placed.
+/// * $b(b)$ is the value polynomial for this constraint.
+/// * $z(x)$ is the constraint divisor polynomial.
+///
+/// In addition to the value polynomial, a `BoundaryConstraint` also contains info needed to
+/// evaluate the constraint and to compose constraint evaluations with other constraints (i.e.,
+/// constraint composition coefficients).
+///
+/// `BoundaryConstraint`s cannot be instantiated directly, they are created internally from
+/// [Assertions](Assertion).
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct BoundaryConstraint<B: StarkField, E: FieldElement<BaseField = B>> {
     register: usize,
@@ -119,7 +158,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraint<B, E> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Creates a new boundary constraint from the specified assertion.
-    pub fn new(
+    pub(super) fn new(
         assertion: Assertion<B>,
         inv_g: B,
         twiddle_map: &mut HashMap<usize, Vec<B>>,
@@ -165,12 +204,13 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraint<B, E> {
         self.register
     }
 
-    /// Returns constraint polynomial for this constraint.
+    /// Returns a value polynomial for this constraint.
     pub fn poly(&self) -> &[B] {
         &self.poly
     }
 
     /// Returns offset by which we need to shift the domain before evaluating this constraint.
+    ///
     /// The offset is returned as a tuple describing both, the number of steps by which the
     /// domain needs to be shifted, and field element by which a domain element needs to be
     /// multiplied to achieve the desired shift.
@@ -183,23 +223,28 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraint<B, E> {
         &self.cc
     }
 
-    // PUBLIC METHODS
+    // CONSTRAINT EVALUATOR
     // --------------------------------------------------------------------------------------------
-
-    /// Evaluates this constraint at the specified point `x` by computing trace_value - P(x).
-    /// trace_value is assumed to be evaluation of a trace polynomial at `x`.
+    /// Evaluates this constraint at the specified point `x`.
+    ///
+    /// The constraint is evaluated by computing $f(x) - b(x)$, where:
+    /// * $f$ is a trace polynomial for the register against which the constraint is placed.
+    /// * $f(x)$ = `trace_value`
+    /// * $b$ is the value polynomial for this constraint.
+    ///
+    /// For boundary constraints derived from single and periodic assertions, $b(x)$ is a constant.
     pub fn evaluate_at(&self, x: E, trace_value: E) -> E {
         let assertion_value = if self.poly.len() == 1 {
-            // if constraint polynomial consists of just a constant, use that constant
+            // if the value polynomial consists of just a constant, use that constant
             E::from(self.poly[0])
         } else {
-            // otherwise, we need to evaluate the polynomial at `x`; but first do the following:
-            // 1. for assertions which don't fall on steps that are powers of two, we need to
-            //    evaluate assertion polynomial at x * offset (instead of just x)
-            // 2. map the coefficients of the polynomial into the evaluation field. If we are
-            //    working in the base field, this has not effect; but if we are working in an
-            //    extension field, coefficients of the polynomial are mapped from the base
-            //    field into the extension field.
+            // otherwise, we need to evaluate the polynomial at `x`; for assertions which don't
+            // fall on steps that are powers of two, we need to evaluate the value polynomial
+            // at x * offset (instead of just x).
+            //
+            // note that while the coefficients of the value polynomial are in the base field,
+            // if we are working in an extension field, the result of the evaluation will be a
+            // value in the extension field.
             let x = x * E::from(self.poly_offset.1);
             polynom::eval(&self.poly, x)
         };

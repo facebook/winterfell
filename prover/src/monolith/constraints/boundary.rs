@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use common::ComputationContext;
+use air::Air;
 use math::{fft, polynom, FieldElement, StarkField};
 use std::collections::HashMap;
 
@@ -29,9 +29,9 @@ pub struct BoundaryConstraintGroup<B: StarkField, E: FieldElement<BaseField = B>
 impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraintGroup<B, E> {
     /// Creates a new specialized constraint group; twiddles and ce_blowup_factor are passed in for
     /// evaluating large polynomial constraints (if any).
-    pub fn new(
-        group: common::BoundaryConstraintGroup<B, E>,
-        context: &ComputationContext,
+    pub fn new<A: Air<BaseElement = B>>(
+        group: air::BoundaryConstraintGroup<B, E>,
+        air: &A,
         twiddle_map: &mut HashMap<usize, Vec<B>>,
     ) -> BoundaryConstraintGroup<B, E> {
         let mut result = BoundaryConstraintGroup {
@@ -66,14 +66,14 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraintGroup<B, E
                 let values = fft::evaluate_poly_with_offset(
                     constraint.poly(),
                     twiddles,
-                    context.domain_offset(),
-                    context.ce_domain_size() / poly_length,
+                    air.domain_offset(),
+                    air.ce_domain_size() / poly_length,
                 );
 
                 result.large_poly_constraints.push(LargePolyConstraint {
                     register: constraint.register(),
                     values,
-                    step_offset: constraint.poly_offset().0 * context.ce_blowup_factor(),
+                    step_offset: constraint.poly_offset().0 * air.ce_blowup_factor(),
                     coefficients: *constraint.cc(),
                 });
             }

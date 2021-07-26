@@ -10,8 +10,8 @@ use super::{
 use crate::utils::{are_equal, is_binary, is_zero, not, EvaluationResult};
 use prover::{
     math::{fields::f128::BaseElement, log2, FieldElement, StarkField},
-    Air, Assertion, ByteWriter, ComputationContext, EvaluationFrame, ProofOptions, Serializable,
-    TraceInfo, TransitionConstraintDegree,
+    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ProofOptions, Serializable, TraceInfo,
+    TransitionConstraintDegree,
 };
 
 // CONSTANTS
@@ -38,7 +38,7 @@ impl Serializable for PublicInputs {
 }
 
 pub struct LamportThresholdAir {
-    context: ComputationContext,
+    context: AirContext<BaseElement>,
     pub_key_root: [BaseElement; 2],
     num_pub_keys: usize,
     num_signatures: usize,
@@ -92,9 +92,9 @@ impl Air for LamportThresholdAir {
             TransitionConstraintDegree::with_cycles(2, vec![SIG_CYCLE_LEN]),
             TransitionConstraintDegree::with_cycles(2, vec![SIG_CYCLE_LEN]),
         ];
-
+        assert_eq!(TRACE_WIDTH, trace_info.width());
         LamportThresholdAir {
-            context: ComputationContext::new(TRACE_WIDTH, trace_info.length, degrees, options),
+            context: AirContext::new(trace_info, degrees, options),
             pub_key_root: pub_inputs.pub_key_root,
             num_pub_keys: pub_inputs.num_pub_keys,
             num_signatures: pub_inputs.num_signatures,
@@ -108,8 +108,8 @@ impl Air for LamportThresholdAir {
         periodic_values: &[E],
         result: &mut [E],
     ) {
-        let current = &frame.current;
-        let next = &frame.next;
+        let current = frame.current();
+        let next = frame.next();
 
         // expected state width is 4 field elements
         debug_assert_eq!(TRACE_WIDTH, current.len());
@@ -126,8 +126,8 @@ impl Air for LamportThresholdAir {
         // evaluate the constraints
         evaluate_constraints(
             result,
-            &frame.current,
-            &frame.next,
+            current,
+            next,
             ark,
             hash_flag,
             sig_cycle_end_flag,
@@ -239,7 +239,7 @@ impl Air for LamportThresholdAir {
         result
     }
 
-    fn context(&self) -> &ComputationContext {
+    fn context(&self) -> &AirContext<Self::BaseElement> {
         &self.context
     }
 }

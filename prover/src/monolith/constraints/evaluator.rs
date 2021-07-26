@@ -7,7 +7,7 @@ use super::{
     evaluation_table::EvaluationTableFragment, BoundaryConstraintGroup, ConstraintEvaluationTable,
     PeriodicValueTable, StarkDomain, TraceTable,
 };
-use common::{
+use air::{
     Air, ConstraintCompositionCoefficients, ConstraintDivisor, EvaluationFrame,
     TransitionConstraintGroup,
 };
@@ -48,10 +48,9 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>> ConstraintEvaluato
         // degrees; we do this in debug mode only because this comparison is expensive
         #[cfg(debug_assertions)]
         let transition_constraint_degrees = air
-            .context()
             .transition_constraint_degrees()
             .iter()
-            .map(|d| d.get_evaluation_degree(air.context().trace_length()))
+            .map(|d| d.get_evaluation_degree(air.trace_length()))
             .collect();
 
         // build transition constraint groups; these will be used later to compute a random
@@ -61,10 +60,8 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>> ConstraintEvaluato
         // build periodic value table
         let periodic_values = PeriodicValueTable::new(air);
 
-        // set divisor for transition constraints; since divisors for all transition constraints
-        // are the same: (x^steps - 1) / (x - x_at_last_step), all transition constraints will be
-        // merged into a single value, and the divisor for that value will be first in the list
-        let mut divisors = vec![ConstraintDivisor::from_transition(air.context())];
+        // set divisor for transition constraints; all transition constraints have the same divisor
+        let mut divisors = vec![air.transition_constraint_divisor()];
 
         // build boundary constraints and also append divisors for each group of boundary
         // constraints to the divisor list
@@ -74,7 +71,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>> ConstraintEvaluato
             .into_iter()
             .map(|group| {
                 divisors.push(group.divisor().clone());
-                BoundaryConstraintGroup::new(group, air.context(), &mut twiddle_map)
+                BoundaryConstraintGroup::new(group, air, &mut twiddle_map)
             })
             .collect();
 
@@ -185,7 +182,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>> ConstraintEvaluato
 
             // evaluate boundary constraints; the results go into remaining slots of the
             // evaluations buffer
-            self.evaluate_boundary_constraints(&ev_frame.current, x, step, &mut evaluations[1..]);
+            self.evaluate_boundary_constraints(ev_frame.current(), x, step, &mut evaluations[1..]);
 
             // record the result in the evaluation table
             fragment.update_row(i, &evaluations);

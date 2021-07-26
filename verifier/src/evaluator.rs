@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use common::{Air, ConstraintCompositionCoefficients, ConstraintDivisor, EvaluationFrame};
+use air::{Air, ConstraintCompositionCoefficients, EvaluationFrame};
 use math::{polynom, FieldElement};
 
 // CONSTRAINT EVALUATION
@@ -42,12 +42,8 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseElement>>
         acc + group.merge_evaluations(&t_evaluations, x)
     });
 
-    // build the divisor for transition constraints; divisors for all transition constraints are
-    // the same and have the form: (x^steps - 1) / (x - x_at_last_step)
-    let t_divisor = ConstraintDivisor::<A::BaseElement>::from_transition(air.context());
-
     // divide out the evaluation of divisor at x
-    let z = t_divisor.evaluate_at(x);
+    let z = air.transition_constraint_divisor().evaluate_at(x);
     let mut result = t_evaluation / z;
 
     // 2 ----- evaluate boundary constraints ------------------------------------------------------
@@ -69,11 +65,8 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseElement>>
             degree_adjustment = group.degree_adjustment();
             xp = x.exp(degree_adjustment.into());
         }
-        // evaluate all constraints in the group, and the divide out the value implied
-        // by the divisor
-        let evaluation = group.evaluate_at(&ood_frame.current, x, xp);
-        let z = group.divisor().evaluate_at(x);
-        result += evaluation / z;
+        // evaluate all constraints in the group, and add the evaluation to the result
+        result += group.evaluate_at(ood_frame.current(), x, xp);
     }
 
     result

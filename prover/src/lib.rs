@@ -8,9 +8,9 @@ pub use monolith::{prove, ExecutionTrace, ExecutionTraceFragment};
 
 mod channel;
 
-pub use common::{
-    proof::StarkProof, Air, Assertion, ComputationContext, EvaluationFrame, FieldExtension,
-    HashFunction, ProofOptions, TraceInfo, TransitionConstraintDegree, TransitionConstraintGroup,
+pub use air::{
+    proof::StarkProof, Air, AirContext, Assertion, EvaluationFrame, FieldExtension, HashFunction,
+    ProofOptions, TraceInfo, TransitionConstraintDegree, TransitionConstraintGroup,
 };
 pub use crypto;
 pub use math;

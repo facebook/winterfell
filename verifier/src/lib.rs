@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-pub use common::{
+pub use air::{
     errors::VerifierError, proof::StarkProof, Air, FieldExtension, HashFunction, TraceInfo,
 };
 pub use utils::{ByteWriter, Serializable};
@@ -44,16 +44,12 @@ pub fn verify<AIR: Air>(
     proof.context.write_into(&mut public_coin_seed);
 
     // create AIR instance for the computation specified in the proof
-    let trace_info = TraceInfo {
-        length: proof.trace_length(),
-        meta: vec![],
-    };
-    let air = AIR::new(trace_info, pub_inputs, proof.options().clone());
+    let air = AIR::new(proof.get_trace_info(), pub_inputs, proof.options().clone());
 
     // figure out which version of the generic proof verification procedure to run. this is a sort
     // of static dispatch for selecting two generic parameter: extension field and hash function.
-    match air.context().options().field_extension() {
-        FieldExtension::None => match air.context().options().hash_fn() {
+    match air.options().field_extension() {
+        FieldExtension::None => match air.options().hash_fn() {
             HashFunction::Blake3_256 => {
                 let public_coin = RandomCoin::new(&public_coin_seed);
                 let channel = VerifierChannel::new(&air, proof)?;
@@ -69,7 +65,7 @@ pub fn verify<AIR: Air>(
                     (air, channel, public_coin)
             }
         },
-        FieldExtension::Quadratic => match air.context().options().hash_fn() {
+        FieldExtension::Quadratic => match air.options().hash_fn() {
             HashFunction::Blake3_256 => {
                 let public_coin = RandomCoin::new(&public_coin_seed);
                 let channel = VerifierChannel::new(&air, proof)?;
@@ -133,8 +129,8 @@ where
     // also, reseed the public coin with the OOD frame received from the prover
     let ood_frame = channel.read_ood_evaluation_frame();
     let ood_constraint_evaluation_1 = evaluate_constraints(&air, constraint_coeffs, &ood_frame, z);
-    public_coin.reseed(H::hash_elements(&ood_frame.current));
-    public_coin.reseed(H::hash_elements(&ood_frame.next));
+    public_coin.reseed(H::hash_elements(ood_frame.current()));
+    public_coin.reseed(H::hash_elements(ood_frame.next()));
 
     // read evaluations of composition polynomial columns sent by the prover, and reduce them into
     // a single value by computing sum(z^i * value_i), where value_i is the evaluation of the ith

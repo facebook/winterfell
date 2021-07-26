@@ -20,7 +20,7 @@ pub const RATE_WIDTH: usize = 4;
 const DIGEST_SIZE: usize = 2;
 
 /// The number of rounds is set to 7 to provide 128-bit security level with 40% security margin;
-/// computed using algorithm 7 from https://eprint.iacr.org/2020/1143.pdf
+/// computed using algorithm 7 from <https://eprint.iacr.org/2020/1143.pdf>
 /// security margin here differs from Rescue Prime specification which suggests 50% security
 /// margin (and would require 8 rounds) primarily to make AIR a bit simpler.
 pub const NUM_ROUNDS: usize = 7;
@@ -178,7 +178,7 @@ pub fn apply_permutation(state: &mut [BaseElement; STATE_WIDTH]) {
 }
 
 /// Rescue-XLIX round function;
-/// implementation based on algorithm 3 from https://eprint.iacr.org/2020/1143.pdf
+/// implementation based on algorithm 3 from <https://eprint.iacr.org/2020/1143.pdf>
 #[inline(always)]
 pub fn apply_round(state: &mut [BaseElement], step: usize) {
     // determine which round constants to use
@@ -313,12 +313,12 @@ fn apply_inv_mds<E: FieldElement + From<BaseElement>>(state: &mut [E]) {
 // ================================================================================================
 
 /// S-Box and Inverse S-Box powers;
-/// computed using algorithm 6 from https://eprint.iacr.org/2020/1143.pdf
+/// computed using algorithm 6 from <https://eprint.iacr.org/2020/1143.pdf>
 const ALPHA: u32 = 5;
 const INV_ALPHA: u128 = 272225893536750770770699646362995969229;
 
 /// Rescue MDS matrix
-/// Computed using algorithm 4 from https://eprint.iacr.org/2020/1143.pdf
+/// Computed using algorithm 4 from <https://eprint.iacr.org/2020/1143.pdf>
 const MDS: [BaseElement; STATE_WIDTH * STATE_WIDTH] = [
     BaseElement::new(340282366920938463463374557953730612630),
     BaseElement::new(21493836),
@@ -398,7 +398,7 @@ const INV_MDS: [BaseElement; STATE_WIDTH * STATE_WIDTH] = [
 ];
 
 /// Rescue round constants;
-/// computed using algorithm 5 from https://eprint.iacr.org/2020/1143.pdf
+/// computed using algorithm 5 from <https://eprint.iacr.org/2020/1143.pdf>
 pub const ARK: [[BaseElement; STATE_WIDTH * 2]; CYCLE_LENGTH] = [
     [
         BaseElement::new(232350694689151131917165570858777669544),

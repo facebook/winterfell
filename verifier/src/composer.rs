@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use common::{Air, DeepCompositionCoefficients, EvaluationFrame, FieldExtension};
+use air::{Air, DeepCompositionCoefficients, EvaluationFrame, FieldExtension};
 use math::FieldElement;
 
 // DEEP COMPOSER
@@ -64,8 +64,8 @@ impl<A: Air, E: FieldElement + From<A::BaseElement>> DeepComposer<A, E> {
         queried_trace_states: Vec<Vec<A::BaseElement>>,
         ood_frame: EvaluationFrame<E>,
     ) -> Vec<E> {
-        let trace_at_z1 = &ood_frame.current;
-        let trace_at_z2 = &ood_frame.next;
+        let trace_at_z1 = ood_frame.current();
+        let trace_at_z2 = ood_frame.next();
 
         // when field extension is enabled, these will be set to conjugates of trace values at
         // z as well as conjugate of z itself

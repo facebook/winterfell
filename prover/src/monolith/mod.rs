@@ -4,9 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::channel::ProverChannel;
-use common::{
+use air::{
     errors::ProverError, proof::StarkProof, Air, FieldExtension, HashFunction, ProofOptions,
-    TraceInfo,
 };
 use crypto::{
     hashers::{Blake3_256, Sha3_256},
@@ -47,11 +46,7 @@ pub fn prove<AIR: Air>(
     // create an instance of AIR for the provided parameters. this takes a generic description of
     // the computation (provided via AIR type), and creates a description of a specific execution
     // of the computation for the provided public inputs.
-    let trace_info = TraceInfo {
-        length: trace.len(),
-        meta: Vec::new(),
-    };
-    let air = AIR::new(trace_info, pub_inputs, options);
+    let air = AIR::new(trace.get_info(), pub_inputs, options);
 
     // make sure the specified trace is valid against the AIR. This checks validity of both,
     // assertions and state transitions. we do this in debug mode only because this is a very
@@ -61,8 +56,8 @@ pub fn prove<AIR: Air>(
 
     // figure out which version of the generic proof generation procedure to run. this is a sort
     // of static dispatch for selecting two generic parameter: extension field and hash function.
-    match air.context().options().field_extension() {
-        FieldExtension::None => match air.context().options().hash_fn() {
+    match air.options().field_extension() {
+        FieldExtension::None => match air.options().hash_fn() {
             HashFunction::Blake3_256 => generate_proof::
                 <AIR, AIR::BaseElement, Blake3_256<AIR::BaseElement>>
                 (air, trace, pub_inputs_bytes),
@@ -71,7 +66,7 @@ pub fn prove<AIR: Air>(
                 (air, trace, pub_inputs_bytes)
             
         },
-        FieldExtension::Quadratic => match air.context().options().hash_fn() {
+        FieldExtension::Quadratic => match air.options().hash_fn() {
             HashFunction::Blake3_256 => generate_proof::
                 <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Blake3_256<AIR::BaseElement>>
                 (air, trace, pub_inputs_bytes),
@@ -105,7 +100,7 @@ where
 
     // build computation domain; this is used later for polynomial evaluations
     let now = Instant::now();
-    let domain = StarkDomain::new(air.context());
+    let domain = StarkDomain::new(&air);
     debug!(
         "Built domain of 2^{} elements in {} ms",
         log2(domain.lde_domain_size()),

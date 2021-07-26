@@ -10,20 +10,63 @@ use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serial
 // TYPES AND INTERFACES
 // ================================================================================================
 
-#[repr(u8)]
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum FieldExtension {
-    None = 1,
-    Quadratic = 2,
-}
-
+/// Defines a set of available hash function for STARK protocol.
+///
+/// Choice of a hash function has a direct impact on proof generation time, proof size, and proof
+/// soundness. In general, sounds of the proof is bounded by the collision resistance of the hash
+/// function used by the protocol.
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum HashFunction {
+    /// BLAKE3 hash function with 256 bit output.
     Blake3_256 = 1,
+
+    /// SHA3 hash function with 256 bit output.
     Sha3_256 = 2,
 }
 
+/// Defines an extension field for the composition polynomial.
+///
+/// Choice of a field for a composition polynomial may impact proof soundness, and can also have
+/// a non-negligible impact on proof generation time and proof size. Specifically, for small
+/// fields, security offered by the base field itself may be inadequate or insufficient, and an
+/// extension of the base field may need to be used.
+///
+/// For example, if the size of base field is ~64-bits, a quadratic extension must be use to
+/// achieve ~100 bits of soundness, and a cubic extension must be used to achieve 128+ bits
+/// of soundness.
+///
+/// However, increasing extension degree will increase proof generation time and proof size by
+/// as much as 50%.
+#[repr(u8)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum FieldExtension {
+    /// Composition polynomial is constructed in the base field.
+    None = 1,
+    /// Composition polynomial is constructed in the quadratic extension of the base field.
+    Quadratic = 2,
+}
+
+/// STARK protocol parameters.
+///
+/// These parameters have a direct impact on proof soundness, proof generation time, and proof
+/// size. Specifically:
+///
+/// 1. Hash function - proof soundness is limited by the collision resistance of the hash function
+///    used by the protocol. For example, if a hash function with 128-bit collision resistance is
+///    used, soundness of a STARK proof cannot exceed 128 bits.
+/// 2. Finite field - proof soundness depends on the size of finite field used by the protocol.
+///    This means, that for small fields (e.g. smaller than ~128 bits), field extensions must be
+///    used to achieve adequate security. And even for ~128 bit fields, to achieve security over
+///    100 bits, a field extension may be required.
+/// 3. Number of queries - higher values increase proof soundness, but also increase proof size.
+/// 4. Blowup factor - higher values increase proof soundness, but also increase proof generation
+///    time and proof size. However, higher blowup factors require fewer queries for the same
+///    security level. Thus, it is frequently possible to increase blowup factor and at the same
+///    time decrease the number of queries in such a way that the proofs become smaller.
+/// 5. Grinding factor - higher values increase proof soundness, but also may increase proof
+///    generation time. More precisely, proof soundness is bounded by
+///    `num_queries * log2(blowup_factor) + grinding_factor`.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ProofOptions {
     num_queries: u8,
@@ -40,15 +83,15 @@ pub struct ProofOptions {
 impl ProofOptions {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
-    /// Returns new ProofOptions struct constructed from the specified parameters, which must
-    /// comply with the following:
-    /// * num_queries must be an integer between 1 and 128;
-    /// * blowup_factor must be an integer which is a power of two between 4 and 256;
-    /// * grinding_factor must be an integer between 0 and 32;
-    /// * hash_fn must a supported hash function (currently BLAKE3 or SHA3);
-    /// * field_extension must be either None or Quadratic;
-    /// * fri_folding_factor must be an integer which is a power of two between 4 and 16;
-    /// * fri_max_remainder_size must be an integer which is a power of two between 32 and 1024;
+    /// Returns a new instance of [ProofOptions] struct constructed from the specified parameters.
+    ///
+    /// # Panics
+    /// Panics if:
+    /// * `num_queries` is zero or greater than 128.
+    /// * `blowup_factor` is smaller than 4, greater than 256, or is not a power of two.
+    /// * `grinding_factor` is greater than 32.
+    /// * `fri_folding_factor` is not 4, 8, or 16.
+    /// * `fri_max_remainder_size` is smaller than 32, greater than 1024, or is not a power of two.
     #[rustfmt::skip]
     pub fn new(
         num_queries: usize,
@@ -91,46 +134,59 @@ impl ProofOptions {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns number of queries for a STARK proof. This directly impacts proof soundness as each
-    /// additional query adds roughly log2(blowup_factor) bits of security to a proof. However,
-    /// each additional query also increases proof size.
+    /// Returns number of queries for a STARK proof.
+    ///
+    /// This directly impacts proof soundness as each additional query adds roughly
+    /// `log2(blowup_factor)` bits of security to a proof. However, each additional query also
+    /// increases proof size.
     pub fn num_queries(&self) -> usize {
         self.num_queries as usize
     }
 
-    /// Returns trace blowup factor for a STARK proof (i.e. a factor by which the execution
-    /// trace is extended). This directly impacts proof soundness as each query adds roughly
-    /// log2(blowup_factor) bits of security to a proof. However, higher blowup factors also
-    /// increases prover runtime.
+    /// Returns trace blowup factor for a STARK proof.
+    ///
+    /// This is the factor by which the execution trace is extended during low-degree extension. It
+    /// has a direct impact on proof soundness as each query adds roughly `log2(blowup_factor)`
+    /// bits of security to a proof. However, higher blowup factors also increases prover runtime,
+    /// and may increase proof size.
     pub fn blowup_factor(&self) -> usize {
         self.blowup_factor as usize
     }
 
-    /// Returns query seed grinding factor for a STARK proof. Grinding applies Proof-of-Work
-    /// to the query position seed. An honest prover needs to perform this work only once,
-    /// while a dishonest prover will need to perform it every time they try to change a
-    /// commitment. Thus, higher grinding factor makes it more difficult to forge a STARK
-    /// proof. However, setting grinding factor too high (e.g. higher than 20) will adversely
-    /// affect prover time.
+    /// Returns query seed grinding factor for a STARK proof.
+    ///
+    /// Grinding applies Proof-of-Work/ to the query position seed. An honest prover needs to
+    /// perform this work only once, while a dishonest prover will need to perform it every time
+    /// they try to change a commitment. Thus, higher grinding factor makes it more difficult to
+    /// forge a STARK proof. However, setting grinding factor too high (e.g. higher than 20) will
+    /// adversely affect prover time.
     pub fn grinding_factor(&self) -> u32 {
         self.grinding_factor as u32
     }
 
-    /// Returns a hash functions to be used during STARK proof construction. Security of a
-    /// STARK proof is bounded by collision resistance of the used hash function.
+    /// Returns a hash functions to be used during STARK proof construction.
+    ///
+    /// Security of a STARK proof is bounded by collision resistance of the hash function used
+    /// during proof construction. For example, if collision resistance of a hash function is
+    /// 128 bits, then soundness of a proof generated using this hash function cannot exceed
+    /// 128 bits.
     pub fn hash_fn(&self) -> HashFunction {
         self.hash_fn
     }
 
-    /// Returns a value indicating whether an extension field should be used for the composition
-    /// polynomial. Using a field extension increases maximum security level of a proof, but
-    /// also has non-negligible impact on prover performance.
+    /// Specifies whether composition polynomial should be constructed in an extension field
+    /// of STARK protocol.
+    ///
+    /// Using a field extension increases maximum security level of a proof, but also has
+    /// non-negligible impact on prover performance.
     pub fn field_extension(&self) -> FieldExtension {
         self.field_extension
     }
 
     /// Returns the offset by which the low-degree extension domain is shifted in relation to the
-    /// trace domain. Currently, this is hard-coded to the generator of the underlying base field.
+    /// trace domain.
+    ///
+    /// Currently, this is hard-coded to the primitive element of the underlying base field.
     pub fn domain_offset<B: StarkField>(&self) -> B {
         B::GENERATOR
     }
@@ -149,8 +205,8 @@ impl Serializable for ProofOptions {
         target.write_u8(self.num_queries);
         target.write_u8(self.blowup_factor);
         target.write_u8(self.grinding_factor);
-        self.hash_fn.write_into(target);
-        self.field_extension.write_into(target);
+        target.write(self.hash_fn);
+        target.write(self.field_extension);
         target.write_u8(self.fri_folding_factor);
         target.write_u8(self.fri_max_remainder_size);
     }
@@ -178,7 +234,7 @@ impl Deserializable for ProofOptions {
 // ================================================================================================
 
 impl FieldExtension {
-    /// Returns `true` if this field extension is set to None.
+    /// Returns `true` if this field extension is set to `None`.
     pub fn is_none(&self) -> bool {
         matches!(self, Self::None)
     }

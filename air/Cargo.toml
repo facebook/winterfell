@@ -1,7 +1,7 @@
 [package]
-name = "winter-common"
+name = "winter-air"
 version = "0.1.0"
-description = "Common components for the Winterfell STARK prover/verifier"
+description = "AIR components for the Winterfell STARK prover/verifier"
 authors = ["winterfell contributors"]
 readme = "README.md"
 license = "MIT"
@@ -21,3 +21,7 @@ fri = { path = "../fri", package = "winter-fri" }
 
 [dev-dependencies]
 rand = "0.8"
+
+# Allow math in docs
+[package.metadata.docs.rs]
+rustdoc-args = ["--html-in-header", ".cargo/katex-header.html"]

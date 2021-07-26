@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{StarkDomain, TracePolyTable, TraceTable};
-use common::{Air, EvaluationFrame};
+use air::{Air, EvaluationFrame, TraceInfo};
 use math::{fft, polynom, StarkField};
 use utils::{iter_mut, uninit_vector};
 
@@ -174,6 +174,11 @@ impl<B: StarkField> ExecutionTrace<B> {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
+    /// Returns trace info for this execution trace.
+    pub fn get_info(&self) -> TraceInfo {
+        TraceInfo::new(self.width(), self.len())
+    }
+
     /// Returns number of registers in the trace table.
     pub fn width(&self) -> usize {
         self.0.len()
@@ -254,8 +259,8 @@ impl<B: StarkField> ExecutionTrace<B> {
             }
 
             // build evaluation frame
-            self.read_row_into(step, &mut ev_frame.current);
-            self.read_row_into(step + 1, &mut ev_frame.next);
+            self.read_row_into(step, ev_frame.current_mut());
+            self.read_row_into(step + 1, ev_frame.next_mut());
 
             // evaluate transition constraints
             air.evaluate_transition(&ev_frame, &periodic_values, &mut evaluations);

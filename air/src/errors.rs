@@ -3,16 +3,20 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+//! Contains common error types for prover and verifier.
+
 use core::fmt;
 
 // PROVER ERROR
 // ================================================================================================
-/// Represents an error thrown by the prover during an execution of the protocol
+/// Represents an error returned by the prover during an execution of the protocol.
 #[derive(Debug, PartialEq)]
 pub enum ProverError {
-    /// A transition constraint was not satisfied at step {0}
+    /// This error occurs when a transition constraint evaluated over a specific execution trace
+    /// does not evaluate to zero at any of the steps.
     UnsatisfiedTransitionConstraintError(usize),
-    /// The constraint polynomial's components do not all have the same degree; expected {0}, but was {1}
+    /// This error occurs when polynomials built from the columns of a constraint evaluation
+    /// table do not all have the same degree.
     MismatchedConstraintPolynomialDegree(usize, usize),
 }
 
@@ -32,24 +36,33 @@ impl fmt::Display for ProverError {
 
 // VERIFIER ERROR
 // ================================================================================================
-/// Represents an error thrown by the verifier during an execution of the protocol
+/// Represents an error returned by the verifier during an execution of the protocol.
 #[derive(Debug, PartialEq)]
 pub enum VerifierError {
-    /// Base field of the proof does not match base field of the specified AIR
+    /// This error occurs when base field read by a verifier from a proof does not match the
+    /// base field of AIR with which the verifier was instantiated.
     InconsistentBaseField,
-    /// Proof deserialization failed: {0}
+    /// This error occurs when a verifier cannot deserialize the specified proof.
     ProofDeserializationError(String),
-    /// Failed to draw a random value from a random coin.
+    /// This error occurs when a verifier fails to draw a random value from a random coin
+    /// within a specified number of tries.
     RandomCoinError,
-    /// Constraint evaluations over the out-of-domain frame are inconsistent
+    /// This error occurs when constraints evaluated over out-of-domain trace rows do not match
+    /// evaluations of the constraint composition polynomial at the out-of-domain point.
     InconsistentOodConstraintEvaluations,
-    /// Trace query does not match the commitment
+    /// This error occurs when Merkle authentication paths of trace queries do not resolve to the
+    /// execution trace commitment included in the proof.
     TraceQueryDoesNotMatchCommitment,
-    /// Constraint query does not match the commitment
+    /// This error occurs when Merkle authentication paths of constraint evaluation queries do not
+    /// resolve to the constraint evaluation commitment included in the proof.
     ConstraintQueryDoesNotMatchCommitment,
-    /// Query seed proof-of-work verification failed
+    /// This error occurs when the proof-of-work nonce hashed with the current state of the public
+    /// coin resolves to a value which does not meet the proof-of-work threshold specified by the
+    // proof options.
     QuerySeedProofOfWorkVerificationFailed,
-    /// Verification of low-degree proof failed: {0}
+    /// This error occurs when the DEEP composition polynomial evaluations derived from trace and
+    /// constraint evaluation queries do not represent a polynomial of the degree expected by the
+    /// verifier.
     FriVerificationFailed(fri::VerifierError),
 }
 
@@ -87,16 +100,20 @@ impl fmt::Display for VerifierError {
 
 // ASSERTION ERROR
 // ================================================================================================
-/// Represents an error thrown during evaluation
+/// Represents an error returned during assertion evaluation.
 #[derive(Debug, PartialEq)]
 pub enum AssertionError {
-    /// Expected trace width to be at least {0}, but was {1}
+    /// This error occurs when an assertion is evaluated against an execution trace which does not
+    /// contain a register specified by the assertion.
     TraceWidthTooShort(usize, usize),
-    /// Expected trace length to be a power of two, but was {0}
+    /// This error occurs when an assertion is evaluated against an execution trace with length
+    /// which is not a power of two.
     TraceLengthNotPowerOfTwo(usize),
-    /// Expected trace length to be at least {0}, but was {1}
+    /// This error occurs when an assertion is evaluated against an execution trace which does not
+    /// contain a step against which the assertion is placed.
     TraceLengthTooShort(usize, usize),
-    /// Expected trace length to be exactly {0}, but was {1}
+    /// This error occurs when a `Sequence` assertion is placed against an execution trace with
+    /// length which conflicts with the trace length implied by the assertion.
     TraceLengthNotExact(usize, usize),
 }
 
@@ -115,56 +132,6 @@ impl fmt::Display for AssertionError {
             }
             Self::TraceLengthNotExact(expected, actual) => {
                 write!(f, "expected trace length to be exactly {}, but was {}", expected, actual)
-            }
-        }
-    }
-}
-
-// PROOF SERIALIZATION ERROR
-// ================================================================================================
-
-#[derive(Debug, PartialEq)]
-pub enum ProofSerializationError {
-    /// Failed to parse commitments: {0}
-    FailedToParseCommitments(String),
-    /// Too many commitment bytes; expected {0}, but was {1}
-    TooManyCommitmentBytes,
-    /// Failed to parse query values: {0}
-    FailedToParseQueryValues(String),
-    /// Failed to parse query authentication paths: {0}
-    FailedToParseQueryProofs(String),
-    /// Failed to parse out-of-domain evaluation frame: {0}
-    FailedToParseOodFrame(String),
-    /// Wrong number of out-of-domain trace elements; expected {0}, but was {1}
-    WrongNumberOfOodTraceElements(usize, usize),
-    /// Wrong number of out-of-domain evaluation elements; expected {0}, but was {1}
-    WrongNumberOfOodEvaluationElements(usize, usize),
-}
-
-impl fmt::Display for ProofSerializationError {
-    #[rustfmt::skip]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::FailedToParseCommitments(msg) => {
-                write!(f, "failed to parse commitments: {}", msg)
-            }
-            Self::TooManyCommitmentBytes => {
-                write!(f, "not all bytes were consumed when deserializing commitments")
-            }
-            Self::FailedToParseQueryValues(msg) => {
-                write!(f, "failed to parse query values: {}", msg)
-            }
-            Self::FailedToParseQueryProofs(msg) => {
-                write!(f, "failed to parse query authentication paths: {}", msg)
-            }
-            Self::FailedToParseOodFrame(msg) => {
-                write!(f, "failed to parse out-of-domain evaluation frame: {}", msg)
-            }
-            Self::WrongNumberOfOodTraceElements(expected, actual) => {
-                write!(f, "wrong number of out-of-domain trace elements; expected {}, but was {}", expected, actual)
-            }
-            Self::WrongNumberOfOodEvaluationElements(expected, actual) => {
-                write!(f, "wrong number of out-of-domain evaluation elements; expected {}, but was {}", expected, actual)
             }
         }
     }

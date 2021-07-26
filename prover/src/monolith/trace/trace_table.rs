@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use common::{proof::Queries, EvaluationFrame};
+use air::{proof::Queries, EvaluationFrame};
 use crypto::{ElementHasher, Hasher, MerkleTree};
 use math::StarkField;
 use utils::{batch_iter_mut, uninit_vector};
@@ -68,8 +68,8 @@ impl<B: StarkField> TraceTable<B> {
         // at the end of the trace, next state wraps around and we read the first step again
         let next_lde_step = (lde_step + self.blowup()) % self.len();
 
-        self.read_row_into(lde_step, &mut frame.current);
-        self.read_row_into(next_lde_step, &mut frame.next);
+        self.read_row_into(lde_step, frame.current_mut());
+        self.read_row_into(next_lde_step, frame.next_mut());
     }
 
     // TRACE COMMITMENT

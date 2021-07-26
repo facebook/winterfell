@@ -3,15 +3,25 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{errors::ProofSerializationError, EvaluationFrame};
+use crate::EvaluationFrame;
 use math::FieldElement;
 use utils::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
 };
 
-// OUT-OF-DOMAIN EVALUATION FRAME
+// OUT-OF-DOMAIN FRAME
 // ================================================================================================
-
+/// Trace and constraint polynomial evaluations at an out-of-domain point.
+///
+/// This struct contains the following evaluations:
+/// * Evaluations of all trace polynomials at *z*.
+/// * Evaluations of all trace polynomials at *z * g*.
+/// * Evaluations of constraint composition column polynomials at *z*.
+///
+/// where *z* is an out-of-domain point and *g* is the generator of the trace domain.
+///
+/// Internally, the evaluations are stored as a sequence of bytes. Thus, to retrieve the
+/// evaluations, [parse()](OodFrame::parse) function should be used.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct OodFrame {
     trace_at_z1: Vec<u8>,
@@ -22,8 +32,11 @@ pub struct OodFrame {
 impl OodFrame {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
-    /// Serializes the provided evaluation frame and a vector of out-of-domain constraint
-    /// evaluations into vectors of bytes.
+    /// Returns a new [OodFrame] instantiated with the provided evaluation frame and a vector of
+    /// out-of-domain constraint evaluations.
+    ///
+    /// # Panics
+    /// Panics if `evaluations` is an empty vector.
     pub fn new<E: FieldElement>(frame: EvaluationFrame<E>, evaluations: Vec<E>) -> Self {
         let mut result = Self::default();
         result.set_evaluation_frame(&frame);
@@ -34,59 +47,83 @@ impl OodFrame {
     // UPDATERS
     // --------------------------------------------------------------------------------------------
 
-    /// Updates this evaluation frame potion of this out-of-domain frame.
+    /// Updates evaluation frame portion of this out-of-domain frame.
+    ///
+    /// # Panics
+    /// Panics if evaluation frame has already been set.
     pub fn set_evaluation_frame<E: FieldElement>(&mut self, frame: &EvaluationFrame<E>) {
-        assert!(self.trace_at_z1.is_empty());
-        assert!(self.trace_at_z2.is_empty());
-        frame.current.write_into(&mut self.trace_at_z1);
-        frame.next.write_into(&mut self.trace_at_z2);
+        assert!(
+            self.trace_at_z1.is_empty(),
+            "evaluation frame has already been set"
+        );
+        assert!(
+            self.trace_at_z2.is_empty(),
+            "evaluation frame has already been set"
+        );
+        frame.current().write_into(&mut self.trace_at_z1);
+        frame.next().write_into(&mut self.trace_at_z2);
     }
 
+    /// Updates constraint evaluation portion of this out-of-domain frame.
+    ///
+    /// # Panics
+    /// Panics if:
+    /// * Constraint evaluations have already been set.
+    /// * `evaluations` is an empty vector.
     pub fn set_constraint_evaluations<E: FieldElement>(&mut self, evaluations: &[E]) {
-        assert!(self.evaluations.is_empty());
+        assert!(
+            self.evaluations.is_empty(),
+            "constraint evaluations have already been set"
+        );
+        assert!(
+            !evaluations.is_empty(),
+            "cannot set to empty constraint evaluations"
+        );
         evaluations.write_into(&mut self.evaluations)
     }
 
     // PARSER
     // --------------------------------------------------------------------------------------------
-    /// Returns an evaluation frame and a vector of out-of-domain constraint evaluations parsed
-    /// from the serialized byte vectors.
+    /// Returns an evaluation frame and a vector of out-of-domain constraint evaluations contained
+    /// in `self`.
+    ///
+    /// # Panics
+    /// Panics if either `trace_width` or `num_evaluations` are equal to zero.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// * A valid [EvaluationFrame] for the specified `trace_width` could not be parsed from the
+    ///   internal bytes.
+    /// * A vector of evaluations specified by `num_evaluations` could not be parsed from the
+    ///   internal bytes.
+    /// * Any unconsumed bytes remained after the parsing was complete.
     pub fn parse<E: FieldElement>(
         self,
         trace_width: usize,
         num_evaluations: usize,
-    ) -> Result<(EvaluationFrame<E>, Vec<E>), ProofSerializationError> {
+    ) -> Result<(EvaluationFrame<E>, Vec<E>), DeserializationError> {
+        assert!(trace_width > 0, "trace width cannot be zero");
+        assert!(num_evaluations > 0, "number of evaluations cannot be zero");
+
         let mut reader = SliceReader::new(&self.trace_at_z1);
-        let current = E::read_batch_from(&mut reader, trace_width)
-            .map_err(|err| ProofSerializationError::FailedToParseOodFrame(err.to_string()))?;
+        let current = E::read_batch_from(&mut reader, trace_width)?;
         if reader.has_more_bytes() {
-            return Err(ProofSerializationError::WrongNumberOfOodTraceElements(
-                trace_width,
-                current.len(),
-            ));
+            return Err(DeserializationError::UnconsumedBytes);
         }
 
         let mut reader = SliceReader::new(&self.trace_at_z2);
-        let next = E::read_batch_from(&mut reader, trace_width)
-            .map_err(|err| ProofSerializationError::FailedToParseOodFrame(err.to_string()))?;
+        let next = E::read_batch_from(&mut reader, trace_width)?;
         if reader.has_more_bytes() {
-            return Err(ProofSerializationError::WrongNumberOfOodTraceElements(
-                trace_width,
-                next.len(),
-            ));
+            return Err(DeserializationError::UnconsumedBytes);
         }
 
         let mut reader = SliceReader::new(&self.evaluations);
-        let evaluations = E::read_batch_from(&mut reader, num_evaluations)
-            .map_err(|err| ProofSerializationError::FailedToParseOodFrame(err.to_string()))?;
+        let evaluations = E::read_batch_from(&mut reader, num_evaluations)?;
         if reader.has_more_bytes() {
-            return Err(ProofSerializationError::WrongNumberOfOodEvaluationElements(
-                num_evaluations,
-                evaluations.len(),
-            ));
+            return Err(DeserializationError::UnconsumedBytes);
         }
 
-        Ok((EvaluationFrame { current, next }, evaluations))
+        Ok((EvaluationFrame::from_rows(current, next), evaluations))
     }
 }
 

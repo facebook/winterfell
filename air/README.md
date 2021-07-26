@@ -1,18 +1,7 @@
 # Common
-This crate contains common components used in STARK proof generation and verification. The most important of these components are `ProofOptions` struct and `Air` trait.
+This crate contains components needed to describe arbitrary computations in a STARK-specific format.
 
-## Proof options
-`ProofOptions` struct defines a set of options which are used during STARK proof generation and verification. These options have a direct impact on the security of the generated proofs as well as the proof generation time. Specifically, security of STARK proofs depends on:
-
-1. Hash function - proof security is limited by the collision resistance of the hash function used by the protocol. For example, if a hash function with 128-bit collision resistance is used, security of a STARK proof cannot exceed 128 bits.
-2. Finite field - proof security is limited by the finite field used by the protocol. This means, that for small fields (e.g. smaller than ~128 bits), field extensions must be used to achieve adequate security. And even for ~128 bit fields, to achieve security over 100 bits, a field extension may be required.
-3. Number of queries - higher values increase proof security, but also increase proof size.
-4. Blowup factor - higher values increase proof security, but also increase proof generation time and proof size. However, higher blowup factors require fewer queries for the same security level. Thus, it is frequently possible to increase blowup factor and at the same time decrease the number of queries in such  a way that the proofs become smaller.
-5. Grinding factor - higher values increase proof security, but also may increase proof generation time.
-
-See [options.rs](src/options.rs) for more info on currently available options and their meaning. Additionally, security level of a proof can be estimated using `StarkProof::security_level()` function.
-
-## Air trait
+## Arithmetization
 Before we can generate proofs attesting that some computations were executed correctly, we need to reduce these computations to algebraic statements involving a set of bounded-degree polynomials. This step is usually called *arithmetization*. For basics of AIR arithmetization please refer to the excellent posts from StarkWare:
 
 * [Arithmetization I](https://medium.com/starkware/arithmetization-i-15c046390862)
@@ -25,8 +14,8 @@ To define AIR for a given computation, you'll need to implement the `Air` trait 
 
 1. Define base field for your computation via the `BaseElement` associated type (see [math crate](../math) for available field options).
 2. Define a set of public inputs which are required for your computation via the `PublicInputs` associated type.
-3. Implement `Air::new()` function. As a part of this function you should create a `ComputationContext` struct which takes degrees for all transition constraints as one of the constructor parameters.
-4. Implement `context()` method which should return a reference to the `ComputationContext` struct created in `Air::new()` function.
+3. Implement `Air::new()` function. As a part of this function you should create a `AirContext` struct which takes degrees for all transition constraints as one of the constructor parameters.
+4. Implement `context()` method which should return a reference to the `AirContext` struct created in `Air::new()` function.
 5. Implement `evaluate_transition()` method which should evaluate [transition constraints](#Transition-constraints) over a given evaluation frame.
 6. Implement `get_assertions()` method which should return a vector of [assertions](#Trace-assertions) for a given instance of your computation.
 7. If your computation requires [periodic values](#Periodic-values), you can also override the default `get_periodic_column_values()` method.
@@ -72,6 +61,17 @@ For more information on how to define assertions see the [assertions](src/air/as
 Sometimes, it may be useful to define a column in an execution trace which contains a set of repeating values. For example, let's say we have a register which contains value 1 on every 4th step, and 0 otherwise. Such a column can be described with a simple periodic sequence of `[1, 0, 0, 0]`.
 
 To define such columns for your computation, you can override `get_periodic_column_values()` method of the `Air` trait. The values of the periodic columns at a given step of the computation will be supplied to the `evaluate_transition()` method via the `periodic_values` parameter.
+
+## Proof options
+`ProofOptions` struct defines a set of options which are used during STARK proof generation and verification. These options have a direct impact on the security of the generated proofs as well as the proof generation time. Specifically, security of STARK proofs depends on:
+
+1. Hash function - proof security is limited by the collision resistance of the hash function used by the protocol. For example, if a hash function with 128-bit collision resistance is used, security of a STARK proof cannot exceed 128 bits.
+2. Finite field - proof security is limited by the finite field used by the protocol. This means, that for small fields (e.g. smaller than ~128 bits), field extensions must be used to achieve adequate security. And even for ~128 bit fields, to achieve security over 100 bits, a field extension may be required.
+3. Number of queries - higher values increase proof security, but also increase proof size.
+4. Blowup factor - higher values increase proof security, but also increase proof generation time and proof size. However, higher blowup factors require fewer queries for the same security level. Thus, it is frequently possible to increase blowup factor and at the same time decrease the number of queries in such a way that the proofs become smaller.
+5. Grinding factor - higher values increase proof security, but also may increase proof generation time.
+
+See [options.rs](src/options.rs) for more info on currently available options and their meaning. Additionally, security level of a proof can be estimated using `StarkProof::security_level()` function.
 
 License
 -------
