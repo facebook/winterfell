@@ -28,7 +28,7 @@ concurrent = ["rayon"]
 [dependencies]
 utils = { path = "../utils", package = "winter-utils" }
 math = { path = "../math", package = "winter-math" }
-blake3 = "0.3"
+blake3 = "1.0"
 sha3 = "0.9"
 rayon = { version = "1.5", optional = true }
 

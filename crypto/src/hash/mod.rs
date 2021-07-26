@@ -68,7 +68,7 @@ impl<B: StarkField> Hasher for Blake3_256<B> {
     type Digest = Digest256;
 
     fn hash(bytes: &[u8]) -> Self::Digest {
-        Digest256(blake3::hash(bytes).into())
+        Digest256(*blake3::hash(bytes).as_bytes())
     }
 
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest {
@@ -79,7 +79,7 @@ impl<B: StarkField> Hasher for Blake3_256<B> {
         let mut data = [0; 40];
         data[..32].copy_from_slice(&seed.0);
         data[32..].copy_from_slice(&value.to_le_bytes());
-        Digest256(blake3::hash(&data).into())
+        Digest256(*blake3::hash(&data).as_bytes())
     }
 }
 
@@ -88,7 +88,7 @@ impl<B: StarkField> ElementHasher for Blake3_256<B> {
 
     fn hash_elements<E: FieldElement<BaseField = Self::BaseField>>(elements: &[E]) -> Self::Digest {
         let bytes = E::elements_as_bytes(elements);
-        Digest256(blake3::hash(bytes).into())
+        Digest256(*blake3::hash(bytes).as_bytes())
     }
 }
 
