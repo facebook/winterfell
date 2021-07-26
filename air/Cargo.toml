@@ -1,7 +1,7 @@
 [package]
-name = "winter-common"
+name = "winter-air"
 version = "0.1.0"
-description = "Common components for the Winterfell STARK prover/verifier"
+description = "AIR components for the Winterfell STARK prover/verifier"
 authors = ["winterfell contributors"]
 readme = "README.md"
 license = "MIT"

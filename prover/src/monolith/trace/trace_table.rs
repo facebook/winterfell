@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use common::{proof::Queries, EvaluationFrame};
+use air::{proof::Queries, EvaluationFrame};
 use crypto::{ElementHasher, Hasher, MerkleTree};
 use math::StarkField;
 use utils::{batch_iter_mut, uninit_vector};

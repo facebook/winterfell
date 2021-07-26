@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use common::Air;
+use air::Air;
 use math::{fft, StarkField};
 use std::collections::HashMap;
 use utils::uninit_vector;
@@ -95,7 +95,7 @@ impl<B: StarkField> PeriodicValueTable<B> {
 #[cfg(test)]
 mod tests {
     use crate::tests::MockAir;
-    use common::Air;
+    use air::Air;
     use math::{
         fields::f128::BaseElement, get_power_series_with_offset, log2, polynom, FieldElement,
         StarkField,

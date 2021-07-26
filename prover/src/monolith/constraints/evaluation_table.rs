@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{CompositionPoly, StarkDomain};
-use common::{errors::ProverError, ConstraintDivisor};
+use air::{errors::ProverError, ConstraintDivisor};
 use math::{batch_inversion, fft, FieldElement, StarkField};
 use utils::{batch_iter_mut, iter_mut, uninit_vector};
 

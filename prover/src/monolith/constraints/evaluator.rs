@@ -7,7 +7,7 @@ use super::{
     evaluation_table::EvaluationTableFragment, BoundaryConstraintGroup, ConstraintEvaluationTable,
     PeriodicValueTable, StarkDomain, TraceTable,
 };
-use common::{
+use air::{
     Air, ConstraintCompositionCoefficients, ConstraintDivisor, EvaluationFrame,
     TransitionConstraintGroup,
 };

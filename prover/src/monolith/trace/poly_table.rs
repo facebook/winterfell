@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use common::EvaluationFrame;
+use air::EvaluationFrame;
 use math::{log2, polynom, FieldElement, StarkField};
 use utils::iter;
 

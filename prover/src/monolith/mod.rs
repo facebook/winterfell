@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::channel::ProverChannel;
-use common::{
+use air::{
     errors::ProverError, proof::StarkProof, Air, FieldExtension, HashFunction, ProofOptions,
 };
 use crypto::{

@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use common::{
+use air::{
     proof::{Commitments, Context, OodFrame, Queries, StarkProof},
     Air, ConstraintCompositionCoefficients, DeepCompositionCoefficients, EvaluationFrame,
 };

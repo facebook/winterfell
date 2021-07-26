@@ -3,13 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-//! This crate contains common components used by the Winterfell STARK prover and verifier.
+//! This crate contains components need to describe arbitrary computations in a STARK-specific
+//! format.
 //!
-//! These components define such things as protocol configuration option, STARK proof structure,
-//! and a mechanism describe arbitrary computations in a STARK-specific format. The latter
-//! is especially important as before we can generate proofs attesting that some computations
-//! were executed correctly, we need to describe them in a way that can be understood by the
-//! Winterfell prover and verifier.
+//! Before we can generate proofs attesting that some computations were executed correctly, we
+//! need to describe these computations in a way that can be understood by the Winterfell prover
+//! and verifier.
 //!
 //! More formally, we need to reduce our computations to algebraic statements involving a set of
 //! bounded-degree polynomials. This step is usually called *arithmetization*. STARK arithmetization
@@ -24,6 +23,9 @@
 //! describing arithmetizations could be tedious and error-prone. The [Air] trait aims to help
 //! with the latter, which, hopefully, also makes the former a little simpler. For additional
 //! details, please refer to the documentation of the [Air] trait itself.
+//!
+//! This crate also contains components describing protocol configuration option ([ProofOptions])
+//! and STARK proof structure ([StarkProof](proof::StarkProof)).
 
 pub mod errors;
 pub mod proof;

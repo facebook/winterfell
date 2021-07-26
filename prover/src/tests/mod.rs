@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::ExecutionTrace;
-use common::{
+use air::{
     Air, AirContext, Assertion, EvaluationFrame, FieldExtension, HashFunction, ProofOptions,
     TraceInfo, TransitionConstraintDegree,
 };

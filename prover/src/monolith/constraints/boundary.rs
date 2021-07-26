@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use common::Air;
+use air::Air;
 use math::{fft, polynom, FieldElement, StarkField};
 use std::collections::HashMap;
 
@@ -30,7 +30,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraintGroup<B, E
     /// Creates a new specialized constraint group; twiddles and ce_blowup_factor are passed in for
     /// evaluating large polynomial constraints (if any).
     pub fn new<A: Air<BaseElement = B>>(
-        group: common::BoundaryConstraintGroup<B, E>,
+        group: air::BoundaryConstraintGroup<B, E>,
         air: &A,
         twiddle_map: &mut HashMap<usize, Vec<B>>,
     ) -> BoundaryConstraintGroup<B, E> {

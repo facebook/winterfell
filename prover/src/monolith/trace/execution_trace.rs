@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{StarkDomain, TracePolyTable, TraceTable};
-use common::{Air, EvaluationFrame, TraceInfo};
+use air::{Air, EvaluationFrame, TraceInfo};
 use math::{fft, polynom, StarkField};
 use utils::{iter_mut, uninit_vector};
 

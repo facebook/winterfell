@@ -3,8 +3,8 @@ members = [
   "utils",
   "math",
   "crypto",
-  "common",
   "fri",
+  "air",
   "prover",
   "verifier",
   "examples"

@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{constraints::CompositionPoly, StarkDomain, TracePolyTable};
-use common::{Air, DeepCompositionCoefficients, EvaluationFrame};
+use air::{Air, DeepCompositionCoefficients, EvaluationFrame};
 use math::{add_in_place, fft, log2, mul_acc, polynom, FieldElement, StarkField};
 use std::marker::PhantomData;
 use utils::iter_mut;
