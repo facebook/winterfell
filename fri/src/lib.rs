@@ -61,6 +61,14 @@
 //! * [DEEP-FRI: Sampling Outside the Box Improves Soundness](https://eprint.iacr.org/2019/336)
 //! * Swastik Kooparty's [talk on DEEP-FRI](https://www.youtube.com/watch?v=txo_kPSn59Y&list=PLcIyXLwiPilWvjvNkhMn283LV370Pk5CT&index=6)
 
+#[cfg(feature = "alloc")]
+#[macro_use]
+extern crate alloc;
+
+#[cfg(feature = "std")]
+#[macro_use]
+extern crate std;
+
 pub mod folding;
 
 mod prover;

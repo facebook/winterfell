@@ -27,6 +27,14 @@
 //! This crate also contains components describing protocol configuration option ([ProofOptions])
 //! and STARK proof structure ([StarkProof](proof::StarkProof)).
 
+#[cfg(feature = "alloc")]
+#[macro_use]
+extern crate alloc;
+
+#[cfg(feature = "std")]
+#[macro_use]
+extern crate std;
+
 pub mod proof;
 
 mod errors;

@@ -26,6 +26,14 @@
 //! need to be in tens of thousands. And even for hundreds of thousands of asserted values, the
 //! verification time should not exceed 50 ms.
 
+#[cfg(feature = "alloc")]
+#[macro_use]
+extern crate alloc;
+
+#[cfg(feature = "std")]
+#[macro_use]
+extern crate std;
+
 pub use air::{
     proof::StarkProof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
     ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,

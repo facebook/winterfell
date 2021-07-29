@@ -6,6 +6,12 @@
 use crate::{errors::MerkleTreeError, hash::Hasher};
 use core::slice;
 use math::log2;
+
+#[cfg(feature = "alloc")]
+use alloc::collections::BTreeSet;
+#[cfg(feature = "alloc")]
+use hashbrown::HashMap;
+#[cfg(feature = "std")]
 use std::collections::{BTreeSet, HashMap};
 
 mod proofs;

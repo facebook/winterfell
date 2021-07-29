@@ -74,6 +74,14 @@
 //!
 //! Number of threads can be configured via `RAYON_NUM_THREADS` environment variable
 
+#[cfg(feature = "alloc")]
+#[macro_use]
+extern crate alloc;
+
+#[cfg(feature = "std")]
+#[macro_use]
+extern crate std;
+
 pub mod fft;
 pub mod polynom;
 

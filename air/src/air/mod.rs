@@ -6,8 +6,14 @@
 use crate::ProofOptions;
 use crypto::{Hasher, RandomCoin, RandomCoinError};
 use math::{fft, FieldElement, StarkField};
-use std::collections::{BTreeSet, HashMap};
 use utils::Serializable;
+
+#[cfg(feature = "alloc")]
+use alloc::collections::BTreeSet;
+#[cfg(feature = "alloc")]
+use crypto::hashbrown::HashMap;
+#[cfg(feature = "std")]
+use std::collections::{BTreeSet, HashMap};
 
 mod trace_info;
 pub use trace_info::TraceInfo;

@@ -6,6 +6,14 @@
 //! This crate contains utility traits, functions, and macros used by other crates of Winterfell
 //! STARK prover and verifier.
 
+#[cfg(feature = "alloc")]
+#[macro_use]
+extern crate alloc;
+
+#[cfg(feature = "std")]
+#[macro_use]
+extern crate std;
+
 use core::{convert::TryInto, mem, slice};
 
 mod iterators;
