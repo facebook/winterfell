@@ -25,7 +25,7 @@
 //! ```
 
 use crate::{field::FieldElement, utils::batch_inversion};
-use std::mem;
+use core::mem;
 use utils::group_vector_elements;
 
 #[cfg(test)]
@@ -157,7 +157,7 @@ where
 ///
 /// # Examples
 /// ```
-/// # use std::convert::TryInto;
+/// # use core::convert::TryInto;
 /// # use winter_math::polynom::*;
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
 /// let x_batches: Vec<[BaseElement; 8]> = vec![
@@ -249,7 +249,7 @@ pub fn add<E>(a: &[E], b: &[E]) -> Vec<E>
 where
     E: FieldElement,
 {
-    let result_len = std::cmp::max(a.len(), b.len());
+    let result_len = core::cmp::max(a.len(), b.len());
     let mut result = Vec::with_capacity(result_len);
     for i in 0..result_len {
         let c1 = if i < a.len() { a[i] } else { E::ZERO };
@@ -287,7 +287,7 @@ pub fn sub<E>(a: &[E], b: &[E]) -> Vec<E>
 where
     E: FieldElement,
 {
-    let result_len = std::cmp::max(a.len(), b.len());
+    let result_len = core::cmp::max(a.len(), b.len());
     let mut result = Vec::with_capacity(result_len);
     for i in 0..result_len {
         let c1 = if i < a.len() { a[i] } else { E::ZERO };

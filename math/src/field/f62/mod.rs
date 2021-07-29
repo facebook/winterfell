@@ -42,7 +42,7 @@ const R3: u64 = 732984146687909319;
 const U: u128 = 4611624995532046335;
 
 /// Number of bytes needed to represent field element
-const ELEMENT_BYTES: usize = std::mem::size_of::<u64>();
+const ELEMENT_BYTES: usize = core::mem::size_of::<u64>();
 
 // 2^39 root of unity
 const G: u64 = 4421547261963328785;
@@ -120,7 +120,7 @@ impl FieldElement for BaseElement {
     }
 
     fn elements_into_bytes(elements: Vec<Self>) -> Vec<u8> {
-        let mut v = std::mem::ManuallyDrop::new(elements);
+        let mut v = core::mem::ManuallyDrop::new(elements);
         let p = v.as_mut_ptr();
         let len = v.len() * Self::ELEMENT_BYTES;
         let cap = v.capacity() * Self::ELEMENT_BYTES;
@@ -162,7 +162,7 @@ impl FieldElement for BaseElement {
         let result = vec![0u64; n];
 
         // translate a zero-filled vector of u64s into a vector of base field elements
-        let mut v = std::mem::ManuallyDrop::new(result);
+        let mut v = core::mem::ManuallyDrop::new(result);
         let p = v.as_mut_ptr();
         let len = v.len();
         let cap = v.capacity();

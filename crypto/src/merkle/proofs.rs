@@ -102,7 +102,7 @@ impl<H: Hasher> BatchMerkleProof<H> {
                 i += 1;
             }
 
-            std::mem::swap(&mut path_map, &mut next_path_map);
+            core::mem::swap(&mut path_map, &mut next_path_map);
         }
 
         BatchMerkleProof {

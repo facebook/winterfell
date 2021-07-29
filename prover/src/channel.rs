@@ -7,10 +7,10 @@ use air::{
     proof::{Commitments, Context, OodFrame, Queries, StarkProof},
     Air, ConstraintCompositionCoefficients, DeepCompositionCoefficients, EvaluationFrame,
 };
+use core::marker::PhantomData;
 use crypto::{ElementHasher, RandomCoin};
 use fri::{self, FriProof};
 use math::FieldElement;
-use std::marker::PhantomData;
 use utils::Serializable;
 
 #[cfg(feature = "concurrent")]

@@ -33,7 +33,7 @@ impl<B: StarkField> QuadExtensionA<B> {
             "source vector length must be divisible by two, but was {}",
             source.len()
         );
-        let mut v = std::mem::ManuallyDrop::new(source);
+        let mut v = core::mem::ManuallyDrop::new(source);
         let p = v.as_mut_ptr();
         let len = v.len() / 2;
         let cap = v.capacity() / 2;
@@ -73,7 +73,7 @@ impl<B: StarkField> FieldElement for QuadExtensionA<B> {
     }
 
     fn elements_into_bytes(elements: Vec<Self>) -> Vec<u8> {
-        let mut v = std::mem::ManuallyDrop::new(elements);
+        let mut v = core::mem::ManuallyDrop::new(elements);
         let p = v.as_mut_ptr();
         let len = v.len() * Self::ELEMENT_BYTES;
         let cap = v.capacity() * Self::ELEMENT_BYTES;

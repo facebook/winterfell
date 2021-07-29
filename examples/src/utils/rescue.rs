@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::utils::{are_equal, EvaluationResult};
-use std::slice;
+use core::slice;
 use winterfell::{
     crypto::Hasher,
     math::{fields::f128::BaseElement, FieldElement},

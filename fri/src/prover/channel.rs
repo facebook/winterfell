@@ -3,9 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use core::marker::PhantomData;
 use crypto::{Hasher, RandomCoin};
 use math::{FieldElement, StarkField};
-use std::marker::PhantomData;
 
 // PROVER CHANNEL TRAIT
 // ================================================================================================

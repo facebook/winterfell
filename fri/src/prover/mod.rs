@@ -9,9 +9,9 @@ use crate::{
     utils::hash_values,
     FriOptions,
 };
+use core::marker::PhantomData;
 use crypto::{ElementHasher, Hasher, MerkleTree};
 use math::{FieldElement, StarkField};
-use std::marker::PhantomData;
 use utils::{flatten_vector_elements, group_slice_elements, transpose_slice};
 
 mod channel;

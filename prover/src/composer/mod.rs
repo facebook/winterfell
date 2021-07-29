@@ -5,8 +5,8 @@
 
 use super::{constraints::CompositionPoly, StarkDomain, TracePolyTable};
 use air::{Air, DeepCompositionCoefficients, EvaluationFrame};
+use core::marker::PhantomData;
 use math::{add_in_place, fft, log2, mul_acc, polynom, FieldElement, StarkField};
-use std::marker::PhantomData;
 use utils::iter_mut;
 
 #[cfg(feature = "concurrent")]

@@ -12,7 +12,7 @@ use utils::{batch_iter_mut, iter_mut, uninit_vector};
 use rayon::prelude::*;
 
 #[cfg(not(debug_assertions))]
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 // CONSTANTS
 // ================================================================================================
@@ -205,7 +205,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> ConstraintEvaluationTable<B,
             let degree = math::polynom::degree_of(&poly);
             actual_degrees.push(degree);
 
-            max_degree = std::cmp::max(max_degree, degree);
+            max_degree = core::cmp::max(max_degree, degree);
         }
 
         // make sure expected and actual degrees are equal
@@ -218,7 +218,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> ConstraintEvaluationTable<B,
 
         // make sure evaluation domain size does not exceed the size required by max degree
         let expected_domain_size =
-            std::cmp::max(max_degree, self.trace_length + 1).next_power_of_two();
+            core::cmp::max(max_degree, self.trace_length + 1).next_power_of_two();
         if expected_domain_size != self.num_rows() {
             panic!(
                 "incorrect constraint evaluation domain size; expected {}, actual: {}",

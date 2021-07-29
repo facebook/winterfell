@@ -4,8 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::StarkDomain;
+use core::marker::PhantomData;
 use math::{fft, polynom, FieldElement, StarkField};
-use std::marker::PhantomData;
 use utils::{iter, uninit_vector};
 
 #[cfg(feature = "concurrent")]
