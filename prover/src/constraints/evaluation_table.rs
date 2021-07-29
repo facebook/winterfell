@@ -3,8 +3,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{CompositionPoly, StarkDomain};
-use air::{errors::ProverError, ConstraintDivisor};
+use super::{CompositionPoly, ProverError, StarkDomain};
+use air::ConstraintDivisor;
 use math::{batch_inversion, fft, FieldElement, StarkField};
 use utils::{batch_iter_mut, iter_mut, uninit_vector};
 

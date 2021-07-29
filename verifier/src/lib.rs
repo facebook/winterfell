@@ -3,20 +3,26 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+//! This crate contains Winterfell STARK verifier.
+
 pub use air::{
-    errors::VerifierError, proof::StarkProof, Air, FieldExtension, HashFunction, TraceInfo,
+    proof::StarkProof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
+    ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
+    EvaluationFrame, FieldExtension, HashFunction, ProofOptions, TraceInfo,
+    TransitionConstraintDegree, TransitionConstraintGroup,
 };
-pub use utils::{ByteWriter, Serializable};
+pub use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+
+pub use math;
+use math::{FieldElement, StarkField};
 
 pub use crypto;
 use crypto::{
     hashers::{Blake3_256, Sha3_256},
     ElementHasher, RandomCoin,
 };
-use fri::FriVerifier;
 
-pub use math;
-use math::{FieldElement, StarkField};
+use fri::FriVerifier;
 
 mod channel;
 use channel::VerifierChannel;
@@ -27,10 +33,22 @@ use evaluator::evaluate_constraints;
 mod composer;
 use composer::DeepComposer;
 
+mod errors;
+pub use errors::VerifierError;
+
 // VERIFIER
 // ================================================================================================
-/// Verifies STARK `proof` attesting that the computation specified by `AIR` was executed correctly
-/// against the provided `pub_inputs`.
+/// Verifies that the specified computation was executed correctly against the specified inputs.
+///
+/// Specifically, for a computation specified by `AIR` type parameter, verifies that the provided
+/// `proof` attests to the correct execution for the computation against public inputs specified
+/// by `pub_inputs`. If the verification is successful, `Ok(())` is returned.
+///
+/// # Errors
+/// Returns an error if combination of the provided proof and public inputs does not attest to
+/// a correct execution of the computation. This could happen for many various reasons, including:
+/// - The specified proof was generated for a different computation.
+/// - The specified proof was generated for this computation but for different public inputs.
 #[rustfmt::skip]
 pub fn verify<AIR: Air>(
     proof: StarkProof,

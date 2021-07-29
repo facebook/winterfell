@@ -4,8 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{
-    monolith::StarkDomain,
     tests::{build_fib_trace, MockAir},
+    StarkDomain,
 };
 use crypto::{hashers::Blake3_256, ElementHasher, MerkleTree};
 use math::{

@@ -1,5 +1,5 @@
 [package]
-name = "prover"
+name = "winter-prover"
 version = "0.1.0"
 description = "Winterfell STARK prover"
 authors = ["winterfell contributors"]
