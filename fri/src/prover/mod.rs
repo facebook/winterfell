@@ -14,6 +14,9 @@ use crypto::{ElementHasher, Hasher, MerkleTree};
 use math::{FieldElement, StarkField};
 use utils::{flatten_vector_elements, group_slice_elements, transpose_slice};
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 mod channel;
 pub use channel::{DefaultProverChannel, ProverChannel};
 

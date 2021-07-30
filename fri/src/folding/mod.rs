@@ -18,6 +18,9 @@ use math::{
 };
 use utils::{iter_mut, uninit_vector};
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 // DEGREE-RESPECTING PROJECTION
 // ================================================================================================
 /// Applies degree-respecting projection to evaluations of a polynomial.

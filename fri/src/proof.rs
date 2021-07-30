@@ -9,6 +9,9 @@ use utils::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
 };
 
+#[cfg(feature = "alloc")]
+use alloc::{string::ToString, vec::Vec};
+
 // FRI PROOF
 // ================================================================================================
 

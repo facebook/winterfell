@@ -7,6 +7,9 @@ use core::marker::PhantomData;
 use crypto::{Hasher, RandomCoin};
 use math::{FieldElement, StarkField};
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 // PROVER CHANNEL TRAIT
 // ================================================================================================
 

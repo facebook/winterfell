@@ -7,6 +7,9 @@ use crypto::ElementHasher;
 use math::FieldElement;
 use utils::{iter_mut, uninit_vector};
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
 

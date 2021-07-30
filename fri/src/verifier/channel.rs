@@ -8,6 +8,9 @@ use crypto::{BatchMerkleProof, ElementHasher, Hasher, MerkleTree};
 use math::FieldElement;
 use utils::{group_vector_elements, transpose_slice, DeserializationError};
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 // VERIFIER CHANNEL TRAIT
 // ================================================================================================
 
