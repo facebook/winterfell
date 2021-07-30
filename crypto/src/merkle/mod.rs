@@ -14,6 +14,9 @@ use hashbrown::HashMap;
 #[cfg(feature = "std")]
 use std::collections::{BTreeSet, HashMap};
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 mod proofs;
 pub use proofs::BatchMerkleProof;
 

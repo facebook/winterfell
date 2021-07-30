@@ -13,6 +13,9 @@ use hashbrown::HashMap;
 #[cfg(feature = "std")]
 use std::collections::{BTreeMap, HashMap};
 
+#[cfg(feature = "alloc")]
+use alloc::{string::ToString, vec::Vec};
+
 // CONSTANTS
 // ================================================================================================
 

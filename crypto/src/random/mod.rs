@@ -7,6 +7,9 @@ use crate::{errors::RandomCoinError, Hasher};
 use core::{convert::TryInto, marker::PhantomData};
 use math::{FieldElement, StarkField};
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 // RANDOM COIN
 // ================================================================================================
 
