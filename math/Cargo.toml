@@ -29,15 +29,16 @@ harness = false
 alloc = ["utils/alloc"]
 concurrent = ["rayon"]
 default = ["std"]
-std = ["utils/std"]
+std = ["rand", "utils/std"]
 
 [dependencies]
 utils = { path = "../utils", package = "winter-utils", default-features = false }
 rayon = { version = "1.5", optional = true }
-rand = "0.8"
+rand =  { version = "0.8", optional = true }
 
 
 [dev-dependencies]
 criterion = "0.3"
 num-bigint = "0.4"
 proptest = "1.0"
+rand = "0.8"

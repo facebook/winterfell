@@ -64,6 +64,7 @@ impl<B: StarkField> FieldElement for QuadExtensionA<B> {
         Self(self.0 + self.1, B::ZERO - self.1)
     }
 
+    #[cfg(any(feature = "std", test))]
     fn rand() -> Self {
         Self(B::rand(), B::rand())
     }
@@ -116,6 +117,7 @@ impl<B: StarkField> FieldElement for QuadExtensionA<B> {
         Self::base_to_quad_vector(result)
     }
 
+    #[cfg(any(feature = "std", test))]
     fn prng_vector(seed: [u8; 32], n: usize) -> Vec<Self> {
         // get twice the number of base elements, and re-interpret them as quad field elements
         let result = B::prng_vector(seed, n * 2);

@@ -140,6 +140,7 @@ pub trait FieldElement:
     // --------------------------------------------------------------------------------------------
 
     /// Returns a cryptographically-secure random element drawn uniformly from the entire field.
+    #[cfg(any(feature = "std", test))]
     fn rand() -> Self;
 
     /// Returns a field element if the set of bytes forms a valid field element, otherwise returns
@@ -186,6 +187,7 @@ pub trait FieldElement:
 
     /// Returns a vector of `n` pseudo-random elements drawn uniformly from the entire
     /// field based on the provided `seed`.
+    #[cfg(any(feature = "std", test))]
     fn prng_vector(seed: [u8; 32], n: usize) -> Vec<Self>;
 
     // UTILITIES
