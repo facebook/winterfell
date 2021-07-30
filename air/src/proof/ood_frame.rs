@@ -9,6 +9,9 @@ use utils::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
 };
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 // OUT-OF-DOMAIN FRAME
 // ================================================================================================
 /// Trace and constraint polynomial evaluations at an out-of-domain point.

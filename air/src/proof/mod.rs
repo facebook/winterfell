@@ -11,6 +11,9 @@ use fri::FriProof;
 use math::log2;
 use utils::{ByteReader, Deserializable, DeserializationError, Serializable, SliceReader};
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 mod context;
 pub use context::Context;
 

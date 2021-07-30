@@ -7,6 +7,9 @@ use fri::FriOptions;
 use math::StarkField;
 use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
+#[cfg(feature = "alloc")]
+use alloc::string::ToString;
+
 // TYPES AND INTERFACES
 // ================================================================================================
 

@@ -8,6 +8,9 @@ use utils::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
 };
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 // COMMITMENTS
 // ================================================================================================
 /// Commitments made by the prover during commit phase of the protocol.

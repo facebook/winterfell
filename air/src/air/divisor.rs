@@ -7,6 +7,9 @@ use crate::air::Assertion;
 use core::fmt::{Display, Formatter};
 use math::{log2, FieldElement, StarkField};
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 // CONSTRAINT DIVISOR
 // ================================================================================================
 /// The denominator portion of boundary and transition constraints.

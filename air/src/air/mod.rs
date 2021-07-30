@@ -15,6 +15,9 @@ use crypto::hashbrown::HashMap;
 #[cfg(feature = "std")]
 use std::collections::{BTreeSet, HashMap};
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 mod trace_info;
 pub use trace_info::TraceInfo;
 

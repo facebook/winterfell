@@ -6,6 +6,9 @@
 use core::cmp;
 use math::FieldElement;
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 // CONSTANTS
 // ================================================================================================
 

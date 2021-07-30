@@ -10,6 +10,9 @@ use core::{
 };
 use math::StarkField;
 
+#[cfg(feature = "alloc")]
+use alloc::{string::ToString, vec::Vec};
+
 #[cfg(test)]
 mod tests;
 

@@ -7,6 +7,9 @@ use crate::{ProofOptions, TraceInfo};
 use math::{log2, StarkField};
 use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
+#[cfg(feature = "alloc")]
+use alloc::{string::ToString, vec::Vec};
+
 // PROOF CONTEXT
 // ================================================================================================
 /// Basic metadata about a specific execution of a computation.

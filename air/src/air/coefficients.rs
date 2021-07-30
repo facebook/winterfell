@@ -5,6 +5,9 @@
 
 use math::FieldElement;
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 // CONSTRAINT COMPOSITION COEFFICIENTS
 // ================================================================================================
 /// Coefficients used in construction of constraint composition polynomial.

@@ -6,6 +6,9 @@
 use crate::{air::TransitionConstraintDegree, ProofOptions, TraceInfo};
 use math::{log2, StarkField};
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 // AIR CONTEXT
 // ================================================================================================
 /// STARK parameters and trace properties for a specific execution of a computation.
