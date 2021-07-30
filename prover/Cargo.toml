@@ -24,3 +24,7 @@ fri = { path = '../fri', package = "winter-fri" }
 air = { path = "../air", package = "winter-air" }
 rayon = { version = "1.5", optional = true }
 log = "0.4"
+
+# Allow math in docs
+[package.metadata.docs.rs]
+rustdoc-args = ["--html-in-header", ".cargo/katex-header.html"]

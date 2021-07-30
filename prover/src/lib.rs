@@ -5,10 +5,34 @@
 
 //! This crate contains Winterfell STARK prover.
 //!
+//! This prover can be used to generate proofs of computational integrity using the
+//! [STARK](https://eprint.iacr.org/2018/046) (Scalable Transparent ARguments of Knowledge)
+//! protocol.
 //!
-//! # Example
+//! When the crate is compiled with `concurrent` feature enabled, proof generation will be
+//! performed in multiple threads (usually, as many threads as there are logical cores on the
+//! machine). The number of threads can be configured via `RAYON_NUM_THREADS` environment
+//! variable.
 //!
-//! # Proof generation
+//! # Usage
+//! To generate a proof that a computation was executed correctly, you'll need to do the
+//! following:
+//!
+//! 1. Define an *algebraic intermediate representation* (AIR) for your computation. This can
+//!    be done by implementing [Air] trait.
+//! 2. Execute your computation and record its execution trace in [ExecutionTrace] struct.
+//! 3. Execute [prove()] function and supply the AIR of your computation together with its
+//!    execution trace as input parameters. The function will produce a instance of [StarkProof]
+//!    as an output.
+//!
+//! This `StarkProof` can be serialized and sent to a STARK verifier for verification. The size
+//! of proof depends on the specifics of a given computation, but for most computations it should
+//! be in the range between 15 KB (for very small computations) and 300 KB (for very large
+//! computations).
+//!
+//! Proof generation time is also highly dependent on the specifics of a given computation, but
+//! also depends on the capabilities of the machine used to generate the proofs (i.e. on number
+//! of CPU cores and memory bandwidth).
 
 pub use air::{
     proof::StarkProof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
@@ -65,8 +89,22 @@ pub mod tests;
 
 // PROVER
 // ================================================================================================
-/// Generates a STARK proof attesting that the specified `trace` is a valid execution trace of the
-/// computation described by AIR and generated using the specified public inputs.
+/// Returns a STARK proof attesting to a correct execution of a computation.
+///
+/// Function parameters have the following meanings:
+/// * `AIR` is a type implementing [Air] trait for the computation. Among other things, it defines
+///    algebraic constraints which define the computation.
+/// * `trace` is an execution trace of the computation executed against some set of inputs. These
+///   inputs may include both public and private inputs.
+/// * `pub_inputs` is the set of public inputs against which the computation was executed. These
+///   these inputs will beed to be shared with the verifier in order for them to verify the proof.
+/// * `options` defines basic protocol parameters such as: number of queries, blowup factor,
+///   grinding factor, hash function to be used in the protocol etc. These properties directly
+///   inform such metrics as proof generation time, proof size, and proof security level.
+///
+/// The function returns a [StarkProof] attesting that the specified `trace` is a valid execution
+/// trace of the computation described by the specified `AIR` and generated using the specified
+/// public inputs.
 #[rustfmt::skip]
 pub fn prove<AIR: Air>(
     trace: ExecutionTrace<AIR::BaseElement>,
