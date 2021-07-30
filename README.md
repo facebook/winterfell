@@ -28,6 +28,8 @@ While our distributed STARK prover implementation is still under development, th
 
 **Configurable hash functions.** The library allows dynamic selection of hash functions used in the STARK protocol. Currently, BLAKE3 and SHA3 hash functions are supported, and support for arithmetization-friendly hash function (e.g. Rescue) is planned.
 
+**WebAssembly support.** The library is written in pure Rust and can be compiled to WebAssembly. The `std` standard library is enabled as feature by default for both prover and verifier crates. For WASM targets, one can disable default features and compile with the `alloc` feature instead.
+
 #### Planned features
 
 Over time, we hope extend the library with additional features:
@@ -35,8 +37,6 @@ Over time, we hope extend the library with additional features:
 **Distributed prover.** Distributed proof generation is the main priority of this project, and we hope to release an update containing it soon.
 
 **Perfect zero-knowledge.** The current implementation provides succinct proofs but NOT perfect zero-knowledge. This means that, in its current form, the library may not be suitable for use cases where proofs must not leak any info about secret inputs. 
-
-**WebAssembly support.** The library is written in pure Rust, and in the future we hope to enable compilation to WebAssembly. First, for the verifier, and later for the prover.
 
 ### Project structure
 The project is organized into several crates like so:
