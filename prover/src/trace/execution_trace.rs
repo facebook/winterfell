@@ -8,6 +8,12 @@ use air::{Air, EvaluationFrame, TraceInfo};
 use math::{fft, log2, polynom, StarkField};
 use utils::{iter_mut, uninit_vector};
 
+#[cfg(feature = "alloc")]
+use alloc::vec::{self, Vec};
+
+#[cfg(feature = "std")]
+use std::vec;
+
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
 
@@ -263,7 +269,7 @@ impl<B: StarkField> ExecutionTrace<B> {
     pub fn fragments(
         &mut self,
         fragment_length: usize,
-    ) -> std::vec::IntoIter<ExecutionTraceFragment<B>> {
+    ) -> vec::IntoIter<ExecutionTraceFragment<B>> {
         self.build_fragments(fragment_length).into_iter()
     }
 

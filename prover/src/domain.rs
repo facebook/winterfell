@@ -6,6 +6,9 @@
 use air::Air;
 use math::{fft, log2, StarkField};
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 // TYPES AND INTERFACES
 // ================================================================================================
 

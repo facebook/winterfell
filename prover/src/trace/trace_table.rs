@@ -8,6 +8,9 @@ use crypto::{ElementHasher, Hasher, MerkleTree};
 use math::StarkField;
 use utils::{batch_iter_mut, uninit_vector};
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
 

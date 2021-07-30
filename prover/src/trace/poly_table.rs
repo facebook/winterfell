@@ -7,6 +7,9 @@ use air::EvaluationFrame;
 use math::{log2, polynom, FieldElement, StarkField};
 use utils::iter;
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
 

@@ -11,6 +11,9 @@ use utils::{batch_iter_mut, iter_mut, uninit_vector};
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 #[cfg(not(debug_assertions))]
 use core::marker::PhantomData;
 

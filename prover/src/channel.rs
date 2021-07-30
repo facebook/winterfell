@@ -16,6 +16,9 @@ use utils::Serializable;
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 // TYPES AND INTERFACES
 // ================================================================================================
 

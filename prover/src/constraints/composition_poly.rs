@@ -11,6 +11,9 @@ use utils::{iter, uninit_vector};
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 // COMPOSITION POLYNOMIAL
 // ================================================================================================
 /// Represents a composition polynomial split into columns with each column being of length equal
@@ -69,6 +72,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> CompositionPoly<B, E> {
     }
 
     /// Returns the degree of individual column polynomial.
+    #[allow(unused)]
     pub fn column_degree(&self) -> usize {
         self.column_len() - 1
     }

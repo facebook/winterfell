@@ -12,6 +12,9 @@ use utils::iter_mut;
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 // DEEP COMPOSITION POLYNOMIAL
 // ================================================================================================
 pub struct DeepCompositionPoly<A: Air, E: FieldElement<BaseField = A::BaseElement>> {

@@ -19,6 +19,9 @@ use crypto::hashbrown::HashMap;
 #[cfg(feature = "std")]
 use std::collections::HashMap;
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
 
