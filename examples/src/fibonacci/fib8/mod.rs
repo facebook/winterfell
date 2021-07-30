@@ -75,7 +75,7 @@ impl Example for Fib8Example {
         let now = Instant::now();
         let trace = build_trace(self.sequence_length);
         let trace_width = trace.width();
-        let trace_length = trace.len();
+        let trace_length = trace.length();
         debug!(
             "Generated execution trace of {} registers and 2^{} steps in {} ms",
             trace_width,

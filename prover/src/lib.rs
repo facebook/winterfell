@@ -51,6 +51,11 @@ mod errors;
 pub use errors::ProverError;
 
 pub mod iterators {
+    //! Components needed for asynchronous iterators.
+    //!
+    //! When `concurrent` feature is enabled, this module re-exports `rayon::prelude`. Otherwise,
+    //! this is an empty module.
+
     #[cfg(feature = "concurrent")]
     pub use rayon::prelude::*;
 }

@@ -64,10 +64,10 @@ pub fn print_trace(
     offset: usize,
     range: Range<usize>,
 ) {
-    let trace_width = trace.len();
+    let trace_width = trace.width();
 
     let mut state = vec![BaseElement::ZERO; trace_width];
-    for i in 0..trace.len() {
+    for i in 0..trace.length() {
         if (i.wrapping_sub(offset)) % multiples_of != 0 {
             continue;
         }
