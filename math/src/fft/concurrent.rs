@@ -10,6 +10,9 @@ use crate::{
 use rayon::prelude::*;
 use utils::uninit_vector;
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 // POLYNOMIAL EVALUATION
 // ================================================================================================
 

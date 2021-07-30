@@ -13,6 +13,9 @@ use core::{
 };
 use utils::{AsBytes, Deserializable, DeserializationError, Serializable};
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 // FIELD ELEMENT
 // ================================================================================================
 /// Defines an element in a finite field.

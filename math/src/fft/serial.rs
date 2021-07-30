@@ -9,6 +9,9 @@ use crate::{
 };
 use utils::uninit_vector;
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 // CONSTANTS
 // ================================================================================================
 const MAX_LOOP: usize = 256;

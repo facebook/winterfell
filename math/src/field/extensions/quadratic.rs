@@ -12,6 +12,12 @@ use core::{
 };
 use utils::{AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
+#[cfg(feature = "alloc")]
+use alloc::{
+    string::{String, ToString},
+    vec::Vec,
+};
+
 // QUADRATIC EXTENSION FIELD
 // ================================================================================================
 

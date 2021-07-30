@@ -28,6 +28,9 @@ use crate::{field::FieldElement, utils::batch_inversion};
 use core::mem;
 use utils::group_vector_elements;
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 #[cfg(test)]
 mod tests;
 

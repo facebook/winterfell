@@ -28,6 +28,12 @@ use core::ops::Range;
 #[cfg(any(feature = "std", test))]
 use rand::{distributions::Uniform, prelude::*};
 
+#[cfg(feature = "alloc")]
+use alloc::{
+    string::{String, ToString},
+    vec::Vec,
+};
+
 #[cfg(test)]
 mod tests;
 

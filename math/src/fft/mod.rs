@@ -21,6 +21,9 @@ mod serial;
 #[cfg(feature = "concurrent")]
 mod concurrent;
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 #[cfg(test)]
 mod tests;
 
