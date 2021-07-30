@@ -5,6 +5,9 @@
 
 use core::fmt;
 
+#[cfg(feature = "alloc")]
+use alloc::string::String;
+
 // DESERIALIZATION ERROR
 // ================================================================================================
 
