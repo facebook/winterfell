@@ -6,6 +6,9 @@
 use air::{Air, ConstraintCompositionCoefficients, EvaluationFrame};
 use math::{polynom, FieldElement};
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 // CONSTRAINT EVALUATION
 // ================================================================================================
 

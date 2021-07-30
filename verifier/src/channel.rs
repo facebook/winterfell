@@ -9,6 +9,9 @@ use crypto::{BatchMerkleProof, ElementHasher, MerkleTree};
 use fri::VerifierChannel as FriVerifierChannel;
 use math::{FieldElement, StarkField};
 
+#[cfg(feature = "alloc")]
+use alloc::{string::ToString, vec::Vec};
+
 // TYPES AND INTERFACES
 // ================================================================================================
 

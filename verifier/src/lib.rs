@@ -26,6 +26,8 @@
 //! need to be in tens of thousands. And even for hundreds of thousands of asserted values, the
 //! verification time should not exceed 50 ms.
 
+#![cfg_attr(not(feature = "std"), no_std)]
+
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 compile_error!("Either feature \"std\" or \"alloc\" must be enabled for this crate.");
 
@@ -36,6 +38,9 @@ extern crate alloc;
 #[cfg(feature = "std")]
 #[macro_use]
 extern crate std;
+
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
 
 pub use air::{
     proof::StarkProof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
