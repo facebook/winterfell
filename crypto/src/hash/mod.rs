@@ -51,6 +51,9 @@ pub trait ElementHasher: Hasher {
     type BaseField: StarkField;
 
     /// Returns a hash of the provided field elements.
+    ///
+    /// For malleable field elements, the elements are normalized first, and the hash is computed
+    /// from internal representations of the normalized elements.
     fn hash_elements<E>(elements: &[E]) -> Self::Digest
     where
         E: FieldElement<BaseField = Self::BaseField>;
@@ -87,8 +90,20 @@ impl<B: StarkField> ElementHasher for Blake3_256<B> {
     type BaseField = B;
 
     fn hash_elements<E: FieldElement<BaseField = Self::BaseField>>(elements: &[E]) -> Self::Digest {
-        let bytes = E::elements_as_bytes(elements);
-        Digest256(*blake3::hash(bytes).as_bytes())
+        if B::IS_MALLEABLE {
+            // when elements are malleable, normalize their internal representation before hashing
+            let mut hasher = blake3::Hasher::new();
+            for element in elements.iter() {
+                let mut element = *element;
+                element.normalize();
+                hasher.update(element.as_bytes());
+            }
+            Digest256(*hasher.finalize().as_bytes())
+        } else {
+            // for non-malleable elements, hash them as is (in their internal representation)
+            let bytes = E::elements_as_bytes(elements);
+            Digest256(*blake3::hash(bytes).as_bytes())
+        }
     }
 }
 
@@ -122,8 +137,20 @@ impl<B: StarkField> ElementHasher for Sha3_256<B> {
     type BaseField = B;
 
     fn hash_elements<E: FieldElement<BaseField = Self::BaseField>>(elements: &[E]) -> Self::Digest {
-        let bytes = E::elements_as_bytes(elements);
-        Digest256(sha3::Sha3_256::digest(bytes).into())
+        if B::IS_MALLEABLE {
+            // when elements are malleable, normalize their internal representation before hashing
+            let mut hasher = sha3::Sha3_256::new();
+            for element in elements.iter() {
+                let mut element = *element;
+                element.normalize();
+                hasher.update(element.as_bytes());
+            }
+            Digest256(hasher.finalize().into())
+        } else {
+            // for non-malleable elements, hash them as is (in their internal representation)
+            let bytes = E::elements_as_bytes(elements);
+            Digest256(sha3::Sha3_256::digest(bytes).into())
+        }
     }
 }
 

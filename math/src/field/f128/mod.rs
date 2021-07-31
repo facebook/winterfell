@@ -69,6 +69,8 @@ impl FieldElement for BaseElement {
 
     const ELEMENT_BYTES: usize = ELEMENT_BYTES;
 
+    const IS_MALLEABLE: bool = false;
+
     fn inv(self) -> Self {
         BaseElement(inv(self.0))
     }
@@ -142,6 +144,10 @@ impl FieldElement for BaseElement {
         let range = Uniform::from(RANGE);
         let g = StdRng::from_seed(seed);
         g.sample_iter(range).take(n).map(BaseElement).collect()
+    }
+
+    fn normalize(&mut self) {
+        // do nothing since the internal and canonical representations are the same
     }
 }
 

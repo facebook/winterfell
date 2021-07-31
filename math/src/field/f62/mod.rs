@@ -79,6 +79,7 @@ impl FieldElement for BaseElement {
     const ONE: Self = BaseElement::new(1);
 
     const ELEMENT_BYTES: usize = ELEMENT_BYTES;
+    const IS_MALLEABLE: bool = true;
 
     fn exp(self, power: Self::PositiveInteger) -> Self {
         let mut b = self;
@@ -172,6 +173,11 @@ impl FieldElement for BaseElement {
         let range = Uniform::from(RANGE);
         let g = StdRng::from_seed(seed);
         g.sample_iter(range).take(n).map(BaseElement::new).collect()
+    }
+
+    #[inline(always)]
+    fn normalize(&mut self) {
+        self.0 = normalize(self.0)
     }
 }
 

@@ -75,6 +75,10 @@ pub trait FieldElement:
     /// Number of bytes needed to encode an element
     const ELEMENT_BYTES: usize;
 
+    /// True if internal representation of an element can be redundant - i.e., multiple
+    /// internal representations map to the same canonical representation.
+    const IS_MALLEABLE: bool;
+
     /// The additive identity.
     const ZERO: Self;
 
@@ -183,6 +187,15 @@ pub trait FieldElement:
     /// Returns a vector of `n` pseudo-random elements drawn uniformly from the entire
     /// field based on the provided `seed`.
     fn prng_vector(seed: [u8; 32], n: usize) -> Vec<Self>;
+
+    // UTILITIES
+    // --------------------------------------------------------------------------------------------
+
+    /// Normalizes internal representation of this element.
+    ///
+    /// Normalization is applicable only to malleable field elements; for non-malleable elements
+    /// this is a no-op.
+    fn normalize(&mut self);
 }
 
 // STARK FIELD
