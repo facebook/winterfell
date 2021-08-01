@@ -67,7 +67,7 @@ impl Queries {
                 elements_per_query,
                 "all queries must contain the same number of evaluations"
             );
-            values.extend_from_slice(E::elements_as_bytes(elements));
+            values.write(elements);
         }
 
         // serialize internal nodes of the batch Merkle proof; we care about internal nodes only
