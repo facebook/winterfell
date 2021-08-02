@@ -28,7 +28,7 @@ Default parameters for each example target proof security of 100-bits. You can a
 The most interesting file in each example is `air.rs`. It contains the encoding of each example's computation in AIR. At the high level, this consists of:
 
 1. A `build_trace()` function which is responsible for generating an execution trace for the computation.
-2. An implementation of `Air` trait which describes the constraints for the computation (see [common](../common) crate for more info).
+2. An implementation of `Air` trait which describes the constraints for the computation (see [air](../air) crate for more info).
 
 Available examples are described below.
 
