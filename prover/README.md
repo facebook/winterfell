@@ -1,15 +1,14 @@
 # STARK prover
-This crate contains implementations of STARK provers which can be used to generate succinct proofs attesting that a computation was executed correctly.
+This crate contains Winterfell STARK prover.
 
-## Provers
-Currently, the only available prover is a monolith prover. This prover supports multi-threaded proof generation but is limited to a single machine. A fully distributed prover will be added in the future.
+This prover can be used to generate proof of computational integrity using the STARK protocol. The prover supports multi-threaded proof generation (including multi-threaded execution trace generation) but is limited to a single machine.
 
 To generate proofs using multiple threads, the crate must be compiled with `concurrent` feature enabled. The number of threads used during proof generation can be configured via `RAYON_NUM_THREADS` environment variable. The default number of threads is set to the number of logical cores on the machine.
 
 ## Usage
 To generate a proof that a computation was executed correctly, you will need to do the following:
 
-1. Define *algebraic intermediate representation* (AIR) for your computation. This can be done by implementing `Air` trait (see [common crate](../common) for more info).
+1. Define *algebraic intermediate representation* (AIR) for your computation. This can be done by implementing `Air` trait (see [air crate](../air) for more info).
 2. Execute your computation and record its [execution trace](#Execution-trace).
 
 Then, to generate the proof you can use `prover::prove()` function, which has the following signature:
@@ -25,7 +24,7 @@ where:
 * `AIR` is a type implementing `Air` trait for your computation.
 * `trace` is the execution trace of the computation executed against some set of public inputs.
 * `pub_inputs` is the set of public inputs against which the computation was executed. These inputs will need to be shared with the verifier in order for them to verify the proof.
-* `options` defines basic properties for proof generation such as: number of queries, blowup factor, grinding factor, hash function to be used during proof generation etc.. These properties directly inform such metrics as proof generation time, proof size, and proof security level. See [common crate](../common) for more info.
+* `options` defines basic properties for proof generation such as: number of queries, blowup factor, grinding factor, hash function to be used during proof generation etc.. These properties directly inform such metrics as proof generation time, proof size, and proof security level. See [air crate](../air) for more info.
 
 The resulting `StarkProof` object can be serialized and sent to a [verifier](../verifier) for verification. The size of proof depends on the specifics of a given computation, but for most computations it should be in the range between 15 KB (for very small computations) and 300 KB (for very large computations).
 
