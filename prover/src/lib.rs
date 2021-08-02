@@ -97,7 +97,7 @@ pub mod tests;
 /// * `trace` is an execution trace of the computation executed against some set of inputs. These
 ///   inputs may include both public and private inputs.
 /// * `pub_inputs` is the set of public inputs against which the computation was executed. These
-///   these inputs will beed to be shared with the verifier in order for them to verify the proof.
+///   these inputs will need to be shared with the verifier in order for them to verify the proof.
 /// * `options` defines basic protocol parameters such as: number of queries, blowup factor,
 ///   grinding factor, hash function to be used in the protocol etc. These properties directly
 ///   inform such metrics as proof generation time, proof size, and proof security level.
@@ -276,7 +276,7 @@ where
     channel.send_ood_constraint_evaluations(&ood_evaluations);
 
     // draw random coefficients to use during DEEP polynomial composition, and use them to
-    // initialize the DEPP composition polynomial
+    // initialize the DEEP composition polynomial
     let deep_coefficients = channel.get_deep_composition_coeffs();
     let mut deep_composition_poly = DeepCompositionPoly::new(&air, z, deep_coefficients);
 
