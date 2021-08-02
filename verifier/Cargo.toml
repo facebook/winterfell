@@ -1,5 +1,5 @@
 [package]
-name = "verifier"
+name = "winter-verifier"
 version = "0.1.0"
 description = "Winterfell STARK verifier"
 authors = ["winterfell contributors"]

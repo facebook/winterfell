@@ -41,7 +41,7 @@ pub use errors::VerifierError;
 /// Verifies that the specified computation was executed correctly against the specified inputs.
 ///
 /// Specifically, for a computation specified by `AIR` type parameter, verifies that the provided
-/// `proof` attests to the correct execution for the computation against public inputs specified
+/// `proof` attests to the correct execution of the computation against public inputs specified
 /// by `pub_inputs`. If the verification is successful, `Ok(())` is returned.
 ///
 /// # Errors
