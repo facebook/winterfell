@@ -8,14 +8,12 @@ use crate::{
     Example, ExampleOptions,
 };
 use log::debug;
-use prover::{
-    self,
+use std::time::Instant;
+use winterfell::{
     crypto::MerkleTree,
     math::{fields::f128::BaseElement, log2, FieldElement, StarkField},
-    ProofOptions, StarkProof,
+    ProofOptions, StarkProof, VerifierError,
 };
-use std::time::Instant;
-use verifier::{self, VerifierError};
 
 mod air;
 use air::{build_trace, MerkleAir, PublicInputs};
@@ -103,14 +101,14 @@ impl Example for MerkleExample {
         let pub_inputs = PublicInputs {
             tree_root: self.tree_root.to_elements(),
         };
-        prover::prove::<MerkleAir>(trace, pub_inputs, self.options.clone()).unwrap()
+        winterfell::prove::<MerkleAir>(trace, pub_inputs, self.options.clone()).unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {
         let pub_inputs = PublicInputs {
             tree_root: self.tree_root.to_elements(),
         };
-        verifier::verify::<MerkleAir>(proof, pub_inputs)
+        winterfell::verify::<MerkleAir>(proof, pub_inputs)
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
@@ -118,7 +116,7 @@ impl Example for MerkleExample {
         let pub_inputs = PublicInputs {
             tree_root: [tree_root[1], tree_root[0]],
         };
-        verifier::verify::<MerkleAir>(proof, pub_inputs)
+        winterfell::verify::<MerkleAir>(proof, pub_inputs)
     }
 }
 

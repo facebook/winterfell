@@ -7,14 +7,14 @@ use super::{
     rescue, AggPublicKey, Signature, HASH_CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH,
     TRACE_WIDTH,
 };
-use prover::{
+use std::collections::HashMap;
+use winterfell::{
     math::{fields::f128::BaseElement, get_power_series, FieldElement, StarkField},
     ExecutionTrace,
 };
-use std::collections::HashMap;
 
 #[cfg(feature = "concurrent")]
-use prover::iterators::*;
+use winterfell::iterators::*;
 
 // CONSTANTS
 // ================================================================================================

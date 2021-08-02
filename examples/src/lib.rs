@@ -3,9 +3,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use prover::{FieldExtension, HashFunction, ProofOptions, StarkProof};
 use structopt::StructOpt;
-use verifier::VerifierError;
+use winterfell::{FieldExtension, HashFunction, ProofOptions, StarkProof, VerifierError};
 
 pub mod fibonacci;
 pub mod lamport;

@@ -7,7 +7,7 @@ use crate::{
     lamport::signature::PublicKey,
     utils::rescue::{Hash, Rescue128},
 };
-use prover::{
+use winterfell::{
     crypto::MerkleTree,
     math::{fields::f128::BaseElement, FieldElement},
 };

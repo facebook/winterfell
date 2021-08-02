@@ -4,11 +4,11 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::rescue::Rescue128;
-use prover::{
+use std::{cmp::Ordering, convert::TryInto};
+use winterfell::{
     math::{fields::f128::BaseElement, FieldElement, StarkField},
     Serializable,
 };
-use std::{cmp::Ordering, convert::TryInto};
 
 // CONSTANTS
 // ================================================================================================

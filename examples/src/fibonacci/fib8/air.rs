@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::utils::are_equal;
-use prover::{
+use winterfell::{
     math::{fields::f128::BaseElement, FieldElement},
     Air, AirContext, Assertion, EvaluationFrame, ExecutionTrace, ProofOptions, TraceInfo,
     TransitionConstraintDegree,

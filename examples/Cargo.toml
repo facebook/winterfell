@@ -1,5 +1,5 @@
 [package]
-name = "winterfell"
+name = "examples"
 version = "0.1.0"
 description = "Examples of using Winterfell STARK prover/verifier"
 authors = ["winterfell contributors"]
@@ -11,18 +11,19 @@ edition = "2018"
 
 [lib]
 bench = false
+doc = false
 
 [[bin]]
 name = "winterfell"
 path = "src/main.rs"
 bench = false
+doc = false
 
 [features]
-concurrent = ["prover/concurrent"]
+concurrent = ["winterfell/concurrent"]
 
 [dependencies]
-prover = { path = "../prover", package = "winter-prover" }
-verifier = { path = "../verifier", package = "winter-verifier" }
+winterfell = { path = "../winterfell"}
 hex = "0.4"
 log = "0.4"
 blake3 = "1.0"

@@ -6,13 +6,11 @@
 use super::utils::compute_mulfib_term;
 use crate::{Example, ExampleOptions};
 use log::debug;
-use prover::{
-    self,
-    math::{fields::f128::BaseElement, log2, FieldElement},
-    ProofOptions, StarkProof,
-};
 use std::time::Instant;
-use verifier::{self, VerifierError};
+use winterfell::{
+    math::{fields::f128::BaseElement, log2, FieldElement},
+    ProofOptions, StarkProof, VerifierError,
+};
 
 mod air;
 use air::{build_trace, MulFib2Air};
@@ -84,14 +82,14 @@ impl Example for MulFib2Example {
         );
 
         // generate the proof
-        prover::prove::<MulFib2Air>(trace, self.result, self.options.clone()).unwrap()
+        winterfell::prove::<MulFib2Air>(trace, self.result, self.options.clone()).unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {
-        verifier::verify::<MulFib2Air>(proof, self.result)
+        winterfell::verify::<MulFib2Air>(proof, self.result)
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
-        verifier::verify::<MulFib2Air>(proof, self.result + BaseElement::ONE)
+        winterfell::verify::<MulFib2Air>(proof, self.result + BaseElement::ONE)
     }
 }

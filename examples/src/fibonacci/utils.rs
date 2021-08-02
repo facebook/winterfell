@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use prover::math::{fields::f128::BaseElement, FieldElement};
+use winterfell::math::{fields::f128::BaseElement, FieldElement};
 
 pub fn compute_fib_term(n: usize) -> BaseElement {
     let mut t0 = BaseElement::ONE;
@@ -30,8 +30,8 @@ pub fn compute_mulfib_term(n: usize) -> BaseElement {
 }
 
 #[cfg(test)]
-pub fn build_proof_options(use_extension_field: bool) -> prover::ProofOptions {
-    use prover::{FieldExtension, HashFunction, ProofOptions};
+pub fn build_proof_options(use_extension_field: bool) -> winterfell::ProofOptions {
+    use winterfell::{FieldExtension, HashFunction, ProofOptions};
 
     let extension = if use_extension_field {
         FieldExtension::Quadratic

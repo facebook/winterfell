@@ -3,12 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use examples::{fibonacci, lamport, merkle, rescue, ExampleOptions, ExampleType};
 use log::debug;
-use prover::StarkProof;
 use std::io::Write;
 use std::time::Instant;
 use structopt::StructOpt;
-use winterfell::{fibonacci, lamport, merkle, rescue, ExampleOptions, ExampleType};
+use winterfell::StarkProof;
 
 // EXAMPLE RUNNER
 // ================================================================================================

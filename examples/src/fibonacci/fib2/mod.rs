@@ -6,13 +6,11 @@
 use super::utils::compute_fib_term;
 use crate::{Example, ExampleOptions};
 use log::debug;
-use prover::{
-    self,
-    math::{fields::f128::BaseElement, log2, FieldElement},
-    ProofOptions, StarkProof,
-};
 use std::time::Instant;
-use verifier::{self, VerifierError};
+use winterfell::{
+    math::{fields::f128::BaseElement, log2, FieldElement},
+    ProofOptions, StarkProof, VerifierError,
+};
 
 mod air;
 use air::{build_trace, FibAir};
@@ -85,14 +83,14 @@ impl Example for FibExample {
         );
 
         // generate the proof
-        prover::prove::<FibAir>(trace, self.result, self.options.clone()).unwrap()
+        winterfell::prove::<FibAir>(trace, self.result, self.options.clone()).unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {
-        verifier::verify::<FibAir>(proof, self.result)
+        winterfell::verify::<FibAir>(proof, self.result)
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
-        verifier::verify::<FibAir>(proof, self.result + BaseElement::ONE)
+        winterfell::verify::<FibAir>(proof, self.result + BaseElement::ONE)
     }
 }

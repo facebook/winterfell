@@ -5,7 +5,7 @@
 
 use super::rescue;
 use crate::utils::{are_equal, is_zero, not, EvaluationResult};
-use prover::{
+use winterfell::{
     math::{fields::f128::BaseElement, FieldElement},
     Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ExecutionTrace, ProofOptions,
     Serializable, TraceInfo, TransitionConstraintDegree,
