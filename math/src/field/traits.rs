@@ -11,10 +11,7 @@ use core::{
         SubAssign,
     },
 };
-use utils::{AsBytes, Deserializable, DeserializationError, Serializable};
-
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+use utils::{collections::Vec, AsBytes, Deserializable, DeserializationError, Serializable};
 
 // FIELD ELEMENT
 // ================================================================================================

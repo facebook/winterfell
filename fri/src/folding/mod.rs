@@ -16,10 +16,7 @@ use math::{
     fft::{get_inv_twiddles, serial_fft},
     get_power_series_with_offset, polynom, FieldElement, StarkField,
 };
-use utils::{iter_mut, uninit_vector};
-
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+use utils::{collections::Vec, iter_mut, uninit_vector};
 
 // DEGREE-RESPECTING PROJECTION
 // ================================================================================================

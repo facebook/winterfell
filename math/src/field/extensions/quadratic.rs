@@ -10,12 +10,10 @@ use core::{
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
     slice,
 };
-use utils::{AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
-
-#[cfg(feature = "alloc")]
-use alloc::{
+use utils::{
+    collections::Vec,
     string::{String, ToString},
-    vec::Vec,
+    AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
 
 // QUADRATIC EXTENSION FIELD

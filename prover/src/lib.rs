@@ -53,21 +53,26 @@ pub use air::{
     EvaluationFrame, FieldExtension, HashFunction, ProofOptions, TraceInfo,
     TransitionConstraintDegree, TransitionConstraintGroup,
 };
-pub use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
-
 use fri::FriProver;
-use log::debug;
-#[cfg(feature = "std")]
-use std::time::Instant;
+pub use utils::{
+    collections::Vec, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+};
 
 pub use math;
-use math::{fft::infer_degree, log2, FieldElement, StarkField};
+use math::{fft::infer_degree, FieldElement, StarkField};
 
 pub use crypto;
 use crypto::{
     hashers::{Blake3_256, Sha3_256},
     ElementHasher,
 };
+
+#[cfg(feature = "std")]
+use log::debug;
+#[cfg(feature = "std")]
+use math::log2;
+#[cfg(feature = "std")]
+use std::time::Instant;
 
 mod domain;
 use domain::StarkDomain;

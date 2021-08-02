@@ -3,10 +3,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use crate::string::String;
 use core::fmt;
-
-#[cfg(feature = "alloc")]
-use alloc::string::String;
 
 // DESERIALIZATION ERROR
 // ================================================================================================

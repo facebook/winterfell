@@ -5,14 +5,7 @@
 
 use air::Air;
 use math::{fft, polynom, FieldElement, StarkField};
-
-#[cfg(feature = "alloc")]
-use crypto::hashbrown::HashMap;
-#[cfg(feature = "std")]
-use std::collections::HashMap;
-
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+use utils::collections::{HashMap, Vec};
 
 // CONSTANTS
 // ================================================================================================

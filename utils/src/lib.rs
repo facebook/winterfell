@@ -19,10 +19,13 @@ extern crate alloc;
 #[macro_use]
 extern crate std;
 
-#[cfg(feature = "alloc")]
-use alloc::{string::ToString, vec::Vec};
-
 use core::{convert::TryInto, mem, slice};
+
+pub mod collections;
+use collections::Vec;
+
+pub mod string;
+use string::ToString;
 
 mod iterators;
 

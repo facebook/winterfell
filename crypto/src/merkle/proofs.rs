@@ -4,17 +4,11 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{errors::MerkleTreeError, Hasher};
-use utils::{ByteReader, Deserializable, DeserializationError, Serializable};
-
-#[cfg(feature = "alloc")]
-use alloc::collections::BTreeMap;
-#[cfg(feature = "alloc")]
-use hashbrown::HashMap;
-#[cfg(feature = "std")]
-use std::collections::{BTreeMap, HashMap};
-
-#[cfg(feature = "alloc")]
-use alloc::{string::ToString, vec::Vec};
+use utils::{
+    collections::{BTreeMap, HashMap, Vec},
+    string::ToString,
+    ByteReader, Deserializable, DeserializationError, Serializable,
+};
 
 // CONSTANTS
 // ================================================================================================

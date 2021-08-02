@@ -9,10 +9,9 @@ use crate::{ProofOptions, TraceInfo};
 use core::cmp;
 use fri::FriProof;
 use math::log2;
-use utils::{ByteReader, Deserializable, DeserializationError, Serializable, SliceReader};
-
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+use utils::{
+    collections::Vec, ByteReader, Deserializable, DeserializationError, Serializable, SliceReader,
+};
 
 mod context;
 pub use context::Context;

@@ -4,9 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use math::FieldElement;
-
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+use utils::collections::Vec;
 
 // CONSTRAINT COMPOSITION COEFFICIENTS
 // ================================================================================================

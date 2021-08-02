@@ -9,9 +9,7 @@ use core::{
     fmt::{Display, Formatter},
 };
 use math::StarkField;
-
-#[cfg(feature = "alloc")]
-use alloc::{string::ToString, vec::Vec};
+use utils::{collections::Vec, string::ToString};
 
 #[cfg(test)]
 mod tests;

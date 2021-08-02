@@ -8,10 +8,7 @@ use crate::{
     utils::log2,
 };
 use rayon::prelude::*;
-use utils::uninit_vector;
-
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+use utils::{collections::Vec, uninit_vector};
 
 // POLYNOMIAL EVALUATION
 // ================================================================================================

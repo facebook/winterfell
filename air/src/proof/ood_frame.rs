@@ -6,11 +6,9 @@
 use crate::EvaluationFrame;
 use math::FieldElement;
 use utils::{
-    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
+    collections::Vec, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+    SliceReader,
 };
-
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
 
 // OUT-OF-DOMAIN FRAME
 // ================================================================================================

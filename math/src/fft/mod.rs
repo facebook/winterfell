@@ -21,8 +21,7 @@ mod serial;
 #[cfg(feature = "concurrent")]
 mod concurrent;
 
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+use utils::collections::Vec;
 
 #[cfg(test)]
 mod tests;

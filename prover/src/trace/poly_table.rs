@@ -5,10 +5,7 @@
 
 use air::EvaluationFrame;
 use math::{log2, polynom, FieldElement, StarkField};
-use utils::iter;
-
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+use utils::{collections::Vec, iter};
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;

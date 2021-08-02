@@ -6,16 +6,7 @@
 use crate::{errors::MerkleTreeError, hash::Hasher};
 use core::slice;
 use math::log2;
-
-#[cfg(feature = "alloc")]
-use alloc::collections::BTreeSet;
-#[cfg(feature = "alloc")]
-use hashbrown::HashMap;
-#[cfg(feature = "std")]
-use std::collections::{BTreeSet, HashMap};
-
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+use utils::collections::{BTreeSet, HashMap, Vec};
 
 mod proofs;
 pub use proofs::BatchMerkleProof;

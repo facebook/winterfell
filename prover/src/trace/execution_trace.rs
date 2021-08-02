@@ -6,13 +6,10 @@
 use super::{StarkDomain, TracePolyTable, TraceTable};
 use air::{Air, EvaluationFrame, TraceInfo};
 use math::{fft, log2, polynom, StarkField};
-use utils::{iter_mut, uninit_vector};
+use utils::{collections::Vec, iter_mut, uninit_vector};
 
-#[cfg(feature = "alloc")]
-use alloc::vec::{self, Vec};
-
-#[cfg(feature = "std")]
-use std::vec;
+#[cfg(not(feature = "concurrent"))]
+use utils::collections::vec;
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;

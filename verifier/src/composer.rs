@@ -5,9 +5,7 @@
 
 use air::{Air, DeepCompositionCoefficients, EvaluationFrame, FieldExtension};
 use math::FieldElement;
-
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+use utils::collections::Vec;
 
 // DEEP COMPOSER
 // ================================================================================================

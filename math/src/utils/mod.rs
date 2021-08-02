@@ -4,13 +4,10 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::field::FieldElement;
-use utils::{batch_iter_mut, iter_mut, uninit_vector};
+use utils::{batch_iter_mut, collections::Vec, iter_mut, uninit_vector};
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
-
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
 
 // MATH FUNCTIONS
 // ================================================================================================

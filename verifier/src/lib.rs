@@ -39,19 +39,17 @@ extern crate alloc;
 #[macro_use]
 extern crate std;
 
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
-
 pub use air::{
     proof::StarkProof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
     ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
     EvaluationFrame, FieldExtension, HashFunction, ProofOptions, TraceInfo,
     TransitionConstraintDegree, TransitionConstraintGroup,
 };
-pub use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
-
 pub use math;
 use math::{FieldElement, StarkField};
+pub use utils::{
+    collections::Vec, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+};
 
 pub use crypto;
 use crypto::{

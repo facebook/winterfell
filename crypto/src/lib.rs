@@ -25,9 +25,6 @@ compile_error!("Either feature \"std\" or \"alloc\" must be enabled for this cra
 #[macro_use]
 extern crate alloc;
 
-#[cfg(feature = "alloc")]
-pub extern crate hashbrown;
-
 #[cfg(feature = "std")]
 #[macro_use]
 extern crate std;

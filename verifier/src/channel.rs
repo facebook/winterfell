@@ -8,9 +8,7 @@ use air::{proof::StarkProof, Air, EvaluationFrame};
 use crypto::{BatchMerkleProof, ElementHasher, MerkleTree};
 use fri::VerifierChannel as FriVerifierChannel;
 use math::{FieldElement, StarkField};
-
-#[cfg(feature = "alloc")]
-use alloc::{string::ToString, vec::Vec};
+use utils::{collections::Vec, string::ToString};
 
 // TYPES AND INTERFACES
 // ================================================================================================

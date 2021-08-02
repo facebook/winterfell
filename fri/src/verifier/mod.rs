@@ -9,9 +9,7 @@ use crate::{folding::fold_positions, utils::map_positions_to_indexes, FriOptions
 use core::{convert::TryInto, marker::PhantomData, mem};
 use crypto::{ElementHasher, RandomCoin};
 use math::{fft, log2, polynom, FieldElement, StarkField};
-
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+use utils::collections::Vec;
 
 mod channel;
 pub use channel::{DefaultVerifierChannel, VerifierChannel};

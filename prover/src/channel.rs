@@ -11,13 +11,10 @@ use core::marker::PhantomData;
 use crypto::{ElementHasher, RandomCoin};
 use fri::{self, FriProof};
 use math::FieldElement;
-use utils::Serializable;
+use utils::{collections::Vec, Serializable};
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
-
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
 
 // TYPES AND INTERFACES
 // ================================================================================================

@@ -20,15 +20,15 @@ use core::{
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
     slice,
 };
-use utils::{AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+use utils::{
+    collections::Vec, string::ToString, AsBytes, ByteReader, ByteWriter, Deserializable,
+    DeserializationError, Serializable,
+};
 
 #[cfg(any(feature = "std", test))]
 use core::ops::Range;
 #[cfg(any(feature = "std", test))]
 use rand::{distributions::Uniform, prelude::*};
-
-#[cfg(feature = "alloc")]
-use alloc::{string::ToString, vec::Vec};
 
 #[cfg(test)]
 mod tests;

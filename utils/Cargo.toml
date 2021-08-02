@@ -14,10 +14,11 @@ edition = "2018"
 bench = false
 
 [features]
-alloc = []
+alloc = ["hashbrown"]
 concurrent = ["rayon"]
 default = ["std"]
 std = []
 
 [dependencies]
+hashbrown = { version = "0.9.1", optional = true, default-features = false, features = ["ahash", "inline-more"] }
 rayon = { version = "1.5", optional = true }

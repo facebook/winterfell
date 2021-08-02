@@ -6,13 +6,10 @@
 use super::StarkDomain;
 use core::marker::PhantomData;
 use math::{fft, polynom, FieldElement, StarkField};
-use utils::{iter, uninit_vector};
+use utils::{collections::Vec, iter, uninit_vector};
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
-
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
 
 // COMPOSITION POLYNOMIAL
 // ================================================================================================

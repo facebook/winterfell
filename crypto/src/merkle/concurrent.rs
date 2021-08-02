@@ -6,9 +6,7 @@
 use crate::Hasher;
 use core::slice;
 use rayon::prelude::*;
-
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+use utils::collections::Vec;
 
 // CONSTANTS
 // ================================================================================================

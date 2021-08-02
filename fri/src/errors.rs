@@ -3,9 +3,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-#[cfg(feature = "alloc")]
-use alloc::string::String;
 use core::fmt;
+use utils::string::String;
 
 use crypto::RandomCoinError;
 

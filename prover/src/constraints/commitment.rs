@@ -6,13 +6,10 @@
 use air::proof::Queries;
 use crypto::{ElementHasher, MerkleTree};
 use math::FieldElement;
-use utils::{batch_iter_mut, uninit_vector};
+use utils::{batch_iter_mut, collections::Vec, uninit_vector};
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
-
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
 
 // CONSTRAINT COMMITMENT
 // ================================================================================================

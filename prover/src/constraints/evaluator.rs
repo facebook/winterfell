@@ -12,15 +12,10 @@ use air::{
     TransitionConstraintGroup,
 };
 use math::FieldElement;
-use utils::iter_mut;
-
-#[cfg(feature = "alloc")]
-use crypto::hashbrown::HashMap;
-#[cfg(feature = "std")]
-use std::collections::HashMap;
-
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+use utils::{
+    collections::{HashMap, Vec},
+    iter_mut,
+};
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;

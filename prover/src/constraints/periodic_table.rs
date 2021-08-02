@@ -5,15 +5,10 @@
 
 use air::Air;
 use math::{fft, StarkField};
-use utils::uninit_vector;
-
-#[cfg(feature = "alloc")]
-use crypto::hashbrown::HashMap;
-#[cfg(feature = "std")]
-use std::collections::HashMap;
-
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+use utils::{
+    collections::{HashMap, Vec},
+    uninit_vector,
+};
 
 pub struct PeriodicValueTable<B: StarkField> {
     values: Vec<B>,

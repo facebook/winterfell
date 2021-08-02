@@ -5,11 +5,9 @@
 
 use crypto::Hasher;
 use utils::{
-    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
+    collections::Vec, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+    SliceReader,
 };
-
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
 
 // COMMITMENTS
 // ================================================================================================
