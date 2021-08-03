@@ -5,13 +5,11 @@
 
 use crate::{Example, ExampleOptions};
 use log::debug;
-use prover::{
-    self,
-    math::{fields::f128::BaseElement, log2, FieldElement},
-    ProofOptions, StarkProof,
-};
 use std::time::Instant;
-use verifier::{self, VerifierError};
+use winterfell::{
+    math::{fields::f128::BaseElement, log2, FieldElement},
+    ProofOptions, StarkProof, VerifierError,
+};
 
 #[allow(clippy::module_inception)]
 mod rescue;
@@ -91,7 +89,7 @@ impl Example for RescueExample {
             seed: self.seed,
             result: self.result,
         };
-        prover::prove::<RescueAir>(trace, pub_inputs, self.options.clone()).unwrap()
+        winterfell::prove::<RescueAir>(trace, pub_inputs, self.options.clone()).unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {
@@ -99,7 +97,7 @@ impl Example for RescueExample {
             seed: self.seed,
             result: self.result,
         };
-        verifier::verify::<RescueAir>(proof, pub_inputs)
+        winterfell::verify::<RescueAir>(proof, pub_inputs)
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
@@ -107,7 +105,7 @@ impl Example for RescueExample {
             seed: self.seed,
             result: [self.result[0], self.result[1] + BaseElement::ONE],
         };
-        verifier::verify::<RescueAir>(proof, pub_inputs)
+        winterfell::verify::<RescueAir>(proof, pub_inputs)
     }
 }
 

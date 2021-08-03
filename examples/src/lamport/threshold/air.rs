@@ -8,7 +8,7 @@ use super::{
     TRACE_WIDTH,
 };
 use crate::utils::{are_equal, is_binary, is_zero, not, EvaluationResult};
-use prover::{
+use winterfell::{
     math::{fields::f128::BaseElement, log2, FieldElement, StarkField},
     Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ProofOptions, Serializable, TraceInfo,
     TransitionConstraintDegree,

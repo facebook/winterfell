@@ -4,9 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use prover::{FieldExtension, HashFunction, ProofOptions};
+use examples::{rescue, Example};
 use std::time::Duration;
-use winterfell::{rescue, Example};
+use winterfell::{FieldExtension, HashFunction, ProofOptions};
 
 const SIZES: [usize; 2] = [256, 512];
 

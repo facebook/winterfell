@@ -9,13 +9,11 @@ use super::{
 };
 use crate::ExampleOptions;
 use log::debug;
-use prover::{
-    self,
-    math::{fields::f128::BaseElement, log2},
-    ProofOptions, StarkProof,
-};
 use std::time::Instant;
-use verifier::{self, VerifierError};
+use winterfell::{
+    math::{fields::f128::BaseElement, log2},
+    ProofOptions, StarkProof, VerifierError,
+};
 
 mod signature;
 use signature::AggPublicKey;
@@ -118,7 +116,7 @@ impl Example for LamportThresholdExample {
             num_signatures: self.signatures.len(),
             message: self.message,
         };
-        prover::prove::<LamportThresholdAir>(trace, pub_inputs, self.options.clone()).unwrap()
+        winterfell::prove::<LamportThresholdAir>(trace, pub_inputs, self.options.clone()).unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {
@@ -128,7 +126,7 @@ impl Example for LamportThresholdExample {
             num_signatures: self.signatures.len(),
             message: self.message,
         };
-        verifier::verify::<LamportThresholdAir>(proof, pub_inputs)
+        winterfell::verify::<LamportThresholdAir>(proof, pub_inputs)
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
@@ -138,7 +136,7 @@ impl Example for LamportThresholdExample {
             num_signatures: self.signatures.len() + 1,
             message: self.message,
         };
-        verifier::verify::<LamportThresholdAir>(proof, pub_inputs)
+        winterfell::verify::<LamportThresholdAir>(proof, pub_inputs)
     }
 }
 

@@ -4,13 +4,13 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{rescue, Signature, CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH, TRACE_WIDTH};
-use prover::{
+use winterfell::{
     math::{fields::f128::BaseElement, get_power_series, FieldElement, StarkField},
     ExecutionTrace,
 };
 
 #[cfg(feature = "concurrent")]
-use prover::iterators::*;
+use winterfell::iterators::*;
 
 // CONSTANTS
 // ================================================================================================

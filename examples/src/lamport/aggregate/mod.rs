@@ -8,13 +8,11 @@ use super::{
 };
 use crate::ExampleOptions;
 use log::debug;
-use prover::{
-    self,
-    math::{fields::f128::BaseElement, log2},
-    ProofOptions, StarkProof,
-};
 use std::time::Instant;
-use verifier::{self, VerifierError};
+use winterfell::{
+    math::{fields::f128::BaseElement, log2},
+    ProofOptions, StarkProof, VerifierError,
+};
 
 mod trace;
 use trace::generate_trace;
@@ -130,7 +128,7 @@ impl Example for LamportAggregateExample {
             pub_keys: self.pub_keys.clone(),
             messages: self.messages.clone(),
         };
-        prover::prove::<LamportAggregateAir>(trace, pub_inputs, self.options.clone()).unwrap()
+        winterfell::prove::<LamportAggregateAir>(trace, pub_inputs, self.options.clone()).unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {
@@ -138,7 +136,7 @@ impl Example for LamportAggregateExample {
             pub_keys: self.pub_keys.clone(),
             messages: self.messages.clone(),
         };
-        verifier::verify::<LamportAggregateAir>(proof, pub_inputs)
+        winterfell::verify::<LamportAggregateAir>(proof, pub_inputs)
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
@@ -148,6 +146,6 @@ impl Example for LamportAggregateExample {
             pub_keys,
             messages: self.messages.clone(),
         };
-        verifier::verify::<LamportAggregateAir>(proof, pub_inputs)
+        winterfell::verify::<LamportAggregateAir>(proof, pub_inputs)
     }
 }

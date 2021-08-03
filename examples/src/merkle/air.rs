@@ -11,7 +11,7 @@ use crate::utils::{
     },
     EvaluationResult,
 };
-use prover::{
+use winterfell::{
     math::{fields::f128::BaseElement, FieldElement},
     Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ExecutionTrace, ProofOptions,
     Serializable, TraceInfo, TransitionConstraintDegree,

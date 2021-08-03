@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use prover::{FieldExtension, HashFunction, ProofOptions};
+use winterfell::{FieldExtension, HashFunction, ProofOptions};
 
 #[test]
 fn merkle_test_basic_proof_verification() {

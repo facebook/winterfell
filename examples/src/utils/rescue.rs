@@ -4,12 +4,12 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::utils::{are_equal, EvaluationResult};
-use prover::{
+use std::slice;
+use winterfell::{
     crypto::Hasher,
     math::{fields::f128::BaseElement, FieldElement},
-    ByteReader, Deserializable, DeserializationError, Serializable,
+    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
-use std::slice;
 
 /// Function state is set to 6 field elements or 96 bytes; 4 elements are reserved for rate
 /// and 2 elements are reserved for capacity.
@@ -152,7 +152,7 @@ impl AsRef<[u8]> for Hash {
 }
 
 impl Serializable for Hash {
-    fn write_into<W: prover::ByteWriter>(&self, target: &mut W) {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write(self.0[0]);
         target.write(self.0[1]);
     }

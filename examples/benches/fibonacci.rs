@@ -4,9 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use prover::{FieldExtension, HashFunction, ProofOptions};
+use examples::{fibonacci, Example};
 use std::time::Duration;
-use winterfell::{fibonacci, Example};
+use winterfell::{FieldExtension, HashFunction, ProofOptions};
 
 const SIZES: [usize; 3] = [16_384, 65_536, 262_144];
 
