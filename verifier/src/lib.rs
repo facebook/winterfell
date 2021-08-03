@@ -26,7 +26,7 @@
 //! need to be in tens of thousands. And even for hundreds of thousands of asserted values, the
 //! verification time should not exceed 50 ms.
 
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 compile_error!("Either feature \"std\" or \"alloc\" must be enabled for this crate.");
@@ -35,7 +35,7 @@ compile_error!("Either feature \"std\" or \"alloc\" must be enabled for this cra
 #[macro_use]
 extern crate alloc;
 
-#[cfg(feature = "std")]
+#[cfg(any(feature = "std", test))]
 #[macro_use]
 extern crate std;
 

@@ -151,6 +151,7 @@ fn transpose<E: FieldElement>(coefficients: Vec<E>, num_columns: usize) -> Vec<V
 mod tests {
 
     use math::fields::f128::BaseElement;
+    use utils::collections::Vec;
 
     #[test]
     fn transpose() {

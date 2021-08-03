@@ -102,6 +102,7 @@ mod tests {
         fields::f128::BaseElement, get_power_series_with_offset, log2, polynom, FieldElement,
         StarkField,
     };
+    use utils::collections::Vec;
 
     #[test]
     fn periodic_value_table() {

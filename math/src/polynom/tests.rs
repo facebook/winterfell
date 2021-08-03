@@ -8,6 +8,7 @@ use crate::{
     field::{f128::BaseElement, FieldElement, StarkField},
     utils::{get_power_series, log2},
 };
+use utils::collections::Vec;
 
 #[test]
 fn eval() {

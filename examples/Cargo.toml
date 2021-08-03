@@ -21,7 +21,7 @@ doc = false
 
 [features]
 alloc = ["hex/alloc", "winterfell/alloc"]
-concurrent = ["winterfell/concurrent"]
+concurrent = ["winterfell/concurrent", "std"]
 default = ["std"]
 std = ["hex/std", "winterfell/std"]
 

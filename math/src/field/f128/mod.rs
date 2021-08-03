@@ -27,9 +27,9 @@ use utils::{
     AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
 
-#[cfg(any(feature = "std", test))]
+#[cfg(feature = "std")]
 use core::ops::Range;
-#[cfg(any(feature = "std", test))]
+#[cfg(feature = "std")]
 use rand::{distributions::Uniform, prelude::*};
 
 #[cfg(test)]
@@ -44,7 +44,7 @@ const M: u128 = 340282366920938463463374557953744961537;
 // 2^40 root of unity
 const G: u128 = 23953097886125630542083529559205016746;
 
-#[cfg(any(feature = "std", test))]
+#[cfg(feature = "std")]
 const RANGE: Range<u128> = Range { start: 0, end: M };
 
 // Number of bytes needed to represent field element
@@ -88,7 +88,7 @@ impl FieldElement for BaseElement {
         BaseElement(self.0)
     }
 
-    #[cfg(any(feature = "std", test))]
+    #[cfg(feature = "std")]
     fn rand() -> Self {
         let range = Uniform::from(RANGE);
         let mut g = thread_rng();
@@ -150,7 +150,7 @@ impl FieldElement for BaseElement {
         unsafe { Vec::from_raw_parts(p as *mut Self, len, cap) }
     }
 
-    #[cfg(any(feature = "std", test))]
+    #[cfg(feature = "std")]
     fn prng_vector(seed: [u8; 32], n: usize) -> Vec<Self> {
         let range = Uniform::from(RANGE);
         let g = StdRng::from_seed(seed);

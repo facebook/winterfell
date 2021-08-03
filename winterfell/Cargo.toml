@@ -14,7 +14,7 @@ bench = false
 
 [features]
 alloc = ["prover/alloc", "verifier/alloc"]
-concurrent = ["prover/concurrent"]
+concurrent = ["prover/concurrent", "std"]
 default = ["std"]
 std = ["prover/std", "verifier/std"]
 

@@ -10,7 +10,7 @@ use structopt::StructOpt;
 use winterfell::StarkProof;
 
 use examples::{fibonacci, rescue, ExampleOptions, ExampleType};
-#[cfg(any(feature = "std", test))]
+#[cfg(feature = "std")]
 use examples::{lamport, merkle};
 
 // EXAMPLE RUNNER
@@ -43,13 +43,13 @@ fn main() {
             fibonacci::mulfib8::get_example(options, sequence_length)
         }
         ExampleType::Rescue { chain_length } => rescue::get_example(options, chain_length),
-        #[cfg(any(feature = "std", test))]
+        #[cfg(feature = "std")]
         ExampleType::Merkle { tree_depth } => merkle::get_example(options, tree_depth),
-        #[cfg(any(feature = "std", test))]
+        #[cfg(feature = "std")]
         ExampleType::LamportA { num_signatures } => {
             lamport::aggregate::get_example(options, num_signatures)
         }
-        #[cfg(any(feature = "std", test))]
+        #[cfg(feature = "std")]
         ExampleType::LamportT { num_signers } => {
             lamport::threshold::get_example(options, num_signers)
         }

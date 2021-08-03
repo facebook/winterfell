@@ -12,6 +12,7 @@ use math::{
     fields::f128::BaseElement, get_power_series, get_power_series_with_offset, log2, polynom,
     FieldElement, StarkField,
 };
+use utils::collections::Vec;
 
 type Blake3 = Blake3_256<BaseElement>;
 

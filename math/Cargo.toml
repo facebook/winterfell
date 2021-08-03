@@ -27,7 +27,7 @@ harness = false
 
 [features]
 alloc = ["utils/alloc"]
-concurrent = ["rayon"]
+concurrent = ["rayon", "std"]
 default = ["std"]
 std = ["rand", "utils/std"]
 

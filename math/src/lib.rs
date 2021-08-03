@@ -74,16 +74,19 @@
 //!
 //! Number of threads can be configured via `RAYON_NUM_THREADS` environment variable
 
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 compile_error!("Either feature \"std\" or \"alloc\" must be enabled for this crate.");
+
+#[cfg(all(feature = "alloc", feature = "std"))]
+compile_error!("This crate does not support features \"alloc\" and \"std\" simultaneously.");
 
 #[cfg(feature = "alloc")]
 #[macro_use]
 extern crate alloc;
 
-#[cfg(feature = "std")]
+#[cfg(any(feature = "std", test))]
 #[macro_use]
 extern crate std;
 

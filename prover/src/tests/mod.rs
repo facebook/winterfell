@@ -9,6 +9,7 @@ use air::{
     TraceInfo, TransitionConstraintDegree,
 };
 use math::{fields::f128::BaseElement, FieldElement, StarkField};
+use utils::collections::Vec;
 
 // FIBONACCI TRACE BUILDER
 // ================================================================================================

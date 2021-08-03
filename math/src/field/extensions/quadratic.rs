@@ -68,7 +68,7 @@ impl<B: StarkField> FieldElement for QuadExtensionA<B> {
         Self(self.0 + self.1, B::ZERO - self.1)
     }
 
-    #[cfg(any(feature = "std", test))]
+    #[cfg(feature = "std")]
     fn rand() -> Self {
         Self(B::rand(), B::rand())
     }
@@ -121,7 +121,7 @@ impl<B: StarkField> FieldElement for QuadExtensionA<B> {
         Self::base_to_quad_vector(result)
     }
 
-    #[cfg(any(feature = "std", test))]
+    #[cfg(feature = "std")]
     fn prng_vector(seed: [u8; 32], n: usize) -> Vec<Self> {
         // get twice the number of base elements, and re-interpret them as quad field elements
         let result = B::prng_vector(seed, n * 2);
@@ -309,7 +309,7 @@ impl<B: StarkField> Deserializable for QuadExtensionA<B> {
 
 #[cfg(test)]
 mod tests {
-    use super::{AsBytes, DeserializationError, FieldElement, QuadExtensionA};
+    use super::{AsBytes, DeserializationError, FieldElement, QuadExtensionA, Vec};
     use crate::field::f128::BaseElement;
 
     // BASIC ALGEBRA

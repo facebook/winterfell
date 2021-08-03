@@ -23,7 +23,7 @@ harness = false
 
 [features]
 alloc = ["crypto/alloc", "math/alloc", "utils/alloc"]
-concurrent = ["rayon", "crypto/concurrent"]
+concurrent = ["rayon", "crypto/concurrent", "std"]
 default = ["std"]
 std = ["crypto/std", "math/std", "utils/std"]
 

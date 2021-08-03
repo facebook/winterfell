@@ -10,6 +10,7 @@ use super::{
 use crypto::{hashers::Blake3_256, RandomCoin};
 use math::{fields::f128::BaseElement, log2, polynom, FieldElement, StarkField};
 use std::collections::HashMap;
+use utils::collections::Vec;
 
 // BOUNDARY CONSTRAINT TESTS
 // ================================================================================================
