@@ -21,7 +21,7 @@ bench = false
 concurrent = ["prover/concurrent"]
 
 [dependencies]
-prover = { path = "../prover" }
+prover = { path = "../prover", package = "winter-prover" }
 verifier = { path = "../verifier" }
 hex = "0.4"
 log = "0.4"

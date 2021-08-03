@@ -91,7 +91,7 @@ impl Example for MerkleExample {
         );
         let now = Instant::now();
         let trace = build_trace(self.value, &self.path, self.index);
-        let trace_length = trace.len();
+        let trace_length = trace.length();
         debug!(
             "Generated execution trace of {} registers and 2^{} steps in {} ms",
             trace.width(),

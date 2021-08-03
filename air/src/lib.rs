@@ -27,8 +27,10 @@
 //! This crate also contains components describing protocol configuration option ([ProofOptions])
 //! and STARK proof structure ([StarkProof](proof::StarkProof)).
 
-pub mod errors;
 pub mod proof;
+
+mod errors;
+pub use errors::AssertionError;
 
 mod options;
 pub use options::{FieldExtension, HashFunction, ProofOptions};

@@ -117,7 +117,7 @@ impl Example for LamportAggregateExample {
 
         let now = Instant::now();
         let trace = generate_trace(&self.messages, &self.signatures);
-        let trace_length = trace.len();
+        let trace_length = trace.length();
         debug!(
             "Generated execution trace of {} registers and 2^{} steps in {} ms",
             trace.width(),

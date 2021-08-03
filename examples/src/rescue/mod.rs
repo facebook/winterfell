@@ -78,7 +78,7 @@ impl Example for RescueExample {
         );
         let now = Instant::now();
         let trace = build_trace(self.seed, self.chain_length);
-        let trace_length = trace.len();
+        let trace_length = trace.length();
         debug!(
             "Generated execution trace of {} registers and 2^{} steps in {} ms",
             trace.width(),
