@@ -381,6 +381,11 @@
 //! * [Low Degree Testing](https://medium.com/starkware/low-degree-testing-f7614f5172db)
 //! * [A Framework for Efficient STARKs](https://medium.com/starkware/a-framework-for-efficient-starks-19608ba06fbe)
 
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+compile_error!("Either feature \"std\" or \"alloc\" must be enabled for this crate.");
+
 pub use prover::{
     crypto, iterators, math, prove, Air, AirContext, Assertion, BoundaryConstraint,
     BoundaryConstraintGroup, ByteReader, ByteWriter, ConstraintCompositionCoefficients,
