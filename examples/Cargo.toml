@@ -22,7 +22,7 @@ concurrent = ["prover/concurrent"]
 
 [dependencies]
 prover = { path = "../prover", package = "winter-prover" }
-verifier = { path = "../verifier" }
+verifier = { path = "../verifier", package = "winter-verifier" }
 hex = "0.4"
 log = "0.4"
 blake3 = "1.0"
