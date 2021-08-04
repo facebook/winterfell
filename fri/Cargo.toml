@@ -1,12 +1,12 @@
 [package]
 name = "winter-fri"
 version = "0.1.0"
-description = "Implementation of FRI protocol for Winterfell STARK prover/verifier"
+description = "Implementation of FRI protocol for the Winterfell STARK prover/verifier"
 authors = ["winterfell contributors"]
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/novifinancial/winterfell"
-categories = ["cryptography"]
+categories = ["cryptography", "no-std"]
 keywords = ["crypto", "polynomial", "commitments"]
 edition = "2018"
 
@@ -28,9 +28,9 @@ default = ["std"]
 std = ["crypto/std", "math/std", "utils/std"]
 
 [dependencies]
-utils = { path = "../utils", package = "winter-utils", default-features = false }
-math = { path = "../math", package = "winter-math", default-features = false }
-crypto = { path = "../crypto", package = "winter-crypto", default-features = false }
+utils = { version = "0.1", path = "../utils", package = "winter-utils", default-features = false }
+math = { version = "0.1", path = "../math", package = "winter-math", default-features = false }
+crypto = { version = "0.1", path = "../crypto", package = "winter-crypto", default-features = false }
 
 [dev-dependencies]
 criterion = "0.3"
