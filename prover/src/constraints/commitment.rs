@@ -9,7 +9,7 @@ use math::FieldElement;
 use utils::{batch_iter_mut, collections::Vec, uninit_vector};
 
 #[cfg(feature = "concurrent")]
-use rayon::prelude::*;
+use utils::iterators::*;
 
 // CONSTRAINT COMMITMENT
 // ================================================================================================

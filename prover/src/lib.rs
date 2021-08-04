@@ -36,12 +36,6 @@
 
 #![no_std]
 
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-compile_error!("Either feature \"std\" or \"alloc\" must be enabled for this crate.");
-
-#[cfg(all(feature = "alloc", feature = "std"))]
-compile_error!("This crate does not support features \"alloc\" and \"std\" simultaneously.");
-
 #[cfg(feature = "alloc")]
 #[macro_use]
 extern crate alloc;
@@ -56,10 +50,12 @@ pub use air::{
     EvaluationFrame, FieldExtension, HashFunction, ProofOptions, TraceInfo,
     TransitionConstraintDegree, TransitionConstraintGroup,
 };
-use fri::FriProver;
 pub use utils::{
-    collections::Vec, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+    iterators, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
+
+use fri::FriProver;
+use utils::collections::Vec;
 
 pub use math;
 use math::{fft::infer_degree, FieldElement, StarkField};
@@ -95,16 +91,6 @@ use channel::ProverChannel;
 
 mod errors;
 pub use errors::ProverError;
-
-pub mod iterators {
-    //! Components needed for asynchronous iterators.
-    //!
-    //! When `concurrent` feature is enabled, this module re-exports `rayon::prelude`. Otherwise,
-    //! this is an empty module.
-
-    #[cfg(feature = "concurrent")]
-    pub use rayon::prelude::*;
-}
 
 #[cfg(test)]
 pub mod tests;

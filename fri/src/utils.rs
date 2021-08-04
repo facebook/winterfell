@@ -8,7 +8,7 @@ use math::FieldElement;
 use utils::{collections::Vec, iter_mut, uninit_vector};
 
 #[cfg(feature = "concurrent")]
-use rayon::prelude::*;
+use utils::iterators::*;
 
 /// Maps positions in the evaluation domain to indexes of commitment Merkle tree.
 pub fn map_positions_to_indexes(

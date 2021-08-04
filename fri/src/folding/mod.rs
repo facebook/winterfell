@@ -9,7 +9,7 @@
 //! functions contained here are not intended to be used by the end-user of the crate.
 
 #[cfg(feature = "concurrent")]
-use rayon::prelude::*;
+use utils::iterators::*;
 
 use math::{
     batch_inversion,

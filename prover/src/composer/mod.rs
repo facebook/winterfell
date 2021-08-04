@@ -10,7 +10,7 @@ use math::{add_in_place, fft, log2, mul_acc, polynom, FieldElement, StarkField};
 use utils::{collections::Vec, iter_mut};
 
 #[cfg(feature = "concurrent")]
-use rayon::prelude::*;
+use utils::iterators::*;
 
 // DEEP COMPOSITION POLYNOMIAL
 // ================================================================================================

@@ -21,5 +21,3 @@ std = ["prover/std", "verifier/std"]
 [dependencies]
 prover = { path = "../prover", package = "winter-prover", default-features = false }
 verifier = { path = "../verifier", package = "winter-verifier", default-features = false }
-
-

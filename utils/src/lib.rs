@@ -9,10 +9,10 @@
 #![no_std]
 
 #[cfg(not(any(feature = "std", feature = "alloc")))]
-compile_error!("Either feature \"std\" or \"alloc\" must be enabled for this crate.");
+compile_error!("Either feature \"std\" or \"alloc\" must be enabled.");
 
 #[cfg(all(feature = "alloc", feature = "std"))]
-compile_error!("This crate does not support features \"alloc\" and \"std\" simultaneously.");
+compile_error!("Features \"alloc\" and \"std\" cannot be enabled simultaneously.");
 
 #[cfg(feature = "alloc")]
 #[macro_use]
@@ -30,7 +30,7 @@ use collections::Vec;
 pub mod string;
 use string::ToString;
 
-mod iterators;
+pub mod iterators;
 
 mod errors;
 pub use errors::DeserializationError;
@@ -39,7 +39,10 @@ pub use errors::DeserializationError;
 mod tests;
 
 #[cfg(feature = "concurrent")]
-use rayon::prelude::*;
+use iterators::*;
+
+#[cfg(feature = "concurrent")]
+pub use rayon;
 
 // SERIALIZABLE
 // ================================================================================================

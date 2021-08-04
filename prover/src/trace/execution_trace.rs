@@ -12,7 +12,7 @@ use utils::{collections::Vec, iter_mut, uninit_vector};
 use utils::collections::vec;
 
 #[cfg(feature = "concurrent")]
-use rayon::prelude::*;
+use utils::{iterators::*, rayon};
 
 // CONSTANTS
 // ================================================================================================

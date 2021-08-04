@@ -7,8 +7,7 @@ use crate::{
     field::{FieldElement, StarkField},
     utils::log2,
 };
-use rayon::prelude::*;
-use utils::{collections::Vec, uninit_vector};
+use utils::{collections::Vec, iterators::*, rayon, uninit_vector};
 
 // POLYNOMIAL EVALUATION
 // ================================================================================================

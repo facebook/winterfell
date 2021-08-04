@@ -1,7 +1,7 @@
 [package]
 name = "winter-utils"
 version = "0.1.0"
-description = "Utility functions for the Winterfell STARK prover/verifier"
+description = "Utilities for the Winterfell STARK prover/verifier"
 authors = ["Irakliy Khaburzaniya <irakliyk@fb.com>"]
 readme = "README.md"
 license = "MIT"

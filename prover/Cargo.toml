@@ -15,7 +15,7 @@ bench = false
 
 [features]
 alloc = ["air/alloc", "crypto/alloc", "fri/alloc", "math/alloc", "utils/alloc"]
-concurrent = ["crypto/concurrent", "math/concurrent", "fri/concurrent", "rayon", "std"]
+concurrent = ["crypto/concurrent", "math/concurrent", "fri/concurrent", "utils/concurrent", "std"]
 default = ["std"]
 std = ["air/std", "crypto/std", "fri/std", "math/std", "utils/std"]
 
@@ -25,7 +25,6 @@ math = { path = "../math", package = "winter-math", default-features = false }
 crypto = { path = "../crypto", package = "winter-crypto", default-features = false }
 fri = { path = '../fri', package = "winter-fri", default-features = false }
 air = { path = "../air", package = "winter-air", default-features = false }
-rayon = { version = "1.5", optional = true }
 log = { version = "0.4", default-features = false }
 
 # Allow math in docs

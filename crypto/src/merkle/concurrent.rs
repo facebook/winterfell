@@ -5,8 +5,7 @@
 
 use crate::Hasher;
 use core::slice;
-use rayon::prelude::*;
-use utils::collections::Vec;
+use utils::{collections::Vec, iterators::*, rayon};
 
 // CONSTANTS
 // ================================================================================================
