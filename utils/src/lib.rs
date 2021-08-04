@@ -550,6 +550,8 @@ pub fn flatten_vector_elements<T, const N: usize>(source: Vec<[T; N]>) -> Vec<T>
 
 /// Transposes a slice of `n` elements into a matrix with `N` columns and `n`/`N` rows.
 ///
+/// When `concurrent` feature is enabled, the slice will be transposed using multiple threads.
+///
 /// # Panics
 /// Panics if `n` is not divisible by `N`.
 ///

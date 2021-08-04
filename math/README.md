@@ -48,7 +48,7 @@ When the crate is compiled with `concurrent` feature enabled, some operations wi
   - `mul_acc()`
   - `batch_inversion()`
 
-Number of threads can be configured via `RAYON_NUM_THREADS` environment variable
+Number of threads can be configured via `RAYON_NUM_THREADS` environment variable.
 
 ## WebAssembly support
 To compile this crate to WebAssembly, disable default features and enable the `alloc` feature.

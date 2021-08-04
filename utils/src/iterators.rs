@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-//! Components needed for asynchronous iterators.
+//! Components needed for parallel iterators.
 //!
 //! When `concurrent` feature is enabled, this module re-exports `rayon::prelude`. Otherwise,
 //! this is an empty module.
