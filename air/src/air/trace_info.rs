@@ -3,14 +3,14 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use utils::collections::Vec;
+
 // TRACE INFO
 // ================================================================================================
 /// Information about a specific execution trace.
 ///
 /// Trace info consists of trace width, length, and optional custom metadata. Metadata is just a
 /// vector of bytes and can store any values up to 64KB in size.
-use utils::collections::Vec;
-
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TraceInfo {
     width: usize,
