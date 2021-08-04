@@ -2,7 +2,7 @@
 name = "winter-utils"
 version = "0.1.0"
 description = "Utilities for the Winterfell STARK prover/verifier"
-authors = ["Irakliy Khaburzaniya <irakliyk@fb.com>"]
+authors = ["winterfell contributors"]
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/novifinancial/winterfell"
