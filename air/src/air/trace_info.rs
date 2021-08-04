@@ -9,6 +9,8 @@
 ///
 /// Trace info consists of trace width, length, and optional custom metadata. Metadata is just a
 /// vector of bytes and can store any values up to 64KB in size.
+use utils::collections::Vec;
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TraceInfo {
     width: usize,

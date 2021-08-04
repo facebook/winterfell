@@ -5,6 +5,7 @@
 
 use core::cmp;
 use math::FieldElement;
+use utils::collections::Vec;
 
 // CONSTANTS
 // ================================================================================================

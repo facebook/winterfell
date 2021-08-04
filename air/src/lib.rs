@@ -27,6 +27,22 @@
 //! This crate also contains components describing protocol configuration option ([ProofOptions])
 //! and STARK proof structure ([StarkProof](proof::StarkProof)).
 
+#![no_std]
+
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+compile_error!("Either feature \"std\" or \"alloc\" must be enabled for this crate.");
+
+#[cfg(all(feature = "alloc", feature = "std"))]
+compile_error!("This crate does not support features \"alloc\" and \"std\" simultaneously.");
+
+#[cfg(feature = "alloc")]
+#[macro_use]
+extern crate alloc;
+
+#[cfg(any(feature = "std", test))]
+#[macro_use]
+extern crate std;
+
 pub mod proof;
 
 mod errors;

@@ -6,7 +6,8 @@
 use crypto::{BatchMerkleProof, ElementHasher, Hasher};
 use math::{log2, FieldElement};
 use utils::{
-    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
+    collections::Vec, string::ToString, ByteReader, ByteWriter, Deserializable,
+    DeserializationError, Serializable, SliceReader,
 };
 
 // FRI PROOF

@@ -4,11 +4,12 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::errors::AssertionError;
-use math::StarkField;
-use std::{
+use core::{
     cmp::{Ord, Ordering, PartialOrd},
     fmt::{Display, Formatter},
 };
+use math::StarkField;
+use utils::{collections::Vec, string::ToString};
 
 #[cfg(test)]
 mod tests;

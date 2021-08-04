@@ -20,15 +20,18 @@ bench = false
 doc = false
 
 [features]
-concurrent = ["winterfell/concurrent"]
+alloc = ["hex/alloc", "winterfell/alloc"]
+concurrent = ["winterfell/concurrent", "std"]
+default = ["std"]
+std = ["hex/std", "winterfell/std"]
 
 [dependencies]
-winterfell = { path = "../winterfell"}
-hex = "0.4"
-log = "0.4"
-blake3 = "1.0"
-env_logger = "0.9"
-structopt = "0.3"
+winterfell = { path = "../winterfell", default-features = false }
+hex = { version = "0.4", default-features = false }
+log = { version = "0.4", default-features = false }
+blake3 = { version = "1.0", default-features = false }
+env_logger = { version = "0.9", default-features = false }
+structopt = { version = "0.3", default-features = false }
 
 [dev-dependencies]
 criterion = "0.3"

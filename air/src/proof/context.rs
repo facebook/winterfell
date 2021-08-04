@@ -5,7 +5,10 @@
 
 use crate::{ProofOptions, TraceInfo};
 use math::{log2, StarkField};
-use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+use utils::{
+    collections::Vec, string::ToString, ByteReader, ByteWriter, Deserializable,
+    DeserializationError, Serializable,
+};
 
 // PROOF CONTEXT
 // ================================================================================================

@@ -5,7 +5,7 @@
 
 use air::Air;
 use math::{fft, polynom, FieldElement, StarkField};
-use std::collections::HashMap;
+use utils::collections::{HashMap, Vec};
 
 // CONSTANTS
 // ================================================================================================

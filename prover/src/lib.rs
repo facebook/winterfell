@@ -34,26 +34,48 @@
 //! also depends on the capabilities of the machine used to generate the proofs (i.e. on number
 //! of CPU cores and memory bandwidth).
 
+#![no_std]
+
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+compile_error!("Either feature \"std\" or \"alloc\" must be enabled for this crate.");
+
+#[cfg(all(feature = "alloc", feature = "std"))]
+compile_error!("This crate does not support features \"alloc\" and \"std\" simultaneously.");
+
+#[cfg(feature = "alloc")]
+#[macro_use]
+extern crate alloc;
+
+#[cfg(any(feature = "std", test))]
+#[macro_use]
+extern crate std;
+
 pub use air::{
     proof::StarkProof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
     ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
     EvaluationFrame, FieldExtension, HashFunction, ProofOptions, TraceInfo,
     TransitionConstraintDegree, TransitionConstraintGroup,
 };
-pub use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
-
 use fri::FriProver;
-use log::debug;
-use std::time::Instant;
+pub use utils::{
+    collections::Vec, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+};
 
 pub use math;
-use math::{fft::infer_degree, log2, FieldElement, StarkField};
+use math::{fft::infer_degree, FieldElement, StarkField};
 
 pub use crypto;
 use crypto::{
     hashers::{Blake3_256, Sha3_256},
     ElementHasher,
 };
+
+#[cfg(feature = "std")]
+use log::debug;
+#[cfg(feature = "std")]
+use math::log2;
+#[cfg(feature = "std")]
+use std::time::Instant;
 
 mod domain;
 use domain::StarkDomain;
@@ -171,8 +193,10 @@ where
     // 1 ----- extend execution trace -------------------------------------------------------------
 
     // build computation domain; this is used later for polynomial evaluations
+    #[cfg(feature = "std")]
     let now = Instant::now();
     let domain = StarkDomain::new(&air);
+    #[cfg(feature = "std")]
     debug!(
         "Built domain of 2^{} elements in {} ms",
         log2(domain.lde_domain_size()),
@@ -183,6 +207,7 @@ where
     // and then evaluates the polynomial over the LDE domain; each of the trace polynomials has
     // degree = trace_length - 1
     let (extended_trace, trace_polys) = trace.extend(&domain);
+    #[cfg(feature = "std")]
     debug!(
         "Extended execution trace of {} registers from 2^{} to 2^{} steps ({}x blowup) in {} ms",
         extended_trace.width(),
@@ -193,9 +218,11 @@ where
     );
 
     // 2 ----- commit to the extended execution trace ---------------------------------------------
+    #[cfg(feature = "std")]
     let now = Instant::now();
     let trace_tree = extended_trace.build_commitment::<H>();
     channel.commit_trace(*trace_tree.root());
+    #[cfg(feature = "std")]
     debug!(
         "Committed to extended execution trace by building a Merkle tree of depth {} in {} ms",
         trace_tree.depth(),
@@ -208,10 +235,12 @@ where
     // this step evaluates only constraint numerators, thus, only constraints with identical
     // denominators are merged together. the results are saved into a constraint evaluation table
     // where each column contains merged evaluations of constraints with identical denominators.
+    #[cfg(feature = "std")]
     let now = Instant::now();
     let constraint_coeffs = channel.get_constraint_composition_coeffs();
     let evaluator = ConstraintEvaluator::new(&air, constraint_coeffs);
     let constraint_evaluations = evaluator.evaluate(&extended_trace, &domain);
+    #[cfg(feature = "std")]
     debug!(
         "Evaluated constraints over domain of 2^{} elements in {} ms",
         log2(constraint_evaluations.num_rows()),
@@ -226,8 +255,10 @@ where
     // - interpolate the column into a polynomial in coefficient form
     // - "break" the polynomial into a set of column polynomials each of degree equal to
     //   trace_length - 1
+    #[cfg(feature = "std")]
     let now = Instant::now();
     let composition_poly = constraint_evaluations.into_poly()?;
+    #[cfg(feature = "std")]
     debug!(
         "Converted constraint evaluations into {} composition polynomial columns of degree {} in {} ms",
         composition_poly.num_columns(),
@@ -236,8 +267,10 @@ where
     );
 
     // then, evaluate composition polynomial columns over the LDE domain
+    #[cfg(feature = "std")]
     let now = Instant::now();
     let composed_evaluations = composition_poly.evaluate(&domain);
+    #[cfg(feature = "std")]
     debug!(
         "Evaluated composition polynomial columns over LDE domain (2^{} elements) in {} ms",
         log2(composed_evaluations[0].len()),
@@ -245,9 +278,11 @@ where
     );
 
     // finally, commit to the composition polynomial evaluations
+    #[cfg(feature = "std")]
     let now = Instant::now();
     let constraint_commitment = ConstraintCommitment::<E, H>::new(composed_evaluations);
     channel.commit_constraints(constraint_commitment.root());
+    #[cfg(feature = "std")]
     debug!(
         "Committed to composed evaluations by building a Merkle tree of depth {} in {} ms",
         constraint_commitment.tree_depth(),
@@ -255,6 +290,7 @@ where
     );
 
     // 5 ----- build DEEP composition polynomial --------------------------------------------------
+    #[cfg(feature = "std")]
     let now = Instant::now();
 
     // draw an out-of-domain point z. Depending on the type of E, the point is drawn either
@@ -290,6 +326,7 @@ where
     // trace_length - 1
     deep_composition_poly.adjust_degree();
 
+    #[cfg(feature = "std")]
     debug!(
         "Built DEEP composition polynomial of degree {} in {} ms",
         deep_composition_poly.degree(),
@@ -300,6 +337,7 @@ where
     assert_eq!(domain.trace_length() - 1, deep_composition_poly.degree());
 
     // 6 ----- evaluate DEEP composition polynomial over LDE domain -------------------------------
+    #[cfg(feature = "std")]
     let now = Instant::now();
     let deep_evaluations = deep_composition_poly.evaluate(&domain);
     // we check the following condition in debug mode only because infer_degree is an expensive
@@ -308,6 +346,7 @@ where
         domain.trace_length() - 1,
         infer_degree(&deep_evaluations, domain.offset())
     );
+    #[cfg(feature = "std")]
     debug!(
         "Evaluated DEEP composition polynomial over LDE domain (2^{} elements) in {} ms",
         log2(domain.lde_domain_size()),
@@ -315,9 +354,11 @@ where
     );
 
     // 7 ----- compute FRI layers for the composition polynomial ----------------------------------
+    #[cfg(feature = "std")]
     let now = Instant::now();
     let mut fri_prover = FriProver::new(air.options().to_fri_options());
     fri_prover.build_layers(&mut channel, deep_evaluations);
+    #[cfg(feature = "std")]
     debug!(
         "Computed {} FRI layers from composition polynomial evaluations in {} ms",
         fri_prover.num_layers(),
@@ -325,6 +366,7 @@ where
     );
 
     // 8 ----- determine query positions ----------------------------------------------------------
+    #[cfg(feature = "std")]
     let now = Instant::now();
 
     // apply proof-of-work to the query seed
@@ -332,6 +374,7 @@ where
 
     // generate pseudo-random query positions
     let query_positions = channel.get_query_positions();
+    #[cfg(feature = "std")]
     debug!(
         "Determined {} query positions in {} ms",
         query_positions.len(),
@@ -339,6 +382,7 @@ where
     );
 
     // 9 ----- build proof object -----------------------------------------------------------------
+    #[cfg(feature = "std")]
     let now = Instant::now();
 
     // generate FRI proof
@@ -355,6 +399,7 @@ where
 
     // build the proof object
     let proof = channel.build_proof(trace_queries, constraint_queries, fri_proof);
+    #[cfg(feature = "std")]
     debug!("Built proof object in {} ms", now.elapsed().as_millis());
 
     Ok(proof)

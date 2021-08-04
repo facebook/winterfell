@@ -5,6 +5,7 @@
 
 use air::{Air, DeepCompositionCoefficients, EvaluationFrame, FieldExtension};
 use math::FieldElement;
+use utils::collections::Vec;
 
 // DEEP COMPOSER
 // ================================================================================================

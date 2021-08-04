@@ -26,16 +26,30 @@
 //! need to be in tens of thousands. And even for hundreds of thousands of asserted values, the
 //! verification time should not exceed 50 ms.
 
+#![no_std]
+
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+compile_error!("Either feature \"std\" or \"alloc\" must be enabled for this crate.");
+
+#[cfg(feature = "alloc")]
+#[macro_use]
+extern crate alloc;
+
+#[cfg(any(feature = "std", test))]
+#[macro_use]
+extern crate std;
+
 pub use air::{
     proof::StarkProof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
     ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
     EvaluationFrame, FieldExtension, HashFunction, ProofOptions, TraceInfo,
     TransitionConstraintDegree, TransitionConstraintGroup,
 };
-pub use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
-
 pub use math;
 use math::{FieldElement, StarkField};
+pub use utils::{
+    collections::Vec, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+};
 
 pub use crypto;
 use crypto::{

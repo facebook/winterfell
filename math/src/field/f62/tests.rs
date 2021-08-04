@@ -4,9 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{AsBytes, BaseElement, DeserializationError, FieldElement, Serializable, StarkField};
+use core::convert::TryFrom;
 use num_bigint::BigUint;
 use proptest::prelude::*;
-use std::convert::TryFrom;
 
 // MANUAL TESTS
 // ================================================================================================

@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use core::fmt;
+use utils::string::String;
 
 use crypto::RandomCoinError;
 

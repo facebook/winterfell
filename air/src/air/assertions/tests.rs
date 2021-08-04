@@ -5,6 +5,7 @@
 
 use super::{Assertion, AssertionError};
 use math::{fields::f128::BaseElement, FieldElement};
+use utils::collections::Vec;
 
 // SINGLE ASSERTIONS
 // ================================================================================================

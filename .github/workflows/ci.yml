@@ -64,3 +64,26 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
+
+  no-std:
+    name: no-std
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [stable, nightly]
+        target:
+          - wasm32-unknown-unknown
+    steps:
+      - uses: actions/checkout@main
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{matrix.toolchain}}
+          override: true
+      - run: rustup target add wasm32-unknown-unknown
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --verbose --no-default-features --features alloc --target ${{ matrix.target }}

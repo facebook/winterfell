@@ -12,8 +12,10 @@ use air::{
     TransitionConstraintGroup,
 };
 use math::FieldElement;
-use std::collections::HashMap;
-use utils::iter_mut;
+use utils::{
+    collections::{HashMap, Vec},
+    iter_mut,
+};
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;

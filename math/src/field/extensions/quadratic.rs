@@ -10,7 +10,11 @@ use core::{
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
     slice,
 };
-use utils::{AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+use utils::{
+    collections::Vec,
+    string::{String, ToString},
+    AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+};
 
 // QUADRATIC EXTENSION FIELD
 // ================================================================================================
@@ -33,7 +37,7 @@ impl<B: StarkField> QuadExtensionA<B> {
             "source vector length must be divisible by two, but was {}",
             source.len()
         );
-        let mut v = std::mem::ManuallyDrop::new(source);
+        let mut v = core::mem::ManuallyDrop::new(source);
         let p = v.as_mut_ptr();
         let len = v.len() / 2;
         let cap = v.capacity() / 2;
@@ -64,6 +68,7 @@ impl<B: StarkField> FieldElement for QuadExtensionA<B> {
         Self(self.0 + self.1, B::ZERO - self.1)
     }
 
+    #[cfg(feature = "std")]
     fn rand() -> Self {
         Self(B::rand(), B::rand())
     }
@@ -73,7 +78,7 @@ impl<B: StarkField> FieldElement for QuadExtensionA<B> {
     }
 
     fn elements_into_bytes(elements: Vec<Self>) -> Vec<u8> {
-        let mut v = std::mem::ManuallyDrop::new(elements);
+        let mut v = core::mem::ManuallyDrop::new(elements);
         let p = v.as_mut_ptr();
         let len = v.len() * Self::ELEMENT_BYTES;
         let cap = v.capacity() * Self::ELEMENT_BYTES;
@@ -116,6 +121,7 @@ impl<B: StarkField> FieldElement for QuadExtensionA<B> {
         Self::base_to_quad_vector(result)
     }
 
+    #[cfg(feature = "std")]
     fn prng_vector(seed: [u8; 32], n: usize) -> Vec<Self> {
         // get twice the number of base elements, and re-interpret them as quad field elements
         let result = B::prng_vector(seed, n * 2);
@@ -303,7 +309,7 @@ impl<B: StarkField> Deserializable for QuadExtensionA<B> {
 
 #[cfg(test)]
 mod tests {
-    use super::{AsBytes, DeserializationError, FieldElement, QuadExtensionA};
+    use super::{AsBytes, DeserializationError, FieldElement, QuadExtensionA, Vec};
     use crate::field::f128::BaseElement;
 
     // BASIC ALGEBRA

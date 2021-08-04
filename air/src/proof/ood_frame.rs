@@ -6,7 +6,8 @@
 use crate::EvaluationFrame;
 use math::FieldElement;
 use utils::{
-    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
+    collections::Vec, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+    SliceReader,
 };
 
 // OUT-OF-DOMAIN FRAME

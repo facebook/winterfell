@@ -8,7 +8,7 @@ use crate::{
     utils::log2,
 };
 use rayon::prelude::*;
-use utils::uninit_vector;
+use utils::{collections::Vec, uninit_vector};
 
 // POLYNOMIAL EVALUATION
 // ================================================================================================

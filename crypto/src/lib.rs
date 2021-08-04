@@ -16,6 +16,22 @@
 //!   [RandomCoin] implementation uses a cryptographic hash function to generate pseudo-random
 //!   elements form a seed.
 
+#![no_std]
+
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+compile_error!("Either feature \"std\" or \"alloc\" must be enabled for this crate.");
+
+#[cfg(all(feature = "alloc", feature = "std"))]
+compile_error!("This crate does not support features \"alloc\" and \"std\" simultaneously.");
+
+#[cfg(feature = "alloc")]
+#[macro_use]
+extern crate alloc;
+
+#[cfg(any(feature = "std", test))]
+#[macro_use]
+extern crate std;
+
 mod hash;
 pub use hash::{ElementHasher, Hasher};
 pub mod hashers {

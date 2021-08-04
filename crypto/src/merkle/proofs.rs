@@ -4,8 +4,11 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{errors::MerkleTreeError, Hasher};
-use std::collections::{BTreeMap, HashMap};
-use utils::{ByteReader, Deserializable, DeserializationError, Serializable};
+use utils::{
+    collections::{BTreeMap, HashMap, Vec},
+    string::ToString,
+    ByteReader, Deserializable, DeserializationError, Serializable,
+};
 
 // CONSTANTS
 // ================================================================================================
@@ -102,7 +105,7 @@ impl<H: Hasher> BatchMerkleProof<H> {
                 i += 1;
             }
 
-            std::mem::swap(&mut path_map, &mut next_path_map);
+            core::mem::swap(&mut path_map, &mut next_path_map);
         }
 
         BatchMerkleProof {

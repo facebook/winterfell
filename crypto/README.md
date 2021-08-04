@@ -9,6 +9,9 @@ This crate contains modules with cryptographic operations needed in STARK proof 
 
 When the crate is compiled with `concurrent` feature enabled, Merkle tree construction will be done using multiple threads (usually, as many threads as there are logical cores on the machine). The number of threads can be configured via `RAYON_NUM_THREADS` environment variable.
 
+## WebAssembly support
+To compile this crate to WebAssembly, disable default features and enable the `alloc` feature.
+
 License
 -------
 

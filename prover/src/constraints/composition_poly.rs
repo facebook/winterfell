@@ -4,9 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::StarkDomain;
+use core::marker::PhantomData;
 use math::{fft, polynom, FieldElement, StarkField};
-use std::marker::PhantomData;
-use utils::{iter, uninit_vector};
+use utils::{collections::Vec, iter, uninit_vector};
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
@@ -69,6 +69,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> CompositionPoly<B, E> {
     }
 
     /// Returns the degree of individual column polynomial.
+    #[allow(unused)]
     pub fn column_degree(&self) -> usize {
         self.column_len() - 1
     }
@@ -150,6 +151,7 @@ fn transpose<E: FieldElement>(coefficients: Vec<E>, num_columns: usize) -> Vec<V
 mod tests {
 
     use math::fields::f128::BaseElement;
+    use utils::collections::Vec;
 
     #[test]
     fn transpose() {

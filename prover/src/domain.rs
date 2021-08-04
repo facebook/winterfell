@@ -5,6 +5,7 @@
 
 use air::Air;
 use math::{fft, log2, StarkField};
+use utils::collections::Vec;
 
 // TYPES AND INTERFACES
 // ================================================================================================

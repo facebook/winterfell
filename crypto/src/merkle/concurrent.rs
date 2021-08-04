@@ -4,8 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::Hasher;
+use core::slice;
 use rayon::prelude::*;
-use std::slice;
+use utils::collections::Vec;
 
 // CONSTANTS
 // ================================================================================================

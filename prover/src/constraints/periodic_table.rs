@@ -5,8 +5,10 @@
 
 use air::Air;
 use math::{fft, StarkField};
-use std::collections::HashMap;
-use utils::uninit_vector;
+use utils::{
+    collections::{HashMap, Vec},
+    uninit_vector,
+};
 
 pub struct PeriodicValueTable<B: StarkField> {
     values: Vec<B>,
@@ -100,6 +102,7 @@ mod tests {
         fields::f128::BaseElement, get_power_series_with_offset, log2, polynom, FieldElement,
         StarkField,
     };
+    use utils::collections::Vec;
 
     #[test]
     fn periodic_value_table() {

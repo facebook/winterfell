@@ -6,6 +6,7 @@
 use crate::{errors::RandomCoinError, Hasher};
 use core::{convert::TryInto, marker::PhantomData};
 use math::{FieldElement, StarkField};
+use utils::collections::Vec;
 
 // RANDOM COIN
 // ================================================================================================

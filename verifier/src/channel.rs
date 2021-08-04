@@ -8,6 +8,7 @@ use air::{proof::StarkProof, Air, EvaluationFrame};
 use crypto::{BatchMerkleProof, ElementHasher, MerkleTree};
 use fri::VerifierChannel as FriVerifierChannel;
 use math::{FieldElement, StarkField};
+use utils::{collections::Vec, string::ToString};
 
 // TYPES AND INTERFACES
 // ================================================================================================

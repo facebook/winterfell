@@ -6,7 +6,7 @@
 use air::proof::Queries;
 use crypto::{ElementHasher, MerkleTree};
 use math::FieldElement;
-use utils::{batch_iter_mut, uninit_vector};
+use utils::{batch_iter_mut, collections::Vec, uninit_vector};
 
 #[cfg(feature = "concurrent")]
 use rayon::prelude::*;
@@ -59,6 +59,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> ConstraintComm
     }
 
     /// Returns the depth of the commitment Merkle tree.
+    #[allow(unused)]
     pub fn tree_depth(&self) -> usize {
         self.commitment.depth()
     }

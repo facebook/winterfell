@@ -5,7 +5,9 @@
 
 use fri::FriOptions;
 use math::StarkField;
-use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+use utils::{
+    string::ToString, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+};
 
 // TYPES AND INTERFACES
 // ================================================================================================

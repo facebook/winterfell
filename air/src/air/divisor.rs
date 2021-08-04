@@ -4,8 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::air::Assertion;
+use core::fmt::{Display, Formatter};
 use math::{log2, FieldElement, StarkField};
-use std::fmt::{Display, Formatter};
+use utils::collections::Vec;
 
 // CONSTRAINT DIVISOR
 // ================================================================================================

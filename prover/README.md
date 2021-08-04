@@ -5,6 +5,9 @@ This prover can be used to generate proof of computational integrity using the S
 
 To generate proofs using multiple threads, the crate must be compiled with `concurrent` feature enabled. The number of threads used during proof generation can be configured via `RAYON_NUM_THREADS` environment variable. The default number of threads is set to the number of logical cores on the machine.
 
+## WebAssembly support
+To compile this crate to WebAssembly, disable default features and enable the `alloc` feature.
+
 ## Usage
 To generate a proof that a computation was executed correctly, you will need to do the following:
 

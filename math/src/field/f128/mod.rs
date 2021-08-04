@@ -18,11 +18,19 @@ use core::{
     convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter},
     mem,
-    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Range, Sub, SubAssign},
+    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
     slice,
 };
+use utils::{
+    collections::Vec,
+    string::{String, ToString},
+    AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+};
+
+#[cfg(feature = "std")]
+use core::ops::Range;
+#[cfg(feature = "std")]
 use rand::{distributions::Uniform, prelude::*};
-use utils::{AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 #[cfg(test)]
 mod tests;
@@ -36,10 +44,11 @@ const M: u128 = 340282366920938463463374557953744961537;
 // 2^40 root of unity
 const G: u128 = 23953097886125630542083529559205016746;
 
+#[cfg(feature = "std")]
 const RANGE: Range<u128> = Range { start: 0, end: M };
 
 // Number of bytes needed to represent field element
-const ELEMENT_BYTES: usize = std::mem::size_of::<u128>();
+const ELEMENT_BYTES: usize = core::mem::size_of::<u128>();
 
 // FIELD ELEMENT
 // ================================================================================================
@@ -79,6 +88,7 @@ impl FieldElement for BaseElement {
         BaseElement(self.0)
     }
 
+    #[cfg(feature = "std")]
     fn rand() -> Self {
         let range = Uniform::from(RANGE);
         let mut g = thread_rng();
@@ -90,7 +100,7 @@ impl FieldElement for BaseElement {
     }
 
     fn elements_into_bytes(elements: Vec<Self>) -> Vec<u8> {
-        let mut v = std::mem::ManuallyDrop::new(elements);
+        let mut v = core::mem::ManuallyDrop::new(elements);
         let p = v.as_mut_ptr();
         let len = v.len() * Self::ELEMENT_BYTES;
         let cap = v.capacity() * Self::ELEMENT_BYTES;
@@ -133,13 +143,14 @@ impl FieldElement for BaseElement {
         let result = vec![0u128; n];
 
         // translate a zero-filled vector of u128s into a vector of base field elements
-        let mut v = std::mem::ManuallyDrop::new(result);
+        let mut v = core::mem::ManuallyDrop::new(result);
         let p = v.as_mut_ptr();
         let len = v.len();
         let cap = v.capacity();
         unsafe { Vec::from_raw_parts(p as *mut Self, len, cap) }
     }
 
+    #[cfg(feature = "std")]
     fn prng_vector(seed: [u8; 32], n: usize) -> Vec<Self> {
         let range = Uniform::from(RANGE);
         let g = StdRng::from_seed(seed);

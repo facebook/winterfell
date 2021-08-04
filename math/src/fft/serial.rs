@@ -7,7 +7,7 @@ use crate::{
     field::{FieldElement, StarkField},
     utils::log2,
 };
-use utils::uninit_vector;
+use utils::{collections::Vec, uninit_vector};
 
 // CONSTANTS
 // ================================================================================================

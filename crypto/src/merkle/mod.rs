@@ -6,7 +6,7 @@
 use crate::{errors::MerkleTreeError, hash::Hasher};
 use core::slice;
 use math::log2;
-use std::collections::{BTreeSet, HashMap};
+use utils::collections::{BTreeSet, HashMap, Vec};
 
 mod proofs;
 pub use proofs::BatchMerkleProof;

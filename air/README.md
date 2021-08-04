@@ -1,6 +1,9 @@
 # Common
 This crate contains components needed to describe arbitrary computations in a STARK-specific format.
 
+## WebAssembly support
+To compile this crate to WebAssembly, disable default features and enable the `alloc` feature.
+
 ## Arithmetization
 Before we can generate proofs attesting that some computations were executed correctly, we need to reduce these computations to algebraic statements involving a set of bounded-degree polynomials. This step is usually called *arithmetization*. For basics of AIR arithmetization please refer to the excellent posts from StarkWare:
 

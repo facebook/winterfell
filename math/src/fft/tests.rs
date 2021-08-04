@@ -8,7 +8,7 @@ use crate::{
     polynom,
     utils::{get_power_series, log2},
 };
-use utils::AsBytes;
+use utils::{collections::Vec, AsBytes};
 
 // CORE ALGORITHMS
 // ================================================================================================
