@@ -42,11 +42,12 @@ pub use air::{
     EvaluationFrame, FieldExtension, HashFunction, ProofOptions, TraceInfo,
     TransitionConstraintDegree, TransitionConstraintGroup,
 };
+
 pub use math;
 use math::{FieldElement, StarkField};
-pub use utils::{
-    collections::Vec, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
-};
+
+use utils::collections::Vec;
+pub use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 pub use crypto;
 use crypto::{
