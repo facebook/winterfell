@@ -1,4 +1,4 @@
-# Math
+# Winter math
 This crate contains modules with mathematical operations needed in STARK proof generation and verification.
 
 ## Finite field
@@ -30,9 +30,16 @@ Support for cubic extension fields is not yet available.
 ## Fast Fourier transform
 [FFT](src/fft) module contains operations for computing Fast Fourier transform in a prime field (also called [Number-theoretic transform](https://en.wikipedia.org/wiki/Discrete_Fourier_transform_(general)#Number-theoretic_transform)). This can be used to interpolate and evaluate polynomials in *O(n log n)* time as long as the domain of the polynomial is a multiplicative subgroup with size which is a power of 2.
 
-## Concurrent execution
+## Crate features
 
-When the crate is compiled with `concurrent` feature enabled, some operations will be executed in multiple threads (usually, as many threads as there are logical cores on the machine). These operations are:
+This crate can be compiled with the following features:
+
+* `std` - enabled by default and relies on the Rust standard library.
+* `std` + `concurrent` - same as `std` but enables multi-threaded execution for some of the crate functions.
+* `no_std` + `alloc` - does not rely on Rust's standard library and enables compilation to WebAssembly.
+
+### Concurrent execution
+When compiled with `concurrent` feature enabled, the following operations will be executed in multiple threads:
 
 * fft module:
   - `evaluate_poly()`
@@ -48,9 +55,9 @@ When the crate is compiled with `concurrent` feature enabled, some operations wi
   - `mul_acc()`
   - `batch_inversion()`
 
-Number of threads can be configured via `RAYON_NUM_THREADS` environment variable.
+The number of threads can be configured via `RAYON_NUM_THREADS` environment variable, and usually defaults to the number of logical cores on the machine.
 
-## WebAssembly support
+### WebAssembly support
 To compile this crate to WebAssembly, disable default features and enable the `alloc` feature.
 
 License
