@@ -1,8 +1,5 @@
-# Common
+# Winter AIR
 This crate contains components needed to describe arbitrary computations in a STARK-specific format.
-
-## WebAssembly support
-To compile this crate to WebAssembly, disable default features and enable the `alloc` feature.
 
 ## Arithmetization
 Before we can generate proofs attesting that some computations were executed correctly, we need to reduce these computations to algebraic statements involving a set of bounded-degree polynomials. This step is usually called *arithmetization*. For basics of AIR arithmetization please refer to the excellent posts from StarkWare:
@@ -65,7 +62,7 @@ Sometimes, it may be useful to define a column in an execution trace which conta
 
 To define such columns for your computation, you can override `get_periodic_column_values()` method of the `Air` trait. The values of the periodic columns at a given step of the computation will be supplied to the `evaluate_transition()` method via the `periodic_values` parameter.
 
-## Proof options
+## Protocol parameters
 `ProofOptions` struct defines a set of options which are used during STARK proof generation and verification. These options have a direct impact on the security of the generated proofs as well as the proof generation time. Specifically, security of STARK proofs depends on:
 
 1. Hash function - proof security is limited by the collision resistance of the hash function used by the protocol. For example, if a hash function with 128-bit collision resistance is used, security of a STARK proof cannot exceed 128 bits.
@@ -75,6 +72,15 @@ To define such columns for your computation, you can override `get_periodic_colu
 5. Grinding factor - higher values increase proof security, but also may increase proof generation time.
 
 See [options.rs](src/options.rs) for more info on currently available options and their meaning. Additionally, security level of a proof can be estimated using `StarkProof::security_level()` function.
+
+## Crate features
+This crate can be compiled with the following features:
+
+* `std` - enabled by default and relies on the Rust standard library.
+* `no_std` + `alloc` - does not rely on the Rust standard library and enables compilation to WebAssembly.
+
+### WebAssembly support
+To compile this crate to WebAssembly, disable default features and enable the `alloc` feature.
 
 License
 -------

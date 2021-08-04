@@ -24,8 +24,8 @@
 //! with the latter, which, hopefully, also makes the former a little simpler. For additional
 //! details, please refer to the documentation of the [Air] trait itself.
 //!
-//! This crate also contains components describing protocol configuration option ([ProofOptions])
-//! and STARK proof structure ([StarkProof](proof::StarkProof)).
+//! This crate also contains components describing STARK protocol parameters ([ProofOptions]) and
+//! proof structure ([StarkProof](proof::StarkProof)).
 
 #![no_std]
 
