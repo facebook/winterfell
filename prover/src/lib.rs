@@ -56,10 +56,12 @@ pub use air::{
     EvaluationFrame, FieldExtension, HashFunction, ProofOptions, TraceInfo,
     TransitionConstraintDegree, TransitionConstraintGroup,
 };
-use fri::FriProver;
 pub use utils::{
-    collections::Vec, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+    iterators, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
+
+use fri::FriProver;
+use utils::collections::Vec;
 
 pub use math;
 use math::{fft::infer_degree, FieldElement, StarkField};
@@ -95,16 +97,6 @@ use channel::ProverChannel;
 
 mod errors;
 pub use errors::ProverError;
-
-pub mod iterators {
-    //! Components needed for asynchronous iterators.
-    //!
-    //! When `concurrent` feature is enabled, this module re-exports `rayon::prelude`. Otherwise,
-    //! this is an empty module.
-
-    #[cfg(feature = "concurrent")]
-    pub use rayon::prelude::*;
-}
 
 #[cfg(test)]
 pub mod tests;

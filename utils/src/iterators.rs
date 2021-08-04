@@ -3,6 +3,14 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+//! Components needed for asynchronous iterators.
+//!
+//! When `concurrent` feature is enabled, this module re-exports `rayon::prelude`. Otherwise,
+//! this is an empty module.
+
+#[cfg(feature = "concurrent")]
+pub use rayon::{current_num_threads as rayon_num_threads, prelude::*};
+
 /// Returns either a regular or a parallel iterator depending on whether `concurrent` feature
 /// is enabled.
 ///
@@ -75,7 +83,7 @@ macro_rules! batch_iter_mut {
     ($e: expr, $c: expr) => {
         #[cfg(feature = "concurrent")]
         {
-            let batch_size = $e.len() / rayon::current_num_threads().next_power_of_two();
+            let batch_size = $e.len() / rayon_num_threads().next_power_of_two();
             if batch_size < 1 {
                 $c($e, 0);
             }
@@ -92,7 +100,7 @@ macro_rules! batch_iter_mut {
     ($e: expr, $min_batch_size: expr, $c: expr) => {
         #[cfg(feature = "concurrent")]
         {
-            let batch_size = $e.len() / rayon::current_num_threads().next_power_of_two();
+            let batch_size = $e.len() / rayon_num_threads().next_power_of_two();
             if batch_size < $min_batch_size {
                 $c($e, 0);
             }

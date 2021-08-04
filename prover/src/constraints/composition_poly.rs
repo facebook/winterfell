@@ -9,7 +9,7 @@ use math::{fft, polynom, FieldElement, StarkField};
 use utils::{collections::Vec, iter, uninit_vector};
 
 #[cfg(feature = "concurrent")]
-use rayon::prelude::*;
+use utils::iterators::*;
 
 // COMPOSITION POLYNOMIAL
 // ================================================================================================

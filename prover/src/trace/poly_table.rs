@@ -8,7 +8,7 @@ use math::{log2, polynom, FieldElement, StarkField};
 use utils::{collections::Vec, iter};
 
 #[cfg(feature = "concurrent")]
-use rayon::prelude::*;
+use utils::iterators::*;
 
 // POLYNOMIAL TABLE
 // ================================================================================================

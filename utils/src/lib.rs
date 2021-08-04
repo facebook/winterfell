@@ -30,7 +30,7 @@ use collections::Vec;
 pub mod string;
 use string::ToString;
 
-mod iterators;
+pub mod iterators;
 
 mod errors;
 pub use errors::DeserializationError;
@@ -39,7 +39,10 @@ pub use errors::DeserializationError;
 mod tests;
 
 #[cfg(feature = "concurrent")]
-use rayon::prelude::*;
+use iterators::*;
+
+#[cfg(feature = "concurrent")]
+pub use rayon;
 
 // SERIALIZABLE
 // ================================================================================================

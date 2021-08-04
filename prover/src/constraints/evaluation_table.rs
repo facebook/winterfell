@@ -9,7 +9,7 @@ use math::{batch_inversion, fft, FieldElement, StarkField};
 use utils::{batch_iter_mut, collections::Vec, iter_mut, uninit_vector};
 
 #[cfg(feature = "concurrent")]
-use rayon::prelude::*;
+use utils::iterators::*;
 
 #[cfg(not(debug_assertions))]
 use core::marker::PhantomData;

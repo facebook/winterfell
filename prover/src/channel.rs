@@ -14,7 +14,7 @@ use math::FieldElement;
 use utils::{collections::Vec, Serializable};
 
 #[cfg(feature = "concurrent")]
-use rayon::prelude::*;
+use utils::iterators::*;
 
 // TYPES AND INTERFACES
 // ================================================================================================

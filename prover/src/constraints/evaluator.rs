@@ -18,7 +18,7 @@ use utils::{
 };
 
 #[cfg(feature = "concurrent")]
-use rayon::prelude::*;
+use utils::{iterators::*, rayon};
 
 // CONSTANTS
 // ================================================================================================
