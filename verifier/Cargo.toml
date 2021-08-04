@@ -24,3 +24,7 @@ math = { path = "../math", package = "winter-math", default-features = false }
 crypto = { path = "../crypto", package = "winter-crypto", default-features = false }
 fri = { path = "../fri", package = "winter-fri", default-features = false }
 air = { path = "../air", package = "winter-air", default-features = false }
+
+# Allow math in docs
+[package.metadata.docs.rs]
+rustdoc-args = ["--html-in-header", ".cargo/katex-header.html"]
