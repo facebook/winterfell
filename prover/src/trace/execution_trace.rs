@@ -57,11 +57,11 @@ const MIN_FRAGMENT_LENGTH: usize = 2;
 /// and then joining these fragments together.
 ///
 /// For this purpose, `ExecutionTrace` struct exposes [fragments()](ExecutionTrace::fragments)
-/// method, which takes fragment
-/// length as a parameter and breaks the execution trace into equally sized fragments. You can
-/// then use fragment's [fill()](ExecutionTraceFragment::fill) method to fill all fragments with
-/// data in parallel. The semantics of the fragment's [ExecutionTraceFragment::fill()] method
-/// are identical to the semantics of the [ExecutionTrace::fill()] method.
+/// method, which takes fragment length as a parameter, breaks the execution trace into equally
+/// sized fragments, and returns an iterator over these fragments. You can then use fragment's
+/// [fill()](ExecutionTraceFragment::fill) method to fill all fragments with data in parallel.
+/// The semantics of the fragment's [ExecutionTraceFragment::fill()] method are identical to the
+/// semantics of the [ExecutionTrace::fill()] method.
 pub struct ExecutionTrace<B: StarkField> {
     trace: Vec<Vec<B>>,
     meta: Vec<u8>,

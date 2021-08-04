@@ -1,12 +1,7 @@
-# STARK prover
+# Winterfell STARK prover
 This crate contains Winterfell STARK prover.
 
 This prover can be used to generate proof of computational integrity using the STARK protocol. The prover supports multi-threaded proof generation (including multi-threaded execution trace generation) but is limited to a single machine.
-
-To generate proofs using multiple threads, the crate must be compiled with `concurrent` feature enabled. The number of threads used during proof generation can be configured via `RAYON_NUM_THREADS` environment variable. The default number of threads is set to the number of logical cores on the machine.
-
-## WebAssembly support
-To compile this crate to WebAssembly, disable default features and enable the `alloc` feature.
 
 ## Usage
 To generate a proof that a computation was executed correctly, you will need to do the following:
@@ -50,10 +45,22 @@ The other approach is to instantiate `ExecutionTrace` struct using `ExecutionTra
 
 This second option is usually simpler to use and also makes it easy to implement concurrent trace generation.
 
-#### Concurrent trace generation
+## Crate features
+This crate can be compiled with the following features:
+
+* `std` - enabled by default and relies on the Rust standard library.
+* `std` + `concurrent` - same as `std` but enables multi-threaded proof generation.
+* `no_std` + `alloc` - does not rely on the Rust standard library and enables compilation to WebAssembly.
+
+### Concurrent proof generation
+When this crate is compiled with `concurrent` feature enabled, proof generation will be performed in multiple threads. The number of threads can be configured via `RAYON_NUM_THREADS` environment variable, and usually defaults to the number of logical cores on the machine.
+
 For computations which consist of many small independent computations, we can generate the execution trace of the entire computation by building fragments of the trace in parallel, and then joining these fragments together.
 
-For this purpose, `ExecutionTrace` struct exposes `fragments()` method, which takes fragment length as a parameter and breaks the execution trace into equally sized fragments. You can then use fragment's `fill()` method to fill all fragments with data in parallel. The semantics of the fragment's `fill()` method are identical to the `fill()` method of the execution trace.
+For this purpose, `ExecutionTrace` struct exposes `fragments()` method, which takes fragment length as a parameter, breaks the execution trace into equally sized fragments, and returns an iterator over these fragments. You can then use fragment's `fill()` method to fill all fragments with data in parallel. The semantics of the fragment's `fill()` method are identical to the `fill()` method of the execution trace.
+
+### WebAssembly support
+To compile this crate to WebAssembly, disable default features and enable the `alloc` feature.
 
 License
 -------
