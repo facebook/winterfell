@@ -18,7 +18,7 @@ The aim of this project is to build a feature-rich, easy to use, and highly perf
 
 ### Status and features
 
-While our distributed STARK prover implementation is still under development, this project contains fully-functional, multi-threaded, STARK prover and verifier code with the following nice properties:
+Winterfell is a fully-functional, multi-threaded STARK prover and verifier with the following nice properties:
 
 **A simple interface.** This library provides a relatively simple interface for describing general computations. See [usage](#Usage) for a quick tutorial, [air crate](air) for the description of the interface, and [examples crate](examples) for a few real-world examples.
 
@@ -303,7 +303,7 @@ The computation we benchmark here is a chain of Rescue hash invocations (see [ex
             <td>65 KB</td>
             <td>0.07 sec</td>
             <td>102 KB</td>
-            <td>2<sup>17</sup> constr.</td>
+            <td>2<sup>18</sup> constr.</td>
         </tr>
         <tr>
             <td style="text-align:left">2<sup>12</sup></td>
@@ -312,7 +312,7 @@ The computation we benchmark here is a chain of Rescue hash invocations (see [ex
             <td>81 KB</td>
             <td>0.25 sec</td>
             <td>128 KB</td>
-            <td>2<sup>19</sup> constr.</td>
+            <td>2<sup>20</sup> constr.</td>
         </tr>
         <tr>
             <td style="text-align:left">2<sup>14</sup></td>
@@ -321,7 +321,7 @@ The computation we benchmark here is a chain of Rescue hash invocations (see [ex
             <td>100 KB</td>
             <td>1 sec</td>
             <td>156 KB</td>
-            <td>2<sup>21</sup> constr.</td>
+            <td>2<sup>22</sup> constr.</td>
         </tr>
         <tr>
             <td style="text-align:left">2<sup>16</sup></td>
@@ -330,7 +330,7 @@ The computation we benchmark here is a chain of Rescue hash invocations (see [ex
             <td>119 KB</td>
             <td>4 sec</td>
             <td>184 KB</td>
-            <td>2<sup>23</sup> constr.</td>
+            <td>2<sup>24</sup> constr.</td>
         </tr>
         <tr>
             <td style="text-align:left">2<sup>18</sup></td>
@@ -339,7 +339,7 @@ The computation we benchmark here is a chain of Rescue hash invocations (see [ex
             <td>141 KB</td>
             <td>18 sec </td>
             <td>216 KB </td>
-            <td>2<sup>25</sup> constr.</td>
+            <td>2<sup>26</sup> constr.</td>
         </tr>
         <tr>
             <td style="text-align:left">2<sup>20</sup></td>
@@ -348,14 +348,14 @@ The computation we benchmark here is a chain of Rescue hash invocations (see [ex
             <td>166 KB</td>
             <td>89 sec </td>
             <td>252 KB </td>
-            <td>2<sup>27</sup> constr.</td>
+            <td>2<sup>28</sup> constr.</td>
         </tr>
     </tbody>
 </table>
 
 A few remarks about these benchmarks:
 * **Trace time** is the time it takes to generate an execution trace for the computation. This time does not depend on the chosen security level. For this specific computation, trace generation must be sequential, and thus, cannot take advantage of multiple cores. However, for other computations, where execution trace can be generated in parallel, trace time would be much smaller in relation to the proving time (see below).
-* **R1CS equiv.** is a very rough estimate of how many R1CS constraints would be required for this computation. The assumption here is that a single invocation of Rescue hash function requires ~120 R1CS constraints.
+* **R1CS equiv.** is a very rough estimate of how many R1CS constraints would be required for this computation. The assumption here is that a single invocation of Rescue hash function requires ~250 R1CS constraints.
 * Not included in the table, the time it takes to verify proofs in all benchmarks above is between 2 ms and 6 ms using a single CPU core.
 * As can be seen from the table, with STARKs, we can dynamically trade off proof size, proof security level, and proving time against each other.
 
