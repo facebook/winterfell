@@ -173,5 +173,8 @@ fn get_conjectured_security(
         query_security += options.grinding_factor();
     }
 
-    cmp::min(cmp::min(field_security, hash_fn_security), query_security) - 1
+    cmp::min(
+        cmp::min(field_security, query_security) - 1,
+        hash_fn_security,
+    )
 }

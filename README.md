@@ -284,7 +284,7 @@ The computation we benchmark here is a chain of Rescue hash invocations (see [ex
         <tr>
             <th rowspan=2 style="text-align:left">Chain length</th>
             <th rowspan=2 style="text-align:center">Trace time</th>
-            <th colspan=2 style="text-align:center">100 bit security</th>
+            <th colspan=2 style="text-align:center">96 bit security</th>
             <th colspan=2 style="text-align:center">128 bit security</th>
             <th rowspan=2 style="text-align:center">R1CS equiv.</th>
         </tr>
@@ -300,7 +300,7 @@ The computation we benchmark here is a chain of Rescue hash invocations (see [ex
             <td style="text-align:left">2<sup>10</sup></td>
             <td>0.1 sec</td>
             <td>0.04 sec</td>
-            <td>65 KB</td>
+            <td>51 KB</td>
             <td>0.07 sec</td>
             <td>102 KB</td>
             <td>2<sup>18</sup> constr.</td>
@@ -309,7 +309,7 @@ The computation we benchmark here is a chain of Rescue hash invocations (see [ex
             <td style="text-align:left">2<sup>12</sup></td>
             <td>0.4 sec</td>
             <td>0.14 sec</td>
-            <td>81 KB</td>
+            <td>65 KB</td>
             <td>0.25 sec</td>
             <td>128 KB</td>
             <td>2<sup>20</sup> constr.</td>
@@ -318,7 +318,7 @@ The computation we benchmark here is a chain of Rescue hash invocations (see [ex
             <td style="text-align:left">2<sup>14</sup></td>
             <td>1.4 sec</td>
             <td>0.6 sec</td>
-            <td>100 KB</td>
+            <td>80 KB</td>
             <td>1 sec</td>
             <td>156 KB</td>
             <td>2<sup>22</sup> constr.</td>
@@ -327,7 +327,7 @@ The computation we benchmark here is a chain of Rescue hash invocations (see [ex
             <td style="text-align:left">2<sup>16</sup></td>
             <td>6 sec</td>
             <td>2.5 sec</td>
-            <td>119 KB</td>
+            <td>94 KB</td>
             <td>4 sec</td>
             <td>184 KB</td>
             <td>2<sup>24</sup> constr.</td>
@@ -336,7 +336,7 @@ The computation we benchmark here is a chain of Rescue hash invocations (see [ex
             <td style="text-align:left">2<sup>18</sup></td>
             <td>24 sec</td>
             <td>11 sec</td>
-            <td>141 KB</td>
+            <td>112 KB</td>
             <td>18 sec </td>
             <td>216 KB </td>
             <td>2<sup>26</sup> constr.</td>
@@ -345,7 +345,7 @@ The computation we benchmark here is a chain of Rescue hash invocations (see [ex
             <td style="text-align:left">2<sup>20</sup></td>
             <td>94 sec</td>
             <td>50 sec</td>
-            <td>166 KB</td>
+            <td>128 KB</td>
             <td>89 sec </td>
             <td>252 KB </td>
             <td>2<sup>28</sup> constr.</td>

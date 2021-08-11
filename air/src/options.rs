@@ -20,11 +20,20 @@ use utils::{
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum HashFunction {
+    /// BLAKE3 hash function with 192 bit output.
+    ///
+    /// When this function is used in the STARK protocol, proof security cannot exceed 96 bits.
+    Blake3_192 = 1,
+
     /// BLAKE3 hash function with 256 bit output.
-    Blake3_256 = 1,
+    ///
+    /// When this function is used in the STARK protocol, proof security cannot exceed 128 bits.
+    Blake3_256 = 2,
 
     /// SHA3 hash function with 256 bit output.
-    Sha3_256 = 2,
+    ///
+    /// When this function is used in the STARK protocol, proof security cannot exceed 128 bits.
+    Sha3_256 = 3,
 }
 
 /// Defines an extension field for the composition polynomial.
@@ -278,6 +287,7 @@ impl HashFunction {
     /// Returns collision resistance of this hash function in bits.
     pub fn collision_resistance(&self) -> u32 {
         match self {
+            Self::Blake3_192 => 96,
             Self::Blake3_256 => 128,
             Self::Sha3_256 => 128,
         }
@@ -295,8 +305,9 @@ impl Deserializable for HashFunction {
     /// Reads a hash function enum from the specified `source`.
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         match source.read_u8()? {
-            1 => Ok(HashFunction::Blake3_256),
-            2 => Ok(HashFunction::Sha3_256),
+            1 => Ok(HashFunction::Blake3_192),
+            2 => Ok(HashFunction::Blake3_256),
+            3 => Ok(HashFunction::Sha3_256),
             value => Err(DeserializationError::InvalidValue(format!(
                 "value {} cannot be deserialized as HashFunction enum",
                 value.to_string()

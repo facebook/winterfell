@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use core::{fmt::Debug, marker::PhantomData, slice};
+use core::{convert::TryInto, fmt::Debug, marker::PhantomData, slice};
 use math::{FieldElement, StarkField};
 use sha3::Digest;
 use utils::{ByteReader, Deserializable, DeserializationError, Serializable};
@@ -68,21 +68,21 @@ pub trait ElementHasher: Hasher {
 pub struct Blake3_256<B: StarkField>(PhantomData<B>);
 
 impl<B: StarkField> Hasher for Blake3_256<B> {
-    type Digest = Digest256;
+    type Digest = ByteDigest<32>;
 
     fn hash(bytes: &[u8]) -> Self::Digest {
-        Digest256(*blake3::hash(bytes).as_bytes())
+        ByteDigest(*blake3::hash(bytes).as_bytes())
     }
 
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest {
-        Digest256(blake3::hash(Digest256::digests_as_bytes(values)).into())
+        ByteDigest(blake3::hash(ByteDigest::digests_as_bytes(values)).into())
     }
 
     fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest {
         let mut data = [0; 40];
         data[..32].copy_from_slice(&seed.0);
         data[32..].copy_from_slice(&value.to_le_bytes());
-        Digest256(*blake3::hash(&data).as_bytes())
+        ByteDigest(*blake3::hash(&data).as_bytes())
     }
 }
 
@@ -98,11 +98,62 @@ impl<B: StarkField> ElementHasher for Blake3_256<B> {
                 element.normalize();
                 hasher.update(element.as_bytes());
             }
-            Digest256(*hasher.finalize().as_bytes())
+            ByteDigest(*hasher.finalize().as_bytes())
         } else {
             // for non-malleable elements, hash them as is (in their internal representation)
             let bytes = E::elements_as_bytes(elements);
-            Digest256(*blake3::hash(bytes).as_bytes())
+            ByteDigest(*blake3::hash(bytes).as_bytes())
+        }
+    }
+}
+
+/// Implementation of the [Hasher](super::Hasher) trait for BLAKE3 hash function with 192-bit
+/// output.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Blake3_192<B: StarkField>(PhantomData<B>);
+
+impl<B: StarkField> Hasher for Blake3_192<B> {
+    type Digest = ByteDigest<24>;
+
+    fn hash(bytes: &[u8]) -> Self::Digest {
+        let result = blake3::hash(bytes);
+        ByteDigest(result.as_bytes()[..24].try_into().unwrap())
+    }
+
+    fn merge(values: &[Self::Digest; 2]) -> Self::Digest {
+        let result = blake3::hash(ByteDigest::digests_as_bytes(values));
+        ByteDigest(result.as_bytes()[..24].try_into().unwrap())
+    }
+
+    fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest {
+        let mut data = [0; 32];
+        data[..24].copy_from_slice(&seed.0);
+        data[24..].copy_from_slice(&value.to_le_bytes());
+
+        let result = blake3::hash(&data);
+        ByteDigest(result.as_bytes()[..24].try_into().unwrap())
+    }
+}
+
+impl<B: StarkField> ElementHasher for Blake3_192<B> {
+    type BaseField = B;
+
+    fn hash_elements<E: FieldElement<BaseField = Self::BaseField>>(elements: &[E]) -> Self::Digest {
+        if B::IS_MALLEABLE {
+            // when elements are malleable, normalize their internal representation before hashing
+            let mut hasher = blake3::Hasher::new();
+            for element in elements.iter() {
+                let mut element = *element;
+                element.normalize();
+                hasher.update(element.as_bytes());
+            }
+            let result = hasher.finalize();
+            ByteDigest(result.as_bytes()[..24].try_into().unwrap())
+        } else {
+            // for non-malleable elements, hash them as is (in their internal representation)
+            let bytes = E::elements_as_bytes(elements);
+            let result = blake3::hash(bytes);
+            ByteDigest(result.as_bytes()[..24].try_into().unwrap())
         }
     }
 }
@@ -115,21 +166,21 @@ impl<B: StarkField> ElementHasher for Blake3_256<B> {
 pub struct Sha3_256<B: StarkField>(PhantomData<B>);
 
 impl<B: StarkField> Hasher for Sha3_256<B> {
-    type Digest = Digest256;
+    type Digest = ByteDigest<32>;
 
     fn hash(bytes: &[u8]) -> Self::Digest {
-        Digest256(sha3::Sha3_256::digest(bytes).into())
+        ByteDigest(sha3::Sha3_256::digest(bytes).into())
     }
 
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest {
-        Digest256(sha3::Sha3_256::digest(Digest256::digests_as_bytes(values)).into())
+        ByteDigest(sha3::Sha3_256::digest(ByteDigest::digests_as_bytes(values)).into())
     }
 
     fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest {
         let mut data = [0; 40];
         data[..32].copy_from_slice(&seed.0);
         data[32..].copy_from_slice(&value.to_le_bytes());
-        Digest256(sha3::Sha3_256::digest(&data).into())
+        ByteDigest(sha3::Sha3_256::digest(&data).into())
     }
 }
 
@@ -145,11 +196,11 @@ impl<B: StarkField> ElementHasher for Sha3_256<B> {
                 element.normalize();
                 hasher.update(element.as_bytes());
             }
-            Digest256(hasher.finalize().into())
+            ByteDigest(hasher.finalize().into())
         } else {
             // for non-malleable elements, hash them as is (in their internal representation)
             let bytes = E::elements_as_bytes(elements);
-            Digest256(sha3::Sha3_256::digest(bytes).into())
+            ByteDigest(sha3::Sha3_256::digest(bytes).into())
         }
     }
 }
@@ -157,44 +208,50 @@ impl<B: StarkField> ElementHasher for Sha3_256<B> {
 // DIGESTS
 // ================================================================================================
 
-#[derive(Debug, Default, Copy, Clone, Eq, PartialEq)]
-pub struct Digest256([u8; 32]);
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct ByteDigest<const N: usize>([u8; N]);
 
-impl Digest256 {
-    pub fn new(value: [u8; 32]) -> Self {
+impl<const N: usize> ByteDigest<N> {
+    pub fn new(value: [u8; N]) -> Self {
         Self(value)
     }
 
     #[inline(always)]
-    pub fn bytes_to_digests(bytes: &[[u8; 32]]) -> &[Digest256] {
+    pub fn bytes_to_digests(bytes: &[[u8; N]]) -> &[ByteDigest<N>] {
         let p = bytes.as_ptr();
         let len = bytes.len();
-        unsafe { slice::from_raw_parts(p as *const Digest256, len) }
+        unsafe { slice::from_raw_parts(p as *const ByteDigest<N>, len) }
     }
 
     #[inline(always)]
-    pub fn digests_as_bytes(digests: &[Digest256]) -> &[u8] {
+    pub fn digests_as_bytes(digests: &[ByteDigest<N>]) -> &[u8] {
         let p = digests.as_ptr();
-        let len = digests.len() * 32;
+        let len = digests.len() * N;
         unsafe { slice::from_raw_parts(p as *const u8, len) }
     }
 }
 
-impl AsRef<[u8]> for Digest256 {
+impl<const N: usize> Default for ByteDigest<N> {
+    fn default() -> Self {
+        ByteDigest([0; N])
+    }
+}
+
+impl<const N: usize> AsRef<[u8]> for ByteDigest<N> {
     #[inline(always)]
     fn as_ref(&self) -> &[u8] {
         &self.0
     }
 }
 
-impl Serializable for Digest256 {
+impl<const N: usize> Serializable for ByteDigest<N> {
     fn write_into<W: utils::ByteWriter>(&self, target: &mut W) {
         target.write_u8_slice(&self.0);
     }
 }
 
-impl Deserializable for Digest256 {
+impl<const N: usize> Deserializable for ByteDigest<N> {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        Ok(Digest256(source.read_u8_array()?))
+        Ok(ByteDigest(source.read_u8_array()?))
     }
 }

@@ -51,7 +51,7 @@ pub use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Se
 
 pub use crypto;
 use crypto::{
-    hashers::{Blake3_256, Sha3_256},
+    hashers::{Blake3_192, Blake3_256, Sha3_256},
     ElementHasher, RandomCoin,
 };
 
@@ -108,6 +108,13 @@ pub fn verify<AIR: Air>(
                     <AIR, AIR::BaseElement, Blake3_256<AIR::BaseElement>>
                     (air, channel, public_coin)
             }
+            HashFunction::Blake3_192 => {
+                let public_coin = RandomCoin::new(&public_coin_seed);
+                let channel = VerifierChannel::new(&air, proof)?;
+                perform_verification::
+                    <AIR, AIR::BaseElement, Blake3_192<AIR::BaseElement>>
+                    (air, channel, public_coin)
+            }
             HashFunction::Sha3_256 => {
                 let public_coin = RandomCoin::new(&public_coin_seed);
                 let channel = VerifierChannel::new(&air, proof)?;
@@ -122,6 +129,13 @@ pub fn verify<AIR: Air>(
                 let channel = VerifierChannel::new(&air, proof)?;
                 perform_verification::
                     <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Blake3_256<AIR::BaseElement>>
+                    (air, channel, public_coin)
+            }
+            HashFunction::Blake3_192 => {
+                let public_coin = RandomCoin::new(&public_coin_seed);
+                let channel = VerifierChannel::new(&air, proof)?;
+                perform_verification::
+                    <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Blake3_192<AIR::BaseElement>>
                     (air, channel, public_coin)
             }
             HashFunction::Sha3_256 => {
