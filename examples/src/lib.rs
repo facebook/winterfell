@@ -35,6 +35,10 @@ pub struct ExampleOptions {
     #[structopt(subcommand)]
     pub example: ExampleType,
 
+    /// Hash function used in the protocol
+    #[structopt(short = "h", long = "hash_fn", default_value = "blake3_256")]
+    hash_fn: String,
+
     /// Number of queries to include in a proof
     #[structopt(short = "q", long = "queries")]
     num_queries: Option<usize>,
@@ -65,12 +69,18 @@ impl ExampleOptions {
         } else {
             FieldExtension::None
         };
+        let hash_fn = match self.hash_fn.as_str() {
+            "blake3_192" => HashFunction::Blake3_192,
+            "blake3_256" => HashFunction::Blake3_256,
+            "sha3_256" => HashFunction::Sha3_256,
+            val => panic!("'{}' is not a valid hash function option", val),
+        };
 
         ProofOptions::new(
             num_queries,
             blowup_factor,
             self.grinding_factor,
-            HashFunction::Blake3_256,
+            hash_fn,
             field_extension,
             self.folding_factor,
             256,

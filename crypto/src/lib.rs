@@ -31,6 +31,7 @@ pub use hash::{ElementHasher, Hasher};
 pub mod hashers {
     //! Contains implementations of currently supported hash functions.
 
+    pub use super::hash::Blake3_192;
     pub use super::hash::Blake3_256;
     pub use super::hash::Sha3_256;
 }

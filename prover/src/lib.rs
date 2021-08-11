@@ -62,7 +62,7 @@ use math::{fft::infer_degree, FieldElement, StarkField};
 
 pub use crypto;
 use crypto::{
-    hashers::{Blake3_256, Sha3_256},
+    hashers::{Blake3_192, Blake3_256, Sha3_256},
     ElementHasher,
 };
 
@@ -141,14 +141,19 @@ pub fn prove<AIR: Air>(
             HashFunction::Blake3_256 => generate_proof::
                 <AIR, AIR::BaseElement, Blake3_256<AIR::BaseElement>>
                 (air, trace, pub_inputs_bytes),
+            HashFunction::Blake3_192 => generate_proof::
+                <AIR, AIR::BaseElement, Blake3_192<AIR::BaseElement>>
+                (air, trace, pub_inputs_bytes),
             HashFunction::Sha3_256 => generate_proof::
                 <AIR, AIR::BaseElement, Sha3_256<AIR::BaseElement>>
                 (air, trace, pub_inputs_bytes)
-            
         },
         FieldExtension::Quadratic => match air.options().hash_fn() {
             HashFunction::Blake3_256 => generate_proof::
                 <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Blake3_256<AIR::BaseElement>>
+                (air, trace, pub_inputs_bytes),
+            HashFunction::Blake3_192 => generate_proof::
+                <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Blake3_192<AIR::BaseElement>>
                 (air, trace, pub_inputs_bytes),
             HashFunction::Sha3_256 => generate_proof::
                 <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Sha3_256<AIR::BaseElement>>
