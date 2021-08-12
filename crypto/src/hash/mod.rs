@@ -8,6 +8,9 @@ use math::{FieldElement, StarkField};
 use sha3::Digest;
 use utils::{ByteReader, Deserializable, DeserializationError, Serializable};
 
+mod rescue;
+pub use rescue::Rp62_248;
+
 // HASHER TRAITS
 // ================================================================================================
 
@@ -205,7 +208,7 @@ impl<B: StarkField> ElementHasher for Sha3_256<B> {
     }
 }
 
-// DIGESTS
+// BYTE DIGEST
 // ================================================================================================
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -253,5 +256,52 @@ impl<const N: usize> Serializable for ByteDigest<N> {
 impl<const N: usize> Deserializable for ByteDigest<N> {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         Ok(ByteDigest(source.read_u8_array()?))
+    }
+}
+
+// ELEMENT DIGEST
+// ================================================================================================
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct ElementDigest<B: StarkField, const N: usize>([B; N]);
+
+impl<B: StarkField, const N: usize> ElementDigest<B, N> {
+    pub fn new(value: [B; N]) -> Self {
+        Self(value)
+    }
+
+    #[inline(always)]
+    pub fn bytes_to_digests(_bytes: &[[u8; N]]) -> &[ElementDigest<B, N>] {
+        unimplemented!()
+    }
+
+    #[inline(always)]
+    pub fn digests_as_bytes(_digests: &[ElementDigest<B, N>]) -> &[u8] {
+        unimplemented!()
+    }
+}
+
+impl<B: StarkField, const N: usize> Default for ElementDigest<B, N> {
+    fn default() -> Self {
+        ElementDigest([B::default(); N])
+    }
+}
+
+impl<B: StarkField, const N: usize> AsRef<[u8]> for ElementDigest<B, N> {
+    #[inline(always)]
+    fn as_ref(&self) -> &[u8] {
+        unimplemented!()
+    }
+}
+
+impl<B: StarkField, const N: usize> Serializable for ElementDigest<B, N> {
+    fn write_into<W: utils::ByteWriter>(&self, _target: &mut W) {
+        unimplemented!()
+    }
+}
+
+impl<B: StarkField, const N: usize> Deserializable for ElementDigest<B, N> {
+    fn read_from<R: ByteReader>(_source: &mut R) -> Result<Self, DeserializationError> {
+        unimplemented!()
     }
 }
