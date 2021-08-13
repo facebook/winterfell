@@ -3,50 +3,221 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{exp_acc, ElementDigest, Hasher};
+use super::{exp_acc, ElementHasher, Hasher};
 use core::convert::TryInto;
-use math::{fields::f62::BaseElement, FieldElement};
+use math::{fields::f62::BaseElement, FieldElement, StarkField};
+
+mod digest;
+pub use digest::ElementDigest;
+
+#[cfg(test)]
+mod tests;
 
 // CONSTANTS
 // ================================================================================================
 
-const DIGEST_SIZE: usize = 4;
+/// Sponge state is set to 12 field elements or 744 bytes; 8 elements are reserved for rate and
+/// the remaining 4 elements are reserved for capacity.
 const STATE_WIDTH: usize = 12;
+const RATE_WIDTH: usize = 8;
+
+/// The output of the hash function is a digest which consists of 4 field elements or 31 bytes.
+const DIGEST_SIZE: usize = 4;
+
+/// The number of rounds is set to 7 to target 124-bit security level with 40% security margin;
+/// computed using algorithm 7 from <https://eprint.iacr.org/2020/1143.pdf>
 const NUM_ROUNDS: usize = 7;
 
-//const ALPHA: u32 = 3;
-//const INV_ALPHA: u64 = 3074416663688030891;
-
-const CYCLE_LENGTH: usize = 8;
+/// S-Box and Inverse S-Box powers;
+/// computed using algorithm 6 from <https://eprint.iacr.org/2020/1143.pdf>
+///
+/// The constants are defined for tests only because the exponentiations in the code are unrolled
+/// for efficiency reasons.
+#[cfg(test)]
+const ALPHA: u32 = 3;
+#[cfg(test)]
+const INV_ALPHA: u64 = 3074416663688030891;
 
 // HASHER IMPLEMENTATION
 // ================================================================================================
 
+/// Implementation of [Hasher] trait for Rescue Prime hash function with 248-bit output.
+///
+/// The hash function is implemented according to the Rescue Prime
+/// [specifications](https://eprint.iacr.org/2020/1143.pdf) with the following exception:
+/// * We set the number of rounds to 7, which implies a 40% security margin instead of the 50%
+///   margin used in the specifications (a 50% margin rounds up to 8 rounds).
+/// * When hashing a sequence of elements, we do not append Fp(1) followed by Fp(0) elements
+///   to the end of the sequence as padding. Instead, we initialize one of the capacity elements
+///   to the number of elements to be hashed, and pad the sequence with Fp(0) elements only.
+///
+/// The parameters used to instantiate the function are:
+/// * Field: 62-bit prime field with modulus 2^62 - 111 * 2^39 + 1.
+/// * State width: 12 field elements.
+/// * Capacity size: 4 field elements.
+/// * Number of founds: 7.
+/// * S-Box degree: 3.
+///
+/// The above parameters target 124-bit security level. The digest consists of four field elements
+/// and it can be serialized into 31 bytes (248 bits).
+///
+/// ## Hash output consistency
+/// Functions [hash_elements()](Rp62_248::hash_elements), [merge()](Rp62_248::merge), and
+/// [merge_with_int()](Rp62_248::merge_with_int) are internally consistent. That is, computing
+/// a hash for the same set of elements using these functions will always produce the same
+/// result. For example, merging two digests using [merge()](Rp62_248::merge) will produce the
+/// same result as hashing 8 elements which make up these digests using
+/// [hash_elements()](Rp62_248::hash_elements) function.
+///
+/// However, [hash()](Rp62_248::hash) function is not consistent with functions mentioned above.
+/// For example, if we take two field elements, serialize them to bytes and hash them using
+/// [hash()](Rp62_248::hash), the result will differ from the result obtained by hashing these
+/// elements directly using [hash_elements()](Rp62_248::hash_elements) function. The reason for
+/// this difference is that [hash()](Rp62_248::hash) function needs to be able to handle
+/// arbitrary binary strings, which may or may not encode valid field elements - and thus,
+/// deserialization procedure used by this function is different from the procedure used to
+/// deserialize valid field elements.
+///
+/// Thus, if the underlying data consists of valid field elements, it might make more sense
+/// to deserialize them into field elements and then hash them using
+/// [hash_elements()](Rp62_248::hash_elements) function rather then hashing the serialized bytes
+/// using [hash()](Rp62_248::hash) function.
 pub struct Rp62_248();
 
 impl Hasher for Rp62_248 {
-    type Digest = ElementDigest<BaseElement, DIGEST_SIZE>;
+    type Digest = ElementDigest;
 
     fn hash(bytes: &[u8]) -> Self::Digest {
-        // TODO: implement properly
-        let mut state = [BaseElement::default(); STATE_WIDTH];
-        state[0] = BaseElement::new(bytes[0] as u64);
+        // compute the number of elements required to represent the string; we will be processing
+        // the string in 7-byte chunks, thus the number of elements will be equal to the number
+        // of such chunks (including a potential partial chunk at the end).
+        let num_elements = if bytes.len() % 7 == 0 {
+            bytes.len() / 7
+        } else {
+            bytes.len() / 7 + 1
+        };
 
-        apply_permutation(&mut state);
-        ElementDigest(state[..4].try_into().unwrap())
+        // initialize state to all zeros, except for the last element of the capacity part, which
+        // is set to the number of elements to be hashed. this is done so that adding zero elements
+        // at the end of the list always results in a different hash.
+        let mut state = [BaseElement::ZERO; STATE_WIDTH];
+        state[STATE_WIDTH - 1] = BaseElement::new(num_elements as u64);
+
+        // break the string into 7-byte chunks, convert each chunk into a field element, and
+        // absorb the element into the rate portion of the state. we use 7-byte chunks because
+        // every 7-byte chunk is guaranteed to map to some field element.
+        let mut i = 0;
+        let mut buf = [0_u8; 8];
+        for chunk in bytes.chunks(7) {
+            if i < num_elements - 1 {
+                buf[..7].copy_from_slice(chunk);
+            } else {
+                // if we are dealing with the last chunk, it may be smaller than 7 bytes long, so
+                // we need to handle it slightly differently. we also append a byte with value 1
+                // to the end of the string; this pads the string in such a way that adding
+                // trailing zeros results in different hash
+                let chunk_len = chunk.len();
+                buf = [0_u8; 8];
+                buf[..chunk_len].copy_from_slice(chunk);
+                buf[chunk_len] = 1;
+            }
+
+            // convert the bytes into a filed element and absorb it into the rate portion of the
+            // state; if the rate is filled up, apply the Rescue permutation and start absorbing
+            // again from zero index.
+            state[i] += BaseElement::new(u64::from_le_bytes(buf));
+            i += 1;
+            if i % RATE_WIDTH == 0 {
+                apply_permutation(&mut state);
+                i = 0;
+            }
+        }
+
+        // if we absorbed some elements but didn't apply a permutation to them (would happen when
+        // the number of elements is not a multiple of RATE_WIDTH), apply the Rescue permutation.
+        // we don't need to apply any extra padding because we injected total number of elements
+        // in the input list into the capacity portion of the state during initialization.
+        if i > 0 {
+            apply_permutation(&mut state);
+        }
+
+        // return the first 4 elements of the state as hash result
+        ElementDigest::new(state[..DIGEST_SIZE].try_into().unwrap())
     }
 
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest {
-        let mut state = [BaseElement::default(); STATE_WIDTH];
-        state[..4].copy_from_slice(&values[0].0);
-        state[4..8].copy_from_slice(&values[1].0);
+        // initialize the state by copying the digest elements into the rate portion of the state
+        // (8 total elements), and set the last capacity element to 8 (the number of elements to
+        // be hashed).
+        let mut state = [BaseElement::ZERO; STATE_WIDTH];
+        state[..RATE_WIDTH].copy_from_slice(Self::Digest::digests_as_elements(values));
+        state[STATE_WIDTH - 1] = BaseElement::new(RATE_WIDTH as u64);
 
+        // apply the Rescue permutation and return the first four elements of the state
         apply_permutation(&mut state);
-        ElementDigest(state[..4].try_into().unwrap())
+        ElementDigest::new(state[..DIGEST_SIZE].try_into().unwrap())
     }
 
-    fn merge_with_int(_seed: Self::Digest, _value: u64) -> Self::Digest {
-        unimplemented!()
+    fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest {
+        // initialize the state as follows:
+        // - seed is copied into the first 4 elements of the state.
+        // - if the value fits into a single field element, copy it into the fifth state element
+        //   and set the last capacity element to 5 (the number of elements to be hashed).
+        // - if the value doesn't fit into a single field element, split it into two field
+        //   elements, copy them into state elements 5 and 6, and set the last capacity element
+        //   to 6.
+        let mut state = [BaseElement::ZERO; STATE_WIDTH];
+        state[..DIGEST_SIZE].copy_from_slice(seed.as_elements());
+        state[DIGEST_SIZE] = BaseElement::new(value);
+        if value < BaseElement::MODULUS {
+            state[STATE_WIDTH - 1] = BaseElement::new(DIGEST_SIZE as u64 + 1);
+        } else {
+            state[DIGEST_SIZE + 1] = BaseElement::new(value / BaseElement::MODULUS);
+            state[STATE_WIDTH - 1] = BaseElement::new(DIGEST_SIZE as u64 + 2);
+        }
+
+        // apply the Rescue permutation and return the first four elements of the state
+        apply_permutation(&mut state);
+        ElementDigest::new(state[..DIGEST_SIZE].try_into().unwrap())
+    }
+}
+
+impl ElementHasher for Rp62_248 {
+    type BaseField = BaseElement;
+
+    fn hash_elements<E: FieldElement<BaseField = Self::BaseField>>(elements: &[E]) -> Self::Digest {
+        // convert the elements into a list of base field elements
+        let elements = E::as_base_elements(elements);
+
+        // initialize state to all zeros, except for the last element of the capacity part, which
+        // is set to the number of elements to be hashed. this is done so that adding zero elements
+        // at the end of the list always results in a different hash.
+        let mut state = [BaseElement::ZERO; STATE_WIDTH];
+        state[STATE_WIDTH - 1] = BaseElement::new(elements.len() as u64);
+
+        // absorb elements into the state one by one until the rate portion of the state is filled
+        // up; then apply the Rescue permutation and start absorbing again; repeat until all
+        // elements have been absorbed
+        let mut i = 0;
+        for &element in elements.iter() {
+            state[i] += element;
+            i += 1;
+            if i % RATE_WIDTH == 0 {
+                apply_permutation(&mut state);
+                i = 0;
+            }
+        }
+
+        // if we absorbed some elements but didn't apply a permutation to them (would happen when
+        // the number of elements is not a multiple of RATE_WIDTH), apply the Rescue permutation.
+        // we don't need to apply any extra padding because we injected total number of elements
+        // in the input list into the capacity portion of the state during initialization.
+        if i > 0 {
+            apply_permutation(&mut state);
+        }
+
+        // return the first 4 elements of the state as hash result
+        ElementDigest::new(state[..DIGEST_SIZE].try_into().unwrap())
     }
 }
 
@@ -54,6 +225,8 @@ impl Hasher for Rp62_248 {
 // ================================================================================================
 
 /// Applies Rescue-XLIX permutation to the provided state.
+///
+/// Implementation is based on algorithm 3 from <https://eprint.iacr.org/2020/1143.pdf>
 fn apply_permutation(state: &mut [BaseElement; STATE_WIDTH]) {
     // apply round function 7 times; this provides 128-bit security with 40% security margin
     for i in 0..NUM_ROUNDS {
@@ -61,19 +234,18 @@ fn apply_permutation(state: &mut [BaseElement; STATE_WIDTH]) {
     }
 }
 
-/// Rescue-XLIX round function;
-/// implementation based on algorithm 3 from <https://eprint.iacr.org/2020/1143.pdf>
+/// Rescue-XLIX round function.
 #[inline(always)]
 fn apply_round(state: &mut [BaseElement; STATE_WIDTH], round: usize) {
     // apply first half of Rescue round
     apply_sbox(state);
     apply_mds(state);
-    state.iter_mut().zip(ARK1[round]).for_each(|(s, k)| *s += k);
+    add_constants(state, &ARK1[round]);
 
     // apply second half of Rescue round
     apply_inv_sbox(state);
     apply_mds(state);
-    state.iter_mut().zip(ARK2[round]).for_each(|(s, k)| *s += k);
+    add_constants(state, &ARK2[round]);
 }
 
 // HELPER FUNCTIONS
@@ -88,6 +260,11 @@ fn apply_mds(state: &mut [BaseElement; STATE_WIDTH]) {
         });
     });
     *state = result
+}
+
+#[inline(always)]
+fn add_constants(state: &mut [BaseElement; STATE_WIDTH], ark: &[BaseElement; STATE_WIDTH]) {
+    state.iter_mut().zip(ark).for_each(|(s, &k)| *s += k);
 }
 
 #[inline(always)]
@@ -131,7 +308,8 @@ fn apply_inv_sbox(state: &mut [BaseElement; STATE_WIDTH]) {
 
 // MDS
 // ================================================================================================
-
+/// Rescue MDS matrix
+/// Computed using algorithm 4 from <https://eprint.iacr.org/2020/1143.pdf>
 const MDS: [[BaseElement; STATE_WIDTH]; STATE_WIDTH] = [
     [
         BaseElement::new(3950144678237376122),
@@ -305,7 +483,13 @@ const MDS: [[BaseElement; STATE_WIDTH]; STATE_WIDTH] = [
 
 // ROUND CONSTANTS
 // ================================================================================================
-pub const ARK1: [[BaseElement; STATE_WIDTH]; CYCLE_LENGTH] = [
+
+/// Rescue round constants;
+/// computed using algorithm 5 from <https://eprint.iacr.org/2020/1143.pdf>
+///
+/// The constants are broken up into two arrays ARK1 and ARK2; ARK1 contains the constants for the
+/// first half of Rescue round, and ARK2 contains constants for the second half of Rescue round.
+pub const ARK1: [[BaseElement; STATE_WIDTH]; NUM_ROUNDS] = [
     [
         BaseElement::new(2066114551762569441),
         BaseElement::new(3806895469920197238),
@@ -404,23 +588,9 @@ pub const ARK1: [[BaseElement; STATE_WIDTH]; CYCLE_LENGTH] = [
         BaseElement::new(4247318354894968843),
         BaseElement::new(4339035876293932168),
     ],
-    [
-        BaseElement::new(637464443586979476),
-        BaseElement::new(2836759567512989604),
-        BaseElement::new(2810771120313048804),
-        BaseElement::new(933847926071662702),
-        BaseElement::new(3671300003323773082),
-        BaseElement::new(1302583912073804613),
-        BaseElement::new(1599597190376846885),
-        BaseElement::new(3744381265009855087),
-        BaseElement::new(2639095668805356140),
-        BaseElement::new(1001607423519830780),
-        BaseElement::new(2649493298619816104),
-        BaseElement::new(497568504817846927),
-    ],
 ];
 
-pub const ARK2: [[BaseElement; STATE_WIDTH]; CYCLE_LENGTH] = [
+pub const ARK2: [[BaseElement; STATE_WIDTH]; NUM_ROUNDS] = [
     [
         BaseElement::new(3819036781602939606),
         BaseElement::new(887046499825451011),
@@ -519,55 +689,4 @@ pub const ARK2: [[BaseElement; STATE_WIDTH]; CYCLE_LENGTH] = [
         BaseElement::new(3269764362972891817),
         BaseElement::new(2929967273325723272),
     ],
-    [
-        BaseElement::new(1555175681720018923),
-        BaseElement::new(2913517096498256645),
-        BaseElement::new(2119225001993504406),
-        BaseElement::new(1383803580992220774),
-        BaseElement::new(4395189003224844853),
-        BaseElement::new(248814153532786695),
-        BaseElement::new(3675667117284746347),
-        BaseElement::new(1077282323180186121),
-        BaseElement::new(2847878069549966282),
-        BaseElement::new(1830325602477655465),
-        BaseElement::new(3241765544416225076),
-        BaseElement::new(3803032785619635880),
-    ],
 ];
-
-// TESTS
-// ================================================================================================
-
-#[cfg(test)]
-mod tests {
-
-    use super::{BaseElement, FieldElement, STATE_WIDTH};
-
-    #[test]
-    fn test_inv_sbox() {
-        const INV_ALPHA: u64 = 3074416663688030891;
-
-        let state: [BaseElement; STATE_WIDTH] = [
-            BaseElement::rand(),
-            BaseElement::rand(),
-            BaseElement::rand(),
-            BaseElement::rand(),
-            BaseElement::rand(),
-            BaseElement::rand(),
-            BaseElement::rand(),
-            BaseElement::rand(),
-            BaseElement::rand(),
-            BaseElement::rand(),
-            BaseElement::rand(),
-            BaseElement::rand(),
-        ];
-
-        let mut expected = state;
-        expected.iter_mut().for_each(|v| *v = v.exp(INV_ALPHA));
-
-        let mut actual = state;
-        super::apply_inv_sbox(&mut actual);
-
-        assert_eq!(expected, actual);
-    }
-}
