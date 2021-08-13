@@ -128,14 +128,6 @@ impl FieldElement for BaseElement {
         Self::try_from(bytes).ok()
     }
 
-    fn elements_into_bytes(elements: Vec<Self>) -> Vec<u8> {
-        let mut v = core::mem::ManuallyDrop::new(elements);
-        let p = v.as_mut_ptr();
-        let len = v.len() * Self::ELEMENT_BYTES;
-        let cap = v.capacity() * Self::ELEMENT_BYTES;
-        unsafe { Vec::from_raw_parts(p as *mut u8, len, cap) }
-    }
-
     fn elements_as_bytes(elements: &[Self]) -> &[u8] {
         // TODO: take endianness into account
         let p = elements.as_ptr();
@@ -189,6 +181,10 @@ impl FieldElement for BaseElement {
     fn normalize(&mut self) {
         self.0 = normalize(self.0)
     }
+
+    fn as_base_elements(elements: &[Self]) -> &[Self::BaseField] {
+        elements
+    }
 }
 
 impl StarkField for BaseElement {
@@ -200,7 +196,7 @@ impl StarkField for BaseElement {
     /// sage: GF(MODULUS).order() \
     /// 4611624995532046337
     const MODULUS: Self::PositiveInteger = M;
-    const MODULUS_BITS: u32 = 64;
+    const MODULUS_BITS: u32 = 62;
 
     /// sage: GF(MODULUS).primitive_element() \
     /// 3

@@ -77,14 +77,6 @@ impl<B: StarkField> FieldElement for QuadExtensionA<B> {
         Self::try_from(&bytes[..Self::ELEMENT_BYTES as usize]).ok()
     }
 
-    fn elements_into_bytes(elements: Vec<Self>) -> Vec<u8> {
-        let mut v = core::mem::ManuallyDrop::new(elements);
-        let p = v.as_mut_ptr();
-        let len = v.len() * Self::ELEMENT_BYTES;
-        let cap = v.capacity() * Self::ELEMENT_BYTES;
-        unsafe { Vec::from_raw_parts(p as *mut u8, len, cap) }
-    }
-
     fn elements_as_bytes(elements: &[Self]) -> &[u8] {
         unsafe {
             slice::from_raw_parts(
@@ -131,6 +123,12 @@ impl<B: StarkField> FieldElement for QuadExtensionA<B> {
     fn normalize(&mut self) {
         self.0.normalize();
         self.1.normalize();
+    }
+
+    fn as_base_elements(elements: &[Self]) -> &[Self::BaseField] {
+        let ptr = elements.as_ptr();
+        let len = elements.len() * 2;
+        unsafe { slice::from_raw_parts(ptr as *const Self::BaseField, len) }
     }
 }
 
@@ -426,25 +424,6 @@ mod tests {
     // --------------------------------------------------------------------------------------------
 
     #[test]
-    fn elements_into_bytes() {
-        let source = vec![
-            QuadExtensionA(BaseElement::new(1), BaseElement::new(2)),
-            QuadExtensionA(BaseElement::new(3), BaseElement::new(4)),
-        ];
-
-        let expected: Vec<u8> = vec![
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0,
-        ];
-
-        assert_eq!(
-            expected,
-            QuadExtensionA::<BaseElement>::elements_into_bytes(source)
-        );
-    }
-
-    #[test]
     fn elements_as_bytes() {
         let source = vec![
             QuadExtensionA(BaseElement::new(1), BaseElement::new(2)),
@@ -485,6 +464,29 @@ mod tests {
 
         let result = unsafe { QuadExtensionA::<BaseElement>::bytes_as_elements(&bytes[1..]) };
         assert!(matches!(result, Err(DeserializationError::InvalidValue(_))));
+    }
+
+    // UTILITIES
+    // --------------------------------------------------------------------------------------------
+
+    #[test]
+    fn as_base_elements() {
+        let elements = vec![
+            QuadExtensionA(BaseElement::new(1), BaseElement::new(2)),
+            QuadExtensionA(BaseElement::new(3), BaseElement::new(4)),
+        ];
+
+        let expected = vec![
+            BaseElement::new(1),
+            BaseElement::new(2),
+            BaseElement::new(3),
+            BaseElement::new(4),
+        ];
+
+        assert_eq!(
+            expected,
+            QuadExtensionA::<BaseElement>::as_base_elements(&elements)
+        );
     }
 
     // HELPER FUNCTIONS

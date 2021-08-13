@@ -144,26 +144,27 @@ pub trait FieldElement:
     fn rand() -> Self;
 
     /// Returns a field element if the set of bytes forms a valid field element, otherwise returns
-    /// None. The element is expected to be in canonical representation. This function is primarily
+    /// None.
+    ///
+    /// The element is expected to be in canonical representation. This function is primarily
     /// intended for sampling random field elements from a hash function output.
     fn from_random_bytes(bytes: &[u8]) -> Option<Self>;
 
     // SERIALIZATION / DESERIALIZATION
     // --------------------------------------------------------------------------------------------
 
-    /// Converts a vector of field elements into a vector of bytes. The elements may be in the
-    /// internal representation rather than in the canonical representation. This conversion is
-    /// intended to be zero-copy (i.e. by re-interpreting the underlying memory).
-    fn elements_into_bytes(elements: Vec<Self>) -> Vec<u8>;
-
-    /// Converts a list of elements into a list of bytes. The elements may be in the internal
-    /// representation rather than in the canonical representation. This conversion is intended
-    /// to be zero-copy (i.e. by re-interpreting the underlying memory).
+    /// Converts a list of elements into a list of bytes.
+    ///
+    /// The elements may be in the internal representation rather than in the canonical
+    /// representation. This conversion is intended to be zero-copy (i.e. by re-interpreting the
+    /// underlying memory).
     fn elements_as_bytes(elements: &[Self]) -> &[u8];
 
-    /// Converts a list of bytes into a list of field elements. The elements are assumed to
-    /// encoded in the internal representation rather than in the canonical representation. The
-    /// conversion is intended to be zero-copy (i.e. by re-interpreting the underlying memory).
+    /// Converts a list of bytes into a list of field elements.
+    ///
+    /// The elements are assumed to encoded in the internal representation rather than in the
+    /// canonical representation. The conversion is intended to be zero-copy (i.e. by
+    /// re-interpreting the underlying memory).
     ///
     /// # Errors
     /// An error is returned if:
@@ -198,6 +199,13 @@ pub trait FieldElement:
     /// Normalization is applicable only to malleable field elements; for non-malleable elements
     /// this is a no-op.
     fn normalize(&mut self);
+
+    /// Converts a list of field elements into a list of elements in the underlying base field.
+    ///
+    /// For base STARK fields, the input and output lists are the same. For extension field, the
+    /// output list will contain decompositions of each extension element into underlying base
+    /// elements.
+    fn as_base_elements(elements: &[Self]) -> &[Self::BaseField];
 }
 
 // STARK FIELD

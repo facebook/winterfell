@@ -145,24 +145,6 @@ fn test_g_is_2_exp_40_root() {
 // ================================================================================================
 
 #[test]
-fn elements_into_bytes() {
-    let source = vec![
-        BaseElement::new(1),
-        BaseElement::new(2),
-        BaseElement::new(3),
-        BaseElement::new(4),
-    ];
-
-    let expected: Vec<u8> = vec![
-        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0,
-    ];
-
-    assert_eq!(expected, BaseElement::elements_into_bytes(source));
-}
-
-#[test]
 fn elements_as_bytes() {
     let source = vec![
         BaseElement::new(1),

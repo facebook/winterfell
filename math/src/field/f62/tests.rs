@@ -163,24 +163,6 @@ fn try_from_slice() {
 }
 
 #[test]
-fn elements_into_bytes() {
-    let source = vec![
-        BaseElement::new(1),
-        BaseElement::new(2),
-        BaseElement::new(3),
-        BaseElement::new(4),
-    ];
-
-    let mut expected = vec![];
-    expected.extend_from_slice(&source[0].0.to_le_bytes());
-    expected.extend_from_slice(&source[1].0.to_le_bytes());
-    expected.extend_from_slice(&source[2].0.to_le_bytes());
-    expected.extend_from_slice(&source[3].0.to_le_bytes());
-
-    assert_eq!(expected, BaseElement::elements_into_bytes(source));
-}
-
-#[test]
 fn elements_as_bytes() {
     let source = vec![
         BaseElement::new(1),

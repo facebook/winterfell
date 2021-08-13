@@ -155,7 +155,7 @@ pub trait Deserializable: Sized {
     /// * Bytes read from the `source` do not represent a valid value for `Self` for any of the
     ///   elements.
     ///
-    /// Note: if the error occurs, the reader is not rolled back to the state prior calling
+    /// Note: if the error occurs, the reader is not rolled back to the state prior to calling
     /// this function.
     fn read_batch_from<R: ByteReader>(
         source: &mut R,
