@@ -7,6 +7,7 @@ use super::{ByteDigest, ElementHasher, Hasher};
 use core::marker::PhantomData;
 use math::{FieldElement, StarkField};
 use sha3::Digest;
+use utils::ByteWriter;
 
 // SHA3 WITH 256-BIT OUTPUT
 // ================================================================================================
@@ -38,19 +39,43 @@ impl<B: StarkField> ElementHasher for Sha3_256<B> {
     type BaseField = B;
 
     fn hash_elements<E: FieldElement<BaseField = Self::BaseField>>(elements: &[E]) -> Self::Digest {
-        if B::IS_MALLEABLE {
-            // when elements are malleable, normalize their internal representation before hashing
-            let mut hasher = sha3::Sha3_256::new();
-            for element in elements.iter() {
-                let mut element = *element;
-                element.normalize();
-                hasher.update(element.as_bytes());
-            }
-            ByteDigest(hasher.finalize().into())
-        } else {
-            // for non-malleable elements, hash them as is (in their internal representation)
+        if B::IS_CANONICAL {
+            // when element's internal and canonical representations are the same, we can hash
+            // element bytes directly
             let bytes = E::elements_as_bytes(elements);
             ByteDigest(sha3::Sha3_256::digest(bytes).into())
+        } else {
+            // when elements' internal and canonical representations differ, we need to serialize
+            // them before hashing
+            let mut hasher = ShaHasher::new();
+            hasher.write(elements);
+            ByteDigest(hasher.finalize())
         }
+    }
+}
+
+// SHA HASHER
+// ================================================================================================
+
+/// Wrapper around SHA3 hasher to implement [ByteWriter] trait for it.
+struct ShaHasher(sha3::Sha3_256);
+
+impl ShaHasher {
+    pub fn new() -> Self {
+        Self(sha3::Sha3_256::new())
+    }
+
+    pub fn finalize(self) -> [u8; 32] {
+        self.0.finalize().into()
+    }
+}
+
+impl ByteWriter for ShaHasher {
+    fn write_u8(&mut self, value: u8) {
+        self.0.update(&[value]);
+    }
+
+    fn write_u8_slice(&mut self, values: &[u8]) {
+        self.0.update(values);
     }
 }

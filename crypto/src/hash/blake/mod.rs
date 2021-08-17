@@ -6,6 +6,7 @@
 use super::{ByteDigest, ElementHasher, Hasher};
 use core::{convert::TryInto, fmt::Debug, marker::PhantomData};
 use math::{FieldElement, StarkField};
+use utils::ByteWriter;
 
 #[cfg(test)]
 mod tests;
@@ -41,19 +42,17 @@ impl<B: StarkField> ElementHasher for Blake3_256<B> {
     type BaseField = B;
 
     fn hash_elements<E: FieldElement<BaseField = Self::BaseField>>(elements: &[E]) -> Self::Digest {
-        if B::IS_MALLEABLE {
-            // when elements are malleable, normalize their internal representation before hashing
-            let mut hasher = blake3::Hasher::new();
-            for element in elements.iter() {
-                let mut element = *element;
-                element.normalize();
-                hasher.update(element.as_bytes());
-            }
-            ByteDigest(*hasher.finalize().as_bytes())
-        } else {
-            // for non-malleable elements, hash them as is (in their internal representation)
+        if B::IS_CANONICAL {
+            // when element's internal and canonical representations are the same, we can hash
+            // element bytes directly
             let bytes = E::elements_as_bytes(elements);
             ByteDigest(*blake3::hash(bytes).as_bytes())
+        } else {
+            // when elements' internal and canonical representations differ, we need to serialize
+            // them before hashing
+            let mut hasher = BlakeHasher::new();
+            hasher.write(elements);
+            ByteDigest(hasher.finalize())
         }
     }
 }
@@ -93,21 +92,45 @@ impl<B: StarkField> ElementHasher for Blake3_192<B> {
     type BaseField = B;
 
     fn hash_elements<E: FieldElement<BaseField = Self::BaseField>>(elements: &[E]) -> Self::Digest {
-        if B::IS_MALLEABLE {
-            // when elements are malleable, normalize their internal representation before hashing
-            let mut hasher = blake3::Hasher::new();
-            for element in elements.iter() {
-                let mut element = *element;
-                element.normalize();
-                hasher.update(element.as_bytes());
-            }
-            let result = hasher.finalize();
-            ByteDigest(result.as_bytes()[..24].try_into().unwrap())
-        } else {
-            // for non-malleable elements, hash them as is (in their internal representation)
+        if B::IS_CANONICAL {
+            // when element's internal and canonical representations are the same, we can hash
+            // element bytes directly
             let bytes = E::elements_as_bytes(elements);
             let result = blake3::hash(bytes);
             ByteDigest(result.as_bytes()[..24].try_into().unwrap())
+        } else {
+            // when elements' internal and canonical representations differ, we need to serialize
+            // them before hashing
+            let mut hasher = BlakeHasher::new();
+            hasher.write(elements);
+            let result = hasher.finalize();
+            ByteDigest(result[..24].try_into().unwrap())
         }
+    }
+}
+
+// BLAKE HASHER
+// ================================================================================================
+
+/// Wrapper around BLAKE3 hasher to implement [ByteWriter] trait for it.
+struct BlakeHasher(blake3::Hasher);
+
+impl BlakeHasher {
+    pub fn new() -> Self {
+        Self(blake3::Hasher::new())
+    }
+
+    pub fn finalize(&self) -> [u8; 32] {
+        *self.0.finalize().as_bytes()
+    }
+}
+
+impl ByteWriter for BlakeHasher {
+    fn write_u8(&mut self, value: u8) {
+        self.0.update(&[value]);
+    }
+
+    fn write_u8_slice(&mut self, values: &[u8]) {
+        self.0.update(values);
     }
 }

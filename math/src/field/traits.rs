@@ -75,9 +75,8 @@ pub trait FieldElement:
     /// Number of bytes needed to encode an element
     const ELEMENT_BYTES: usize;
 
-    /// True if internal representation of an element can be redundant - i.e., multiple
-    /// internal representations map to the same canonical representation.
-    const IS_MALLEABLE: bool;
+    /// True if internal representation of the element is the same as its canonical representation.
+    const IS_CANONICAL: bool;
 
     /// The additive identity.
     const ZERO: Self;
@@ -193,12 +192,6 @@ pub trait FieldElement:
 
     // UTILITIES
     // --------------------------------------------------------------------------------------------
-
-    /// Normalizes internal representation of this element.
-    ///
-    /// Normalization is applicable only to malleable field elements; for non-malleable elements
-    /// this is a no-op.
-    fn normalize(&mut self);
 
     /// Converts a list of field elements into a list of elements in the underlying base field.
     ///

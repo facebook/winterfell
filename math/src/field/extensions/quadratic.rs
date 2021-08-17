@@ -50,7 +50,7 @@ impl<B: StarkField> FieldElement for QuadExtensionA<B> {
     type BaseField = B;
 
     const ELEMENT_BYTES: usize = B::ELEMENT_BYTES * 2;
-    const IS_MALLEABLE: bool = B::IS_MALLEABLE;
+    const IS_CANONICAL: bool = B::IS_CANONICAL;
     const ZERO: Self = Self(B::ZERO, B::ZERO);
     const ONE: Self = Self(B::ONE, B::ZERO);
 
@@ -118,11 +118,6 @@ impl<B: StarkField> FieldElement for QuadExtensionA<B> {
         // get twice the number of base elements, and re-interpret them as quad field elements
         let result = B::prng_vector(seed, n * 2);
         Self::base_to_quad_vector(result)
-    }
-
-    fn normalize(&mut self) {
-        self.0.normalize();
-        self.1.normalize();
     }
 
     fn as_base_elements(elements: &[Self]) -> &[Self::BaseField] {
