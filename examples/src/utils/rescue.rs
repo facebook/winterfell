@@ -6,7 +6,7 @@
 use crate::utils::{are_equal, EvaluationResult};
 use core::slice;
 use winterfell::{
-    crypto::Hasher,
+    crypto::{Digest, Hasher},
     math::{fields::f128::BaseElement, FieldElement},
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
@@ -145,9 +145,12 @@ impl Hash {
     }
 }
 
-impl AsRef<[u8]> for Hash {
-    fn as_ref(&self) -> &[u8] {
-        BaseElement::elements_as_bytes(&self.0)
+impl Digest for Hash {
+    fn as_bytes(&self) -> [u8; 32] {
+        let bytes = BaseElement::elements_as_bytes(&self.0);
+        let mut result = [0; 32];
+        result[..bytes.len()].copy_from_slice(bytes);
+        result
     }
 }
 

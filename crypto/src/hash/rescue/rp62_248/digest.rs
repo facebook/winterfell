@@ -3,9 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::DIGEST_SIZE;
+use super::{Digest, DIGEST_SIZE};
 use core::slice;
-use math::{fields::f62::BaseElement, FieldElement, StarkField};
+use math::{fields::f62::BaseElement, StarkField};
 use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 // DIGEST TRAIT IMPLEMENTATIONS
@@ -30,31 +30,32 @@ impl ElementDigest {
     }
 }
 
+impl Digest for ElementDigest {
+    fn as_bytes(&self) -> [u8; 32] {
+        let v1 = self.0[0].as_int();
+        let v2 = self.0[1].as_int();
+        let v3 = self.0[2].as_int();
+        let v4 = self.0[3].as_int();
+
+        let mut result = [0; 32];
+        result[..8].copy_from_slice(&(v1 | (v2 << 62)).to_le_bytes());
+        result[8..16].copy_from_slice(&((v2 >> 2) | (v3 << 60)).to_le_bytes());
+        result[16..24].copy_from_slice(&((v3 >> 4) | (v4 << 58)).to_le_bytes());
+        result[24..].copy_from_slice(&(v4 >> 6).to_le_bytes());
+
+        result
+    }
+}
+
 impl Default for ElementDigest {
     fn default() -> Self {
         ElementDigest([BaseElement::default(); DIGEST_SIZE])
     }
 }
 
-impl AsRef<[u8]> for ElementDigest {
-    #[inline(always)]
-    fn as_ref(&self) -> &[u8] {
-        BaseElement::elements_as_bytes(&self.0)
-    }
-}
-
 impl Serializable for ElementDigest {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        let v1 = self.0[0].as_int();
-        let v2 = self.0[1].as_int();
-        let v3 = self.0[2].as_int();
-        let v4 = self.0[3].as_int();
-
-        println!("v4 {} -> {:b}", v4, v4);
-        target.write_u64(v1 | (v2 << 62));
-        target.write_u64((v2 >> 2) | (v3 << 60));
-        target.write_u64((v3 >> 4) | (v4 << 58));
-        target.write_u8_slice(&(v4 >> 6).to_le_bytes()[..7]);
+        target.write_u8_slice(&self.as_bytes()[..31]);
     }
 }
 
@@ -66,9 +67,6 @@ impl Deserializable for ElementDigest {
         let v4 = source.read_u32()?;
         let v5 = source.read_u16()?;
         let v6 = source.read_u8()?;
-
-        println!("{:b}", v3 >> 58);
-        println!("{:b}", ((v4 as u64) << 6));
 
         let e1 = BaseElement::new(v1 & 0x3FFFFFFFFFFFFFFF);
         let e2 = BaseElement::new(((v2 << 4) >> 2) | (v1 >> 62) & 0x3FFFFFFFFFFFFFFF);
@@ -86,7 +84,8 @@ impl Deserializable for ElementDigest {
 #[cfg(test)]
 mod tests {
 
-    use super::{BaseElement, ElementDigest, FieldElement};
+    use super::{BaseElement, ElementDigest};
+    use math::FieldElement;
     use utils::{Deserializable, Serializable, SliceReader};
 
     #[test]

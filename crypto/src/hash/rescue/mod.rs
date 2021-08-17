@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{ElementHasher, Hasher, StarkField};
+use super::{Digest, ElementHasher, Hasher, StarkField};
 
 mod rp62_248;
 pub use rp62_248::Rp62_248;

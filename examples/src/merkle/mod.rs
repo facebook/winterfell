@@ -10,7 +10,7 @@ use crate::{
 use log::debug;
 use std::time::Instant;
 use winterfell::{
-    crypto::MerkleTree,
+    crypto::{Digest, MerkleTree},
     math::{fields::f128::BaseElement, log2, FieldElement, StarkField},
     ProofOptions, StarkProof, VerifierError,
 };
@@ -62,7 +62,7 @@ impl MerkleExample {
         debug!(
             "Computed Merkle path from leaf {} to root {} in {} ms",
             index,
-            hex::encode(tree.root()),
+            hex::encode(tree.root().as_bytes()),
             now.elapsed().as_millis(),
         );
 

@@ -27,7 +27,7 @@ extern crate alloc;
 extern crate std;
 
 mod hash;
-pub use hash::{ElementHasher, Hasher};
+pub use hash::{Digest, ElementHasher, Hasher};
 pub mod hashers {
     //! Contains implementations of currently supported hash functions.
 

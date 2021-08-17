@@ -27,17 +27,7 @@ pub use rescue::Rp62_248;
 /// * A digests and a u64 value - this intended for use in PRNG or PoW contexts.
 pub trait Hasher {
     /// Specifies a digest type returned by this hasher.
-    type Digest: Debug
-        + Default
-        + Copy
-        + Clone
-        + Eq
-        + PartialEq
-        + Send
-        + Sync
-        + AsRef<[u8]> // TODO: ideally, this should be remove in favor of returning arrays
-        + Serializable
-        + Deserializable;
+    type Digest: Digest;
 
     /// Returns a hash of the provided sequence of bytes.
     fn hash(bytes: &[u8]) -> Self::Digest;
@@ -67,6 +57,22 @@ pub trait ElementHasher: Hasher {
         E: FieldElement<BaseField = Self::BaseField>;
 }
 
+// DIGEST TRAIT
+// ================================================================================================
+
+/// Defines output type for a cryptographic hash function.
+pub trait Digest:
+    Debug + Default + Copy + Clone + Eq + PartialEq + Send + Sync + Serializable + Deserializable
+{
+    /// Returns this digest serialized into an array of bytes.
+    ///
+    /// Ideally, the length of the returned array should be defined by an associated constant, but
+    /// using associated constants in const generics is not supported by Rust yet. Thus, we put an
+    /// upper limit on the possible digest size. For digests which are smaller than 32 bytes, the
+    /// unused bytes should be set to 0.
+    fn as_bytes(&self) -> [u8; 32];
+}
+
 // BYTE DIGEST
 // ================================================================================================
 
@@ -93,16 +99,17 @@ impl<const N: usize> ByteDigest<N> {
     }
 }
 
-impl<const N: usize> Default for ByteDigest<N> {
-    fn default() -> Self {
-        ByteDigest([0; N])
+impl<const N: usize> Digest for ByteDigest<N> {
+    fn as_bytes(&self) -> [u8; 32] {
+        let mut result = [0; 32];
+        result[..N].copy_from_slice(&self.0);
+        result
     }
 }
 
-impl<const N: usize> AsRef<[u8]> for ByteDigest<N> {
-    #[inline(always)]
-    fn as_ref(&self) -> &[u8] {
-        &self.0
+impl<const N: usize> Default for ByteDigest<N> {
+    fn default() -> Self {
+        ByteDigest([0; N])
     }
 }
 
@@ -115,5 +122,21 @@ impl<const N: usize> Serializable for ByteDigest<N> {
 impl<const N: usize> Deserializable for ByteDigest<N> {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         Ok(ByteDigest(source.read_u8_array()?))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ByteDigest, Digest};
+
+    #[test]
+    fn byte_digest_as_bytes() {
+        let d = ByteDigest::new([255_u8; 32]);
+        assert_eq!([255_u8; 32], d.as_bytes());
+
+        let d = ByteDigest::new([255_u8; 31]);
+        let mut expected = [255_u8; 32];
+        expected[31] = 0;
+        assert_eq!(expected, d.as_bytes());
     }
 }
