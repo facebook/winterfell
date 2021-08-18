@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{errors::RandomCoinError, Hasher};
+use crate::{errors::RandomCoinError, Digest, Hasher};
 use core::{convert::TryInto, marker::PhantomData};
 use math::{FieldElement, StarkField};
 use utils::collections::Vec;
@@ -154,7 +154,7 @@ impl<B: StarkField, H: Hasher> RandomCoin<B, H> {
     /// assert!(coin.leading_zeros() >= 2);
     /// ```
     pub fn leading_zeros(&self) -> u32 {
-        let bytes = self.seed.as_ref();
+        let bytes = self.seed.as_bytes();
         let seed_head = u64::from_le_bytes(bytes[..8].try_into().unwrap());
         seed_head.trailing_zeros()
     }
@@ -163,7 +163,7 @@ impl<B: StarkField, H: Hasher> RandomCoin<B, H> {
     /// value if it is interpreted as an integer in big-endian byte order.
     pub fn check_leading_zeros(&self, value: u64) -> u32 {
         let new_seed = H::merge_with_int(self.seed, value);
-        let bytes = new_seed.as_ref();
+        let bytes = new_seed.as_bytes();
         let seed_head = u64::from_le_bytes(bytes[..8].try_into().unwrap());
         seed_head.trailing_zeros()
     }
@@ -183,7 +183,7 @@ impl<B: StarkField, H: Hasher> RandomCoin<B, H> {
         for _ in 0..200 {
             // get the next pseudo-random value and take the first ELEMENT_BYTES from it
             let value = self.next();
-            let bytes = &value.as_ref()[..E::ELEMENT_BYTES as usize];
+            let bytes = &value.as_bytes()[..E::ELEMENT_BYTES as usize];
 
             // check if the bytes can be converted into a valid field element; if they can,
             // return; otherwise try again
@@ -270,7 +270,7 @@ impl<B: StarkField, H: Hasher> RandomCoin<B, H> {
         let mut values = Vec::new();
         for _ in 0..1000 {
             // get the next pseudo-random value and read the first 8 bytes from it
-            let bytes: [u8; 8] = self.next().as_ref()[..8].try_into().unwrap();
+            let bytes: [u8; 8] = self.next().as_bytes()[..8].try_into().unwrap();
 
             // convert to integer and limit the integer to the number of bits which can fit
             // into the specified domain

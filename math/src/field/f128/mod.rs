@@ -78,7 +78,7 @@ impl FieldElement for BaseElement {
 
     const ELEMENT_BYTES: usize = ELEMENT_BYTES;
 
-    const IS_MALLEABLE: bool = false;
+    const IS_CANONICAL: bool = true;
 
     fn inv(self) -> Self {
         BaseElement(inv(self.0))
@@ -97,14 +97,6 @@ impl FieldElement for BaseElement {
 
     fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
         Self::try_from(bytes).ok()
-    }
-
-    fn elements_into_bytes(elements: Vec<Self>) -> Vec<u8> {
-        let mut v = core::mem::ManuallyDrop::new(elements);
-        let p = v.as_mut_ptr();
-        let len = v.len() * Self::ELEMENT_BYTES;
-        let cap = v.capacity() * Self::ELEMENT_BYTES;
-        unsafe { Vec::from_raw_parts(p as *mut u8, len, cap) }
     }
 
     fn elements_as_bytes(elements: &[Self]) -> &[u8] {
@@ -157,8 +149,8 @@ impl FieldElement for BaseElement {
         g.sample_iter(range).take(n).map(BaseElement).collect()
     }
 
-    fn normalize(&mut self) {
-        // do nothing since the internal and canonical representations are the same
+    fn as_base_elements(elements: &[Self]) -> &[Self::BaseField] {
+        elements
     }
 }
 

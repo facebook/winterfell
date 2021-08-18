@@ -33,11 +33,9 @@ impl Commitments {
         fri_roots: Vec<H::Digest>,
     ) -> Self {
         let mut bytes = Vec::new();
-        bytes.extend_from_slice(trace_root.as_ref());
-        bytes.extend_from_slice(constraint_root.as_ref());
-        for fri_root in fri_roots.iter() {
-            bytes.extend_from_slice(fri_root.as_ref());
-        }
+        bytes.write(trace_root);
+        bytes.write(constraint_root);
+        bytes.write(fri_roots);
         Commitments(bytes)
     }
 
@@ -46,7 +44,7 @@ impl Commitments {
 
     /// Adds the specified commitment to the list of commitments.
     pub fn add<H: Hasher>(&mut self, commitment: &H::Digest) {
-        self.0.extend_from_slice(commitment.as_ref())
+        commitment.write_into(&mut self.0);
     }
 
     // PARSING

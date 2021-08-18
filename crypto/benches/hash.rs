@@ -4,31 +4,40 @@
 // LICENSE file in the root directory of this source tree.
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use math::fields::f128::BaseElement;
+use math::fields::f128;
 use winter_crypto::{
-    hashers::{Blake3_256, Sha3_256},
+    hashers::{Blake3_256, Rp62_248, Sha3_256},
     Hasher,
 };
 
-type Blake3 = Blake3_256<BaseElement>;
+type Blake3 = Blake3_256<f128::BaseElement>;
 type Blake3Digest = <Blake3 as Hasher>::Digest;
 
-type Sha3 = Sha3_256<BaseElement>;
+type Sha3 = Sha3_256<f128::BaseElement>;
 type Sha3Digest = <Sha3 as Hasher>::Digest;
 
-pub fn blake3(c: &mut Criterion) {
+type Rp62_248Digest = <Rp62_248 as Hasher>::Digest;
+
+fn blake3(c: &mut Criterion) {
     let v: [Blake3Digest; 2] = [Blake3::hash(&[1u8]), Blake3::hash(&[2u8])];
     c.bench_function("hash_blake3", |bench| {
         bench.iter(|| Blake3::merge(black_box(&v)))
     });
 }
 
-pub fn sha3(c: &mut Criterion) {
+fn sha3(c: &mut Criterion) {
     let v: [Sha3Digest; 2] = [Sha3::hash(&[1u8]), Sha3::hash(&[2u8])];
     c.bench_function("hash_sha3", |bench| {
         bench.iter(|| Sha3::merge(black_box(&v)))
     });
 }
 
-criterion_group!(hash_group, blake3, sha3);
+fn rescue248(c: &mut Criterion) {
+    let v: [Rp62_248Digest; 2] = [Rp62_248::hash(&[1u8]), Rp62_248::hash(&[2u8])];
+    c.bench_function("hash_rescue248", |bench| {
+        bench.iter(|| Rp62_248::merge(black_box(&v)))
+    });
+}
+
+criterion_group!(hash_group, blake3, sha3, rescue248);
 criterion_main!(hash_group);
