@@ -5,13 +5,13 @@ This crate contains modules with cryptographic operations needed in STARK proof 
 [Hash](src/hash) module defines a set of hash functions available for cryptographic operations. Currently, the following hash functions are supported:
  
 * SHA3 with 256-bit output.
-* BLAKE3 with either 256-bit or 192-bit output. The smaller output version can be used to reduce STARK proof size, however, it also reduces proof security level to 96 bits.
-* Rescue Prime over a 62-bit field with 248-bit output. Rescue is an arithmetization-friendly hash function which can be used as a building block in recursive proof composition. However, using this function is not yet supported by the Winterfell STARK prover and verifier.
+* BLAKE3 with either 256-bit or 192-bit output. The smaller output version can be used to reduce STARK proof size, however, it also limits proof security level to at most 96 bits.
+* Rescue Prime over a 62-bit field with 248-bit output. Rescue is an arithmetization-friendly hash function and can be used in the STARK protocol when recursive proof composition is desired. However, using this function is not yet supported by the Winterfell STARK prover and verifier.
 
 ### Rescue hash function implementation
 Rescue hash function is implemented according to the Rescue Prime [specifications](https://eprint.iacr.org/2020/1143.pdf) with the following exception:
-* We set the number of rounds to 7, which implies a 40% security margin instead of the 50% margin used in the specifications (a 50% margin rounds up to 8 rounds).
-* When hashing a sequence of elements, we do not append Fp(1) followed by Fp(0) elements to the end of the sequence as padding. Instead, we initialize one of the capacity elements to the number of elements to be hashed, and pad the sequence with Fp(0) elements only.
+* We set the number of rounds to 7, which implies a 40% security margin instead of the 50% margin used in the specifications (a 50% margin rounds up to 8 rounds). The primary motivation for this is that having the number of rounds be one less than a power of two simplifies AIR design for computations involving the hash function.
+* When hashing a sequence of elements, we do not append Fp(1) followed by Fp(0) elements to the end of the sequence as padding. Instead, we initialize one of the capacity elements to the number of elements to be hashed, and pad the sequence with Fp(0) elements only. This ensures that output of the hash function is the same when we hash 8 field elements to compute a 2-to-1 hash using `merge()` function (e.g., for building a Merkle tree) and when we hash 8 field elements as a sequence of elements using `hash_elements()` function. However, this also means that our instantiation of Rescue Prime cannot be used in a stream mode as the number of elements to be hashed must be known upfront.
 
 The parameters used to instantiate the function are:
 * Field: 62-bit prime field with modulus 2^62 - 111 * 2^39 + 1.

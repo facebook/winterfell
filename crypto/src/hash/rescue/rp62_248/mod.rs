@@ -46,10 +46,15 @@ const INV_ALPHA: u64 = 3074416663688030891;
 /// The hash function is implemented according to the Rescue Prime
 /// [specifications](https://eprint.iacr.org/2020/1143.pdf) with the following exception:
 /// * We set the number of rounds to 7, which implies a 40% security margin instead of the 50%
-///   margin used in the specifications (a 50% margin rounds up to 8 rounds).
+///   margin used in the specifications (a 50% margin rounds up to 8 rounds). The primary
+///   motivation for this is that having the number of rounds be one less than a power of two
+///   simplifies AIR design for computations involving the hash function.
 /// * When hashing a sequence of elements, we do not append Fp(1) followed by Fp(0) elements
 ///   to the end of the sequence as padding. Instead, we initialize one of the capacity elements
-///   to the number of elements to be hashed, and pad the sequence with Fp(0) elements only.
+///   to the number of elements to be hashed, and pad the sequence with Fp(0) elements only. This
+///   ensures consistency of hash outputs between different hashing methods (see section below).
+///   However, it also means that our instantiation of Rescue Prime cannot be used in a stream
+///   mode as the number of elements to be hashed must be known upfront.
 ///
 /// The parameters used to instantiate the function are:
 /// * Field: 62-bit prime field with modulus 2^62 - 111 * 2^39 + 1.
