@@ -3,37 +3,26 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use math::StarkField;
-
 use super::{
     BaseElement, ElementDigest, ElementHasher, FieldElement, Hasher, Rp62_248, ALPHA, INV_ALPHA,
     STATE_WIDTH,
 };
 use core::convert::TryInto;
+use math::{
+    test_utils::{rand_element, rand_element_array},
+    StarkField,
+};
 
 #[test]
 fn test_alphas() {
-    let e = BaseElement::rand();
+    let e: BaseElement = rand_element();
     let e_exp = e.exp(ALPHA.into());
     assert_eq!(e, e_exp.exp(INV_ALPHA));
 }
 
 #[test]
 fn test_inv_sbox() {
-    let state: [BaseElement; STATE_WIDTH] = [
-        BaseElement::rand(),
-        BaseElement::rand(),
-        BaseElement::rand(),
-        BaseElement::rand(),
-        BaseElement::rand(),
-        BaseElement::rand(),
-        BaseElement::rand(),
-        BaseElement::rand(),
-        BaseElement::rand(),
-        BaseElement::rand(),
-        BaseElement::rand(),
-        BaseElement::rand(),
-    ];
+    let state: [BaseElement; STATE_WIDTH] = rand_element_array();
 
     let mut expected = state;
     expected.iter_mut().for_each(|v| *v = v.exp(INV_ALPHA));
@@ -84,16 +73,7 @@ fn apply_permutation() {
 
 #[test]
 fn hash_elements_vs_merge() {
-    let elements = [
-        BaseElement::rand(),
-        BaseElement::rand(),
-        BaseElement::rand(),
-        BaseElement::rand(),
-        BaseElement::rand(),
-        BaseElement::rand(),
-        BaseElement::rand(),
-        BaseElement::rand(),
-    ];
+    let elements: [BaseElement; 8] = rand_element_array();
 
     let digests: [ElementDigest; 2] = [
         ElementDigest::new(elements[..4].try_into().unwrap()),
@@ -107,15 +87,10 @@ fn hash_elements_vs_merge() {
 
 #[test]
 fn hash_elements_vs_merge_with_int() {
-    let seed = ElementDigest::new([
-        BaseElement::rand(),
-        BaseElement::rand(),
-        BaseElement::rand(),
-        BaseElement::rand(),
-    ]);
+    let seed = ElementDigest::new(rand_element_array());
 
     // ----- value fits into a field element ------------------------------------------------------
-    let val = BaseElement::rand();
+    let val: BaseElement = rand_element();
     let m_result = Rp62_248::merge_with_int(seed, val.as_int());
 
     let mut elements = seed.as_elements().to_vec();
@@ -161,7 +136,7 @@ fn hash_padding() {
 
 #[test]
 fn hash_elements_padding() {
-    let e1 = [BaseElement::rand(), BaseElement::rand()];
+    let e1: [BaseElement; 2] = rand_element_array();
     let e2 = [e1[0], e1[1], BaseElement::ZERO];
 
     let r1 = Rp62_248::hash_elements(&e1);

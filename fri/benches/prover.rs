@@ -5,7 +5,7 @@
 
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use crypto::hashers::Blake3_256;
-use math::{fft, fields::f128::BaseElement, FieldElement};
+use math::{fft, fields::f128::BaseElement, test_utils::rand_element_vec, FieldElement};
 use std::time::Duration;
 use winter_fri::{DefaultProverChannel, FriOptions, FriProver};
 
@@ -52,7 +52,7 @@ criterion_main!(fri_prover_group);
 // ================================================================================================
 
 fn build_evaluations(domain_size: usize) -> Vec<BaseElement> {
-    let mut p = BaseElement::prng_vector([1; 32], domain_size / BLOWUP_FACTOR);
+    let mut p: Vec<BaseElement> = rand_element_vec(domain_size / BLOWUP_FACTOR);
     p.resize(domain_size, BaseElement::ZERO);
     let twiddles = fft::get_twiddles::<BaseElement>(domain_size);
     fft::evaluate_poly(&mut p, &twiddles);

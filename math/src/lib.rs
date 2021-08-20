@@ -104,3 +104,9 @@ mod utils;
 pub use crate::utils::{
     add_in_place, batch_inversion, get_power_series, get_power_series_with_offset, log2, mul_acc,
 };
+
+pub mod test_utils {
+    pub use super::utils::{
+        prng_element_array, prng_element_vec, rand_element, rand_element_array, rand_element_vec,
+    };
+}

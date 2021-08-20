@@ -45,13 +45,14 @@ use utils::{collections::Vec, iter_mut, uninit_vector};
 /// via evaluation form for `N` = 2.
 /// ```
 /// # use math::{StarkField, FieldElement, fields::f128::BaseElement, get_power_series_with_offset, polynom};
+/// # use math::test_utils::{rand_element, rand_element_vec};
 /// # use utils::transpose_slice;
 /// # use winter_fri::folding::apply_drp;
 /// // generate random alpha
-/// let alpha = BaseElement::rand();
+/// let alpha: BaseElement = rand_element();
 ///
 /// // degree 7 polynomial f(x)
-/// let poly = BaseElement::prng_vector([1; 32], 8);
+/// let poly: Vec<BaseElement> = rand_element_vec(8);
 ///
 /// // f'(x) = g(x) + alpha * h(x) such that g(x) consists of even coefficients of f(x) and h(x)
 /// // consists of odd coefficients of f(x). This is equivalent to using `folding_factor = 2`.

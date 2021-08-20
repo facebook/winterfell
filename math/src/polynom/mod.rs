@@ -102,8 +102,9 @@ where
 /// ```
 /// # use winter_math::polynom::*;
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
-/// let xs = BaseElement::prng_vector([0; 32], 16);
-/// let ys = BaseElement::prng_vector([1; 32], 16);
+/// # use winter_math::test_utils::rand_element_vec;
+/// let xs: Vec<BaseElement> = rand_element_vec(16);
+/// let ys: Vec<BaseElement> = rand_element_vec(16);
 ///
 /// let p = interpolate(&xs, &ys, false);
 /// assert_eq!(ys, eval_many(&p, &xs));
@@ -160,13 +161,14 @@ where
 /// # use core::convert::TryInto;
 /// # use winter_math::polynom::*;
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
+/// # use winter_math::test_utils::rand_element_array;
 /// let x_batches: Vec<[BaseElement; 8]> = vec![
-///     BaseElement::prng_vector([0; 32], 8).try_into().unwrap(),
-///     BaseElement::prng_vector([1; 32], 8).try_into().unwrap(),
+///     rand_element_array(),
+///     rand_element_array(),
 /// ];
 /// let y_batches: Vec<[BaseElement; 8]> = vec![
-///     BaseElement::prng_vector([2; 32], 8).try_into().unwrap(),
-///     BaseElement::prng_vector([3; 32], 8).try_into().unwrap(),
+///     rand_element_array(),
+///     rand_element_array(),
 /// ];
 ///
 /// let polys = interpolate_batch(&x_batches, &y_batches);

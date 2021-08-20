@@ -8,7 +8,12 @@ use super::{
     Assertion, BoundaryConstraint,
 };
 use crypto::{hashers::Blake3_256, RandomCoin};
-use math::{fields::f128::BaseElement, log2, polynom, FieldElement, StarkField};
+use math::{
+    fields::f128::BaseElement,
+    log2, polynom,
+    test_utils::{rand_element, rand_element_vec},
+    FieldElement, StarkField,
+};
 use std::collections::HashMap;
 use utils::collections::Vec;
 
@@ -21,7 +26,7 @@ fn boundary_constraint_from_single_assertion() {
     let (inv_g, mut twiddle_map, mut prng) = build_constraint_params(16);
 
     // constraint should be built correctly for register 0, step 0
-    let value = BaseElement::rand();
+    let value = rand_element::<BaseElement>();
     let assertion = Assertion::single(0, 0, value);
     let constraint = BoundaryConstraint::<BaseElement, BaseElement>::new(
         assertion,
@@ -35,14 +40,14 @@ fn boundary_constraint_from_single_assertion() {
     assert_eq!(test_prng.draw_pair::<BaseElement>().unwrap(), constraint.cc);
 
     // single value constraints should evaluate to trace_value - value
-    let trace_value = BaseElement::rand();
+    let trace_value = rand_element::<BaseElement>();
     assert_eq!(
         trace_value - value,
-        constraint.evaluate_at(BaseElement::rand(), trace_value)
+        constraint.evaluate_at(rand_element::<BaseElement>(), trace_value)
     );
 
     // constraint is build correctly for register 1 step 8
-    let value = BaseElement::rand();
+    let value = rand_element::<BaseElement>();
     let assertion = Assertion::single(1, 8, value);
     let constraint = BoundaryConstraint::<BaseElement, BaseElement>::new(
         assertion,
@@ -56,10 +61,10 @@ fn boundary_constraint_from_single_assertion() {
     assert_eq!(test_prng.draw_pair::<BaseElement>().unwrap(), constraint.cc);
 
     // single value constraints should evaluate to trace_value - value
-    let trace_value = BaseElement::rand();
+    let trace_value = rand_element::<BaseElement>();
     assert_eq!(
         trace_value - value,
-        constraint.evaluate_at(BaseElement::rand(), trace_value)
+        constraint.evaluate_at(rand_element::<BaseElement>(), trace_value)
     );
 
     // twiddle map was not touched
@@ -72,7 +77,7 @@ fn boundary_constraint_from_periodic_assertion() {
     let (inv_g, mut twiddle_map, mut prng) = build_constraint_params(16);
 
     // constraint should be built correctly for register 0, step 0, stride 4
-    let value = BaseElement::rand();
+    let value = rand_element::<BaseElement>();
     let assertion = Assertion::periodic(0, 0, 4, value);
     let constraint = BoundaryConstraint::<BaseElement, BaseElement>::new(
         assertion,
@@ -86,14 +91,14 @@ fn boundary_constraint_from_periodic_assertion() {
     assert_eq!(test_prng.draw_pair::<BaseElement>().unwrap(), constraint.cc);
 
     // periodic value constraints should evaluate to trace_value - value
-    let trace_value = BaseElement::rand();
+    let trace_value = rand_element::<BaseElement>();
     assert_eq!(
         trace_value - value,
-        constraint.evaluate_at(BaseElement::rand(), trace_value)
+        constraint.evaluate_at(rand_element::<BaseElement>(), trace_value)
     );
 
     // constraint should be built correctly for register 2, first step 3, stride 8
-    let value = BaseElement::rand();
+    let value = rand_element::<BaseElement>();
     let assertion = Assertion::periodic(2, 3, 8, value);
     let constraint = BoundaryConstraint::<BaseElement, BaseElement>::new(
         assertion,
@@ -107,10 +112,10 @@ fn boundary_constraint_from_periodic_assertion() {
     assert_eq!(test_prng.draw_pair::<BaseElement>().unwrap(), constraint.cc);
 
     // periodic value constraints should evaluate to trace_value - value
-    let trace_value = BaseElement::rand();
+    let trace_value = rand_element::<BaseElement>();
     assert_eq!(
         trace_value - value,
-        constraint.evaluate_at(BaseElement::rand(), trace_value)
+        constraint.evaluate_at(rand_element::<BaseElement>(), trace_value)
     );
 
     // twiddle map was not touched
@@ -123,7 +128,7 @@ fn boundary_constraint_from_sequence_assertion() {
     let (inv_g, mut twiddle_map, mut prng) = build_constraint_params(16);
 
     // constraint should be built correctly for register 0, first step 0, stride 4
-    let values = BaseElement::prng_vector([0; 32], 4);
+    let values = rand_element_vec::<BaseElement>(4);
     let constraint_poly = build_sequence_poly(&values, 16);
     let assertion = Assertion::sequence(0, 0, 4, values);
     let constraint = BoundaryConstraint::<BaseElement, BaseElement>::new(
@@ -140,15 +145,15 @@ fn boundary_constraint_from_sequence_assertion() {
 
     // sequence value constraints with no offset should evaluate to
     // trace_value - constraint_poly(x)
-    let x = BaseElement::rand();
-    let trace_value = BaseElement::rand();
+    let x = rand_element::<BaseElement>();
+    let trace_value = rand_element::<BaseElement>();
     assert_eq!(
         trace_value - polynom::eval(&constraint_poly, x),
         constraint.evaluate_at(x, trace_value)
     );
 
     // constraint should be built correctly for register 0, first step 3, stride 8
-    let values = BaseElement::prng_vector([1; 32], 2);
+    let values = rand_element_vec::<BaseElement>(2);
     let constraint_poly = build_sequence_poly(&values, 16);
     let assertion = Assertion::sequence(0, 3, 8, values.clone());
     let constraint = BoundaryConstraint::<BaseElement, BaseElement>::new(
@@ -165,8 +170,8 @@ fn boundary_constraint_from_sequence_assertion() {
 
     // sequence value constraints with offset should evaluate to
     // trace_value - constraint_poly(x * offset)
-    let x = BaseElement::rand();
-    let trace_value = BaseElement::rand();
+    let x = rand_element::<BaseElement>();
+    let trace_value = rand_element::<BaseElement>();
     assert_eq!(
         trace_value - polynom::eval(&constraint_poly, x * constraint.poly_offset().1),
         constraint.evaluate_at(x, trace_value)

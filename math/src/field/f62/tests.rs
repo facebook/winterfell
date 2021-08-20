@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{AsBytes, BaseElement, DeserializationError, FieldElement, Serializable, StarkField};
+use crate::utils::rand_element;
 use core::convert::TryFrom;
 use num_bigint::BigUint;
 use proptest::prelude::*;
@@ -14,7 +15,7 @@ use proptest::prelude::*;
 #[test]
 fn add() {
     // identity
-    let r = BaseElement::rand();
+    let r: BaseElement = rand_element();
     assert_eq!(r, r + BaseElement::ZERO);
 
     // test addition within bounds
@@ -32,7 +33,7 @@ fn add() {
 #[test]
 fn sub() {
     // identity
-    let r = BaseElement::rand();
+    let r: BaseElement = rand_element();
     assert_eq!(r, r - BaseElement::ZERO);
 
     // test subtraction within bounds
@@ -49,7 +50,7 @@ fn sub() {
 #[test]
 fn mul() {
     // identity
-    let r = BaseElement::rand();
+    let r: BaseElement = rand_element();
     assert_eq!(BaseElement::ZERO, r * BaseElement::ZERO);
     assert_eq!(r, r * BaseElement::ONE);
 
@@ -84,7 +85,7 @@ fn exp() {
     assert_eq!(a.exp(1), BaseElement::ONE);
     assert_eq!(a.exp(3), BaseElement::ONE);
 
-    let a = BaseElement::rand();
+    let a: BaseElement = rand_element();
     assert_eq!(a.exp(3), a * a * a);
 }
 
@@ -216,24 +217,6 @@ fn zeroed_vector() {
     assert_eq!(4, result.len());
     for element in result.into_iter() {
         assert_eq!(BaseElement::ZERO, element);
-    }
-}
-
-#[test]
-fn prng_vector() {
-    let a = BaseElement::prng_vector([0; 32], 4);
-    assert_eq!(4, a.len());
-
-    let b = BaseElement::prng_vector([0; 32], 8);
-    assert_eq!(8, b.len());
-
-    for (&a, &b) in a.iter().zip(b.iter()) {
-        assert_eq!(a, b);
-    }
-
-    let c = BaseElement::prng_vector([1; 32], 4);
-    for (&a, &c) in a.iter().zip(c.iter()) {
-        assert_ne!(a, c);
     }
 }
 

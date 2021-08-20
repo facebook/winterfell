@@ -13,7 +13,8 @@ use core::{
 use utils::{
     collections::Vec,
     string::{String, ToString},
-    AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+    AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Randomizable,
+    Serializable,
 };
 
 // QUADRATIC EXTENSION FIELD
@@ -68,15 +69,6 @@ impl<B: StarkField> FieldElement for QuadExtensionA<B> {
         Self(self.0 + self.1, B::ZERO - self.1)
     }
 
-    #[cfg(feature = "std")]
-    fn rand() -> Self {
-        Self(B::rand(), B::rand())
-    }
-
-    fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
-        Self::try_from(&bytes[..Self::ELEMENT_BYTES as usize]).ok()
-    }
-
     fn elements_as_bytes(elements: &[Self]) -> &[u8] {
         unsafe {
             slice::from_raw_parts(
@@ -113,17 +105,18 @@ impl<B: StarkField> FieldElement for QuadExtensionA<B> {
         Self::base_to_quad_vector(result)
     }
 
-    #[cfg(feature = "std")]
-    fn prng_vector(seed: [u8; 32], n: usize) -> Vec<Self> {
-        // get twice the number of base elements, and re-interpret them as quad field elements
-        let result = B::prng_vector(seed, n * 2);
-        Self::base_to_quad_vector(result)
-    }
-
     fn as_base_elements(elements: &[Self]) -> &[Self::BaseField] {
         let ptr = elements.as_ptr();
         let len = elements.len() * 2;
         unsafe { slice::from_raw_parts(ptr as *const Self::BaseField, len) }
+    }
+}
+
+impl<B: StarkField> Randomizable for QuadExtensionA<B> {
+    const VALUE_SIZE: usize = Self::ELEMENT_BYTES;
+
+    fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
+        Self::try_from(bytes).ok()
     }
 }
 
@@ -302,8 +295,9 @@ impl<B: StarkField> Deserializable for QuadExtensionA<B> {
 
 #[cfg(test)]
 mod tests {
-    use super::{AsBytes, DeserializationError, FieldElement, QuadExtensionA, Vec};
+    use super::{DeserializationError, FieldElement, QuadExtensionA, Vec};
     use crate::field::f128::BaseElement;
+    use crate::utils::{rand_element, rand_element_vec};
 
     // BASIC ALGEBRA
     // --------------------------------------------------------------------------------------------
@@ -311,12 +305,12 @@ mod tests {
     #[test]
     fn add() {
         // identity
-        let r = QuadExtensionA::<BaseElement>::rand();
+        let r: QuadExtensionA<BaseElement> = rand_element();
         assert_eq!(r, r + QuadExtensionA::<BaseElement>::ZERO);
 
         // test random values
-        let r1 = QuadExtensionA::<BaseElement>::rand();
-        let r2 = QuadExtensionA::<BaseElement>::rand();
+        let r1: QuadExtensionA<BaseElement> = rand_element();
+        let r2: QuadExtensionA<BaseElement> = rand_element();
 
         let expected = QuadExtensionA(r1.0 + r2.0, r1.1 + r2.1);
         assert_eq!(expected, r1 + r2);
@@ -325,12 +319,12 @@ mod tests {
     #[test]
     fn sub() {
         // identity
-        let r = QuadExtensionA::<BaseElement>::rand();
+        let r: QuadExtensionA<BaseElement> = rand_element();
         assert_eq!(r, r - QuadExtensionA::<BaseElement>::ZERO);
 
         // test random values
-        let r1 = QuadExtensionA::<BaseElement>::rand();
-        let r2 = QuadExtensionA::<BaseElement>::rand();
+        let r1: QuadExtensionA<BaseElement> = rand_element();
+        let r2: QuadExtensionA<BaseElement> = rand_element();
 
         let expected = QuadExtensionA(r1.0 - r2.0, r1.1 - r2.1);
         assert_eq!(expected, r1 - r2);
@@ -339,7 +333,7 @@ mod tests {
     #[test]
     fn mul() {
         // identity
-        let r = QuadExtensionA::<BaseElement>::rand();
+        let r: QuadExtensionA<BaseElement> = rand_element();
         assert_eq!(
             QuadExtensionA::<BaseElement>::ZERO,
             r * QuadExtensionA::<BaseElement>::ZERO
@@ -347,8 +341,8 @@ mod tests {
         assert_eq!(r, r * QuadExtensionA::<BaseElement>::ONE);
 
         // test random values
-        let r1 = QuadExtensionA::<BaseElement>::rand();
-        let r2 = QuadExtensionA::<BaseElement>::rand();
+        let r1: QuadExtensionA<BaseElement> = rand_element();
+        let r2: QuadExtensionA<BaseElement> = rand_element();
 
         let expected = QuadExtensionA(
             r1.0 * r2.0 + r1.1 * r2.1,
@@ -370,7 +364,7 @@ mod tests {
         );
 
         // test random values
-        let x = QuadExtensionA::<BaseElement>::prng_vector(build_seed(), 1000);
+        let x: Vec<QuadExtensionA<BaseElement>> = rand_element_vec(1000);
         for i in 0..x.len() {
             let y = QuadExtensionA::<BaseElement>::inv(x[i]);
             assert_eq!(QuadExtensionA::<BaseElement>::ONE, x[i] * y);
@@ -379,7 +373,7 @@ mod tests {
 
     #[test]
     fn conjugate() {
-        let a = QuadExtensionA::<BaseElement>::rand();
+        let a: QuadExtensionA<BaseElement> = rand_element();
         let b = a.conjugate();
         let expected = QuadExtensionA(a.0 + a.1, -a.1);
         assert_eq!(expected, b);
@@ -394,24 +388,6 @@ mod tests {
         assert_eq!(4, result.len());
         for element in result.into_iter() {
             assert_eq!(QuadExtensionA::<BaseElement>::ZERO, element);
-        }
-    }
-
-    #[test]
-    fn prng_vector() {
-        let a = QuadExtensionA::<BaseElement>::prng_vector([0; 32], 4);
-        assert_eq!(4, a.len());
-
-        let b = QuadExtensionA::<BaseElement>::prng_vector([0; 32], 8);
-        assert_eq!(8, b.len());
-
-        for (&a, &b) in a.iter().zip(b.iter()) {
-            assert_eq!(a, b);
-        }
-
-        let c = QuadExtensionA::<BaseElement>::prng_vector([1; 32], 4);
-        for (&a, &c) in a.iter().zip(c.iter()) {
-            assert_ne!(a, c);
         }
     }
 
@@ -482,14 +458,5 @@ mod tests {
             expected,
             QuadExtensionA::<BaseElement>::as_base_elements(&elements)
         );
-    }
-
-    // HELPER FUNCTIONS
-    // --------------------------------------------------------------------------------------------
-    fn build_seed() -> [u8; 32] {
-        let mut result = [0; 32];
-        let seed = QuadExtensionA::<BaseElement>::rand().as_bytes().to_vec();
-        result.copy_from_slice(&seed);
-        result
     }
 }
