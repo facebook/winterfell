@@ -4,11 +4,11 @@
 // LICENSE file in the root directory of this source tree.
 
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
+use rand_utils::rand_vector;
 use std::time::Duration;
 use winter_math::{
     fft,
     fields::{f128::BaseElement, QuadExtensionA},
-    test_utils::rand_element_vec,
     FieldElement, StarkField,
 };
 
@@ -22,7 +22,7 @@ fn fft_evaluate_poly(c: &mut Criterion) {
     let blowup_factor = 8;
 
     for &size in SIZES.iter() {
-        let p: Vec<BaseElement> = rand_element_vec(size / blowup_factor);
+        let p: Vec<BaseElement> = rand_vector(size / blowup_factor);
         let twiddles: Vec<BaseElement> = fft::get_twiddles(size);
         group.bench_function(BenchmarkId::new("simple", size), |bench| {
             bench.iter_with_large_drop(|| {
@@ -35,7 +35,7 @@ fn fft_evaluate_poly(c: &mut Criterion) {
     }
 
     for &size in SIZES.iter() {
-        let p: Vec<BaseElement> = rand_element_vec(size / blowup_factor);
+        let p: Vec<BaseElement> = rand_vector(size / blowup_factor);
         let twiddles: Vec<BaseElement> = fft::get_twiddles(size / blowup_factor);
         group.bench_function(BenchmarkId::new("with_offset", size), |bench| {
             bench.iter_with_large_drop(|| {
@@ -52,7 +52,7 @@ fn fft_evaluate_poly(c: &mut Criterion) {
 
     for &size in SIZES.iter() {
         let twiddles: Vec<BaseElement> = fft::get_twiddles(size);
-        let p: Vec<QuadExtensionA<BaseElement>> = rand_element_vec(size / blowup_factor);
+        let p: Vec<QuadExtensionA<BaseElement>> = rand_vector(size / blowup_factor);
         group.bench_function(BenchmarkId::new("extension", size), |bench| {
             bench.iter_with_large_drop(|| {
                 let mut result = QuadExtensionA::<BaseElement>::zeroed_vector(size);
@@ -72,7 +72,7 @@ fn fft_interpolate_poly(c: &mut Criterion) {
     group.measurement_time(Duration::from_secs(10));
 
     for &size in SIZES.iter() {
-        let p: Vec<BaseElement> = rand_element_vec(size);
+        let p: Vec<BaseElement> = rand_vector(size);
         let inv_twiddles: Vec<BaseElement> = fft::get_inv_twiddles(size);
         group.bench_function(BenchmarkId::new("simple", size), |bench| {
             bench.iter_batched_ref(
@@ -84,7 +84,7 @@ fn fft_interpolate_poly(c: &mut Criterion) {
     }
 
     for &size in SIZES.iter() {
-        let p: Vec<BaseElement> = rand_element_vec(size);
+        let p: Vec<BaseElement> = rand_vector(size);
         let inv_twiddles: Vec<BaseElement> = fft::get_inv_twiddles(size);
         group.bench_function(BenchmarkId::new("with_offset", size), |bench| {
             bench.iter_batched_ref(

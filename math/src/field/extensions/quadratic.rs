@@ -297,7 +297,7 @@ impl<B: StarkField> Deserializable for QuadExtensionA<B> {
 mod tests {
     use super::{DeserializationError, FieldElement, QuadExtensionA, Vec};
     use crate::field::f128::BaseElement;
-    use crate::utils::{rand_element, rand_element_vec};
+    use rand_utils::{rand_value, rand_vector};
 
     // BASIC ALGEBRA
     // --------------------------------------------------------------------------------------------
@@ -305,12 +305,12 @@ mod tests {
     #[test]
     fn add() {
         // identity
-        let r: QuadExtensionA<BaseElement> = rand_element();
+        let r: QuadExtensionA<BaseElement> = rand_value();
         assert_eq!(r, r + QuadExtensionA::<BaseElement>::ZERO);
 
         // test random values
-        let r1: QuadExtensionA<BaseElement> = rand_element();
-        let r2: QuadExtensionA<BaseElement> = rand_element();
+        let r1: QuadExtensionA<BaseElement> = rand_value();
+        let r2: QuadExtensionA<BaseElement> = rand_value();
 
         let expected = QuadExtensionA(r1.0 + r2.0, r1.1 + r2.1);
         assert_eq!(expected, r1 + r2);
@@ -319,12 +319,12 @@ mod tests {
     #[test]
     fn sub() {
         // identity
-        let r: QuadExtensionA<BaseElement> = rand_element();
+        let r: QuadExtensionA<BaseElement> = rand_value();
         assert_eq!(r, r - QuadExtensionA::<BaseElement>::ZERO);
 
         // test random values
-        let r1: QuadExtensionA<BaseElement> = rand_element();
-        let r2: QuadExtensionA<BaseElement> = rand_element();
+        let r1: QuadExtensionA<BaseElement> = rand_value();
+        let r2: QuadExtensionA<BaseElement> = rand_value();
 
         let expected = QuadExtensionA(r1.0 - r2.0, r1.1 - r2.1);
         assert_eq!(expected, r1 - r2);
@@ -333,7 +333,7 @@ mod tests {
     #[test]
     fn mul() {
         // identity
-        let r: QuadExtensionA<BaseElement> = rand_element();
+        let r: QuadExtensionA<BaseElement> = rand_value();
         assert_eq!(
             QuadExtensionA::<BaseElement>::ZERO,
             r * QuadExtensionA::<BaseElement>::ZERO
@@ -341,8 +341,8 @@ mod tests {
         assert_eq!(r, r * QuadExtensionA::<BaseElement>::ONE);
 
         // test random values
-        let r1: QuadExtensionA<BaseElement> = rand_element();
-        let r2: QuadExtensionA<BaseElement> = rand_element();
+        let r1: QuadExtensionA<BaseElement> = rand_value();
+        let r2: QuadExtensionA<BaseElement> = rand_value();
 
         let expected = QuadExtensionA(
             r1.0 * r2.0 + r1.1 * r2.1,
@@ -364,7 +364,7 @@ mod tests {
         );
 
         // test random values
-        let x: Vec<QuadExtensionA<BaseElement>> = rand_element_vec(1000);
+        let x: Vec<QuadExtensionA<BaseElement>> = rand_vector(1000);
         for i in 0..x.len() {
             let y = QuadExtensionA::<BaseElement>::inv(x[i]);
             assert_eq!(QuadExtensionA::<BaseElement>::ONE, x[i] * y);
@@ -373,7 +373,7 @@ mod tests {
 
     #[test]
     fn conjugate() {
-        let a: QuadExtensionA<BaseElement> = rand_element();
+        let a: QuadExtensionA<BaseElement> = rand_value();
         let b = a.conjugate();
         let expected = QuadExtensionA(a.0 + a.1, -a.1);
         assert_eq!(expected, b);

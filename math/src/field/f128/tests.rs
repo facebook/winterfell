@@ -4,8 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::*;
-use crate::utils::{rand_element, rand_element_vec};
 use num_bigint::BigUint;
+use rand_utils::{rand_value, rand_vector};
 use utils::SliceReader;
 
 // BASIC ALGEBRA
@@ -14,7 +14,7 @@ use utils::SliceReader;
 #[test]
 fn add() {
     // identity
-    let r: BaseElement = rand_element();
+    let r: BaseElement = rand_value();
     assert_eq!(r, r + BaseElement::ZERO);
 
     // test addition within bounds
@@ -29,8 +29,8 @@ fn add() {
     assert_eq!(BaseElement::ONE, t + BaseElement::from(2u8));
 
     // test random values
-    let r1: BaseElement = rand_element();
-    let r2: BaseElement = rand_element();
+    let r1: BaseElement = rand_value();
+    let r2: BaseElement = rand_value();
 
     let expected = (r1.to_big_uint() + r2.to_big_uint()) % BigUint::from(M);
     let expected = BaseElement::from_big_uint(expected);
@@ -40,7 +40,7 @@ fn add() {
 #[test]
 fn sub() {
     // identity
-    let r: BaseElement = rand_element();
+    let r: BaseElement = rand_value();
     assert_eq!(r, r - BaseElement::ZERO);
 
     // test subtraction within bounds
@@ -57,7 +57,7 @@ fn sub() {
 #[test]
 fn mul() {
     // identity
-    let r: BaseElement = rand_element();
+    let r: BaseElement = rand_value();
     assert_eq!(BaseElement::ZERO, r * BaseElement::ZERO);
     assert_eq!(r, r * BaseElement::ONE);
 
@@ -81,8 +81,8 @@ fn mul() {
     );
 
     // test random values
-    let v1: Vec<BaseElement> = rand_element_vec(1000);
-    let v2: Vec<BaseElement> = rand_element_vec(1000);
+    let v1: Vec<BaseElement> = rand_vector(1000);
+    let v2: Vec<BaseElement> = rand_vector(1000);
     for i in 0..v1.len() {
         let r1 = v1[i];
         let r2 = v2[i];
@@ -104,7 +104,7 @@ fn inv() {
     assert_eq!(BaseElement::ZERO, BaseElement::inv(BaseElement::ZERO));
 
     // test random values
-    let x: Vec<BaseElement> = rand_element_vec(1000);
+    let x: Vec<BaseElement> = rand_vector(1000);
     for i in 0..x.len() {
         let y = BaseElement::inv(x[i]);
         assert_eq!(BaseElement::ONE, x[i] * y);
@@ -113,7 +113,7 @@ fn inv() {
 
 #[test]
 fn conjugate() {
-    let a: BaseElement = rand_element();
+    let a: BaseElement = rand_value();
     let b = a.conjugate();
     assert_eq!(a, b);
 }

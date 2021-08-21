@@ -10,7 +10,7 @@ use super::{
 use crate::{FieldExtension, HashFunction};
 use crypto::{hashers::Blake3_256, RandomCoin};
 use math::{fields::f128::BaseElement, get_power_series, log2, polynom, FieldElement, StarkField};
-use rand::{seq::SliceRandom, thread_rng};
+use rand_utils::shuffle;
 use utils::collections::{HashMap, Vec};
 
 // PERIODIC COLUMNS
@@ -251,11 +251,11 @@ fn prepare_assertions() {
     let result = super::prepare_assertions(assertions.clone(), &context);
     assert_eq!(expected, result);
 
-    assertions.shuffle(&mut thread_rng());
+    shuffle(&mut assertions);
     let result = super::prepare_assertions(assertions.clone(), &context);
     assert_eq!(expected, result);
 
-    assertions.shuffle(&mut thread_rng());
+    shuffle(&mut assertions);
     let result = super::prepare_assertions(assertions.clone(), &context);
     assert_eq!(expected, result);
 }

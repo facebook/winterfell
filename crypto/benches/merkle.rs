@@ -5,7 +5,7 @@
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use math::fields::f128::BaseElement;
-use rand::{rngs::ThreadRng, thread_rng, RngCore};
+use rand_utils::rand_value;
 use utils::uninit_vector;
 use winter_crypto::{build_merkle_nodes, concurrent, hashers::Blake3_256, Hasher};
 
@@ -18,14 +18,10 @@ pub fn merkle_tree_construction(c: &mut Criterion) {
     static BATCH_SIZES: [usize; 3] = [65536, 131072, 262144];
 
     for size in &BATCH_SIZES {
-        let mut csprng: ThreadRng = thread_rng();
-
         let data: Vec<Blake3Digest> = {
             let mut res = unsafe { uninit_vector(*size) };
             for i in 0..*size {
-                let mut v = [0u8; 32];
-                csprng.fill_bytes(&mut v);
-                res[i] = Blake3::hash(&v);
+                res[i] = Blake3::hash(&rand_value::<u128>().to_le_bytes());
             }
             res
         };

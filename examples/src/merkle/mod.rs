@@ -8,15 +8,11 @@ use crate::{
     Example, ExampleOptions,
 };
 use log::debug;
+use rand_utils::{rand_value, rand_vector};
 use std::time::Instant;
 use winterfell::{
     crypto::{Digest, MerkleTree},
-    math::{
-        fields::f128::BaseElement,
-        log2,
-        test_utils::{rand_element, rand_element_vec},
-        StarkField,
-    },
+    math::{fields::f128::BaseElement, log2, StarkField},
     ProofOptions, StarkProof, VerifierError,
 };
 
@@ -51,7 +47,7 @@ impl MerkleExample {
         );
         let value = [BaseElement::new(42), BaseElement::new(43)];
         let index =
-            (rand_element::<BaseElement>().as_int() % u128::pow(2, tree_depth as u32)) as usize;
+            (rand_value::<BaseElement>().as_int() % u128::pow(2, tree_depth as u32)) as usize;
 
         // build Merkle tree of the specified depth
         let now = Instant::now();
@@ -130,7 +126,7 @@ impl Example for MerkleExample {
 // ================================================================================================
 fn build_merkle_tree(depth: usize, value: [BaseElement; 2], index: usize) -> MerkleTree<Rescue128> {
     let num_leaves = usize::pow(2, depth as u32);
-    let leaf_elements: Vec<BaseElement> = rand_element_vec(num_leaves * 2);
+    let leaf_elements: Vec<BaseElement> = rand_vector(num_leaves * 2);
     let mut leaves = Vec::new();
     for i in (0..leaf_elements.len()).step_by(2) {
         leaves.push(Hash::new(leaf_elements[i], leaf_elements[i + 1]));

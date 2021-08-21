@@ -23,10 +23,11 @@ doc = false
 alloc = ["hex/alloc", "winterfell/alloc"]
 concurrent = ["winterfell/concurrent", "std"]
 default = ["std"]
-std = ["hex/std", "winterfell/std"]
+std = ["hex/std", "winterfell/std", "rand-utils"]
 
 [dependencies]
 winterfell = { path = "../winterfell", default-features = false }
+rand-utils = { version = "0.1", path = "../utils/rand", package = "winter-rand-utils", optional = true }
 hex = { version = "0.4", default-features = false }
 log = { version = "0.4", default-features = false }
 blake3 = { version = "1.0", default-features = false }

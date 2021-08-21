@@ -1,0 +1,18 @@
+[package]
+name = "winter-rand-utils"
+version = "0.1.0"
+description = "Random value generation utilities for Winterfell crates"
+authors = ["winterfell contributors"]
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/novifinancial/winterfell"
+categories = ["cryptography"]
+keywords = ["rand"]
+edition = "2018"
+
+[lib]
+bench = false
+
+[dependencies]
+utils = { version = "0.1", path = "../core", package = "winter-utils" }
+rand =  { version = "0.8" }

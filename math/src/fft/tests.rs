@@ -6,8 +6,9 @@
 use crate::{
     field::{f128::BaseElement, StarkField},
     polynom,
-    utils::{get_power_series, log2, rand_element_vec},
+    utils::{get_power_series, log2},
 };
+use rand_utils::rand_vector;
 use utils::collections::Vec;
 
 // CORE ALGORITHMS
@@ -17,7 +18,7 @@ use utils::collections::Vec;
 fn fft_in_place() {
     // degree 3
     let n = 4;
-    let mut p = rand_element_vec(n);
+    let mut p = rand_vector(n);
     let domain = build_domain(n);
     let expected = polynom::eval_many(&p, &domain);
     let twiddles = super::get_twiddles::<BaseElement>(n);
@@ -27,7 +28,7 @@ fn fft_in_place() {
 
     // degree 7
     let n = 8;
-    let mut p = rand_element_vec(n);
+    let mut p = rand_vector(n);
     let domain = build_domain(n);
     let twiddles = super::get_twiddles::<BaseElement>(n);
     let expected = polynom::eval_many(&p, &domain);
@@ -37,7 +38,7 @@ fn fft_in_place() {
 
     // degree 15
     let n = 16;
-    let mut p = rand_element_vec(n);
+    let mut p = rand_vector(n);
     let domain = build_domain(n);
     let twiddles = super::get_twiddles::<BaseElement>(16);
     let expected = polynom::eval_many(&p, &domain);
@@ -47,7 +48,7 @@ fn fft_in_place() {
 
     // degree 1023
     let n = 1024;
-    let mut p = rand_element_vec(n);
+    let mut p = rand_vector(n);
     let domain = build_domain(n);
     let expected = polynom::eval_many(&p, &domain);
     let twiddles = super::get_twiddles::<BaseElement>(n);

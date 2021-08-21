@@ -85,12 +85,12 @@ impl Deserializable for ElementDigest {
 mod tests {
 
     use super::ElementDigest;
-    use math::test_utils::rand_element_array;
+    use rand_utils::rand_array;
     use utils::{Deserializable, Serializable, SliceReader};
 
     #[test]
     fn digest_serialization() {
-        let d1 = ElementDigest(rand_element_array());
+        let d1 = ElementDigest(rand_array());
 
         let mut bytes = vec![];
         d1.write_into(&mut bytes);

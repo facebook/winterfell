@@ -4,10 +4,10 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{AsBytes, BaseElement, DeserializationError, FieldElement, Serializable, StarkField};
-use crate::utils::rand_element;
 use core::convert::TryFrom;
 use num_bigint::BigUint;
 use proptest::prelude::*;
+use rand_utils::rand_value;
 
 // MANUAL TESTS
 // ================================================================================================
@@ -15,7 +15,7 @@ use proptest::prelude::*;
 #[test]
 fn add() {
     // identity
-    let r: BaseElement = rand_element();
+    let r: BaseElement = rand_value();
     assert_eq!(r, r + BaseElement::ZERO);
 
     // test addition within bounds
@@ -33,7 +33,7 @@ fn add() {
 #[test]
 fn sub() {
     // identity
-    let r: BaseElement = rand_element();
+    let r: BaseElement = rand_value();
     assert_eq!(r, r - BaseElement::ZERO);
 
     // test subtraction within bounds
@@ -50,7 +50,7 @@ fn sub() {
 #[test]
 fn mul() {
     // identity
-    let r: BaseElement = rand_element();
+    let r: BaseElement = rand_value();
     assert_eq!(BaseElement::ZERO, r * BaseElement::ZERO);
     assert_eq!(r, r * BaseElement::ONE);
 
@@ -85,7 +85,7 @@ fn exp() {
     assert_eq!(a.exp(1), BaseElement::ONE);
     assert_eq!(a.exp(3), BaseElement::ONE);
 
-    let a: BaseElement = rand_element();
+    let a: BaseElement = rand_value();
     assert_eq!(a.exp(3), a * a * a);
 }
 

@@ -4,10 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
+use rand_utils::rand_vector;
 use std::time::Duration;
-use winter_math::{
-    fft, fields::f128::BaseElement, polynom, test_utils::rand_element_vec, FieldElement,
-};
+use winter_math::{fft, fields::f128::BaseElement, polynom, FieldElement};
 
 const SIZES: [usize; 3] = [262_144, 524_288, 1_048_576];
 
@@ -18,7 +17,7 @@ fn syn_div(c: &mut Criterion) {
 
     for &size in SIZES.iter() {
         let stride = 8;
-        let mut values: Vec<BaseElement> = rand_element_vec(size);
+        let mut values: Vec<BaseElement> = rand_vector(size);
         for v in values.iter_mut().skip(stride) {
             *v = BaseElement::ZERO;
         }

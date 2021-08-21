@@ -4,9 +4,10 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::rescue::Rescue128;
+use rand_utils::prng_vector;
 use std::{cmp::Ordering, convert::TryInto};
 use winterfell::{
-    math::{fields::f128::BaseElement, test_utils::prng_element_vec, FieldElement, StarkField},
+    math::{fields::f128::BaseElement, FieldElement, StarkField},
     Serializable,
 };
 
@@ -40,7 +41,7 @@ pub struct Signature {
 impl PrivateKey {
     /// Returns a private key generated from the specified `seed`.
     pub fn from_seed(seed: [u8; 32]) -> Self {
-        let keys_elements: Vec<BaseElement> = prng_element_vec(seed, MESSAGE_BITS * 2);
+        let keys_elements: Vec<BaseElement> = prng_vector(seed, MESSAGE_BITS * 2);
         let mut sec_keys = Vec::with_capacity(MESSAGE_BITS);
         let mut pub_keys = Vec::with_capacity(MESSAGE_BITS);
 

@@ -4,86 +4,10 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::field::FieldElement;
-use core::convert::TryInto;
 use utils::{batch_iter_mut, collections::Vec, iter_mut, uninit_vector};
 
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
-
-#[cfg(feature = "std")]
-use rand::prelude::*;
-
-#[cfg(feature = "std")]
-use utils::Randomizable;
-
-#[cfg(feature = "std")]
-use core::fmt::Debug;
-
-// TEST FUNCTIONS
-// ================================================================================================
-
-#[cfg(feature = "std")]
-pub fn rand_element<R: Randomizable>() -> R {
-    for _ in 0..100 {
-        let bytes = rand::thread_rng().gen::<[u8; 32]>();
-        if let Some(element) = R::from_random_bytes(&bytes[..R::VALUE_SIZE]) {
-            return element;
-        }
-    }
-
-    panic!("failed generate a random field element");
-}
-
-#[cfg(feature = "std")]
-pub fn rand_element_vec<R: Randomizable>(n: usize) -> Vec<R> {
-    let mut result = Vec::with_capacity(n);
-    let seed = rand::thread_rng().gen::<[u8; 32]>();
-    let mut g = StdRng::from_seed(seed);
-    for _ in 0..100 * n {
-        let bytes = g.gen::<[u8; 32]>();
-        if let Some(element) = R::from_random_bytes(&bytes[..R::VALUE_SIZE]) {
-            result.push(element);
-            if result.len() == n {
-                return result;
-            }
-        }
-    }
-
-    panic!("failed to generate enough random field elements");
-}
-
-#[cfg(feature = "std")]
-pub fn rand_element_array<R: Randomizable + Debug, const N: usize>() -> [R; N] {
-    let elements = rand_element_vec(N);
-    elements
-        .try_into()
-        .expect("failed to convert vector to array")
-}
-
-#[cfg(feature = "std")]
-pub fn prng_element_vec<R: Randomizable>(seed: [u8; 32], n: usize) -> Vec<R> {
-    let mut result = Vec::with_capacity(n);
-    let mut g = StdRng::from_seed(seed);
-    for _ in 0..100 * n {
-        let bytes = g.gen::<[u8; 32]>();
-        if let Some(element) = R::from_random_bytes(&bytes[..R::VALUE_SIZE]) {
-            result.push(element);
-            if result.len() == n {
-                return result;
-            }
-        }
-    }
-
-    panic!("failed to generate enough random field elements");
-}
-
-#[cfg(feature = "std")]
-pub fn prng_element_array<R: Randomizable + Debug, const N: usize>(seed: [u8; 32]) -> [R; N] {
-    let elements = prng_element_vec(seed, N);
-    elements
-        .try_into()
-        .expect("failed to convert vector to array")
-}
 
 // MATH FUNCTIONS
 // ================================================================================================
@@ -168,9 +92,9 @@ where
 /// ```
 /// # use winter_math::add_in_place;
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
-/// # use winter_math::test_utils::rand_element_vec;
-/// let a: Vec<BaseElement> = rand_element_vec(2048);
-/// let b: Vec<BaseElement> = rand_element_vec(2048);
+/// # use rand_utils::rand_vector;
+/// let a: Vec<BaseElement> = rand_vector(2048);
+/// let b: Vec<BaseElement> = rand_vector(2048);
 ///
 /// let mut c = a.clone();
 /// add_in_place(&mut c, &b);
@@ -204,9 +128,9 @@ where
 /// ```
 /// # use winter_math::mul_acc;
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
-/// # use winter_math::test_utils::rand_element_vec;
-/// let a: Vec<BaseElement> = rand_element_vec(2048);
-/// let b: Vec<BaseElement> = rand_element_vec(2048);
+/// # use rand_utils::rand_vector;
+/// let a: Vec<BaseElement> = rand_vector(2048);
+/// let b: Vec<BaseElement> = rand_vector(2048);
 /// let c = BaseElement::new(12345);
 ///
 /// let mut d = a.clone();
@@ -242,8 +166,8 @@ where
 /// ```
 /// # use winter_math::batch_inversion;
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
-/// # use winter_math::test_utils::rand_element_vec;
-/// let a: Vec<BaseElement> = rand_element_vec(2048);
+/// # use rand_utils::rand_vector;
+/// let a: Vec<BaseElement> = rand_vector(2048);
 /// let b = batch_inversion(&a);
 ///
 /// for (&a, &b) in a.iter().zip(b.iter()) {

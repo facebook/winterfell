@@ -1,6 +1,7 @@
 [workspace]
 members = [
-  "utils",
+  "utils/core",
+  "utils/rand",
   "math",
   "crypto",
   "fri",
