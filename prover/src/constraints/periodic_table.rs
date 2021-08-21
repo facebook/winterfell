@@ -6,7 +6,7 @@
 use air::Air;
 use math::{fft, StarkField};
 use utils::{
-    collections::{HashMap, Vec},
+    collections::{BTreeMap, Vec},
     uninit_vector,
 };
 
@@ -40,7 +40,7 @@ impl<B: StarkField> PeriodicValueTable<B> {
 
         // cache twiddles used for polynomial evaluation here so that we don't have to re-build
         // them for polynomials of the same size
-        let mut twiddle_map = HashMap::new();
+        let mut twiddle_map = BTreeMap::new();
 
         let evaluations = polys
             .iter()

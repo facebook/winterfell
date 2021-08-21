@@ -11,7 +11,7 @@ use crate::{FieldExtension, HashFunction};
 use crypto::{hashers::Blake3_256, RandomCoin};
 use math::{fields::f128::BaseElement, get_power_series, log2, polynom, FieldElement, StarkField};
 use rand_utils::shuffle;
-use utils::collections::{HashMap, Vec};
+use utils::collections::{BTreeMap, Vec};
 
 // PERIODIC COLUMNS
 // ================================================================================================
@@ -95,7 +95,7 @@ fn get_boundary_constraints() {
     // sorted first by stride, then by first step, and finally by register (similar to the order)
     // of assertions above
     let mut prng = build_prng();
-    let mut expected_cc = HashMap::<usize, (BaseElement, BaseElement)>::new();
+    let mut expected_cc = BTreeMap::<usize, (BaseElement, BaseElement)>::new();
     expected_cc.insert(0, prng.draw_pair().unwrap());
     expected_cc.insert(1, prng.draw_pair().unwrap());
     expected_cc.insert(2, prng.draw_pair().unwrap());

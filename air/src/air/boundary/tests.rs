@@ -10,8 +10,7 @@ use super::{
 use crypto::{hashers::Blake3_256, RandomCoin};
 use math::{fields::f128::BaseElement, log2, polynom, FieldElement, StarkField};
 use rand_utils::{rand_value, rand_vector};
-use std::collections::HashMap;
-use utils::collections::Vec;
+use utils::collections::{BTreeMap, Vec};
 
 // BOUNDARY CONSTRAINT TESTS
 // ================================================================================================
@@ -180,11 +179,11 @@ fn build_constraint_params(
     trace_length: usize,
 ) -> (
     BaseElement,
-    HashMap<usize, Vec<BaseElement>>,
+    BTreeMap<usize, Vec<BaseElement>>,
     RandomCoin<BaseElement, Blake3_256<BaseElement>>,
 ) {
     let inv_g = BaseElement::get_root_of_unity(log2(trace_length)).inv();
     let prng = build_prng();
-    let twiddle_map = HashMap::<usize, Vec<BaseElement>>::new();
+    let twiddle_map = BTreeMap::<usize, Vec<BaseElement>>::new();
     (inv_g, twiddle_map, prng)
 }

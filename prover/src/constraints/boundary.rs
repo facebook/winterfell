@@ -5,7 +5,7 @@
 
 use air::Air;
 use math::{fft, polynom, FieldElement, StarkField};
-use utils::collections::{HashMap, Vec};
+use utils::collections::{BTreeMap, Vec};
 
 // CONSTANTS
 // ================================================================================================
@@ -32,7 +32,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraintGroup<B, E
     pub fn new<A: Air<BaseElement = B>>(
         group: air::BoundaryConstraintGroup<B, E>,
         air: &A,
-        twiddle_map: &mut HashMap<usize, Vec<B>>,
+        twiddle_map: &mut BTreeMap<usize, Vec<B>>,
     ) -> BoundaryConstraintGroup<B, E> {
         let mut result = BoundaryConstraintGroup {
             degree_adjustment: group.degree_adjustment(),

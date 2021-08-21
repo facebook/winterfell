@@ -13,7 +13,7 @@ use air::{
 };
 use math::FieldElement;
 use utils::{
-    collections::{HashMap, Vec},
+    collections::{BTreeMap, Vec},
     iter_mut,
 };
 
@@ -67,7 +67,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>> ConstraintEvaluato
 
         // build boundary constraints and also append divisors for each group of boundary
         // constraints to the divisor list
-        let mut twiddle_map = HashMap::new();
+        let mut twiddle_map = BTreeMap::new();
         let boundary_constraints = air
             .get_boundary_constraints(&coefficients.boundary)
             .into_iter()

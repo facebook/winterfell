@@ -14,5 +14,7 @@ edition = "2018"
 bench = false
 
 [dependencies]
-utils = { version = "0.1", path = "../core", package = "winter-utils" }
+utils = { version = "0.1", path = "../core", package = "winter-utils", default-features = false }
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
 rand =  { version = "0.8" }
