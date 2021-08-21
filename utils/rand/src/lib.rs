@@ -1,7 +1,7 @@
-//! This crates functions for generating random values.
+//! This crates contains functions for generating random values.
 //!
 //! These functions are intended to be used in tests, benchmarks, and examples. When compiled to
-//! WebAssembly target, all the functions are omitted.
+//! WebAssembly target, all of the functions are omitted.
 
 pub use internal::*;
 
