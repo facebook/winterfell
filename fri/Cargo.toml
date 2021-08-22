@@ -22,7 +22,6 @@ name = "folding"
 harness = false
 
 [features]
-alloc = ["crypto/alloc", "math/alloc", "utils/alloc"]
 concurrent = ["crypto/concurrent", "math/concurrent", "utils/concurrent", "std"]
 default = ["std"]
 std = ["crypto/std", "math/std", "utils/std"]

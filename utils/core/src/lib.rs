@@ -8,13 +8,7 @@
 
 #![no_std]
 
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-compile_error!("Either feature \"std\" or \"alloc\" must be enabled.");
-
-#[cfg(all(feature = "alloc", feature = "std"))]
-compile_error!("Features \"alloc\" and \"std\" cannot be enabled simultaneously.");
-
-#[cfg(feature = "alloc")]
+#[cfg(not(feature = "std"))]
 #[macro_use]
 extern crate alloc;
 
