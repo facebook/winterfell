@@ -91,8 +91,7 @@ fn mul() {
         let expected = BaseElement::from_big_uint(expected);
 
         if expected != r1 * r2 {
-            println!("failed for: {} * {}", r1, r2);
-            assert_eq!(expected, r1 * r2);
+            assert_eq!(expected, r1 * r2, "failed for: {} * {}", r1, r2);
         }
     }
 }
