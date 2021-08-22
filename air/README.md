@@ -77,10 +77,9 @@ See [options.rs](src/options.rs) for more info on currently available options an
 This crate can be compiled with the following features:
 
 * `std` - enabled by default and relies on the Rust standard library.
-* `no_std` + `alloc` - does not rely on the Rust standard library and enables compilation to WebAssembly.
+* `no_std` - does not rely on the Rust standard library and enables compilation to WebAssembly.
 
-### WebAssembly support
-To compile this crate to WebAssembly, disable default features and enable the `alloc` feature.
+To compile with `no_std`, disable default features via `--no-default-features` flag.
 
 License
 -------

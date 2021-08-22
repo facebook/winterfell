@@ -28,7 +28,7 @@ Winterfell is a fully-functional, multi-threaded STARK prover and verifier with 
 
 **Configurable hash functions.** The library allows dynamic selection of hash functions used in the STARK protocol. Currently, BLAKE3 and SHA3 hash functions are supported, and support for arithmetization-friendly hash function (e.g. Rescue) is planned.
 
-**WebAssembly support.** The library is written in pure Rust and can be compiled to WebAssembly. The `std` standard library is enabled as feature by default for both prover and verifier crates. For WASM targets, one can disable default features and compile with the `alloc` feature instead.
+**WebAssembly support.** The library is written in pure Rust and can be compiled to WebAssembly. The `std` standard library is enabled as feature by default for both prover and verifier crates. For WASM targets, one can compile with default features disabled by using `--no-default-features` flag.
 
 #### Planned features
 

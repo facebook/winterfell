@@ -29,14 +29,13 @@ This crates supports executing FRI protocol with dynamically configurable parame
 This crate can be compiled with the following features:
 
 * `std` - enabled by default and relies on the Rust standard library.
-* `std` + `concurrent` - same as `std` but enables multi-threaded proof generation.
-* `no_std` + `alloc` - does not rely on the Rust standard library and enables compilation to WebAssembly.
+* `concurrent` - implies `std` and also enables multi-threaded proof generation.
+* `no_std` - does not rely on the Rust standard library and enables compilation to WebAssembly.
+
+To compile with `no_std`, disable default features via `--no-default-features` flag.
 
 ### Concurrent execution
 When this crate is compiled with `concurrent` feature enabled, `FriProver` will build FRI layers using multiple threads. The number of threads can be configured via `RAYON_NUM_THREADS` environment variable, and usually defaults to the number of logical cores on the machine.
-
-### WebAssembly support
-To compile this crate to WebAssembly, disable default features and enable the `alloc` feature.
 
 ## References
 
