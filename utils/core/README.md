@@ -10,8 +10,10 @@ This crate contains utilities used by the Winterfell STARK prover and verifier. 
 This crate can be compiled with the following features:
 
 * `std` - enabled by default and relies on the Rust standard library.
-* `std` + `concurrent` - same as `std` but also re-exports `rayon` crate and enables multi-threaded execution for some of the crate functions.
-* `no_std` + `alloc` - does not rely on Rust's standard library and enables compilation to WebAssembly.
+* `concurrent` - implies `std` and also re-exports `rayon` crate and enables multi-threaded execution for some of the crate functions.
+* `no_std` - does not rely on Rust's standard library and enables compilation to WebAssembly.
+
+To compile with `no_std`, disable default features via `--no-default-features` flag.
 
 ### Concurrent execution
 
@@ -20,9 +22,6 @@ When compiled with `concurrent` feature enabled, this crate re-exports `rayon` c
 * `transpose_slice()`
 
 The number of threads can be configured via `RAYON_NUM_THREADS` environment variable, and usually defaults to the number of logical cores on the machine.
-
-### WebAssembly support
-To compile this crate to WebAssembly, disable default features and enable the `alloc` feature.
 
 License
 -------

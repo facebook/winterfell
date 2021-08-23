@@ -26,7 +26,6 @@ name = "polynom"
 harness = false
 
 [features]
-alloc = ["utils/alloc"]
 concurrent = ["utils/concurrent", "std"]
 default = ["std"]
 std = ["utils/std"]

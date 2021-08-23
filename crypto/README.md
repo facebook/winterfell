@@ -40,8 +40,10 @@ As can be seen from the table, BLAKE3 is by far the fastest hash function, while
 This crate can be compiled with the following features:
 
 * `std` - enabled by default and relies on the Rust standard library.
-* `std` + `concurrent` - same as `std` but enables multi-threaded execution for some of the crate functions.
-* `no_std` + `alloc` - does not rely on the Rust standard library and enables compilation to WebAssembly.
+* `concurrent` - implies `std` and also enables multi-threaded execution for some of the crate functions.
+* `no_std` does not rely on the Rust standard library and enables compilation to WebAssembly.
+
+To compile with `no_std`, disable default features via `--no-default-features` flag.
 
 ### Concurrent execution
 When compiled with `concurrent` feature enabled, the following operations will be executed in multiple threads:
@@ -49,9 +51,6 @@ When compiled with `concurrent` feature enabled, the following operations will b
 * `MerkleTree::new()` - i.e., a Merkle tree will be constructed in multiple threads.
 
 The number of threads can be configured via `RAYON_NUM_THREADS` environment variable, and usually defaults to the number of logical cores on the machine.
-
-### WebAssembly support
-To compile this crate to WebAssembly, disable default features and enable the `alloc` feature.
 
 License
 -------

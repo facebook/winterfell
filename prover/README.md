@@ -49,8 +49,10 @@ This second option is usually simpler to use and also makes it easy to implement
 This crate can be compiled with the following features:
 
 * `std` - enabled by default and relies on the Rust standard library.
-* `std` + `concurrent` - same as `std` but enables multi-threaded proof generation.
-* `no_std` + `alloc` - does not rely on the Rust standard library and enables compilation to WebAssembly.
+* `concurrent` - implies `std` and also enables multi-threaded proof generation.
+* `no_std` - does not rely on the Rust standard library and enables compilation to WebAssembly.
+
+To compile with `no_std`, disable default features via `--no-default-features` flag.
 
 ### Concurrent proof generation
 When this crate is compiled with `concurrent` feature enabled, proof generation will be performed in multiple threads. The number of threads can be configured via `RAYON_NUM_THREADS` environment variable, and usually defaults to the number of logical cores on the machine.
@@ -58,9 +60,6 @@ When this crate is compiled with `concurrent` feature enabled, proof generation 
 For computations which consist of many small independent computations, we can generate the execution trace of the entire computation by building fragments of the trace in parallel, and then joining these fragments together.
 
 For this purpose, `ExecutionTrace` struct exposes `fragments()` method, which takes fragment length as a parameter, breaks the execution trace into equally sized fragments, and returns an iterator over these fragments. You can then use fragment's `fill()` method to fill all fragments with data in parallel. The semantics of the fragment's `fill()` method are identical to the `fill()` method of the execution trace.
-
-### WebAssembly support
-To compile this crate to WebAssembly, disable default features and enable the `alloc` feature.
 
 License
 -------

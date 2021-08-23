@@ -14,7 +14,6 @@ edition = "2018"
 bench = false
 
 [features]
-alloc = ["prover/alloc", "verifier/alloc"]
 concurrent = ["prover/concurrent", "std"]
 default = ["std"]
 std = ["prover/std", "verifier/std"]

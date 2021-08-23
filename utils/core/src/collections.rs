@@ -9,10 +9,10 @@
 //! When `alloc` feature is enabled, same collected are provided without relying on the Rust
 //! standard library.
 
-#[cfg(feature = "alloc")]
+#[cfg(not(feature = "std"))]
 pub use alloc::collections::{BTreeMap, BTreeSet};
 
-#[cfg(feature = "alloc")]
+#[cfg(not(feature = "std"))]
 pub use alloc::vec::{self as vec, Vec};
 
 #[cfg(feature = "std")]

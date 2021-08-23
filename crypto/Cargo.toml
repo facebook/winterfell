@@ -23,7 +23,6 @@ harness = false
 required-features = ["concurrent"]
 
 [features]
-alloc = ["math/alloc", "utils/alloc"]
 default = ["std"]
 concurrent = ["utils/concurrent", "std"]
 std = ["blake3/std", "math/std", "sha3/std", "utils/std"]

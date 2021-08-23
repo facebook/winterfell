@@ -34,15 +34,11 @@
 //! also depends on the capabilities of the machine used to generate the proofs (i.e. on number
 //! of CPU cores and memory bandwidth).
 
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(feature = "alloc")]
+#[cfg(not(feature = "std"))]
 #[macro_use]
 extern crate alloc;
-
-#[cfg(any(feature = "std", test))]
-#[macro_use]
-extern crate std;
 
 pub use air::{
     proof::StarkProof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,

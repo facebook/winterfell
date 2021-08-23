@@ -14,7 +14,6 @@ edition = "2018"
 bench = false
 
 [features]
-alloc = ["air/alloc", "crypto/alloc", "fri/alloc", "math/alloc", "utils/alloc"]
 concurrent = ["crypto/concurrent", "math/concurrent", "fri/concurrent", "utils/concurrent", "std"]
 default = ["std"]
 std = ["air/std", "crypto/std", "fri/std", "math/std", "utils/std"]

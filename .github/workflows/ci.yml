@@ -86,4 +86,4 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --verbose --no-default-features --features alloc --target ${{ matrix.target }}
+          args: --verbose --no-default-features --target ${{ matrix.target }}

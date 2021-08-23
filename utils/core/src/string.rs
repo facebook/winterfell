@@ -9,7 +9,7 @@
 //! library. When `alloc` feature is enabled, same components are provided without relying on the
 //! Rust standard library.
 
-#[cfg(feature = "alloc")]
+#[cfg(not(feature = "std"))]
 pub use alloc::string::{String, ToString};
 
 #[cfg(feature = "std")]

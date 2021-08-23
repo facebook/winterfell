@@ -20,7 +20,6 @@ bench = false
 doc = false
 
 [features]
-alloc = ["hex/alloc", "winterfell/alloc"]
 concurrent = ["winterfell/concurrent", "std"]
 default = ["std"]
 std = ["hex/std", "winterfell/std", "rand-utils"]
@@ -28,7 +27,7 @@ std = ["hex/std", "winterfell/std", "rand-utils"]
 [dependencies]
 winterfell = { path = "../winterfell", default-features = false }
 rand-utils = { version = "0.1", path = "../utils/rand", package = "winter-rand-utils", optional = true }
-hex = { version = "0.4", default-features = false }
+hex = { version = "0.4", optional = true }
 log = { version = "0.4", default-features = false }
 blake3 = { version = "1.0", default-features = false }
 env_logger = { version = "0.9", default-features = false }

@@ -6,21 +6,11 @@
 //! This crate contains utility traits, functions, and macros used by other crates of Winterfell
 //! STARK prover and verifier.
 
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-compile_error!("Either feature \"std\" or \"alloc\" must be enabled.");
-
-#[cfg(all(feature = "alloc", feature = "std"))]
-compile_error!("Features \"alloc\" and \"std\" cannot be enabled simultaneously.");
-
-#[cfg(feature = "alloc")]
+#[cfg(not(feature = "std"))]
 #[macro_use]
 extern crate alloc;
-
-#[cfg(any(feature = "std", test))]
-#[macro_use]
-extern crate std;
 
 use core::{convert::TryInto, mem, slice};
 

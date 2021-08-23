@@ -381,7 +381,7 @@
 //! * [Low Degree Testing](https://medium.com/starkware/low-degree-testing-f7614f5172db)
 //! * [A Framework for Efficient STARKs](https://medium.com/starkware/a-framework-for-efficient-starks-19608ba06fbe)
 
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 
 pub use prover::{
     crypto, iterators, math, prove, Air, AirContext, Assertion, BoundaryConstraint,
