@@ -5,13 +5,14 @@
 
 use super::{Assertion, AssertionError};
 use math::{fields::f128::BaseElement, FieldElement};
+use rand_utils::{rand_value, rand_vector};
 use utils::collections::Vec;
 
 // SINGLE ASSERTIONS
 // ================================================================================================
 #[test]
 fn single_assertion() {
-    let value = BaseElement::rand();
+    let value = rand_value::<BaseElement>();
     let a = Assertion::single(2, 8, value);
     assert_eq!(2, a.register);
     assert_eq!(8, a.first_step);
@@ -43,7 +44,7 @@ fn single_assertion() {
 
 #[test]
 fn periodic_assertion() {
-    let value = BaseElement::rand();
+    let value = rand_value::<BaseElement>();
     let a = Assertion::periodic(4, 1, 16, value);
     assert_eq!(4, a.register);
     assert_eq!(1, a.first_step);
@@ -112,7 +113,7 @@ fn periodic_assertion_get_num_steps_error() {
 
 #[test]
 fn sequence_assertion() {
-    let values = BaseElement::prng_vector([1; 32], 2);
+    let values = rand_vector::<BaseElement>(2);
     let a = Assertion::sequence(3, 2, 4, values.clone());
     assert_eq!(3, a.register);
     assert_eq!(2, a.first_step);

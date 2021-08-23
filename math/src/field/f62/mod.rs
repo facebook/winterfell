@@ -22,13 +22,8 @@ use core::{
 };
 use utils::{
     collections::Vec, string::ToString, AsBytes, ByteReader, ByteWriter, Deserializable,
-    DeserializationError, Serializable,
+    DeserializationError, Randomizable, Serializable,
 };
-
-#[cfg(feature = "std")]
-use core::ops::Range;
-#[cfg(feature = "std")]
-use rand::{distributions::Uniform, prelude::*};
 
 #[cfg(test)]
 mod tests;
@@ -53,9 +48,6 @@ const ELEMENT_BYTES: usize = core::mem::size_of::<u64>();
 
 // 2^39 root of unity
 const G: u64 = 4421547261963328785;
-
-#[cfg(feature = "std")]
-const RANGE: Range<u64> = Range { start: 0, end: M };
 
 // FIELD ELEMENT
 // ================================================================================================
@@ -117,17 +109,6 @@ impl FieldElement for BaseElement {
         BaseElement(self.0)
     }
 
-    #[cfg(feature = "std")]
-    fn rand() -> Self {
-        let range = Uniform::from(RANGE);
-        let mut g = thread_rng();
-        BaseElement::new(g.sample(range))
-    }
-
-    fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
-        Self::try_from(bytes).ok()
-    }
-
     fn elements_as_bytes(elements: &[Self]) -> &[u8] {
         // TODO: take endianness into account
         let p = elements.as_ptr();
@@ -170,13 +151,6 @@ impl FieldElement for BaseElement {
         unsafe { Vec::from_raw_parts(p as *mut Self, len, cap) }
     }
 
-    #[cfg(feature = "std")]
-    fn prng_vector(seed: [u8; 32], n: usize) -> Vec<Self> {
-        let range = Uniform::from(RANGE);
-        let g = StdRng::from_seed(seed);
-        g.sample_iter(range).take(n).map(BaseElement::new).collect()
-    }
-
     fn as_base_elements(elements: &[Self]) -> &[Self::BaseField] {
         elements
     }
@@ -215,6 +189,14 @@ impl StarkField for BaseElement {
         let result = mul(self.0, 1);
         // since the result of multiplication can be in [0, 2M), we need to normalize it
         normalize(result)
+    }
+}
+
+impl Randomizable for BaseElement {
+    const VALUE_SIZE: usize = Self::ELEMENT_BYTES;
+
+    fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
+        Self::try_from(bytes).ok()
     }
 }
 

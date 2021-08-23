@@ -5,7 +5,7 @@
 
 use super::{Assertion, ConstraintDivisor};
 use math::{fft, polynom, FieldElement, StarkField};
-use utils::collections::{HashMap, Vec};
+use utils::collections::{BTreeMap, Vec};
 
 #[cfg(test)]
 mod tests;
@@ -80,7 +80,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraintGroup<B, E
         &mut self,
         assertion: Assertion<B>,
         inv_g: B,
-        twiddle_map: &mut HashMap<usize, Vec<B>>,
+        twiddle_map: &mut BTreeMap<usize, Vec<B>>,
         coefficients: (E, E),
     ) {
         self.constraints.push(BoundaryConstraint::new(
@@ -161,7 +161,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraint<B, E> {
     pub(super) fn new(
         assertion: Assertion<B>,
         inv_g: B,
-        twiddle_map: &mut HashMap<usize, Vec<B>>,
+        twiddle_map: &mut BTreeMap<usize, Vec<B>>,
         cc: (E, E),
     ) -> Self {
         // build a polynomial which evaluates to constraint values at asserted steps; for

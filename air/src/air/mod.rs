@@ -7,7 +7,7 @@ use crate::ProofOptions;
 use crypto::{Hasher, RandomCoin, RandomCoinError};
 use math::{fft, FieldElement, StarkField};
 use utils::{
-    collections::{BTreeSet, HashMap, Vec},
+    collections::{BTreeMap, BTreeSet, Vec},
     Serializable,
 };
 
@@ -207,7 +207,7 @@ pub trait Air: Send + Sync {
     fn get_periodic_column_polys(&self) -> Vec<Vec<Self::BaseElement>> {
         // cache inverse twiddles for each cycle length so that we don't have to re-build them
         // for columns with identical cycle lengths
-        let mut twiddle_map = HashMap::new();
+        let mut twiddle_map = BTreeMap::new();
         // iterate over all periodic columns and convert column values into polynomials
         self.get_periodic_column_values()
             .into_iter()
@@ -258,7 +258,7 @@ pub trait Air: Send + Sync {
         // iterate over all transition constraint degrees, and assign each constraint to the
         // appropriate group based on degree
         let context = self.context();
-        let mut groups = HashMap::new();
+        let mut groups = BTreeMap::new();
         for (i, degree) in context.transition_constraint_degrees.iter().enumerate() {
             let evaluation_degree = degree.get_evaluation_degree(self.trace_length());
             let group = groups.entry(evaluation_degree).or_insert_with(|| {
@@ -291,7 +291,7 @@ pub trait Air: Send + Sync {
 
         // cache inverse twiddles for multi-value assertions in this map so that we don't have
         // to re-build them for assertions with identical strides
-        let mut twiddle_map = HashMap::new();
+        let mut twiddle_map = BTreeMap::new();
 
         // get the assertions for this computation and make sure that they are all valid in
         // the context of this computation; also, sort the assertions in the deterministic order
@@ -306,7 +306,7 @@ pub trait Air: Send + Sync {
 
         // iterate over all assertions, which are sorted first by stride and then by first_step
         // in ascending order
-        let mut groups = HashMap::new();
+        let mut groups = BTreeMap::new();
         for (i, assertion) in assertions.into_iter().enumerate() {
             let key = (assertion.stride(), assertion.first_step());
             let group = groups.entry(key).or_insert_with(|| {

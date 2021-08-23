@@ -5,7 +5,7 @@
 
 use crate::{errors::MerkleTreeError, Hasher};
 use utils::{
-    collections::{BTreeMap, HashMap, Vec},
+    collections::{BTreeMap, Vec},
     string::ToString,
     ByteReader, Deserializable, DeserializationError, Serializable,
 };
@@ -137,7 +137,7 @@ impl<H: Hasher> BatchMerkleProof<H> {
         }
 
         let mut buf = [H::Digest::default(); 2];
-        let mut v = HashMap::new();
+        let mut v = BTreeMap::new();
 
         // replace odd indexes, offset, and sort in ascending order
         let index_map = super::map_indexes(indexes, self.depth as usize)?;

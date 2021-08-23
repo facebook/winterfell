@@ -63,10 +63,11 @@ const MIN_CONCURRENT_SIZE: usize = 1024;
 /// ```
 /// # use winter_math::{polynom, fft::*, get_power_series, log2};
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement, StarkField};
+/// # use rand_utils::rand_vector;
 /// let n = 2048;
 ///
 /// // build a random polynomial
-/// let mut p = BaseElement::prng_vector([1; 32], n);
+/// let mut p: Vec<BaseElement> = rand_vector(n);
 ///
 /// // evaluate the polynomial over the domain using regular polynomial evaluation
 /// let g = BaseElement::get_root_of_unity(log2(n));
@@ -145,12 +146,13 @@ where
 /// ```
 /// # use winter_math::{polynom, fft::*, log2, get_power_series};
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement, StarkField};
+/// # use rand_utils::rand_vector;
 /// let n = 2048;
 /// let offset = BaseElement::GENERATOR;
 /// let blowup_factor = 2;
 ///
 /// // build a random polynomial
-/// let mut p = BaseElement::prng_vector([1; 32], n / blowup_factor);
+/// let mut p: Vec<BaseElement> = rand_vector(n / blowup_factor);
 ///
 /// // evaluate the polynomial over the domain using regular polynomial evaluation
 /// let g = BaseElement::get_root_of_unity(log2(n));
@@ -250,10 +252,11 @@ where
 /// ```
 /// # use winter_math::{polynom, fft::*, get_power_series, log2};
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement, StarkField};
+/// # use rand_utils::rand_vector;
 /// let n = 2048;
 ///
 /// // build a random polynomial
-/// let p = BaseElement::prng_vector([1; 32], n);
+/// let p: Vec<BaseElement> = rand_vector(n);
 ///
 /// // evaluate the polynomial over the domain using regular polynomial evaluation
 /// let g = BaseElement::get_root_of_unity(log2(n));
@@ -335,11 +338,12 @@ where
 /// ```
 /// # use winter_math::{polynom, fft::*, get_power_series, log2};
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement, StarkField};
+/// # use rand_utils::rand_vector;
 /// let n = 2048;
 /// let offset = BaseElement::GENERATOR;
 ///
 /// // build a random polynomial
-/// let p = BaseElement::prng_vector([1; 32], n);
+/// let p: Vec<BaseElement> = rand_vector(n);
 ///
 /// // evaluate the polynomial over the domain using regular polynomial evaluation
 /// let g = BaseElement::get_root_of_unity(log2(n));

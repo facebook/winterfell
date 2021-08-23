@@ -5,6 +5,7 @@
 
 use super::*;
 use num_bigint::BigUint;
+use rand_utils::{rand_value, rand_vector};
 use utils::SliceReader;
 
 // BASIC ALGEBRA
@@ -13,7 +14,7 @@ use utils::SliceReader;
 #[test]
 fn add() {
     // identity
-    let r = BaseElement::rand();
+    let r: BaseElement = rand_value();
     assert_eq!(r, r + BaseElement::ZERO);
 
     // test addition within bounds
@@ -28,8 +29,8 @@ fn add() {
     assert_eq!(BaseElement::ONE, t + BaseElement::from(2u8));
 
     // test random values
-    let r1 = BaseElement::rand();
-    let r2 = BaseElement::rand();
+    let r1: BaseElement = rand_value();
+    let r2: BaseElement = rand_value();
 
     let expected = (r1.to_big_uint() + r2.to_big_uint()) % BigUint::from(M);
     let expected = BaseElement::from_big_uint(expected);
@@ -39,7 +40,7 @@ fn add() {
 #[test]
 fn sub() {
     // identity
-    let r = BaseElement::rand();
+    let r: BaseElement = rand_value();
     assert_eq!(r, r - BaseElement::ZERO);
 
     // test subtraction within bounds
@@ -56,7 +57,7 @@ fn sub() {
 #[test]
 fn mul() {
     // identity
-    let r = BaseElement::rand();
+    let r: BaseElement = rand_value();
     assert_eq!(BaseElement::ZERO, r * BaseElement::ZERO);
     assert_eq!(r, r * BaseElement::ONE);
 
@@ -80,8 +81,8 @@ fn mul() {
     );
 
     // test random values
-    let v1 = BaseElement::prng_vector(build_seed(), 1000);
-    let v2 = BaseElement::prng_vector(build_seed(), 1000);
+    let v1: Vec<BaseElement> = rand_vector(1000);
+    let v2: Vec<BaseElement> = rand_vector(1000);
     for i in 0..v1.len() {
         let r1 = v1[i];
         let r2 = v2[i];
@@ -103,7 +104,7 @@ fn inv() {
     assert_eq!(BaseElement::ZERO, BaseElement::inv(BaseElement::ZERO));
 
     // test random values
-    let x = BaseElement::prng_vector(build_seed(), 1000);
+    let x: Vec<BaseElement> = rand_vector(1000);
     for i in 0..x.len() {
         let y = BaseElement::inv(x[i]);
         assert_eq!(BaseElement::ONE, x[i] * y);
@@ -112,7 +113,7 @@ fn inv() {
 
 #[test]
 fn conjugate() {
-    let a = BaseElement::rand();
+    let a: BaseElement = rand_value();
     let b = a.conjugate();
     assert_eq!(a, b);
 }
@@ -240,32 +241,8 @@ fn zeroed_vector() {
     }
 }
 
-#[test]
-fn prng_vector() {
-    let a = BaseElement::prng_vector([0; 32], 4);
-    assert_eq!(4, a.len());
-
-    let b = BaseElement::prng_vector([0; 32], 8);
-    assert_eq!(8, b.len());
-
-    for (&a, &b) in a.iter().zip(b.iter()) {
-        assert_eq!(a, b);
-    }
-
-    let c = BaseElement::prng_vector([1; 32], 4);
-    for (&a, &c) in a.iter().zip(c.iter()) {
-        assert_ne!(a, c);
-    }
-}
-
 // HELPER FUNCTIONS
 // ================================================================================================
-fn build_seed() -> [u8; 32] {
-    let mut result = [0; 32];
-    let seed = BaseElement::rand().as_bytes().to_vec();
-    result[..16].copy_from_slice(&seed);
-    result
-}
 
 impl BaseElement {
     pub fn to_big_uint(&self) -> BigUint {

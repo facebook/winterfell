@@ -11,7 +11,9 @@ use core::{
         SubAssign,
     },
 };
-use utils::{collections::Vec, AsBytes, Deserializable, DeserializationError, Serializable};
+use utils::{
+    collections::Vec, AsBytes, Deserializable, DeserializationError, Randomizable, Serializable,
+};
 
 // FIELD ELEMENT
 // ================================================================================================
@@ -52,6 +54,7 @@ pub trait FieldElement:
     + From<u8>
     + for<'a> TryFrom<&'a [u8]>
     + AsBytes
+    + Randomizable
     + Serializable
     + Deserializable
 {
@@ -135,20 +138,6 @@ pub trait FieldElement:
     /// Returns a conjugate of this field element.
     fn conjugate(&self) -> Self;
 
-    // RANDOMNESS
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns a cryptographically-secure random element drawn uniformly from the entire field.
-    #[cfg(feature = "std")]
-    fn rand() -> Self;
-
-    /// Returns a field element if the set of bytes forms a valid field element, otherwise returns
-    /// None.
-    ///
-    /// The element is expected to be in canonical representation. This function is primarily
-    /// intended for sampling random field elements from a hash function output.
-    fn from_random_bytes(bytes: &[u8]) -> Option<Self>;
-
     // SERIALIZATION / DESERIALIZATION
     // --------------------------------------------------------------------------------------------
 
@@ -175,7 +164,7 @@ pub trait FieldElement:
     /// field elements according to their internal representation.
     unsafe fn bytes_as_elements(bytes: &[u8]) -> Result<&[Self], DeserializationError>;
 
-    // INITIALIZATION
+    // UTILITIES
     // --------------------------------------------------------------------------------------------
 
     /// Returns a vector of length `n` initialized with all ZERO elements.
@@ -184,14 +173,6 @@ pub trait FieldElement:
     fn zeroed_vector(n: usize) -> Vec<Self> {
         vec![Self::ZERO; n]
     }
-
-    /// Returns a vector of `n` pseudo-random elements drawn uniformly from the entire
-    /// field based on the provided `seed`.
-    #[cfg(feature = "std")]
-    fn prng_vector(seed: [u8; 32], n: usize) -> Vec<Self>;
-
-    // UTILITIES
-    // --------------------------------------------------------------------------------------------
 
     /// Converts a list of field elements into a list of elements in the underlying base field.
     ///

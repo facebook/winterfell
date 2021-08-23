@@ -24,13 +24,9 @@ use core::{
 use utils::{
     collections::Vec,
     string::{String, ToString},
-    AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+    AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Randomizable,
+    Serializable,
 };
-
-#[cfg(feature = "std")]
-use core::ops::Range;
-#[cfg(feature = "std")]
-use rand::{distributions::Uniform, prelude::*};
 
 #[cfg(test)]
 mod tests;
@@ -43,9 +39,6 @@ const M: u128 = 340282366920938463463374557953744961537;
 
 // 2^40 root of unity
 const G: u128 = 23953097886125630542083529559205016746;
-
-#[cfg(feature = "std")]
-const RANGE: Range<u128> = Range { start: 0, end: M };
 
 // Number of bytes needed to represent field element
 const ELEMENT_BYTES: usize = core::mem::size_of::<u128>();
@@ -86,17 +79,6 @@ impl FieldElement for BaseElement {
 
     fn conjugate(&self) -> Self {
         BaseElement(self.0)
-    }
-
-    #[cfg(feature = "std")]
-    fn rand() -> Self {
-        let range = Uniform::from(RANGE);
-        let mut g = thread_rng();
-        BaseElement(g.sample(range))
-    }
-
-    fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
-        Self::try_from(bytes).ok()
     }
 
     fn elements_as_bytes(elements: &[Self]) -> &[u8] {
@@ -142,13 +124,6 @@ impl FieldElement for BaseElement {
         unsafe { Vec::from_raw_parts(p as *mut Self, len, cap) }
     }
 
-    #[cfg(feature = "std")]
-    fn prng_vector(seed: [u8; 32], n: usize) -> Vec<Self> {
-        let range = Uniform::from(RANGE);
-        let g = StdRng::from_seed(seed);
-        g.sample_iter(range).take(n).map(BaseElement).collect()
-    }
-
     fn as_base_elements(elements: &[Self]) -> &[Self::BaseField] {
         elements
     }
@@ -184,6 +159,14 @@ impl StarkField for BaseElement {
 
     fn as_int(&self) -> Self::PositiveInteger {
         self.0
+    }
+}
+
+impl Randomizable for BaseElement {
+    const VALUE_SIZE: usize = Self::ELEMENT_BYTES;
+
+    fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
+        Self::try_from(bytes).ok()
     }
 }
 

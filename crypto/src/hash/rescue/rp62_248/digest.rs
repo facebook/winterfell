@@ -84,18 +84,13 @@ impl Deserializable for ElementDigest {
 #[cfg(test)]
 mod tests {
 
-    use super::{BaseElement, ElementDigest};
-    use math::FieldElement;
+    use super::ElementDigest;
+    use rand_utils::rand_array;
     use utils::{Deserializable, Serializable, SliceReader};
 
     #[test]
     fn digest_serialization() {
-        let d1 = ElementDigest([
-            BaseElement::rand(),
-            BaseElement::rand(),
-            BaseElement::rand(),
-            BaseElement::rand(),
-        ]);
+        let d1 = ElementDigest(rand_array());
 
         let mut bytes = vec![];
         d1.write_into(&mut bytes);

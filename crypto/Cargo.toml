@@ -29,7 +29,7 @@ concurrent = ["utils/concurrent", "std"]
 std = ["blake3/std", "math/std", "sha3/std", "utils/std"]
 
 [dependencies]
-utils = { version = "0.1", path = "../utils", package = "winter-utils", default-features = false }
+utils = { version = "0.1", path = "../utils/core", package = "winter-utils", default-features = false }
 math = { version = "0.1", path = "../math", package = "winter-math", default-features = false }
 blake3 = { version = "1.0", default-features = false }
 sha3 = { version = "0.9", default-features = false }
@@ -37,5 +37,4 @@ sha3 = { version = "0.9", default-features = false }
 [dev-dependencies]
 criterion = "0.3"
 proptest = "1.0"
-sha2 = "0.9"
-rand = "0.8"
+rand-utils = { version = "0.1", path = "../utils/rand", package = "winter-rand-utils" }

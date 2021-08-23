@@ -6,7 +6,7 @@
 use crate::{errors::MerkleTreeError, hash::Hasher};
 use core::slice;
 use math::log2;
-use utils::collections::{BTreeSet, HashMap, Vec};
+use utils::collections::{BTreeMap, BTreeSet, Vec};
 
 mod proofs;
 pub use proofs::BatchMerkleProof;
@@ -342,9 +342,9 @@ pub fn build_merkle_nodes<H: Hasher>(leaves: &[H::Digest]) -> Vec<H::Digest> {
 fn map_indexes(
     indexes: &[usize],
     tree_depth: usize,
-) -> Result<HashMap<usize, usize>, MerkleTreeError> {
+) -> Result<BTreeMap<usize, usize>, MerkleTreeError> {
     let num_leaves = 2usize.pow(tree_depth as u32);
-    let mut map = HashMap::new();
+    let mut map = BTreeMap::new();
     for (i, index) in indexes.iter().cloned().enumerate() {
         map.insert(index, i);
         if index >= num_leaves {

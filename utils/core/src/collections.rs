@@ -15,11 +15,8 @@ pub use alloc::collections::{BTreeMap, BTreeSet};
 #[cfg(feature = "alloc")]
 pub use alloc::vec::{self as vec, Vec};
 
-#[cfg(feature = "alloc")]
-pub use hashbrown::HashMap;
-
 #[cfg(feature = "std")]
-pub use std::collections::{BTreeMap, BTreeSet, HashMap};
+pub use std::collections::{BTreeMap, BTreeSet};
 
 #[cfg(feature = "std")]
 pub use std::vec::{self as vec, Vec};

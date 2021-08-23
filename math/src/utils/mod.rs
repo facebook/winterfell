@@ -92,8 +92,9 @@ where
 /// ```
 /// # use winter_math::add_in_place;
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
-/// let a = BaseElement::prng_vector([0; 32], 2048);
-/// let b = BaseElement::prng_vector([1; 32], 2048);
+/// # use rand_utils::rand_vector;
+/// let a: Vec<BaseElement> = rand_vector(2048);
+/// let b: Vec<BaseElement> = rand_vector(2048);
 ///
 /// let mut c = a.clone();
 /// add_in_place(&mut c, &b);
@@ -127,8 +128,9 @@ where
 /// ```
 /// # use winter_math::mul_acc;
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
-/// let a = BaseElement::prng_vector([0; 32], 2048);
-/// let b = BaseElement::prng_vector([1; 32], 2048);
+/// # use rand_utils::rand_vector;
+/// let a: Vec<BaseElement> = rand_vector(2048);
+/// let b: Vec<BaseElement> = rand_vector(2048);
 /// let c = BaseElement::new(12345);
 ///
 /// let mut d = a.clone();
@@ -164,7 +166,8 @@ where
 /// ```
 /// # use winter_math::batch_inversion;
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
-/// let a = BaseElement::prng_vector([1; 32], 2048);
+/// # use rand_utils::rand_vector;
+/// let a: Vec<BaseElement> = rand_vector(2048);
 /// let b = batch_inversion(&a);
 ///
 /// for (&a, &b) in a.iter().zip(b.iter()) {

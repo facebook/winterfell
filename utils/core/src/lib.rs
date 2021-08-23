@@ -583,3 +583,42 @@ pub fn transpose_slice<T: Copy + Send + Sync, const N: usize>(source: &[T]) -> V
         });
     result
 }
+
+// RANDOMNESS
+// ================================================================================================
+
+/// Defines how `Self` can be read from a sequence of random bytes.
+pub trait Randomizable: Sized {
+    /// Size of `Self` in bytes.
+    ///
+    /// This is used to determine how many bytes should be passed to the
+    /// [from_random_bytes()](Self::from_random_bytes) function.
+    const VALUE_SIZE: usize;
+
+    /// Returns `Self` if the set of bytes forms a valid value, otherwise returns None.
+    fn from_random_bytes(source: &[u8]) -> Option<Self>;
+}
+
+impl Randomizable for u128 {
+    const VALUE_SIZE: usize = 16;
+
+    fn from_random_bytes(source: &[u8]) -> Option<Self> {
+        if let Ok(bytes) = source[..Self::VALUE_SIZE].try_into() {
+            Some(u128::from_le_bytes(bytes))
+        } else {
+            None
+        }
+    }
+}
+
+impl Randomizable for u64 {
+    const VALUE_SIZE: usize = 8;
+
+    fn from_random_bytes(source: &[u8]) -> Option<Self> {
+        if let Ok(bytes) = source[..Self::VALUE_SIZE].try_into() {
+            Some(u64::from_le_bytes(bytes))
+        } else {
+            None
+        }
+    }
+}

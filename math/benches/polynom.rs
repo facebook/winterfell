@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
-use rand::Rng;
+use rand_utils::rand_vector;
 use std::time::Duration;
 use winter_math::{fft, fields::f128::BaseElement, polynom, FieldElement};
 
@@ -17,7 +17,7 @@ fn syn_div(c: &mut Criterion) {
 
     for &size in SIZES.iter() {
         let stride = 8;
-        let mut values = BaseElement::prng_vector(get_seed(), size);
+        let mut values: Vec<BaseElement> = rand_vector(size);
         for v in values.iter_mut().skip(stride) {
             *v = BaseElement::ZERO;
         }
@@ -40,7 +40,3 @@ fn syn_div(c: &mut Criterion) {
 
 criterion_group!(polynom_group, syn_div);
 criterion_main!(polynom_group);
-
-fn get_seed() -> [u8; 32] {
-    rand::thread_rng().gen::<[u8; 32]>()
-}

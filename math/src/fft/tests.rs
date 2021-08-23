@@ -4,11 +4,12 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{
-    field::{f128::BaseElement, FieldElement, StarkField},
+    field::{f128::BaseElement, StarkField},
     polynom,
     utils::{get_power_series, log2},
 };
-use utils::{collections::Vec, AsBytes};
+use rand_utils::rand_vector;
+use utils::collections::Vec;
 
 // CORE ALGORITHMS
 // ================================================================================================
@@ -17,7 +18,7 @@ use utils::{collections::Vec, AsBytes};
 fn fft_in_place() {
     // degree 3
     let n = 4;
-    let mut p = build_random_element_vec(n);
+    let mut p = rand_vector(n);
     let domain = build_domain(n);
     let expected = polynom::eval_many(&p, &domain);
     let twiddles = super::get_twiddles::<BaseElement>(n);
@@ -27,7 +28,7 @@ fn fft_in_place() {
 
     // degree 7
     let n = 8;
-    let mut p = build_random_element_vec(n);
+    let mut p = rand_vector(n);
     let domain = build_domain(n);
     let twiddles = super::get_twiddles::<BaseElement>(n);
     let expected = polynom::eval_many(&p, &domain);
@@ -37,7 +38,7 @@ fn fft_in_place() {
 
     // degree 15
     let n = 16;
-    let mut p = build_random_element_vec(n);
+    let mut p = rand_vector(n);
     let domain = build_domain(n);
     let twiddles = super::get_twiddles::<BaseElement>(16);
     let expected = polynom::eval_many(&p, &domain);
@@ -47,7 +48,7 @@ fn fft_in_place() {
 
     // degree 1023
     let n = 1024;
-    let mut p = build_random_element_vec(n);
+    let mut p = rand_vector(n);
     let domain = build_domain(n);
     let expected = polynom::eval_many(&p, &domain);
     let twiddles = super::get_twiddles::<BaseElement>(n);
@@ -70,16 +71,6 @@ fn fft_get_twiddles() {
 
 // HELPER FUNCTIONS
 // ================================================================================================
-fn build_seed() -> [u8; 32] {
-    let mut result = [0; 32];
-    let seed = BaseElement::rand().as_bytes().to_vec();
-    result[..16].copy_from_slice(&seed);
-    result
-}
-
-fn build_random_element_vec(size: usize) -> Vec<BaseElement> {
-    BaseElement::prng_vector(build_seed(), size)
-}
 
 fn build_domain(size: usize) -> Vec<BaseElement> {
     let g = BaseElement::get_root_of_unity(log2(size));

@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use rand::Rng;
+use rand_utils::{rand_value, rand_vector};
 use std::{convert::TryInto, time::Duration};
 use utils::AsBytes;
 use winter_math::{
@@ -19,31 +19,36 @@ pub fn f128_ops(c: &mut Criterion) {
     let mut group = c.benchmark_group("f128");
 
     group.bench_function("add", |bench| {
-        let x = f128::BaseElement::rand();
-        let y = f128::BaseElement::rand();
+        let x = rand_value::<f128::BaseElement>();
+        let y = rand_value::<f128::BaseElement>();
         bench.iter(|| black_box(x) + black_box(y))
     });
 
     group.bench_function("sub", |bench| {
-        let x = f128::BaseElement::rand();
-        let y = f128::BaseElement::rand();
+        let x = rand_value::<f128::BaseElement>();
+        let y = rand_value::<f128::BaseElement>();
         bench.iter(|| black_box(x) - black_box(y))
     });
 
     group.bench_function("mul", |bench| {
-        let x = f128::BaseElement::rand();
-        let y = f128::BaseElement::rand();
+        let x = rand_value::<f128::BaseElement>();
+        let y = rand_value::<f128::BaseElement>();
         bench.iter(|| black_box(x) * black_box(y))
     });
 
     group.bench_function("exp", |bench| {
-        let x = f128::BaseElement::rand();
-        let y = u128::from_le_bytes(f128::BaseElement::rand().as_bytes().try_into().unwrap());
+        let x = rand_value::<f128::BaseElement>();
+        let y = u128::from_le_bytes(
+            rand_value::<f128::BaseElement>()
+                .as_bytes()
+                .try_into()
+                .unwrap(),
+        );
         bench.iter(|| f128::BaseElement::exp(black_box(x), black_box(y)))
     });
 
     group.bench_function("inv", |bench| {
-        let x = f128::BaseElement::rand();
+        let x = rand_value::<f128::BaseElement>();
         bench.iter(|| f128::BaseElement::inv(black_box(x)))
     });
 }
@@ -52,8 +57,8 @@ pub fn f128_extension_ops(c: &mut Criterion) {
     let mut group = c.benchmark_group("f128_quad");
 
     group.bench_function("mul", |bench| {
-        let x = QuadExtensionA::<f128::BaseElement>::rand();
-        let y = QuadExtensionA::<f128::BaseElement>::rand();
+        let x = rand_value::<QuadExtensionA<f128::BaseElement>>();
+        let y = rand_value::<QuadExtensionA<f128::BaseElement>>();
         bench.iter(|| black_box(x) * black_box(y))
     });
 }
@@ -62,31 +67,36 @@ pub fn f62_ops(c: &mut Criterion) {
     let mut group = c.benchmark_group("f62");
 
     group.bench_function("add", |bench| {
-        let x = f62::BaseElement::rand();
-        let y = f62::BaseElement::rand();
+        let x = rand_value::<f62::BaseElement>();
+        let y = rand_value::<f62::BaseElement>();
         bench.iter(|| black_box(x) + black_box(y))
     });
 
     group.bench_function("sub", |bench| {
-        let x = f62::BaseElement::rand();
-        let y = f62::BaseElement::rand();
+        let x = rand_value::<f62::BaseElement>();
+        let y = rand_value::<f62::BaseElement>();
         bench.iter(|| black_box(x) - black_box(y))
     });
 
     group.bench_function("mul", |bench| {
-        let x = f62::BaseElement::rand();
-        let y = f62::BaseElement::rand();
+        let x = rand_value::<f62::BaseElement>();
+        let y = rand_value::<f62::BaseElement>();
         bench.iter(|| black_box(x) * black_box(y))
     });
 
     group.bench_function("exp", |bench| {
-        let x = f62::BaseElement::rand();
-        let y = u64::from_le_bytes(f62::BaseElement::rand().as_bytes().try_into().unwrap());
+        let x = rand_value::<f62::BaseElement>();
+        let y = u64::from_le_bytes(
+            rand_value::<f62::BaseElement>()
+                .as_bytes()
+                .try_into()
+                .unwrap(),
+        );
         bench.iter(|| f62::BaseElement::exp(black_box(x), black_box(y)))
     });
 
     group.bench_function("inv", |bench| {
-        let x = f62::BaseElement::rand();
+        let x = rand_value::<f62::BaseElement>();
         bench.iter(|| f62::BaseElement::inv(black_box(x)))
     });
 }
@@ -95,8 +105,8 @@ pub fn f62_extension_ops(c: &mut Criterion) {
     let mut group = c.benchmark_group("f62_quad");
 
     group.bench_function("mul", |bench| {
-        let x = QuadExtensionA::<f62::BaseElement>::rand();
-        let y = QuadExtensionA::<f62::BaseElement>::rand();
+        let x = rand_value::<QuadExtensionA<f62::BaseElement>>();
+        let y = rand_value::<QuadExtensionA<f62::BaseElement>>();
         bench.iter(|| black_box(x) * black_box(y))
     });
 }
@@ -107,7 +117,7 @@ pub fn batch_inv(c: &mut Criterion) {
     group.measurement_time(Duration::from_secs(10));
 
     for &size in SIZES.iter() {
-        let values = f128::BaseElement::prng_vector(get_seed(), size);
+        let values = rand_vector::<f128::BaseElement>(size);
 
         group.bench_function(BenchmarkId::new("no_coeff", size), |bench| {
             bench.iter_with_large_drop(|| batch_inversion(&values));
@@ -126,7 +136,3 @@ criterion_group!(
     f62_extension_ops
 );
 criterion_main!(field_group);
-
-fn get_seed() -> [u8; 32] {
-    rand::thread_rng().gen::<[u8; 32]>()
-}
