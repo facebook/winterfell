@@ -18,9 +18,7 @@ jobs:
         rust-version: ${{ matrix.rust }}
     - uses: actions/checkout@master
     - name: Login to crates.io
-      run: cargo login $CRATES_IO_TOKEN
-      env:
-        CRATES_IO_TOKEN: ${{ secrets.crates_io_token }} # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/creating-and-using-encrypted-secrets
+      run: cargo login ${{ secrets.crates_io_token }} # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/creating-and-using-encrypted-secrets
     - name: Dry run publish winter-utils
       run: cargo publish --dry-run --manifest-path utils/core/Cargo.toml
     - name: Publish winter-utils
