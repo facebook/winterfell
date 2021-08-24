@@ -1,0 +1,77 @@
+name: Publish
+
+on:
+  release:
+    types: [published] # Only publish to crates.io when we formally publish a release
+  # For more on how to formally release on Github, read https://help.github.com/en/articles/creating-releases
+
+jobs:
+  publish:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+
+    steps:
+    - uses: hecrj/setup-rust-action@v1
+      with:
+        rust-version: ${{ matrix.rust }}
+    - uses: actions/checkout@master
+    - name: Login to crates.io
+      run: cargo login $CRATES_IO_TOKEN
+      env:
+        CRATES_IO_TOKEN: ${{ secrets.crates_io_token }} # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/creating-and-using-encrypted-secrets
+    - name: Dry run publish winter-utils
+      run: cargo publish --dry-run --manifest-path utils/core/Cargo.toml
+    - name: Publish winter-utils
+      run: cargo publish --manifest-path utils/core/Cargo.toml
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ secrets.crates_io_token }}
+    - name: Dry run publish winter-rand-utils
+      run: cargo publish --dry-run --manifest-path utils/rand/Cargo.toml
+    - name: Publish winter-rand-utils
+      run: cargo publish --manifest-path utils/rand/Cargo.toml
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ secrets.crates_io_token }}
+    - name: Dry run publish winter-math
+      run: cargo publish --dry-run --manifest-path math/Cargo.toml
+    - name: Publish winter-math
+      run: cargo publish --manifest-path math/Cargo.toml
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ secrets.crates_io_token }}
+    - name: Dry run publish winter-crypto
+      run: cargo publish --dry-run --manifest-path crypto/Cargo.toml
+    - name: Publish winter-crypto
+      run: cargo publish --manifest-path crypto/Cargo.toml
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ secrets.crates_io_token }}
+    - name: Dry run publish winter-fri
+      run: cargo publish --dry-run --manifest-path fri/Cargo.toml
+    - name: Publish winter-fri
+      run: cargo publish --manifest-path fri/Cargo.toml
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ secrets.crates_io_token }}
+    - name: Dry run publish winter-air
+      run: cargo publish --dry-run --manifest-path air/Cargo.toml
+    - name: Publish winter-air
+      run: cargo publish --manifest-path air/Cargo.toml
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ secrets.crates_io_token }}
+    - name: Dry run publish winter-prover
+      run: cargo publish --dry-run --manifest-path prover/Cargo.toml
+    - name: Publish winter-prover
+      run: cargo publish --manifest-path prover/Cargo.toml
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ secrets.crates_io_token }}
+    - name: Dry run publish winter-verifier
+      run: cargo publish --dry-run --manifest-path verifier/Cargo.toml
+    - name: Publish winter-verifier
+      run: cargo publish --manifest-path verifier/Cargo.toml
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ secrets.crates_io_token }}
+    - name: Dry run publish winterfell
+      run: cargo publish --dry-run --manifest-path winterfell/Cargo.toml
+    - name: Publish winterfell
+      run: cargo publish --manifest-path winterfell/Cargo.toml
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ secrets.crates_io_token }}
