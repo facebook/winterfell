@@ -1,3 +1,8 @@
+// Copyright (c) Facebook, Inc. and its affiliates.
+//
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
 //! This crates contains functions for generating random values.
 //!
 //! These functions are intended to be used in tests, benchmarks, and examples. When compiled to
