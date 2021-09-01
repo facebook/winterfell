@@ -12,12 +12,12 @@ use rand_utils::{rand_value, rand_vector};
 use std::time::Instant;
 use winterfell::{
     crypto::{Digest, MerkleTree},
-    math::{fields::f128::BaseElement, log2, StarkField},
+    math::{fields::f128::BaseElement, StarkField},
     ProofOptions, StarkProof, VerifierError,
 };
 
 mod air;
-use air::{build_trace, MerkleAir, PublicInputs};
+use air::{MerkleAir, MerkleTraceBuilder, PublicInputs};
 
 #[cfg(test)]
 mod tests;
@@ -89,21 +89,20 @@ impl Example for MerkleExample {
             ---------------------",
             self.path.len()
         );
-        let now = Instant::now();
-        let trace = build_trace(self.value, &self.path, self.index);
-        let trace_length = trace.length();
-        debug!(
-            "Generated execution trace of {} registers and 2^{} steps in {} ms",
-            trace.width(),
-            log2(trace_length),
-            now.elapsed().as_millis()
-        );
+
+        // instantiate trace builder
+        let trace_builder = MerkleTraceBuilder::new(self.value, &self.path, self.index);
 
         // generate the proof
         let pub_inputs = PublicInputs {
             tree_root: self.tree_root.to_elements(),
         };
-        winterfell::prove::<MerkleAir>(trace, pub_inputs, self.options.clone()).unwrap()
+        winterfell::prove::<MerkleAir, MerkleTraceBuilder>(
+            trace_builder,
+            pub_inputs,
+            self.options.clone(),
+        )
+        .unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {

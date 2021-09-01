@@ -84,7 +84,7 @@ mod tests;
 /// assert!(MerkleTree::<Blake3>::verify(*tree.root(), 2, &proof).is_ok());
 /// assert!(MerkleTree::<Blake3>::verify(*tree.root(), 1, &proof).is_err());
 /// ```
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MerkleTree<H: Hasher> {
     nodes: Vec<H::Digest>,
     leaves: Vec<H::Digest>,

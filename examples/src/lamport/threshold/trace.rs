@@ -10,7 +10,7 @@ use super::{
 use std::collections::HashMap;
 use winterfell::{
     math::{fields::f128::BaseElement, get_power_series, FieldElement, StarkField},
-    ExecutionTrace,
+    ExecutionTrace, TraceBuilder,
 };
 
 #[cfg(feature = "concurrent")]
@@ -43,65 +43,85 @@ struct KeySchedule {
     pub_keys2: Vec<[BaseElement; 2]>,
 }
 
-// TRACE GENERATOR
+// TRACE BUILDER
 // ================================================================================================
 
-pub fn generate_trace(
-    pub_key: &AggPublicKey,
+pub struct LamportThresholdTraceBuilder {
+    pub_key: AggPublicKey,
     message: [BaseElement; 2],
-    signatures: &[(usize, Signature)],
-) -> ExecutionTrace<BaseElement> {
-    // allocate memory to hold the trace table
-    let num_cycles = pub_key.num_keys().next_power_of_two();
-    let trace_length = SIG_CYCLE_LENGTH * num_cycles;
-    let mut trace = ExecutionTrace::new(TRACE_WIDTH, trace_length);
+    signatures: Vec<(usize, Signature)>,
+}
 
-    let powers_of_two = get_power_series(TWO, 128);
-
-    // transform a list of signatures into a hashmap; this way we can look up signature
-    // by index of the corresponding public key
-    let mut signature_map = HashMap::new();
-    for (i, sig) in signatures {
-        signature_map.insert(i, sig);
-    }
-
-    // build a map of signature indexes to the running sum of valid signatures
-    let mut sig_count = vec![0];
-    for i in 1..num_cycles {
-        match signature_map.get(&(i - 1)) {
-            Some(_) => sig_count.push(sig_count[i - 1] + 1),
-            None => sig_count.push(sig_count[i - 1]),
+impl LamportThresholdTraceBuilder {
+    pub fn new(
+        pub_key: AggPublicKey,
+        message: [BaseElement; 2],
+        signatures: &[(usize, Signature)],
+    ) -> Self {
+        Self {
+            pub_key,
+            message,
+            signatures: signatures.to_vec(),
         }
     }
+}
 
-    // create a dummy signature; this will be used in place of signatures for keys
-    // which did not sign the message
-    let zero_sig = Signature {
-        ones: vec![[BaseElement::ZERO; 2]; 254],
-        zeros: vec![[BaseElement::ZERO; 2]; 254],
-    };
+impl TraceBuilder for LamportThresholdTraceBuilder {
+    type BaseField = BaseElement;
 
-    // iterate over all leaves of the aggregated public key; and if a signature exists for the
-    // corresponding individual public key, use it go generate signature verification trace;
-    // otherwise, use zero signature;
-    trace.fragments(SIG_CYCLE_LENGTH).for_each(|mut sig_trace| {
-        let i = sig_trace.index();
-        let sig_info = match signature_map.get(&i) {
-            Some(sig) => build_sig_info(i, &message, sig, 1, pub_key, sig_count[i]),
-            None => build_sig_info(i, &message, &zero_sig, 0, pub_key, sig_count[i]),
+    fn build_trace(&self) -> ExecutionTrace<Self::BaseField> {
+        // allocate memory to hold the trace table
+        let num_cycles = self.pub_key.num_keys().next_power_of_two();
+        let trace_length = SIG_CYCLE_LENGTH * num_cycles;
+        let mut trace = ExecutionTrace::new(TRACE_WIDTH, trace_length);
+
+        let powers_of_two = get_power_series(TWO, 128);
+
+        // transform a list of signatures into a hashmap; this way we can look up signature
+        // by index of the corresponding public key
+        let mut signature_map = HashMap::new();
+        for (i, sig) in self.signatures.iter() {
+            signature_map.insert(i, sig);
+        }
+
+        // build a map of signature indexes to the running sum of valid signatures
+        let mut sig_count = vec![0];
+        for i in 1..num_cycles {
+            match signature_map.get(&(i - 1)) {
+                Some(_) => sig_count.push(sig_count[i - 1] + 1),
+                None => sig_count.push(sig_count[i - 1]),
+            }
+        }
+
+        // create a dummy signature; this will be used in place of signatures for keys
+        // which did not sign the message
+        let zero_sig = Signature {
+            ones: vec![[BaseElement::ZERO; 2]; 254],
+            zeros: vec![[BaseElement::ZERO; 2]; 254],
         };
 
-        sig_trace.fill(
-            |state| {
-                init_sig_verification_state(&sig_info, state);
-            },
-            |step, state| {
-                update_sig_verification_state(step, &sig_info, &powers_of_two, state);
-            },
-        );
-    });
+        // iterate over all leaves of the aggregated public key; and if a signature exists for the
+        // corresponding individual public key, use it go generate signature verification trace;
+        // otherwise, use zero signature;
+        trace.fragments(SIG_CYCLE_LENGTH).for_each(|mut sig_trace| {
+            let i = sig_trace.index();
+            let sig_info = match signature_map.get(&i) {
+                Some(sig) => build_sig_info(i, &self.message, sig, 1, &self.pub_key, sig_count[i]),
+                None => build_sig_info(i, &self.message, &zero_sig, 0, &self.pub_key, sig_count[i]),
+            };
 
-    trace
+            sig_trace.fill(
+                |state| {
+                    init_sig_verification_state(&sig_info, state);
+                },
+                |step, state| {
+                    update_sig_verification_state(step, &sig_info, &powers_of_two, state);
+                },
+            );
+        });
+
+        trace
+    }
 }
 
 // TRACE INITIALIZATION

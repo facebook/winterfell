@@ -31,6 +31,7 @@ pub const CYCLE_LENGTH: usize = 8;
 // TYPES AND INTERFACES
 // ================================================================================================
 
+#[derive(Clone)]
 pub struct Rescue128 {
     state: [BaseElement; STATE_WIDTH],
     idx: usize,

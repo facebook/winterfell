@@ -8,12 +8,12 @@ use crate::{Example, ExampleOptions};
 use log::debug;
 use std::time::Instant;
 use winterfell::{
-    math::{fields::f128::BaseElement, log2, FieldElement},
+    math::{fields::f128::BaseElement, FieldElement},
     ProofOptions, StarkProof, VerifierError,
 };
 
 mod air;
-use air::{build_trace, MulFib2Air};
+use air::{MulFib2Air, MulFib2TraceBuilder};
 
 #[cfg(test)]
 mod tests;
@@ -62,27 +62,22 @@ impl MulFib2Example {
 
 impl Example for MulFib2Example {
     fn prove(&self) -> StarkProof {
-        let sequence_length = self.sequence_length;
         debug!(
             "Generating proof for computing multiplicative Fibonacci sequence (2 terms per step) up to {}th term\n\
             ---------------------",
-            sequence_length
+            self.sequence_length
         );
 
-        // generate execution trace
-        let now = Instant::now();
-        let trace = build_trace(sequence_length);
-        let trace_width = trace.width();
-        let trace_length = trace.length();
-        debug!(
-            "Generated execution trace of {} registers and 2^{} steps in {} ms",
-            trace_width,
-            log2(trace_length),
-            now.elapsed().as_millis()
-        );
+        // instantiate trace builder
+        let trace_builder = MulFib2TraceBuilder::new(self.sequence_length);
 
         // generate the proof
-        winterfell::prove::<MulFib2Air>(trace, self.result, self.options.clone()).unwrap()
+        winterfell::prove::<MulFib2Air, MulFib2TraceBuilder>(
+            trace_builder,
+            self.result,
+            self.options.clone(),
+        )
+        .unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {

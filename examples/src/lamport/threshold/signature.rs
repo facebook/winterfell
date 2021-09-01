@@ -15,6 +15,7 @@ use winterfell::{
 // AGGREGATED PUBLIC KEY
 // ================================================================================================
 
+#[derive(Clone)]
 pub struct AggPublicKey {
     keys: Vec<PublicKey>,
     tree: MerkleTree<Rescue128>,

@@ -30,6 +30,7 @@ pub struct PrivateKey {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PublicKey(KeyData);
 
+#[derive(Debug, Clone)]
 pub struct Signature {
     pub ones: Vec<KeyData>,
     pub zeros: Vec<KeyData>,

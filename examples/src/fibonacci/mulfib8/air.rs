@@ -6,8 +6,8 @@
 use crate::utils::are_equal;
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement},
-    Air, AirContext, Assertion, EvaluationFrame, ExecutionTrace, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
+    Air, AirContext, Assertion, EvaluationFrame, ExecutionTrace, ProofOptions, TraceBuilder,
+    TraceInfo, TransitionConstraintDegree,
 };
 
 // FIBONACCI AIR
@@ -94,31 +94,45 @@ impl Air for MulFib8Air {
 // FIBONACCI TRACE BUILDER
 // ================================================================================================
 
-pub fn build_trace(length: usize) -> ExecutionTrace<BaseElement> {
-    assert!(
-        length.is_power_of_two(),
-        "sequence length must be a power of 2"
-    );
+pub struct MulFib8TraceBuilder {
+    sequence_length: usize,
+}
 
-    let mut reg0 = vec![BaseElement::new(1)];
-    let mut reg1 = vec![BaseElement::new(2)];
-    let mut reg2 = vec![reg0[0] * reg1[0]];
-    let mut reg3 = vec![reg1[0] * reg2[0]];
-    let mut reg4 = vec![reg2[0] * reg3[0]];
-    let mut reg5 = vec![reg3[0] * reg4[0]];
-    let mut reg6 = vec![reg4[0] * reg5[0]];
-    let mut reg7 = vec![reg5[0] * reg6[0]];
+impl MulFib8TraceBuilder {
+    pub fn new(sequence_length: usize) -> Self {
+        assert!(
+            sequence_length.is_power_of_two(),
+            "sequence length must be a power of 2"
+        );
 
-    for i in 0..(length / 8 - 1) {
-        reg0.push(reg6[i] * reg7[i]);
-        reg1.push(reg7[i] * reg0[i + 1]);
-        reg2.push(reg0[i + 1] * reg1[i + 1]);
-        reg3.push(reg1[i + 1] * reg2[i + 1]);
-        reg4.push(reg2[i + 1] * reg3[i + 1]);
-        reg5.push(reg3[i + 1] * reg4[i + 1]);
-        reg6.push(reg4[i + 1] * reg5[i + 1]);
-        reg7.push(reg5[i + 1] * reg6[i + 1]);
+        Self { sequence_length }
     }
+}
 
-    ExecutionTrace::init(vec![reg0, reg1, reg2, reg3, reg4, reg5, reg6, reg7])
+impl TraceBuilder for MulFib8TraceBuilder {
+    type BaseField = BaseElement;
+
+    fn build_trace(&self) -> ExecutionTrace<Self::BaseField> {
+        let mut reg0 = vec![BaseElement::new(1)];
+        let mut reg1 = vec![BaseElement::new(2)];
+        let mut reg2 = vec![reg0[0] * reg1[0]];
+        let mut reg3 = vec![reg1[0] * reg2[0]];
+        let mut reg4 = vec![reg2[0] * reg3[0]];
+        let mut reg5 = vec![reg3[0] * reg4[0]];
+        let mut reg6 = vec![reg4[0] * reg5[0]];
+        let mut reg7 = vec![reg5[0] * reg6[0]];
+
+        for i in 0..(self.sequence_length / 8 - 1) {
+            reg0.push(reg6[i] * reg7[i]);
+            reg1.push(reg7[i] * reg0[i + 1]);
+            reg2.push(reg0[i + 1] * reg1[i + 1]);
+            reg3.push(reg1[i + 1] * reg2[i + 1]);
+            reg4.push(reg2[i + 1] * reg3[i + 1]);
+            reg5.push(reg3[i + 1] * reg4[i + 1]);
+            reg6.push(reg4[i + 1] * reg5[i + 1]);
+            reg7.push(reg5[i + 1] * reg6[i + 1]);
+        }
+
+        ExecutionTrace::init(vec![reg0, reg1, reg2, reg3, reg4, reg5, reg6, reg7])
+    }
 }

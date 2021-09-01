@@ -7,7 +7,7 @@ use crate::{Example, ExampleOptions};
 use log::debug;
 use std::time::Instant;
 use winterfell::{
-    math::{fields::f128::BaseElement, log2, FieldElement},
+    math::{fields::f128::BaseElement, FieldElement},
     ProofOptions, StarkProof, VerifierError,
 };
 
@@ -15,7 +15,7 @@ use winterfell::{
 mod rescue;
 
 mod air;
-use air::{build_trace, PublicInputs, RescueAir};
+use air::{PublicInputs, RescueAir, RescueTraceBuilder};
 
 #[cfg(test)]
 mod tests;
@@ -74,22 +74,21 @@ impl Example for RescueExample {
             ---------------------",
             self.chain_length
         );
-        let now = Instant::now();
-        let trace = build_trace(self.seed, self.chain_length);
-        let trace_length = trace.length();
-        debug!(
-            "Generated execution trace of {} registers and 2^{} steps in {} ms",
-            trace.width(),
-            log2(trace_length),
-            now.elapsed().as_millis()
-        );
+
+        // instantiate trace builder
+        let trace_builder = RescueTraceBuilder::new(self.seed, self.chain_length);
 
         // generate the proof
         let pub_inputs = PublicInputs {
             seed: self.seed,
             result: self.result,
         };
-        winterfell::prove::<RescueAir>(trace, pub_inputs, self.options.clone()).unwrap()
+        winterfell::prove::<RescueAir, RescueTraceBuilder>(
+            trace_builder,
+            pub_inputs,
+            self.options.clone(),
+        )
+        .unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {

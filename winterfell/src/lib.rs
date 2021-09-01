@@ -96,35 +96,44 @@
 //! | ...       |
 //! | 1,048,575 | 247770943907079986105389697876176586605 |
 //!
-//! To record the trace, we'll use the [ExecutionTrace] struct. The function below, is just a
-//! modified version of the `do_work()` function which records every intermediate state of the
-//! computation in the [ExecutionTrace] struct:
+//! To record the trace, we'll use the [ExecutionTrace] struct. The `build_trace()` function below,
+//! is just a modified version of the `do_work()` function which records every intermediate state
+//! of the computation in the [ExecutionTrace] struct:
 //!
 //! ```no_run
 //! use winterfell::{
 //!     math::{fields::f128::BaseElement, FieldElement},
-//!     ExecutionTrace,
+//!     ExecutionTrace, TraceBuilder
 //! };
 //!
-//! pub fn build_do_work_trace(start: BaseElement, n: usize) -> ExecutionTrace<BaseElement> {
-//!     // Instantiate the trace with a given width and length; this will allocate all
-//!     // required memory for the trace
-//!     let trace_width = 1;
-//!     let mut trace = ExecutionTrace::new(trace_width, n);
+//! pub struct WorkTraceBuilder {
+//!     start: BaseElement,
+//!     n: usize,
+//! }
 //!
-//!     // Fill the trace with data; the first closure initializes the first state of the
-//!     // computation; the second closure computes the next state of the computation based
-//!     // on its current state.
-//!     trace.fill(
-//!         |state| {
-//!             state[0] = start;
-//!         },
-//!         |_, state| {
-//!             state[0] = state[0].exp(3u32.into()) + BaseElement::new(42);
-//!         },
-//!     );
+//! impl TraceBuilder for WorkTraceBuilder {
+//!     type BaseField = BaseElement;
 //!
-//!     trace
+//!     fn build_trace(&self) -> ExecutionTrace<Self::BaseField> {
+//!         // Instantiate the trace with a given width and length; this will allocate all
+//!         // required memory for the trace
+//!         let trace_width = 1;
+//!         let mut trace = ExecutionTrace::new(trace_width, self.n);
+//!
+//!         // Fill the trace with data; the first closure initializes the first state of the
+//!         // computation; the second closure computes the next state of the computation based
+//!         // on its current state.
+//!         trace.fill(
+//!             |state| {
+//!                 state[0] = self.start;
+//!             },
+//!             |_, state| {
+//!                 state[0] = state[0].exp(3u32.into()) + BaseElement::new(42);
+//!             },
+//!         );
+//!
+//!         trace
+//!     }
 //! }
 //! ```
 //!
@@ -253,22 +262,46 @@
 //! # use winterfell::{
 //! #    math::{fields::f128::BaseElement, FieldElement},
 //! #    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, Serializable,
-//! #    TraceInfo, TransitionConstraintDegree,
+//! #    TraceInfo, TransitionConstraintDegree, TraceBuilder,
 //! #    ExecutionTrace, FieldExtension, HashFunction, ProofOptions, StarkProof,
 //! # };
 //! #
-//! # pub fn build_do_work_trace(start: BaseElement, n: usize) -> ExecutionTrace<BaseElement> {
-//! #     let trace_width = 1;
-//! #     let mut trace = ExecutionTrace::new(trace_width, n);
-//! #     trace.fill(
-//! #         |state| {
-//! #             state[0] = start;
-//! #         },
-//! #         |_, state| {
-//! #             state[0] = state[0].exp(3u32.into()) + BaseElement::new(42);
-//! #         },
-//! #     );
-//! #     trace
+//! # fn do_work(start: BaseElement, n: usize) -> BaseElement {
+//! #    let mut result = start;
+//! #    for _ in 1..n {
+//! #        result = result.exp(3) + BaseElement::new(42);
+//! #    }
+//! #    result
+//! # }
+//! #
+//! # pub struct WorkTraceBuilder {
+//! #     start: BaseElement,
+//! #     n: usize,
+//! # }
+//! #
+//! # impl TraceBuilder for WorkTraceBuilder {
+//! #     type BaseField = BaseElement;
+//! #
+//! #     fn build_trace(&self) -> ExecutionTrace<Self::BaseField> {
+//! #         // Instantiate the trace with a given width and length; this will allocate all
+//! #         // required memory for the trace
+//! #         let trace_width = 1;
+//! #         let mut trace = ExecutionTrace::new(trace_width, self.n);
+//! #
+//! #         // Fill the trace with data; the first closure initializes the first state of the
+//! #         // computation; the second closure computes the next state of the computation based
+//! #         // on its current state.
+//! #         trace.fill(
+//! #             |state| {
+//! #                 state[0] = self.start;
+//! #             },
+//! #             |_, state| {
+//! #                 state[0] = state[0].exp(3u32.into()) + BaseElement::new(42);
+//! #             },
+//! #         );
+//! #
+//! #         trace
+//! #     }
 //! # }
 //! #
 //! #
@@ -333,9 +366,8 @@
 //! let start = BaseElement::new(3);
 //! let n = 1024;
 //!
-//! // Build the execution trace and get the result from the last step.
-//! let trace = build_do_work_trace(start, n);
-//! let result = trace.get(0, n - 1);
+//! // compute the expected result
+//! let result = do_work(start, n);
 //!
 //! // Define proof options; these will be enough for ~96-bit security level.
 //! let options = ProofOptions::new(
@@ -349,8 +381,14 @@
 //! );
 //!
 //! // Generate the proof.
+//! let trace_builder = WorkTraceBuilder {start, n };
 //! let pub_inputs = PublicInputs { start, result };
-//! let proof = winterfell::prove::<WorkAir>(trace, pub_inputs, options).unwrap();
+//! let proof = winterfell::prove::<WorkAir, WorkTraceBuilder>(
+//!     trace_builder,
+//!     pub_inputs,
+//!     options
+//! )
+//! .unwrap();
 //!
 //! // Verify the proof. The number of steps and options are encoded in the proof itself,
 //! // so we don't need to pass them explicitly to the verifier.
@@ -388,7 +426,7 @@ pub use prover::{
     BoundaryConstraintGroup, ByteReader, ByteWriter, ConstraintCompositionCoefficients,
     ConstraintDivisor, DeepCompositionCoefficients, Deserializable, DeserializationError,
     EvaluationFrame, ExecutionTrace, ExecutionTraceFragment, FieldExtension, HashFunction,
-    ProofOptions, ProverError, Serializable, StarkProof, TraceInfo, TransitionConstraintDegree,
-    TransitionConstraintGroup,
+    ProofOptions, ProverError, Serializable, StarkProof, TraceBuilder, TraceInfo,
+    TransitionConstraintDegree, TransitionConstraintGroup,
 };
 pub use verifier::{verify, VerifierError};

@@ -6,7 +6,7 @@
 use super::{rescue, Signature, CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH, TRACE_WIDTH};
 use winterfell::{
     math::{fields::f128::BaseElement, get_power_series, FieldElement, StarkField},
-    ExecutionTrace,
+    ExecutionTrace, TraceBuilder,
 };
 
 #[cfg(feature = "concurrent")]
@@ -34,33 +34,53 @@ struct KeySchedule {
     pub_keys2: Vec<[BaseElement; 2]>,
 }
 
-// TRACE GENERATOR
+// TRACE BUILDER
 // ================================================================================================
 
-pub fn generate_trace(
-    messages: &[[BaseElement; 2]],
-    signatures: &[Signature],
-) -> ExecutionTrace<BaseElement> {
-    // allocate memory to hold the trace table
-    let trace_length = SIG_CYCLE_LENGTH * messages.len();
-    let mut trace = ExecutionTrace::new(TRACE_WIDTH, trace_length);
+pub struct LamportAggregateTraceBuilder {
+    messages: Vec<[BaseElement; 2]>,
+    signatures: Vec<Signature>,
+}
 
-    let powers_of_two = get_power_series(TWO, 128);
-
-    trace.fragments(SIG_CYCLE_LENGTH).for_each(|mut sig_trace| {
-        let i = sig_trace.index();
-        let sig_info = build_sig_info(&messages[i], &signatures[i]);
-        sig_trace.fill(
-            |state| {
-                init_sig_verification_state(&sig_info, state);
-            },
-            |step, state| {
-                update_sig_verification_state(step, &sig_info, &powers_of_two, state);
-            },
+impl LamportAggregateTraceBuilder {
+    pub fn new(messages: &[[BaseElement; 2]], signatures: &[Signature]) -> Self {
+        assert!(
+            messages.len().is_power_of_two(),
+            "number of messages must be a power of 2"
         );
-    });
 
-    trace
+        Self {
+            messages: messages.to_vec(),
+            signatures: signatures.to_vec(),
+        }
+    }
+}
+
+impl TraceBuilder for LamportAggregateTraceBuilder {
+    type BaseField = BaseElement;
+
+    fn build_trace(&self) -> ExecutionTrace<Self::BaseField> {
+        // allocate memory to hold the trace table
+        let trace_length = SIG_CYCLE_LENGTH * self.messages.len();
+        let mut trace = ExecutionTrace::new(TRACE_WIDTH, trace_length);
+
+        let powers_of_two = get_power_series(TWO, 128);
+
+        trace.fragments(SIG_CYCLE_LENGTH).for_each(|mut sig_trace| {
+            let i = sig_trace.index();
+            let sig_info = build_sig_info(&self.messages[i], &self.signatures[i]);
+            sig_trace.fill(
+                |state| {
+                    init_sig_verification_state(&sig_info, state);
+                },
+                |step, state| {
+                    update_sig_verification_state(step, &sig_info, &powers_of_two, state);
+                },
+            );
+        });
+
+        trace
+    }
 }
 
 // TRACE INITIALIZATION

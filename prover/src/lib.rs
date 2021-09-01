@@ -84,7 +84,7 @@ use composer::DeepCompositionPoly;
 
 mod trace;
 use trace::TracePolyTable;
-pub use trace::{ExecutionTrace, ExecutionTraceFragment};
+pub use trace::{ExecutionTrace, ExecutionTraceFragment, TraceBuilder};
 
 mod channel;
 use channel::ProverChannel;
@@ -114,11 +114,24 @@ pub mod tests;
 /// trace of the computation described by the specified `AIR` and generated using the specified
 /// public inputs.
 #[rustfmt::skip]
-pub fn prove<AIR: Air>(
-    trace: ExecutionTrace<AIR::BaseElement>,
+pub fn prove<AIR: Air, TB: TraceBuilder<BaseField = AIR::BaseElement>>(
+    trace_builder: TB,
     pub_inputs: AIR::PublicInputs,
     options: ProofOptions,
 ) -> Result<StarkProof, ProverError> {
+
+    // build execution trace
+    #[cfg(feature = "std")]
+    let now = Instant::now();
+    let trace = trace_builder.build_trace();
+    #[cfg(feature = "std")]
+    debug!(
+        "Generated execution trace of {} registers and 2^{} steps in {} ms",
+        trace.width(),
+        log2(trace.length()),
+        now.elapsed().as_millis()
+    );
+
     // serialize public inputs; these will be included in the seed for the public coin
     let mut pub_inputs_bytes = Vec::new();
     pub_inputs.write_into(&mut pub_inputs_bytes);

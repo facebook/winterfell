@@ -9,13 +9,10 @@ use super::{
 use crate::ExampleOptions;
 use log::debug;
 use std::time::Instant;
-use winterfell::{
-    math::{fields::f128::BaseElement, log2},
-    ProofOptions, StarkProof, VerifierError,
-};
+use winterfell::{math::fields::f128::BaseElement, ProofOptions, StarkProof, VerifierError};
 
 mod trace;
-use trace::generate_trace;
+use trace::LamportAggregateTraceBuilder;
 
 mod air;
 use air::{LamportAggregateAir, PublicInputs};
@@ -113,22 +110,20 @@ impl Example for LamportAggregateExample {
             self.signatures.len(),
         );
 
-        let now = Instant::now();
-        let trace = generate_trace(&self.messages, &self.signatures);
-        let trace_length = trace.length();
-        debug!(
-            "Generated execution trace of {} registers and 2^{} steps in {} ms",
-            trace.width(),
-            log2(trace_length),
-            now.elapsed().as_millis()
-        );
+        // instantiate trace builder
+        let trace_builder = LamportAggregateTraceBuilder::new(&self.messages, &self.signatures);
 
         // generate the proof
         let pub_inputs = PublicInputs {
             pub_keys: self.pub_keys.clone(),
             messages: self.messages.clone(),
         };
-        winterfell::prove::<LamportAggregateAir>(trace, pub_inputs, self.options.clone()).unwrap()
+        winterfell::prove::<LamportAggregateAir, LamportAggregateTraceBuilder>(
+            trace_builder,
+            pub_inputs,
+            self.options.clone(),
+        )
+        .unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {

@@ -6,8 +6,8 @@
 use crate::utils::are_equal;
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement},
-    Air, AirContext, Assertion, EvaluationFrame, ExecutionTrace, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
+    Air, AirContext, Assertion, EvaluationFrame, ExecutionTrace, ProofOptions, TraceBuilder,
+    TraceInfo, TransitionConstraintDegree,
 };
 
 // FIBONACCI AIR
@@ -83,28 +83,28 @@ impl Air for Fib8Air {
 // FIBONACCI TRACE BUILDER
 // ================================================================================================
 
-pub fn build_trace(length: usize) -> ExecutionTrace<BaseElement> {
-    assert!(
-        length.is_power_of_two(),
-        "sequence length must be a power of 2"
-    );
+pub struct Fib8TraceBuilder {
+    sequence_length: usize,
+}
 
-    // initialize the trace with 7th and 8th terms of Fibonacci sequence (skipping the first 6)
-    let n0 = BaseElement::ONE;
-    let n1 = BaseElement::ONE;
-    let n2 = n0 + n1;
-    let n3 = n1 + n2;
-    let n4 = n2 + n3;
-    let n5 = n3 + n4;
-    let n6 = n4 + n5;
-    let n7 = n5 + n6;
+impl Fib8TraceBuilder {
+    pub fn new(sequence_length: usize) -> Self {
+        assert!(
+            sequence_length.is_power_of_two(),
+            "sequence length must be a power of 2"
+        );
 
-    let mut reg0 = vec![n6];
-    let mut reg1 = vec![n7];
+        Self { sequence_length }
+    }
+}
 
-    for i in 0..(length / 8 - 1) {
-        let n0 = reg0[i] + reg1[i];
-        let n1 = reg1[i] + n0;
+impl TraceBuilder for Fib8TraceBuilder {
+    type BaseField = BaseElement;
+
+    fn build_trace(&self) -> ExecutionTrace<Self::BaseField> {
+        // initialize the trace with 7th and 8th terms of Fibonacci sequence (skipping the first 6)
+        let n0 = BaseElement::ONE;
+        let n1 = BaseElement::ONE;
         let n2 = n0 + n1;
         let n3 = n1 + n2;
         let n4 = n2 + n3;
@@ -112,9 +112,23 @@ pub fn build_trace(length: usize) -> ExecutionTrace<BaseElement> {
         let n6 = n4 + n5;
         let n7 = n5 + n6;
 
-        reg0.push(n6);
-        reg1.push(n7);
-    }
+        let mut reg0 = vec![n6];
+        let mut reg1 = vec![n7];
 
-    ExecutionTrace::init(vec![reg0, reg1])
+        for i in 0..(self.sequence_length / 8 - 1) {
+            let n0 = reg0[i] + reg1[i];
+            let n1 = reg1[i] + n0;
+            let n2 = n0 + n1;
+            let n3 = n1 + n2;
+            let n4 = n2 + n3;
+            let n5 = n3 + n4;
+            let n6 = n4 + n5;
+            let n7 = n5 + n6;
+
+            reg0.push(n6);
+            reg1.push(n7);
+        }
+
+        ExecutionTrace::init(vec![reg0, reg1])
+    }
 }

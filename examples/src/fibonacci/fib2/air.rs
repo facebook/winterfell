@@ -6,8 +6,8 @@
 use crate::utils::are_equal;
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement},
-    Air, AirContext, Assertion, EvaluationFrame, ExecutionTrace, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
+    Air, AirContext, Assertion, EvaluationFrame, ExecutionTrace, ProofOptions, TraceBuilder,
+    TraceInfo, TransitionConstraintDegree,
 };
 
 // FIBONACCI AIR
@@ -75,23 +75,38 @@ impl Air for FibAir {
 
 // FIBONACCI TRACE BUILDER
 // ================================================================================================
-pub fn build_trace(sequence_length: usize) -> ExecutionTrace<BaseElement> {
-    assert!(
-        sequence_length.is_power_of_two(),
-        "sequence length must be a power of 2"
-    );
 
-    let mut trace = ExecutionTrace::new(TRACE_WIDTH, sequence_length / 2);
-    trace.fill(
-        |state| {
-            state[0] = BaseElement::ONE;
-            state[1] = BaseElement::ONE;
-        },
-        |_, state| {
-            state[0] += state[1];
-            state[1] += state[0];
-        },
-    );
+pub struct FibTraceBuilder {
+    sequence_length: usize,
+}
 
-    trace
+impl FibTraceBuilder {
+    pub fn new(sequence_length: usize) -> Self {
+        assert!(
+            sequence_length.is_power_of_two(),
+            "sequence length must be a power of 2"
+        );
+
+        Self { sequence_length }
+    }
+}
+
+impl TraceBuilder for FibTraceBuilder {
+    type BaseField = BaseElement;
+
+    fn build_trace(&self) -> ExecutionTrace<Self::BaseField> {
+        let mut trace = ExecutionTrace::new(TRACE_WIDTH, self.sequence_length / 2);
+        trace.fill(
+            |state| {
+                state[0] = BaseElement::ONE;
+                state[1] = BaseElement::ONE;
+            },
+            |_, state| {
+                state[0] += state[1];
+                state[1] += state[0];
+            },
+        );
+
+        trace
+    }
 }

@@ -8,7 +8,7 @@ use crate::utils::{are_equal, is_zero, not, EvaluationResult};
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement},
     Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ExecutionTrace, ProofOptions,
-    Serializable, TraceInfo, TransitionConstraintDegree,
+    Serializable, TraceBuilder, TraceInfo, TransitionConstraintDegree,
 };
 
 // CONSTANTS
@@ -143,33 +143,53 @@ fn enforce_hash_copy<E: FieldElement>(result: &mut [E], current: &[E], next: &[E
 // RESCUE TRACE GENERATOR
 // ================================================================================================
 
-pub fn build_trace(seed: [BaseElement; 2], iterations: usize) -> ExecutionTrace<BaseElement> {
-    // allocate memory to hold the trace table
-    let trace_length = iterations * CYCLE_LENGTH;
-    let mut trace = ExecutionTrace::new(4, trace_length);
+pub struct RescueTraceBuilder {
+    seed: [BaseElement; 2],
+    chain_length: usize,
+}
 
-    trace.fill(
-        |state| {
-            // initialize first state of the computation
-            state[0] = seed[0];
-            state[1] = seed[1];
-            state[2] = BaseElement::ZERO;
-            state[3] = BaseElement::ZERO;
-        },
-        |step, state| {
-            // execute the transition function for all steps
-            //
-            // for the first 14 steps in every cycle, compute a single round of
-            // Rescue hash; for the remaining 2 rounds, just carry over the values
-            // in the first two registers to the next step
-            if (step % CYCLE_LENGTH) < NUM_HASH_ROUNDS {
-                rescue::apply_round(state, step);
-            } else {
+impl RescueTraceBuilder {
+    pub fn new(seed: [BaseElement; 2], chain_length: usize) -> Self {
+        assert!(
+            chain_length.is_power_of_two(),
+            "chain length must be a power of 2"
+        );
+
+        Self { seed, chain_length }
+    }
+}
+
+impl TraceBuilder for RescueTraceBuilder {
+    type BaseField = BaseElement;
+
+    fn build_trace(&self) -> ExecutionTrace<Self::BaseField> {
+        // allocate memory to hold the trace table
+        let trace_length = self.chain_length * CYCLE_LENGTH;
+        let mut trace = ExecutionTrace::new(4, trace_length);
+
+        trace.fill(
+            |state| {
+                // initialize first state of the computation
+                state[0] = self.seed[0];
+                state[1] = self.seed[1];
                 state[2] = BaseElement::ZERO;
                 state[3] = BaseElement::ZERO;
-            }
-        },
-    );
+            },
+            |step, state| {
+                // execute the transition function for all steps
+                //
+                // for the first 14 steps in every cycle, compute a single round of
+                // Rescue hash; for the remaining 2 rounds, just carry over the values
+                // in the first two registers to the next step
+                if (step % CYCLE_LENGTH) < NUM_HASH_ROUNDS {
+                    rescue::apply_round(state, step);
+                } else {
+                    state[2] = BaseElement::ZERO;
+                    state[3] = BaseElement::ZERO;
+                }
+            },
+        );
 
-    trace
+        trace
+    }
 }

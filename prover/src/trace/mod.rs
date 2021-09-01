@@ -14,5 +14,8 @@ pub use poly_table::TracePolyTable;
 mod execution_trace;
 pub use execution_trace::{ExecutionTrace, ExecutionTraceFragment};
 
+mod trace_builder;
+pub use trace_builder::TraceBuilder;
+
 #[cfg(test)]
 mod tests;

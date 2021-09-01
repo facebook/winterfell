@@ -6,8 +6,8 @@
 use crate::utils::are_equal;
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement},
-    Air, AirContext, Assertion, EvaluationFrame, ExecutionTrace, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
+    Air, AirContext, Assertion, EvaluationFrame, ExecutionTrace, ProofOptions, TraceBuilder,
+    TraceInfo, TransitionConstraintDegree,
 };
 
 // FIBONACCI AIR
@@ -76,19 +76,33 @@ impl Air for MulFib2Air {
 // FIBONACCI TRACE BUILDER
 // ================================================================================================
 
-pub fn build_trace(length: usize) -> ExecutionTrace<BaseElement> {
-    assert!(
-        length.is_power_of_two(),
-        "sequence length must be a power of 2"
-    );
+pub struct MulFib2TraceBuilder {
+    sequence_length: usize,
+}
 
-    let mut reg0 = vec![BaseElement::new(1)];
-    let mut reg1 = vec![BaseElement::new(2)];
+impl MulFib2TraceBuilder {
+    pub fn new(sequence_length: usize) -> Self {
+        assert!(
+            sequence_length.is_power_of_two(),
+            "sequence length must be a power of 2"
+        );
 
-    for i in 0..(length / 2 - 1) {
-        reg0.push(reg0[i] * reg1[i]);
-        reg1.push(reg1[i] * reg0[i + 1]);
+        Self { sequence_length }
     }
+}
 
-    ExecutionTrace::init(vec![reg0, reg1])
+impl TraceBuilder for MulFib2TraceBuilder {
+    type BaseField = BaseElement;
+
+    fn build_trace(&self) -> ExecutionTrace<Self::BaseField> {
+        let mut reg0 = vec![BaseElement::new(1)];
+        let mut reg1 = vec![BaseElement::new(2)];
+
+        for i in 0..(self.sequence_length / 2 - 1) {
+            reg0.push(reg0[i] * reg1[i]);
+            reg1.push(reg1[i] * reg0[i + 1]);
+        }
+
+        ExecutionTrace::init(vec![reg0, reg1])
+    }
 }

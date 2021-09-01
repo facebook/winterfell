@@ -8,12 +8,12 @@ use crate::{Example, ExampleOptions};
 use log::debug;
 use std::time::Instant;
 use winterfell::{
-    math::{fields::f128::BaseElement, log2, FieldElement},
+    math::{fields::f128::BaseElement, FieldElement},
     ProofOptions, StarkProof, VerifierError,
 };
 
 mod air;
-use air::{build_trace, FibAir};
+use air::{FibAir, FibTraceBuilder};
 
 #[cfg(test)]
 mod tests;
@@ -69,21 +69,16 @@ impl Example for FibExample {
             self.sequence_length
         );
 
-        // generate execution trace
-        let now = Instant::now();
-        let trace = build_trace(self.sequence_length);
-
-        let trace_width = trace.width();
-        let trace_length = trace.length();
-        debug!(
-            "Generated execution trace of {} registers and 2^{} steps in {} ms",
-            trace_width,
-            log2(trace_length),
-            now.elapsed().as_millis()
-        );
+        // instantiate trace builder
+        let trace_builder = FibTraceBuilder::new(self.sequence_length);
 
         // generate the proof
-        winterfell::prove::<FibAir>(trace, self.result, self.options.clone()).unwrap()
+        winterfell::prove::<FibAir, FibTraceBuilder>(
+            trace_builder,
+            self.result,
+            self.options.clone(),
+        )
+        .unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {
