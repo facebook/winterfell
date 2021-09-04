@@ -10,11 +10,8 @@ use super::{
 use std::collections::HashMap;
 use winterfell::{
     math::{fields::f128::BaseElement, get_power_series, FieldElement, StarkField},
-    ExecutionTrace, TraceBuilder,
+    TraceBuilder, TraceInfo,
 };
-
-#[cfg(feature = "concurrent")]
-use winterfell::iterators::*;
 
 // CONSTANTS
 // ================================================================================================
@@ -47,9 +44,9 @@ struct KeySchedule {
 // ================================================================================================
 
 pub struct LamportThresholdTraceBuilder {
-    pub_key: AggPublicKey,
-    message: [BaseElement; 2],
-    signatures: Vec<(usize, Signature)>,
+    trace_info: TraceInfo,
+    sig_info: Vec<SignatureInfo>,
+    powers_of_two: Vec<BaseElement>,
 }
 
 impl LamportThresholdTraceBuilder {
@@ -58,29 +55,16 @@ impl LamportThresholdTraceBuilder {
         message: [BaseElement; 2],
         signatures: &[(usize, Signature)],
     ) -> Self {
-        Self {
-            pub_key,
-            message,
-            signatures: signatures.to_vec(),
-        }
-    }
-}
-
-impl TraceBuilder for LamportThresholdTraceBuilder {
-    type BaseField = BaseElement;
-
-    fn build_trace(&self) -> ExecutionTrace<Self::BaseField> {
-        // allocate memory to hold the trace table
-        let num_cycles = self.pub_key.num_keys().next_power_of_two();
+        let num_cycles = pub_key.num_keys().next_power_of_two();
         let trace_length = SIG_CYCLE_LENGTH * num_cycles;
-        let mut trace = ExecutionTrace::new(TRACE_WIDTH, trace_length);
+        let trace_info = TraceInfo::new(TRACE_WIDTH, trace_length);
 
         let powers_of_two = get_power_series(TWO, 128);
 
         // transform a list of signatures into a hashmap; this way we can look up signature
         // by index of the corresponding public key
         let mut signature_map = HashMap::new();
-        for (i, sig) in self.signatures.iter() {
+        for (i, sig) in signatures.iter() {
             signature_map.insert(i, sig);
         }
 
@@ -103,134 +87,137 @@ impl TraceBuilder for LamportThresholdTraceBuilder {
         // iterate over all leaves of the aggregated public key; and if a signature exists for the
         // corresponding individual public key, use it go generate signature verification trace;
         // otherwise, use zero signature;
-        trace.fragments(SIG_CYCLE_LENGTH).for_each(|mut sig_trace| {
-            let i = sig_trace.index();
-            let sig_info = match signature_map.get(&i) {
-                Some(sig) => build_sig_info(i, &self.message, sig, 1, &self.pub_key, sig_count[i]),
-                None => build_sig_info(i, &self.message, &zero_sig, 0, &self.pub_key, sig_count[i]),
-            };
+        let mut sig_info = Vec::with_capacity(num_cycles);
+        for i in 0..num_cycles {
+            sig_info.push(match signature_map.get(&i) {
+                Some(sig) => build_sig_info(i, &message, sig, 1, &pub_key, sig_count[i]),
+                None => build_sig_info(i, &message, &zero_sig, 0, &pub_key, sig_count[i]),
+            });
+        }
 
-            sig_trace.fill(
-                |state| {
-                    init_sig_verification_state(&sig_info, state);
-                },
-                |step, state| {
-                    update_sig_verification_state(step, &sig_info, &powers_of_two, state);
-                },
-            );
-        });
-
-        trace
+        Self {
+            trace_info,
+            sig_info,
+            powers_of_two,
+        }
     }
 }
 
-// TRACE INITIALIZATION
-// ================================================================================================
+impl TraceBuilder for LamportThresholdTraceBuilder {
+    type BaseField = BaseElement;
 
-fn init_sig_verification_state(sig_info: &SignatureInfo, state: &mut [BaseElement]) {
-    // secret key 1 hashing
-    state[0] = sig_info.key_schedule.sec_keys1[0][0];
-    state[1] = sig_info.key_schedule.sec_keys1[0][1];
-    state[2] = BaseElement::ZERO;
-    state[3] = BaseElement::ZERO;
-    state[4] = BaseElement::ZERO; // capacity
-    state[5] = BaseElement::ZERO; // capacity
-                                  // secret key 2 hashing
-    state[6] = sig_info.key_schedule.sec_keys2[0][0];
-    state[7] = sig_info.key_schedule.sec_keys2[0][1];
-    state[8] = BaseElement::ZERO;
-    state[9] = BaseElement::ZERO;
-    state[10] = BaseElement::ZERO; // capacity
-    state[11] = BaseElement::ZERO; // capacity
-                                   // public key hashing
-    state[12] = BaseElement::ZERO;
-    state[13] = BaseElement::ZERO;
-    state[14] = BaseElement::ZERO;
-    state[15] = BaseElement::ZERO;
-    state[16] = BaseElement::ZERO; // capacity
-    state[17] = BaseElement::ZERO; // capacity
-                                   // merkle path verification
-    state[18] = sig_info.pub_key[0];
-    state[19] = sig_info.pub_key[1];
-    state[20] = BaseElement::ZERO;
-    state[21] = BaseElement::ZERO;
-    state[22] = BaseElement::ZERO; // capacity
-    state[23] = BaseElement::ZERO; // capacity
-    state[24] = BaseElement::new(sig_info.key_index & 1); // index bits
-    state[25] = BaseElement::ZERO; // index accumulator
-                                   // signature counter
-    state[26] = sig_info.sig_flag; // signature flag
-    state[27] = sig_info.sig_count; // signature count
+    fn trace_info(&self) -> &TraceInfo {
+        &self.trace_info
+    }
+
+    fn segment_length(&self) -> usize {
+        SIG_CYCLE_LENGTH
+    }
+
+    fn init_state(&self, state: &mut [Self::BaseField], segment: usize) {
+        let sig_info = &self.sig_info[segment];
+
+        // secret key 1 hashing
+        state[0] = sig_info.key_schedule.sec_keys1[0][0];
+        state[1] = sig_info.key_schedule.sec_keys1[0][1];
+        state[2] = BaseElement::ZERO;
+        state[3] = BaseElement::ZERO;
+        state[4] = BaseElement::ZERO; // capacity
+        state[5] = BaseElement::ZERO; // capacity
+                                      // secret key 2 hashing
+        state[6] = sig_info.key_schedule.sec_keys2[0][0];
+        state[7] = sig_info.key_schedule.sec_keys2[0][1];
+        state[8] = BaseElement::ZERO;
+        state[9] = BaseElement::ZERO;
+        state[10] = BaseElement::ZERO; // capacity
+        state[11] = BaseElement::ZERO; // capacity
+                                       // public key hashing
+        state[12] = BaseElement::ZERO;
+        state[13] = BaseElement::ZERO;
+        state[14] = BaseElement::ZERO;
+        state[15] = BaseElement::ZERO;
+        state[16] = BaseElement::ZERO; // capacity
+        state[17] = BaseElement::ZERO; // capacity
+                                       // merkle path verification
+        state[18] = sig_info.pub_key[0];
+        state[19] = sig_info.pub_key[1];
+        state[20] = BaseElement::ZERO;
+        state[21] = BaseElement::ZERO;
+        state[22] = BaseElement::ZERO; // capacity
+        state[23] = BaseElement::ZERO; // capacity
+        state[24] = BaseElement::new(sig_info.key_index & 1); // index bits
+        state[25] = BaseElement::ZERO; // index accumulator
+                                       // signature counter
+        state[26] = sig_info.sig_flag; // signature flag
+        state[27] = sig_info.sig_count; // signature count
+    }
+
+    fn update_state(&self, state: &mut [Self::BaseField], step: usize, segment: usize) {
+        let sig_info = &self.sig_info[segment];
+
+        // determine which cycle we are in and also where in the cycle we are
+        let cycle_num = (step % SIG_CYCLE_LENGTH) / HASH_CYCLE_LENGTH;
+        let cycle_step = (step % SIG_CYCLE_LENGTH) % HASH_CYCLE_LENGTH;
+
+        // break the state into logical parts; we don't need to do anything with sig_count part
+        // because values for these registers are set in the initial state and don't change
+        // during the cycle
+        let (mut sec_key_1_hash, rest) = state.split_at_mut(6);
+        let (mut sec_key_2_hash, rest) = rest.split_at_mut(6);
+        let (mut pub_key_hash, rest) = rest.split_at_mut(6);
+        let (mut merkle_path_hash, rest) = rest.split_at_mut(6);
+        let (mut merkle_path_idx, _sig_count) = rest.split_at_mut(2);
+
+        if cycle_step < NUM_HASH_ROUNDS {
+            // for the first 7 steps in each hash cycle apply Rescue round function to
+            // registers where keys are hashed; all other registers retain their values
+            rescue::apply_round(&mut sec_key_1_hash, cycle_step);
+            rescue::apply_round(&mut sec_key_2_hash, cycle_step);
+            rescue::apply_round(&mut pub_key_hash, cycle_step);
+            rescue::apply_round(&mut merkle_path_hash, cycle_step);
+        } else {
+            // for the 8th step of very cycle do the following:
+
+            let m0_bit = BaseElement::from((sig_info.m0 >> cycle_num) & 1);
+            let m1_bit = BaseElement::from((sig_info.m1 >> cycle_num) & 1);
+            let mp_bit = merkle_path_idx[0];
+
+            // copy next set of public keys into the registers computing hash of the public key
+            update_pub_key_hash(
+                &mut pub_key_hash,
+                m0_bit,
+                m1_bit,
+                sec_key_1_hash,
+                sec_key_2_hash,
+                &sig_info.key_schedule.pub_keys1[cycle_num],
+                &sig_info.key_schedule.pub_keys2[cycle_num],
+            );
+
+            // copy next set of private keys into the registers computing private key hashes
+            init_hash_state(
+                &mut sec_key_1_hash,
+                &sig_info.key_schedule.sec_keys1[cycle_num + 1],
+            );
+            init_hash_state(
+                &mut sec_key_2_hash,
+                &sig_info.key_schedule.sec_keys2[cycle_num + 1],
+            );
+
+            // update merkle path index accumulator with the next index bit
+            update_merkle_path_index(
+                &mut merkle_path_idx,
+                sig_info.key_index,
+                cycle_num,
+                self.powers_of_two[cycle_num],
+            );
+            // prepare Merkle path hashing registers for hashing of the next node
+            update_merkle_path_hash(&mut merkle_path_hash, mp_bit, cycle_num, &sig_info.key_path);
+        }
+    }
 }
 
 // TRANSITION FUNCTION
 // ================================================================================================
-
-fn update_sig_verification_state(
-    step: usize,
-    sig_info: &SignatureInfo,
-    powers_of_two: &[BaseElement],
-    state: &mut [BaseElement],
-) {
-    // determine which cycle we are in and also where in the cycle we are
-    let cycle_num = (step % SIG_CYCLE_LENGTH) / HASH_CYCLE_LENGTH;
-    let cycle_step = (step % SIG_CYCLE_LENGTH) % HASH_CYCLE_LENGTH;
-
-    // break the state into logical parts; we don't need to do anything with sig_count part
-    // because values for these registers are set in the initial state and don't change
-    // during the cycle
-    let (sec_key_1_hash, rest) = state.split_at_mut(6);
-    let (sec_key_2_hash, rest) = rest.split_at_mut(6);
-    let (pub_key_hash, rest) = rest.split_at_mut(6);
-    let (merkle_path_hash, rest) = rest.split_at_mut(6);
-    let (merkle_path_idx, _sig_count) = rest.split_at_mut(2);
-
-    if cycle_step < NUM_HASH_ROUNDS {
-        // for the first 7 steps in each hash cycle apply Rescue round function to
-        // registers where keys are hashed; all other registers retain their values
-        rescue::apply_round(sec_key_1_hash, cycle_step);
-        rescue::apply_round(sec_key_2_hash, cycle_step);
-        rescue::apply_round(pub_key_hash, cycle_step);
-        rescue::apply_round(merkle_path_hash, cycle_step);
-    } else {
-        // for the 8th step of very cycle do the following:
-
-        let m0_bit = BaseElement::from((sig_info.m0 >> cycle_num) & 1);
-        let m1_bit = BaseElement::from((sig_info.m1 >> cycle_num) & 1);
-        let mp_bit = merkle_path_idx[0];
-
-        // copy next set of public keys into the registers computing hash of the public key
-        update_pub_key_hash(
-            pub_key_hash,
-            m0_bit,
-            m1_bit,
-            sec_key_1_hash,
-            sec_key_2_hash,
-            &sig_info.key_schedule.pub_keys1[cycle_num],
-            &sig_info.key_schedule.pub_keys2[cycle_num],
-        );
-
-        // copy next set of private keys into the registers computing private key hashes
-        init_hash_state(
-            sec_key_1_hash,
-            &sig_info.key_schedule.sec_keys1[cycle_num + 1],
-        );
-        init_hash_state(
-            sec_key_2_hash,
-            &sig_info.key_schedule.sec_keys2[cycle_num + 1],
-        );
-
-        // update merkle path index accumulator with the next index bit
-        update_merkle_path_index(
-            merkle_path_idx,
-            sig_info.key_index,
-            cycle_num,
-            powers_of_two[cycle_num],
-        );
-        // prepare Merkle path hashing registers for hashing of the next node
-        update_merkle_path_hash(merkle_path_hash, mp_bit, cycle_num, &sig_info.key_path);
-    }
-}
 
 fn init_hash_state(state: &mut [BaseElement], values: &[BaseElement; 2]) {
     state[0] = values[0];

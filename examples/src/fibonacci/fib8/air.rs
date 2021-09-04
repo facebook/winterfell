@@ -6,8 +6,8 @@
 use crate::utils::are_equal;
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement},
-    Air, AirContext, Assertion, EvaluationFrame, ExecutionTrace, ProofOptions, TraceBuilder,
-    TraceInfo, TransitionConstraintDegree,
+    Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceBuilder, TraceInfo,
+    TransitionConstraintDegree,
 };
 
 // FIBONACCI AIR
@@ -84,7 +84,7 @@ impl Air for Fib8Air {
 // ================================================================================================
 
 pub struct Fib8TraceBuilder {
-    sequence_length: usize,
+    trace_info: TraceInfo,
 }
 
 impl Fib8TraceBuilder {
@@ -94,14 +94,21 @@ impl Fib8TraceBuilder {
             "sequence length must be a power of 2"
         );
 
-        Self { sequence_length }
+        let trace_length = sequence_length / 8;
+        let trace_info = TraceInfo::new(TRACE_WIDTH, trace_length);
+
+        Self { trace_info }
     }
 }
 
 impl TraceBuilder for Fib8TraceBuilder {
     type BaseField = BaseElement;
 
-    fn build_trace(&self) -> ExecutionTrace<Self::BaseField> {
+    fn trace_info(&self) -> &TraceInfo {
+        &self.trace_info
+    }
+
+    fn init_state(&self, state: &mut [Self::BaseField], _segment: usize) {
         // initialize the trace with 7th and 8th terms of Fibonacci sequence (skipping the first 6)
         let n0 = BaseElement::ONE;
         let n1 = BaseElement::ONE;
@@ -112,23 +119,21 @@ impl TraceBuilder for Fib8TraceBuilder {
         let n6 = n4 + n5;
         let n7 = n5 + n6;
 
-        let mut reg0 = vec![n6];
-        let mut reg1 = vec![n7];
+        state[0] = n6;
+        state[1] = n7;
+    }
 
-        for i in 0..(self.sequence_length / 8 - 1) {
-            let n0 = reg0[i] + reg1[i];
-            let n1 = reg1[i] + n0;
-            let n2 = n0 + n1;
-            let n3 = n1 + n2;
-            let n4 = n2 + n3;
-            let n5 = n3 + n4;
-            let n6 = n4 + n5;
-            let n7 = n5 + n6;
+    fn update_state(&self, state: &mut [Self::BaseField], _step: usize, _segment: usize) {
+        let n0 = state[0] + state[1];
+        let n1 = state[1] + n0;
+        let n2 = n0 + n1;
+        let n3 = n1 + n2;
+        let n4 = n2 + n3;
+        let n5 = n3 + n4;
+        let n6 = n4 + n5;
+        let n7 = n5 + n6;
 
-            reg0.push(n6);
-            reg1.push(n7);
-        }
-
-        ExecutionTrace::init(vec![reg0, reg1])
+        state[0] = n6;
+        state[1] = n7;
     }
 }

@@ -103,36 +103,39 @@
 //! ```no_run
 //! use winterfell::{
 //!     math::{fields::f128::BaseElement, FieldElement},
-//!     ExecutionTrace, TraceBuilder
+//!     ExecutionTrace, TraceBuilder, TraceInfo,
 //! };
 //!
 //! pub struct WorkTraceBuilder {
+//!     trace_info: TraceInfo,
 //!     start: BaseElement,
-//!     n: usize,
+//! }
+//!
+//! impl WorkTraceBuilder {
+//!     fn new(start: BaseElement, n: usize) -> Self {
+//!         Self {
+//!             trace_info: TraceInfo::new(1, n),
+//!             start
+//!         }
+//!     }
 //! }
 //!
 //! impl TraceBuilder for WorkTraceBuilder {
 //!     type BaseField = BaseElement;
 //!
-//!     fn build_trace(&self) -> ExecutionTrace<Self::BaseField> {
-//!         // Instantiate the trace with a given width and length; this will allocate all
-//!         // required memory for the trace
-//!         let trace_width = 1;
-//!         let mut trace = ExecutionTrace::new(trace_width, self.n);
+//!     // TODO: add comments
+//!     fn trace_info(&self) -> &TraceInfo {
+//!         &self.trace_info
+//!     }
 //!
-//!         // Fill the trace with data; the first closure initializes the first state of the
-//!         // computation; the second closure computes the next state of the computation based
-//!         // on its current state.
-//!         trace.fill(
-//!             |state| {
-//!                 state[0] = self.start;
-//!             },
-//!             |_, state| {
-//!                 state[0] = state[0].exp(3u32.into()) + BaseElement::new(42);
-//!             },
-//!         );
+//!     // TODO: add comments
+//!     fn init_state(&self, state: &mut [Self::BaseField], _segment: usize) {
+//!         state[0] = self.start;
+//!     }
 //!
-//!         trace
+//!     // TODO: add comments
+//!     fn update_state(&self, state: &mut [Self::BaseField], _step: usize, _segment: usize) {
+//!         state[0] = state[0].exp(3u32.into()) + BaseElement::new(42);
 //!     }
 //! }
 //! ```
@@ -275,32 +278,35 @@
 //! # }
 //! #
 //! # pub struct WorkTraceBuilder {
+//! #     trace_info: TraceInfo,
 //! #     start: BaseElement,
-//! #     n: usize,
+//! # }
+//! #
+//! # impl WorkTraceBuilder {
+//! #     fn new(start: BaseElement, n: usize) -> Self {
+//! #         Self {
+//! #             trace_info: TraceInfo::new(1, n),
+//! #             start
+//! #         }
+//! #     }
 //! # }
 //! #
 //! # impl TraceBuilder for WorkTraceBuilder {
 //! #     type BaseField = BaseElement;
 //! #
-//! #     fn build_trace(&self) -> ExecutionTrace<Self::BaseField> {
-//! #         // Instantiate the trace with a given width and length; this will allocate all
-//! #         // required memory for the trace
-//! #         let trace_width = 1;
-//! #         let mut trace = ExecutionTrace::new(trace_width, self.n);
+//! #     // TODO: add comments
+//! #     fn trace_info(&self) -> &TraceInfo {
+//! #         &self.trace_info
+//! #     }
 //! #
-//! #         // Fill the trace with data; the first closure initializes the first state of the
-//! #         // computation; the second closure computes the next state of the computation based
-//! #         // on its current state.
-//! #         trace.fill(
-//! #             |state| {
-//! #                 state[0] = self.start;
-//! #             },
-//! #             |_, state| {
-//! #                 state[0] = state[0].exp(3u32.into()) + BaseElement::new(42);
-//! #             },
-//! #         );
+//! #     // TODO: add comments
+//! #     fn init_state(&self, state: &mut [Self::BaseField], _segment: usize) {
+//! #         state[0] = self.start;
+//! #     }
 //! #
-//! #         trace
+//! #     // TODO: add comments
+//! #     fn update_state(&self, state: &mut [Self::BaseField], _step: usize, _segment: usize) {
+//! #         state[0] = state[0].exp(3u32.into()) + BaseElement::new(42);
 //! #     }
 //! # }
 //! #
@@ -381,7 +387,7 @@
 //! );
 //!
 //! // Generate the proof.
-//! let trace_builder = WorkTraceBuilder {start, n };
+//! let trace_builder = WorkTraceBuilder::new(start, n);
 //! let pub_inputs = PublicInputs { start, result };
 //! let proof = winterfell::prove::<WorkAir, WorkTraceBuilder>(
 //!     trace_builder,

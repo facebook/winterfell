@@ -6,8 +6,8 @@
 use crate::utils::are_equal;
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement},
-    Air, AirContext, Assertion, EvaluationFrame, ExecutionTrace, ProofOptions, TraceBuilder,
-    TraceInfo, TransitionConstraintDegree,
+    Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceBuilder, TraceInfo,
+    TransitionConstraintDegree,
 };
 
 // FIBONACCI AIR
@@ -77,7 +77,7 @@ impl Air for FibAir {
 // ================================================================================================
 
 pub struct FibTraceBuilder {
-    sequence_length: usize,
+    trace_info: TraceInfo,
 }
 
 impl FibTraceBuilder {
@@ -87,26 +87,27 @@ impl FibTraceBuilder {
             "sequence length must be a power of 2"
         );
 
-        Self { sequence_length }
+        let trace_length = sequence_length / 2;
+        let trace_info = TraceInfo::new(TRACE_WIDTH, trace_length);
+
+        Self { trace_info }
     }
 }
 
 impl TraceBuilder for FibTraceBuilder {
     type BaseField = BaseElement;
 
-    fn build_trace(&self) -> ExecutionTrace<Self::BaseField> {
-        let mut trace = ExecutionTrace::new(TRACE_WIDTH, self.sequence_length / 2);
-        trace.fill(
-            |state| {
-                state[0] = BaseElement::ONE;
-                state[1] = BaseElement::ONE;
-            },
-            |_, state| {
-                state[0] += state[1];
-                state[1] += state[0];
-            },
-        );
+    fn trace_info(&self) -> &TraceInfo {
+        &self.trace_info
+    }
 
-        trace
+    fn init_state(&self, state: &mut [Self::BaseField], _segment: usize) {
+        state[0] = BaseElement::ONE;
+        state[1] = BaseElement::ONE;
+    }
+
+    fn update_state(&self, state: &mut [Self::BaseField], _step: usize, _segment: usize) {
+        state[0] += state[1];
+        state[1] += state[0];
     }
 }

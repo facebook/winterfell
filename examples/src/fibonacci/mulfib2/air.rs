@@ -6,8 +6,8 @@
 use crate::utils::are_equal;
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement},
-    Air, AirContext, Assertion, EvaluationFrame, ExecutionTrace, ProofOptions, TraceBuilder,
-    TraceInfo, TransitionConstraintDegree,
+    Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceBuilder, TraceInfo,
+    TransitionConstraintDegree,
 };
 
 // FIBONACCI AIR
@@ -77,7 +77,7 @@ impl Air for MulFib2Air {
 // ================================================================================================
 
 pub struct MulFib2TraceBuilder {
-    sequence_length: usize,
+    trace_info: TraceInfo,
 }
 
 impl MulFib2TraceBuilder {
@@ -87,22 +87,27 @@ impl MulFib2TraceBuilder {
             "sequence length must be a power of 2"
         );
 
-        Self { sequence_length }
+        let trace_length = sequence_length / 2;
+        let trace_info = TraceInfo::new(TRACE_WIDTH, trace_length);
+
+        Self { trace_info }
     }
 }
 
 impl TraceBuilder for MulFib2TraceBuilder {
     type BaseField = BaseElement;
 
-    fn build_trace(&self) -> ExecutionTrace<Self::BaseField> {
-        let mut reg0 = vec![BaseElement::new(1)];
-        let mut reg1 = vec![BaseElement::new(2)];
+    fn trace_info(&self) -> &TraceInfo {
+        &self.trace_info
+    }
 
-        for i in 0..(self.sequence_length / 2 - 1) {
-            reg0.push(reg0[i] * reg1[i]);
-            reg1.push(reg1[i] * reg0[i + 1]);
-        }
+    fn init_state(&self, state: &mut [Self::BaseField], _segment: usize) {
+        state[0] = BaseElement::new(1);
+        state[1] = BaseElement::new(2);
+    }
 
-        ExecutionTrace::init(vec![reg0, reg1])
+    fn update_state(&self, state: &mut [Self::BaseField], _step: usize, _segment: usize) {
+        state[0] *= state[1];
+        state[1] *= state[0];
     }
 }

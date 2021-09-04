@@ -134,6 +134,7 @@ impl Air for MerkleAir {
 // ================================================================================================
 
 pub struct MerkleTraceBuilder {
+    trace_info: TraceInfo,
     value: [BaseElement; 2],
     branch: Vec<rescue::Hash>,
     index: usize,
@@ -146,9 +147,15 @@ impl MerkleTraceBuilder {
             "branch length must be a power of 2"
         );
 
+        // build trace info
+        let trace_length = branch.len() * HASH_CYCLE_LEN;
+        let trace_info = TraceInfo::new(TRACE_WIDTH, trace_length);
+
+        // skip the first node of the branch because it will be computed in the trace as hash(value)
         Self {
+            trace_info,
             value,
-            branch: branch.to_vec(),
+            branch: branch[1..].to_vec(),
             index,
         }
     }
@@ -157,57 +164,18 @@ impl MerkleTraceBuilder {
 impl TraceBuilder for MerkleTraceBuilder {
     type BaseField = BaseElement;
 
+    fn trace_info(&self) -> &TraceInfo {
+        &self.trace_info
+    }
+
     fn build_trace(&self) -> ExecutionTrace<Self::BaseField> {
         // allocate memory to hold the trace table
-        let trace_length = self.branch.len() * HASH_CYCLE_LEN;
-        let mut trace = ExecutionTrace::new(TRACE_WIDTH, trace_length);
+        let mut trace = ExecutionTrace::new(TRACE_WIDTH, self.trace_info().length());
 
-        // skip the first node of the branch because it will be computed in the trace as hash(value)
-        let branch = &self.branch[1..];
-
+        // fill the trace with data
         trace.fill(
-            |state| {
-                // initialize first state of the computation
-                state[0] = self.value[0];
-                state[1] = self.value[1];
-                state[2..].fill(BaseElement::ZERO);
-            },
-            |step, state| {
-                // execute the transition function for all steps
-                //
-                // For the first 7 steps of each 8-step cycle, compute a single round of Rescue hash in
-                // registers [0..6]. On the 8th step, insert the next branch node into the trace in the
-                // positions defined by the next bit of the leaf index. If the bit is ZERO, the next node
-                // goes into registers [2, 3], if it is ONE, the node goes into registers [0, 1].
-
-                let cycle_num = step / HASH_CYCLE_LEN;
-                let cycle_pos = step % HASH_CYCLE_LEN;
-
-                if cycle_pos < NUM_HASH_ROUNDS {
-                    rescue::apply_round(&mut state[..HASH_STATE_WIDTH], step);
-                } else {
-                    let branch_node = branch[cycle_num].to_elements();
-                    let index_bit = BaseElement::new(((self.index >> cycle_num) & 1) as u128);
-                    if index_bit == BaseElement::ZERO {
-                        // if index bit is zero, new branch node goes into registers [2, 3]; values in
-                        // registers [0, 1] (the accumulated hash) remain unchanged
-                        state[2] = branch_node[0];
-                        state[3] = branch_node[1];
-                    } else {
-                        // if index bit is one, accumulated hash goes into registers [2, 3],
-                        // and new branch nodes goes into registers [0, 1]
-                        state[2] = state[0];
-                        state[3] = state[1];
-                        state[0] = branch_node[0];
-                        state[1] = branch_node[1];
-                    }
-                    // reset the capacity registers of the state to ZERO
-                    state[4] = BaseElement::ZERO;
-                    state[5] = BaseElement::ZERO;
-
-                    state[6] = index_bit;
-                }
-            },
+            |state| self.init_state(state, 0),
+            |step, state| self.update_state(state, step, 0),
         );
 
         // set index bit at the second step to one; this still results in a valid execution trace
@@ -217,6 +185,56 @@ impl TraceBuilder for MerkleTraceBuilder {
         trace.set(6, 1, FieldElement::ONE);
 
         trace
+    }
+
+    /// Initializes first state of the computation.
+    ///
+    /// We don't care about segment index here because the trace consists of a single segment.
+    /// Thus, `segment` parameter is always 0.
+    fn init_state(&self, state: &mut [Self::BaseField], _segment: usize) {
+        state[0] = self.value[0];
+        state[1] = self.value[1];
+        state[2..].fill(BaseElement::ZERO);
+    }
+
+    /// Executes the transition function for all steps.
+    ///
+    /// For the first 7 steps of each 8-step cycle, compute a single round of Rescue hash in
+    /// registers [0..6]. On the 8th step, insert the next branch node into the trace in the
+    /// positions defined by the next bit of the leaf index. If the bit is ZERO, the next node
+    /// goes into registers [2, 3], if it is ONE, the node goes into registers [0, 1].
+    ///
+    /// We don't care about segment index here because the trace consists of a single segment.
+    /// Thus, `segment` parameter is always 0.
+    fn update_state(&self, state: &mut [Self::BaseField], step: usize, _segment: usize) {
+        
+        let cycle_num = step / HASH_CYCLE_LEN;
+        let cycle_pos = step % HASH_CYCLE_LEN;
+
+        if cycle_pos < NUM_HASH_ROUNDS {
+            rescue::apply_round(&mut state[..HASH_STATE_WIDTH], step);
+        } else {
+            let branch_node = self.branch[cycle_num].to_elements();
+            let index_bit = BaseElement::new(((self.index >> cycle_num) & 1) as u128);
+            if index_bit == BaseElement::ZERO {
+                // if index bit is zero, new branch node goes into registers [2, 3]; values in
+                // registers [0, 1] (the accumulated hash) remain unchanged
+                state[2] = branch_node[0];
+                state[3] = branch_node[1];
+            } else {
+                // if index bit is one, accumulated hash goes into registers [2, 3],
+                // and new branch nodes goes into registers [0, 1]
+                state[2] = state[0];
+                state[3] = state[1];
+                state[0] = branch_node[0];
+                state[1] = branch_node[1];
+            }
+            // reset the capacity registers of the state to ZERO
+            state[4] = BaseElement::ZERO;
+            state[5] = BaseElement::ZERO;
+
+            state[6] = index_bit;
+        }
     }
 }
 
