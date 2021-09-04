@@ -31,7 +31,7 @@ pub struct StarkDomain<B: StarkField> {
 
 impl<B: StarkField> StarkDomain<B> {
     /// Returns a new STARK domain initialized with the provided `context`.
-    pub fn new<A: Air<BaseElement = B>>(air: &A) -> Self {
+    pub fn new<A: Air<BaseField = B>>(air: &A) -> Self {
         let trace_twiddles = fft::get_twiddles(air.trace_length());
         let ce_twiddles = fft::get_twiddles(air.ce_domain_size());
         StarkDomain {

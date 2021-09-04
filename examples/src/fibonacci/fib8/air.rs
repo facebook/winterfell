@@ -21,12 +21,12 @@ pub struct Fib8Air {
 }
 
 impl Air for Fib8Air {
-    type BaseElement = BaseElement;
+    type BaseField = BaseElement;
     type PublicInputs = BaseElement;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
-    fn new(trace_info: TraceInfo, pub_inputs: Self::BaseElement, options: ProofOptions) -> Self {
+    fn new(trace_info: TraceInfo, pub_inputs: Self::BaseField, options: ProofOptions) -> Self {
         let degrees = vec![
             TransitionConstraintDegree::new(1),
             TransitionConstraintDegree::new(1),
@@ -38,11 +38,11 @@ impl Air for Fib8Air {
         }
     }
 
-    fn context(&self) -> &AirContext<Self::BaseElement> {
+    fn context(&self) -> &AirContext<Self::BaseField> {
         &self.context
     }
 
-    fn evaluate_transition<E: FieldElement + From<Self::BaseElement>>(
+    fn evaluate_transition<E: FieldElement + From<Self::BaseField>>(
         &self,
         frame: &EvaluationFrame<E>,
         _periodic_values: &[E],
@@ -68,7 +68,7 @@ impl Air for Fib8Air {
         result[1] = are_equal(next[1], n7);
     }
 
-    fn get_assertions(&self) -> Vec<Assertion<Self::BaseElement>> {
+    fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>> {
         // assert that the trace starts with 7th and 8th terms of Fibonacci sequence (the first
         // 6 terms are not recorded in the trace), and ends with the expected result
         let last_step = self.trace_length() - 1;

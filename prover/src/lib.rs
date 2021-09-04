@@ -114,7 +114,7 @@ pub mod tests;
 /// trace of the computation described by the specified `AIR` and generated using the specified
 /// public inputs.
 #[rustfmt::skip]
-pub fn prove<AIR: Air, TB: TraceBuilder<BaseField = AIR::BaseElement>>(
+pub fn prove<AIR: Air, TB: TraceBuilder<BaseField = AIR::BaseField>>(
     trace_builder: TB,
     pub_inputs: AIR::PublicInputs,
     options: ProofOptions,
@@ -139,7 +139,8 @@ pub fn prove<AIR: Air, TB: TraceBuilder<BaseField = AIR::BaseElement>>(
     // create an instance of AIR for the provided parameters. this takes a generic description of
     // the computation (provided via AIR type), and creates a description of a specific execution
     // of the computation for the provided public inputs.
-    let air = AIR::new(trace.get_info(), pub_inputs, options);
+    let trace_info = trace_builder.trace_info().clone();
+    let air = AIR::new(trace_info, pub_inputs, options);
 
     // make sure the specified trace is valid against the AIR. This checks validity of both,
     // assertions and state transitions. we do this in debug mode only because this is a very
@@ -152,36 +153,36 @@ pub fn prove<AIR: Air, TB: TraceBuilder<BaseField = AIR::BaseElement>>(
     match air.options().field_extension() {
         FieldExtension::None => match air.options().hash_fn() {
             HashFunction::Blake3_256 => generate_proof::
-                <AIR, AIR::BaseElement, Blake3_256<AIR::BaseElement>>(air, trace, pub_inputs_bytes),
+                <AIR, AIR::BaseField, Blake3_256<AIR::BaseField>>(air, trace, pub_inputs_bytes),
             HashFunction::Blake3_192 => generate_proof::
-                <AIR, AIR::BaseElement, Blake3_192<AIR::BaseElement>>(air, trace, pub_inputs_bytes),
+                <AIR, AIR::BaseField, Blake3_192<AIR::BaseField>>(air, trace, pub_inputs_bytes),
             HashFunction::Sha3_256 => generate_proof::
-                <AIR, AIR::BaseElement, Sha3_256<AIR::BaseElement>>(air, trace, pub_inputs_bytes)
+                <AIR, AIR::BaseField, Sha3_256<AIR::BaseField>>(air, trace, pub_inputs_bytes)
         },
         FieldExtension::Quadratic => {
-            if !<QuadExtension<AIR::BaseElement>>::is_supported() {
+            if !<QuadExtension<AIR::BaseField>>::is_supported() {
                 return Err(ProverError::UnsupportedFieldExtension(2));
             }
             match air.options().hash_fn() {
                 HashFunction::Blake3_256 => generate_proof::
-                    <AIR, QuadExtension<AIR::BaseElement>, Blake3_256<AIR::BaseElement>>(air, trace, pub_inputs_bytes),
+                    <AIR, QuadExtension<AIR::BaseField>, Blake3_256<AIR::BaseField>>(air, trace, pub_inputs_bytes),
                 HashFunction::Blake3_192 => generate_proof::
-                    <AIR, QuadExtension<AIR::BaseElement>, Blake3_192<AIR::BaseElement>>(air, trace, pub_inputs_bytes),
+                    <AIR, QuadExtension<AIR::BaseField>, Blake3_192<AIR::BaseField>>(air, trace, pub_inputs_bytes),
                 HashFunction::Sha3_256 => generate_proof::
-                    <AIR, QuadExtension<AIR::BaseElement>, Sha3_256<AIR::BaseElement>>(air, trace, pub_inputs_bytes),
+                    <AIR, QuadExtension<AIR::BaseField>, Sha3_256<AIR::BaseField>>(air, trace, pub_inputs_bytes),
             }
         },
         FieldExtension::Cubic => {
-            if !<CubeExtension<AIR::BaseElement>>::is_supported() {
+            if !<CubeExtension<AIR::BaseField>>::is_supported() {
                 return Err(ProverError::UnsupportedFieldExtension(3));
             }
             match air.options().hash_fn() {
                 HashFunction::Blake3_256 => generate_proof::
-                    <AIR, CubeExtension<AIR::BaseElement>, Blake3_256<AIR::BaseElement>>(air, trace, pub_inputs_bytes),
+                    <AIR, CubeExtension<AIR::BaseField>, Blake3_256<AIR::BaseField>>(air, trace, pub_inputs_bytes),
                 HashFunction::Blake3_192 => generate_proof::
-                    <AIR, CubeExtension<AIR::BaseElement>, Blake3_192<AIR::BaseElement>>(air, trace, pub_inputs_bytes),
+                    <AIR, CubeExtension<AIR::BaseField>, Blake3_192<AIR::BaseField>>(air, trace, pub_inputs_bytes),
                 HashFunction::Sha3_256 => generate_proof::
-                    <AIR, CubeExtension<AIR::BaseElement>, Sha3_256<AIR::BaseElement>>(air, trace, pub_inputs_bytes),
+                    <AIR, CubeExtension<AIR::BaseField>, Sha3_256<AIR::BaseField>>(air, trace, pub_inputs_bytes),
             }
         },
     }
@@ -193,13 +194,13 @@ pub fn prove<AIR: Air, TB: TraceBuilder<BaseField = AIR::BaseElement>>(
 /// execution `trace` is valid against the provided `air`.
 fn generate_proof<A, E, H>(
     air: A,
-    trace: ExecutionTrace<A::BaseElement>,
+    trace: ExecutionTrace<A::BaseField>,
     pub_inputs_bytes: Vec<u8>,
 ) -> Result<StarkProof, ProverError>
 where
     A: Air,
-    E: FieldElement<BaseField = A::BaseElement>,
-    H: ElementHasher<BaseField = A::BaseElement>,
+    E: FieldElement<BaseField = A::BaseField>,
+    H: ElementHasher<BaseField = A::BaseField>,
 {
     // create a channel which is used to simulate interaction between the prover and the verifier;
     // the channel will be used to commit to values and to draw randomness that should come from

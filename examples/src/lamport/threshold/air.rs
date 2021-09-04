@@ -46,7 +46,7 @@ pub struct LamportThresholdAir {
 }
 
 impl Air for LamportThresholdAir {
-    type BaseElement = BaseElement;
+    type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
 
     // CONSTRUCTOR
@@ -102,7 +102,7 @@ impl Air for LamportThresholdAir {
         }
     }
 
-    fn evaluate_transition<E: FieldElement + From<Self::BaseElement>>(
+    fn evaluate_transition<E: FieldElement + From<Self::BaseField>>(
         &self,
         frame: &EvaluationFrame<E>,
         periodic_values: &[E],
@@ -137,7 +137,7 @@ impl Air for LamportThresholdAir {
         );
     }
 
-    fn get_assertions(&self) -> Vec<Assertion<Self::BaseElement>> {
+    fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>> {
         // ----- assertions against the first step of every cycle: 0, 1024, 2048 etc. -------------
         let mut assertions = vec![
             // for private key hasher, last 4 state register should be set to zeros
@@ -197,7 +197,7 @@ impl Air for LamportThresholdAir {
         assertions
     }
 
-    fn get_periodic_column_values(&self) -> Vec<Vec<Self::BaseElement>> {
+    fn get_periodic_column_values(&self) -> Vec<Vec<Self::BaseField>> {
         let mut result = vec![];
 
         // signature cycle mask: 1023 zeros followed by 1 one
@@ -239,7 +239,7 @@ impl Air for LamportThresholdAir {
         result
     }
 
-    fn context(&self) -> &AirContext<Self::BaseElement> {
+    fn context(&self) -> &AirContext<Self::BaseField> {
         &self.context
     }
 }

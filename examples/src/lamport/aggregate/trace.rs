@@ -76,6 +76,7 @@ impl TraceBuilder for LamportAggregateTraceBuilder {
         SIG_CYCLE_LENGTH
     }
 
+    #[inline(always)]
     fn init_state(&self, state: &mut [Self::BaseField], segment: usize) {
         let sig_info = &self.sig_info[segment];
 
@@ -110,6 +111,7 @@ impl TraceBuilder for LamportAggregateTraceBuilder {
         state[21] = BaseElement::ZERO; // capacity
     }
 
+    #[inline(always)]
     fn update_state(&self, state: &mut [Self::BaseField], step: usize, segment: usize) {
         let sig_info = &self.sig_info[segment];
 

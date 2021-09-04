@@ -52,7 +52,7 @@ where
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Creates and returns a new verifier channel initialized from the specified `proof`.
-    pub fn new<A: Air<BaseElement = B>>(air: &A, proof: StarkProof) -> Result<Self, VerifierError> {
+    pub fn new<A: Air<BaseField = B>>(air: &A, proof: StarkProof) -> Result<Self, VerifierError> {
         // make AIR and proof base fields are the same
         if B::get_modulus_le_bytes() != proof.context.field_modulus_bytes() {
             return Err(VerifierError::InconsistentBaseField);

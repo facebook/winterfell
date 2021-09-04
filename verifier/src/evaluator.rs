@@ -11,7 +11,7 @@ use utils::collections::Vec;
 // ================================================================================================
 
 /// Evaluates constraints for the specified evaluation frame.
-pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseElement>>(
+pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     air: &A,
     coefficients: ConstraintCompositionCoefficients<E>,
     ood_frame: &EvaluationFrame<E>,

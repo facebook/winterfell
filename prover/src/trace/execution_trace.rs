@@ -371,7 +371,7 @@ impl<B: StarkField> ExecutionTrace<B> {
     /// Checks if this execution trace is valid against the specified AIR, and panics if not.
     ///
     /// NOTE: this is a very expensive operation and is intended for use only in debug mode.
-    pub fn validate<A: Air<BaseElement = B>>(&self, air: &A) {
+    pub fn validate<A: Air<BaseField = B>>(&self, air: &A) {
         // TODO: eventually, this should return errors instead of panicking
 
         // make sure the width align; if they don't something went terribly wrong

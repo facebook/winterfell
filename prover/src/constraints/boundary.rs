@@ -29,7 +29,7 @@ pub struct BoundaryConstraintGroup<B: StarkField, E: FieldElement<BaseField = B>
 impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraintGroup<B, E> {
     /// Creates a new specialized constraint group; twiddles and ce_blowup_factor are passed in for
     /// evaluating large polynomial constraints (if any).
-    pub fn new<A: Air<BaseElement = B>>(
+    pub fn new<A: Air<BaseField = B>>(
         group: air::BoundaryConstraintGroup<B, E>,
         air: &A,
         twiddle_map: &mut BTreeMap<usize, Vec<B>>,

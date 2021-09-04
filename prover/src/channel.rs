@@ -22,11 +22,11 @@ use utils::iterators::*;
 pub struct ProverChannel<'a, A, E, H>
 where
     A: Air,
-    E: FieldElement<BaseField = A::BaseElement>,
-    H: ElementHasher<BaseField = A::BaseElement>,
+    E: FieldElement<BaseField = A::BaseField>,
+    H: ElementHasher<BaseField = A::BaseField>,
 {
     air: &'a A,
-    public_coin: RandomCoin<A::BaseElement, H>,
+    public_coin: RandomCoin<A::BaseField, H>,
     context: Context,
     commitments: Commitments,
     ood_frame: OodFrame,
@@ -40,14 +40,14 @@ where
 impl<'a, A, E, H> ProverChannel<'a, A, E, H>
 where
     A: Air,
-    E: FieldElement<BaseField = A::BaseElement>,
-    H: ElementHasher<BaseField = A::BaseElement>,
+    E: FieldElement<BaseField = A::BaseField>,
+    H: ElementHasher<BaseField = A::BaseField>,
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Creates a new prover channel for the specified `air` and public inputs.
     pub fn new(air: &'a A, pub_inputs_bytes: Vec<u8>) -> Self {
-        let context = Context::new::<A::BaseElement>(air.trace_info(), air.options().clone());
+        let context = Context::new::<A::BaseField>(air.trace_info(), air.options().clone());
 
         // build a seed for the public coin; the initial seed is the hash of public inputs and proof
         // context, but as the protocol progresses, the coin will be reseeded with the info sent to
@@ -179,8 +179,8 @@ where
 impl<'a, A, E, H> fri::ProverChannel<E> for ProverChannel<'a, A, E, H>
 where
     A: Air,
-    E: FieldElement<BaseField = A::BaseElement>,
-    H: ElementHasher<BaseField = A::BaseElement>,
+    E: FieldElement<BaseField = A::BaseField>,
+    H: ElementHasher<BaseField = A::BaseField>,
 {
     type Hasher = H;
 
