@@ -6,8 +6,8 @@
 use crate::utils::are_equal;
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement},
-    Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceBuilder, TraceInfo,
-    TransitionConstraintDegree,
+    Air, AirContext, Assertion, EvaluationFrame, ExecutionTrace, ProofOptions, TraceBuilder,
+    TraceInfo, TransitionConstraintDegree,
 };
 
 // FIBONACCI AIR
@@ -114,6 +114,7 @@ impl MulFib8TraceBuilder {
 
 impl TraceBuilder for MulFib8TraceBuilder {
     type BaseField = BaseElement;
+    type PublicInputs = BaseElement;
 
     fn trace_info(&self) -> &TraceInfo {
         &self.trace_info
@@ -139,5 +140,10 @@ impl TraceBuilder for MulFib8TraceBuilder {
         state[5] = state[3] * state[4];
         state[6] = state[4] * state[5];
         state[7] = state[5] * state[6];
+    }
+
+    fn get_public_inputs(&self, trace: &ExecutionTrace<Self::BaseField>) -> Self::PublicInputs {
+        let last_step = trace.length() - 1;
+        trace.get(6, last_step)
     }
 }

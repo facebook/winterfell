@@ -79,16 +79,8 @@ impl Example for RescueExample {
         let trace_builder = RescueTraceBuilder::new(self.seed, self.chain_length);
 
         // generate the proof
-        let pub_inputs = PublicInputs {
-            seed: self.seed,
-            result: self.result,
-        };
-        winterfell::prove::<RescueAir, RescueTraceBuilder>(
-            trace_builder,
-            pub_inputs,
-            self.options.clone(),
-        )
-        .unwrap()
+        winterfell::prove::<RescueAir, RescueTraceBuilder>(trace_builder, self.options.clone())
+            .unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {

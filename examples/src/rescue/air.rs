@@ -7,8 +7,8 @@ use super::rescue;
 use crate::utils::{are_equal, is_zero, not, EvaluationResult};
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement},
-    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ProofOptions, Serializable,
-    TraceBuilder, TraceInfo, TransitionConstraintDegree,
+    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ExecutionTrace, ProofOptions,
+    Serializable, TraceBuilder, TraceInfo, TransitionConstraintDegree,
 };
 
 // CONSTANTS
@@ -164,6 +164,7 @@ impl RescueTraceBuilder {
 
 impl TraceBuilder for RescueTraceBuilder {
     type BaseField = BaseElement;
+    type PublicInputs = PublicInputs;
 
     fn trace_info(&self) -> &TraceInfo {
         &self.trace_info
@@ -188,6 +189,14 @@ impl TraceBuilder for RescueTraceBuilder {
         } else {
             state[2] = BaseElement::ZERO;
             state[3] = BaseElement::ZERO;
+        }
+    }
+
+    fn get_public_inputs(&self, trace: &ExecutionTrace<Self::BaseField>) -> Self::PublicInputs {
+        let last_step = trace.length() - 1;
+        PublicInputs {
+            seed: [trace.get(0, 0), trace.get(1, 0)],
+            result: [trace.get(0, last_step), trace.get(1, last_step)],
         }
     }
 }

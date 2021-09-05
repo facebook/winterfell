@@ -72,12 +72,8 @@ impl Example for MulFib2Example {
         let trace_builder = MulFib2TraceBuilder::new(self.sequence_length);
 
         // generate the proof
-        winterfell::prove::<MulFib2Air, MulFib2TraceBuilder>(
-            trace_builder,
-            self.result,
-            self.options.clone(),
-        )
-        .unwrap()
+        winterfell::prove::<MulFib2Air, MulFib2TraceBuilder>(trace_builder, self.options.clone())
+            .unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {

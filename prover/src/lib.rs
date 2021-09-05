@@ -114,9 +114,8 @@ pub mod tests;
 /// trace of the computation described by the specified `AIR` and generated using the specified
 /// public inputs.
 #[rustfmt::skip]
-pub fn prove<AIR: Air, TB: TraceBuilder<BaseField = AIR::BaseField>>(
+pub fn prove<AIR: Air, TB: TraceBuilder<BaseField = AIR::BaseField, PublicInputs = AIR::PublicInputs>>(
     trace_builder: TB,
-    pub_inputs: AIR::PublicInputs,
     options: ProofOptions,
 ) -> Result<StarkProof, ProverError> {
 
@@ -133,6 +132,7 @@ pub fn prove<AIR: Air, TB: TraceBuilder<BaseField = AIR::BaseField>>(
     );
 
     // serialize public inputs; these will be included in the seed for the public coin
+    let pub_inputs = trace_builder.get_public_inputs(&trace);
     let mut pub_inputs_bytes = Vec::new();
     pub_inputs.write_into(&mut pub_inputs_bytes);
 

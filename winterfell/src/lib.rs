@@ -103,8 +103,21 @@
 //! ```no_run
 //! use winterfell::{
 //!     math::{fields::f128::BaseElement, FieldElement},
-//!     ExecutionTrace, TraceBuilder, TraceInfo,
+//!     ByteWriter, ExecutionTrace, Serializable, TraceBuilder, TraceInfo,
 //! };
+//!
+//! pub struct PublicInputs {
+//!     start: BaseElement,
+//!     result: BaseElement,
+//! }
+//!
+//! // We need to describe how public inputs can be converted to bytes.
+//! impl Serializable for PublicInputs {
+//!     fn write_into<W: ByteWriter>(&self, target: &mut W) {
+//!         target.write(self.start);
+//!         target.write(self.result);
+//!     }
+//! }
 //!
 //! pub struct WorkTraceBuilder {
 //!     trace_info: TraceInfo,
@@ -122,6 +135,7 @@
 //!
 //! impl TraceBuilder for WorkTraceBuilder {
 //!     type BaseField = BaseElement;
+//!     type PublicInputs = PublicInputs;
 //!
 //!     // TODO: add comments
 //!     fn trace_info(&self) -> &TraceInfo {
@@ -136,6 +150,13 @@
 //!     // TODO: add comments
 //!     fn update_state(&self, state: &mut [Self::BaseField], _step: usize, _segment: usize) {
 //!         state[0] = state[0].exp(3u32.into()) + BaseElement::new(42);
+//!     }
+//!
+//!     fn get_public_inputs(&self, trace: &ExecutionTrace<BaseElement>) -> PublicInputs {
+//!         PublicInputs {
+//!             start: self.start,
+//!             result: trace.get(0, trace.length() - 1),
+//!         }
 //!     }
 //! }
 //! ```
@@ -293,6 +314,7 @@
 //! #
 //! # impl TraceBuilder for WorkTraceBuilder {
 //! #     type BaseField = BaseElement;
+//! #     type PublicInputs = PublicInputs;
 //! #
 //! #     // TODO: add comments
 //! #     fn trace_info(&self) -> &TraceInfo {
@@ -307,6 +329,13 @@
 //! #     // TODO: add comments
 //! #     fn update_state(&self, state: &mut [Self::BaseField], _step: usize, _segment: usize) {
 //! #         state[0] = state[0].exp(3u32.into()) + BaseElement::new(42);
+//! #     }
+//! #
+//! #     fn get_public_inputs(&self, trace: &ExecutionTrace<BaseElement>) -> PublicInputs {
+//! #         PublicInputs {
+//! #             start: self.start,
+//! #             result: trace.get(0, trace.length() - 1),
+//! #         }
 //! #     }
 //! # }
 //! #
@@ -373,7 +402,7 @@
 //! let n = 1024;
 //!
 //! // compute the expected result
-//! let result = do_work(start, n);
+//! let result = do_work(start, n); // TODO: remove
 //!
 //! // Define proof options; these will be enough for ~96-bit security level.
 //! let options = ProofOptions::new(
@@ -388,10 +417,8 @@
 //!
 //! // Generate the proof.
 //! let trace_builder = WorkTraceBuilder::new(start, n);
-//! let pub_inputs = PublicInputs { start, result };
 //! let proof = winterfell::prove::<WorkAir, WorkTraceBuilder>(
 //!     trace_builder,
-//!     pub_inputs,
 //!     options
 //! )
 //! .unwrap();

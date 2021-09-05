@@ -4,13 +4,13 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    rescue, AggPublicKey, Signature, HASH_CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH,
-    TRACE_WIDTH,
+    rescue, AggPublicKey, PublicInputs, Signature, HASH_CYCLE_LENGTH, NUM_HASH_ROUNDS,
+    SIG_CYCLE_LENGTH, TRACE_WIDTH,
 };
 use std::collections::HashMap;
 use winterfell::{
     math::{fields::f128::BaseElement, get_power_series, FieldElement, StarkField},
-    TraceBuilder, TraceInfo,
+    ExecutionTrace, TraceBuilder, TraceInfo,
 };
 
 // CONSTANTS
@@ -45,6 +45,7 @@ struct KeySchedule {
 
 pub struct LamportThresholdTraceBuilder {
     trace_info: TraceInfo,
+    pub_inputs: PublicInputs,
     sig_info: Vec<SignatureInfo>,
     powers_of_two: Vec<BaseElement>,
 }
@@ -88,6 +89,7 @@ impl LamportThresholdTraceBuilder {
         // corresponding individual public key, use it go generate signature verification trace;
         // otherwise, use zero signature;
         let mut sig_info = Vec::with_capacity(num_cycles);
+        #[allow(clippy::needless_range_loop)]
         for i in 0..num_cycles {
             sig_info.push(match signature_map.get(&i) {
                 Some(sig) => build_sig_info(i, &message, sig, 1, &pub_key, sig_count[i]),
@@ -95,8 +97,16 @@ impl LamportThresholdTraceBuilder {
             });
         }
 
+        let pub_inputs = PublicInputs {
+            pub_key_root: pub_key.root().to_elements(),
+            num_pub_keys: pub_key.num_keys(),
+            num_signatures: signatures.len(),
+            message,
+        };
+
         Self {
             trace_info,
+            pub_inputs,
             sig_info,
             powers_of_two,
         }
@@ -105,6 +115,7 @@ impl LamportThresholdTraceBuilder {
 
 impl TraceBuilder for LamportThresholdTraceBuilder {
     type BaseField = BaseElement;
+    type PublicInputs = PublicInputs;
 
     fn trace_info(&self) -> &TraceInfo {
         &self.trace_info
@@ -213,6 +224,10 @@ impl TraceBuilder for LamportThresholdTraceBuilder {
             // prepare Merkle path hashing registers for hashing of the next node
             update_merkle_path_hash(&mut merkle_path_hash, mp_bit, cycle_num, &sig_info.key_path);
         }
+    }
+
+    fn get_public_inputs(&self, _trace: &ExecutionTrace<Self::BaseField>) -> Self::PublicInputs {
+        self.pub_inputs.clone()
     }
 }
 

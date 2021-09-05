@@ -73,12 +73,8 @@ impl Example for MulFib8Example {
         let trace_builder = MulFib8TraceBuilder::new(self.sequence_length);
 
         // generate the proof
-        winterfell::prove::<MulFib8Air, MulFib8TraceBuilder>(
-            trace_builder,
-            self.result,
-            self.options.clone(),
-        )
-        .unwrap()
+        winterfell::prove::<MulFib8Air, MulFib8TraceBuilder>(trace_builder, self.options.clone())
+            .unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {

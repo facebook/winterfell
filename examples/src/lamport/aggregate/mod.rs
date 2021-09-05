@@ -114,13 +114,8 @@ impl Example for LamportAggregateExample {
         let trace_builder = LamportAggregateTraceBuilder::new(&self.messages, &self.signatures);
 
         // generate the proof
-        let pub_inputs = PublicInputs {
-            pub_keys: self.pub_keys.clone(),
-            messages: self.messages.clone(),
-        };
         winterfell::prove::<LamportAggregateAir, LamportAggregateTraceBuilder>(
             trace_builder,
-            pub_inputs,
             self.options.clone(),
         )
         .unwrap()

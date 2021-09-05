@@ -3,10 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{rescue, Signature, CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH, TRACE_WIDTH};
+use super::{
+    rescue, PublicInputs, Signature, CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH, TRACE_WIDTH,
+};
 use winterfell::{
     math::{fields::f128::BaseElement, get_power_series, FieldElement, StarkField},
-    TraceBuilder, TraceInfo,
+    ExecutionTrace, TraceBuilder, TraceInfo,
 };
 
 // CONSTANTS
@@ -67,6 +69,7 @@ impl LamportAggregateTraceBuilder {
 
 impl TraceBuilder for LamportAggregateTraceBuilder {
     type BaseField = BaseElement;
+    type PublicInputs = PublicInputs;
 
     fn trace_info(&self) -> &TraceInfo {
         &self.trace_info
@@ -164,6 +167,19 @@ impl TraceBuilder for LamportAggregateTraceBuilder {
                 self.powers_of_two[cycle_num],
             );
         }
+    }
+
+    fn get_public_inputs(&self, trace: &ExecutionTrace<Self::BaseField>) -> Self::PublicInputs {
+        let mut pub_keys = Vec::new();
+        let mut messages = Vec::new();
+
+        for i in (0..trace.length()).step_by(SIG_CYCLE_LENGTH) {
+            let step = i + SIG_CYCLE_LENGTH - 1;
+            pub_keys.push([trace.get(16, step), trace.get(17, step)]);
+            messages.push([trace.get(2, step), trace.get(3, step)]);
+        }
+
+        PublicInputs { pub_keys, messages }
     }
 }
 

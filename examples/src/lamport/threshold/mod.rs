@@ -101,15 +101,8 @@ impl Example for LamportThresholdExample {
             LamportThresholdTraceBuilder::new(self.pub_key.clone(), self.message, &self.signatures);
 
         // generate the proof
-        let pub_inputs = PublicInputs {
-            pub_key_root: self.pub_key.root().to_elements(),
-            num_pub_keys: self.pub_key.num_keys(),
-            num_signatures: self.signatures.len(),
-            message: self.message,
-        };
         winterfell::prove::<LamportThresholdAir, LamportThresholdTraceBuilder>(
             trace_builder,
-            pub_inputs,
             self.options.clone(),
         )
         .unwrap()

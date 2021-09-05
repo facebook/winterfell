@@ -163,6 +163,7 @@ impl MerkleTraceBuilder {
 
 impl TraceBuilder for MerkleTraceBuilder {
     type BaseField = BaseElement;
+    type PublicInputs = PublicInputs;
 
     fn trace_info(&self) -> &TraceInfo {
         &self.trace_info
@@ -233,6 +234,13 @@ impl TraceBuilder for MerkleTraceBuilder {
             state[5] = BaseElement::ZERO;
 
             state[6] = index_bit;
+        }
+    }
+
+    fn get_public_inputs(&self, trace: &ExecutionTrace<Self::BaseField>) -> Self::PublicInputs {
+        let last_step = trace.length() - 1;
+        PublicInputs {
+            tree_root: [trace.get(0, last_step), trace.get(1, last_step)],
         }
     }
 }

@@ -6,6 +6,7 @@
 use super::ExecutionTrace;
 use air::TraceInfo;
 use math::{FieldElement, StarkField};
+use utils::Serializable;
 
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
@@ -16,6 +17,7 @@ use utils::iterators::*;
 /// TODO: add docs
 pub trait TraceBuilder: Send + Sync {
     type BaseField: StarkField;
+    type PublicInputs: Serializable;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -25,6 +27,8 @@ pub trait TraceBuilder: Send + Sync {
     fn init_state(&self, state: &mut [Self::BaseField], segment: usize);
 
     fn update_state(&self, state: &mut [Self::BaseField], step: usize, segment: usize);
+
+    fn get_public_inputs(&self, trace: &ExecutionTrace<Self::BaseField>) -> Self::PublicInputs;
 
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------

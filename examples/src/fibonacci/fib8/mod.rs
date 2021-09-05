@@ -73,12 +73,7 @@ impl Example for Fib8Example {
         let trace_builder = Fib8TraceBuilder::new(self.sequence_length);
 
         // generate the proof
-        winterfell::prove::<Fib8Air, Fib8TraceBuilder>(
-            trace_builder,
-            self.result,
-            self.options.clone(),
-        )
-        .unwrap()
+        winterfell::prove::<Fib8Air, Fib8TraceBuilder>(trace_builder, self.options.clone()).unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {

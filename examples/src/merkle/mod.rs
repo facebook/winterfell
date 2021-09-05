@@ -94,15 +94,8 @@ impl Example for MerkleExample {
         let trace_builder = MerkleTraceBuilder::new(self.value, &self.path, self.index);
 
         // generate the proof
-        let pub_inputs = PublicInputs {
-            tree_root: self.tree_root.to_elements(),
-        };
-        winterfell::prove::<MerkleAir, MerkleTraceBuilder>(
-            trace_builder,
-            pub_inputs,
-            self.options.clone(),
-        )
-        .unwrap()
+        winterfell::prove::<MerkleAir, MerkleTraceBuilder>(trace_builder, self.options.clone())
+            .unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {
