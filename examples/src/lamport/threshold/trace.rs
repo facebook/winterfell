@@ -226,7 +226,7 @@ impl TraceBuilder for LamportThresholdTraceBuilder {
         }
     }
 
-    fn get_public_inputs(&self, _trace: &ExecutionTrace<Self::BaseField>) -> Self::PublicInputs {
+    fn get_pub_inputs(&self, _trace: &ExecutionTrace<Self::BaseField>) -> Self::PublicInputs {
         self.pub_inputs.clone()
     }
 }

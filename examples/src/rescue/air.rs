@@ -192,7 +192,7 @@ impl TraceBuilder for RescueTraceBuilder {
         }
     }
 
-    fn get_public_inputs(&self, trace: &ExecutionTrace<Self::BaseField>) -> Self::PublicInputs {
+    fn get_pub_inputs(&self, trace: &ExecutionTrace<Self::BaseField>) -> Self::PublicInputs {
         let last_step = trace.length() - 1;
         PublicInputs {
             seed: [trace.get(0, 0), trace.get(1, 0)],

@@ -142,7 +142,7 @@ impl TraceBuilder for MulFib8TraceBuilder {
         state[7] = state[5] * state[6];
     }
 
-    fn get_public_inputs(&self, trace: &ExecutionTrace<Self::BaseField>) -> Self::PublicInputs {
+    fn get_pub_inputs(&self, trace: &ExecutionTrace<Self::BaseField>) -> Self::PublicInputs {
         let last_step = trace.length() - 1;
         trace.get(6, last_step)
     }

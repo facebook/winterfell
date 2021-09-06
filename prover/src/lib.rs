@@ -102,10 +102,8 @@ pub mod tests;
 /// Function parameters have the following meanings:
 /// * `AIR` is a type implementing [Air] trait for the computation. Among other things, it defines
 ///    algebraic constraints which define the computation.
-/// * `trace` is an execution trace of the computation executed against some set of inputs. These
-///   inputs may include both public and private inputs.
-/// * `pub_inputs` is the set of public inputs against which the computation was executed. These
-///   these inputs will need to be shared with the verifier in order for them to verify the proof.
+/// * `trace_builder` specifies how to build an execution trace for an instance of this computation
+///   defined by some set of inputs. These inputs may include both public and private inputs.
 /// * `options` defines basic protocol parameters such as: number of queries, blowup factor,
 ///   grinding factor, hash function to be used in the protocol etc. These properties directly
 ///   inform such metrics as proof generation time, proof size, and proof security level.
@@ -132,9 +130,8 @@ pub fn prove<AIR: Air, TB: TraceBuilder<BaseField = AIR::BaseField, PublicInputs
     );
 
     // serialize public inputs; these will be included in the seed for the public coin
-    let pub_inputs = trace_builder.get_public_inputs(&trace);
-    let mut pub_inputs_bytes = Vec::new();
-    pub_inputs.write_into(&mut pub_inputs_bytes);
+    let pub_inputs = trace_builder.get_pub_inputs(&trace);
+    let pub_inputs_bytes = pub_inputs.to_bytes();
 
     // create an instance of AIR for the provided parameters. this takes a generic description of
     // the computation (provided via AIR type), and creates a description of a specific execution

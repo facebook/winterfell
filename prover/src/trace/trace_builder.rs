@@ -22,17 +22,22 @@ pub trait TraceBuilder: Send + Sync {
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
 
+    /// TODO: add docs
     fn trace_info(&self) -> &TraceInfo;
 
+    /// TODO: add docs
     fn init_state(&self, state: &mut [Self::BaseField], segment: usize);
 
+    /// TODO: add docs
     fn update_state(&self, state: &mut [Self::BaseField], step: usize, segment: usize);
 
-    fn get_public_inputs(&self, trace: &ExecutionTrace<Self::BaseField>) -> Self::PublicInputs;
+    /// TODO: add docs
+    fn get_pub_inputs(&self, trace: &ExecutionTrace<Self::BaseField>) -> Self::PublicInputs;
 
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
 
+    /// TODO: add docs
     fn build_trace(&self) -> ExecutionTrace<Self::BaseField> {
         let trace_length = self.trace_info().length();
         let trace_width = self.trace_info().width();
@@ -54,6 +59,7 @@ pub trait TraceBuilder: Send + Sync {
         trace
     }
 
+    /// TODO: add docs
     fn segment_length(&self) -> usize {
         self.trace_info().length()
     }

@@ -152,7 +152,7 @@
 //!         state[0] = state[0].exp(3u32.into()) + BaseElement::new(42);
 //!     }
 //!
-//!     fn get_public_inputs(&self, trace: &ExecutionTrace<BaseElement>) -> PublicInputs {
+//!     fn get_pub_inputs(&self, trace: &ExecutionTrace<BaseElement>) -> PublicInputs {
 //!         PublicInputs {
 //!             start: self.start,
 //!             result: trace.get(0, trace.length() - 1),
@@ -331,7 +331,7 @@
 //! #         state[0] = state[0].exp(3u32.into()) + BaseElement::new(42);
 //! #     }
 //! #
-//! #     fn get_public_inputs(&self, trace: &ExecutionTrace<BaseElement>) -> PublicInputs {
+//! #     fn get_pub_inputs(&self, trace: &ExecutionTrace<BaseElement>) -> PublicInputs {
 //! #         PublicInputs {
 //! #             start: self.start,
 //! #             result: trace.get(0, trace.length() - 1),
