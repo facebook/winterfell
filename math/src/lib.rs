@@ -93,6 +93,7 @@ pub mod fields {
 
     pub use super::field::f128;
     pub use super::field::f62;
+    pub use super::field::smallprimefield;
     pub use super::field::QuadExtensionA;
 }
 
