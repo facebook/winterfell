@@ -16,11 +16,11 @@ use crate::{field::QuadExtensionA, FieldElement, StarkField};
 const ELEMENT_BYTES: usize = std::mem::size_of::<u64>();
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
-pub struct SmallPrimeFieldElt<const M: u64, const G: u64> {
+pub struct GenericPrimeFieldElt<const M: u64, const G: u64> {
     pub(crate) value: u64,
 }
 
-impl<const M: u64, const G: u64> SmallPrimeFieldElt<M, G> {
+impl<const M: u64, const G: u64> GenericPrimeFieldElt<M, G> {
     // TODO: this may need to be something else, i.e. its own type param
     const fn get_twoadic_root() -> Self {
         Self::new(G)
@@ -54,7 +54,7 @@ impl<const M: u64, const G: u64> SmallPrimeFieldElt<M, G> {
     }
 }
 
-impl<const M: u64, const G: u64> FieldElement for SmallPrimeFieldElt<M, G> {
+impl<const M: u64, const G: u64> FieldElement for GenericPrimeFieldElt<M, G> {
     type PositiveInteger = u64;
     type BaseField = Self;
 
@@ -157,7 +157,7 @@ impl<const M: u64, const G: u64> FieldElement for SmallPrimeFieldElt<M, G> {
     }
 }
 
-impl<const M: u64, const G: u64> StarkField for SmallPrimeFieldElt<M, G> {
+impl<const M: u64, const G: u64> StarkField for GenericPrimeFieldElt<M, G> {
     /// sage: MODULUS = 37
     /// sage: GF(MODULUS).is_prime_field()
     /// True
@@ -212,7 +212,7 @@ impl<const M: u64, const G: u64> StarkField for SmallPrimeFieldElt<M, G> {
     // }
 }
 
-impl<const M: u64, const G: u64> Display for SmallPrimeFieldElt<M, G> {
+impl<const M: u64, const G: u64> Display for GenericPrimeFieldElt<M, G> {
     fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
         write!(f, "{}", self.value)
     }
@@ -221,7 +221,7 @@ impl<const M: u64, const G: u64> Display for SmallPrimeFieldElt<M, G> {
 // OVERLOADED OPERATORS
 // ================================================================================================
 
-impl<const M: u64, const G: u64> Add for SmallPrimeFieldElt<M, G> {
+impl<const M: u64, const G: u64> Add for GenericPrimeFieldElt<M, G> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
@@ -229,13 +229,13 @@ impl<const M: u64, const G: u64> Add for SmallPrimeFieldElt<M, G> {
     }
 }
 
-impl<const M: u64, const G: u64> AddAssign for SmallPrimeFieldElt<M, G> {
+impl<const M: u64, const G: u64> AddAssign for GenericPrimeFieldElt<M, G> {
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs
     }
 }
 
-impl<const M: u64, const G: u64> Sub for SmallPrimeFieldElt<M, G> {
+impl<const M: u64, const G: u64> Sub for GenericPrimeFieldElt<M, G> {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self {
@@ -243,13 +243,13 @@ impl<const M: u64, const G: u64> Sub for SmallPrimeFieldElt<M, G> {
     }
 }
 
-impl<const M: u64, const G: u64> SubAssign for SmallPrimeFieldElt<M, G> {
+impl<const M: u64, const G: u64> SubAssign for GenericPrimeFieldElt<M, G> {
     fn sub_assign(&mut self, rhs: Self) {
         *self = *self - rhs;
     }
 }
 
-impl<const M: u64, const G: u64> Mul for SmallPrimeFieldElt<M, G> {
+impl<const M: u64, const G: u64> Mul for GenericPrimeFieldElt<M, G> {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self {
@@ -257,13 +257,13 @@ impl<const M: u64, const G: u64> Mul for SmallPrimeFieldElt<M, G> {
     }
 }
 
-impl<const M: u64, const G: u64> MulAssign for SmallPrimeFieldElt<M, G> {
+impl<const M: u64, const G: u64> MulAssign for GenericPrimeFieldElt<M, G> {
     fn mul_assign(&mut self, rhs: Self) {
         *self = *self * rhs
     }
 }
 
-impl<const M: u64, const G: u64> Div for SmallPrimeFieldElt<M, G> {
+impl<const M: u64, const G: u64> Div for GenericPrimeFieldElt<M, G> {
     type Output = Self;
 
     fn div(self, rhs: Self) -> Self {
@@ -271,13 +271,13 @@ impl<const M: u64, const G: u64> Div for SmallPrimeFieldElt<M, G> {
     }
 }
 
-impl<const M: u64, const G: u64> DivAssign for SmallPrimeFieldElt<M, G> {
+impl<const M: u64, const G: u64> DivAssign for GenericPrimeFieldElt<M, G> {
     fn div_assign(&mut self, rhs: Self) {
         *self = *self / rhs
     }
 }
 
-impl<const M: u64, const G: u64> Neg for SmallPrimeFieldElt<M, G> {
+impl<const M: u64, const G: u64> Neg for GenericPrimeFieldElt<M, G> {
     type Output = Self;
 
     fn neg(self) -> Self {
@@ -288,7 +288,7 @@ impl<const M: u64, const G: u64> Neg for SmallPrimeFieldElt<M, G> {
 // TYPE CONVERSIONS
 // ================================================================================================
 
-impl<const M: u64, const G: u64> From<u128> for SmallPrimeFieldElt<M, G> {
+impl<const M: u64, const G: u64> From<u128> for GenericPrimeFieldElt<M, G> {
     /// Converts a 128-bit value into a field element. If the value is greater than or equal to
     /// the field modulus, modular reduction is silently preformed.
     fn from(value: u128) -> Self {
@@ -296,45 +296,45 @@ impl<const M: u64, const G: u64> From<u128> for SmallPrimeFieldElt<M, G> {
     }
 }
 
-impl<const M: u64, const G: u64> From<u64> for SmallPrimeFieldElt<M, G> {
+impl<const M: u64, const G: u64> From<u64> for GenericPrimeFieldElt<M, G> {
     /// Converts a 64-bit value into a field element.
     fn from(value: u64) -> Self {
-        SmallPrimeFieldElt::new(value as u64)
+        GenericPrimeFieldElt::new(value as u64)
     }
 }
 
-impl<const M: u64, const G: u64> From<u32> for SmallPrimeFieldElt<M, G> {
+impl<const M: u64, const G: u64> From<u32> for GenericPrimeFieldElt<M, G> {
     /// Converts a 32-bit value into a field element.
     fn from(value: u32) -> Self {
-        SmallPrimeFieldElt::new(value as u64)
+        GenericPrimeFieldElt::new(value as u64)
     }
 }
 
-impl<const M: u64, const G: u64> From<u16> for SmallPrimeFieldElt<M, G> {
+impl<const M: u64, const G: u64> From<u16> for GenericPrimeFieldElt<M, G> {
     /// Converts a 16-bit value into a field element.
     fn from(value: u16) -> Self {
-        SmallPrimeFieldElt::new(value as u64)
+        GenericPrimeFieldElt::new(value as u64)
     }
 }
 
-impl<const M: u64, const G: u64> From<u8> for SmallPrimeFieldElt<M, G> {
+impl<const M: u64, const G: u64> From<u8> for GenericPrimeFieldElt<M, G> {
     /// Converts an 8-bit value into a field element.
     fn from(value: u8) -> Self {
-        SmallPrimeFieldElt::new(value as u64)
+        GenericPrimeFieldElt::new(value as u64)
     }
 }
 
-impl<const M: u64, const G: u64> From<[u8; 8]> for SmallPrimeFieldElt<M, G> {
+impl<const M: u64, const G: u64> From<[u8; 8]> for GenericPrimeFieldElt<M, G> {
     /// Converts the value encoded in an array of 8 bytes into a field element. The bytes
     /// are assumed to be in little-endian byte order. If the value is greater than or equal
     /// to the field modulus, modular reduction is silently preformed.
     fn from(bytes: [u8; 8]) -> Self {
         let value = u64::from_le_bytes(bytes);
-        SmallPrimeFieldElt::from(value)
+        GenericPrimeFieldElt::from(value)
     }
 }
 
-impl<'a, const M: u64, const G: u64> TryFrom<&'a [u8]> for SmallPrimeFieldElt<M, G> {
+impl<'a, const M: u64, const G: u64> TryFrom<&'a [u8]> for GenericPrimeFieldElt<M, G> {
     type Error = String;
 
     /// Converts a slice of bytes into a field element; returns error if the value encoded in bytes
@@ -348,7 +348,7 @@ impl<'a, const M: u64, const G: u64> TryFrom<&'a [u8]> for SmallPrimeFieldElt<M,
     }
 }
 
-impl<const M: u64, const G: u64> AsBytes for SmallPrimeFieldElt<M, G> {
+impl<const M: u64, const G: u64> AsBytes for GenericPrimeFieldElt<M, G> {
     fn as_bytes(&self) -> &[u8] {
         // TODO: take endianness into account
         let self_ptr: *const u64 = &self.value;
@@ -359,13 +359,13 @@ impl<const M: u64, const G: u64> AsBytes for SmallPrimeFieldElt<M, G> {
 // SERIALIZATION / DESERIALIZATION
 // ------------------------------------------------------------------------------------------------
 
-impl<const M: u64, const G: u64> Serializable for SmallPrimeFieldElt<M, G> {
+impl<const M: u64, const G: u64> Serializable for GenericPrimeFieldElt<M, G> {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_u8_slice(&self.value.to_le_bytes());
     }
 }
 
-impl<const M: u64, const G: u64> Deserializable for SmallPrimeFieldElt<M, G> {
+impl<const M: u64, const G: u64> Deserializable for GenericPrimeFieldElt<M, G> {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let value = source.read_u64()?;
         if value >= M {
@@ -374,11 +374,11 @@ impl<const M: u64, const G: u64> Deserializable for SmallPrimeFieldElt<M, G> {
                 value
             )));
         }
-        Ok(SmallPrimeFieldElt::new(value))
+        Ok(GenericPrimeFieldElt::new(value))
     }
 }
 
-impl<const M: u64, const G: u64> Randomizable for SmallPrimeFieldElt<M, G> {
+impl<const M: u64, const G: u64> Randomizable for GenericPrimeFieldElt<M, G> {
     const VALUE_SIZE: usize = Self::ELEMENT_BYTES;
 
     fn from_random_bytes(bytes: &[u8]) -> Option<Self> {

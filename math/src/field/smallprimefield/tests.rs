@@ -2,14 +2,13 @@ use core::convert::TryFrom;
 use std::vec;
 use utils::AsBytes;
 
-// use super::{small_prime_field_elt::SmallPrimeFieldElt, GenericPrimeFieldElement};
-use super::small_prime_field_elt::SmallPrimeFieldElt;
+use super::generic_prime_field_elt::GenericPrimeFieldElt;
 use crate::field::traits::{FieldElement, StarkField};
 use num_bigint::BigUint;
 use rand_utils::{rand_value, rand_vector};
 
-type SmallFieldElement17 = SmallPrimeFieldElt<17, 3>;
-type SmallFieldElement37 = SmallPrimeFieldElt<37, 2>;
+type SmallFieldElement17 = GenericPrimeFieldElt<17, 3>;
+type SmallFieldElement37 = GenericPrimeFieldElt<37, 2>;
 
 #[test]
 fn test_add_17() {
@@ -323,7 +322,7 @@ fn test_array_from_bytes_37() {
 // HELPER FUNCTIONS
 // ================================================================================================
 
-impl<const M: u64, const G: u64> SmallPrimeFieldElt<M, G> {
+impl<const M: u64, const G: u64> GenericPrimeFieldElt<M, G> {
     pub fn to_big_uint(&self) -> BigUint {
         BigUint::from_bytes_le(&self.as_bytes())
     }
@@ -332,6 +331,6 @@ impl<const M: u64, const G: u64> SmallPrimeFieldElt<M, G> {
         let bytes = value.to_bytes_le();
         let mut buffer = [0u8; 8];
         buffer[0..bytes.len()].copy_from_slice(&bytes);
-        SmallPrimeFieldElt::try_from(buffer).unwrap()
+        GenericPrimeFieldElt::try_from(buffer).unwrap()
     }
 }
