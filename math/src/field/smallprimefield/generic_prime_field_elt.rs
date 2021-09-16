@@ -21,7 +21,7 @@ pub struct GenericPrimeFieldElt<const M: u64, const G: u64> {
 }
 
 impl<const M: u64, const G: u64> GenericPrimeFieldElt<M, G> {
-    // TODO: this may need to be something else, i.e. its own type param
+    // TODO: this may need to be something else, e.g. its own type param
     const fn get_twoadic_root() -> Self {
         Self::new(G)
     }
@@ -158,45 +158,18 @@ impl<const M: u64, const G: u64> FieldElement for GenericPrimeFieldElt<M, G> {
 }
 
 impl<const M: u64, const G: u64> StarkField for GenericPrimeFieldElt<M, G> {
-    /// sage: MODULUS = 37
-    /// sage: GF(MODULUS).is_prime_field()
-    /// True
-    /// sage: GF(MODULUS).order()
-    /// 37
     type QuadExtension = QuadExtensionA<Self>;
     const MODULUS: Self::PositiveInteger = M;
     const MODULUS_BITS: u32 = Self::get_modulus_bits();
 
-    /// sage: GF(MODULUS).primitive_element()
-    /// 3
     const GENERATOR: Self = Self::new(G);
 
-    /// sage: is_odd((MODULUS - 1) / 2^40)
-    /// True
     const TWO_ADICITY: u32 = 2;
 
-    /// sage: k = (MODULUS - 1) / 2^40
-    /// sage: GF(MODULUS).primitive_element()^k
-    /// 23953097886125630542083529559205016746
     const TWO_ADIC_ROOT_OF_UNITY: Self = Self::get_twoadic_root();
 
     fn get_root_of_unity(n: u32) -> Self {
-        super::traits::get_prime_field_root_of_unity(n, Self::MODULUS)
-        // let small_field_size_64 = Self::MODULUS - 1;
-        // let small_field_size: u32 = small_field_size_64.try_into().unwrap();
-        // assert!(n != 0, "cannot get root of unity for n = 0");
-        // assert!(
-        //     n <= small_field_size,
-        //     "order cannot exceed {}",
-        //     small_field_size
-        // );
-        // assert!(
-        //     small_field_size % n == 0,
-        //     "Order invalid for field size {}",
-        //     small_field_size
-        // );
-        // let power = small_field_size/n;
-        // Self::exp(Self::GENERATOR, power.into())
+        super::get_prime_field_root_of_unity(n, Self::MODULUS)
     }
 
     fn get_modulus_le_bytes() -> Vec<u8> {
