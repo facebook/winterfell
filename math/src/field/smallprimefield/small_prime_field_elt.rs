@@ -46,16 +46,12 @@ impl<const M: u64, const G: u64> SmallPrimeFieldElt<M, G> {
     /// to initialize constants.
     pub const fn new(value: u64) -> Self {
         let val = value % M; //if  == Ordering::Less { value } else { };
-        Self{value: val}
+        Self { value: val }
     }
 
     /// Returns field element converted to u64 representation.
     pub fn as_u64(&self) -> u64 {
         self.value
-    }
-
-    const fn get_zero() -> Self {
-        Self::new(0)
     }
 
     #[allow(unused)]
@@ -271,7 +267,7 @@ impl<const M: u64, const G: u64> Sub for SmallPrimeFieldElt<M, G> {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self {
-        Self::new(self.get_value() - rhs.get_value())
+        Self::new(checked_mod_sub(self.value, rhs.value, M))
     }
 }
 
@@ -443,28 +439,24 @@ pub fn inv(x: u64, modulus: u64) -> u64 {
     let (mut r, mut new_r) = (modulus, x);
 
     while new_r != 0 {
-        let quotient = &r / &new_r;
+        let quotient = r / new_r;
 
-        let temp_t = t.clone();
-        let temp_new_t = new_t.clone();
+        let temp_t = t;
+        let temp_new_t = new_t;
 
-        t = temp_new_t.clone();
-        new_t = checked_mod_sub(temp_t, &quotient * temp_new_t, modulus);
+        t = temp_new_t;
+        new_t = checked_mod_sub(temp_t, quotient * temp_new_t, modulus);
 
-        let temp_r = r.clone();
-        let temp_new_r = new_r.clone();
+        let temp_r = r;
+        let temp_new_r = new_r;
 
-        r = temp_new_r.clone();
-        new_r = checked_mod_sub(temp_r, &quotient * temp_new_r, modulus);
+        r = temp_new_r;
+        new_r = checked_mod_sub(temp_r, quotient * temp_new_r, modulus);
     }
     if r > 1u64 {
         // Not invertible
         return 0;
     }
-    // } else if t < 0u64 {
-    //     t += modulus
-    // }
-
     t
 }
 
