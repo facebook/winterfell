@@ -1,3 +1,7 @@
+use crate::field::{
+    traits::{FieldElement, StarkField},
+    QuadExtensionA,
+};
 use core::{
     convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter},
@@ -6,11 +10,11 @@ use core::{
     slice,
 };
 use utils::{
-    string::String, AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError,
-    Randomizable, Serializable,
+    collections::Vec,
+    string::{String, ToString},
+    AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Randomizable,
+    Serializable,
 };
-
-use crate::{field::QuadExtensionA, FieldElement, StarkField};
 
 // Number of bytes needed to represent field element
 const ELEMENT_BYTES: usize = std::mem::size_of::<u64>();

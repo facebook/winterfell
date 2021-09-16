@@ -1,8 +1,8 @@
+use crate::field::traits::{FieldElement, StarkField};
 use core::convert::TryFrom;
-use utils::AsBytes;
+use utils::{collections::Vec, AsBytes};
 
 use super::generic_prime_field_elt::GenericPrimeFieldElt;
-use crate::field::traits::{FieldElement, StarkField};
 use num_bigint::BigUint;
 use rand_utils::{rand_value, rand_vector};
 
