@@ -1,5 +1,4 @@
 use core::convert::TryFrom;
-use std::vec;
 use utils::AsBytes;
 
 use super::generic_prime_field_elt::GenericPrimeFieldElt;
