@@ -356,7 +356,7 @@ fn mul(a: u64, b: u64, modulus: u64) -> u64 {
 
 /// Computes y such that (x * y) % m = 1 except for when when x = 0; in such a case,
 /// 0 is returned; x is assumed to be a valid field element.
-fn inv(x: u64, modulus: u64) -> u64 {
+fn invert(x: u64, modulus: u64) -> u64 {
     if x == 0 {
         return 0;
     };
@@ -364,13 +364,78 @@ fn inv(x: u64, modulus: u64) -> u64 {
     a % modulus
 }
 
+pub fn inv(x: u64, modulus: u64) -> u64 {
+    if x == 0 || modulus == 0 || modulus == 1 {
+        return 0;
+    }
+
+    // Euclid's extended algorithm, Bèzout coefficient of `n` is not needed
+    //n is either prime or coprime
+    //
+    //function inverse(a, n)
+    //    t := 0;     newt := 1;
+    //    r := n;     newr := a;
+    //    while newr ≠ 0
+    //        quotient := r div newr
+    //        (t, newt) := (newt, t - quotient * newt)
+    //        (r, newr) := (newr, r - quotient * newr)
+    //    if r > 1 then return "a is not invertible"
+    //    if t < 0 then t := t + n
+    //    return t
+    //
+    let (mut t, mut new_t) = (0u64, 1u64);
+    let (mut r, mut new_r) = (modulus, x);
+
+    while new_r != 0 {
+        let quotient = &r / &new_r;
+
+        let temp_t = t.clone();
+        let temp_new_t = new_t.clone();
+
+        t = temp_new_t.clone();
+        new_t = checked_mod_sub(temp_t, &quotient * temp_new_t, modulus);
+
+        let temp_r = r.clone();
+        let temp_new_r = new_r.clone();
+
+        r = temp_new_r.clone();
+        new_r = checked_mod_sub(temp_r, &quotient * temp_new_r, modulus);
+    }
+    if r > 1u64 {
+        // Not invertible
+        return 0;
+    }
+    // } else if t < 0u64 {
+    //     t += modulus
+    // }
+
+    t
+}
+
+fn checked_mod_sub(a: u64, b: u64, modulus: u64) -> u64 {
+    let mut new_a = a;
+    loop {
+        match new_a.checked_sub(b) {
+            Some(val) => {
+                new_a = val;
+                break;
+            }
+            None => {
+                new_a += modulus;
+            }
+        }
+    }
+    new_a
+}
+
 fn extended_euclidean(x: u64, y: u64, modulus: u64) -> (u64, u64) {
     if y == 0 {
         return (1, 0);
     }
     let (u1, v1) = extended_euclidean(y, x % y, modulus);
-    // let q: i128 = ({u1 as i128} - {({v1 as i128} * {(x/y) as i128}) as i128}) + {modulus as i128};
-    let q: i128 = { (u1 + modulus - (v1 * (x / y))) as i128 };
+    let q: i128 =
+        ({ u1 as i128 } - { ({ v1 as i128 } * { (x / y) as i128 }) as i128 }) + { modulus as i128 };
+    // let q: i128 = { (u1 + modulus - (v1 * (x / y))) as i128 };
     let q_modulo = q % { modulus as i128 };
     let second_term = q_modulo as u64;
     // let subtracting_term = v1 * (x / y);

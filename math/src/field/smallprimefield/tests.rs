@@ -2,10 +2,39 @@ use core::convert::TryFrom;
 use std::vec;
 use utils::AsBytes;
 
-use super::{f6::SmallFieldElement37, GenericPrimeFieldElement};
+use super::{GenericPrimeFieldElement, SmallPrimeFieldElt, f6::SmallFieldElement37};
 use crate::field::traits::{FieldElement, StarkField};
 use num_bigint::BigUint;
 use rand_utils::{rand_value, rand_vector};
+
+type SmallFieldElement17 = SmallPrimeFieldElt<17, 3>;
+
+#[test]
+fn test_add_17() {
+    // identity
+    let r: SmallFieldElement17 = rand_value();
+    assert_eq!(r, r + SmallFieldElement17::ZERO);
+
+    // test addition within bounds
+    assert_eq!(
+        SmallFieldElement17::from(5u8),
+        SmallFieldElement17::from(2u8) + SmallFieldElement17::from(3u8)
+    );
+
+    // test overflow
+    let t = SmallFieldElement17::from(SmallFieldElement17::MODULUS - 1);
+    assert_eq!(SmallFieldElement17::ZERO, t + SmallFieldElement17::ONE);
+    assert_eq!(SmallFieldElement17::ONE, t + SmallFieldElement17::from(2u8));
+
+    // test random values
+    let r1: SmallFieldElement17 = rand_value();
+    let r2: SmallFieldElement17 = rand_value();
+
+    let expected =
+        (r1.to_big_uint() + r2.to_big_uint()) % BigUint::from(SmallFieldElement17::MODULUS);
+    let expected = SmallFieldElement17::from_big_uint(expected);
+    assert_eq!(expected, r1 + r2);
+}
 
 #[test]
 fn test_add() {
@@ -242,5 +271,18 @@ impl SmallFieldElement37 {
         let mut buffer = [0u8; 8];
         buffer[0..bytes.len()].copy_from_slice(&bytes);
         SmallFieldElement37::try_from(buffer).unwrap()
+    }
+}
+
+impl<const M: u64, const G: u64> SmallPrimeFieldElt<M, G> {
+    pub fn to_big_uint(&self) -> BigUint {
+        BigUint::from_bytes_le(&self.as_bytes())
+    }
+
+    pub fn from_big_uint(value: BigUint) -> Self {
+        let bytes = value.to_bytes_le();
+        let mut buffer = [0u8; 8];
+        buffer[0..bytes.len()].copy_from_slice(&bytes);
+        SmallPrimeFieldElt::try_from(buffer).unwrap()
     }
 }

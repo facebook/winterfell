@@ -39,3 +39,4 @@ criterion = "0.3"
 num-bigint = "0.4"
 proptest = "1.0"
 rand-utils = { version = "0.2", path = "../utils/rand", package = "winter-rand-utils" }
+typenum = "1.14"

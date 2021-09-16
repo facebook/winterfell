@@ -9,6 +9,9 @@ pub mod f6;
 pub mod generic_prime_field_elt;
 use generic_prime_field_elt::GenericPrimeFieldElement;
 
+pub mod small_prime_field_elt;
+use small_prime_field_elt::SmallPrimeFieldElt;
+
 #[cfg(test)]
 mod tests;
 
