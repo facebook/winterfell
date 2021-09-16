@@ -1,10 +1,10 @@
 use core::{
     convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter},
+    mem,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
     slice,
 };
-use std::{mem, u64};
 use utils::{
     string::String, AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError,
     Randomizable, Serializable,
