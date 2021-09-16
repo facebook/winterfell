@@ -21,14 +21,6 @@ pub struct SmallPrimeFieldElt<const M: u64, const G: u64> {
 }
 
 impl<const M: u64, const G: u64> SmallPrimeFieldElt<M, G> {
-    const fn get_modulus_as_u64() -> u64 {
-        M
-    }
-
-    const fn get_generator() -> Self {
-        Self::new(G)
-    }
-
     // TODO: this may need to be something else, i.e. its own type param
     const fn get_twoadic_root() -> Self {
         Self::new(G)
@@ -38,9 +30,6 @@ impl<const M: u64, const G: u64> SmallPrimeFieldElt<M, G> {
         64u32 - M.leading_zeros()
     }
 
-    fn get_value(&self) -> u64 {
-        self.as_u64()
-    }
     /// Creates a new field element from a u128 value. If the value is greater than or equal to
     /// the field modulus, modular reduction is silently preformed. This function can also be used
     /// to initialize constants.
@@ -77,7 +66,7 @@ impl<const M: u64, const G: u64> FieldElement for SmallPrimeFieldElt<M, G> {
     const IS_CANONICAL: bool = true;
 
     fn inv(self) -> Self {
-        Self::new(inv(self.get_value(), Self::get_modulus_as_u64()))
+        Self::new(inv(self.value, M))
     }
 
     fn conjugate(&self) -> Self {
@@ -86,7 +75,7 @@ impl<const M: u64, const G: u64> FieldElement for SmallPrimeFieldElt<M, G> {
 
     fn elements_as_bytes(elements: &[Self]) -> &[u8] {
         let len = elements.len() * Self::ELEMENT_BYTES;
-        let element_values: Vec<u64> = elements.iter().map(|x| x.get_value()).collect();
+        let element_values: Vec<u64> = elements.iter().map(|x| x.value).collect();
         let p = element_values.as_ptr();
         unsafe { slice::from_raw_parts(p as *const u8, len) }
     }
@@ -113,10 +102,9 @@ impl<const M: u64, const G: u64> FieldElement for SmallPrimeFieldElt<M, G> {
 
     fn zeroed_vector(n: usize) -> Vec<Self> {
         // this uses a specialized vector initialization code which requests zero-filled memory
-        // from the OS; unfortunately, this works only for built-in types and we can't use
-        // Self::ZERO here as much less efficient initialization procedure will be invoked.
-        // We also use u128 to make sure the memory is aligned correctly for our element size.
-        debug_assert_eq!(Self::ELEMENT_BYTES, mem::size_of::<u128>());
+        // from the OS; here to fulfil trait bounds
+        // We also use u64 to make sure the memory is aligned correctly for our element size.
+        debug_assert_eq!(Self::ELEMENT_BYTES, mem::size_of::<u64>());
         let result = vec![0u128; n];
 
         // translate a zero-filled vector of u128s into a vector of base field elements
@@ -167,22 +155,6 @@ impl<const M: u64, const G: u64> FieldElement for SmallPrimeFieldElt<M, G> {
 
         r
     }
-
-    // fn rand() -> Self {
-    //     let range = Uniform::from(RANGE);
-    //     let mut g = thread_rng();
-    //     SmallFieldElement37(g.sample(range))
-    // }
-
-    // fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
-    //     Self::try_from(bytes).ok()
-    // }
-
-    // fn prng_vector(seed: [u8; 32], n: usize) -> Vec<Self> {
-    //     let range = Uniform::from(RANGE);
-    //     let g = StdRng::from_seed(seed);
-    //     g.sample_iter(range).take(n).map(SmallFieldElement37::new).collect()
-    // }
 }
 
 impl<const M: u64, const G: u64> StarkField for SmallPrimeFieldElt<M, G> {
@@ -192,12 +164,12 @@ impl<const M: u64, const G: u64> StarkField for SmallPrimeFieldElt<M, G> {
     /// sage: GF(MODULUS).order()
     /// 37
     type QuadExtension = QuadExtensionA<Self>;
-    const MODULUS: Self::PositiveInteger = Self::get_modulus_as_u64();
+    const MODULUS: Self::PositiveInteger = M;
     const MODULUS_BITS: u32 = Self::get_modulus_bits();
 
     /// sage: GF(MODULUS).primitive_element()
     /// 3
-    const GENERATOR: Self = Self::get_generator();
+    const GENERATOR: Self = Self::new(G);
 
     /// sage: is_odd((MODULUS - 1) / 2^40)
     /// True
@@ -232,7 +204,7 @@ impl<const M: u64, const G: u64> StarkField for SmallPrimeFieldElt<M, G> {
     }
 
     fn as_int(&self) -> Self::PositiveInteger {
-        self.get_value()
+        self.value
     }
 
     // fn from_int(value: u64) -> Self {
@@ -242,7 +214,7 @@ impl<const M: u64, const G: u64> StarkField for SmallPrimeFieldElt<M, G> {
 
 impl<const M: u64, const G: u64> Display for SmallPrimeFieldElt<M, G> {
     fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
-        write!(f, "{}", self.get_value())
+        write!(f, "{}", self.value)
     }
 }
 
@@ -253,7 +225,7 @@ impl<const M: u64, const G: u64> Add for SmallPrimeFieldElt<M, G> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
-        Self::new(self.get_value() + rhs.get_value())
+        Self::new(self.value + rhs.value)
     }
 }
 
@@ -281,7 +253,7 @@ impl<const M: u64, const G: u64> Mul for SmallPrimeFieldElt<M, G> {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self {
-        Self::new(self.get_value() * rhs.get_value())
+        Self::new(self.value * rhs.value)
     }
 }
 
@@ -295,7 +267,7 @@ impl<const M: u64, const G: u64> Div for SmallPrimeFieldElt<M, G> {
     type Output = Self;
 
     fn div(self, rhs: Self) -> Self {
-        Self::new(self.get_value() / rhs.get_value())
+        Self::new(self.value / rhs.value)
     }
 }
 
@@ -309,7 +281,7 @@ impl<const M: u64, const G: u64> Neg for SmallPrimeFieldElt<M, G> {
     type Output = Self;
 
     fn neg(self) -> Self {
-        Self::new(Self::get_modulus_as_u64() - self.get_value())
+        Self::new(M - self.value)
     }
 }
 
@@ -379,7 +351,7 @@ impl<'a, const M: u64, const G: u64> TryFrom<&'a [u8]> for SmallPrimeFieldElt<M,
 impl<const M: u64, const G: u64> AsBytes for SmallPrimeFieldElt<M, G> {
     fn as_bytes(&self) -> &[u8] {
         // TODO: take endianness into account
-        let self_ptr: *const u64 = &self.get_value();
+        let self_ptr: *const u64 = &self.value;
         unsafe { slice::from_raw_parts(self_ptr as *const u8, ELEMENT_BYTES) }
     }
 }
@@ -389,14 +361,14 @@ impl<const M: u64, const G: u64> AsBytes for SmallPrimeFieldElt<M, G> {
 
 impl<const M: u64, const G: u64> Serializable for SmallPrimeFieldElt<M, G> {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write_u8_slice(&self.get_value().to_le_bytes());
+        target.write_u8_slice(&self.value.to_le_bytes());
     }
 }
 
 impl<const M: u64, const G: u64> Deserializable for SmallPrimeFieldElt<M, G> {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let value = source.read_u64()?;
-        if value >= Self::get_modulus_as_u64() {
+        if value >= M {
             return Err(DeserializationError::InvalidValue(format!(
                 "invalid field element: value {} is greater than or equal to the field modulus",
                 value
@@ -416,6 +388,7 @@ impl<const M: u64, const G: u64> Randomizable for SmallPrimeFieldElt<M, G> {
 
 // Helper functions ******
 
+// Got the skeleton of this algorithm from https://docs.rs/unknown_order/0.2.3/src/unknown_order/rust_backend.rs.html#143-184
 pub fn inv(x: u64, modulus: u64) -> u64 {
     if x == 0 || modulus == 0 || modulus == 1 {
         return 0;
