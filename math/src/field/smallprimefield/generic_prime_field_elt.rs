@@ -79,8 +79,7 @@ impl<const M: u64, const G: u64> FieldElement for GenericPrimeFieldElt<M, G> {
 
     fn elements_as_bytes(elements: &[Self]) -> &[u8] {
         let len = elements.len() * Self::ELEMENT_BYTES;
-        let element_values: Vec<u64> = elements.iter().map(|x| x.value).collect();
-        let p = element_values.as_ptr();
+        let p = elements.as_ptr();
         unsafe { slice::from_raw_parts(p as *const u8, len) }
     }
 
