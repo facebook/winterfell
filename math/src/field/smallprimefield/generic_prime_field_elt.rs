@@ -17,7 +17,7 @@ use utils::{
 };
 
 // Number of bytes needed to represent field element
-const ELEMENT_BYTES: usize = std::mem::size_of::<u64>();
+const ELEMENT_BYTES: usize = mem::size_of::<u64>();
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub struct GenericPrimeFieldElt<const M: u64, const G: u64> {
