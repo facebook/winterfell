@@ -1,3 +1,5 @@
+use crate::fft;
+
 use super::{
     traits::{FieldElement, StarkField},
     QuadExtensionA,
@@ -34,11 +36,11 @@ const ELEMENT_BYTES: usize = mem::size_of::<u64>();
 /// `u64`.
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
-pub struct BaseElement<const M: u64, const G: u64> {
+pub struct BaseElement<const M: u64, const G: u64, const T: u32> {
     pub(crate) value: u64,
 }
 
-impl<const M: u64, const G: u64> BaseElement<M, G> {
+impl<const M: u64, const G: u64, const T: u32> BaseElement<M, G, T> {
     const fn get_twoadic_root() -> Self {
         let g_pow = div_by_power_of_two(M, Self::TWO_ADICITY);
         let pow_val = G ^ g_pow;
@@ -58,7 +60,7 @@ impl<const M: u64, const G: u64> BaseElement<M, G> {
     }
 
     #[allow(unused)]
-    unsafe fn get_power_series(b: Self, n: usize) -> Vec<Self> {
+    pub unsafe fn get_power_series(b: Self, n: usize) -> Vec<Self> {
         let mut result = utils::uninit_vector(n);
         result[0] = Self::ONE;
         for i in 1..result.len() {
@@ -66,9 +68,32 @@ impl<const M: u64, const G: u64> BaseElement<M, G> {
         }
         result
     }
+
+    pub unsafe fn get_twiddles(domain_size: usize) -> Vec<Self> {
+        debug_assert!(
+            domain_size.is_power_of_two(),
+            "domain size must be a power of 2"
+        );
+        let root = Self::get_root_of_unity(domain_size.try_into().unwrap());
+        let mut twiddles = Self::get_power_series(root, domain_size / 2);
+        fft::permute(&mut twiddles);
+        twiddles
+    }
+
+    pub unsafe fn get_inv_twiddles(domain_size: usize) -> Vec<Self> {
+        debug_assert!(
+            domain_size.is_power_of_two(),
+            "domain size must be a power of 2"
+        );
+        let root = Self::get_root_of_unity(domain_size.try_into().unwrap());
+        let inv_root = root.exp((domain_size as u32 - 1).into());
+        let mut inv_twiddles = Self::get_power_series(inv_root, domain_size / 2);
+        fft::permute(&mut inv_twiddles);
+        inv_twiddles
+    }
 }
 
-impl<const M: u64, const G: u64> FieldElement for BaseElement<M, G> {
+impl<const M: u64, const G: u64, const T: u32> FieldElement for BaseElement<M, G, T> {
     type PositiveInteger = u64;
     type BaseField = Self;
 
@@ -170,14 +195,14 @@ impl<const M: u64, const G: u64> FieldElement for BaseElement<M, G> {
     }
 }
 
-impl<const M: u64, const G: u64> StarkField for BaseElement<M, G> {
+impl<const M: u64, const G: u64, const T: u32> StarkField for BaseElement<M, G, T> {
     type QuadExtension = QuadExtensionA<Self>;
     const MODULUS: Self::PositiveInteger = M;
     const MODULUS_BITS: u32 = Self::get_modulus_bits();
 
     const GENERATOR: Self = Self::new(G);
 
-    const TWO_ADICITY: u32 = get_two_adicity(Self::MODULUS);
+    const TWO_ADICITY: u32 = T;
 
     const TWO_ADIC_ROOT_OF_UNITY: Self = Self::get_twoadic_root();
 
@@ -198,7 +223,7 @@ impl<const M: u64, const G: u64> StarkField for BaseElement<M, G> {
     }
 }
 
-impl<const M: u64, const G: u64> Display for BaseElement<M, G> {
+impl<const M: u64, const G: u64, const T: u32> Display for BaseElement<M, G, T> {
     fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
         write!(f, "{}", self.value)
     }
@@ -207,7 +232,7 @@ impl<const M: u64, const G: u64> Display for BaseElement<M, G> {
 // OVERLOADED OPERATORS
 // ================================================================================================
 
-impl<const M: u64, const G: u64> Add for BaseElement<M, G> {
+impl<const M: u64, const G: u64, const T: u32> Add for BaseElement<M, G, T> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
@@ -215,13 +240,13 @@ impl<const M: u64, const G: u64> Add for BaseElement<M, G> {
     }
 }
 
-impl<const M: u64, const G: u64> AddAssign for BaseElement<M, G> {
+impl<const M: u64, const G: u64, const T: u32> AddAssign for BaseElement<M, G, T> {
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs
     }
 }
 
-impl<const M: u64, const G: u64> Sub for BaseElement<M, G> {
+impl<const M: u64, const G: u64, const T: u32> Sub for BaseElement<M, G, T> {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self {
@@ -229,13 +254,13 @@ impl<const M: u64, const G: u64> Sub for BaseElement<M, G> {
     }
 }
 
-impl<const M: u64, const G: u64> SubAssign for BaseElement<M, G> {
+impl<const M: u64, const G: u64, const T: u32> SubAssign for BaseElement<M, G, T> {
     fn sub_assign(&mut self, rhs: Self) {
         *self = *self - rhs;
     }
 }
 
-impl<const M: u64, const G: u64> Mul for BaseElement<M, G> {
+impl<const M: u64, const G: u64, const T: u32> Mul for BaseElement<M, G, T> {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self {
@@ -243,13 +268,13 @@ impl<const M: u64, const G: u64> Mul for BaseElement<M, G> {
     }
 }
 
-impl<const M: u64, const G: u64> MulAssign for BaseElement<M, G> {
+impl<const M: u64, const G: u64, const T: u32> MulAssign for BaseElement<M, G, T> {
     fn mul_assign(&mut self, rhs: Self) {
         *self = *self * rhs
     }
 }
 
-impl<const M: u64, const G: u64> Div for BaseElement<M, G> {
+impl<const M: u64, const G: u64, const T: u32> Div for BaseElement<M, G, T> {
     type Output = Self;
 
     fn div(self, rhs: Self) -> Self {
@@ -257,13 +282,13 @@ impl<const M: u64, const G: u64> Div for BaseElement<M, G> {
     }
 }
 
-impl<const M: u64, const G: u64> DivAssign for BaseElement<M, G> {
+impl<const M: u64, const G: u64, const T: u32> DivAssign for BaseElement<M, G, T> {
     fn div_assign(&mut self, rhs: Self) {
         *self = *self / rhs
     }
 }
 
-impl<const M: u64, const G: u64> Neg for BaseElement<M, G> {
+impl<const M: u64, const G: u64, const T: u32> Neg for BaseElement<M, G, T> {
     type Output = Self;
 
     fn neg(self) -> Self {
@@ -274,7 +299,7 @@ impl<const M: u64, const G: u64> Neg for BaseElement<M, G> {
 // TYPE CONVERSIONS
 // ================================================================================================
 
-impl<const M: u64, const G: u64> From<u128> for BaseElement<M, G> {
+impl<const M: u64, const G: u64, const T: u32> From<u128> for BaseElement<M, G, T> {
     /// Converts a 128-bit value into a field element. If the value is greater than or equal to
     /// the field modulus, modular reduction is silently preformed.
     fn from(value: u128) -> Self {
@@ -282,35 +307,35 @@ impl<const M: u64, const G: u64> From<u128> for BaseElement<M, G> {
     }
 }
 
-impl<const M: u64, const G: u64> From<u64> for BaseElement<M, G> {
+impl<const M: u64, const G: u64, const T: u32> From<u64> for BaseElement<M, G, T> {
     /// Converts a 64-bit value into a field element.
     fn from(value: u64) -> Self {
         BaseElement::new(value as u64)
     }
 }
 
-impl<const M: u64, const G: u64> From<u32> for BaseElement<M, G> {
+impl<const M: u64, const G: u64, const T: u32> From<u32> for BaseElement<M, G, T> {
     /// Converts a 32-bit value into a field element.
     fn from(value: u32) -> Self {
         BaseElement::new(value as u64)
     }
 }
 
-impl<const M: u64, const G: u64> From<u16> for BaseElement<M, G> {
+impl<const M: u64, const G: u64, const T: u32> From<u16> for BaseElement<M, G, T> {
     /// Converts a 16-bit value into a field element.
     fn from(value: u16) -> Self {
         BaseElement::new(value as u64)
     }
 }
 
-impl<const M: u64, const G: u64> From<u8> for BaseElement<M, G> {
+impl<const M: u64, const G: u64, const T: u32> From<u8> for BaseElement<M, G, T> {
     /// Converts an 8-bit value into a field element.
     fn from(value: u8) -> Self {
         BaseElement::new(value as u64)
     }
 }
 
-impl<const M: u64, const G: u64> From<[u8; 8]> for BaseElement<M, G> {
+impl<const M: u64, const G: u64, const T: u32> From<[u8; 8]> for BaseElement<M, G, T> {
     /// Converts the value encoded in an array of 8 bytes into a field element. The bytes
     /// are assumed to be in little-endian byte order. If the value is greater than or equal
     /// to the field modulus, modular reduction is silently preformed.
@@ -320,7 +345,7 @@ impl<const M: u64, const G: u64> From<[u8; 8]> for BaseElement<M, G> {
     }
 }
 
-impl<'a, const M: u64, const G: u64> TryFrom<&'a [u8]> for BaseElement<M, G> {
+impl<'a, const M: u64, const G: u64, const T: u32> TryFrom<&'a [u8]> for BaseElement<M, G, T> {
     type Error = String;
 
     /// Converts a slice of bytes into a field element; returns error if the value encoded in bytes
@@ -334,7 +359,7 @@ impl<'a, const M: u64, const G: u64> TryFrom<&'a [u8]> for BaseElement<M, G> {
     }
 }
 
-impl<const M: u64, const G: u64> AsBytes for BaseElement<M, G> {
+impl<const M: u64, const G: u64, const T: u32> AsBytes for BaseElement<M, G, T> {
     fn as_bytes(&self) -> &[u8] {
         // TODO: take endianness into account
         let self_ptr: *const u64 = &self.value;
@@ -345,13 +370,13 @@ impl<const M: u64, const G: u64> AsBytes for BaseElement<M, G> {
 // SERIALIZATION / DESERIALIZATION
 // ------------------------------------------------------------------------------------------------
 
-impl<const M: u64, const G: u64> Serializable for BaseElement<M, G> {
+impl<const M: u64, const G: u64, const T: u32> Serializable for BaseElement<M, G, T> {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_u8_slice(&self.value.to_le_bytes());
     }
 }
 
-impl<const M: u64, const G: u64> Deserializable for BaseElement<M, G> {
+impl<const M: u64, const G: u64, const T: u32> Deserializable for BaseElement<M, G, T> {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let value = source.read_u64()?;
         if value >= M {
@@ -364,7 +389,7 @@ impl<const M: u64, const G: u64> Deserializable for BaseElement<M, G> {
     }
 }
 
-impl<const M: u64, const G: u64> Randomizable for BaseElement<M, G> {
+impl<const M: u64, const G: u64, const T: u32> Randomizable for BaseElement<M, G, T> {
     const VALUE_SIZE: usize = Self::ELEMENT_BYTES;
 
     fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
@@ -455,10 +480,10 @@ pub fn get_prime_field_root_of_unity<E: StarkField>(n: u32, modulus: u64) -> E {
 
 const fn get_two_adicity(n: u64) -> u32 {
     let mut two_adicity = 0;
-    let mut quotient = n;
+    let mut quotient = n - 1;
     while quotient % 2 == 0 {
-        two_adicity += 1;
-        quotient /= 2;
+        two_adicity = two_adicity + 1;
+        quotient = quotient + 2;
     }
     two_adicity
 }
