@@ -586,7 +586,7 @@ where
 // HELPER FUNCTIONS
 // ================================================================================================
 
-fn permute<E: FieldElement>(v: &mut [E]) {
+pub(crate) fn permute<E: FieldElement>(v: &mut [E]) {
     if cfg!(feature = "concurrent") && v.len() >= MIN_CONCURRENT_SIZE {
         #[cfg(feature = "concurrent")]
         concurrent::permute(v);

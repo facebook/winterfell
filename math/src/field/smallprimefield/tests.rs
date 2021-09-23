@@ -6,8 +6,14 @@ use super::BaseElement;
 use num_bigint::BigUint;
 use rand_utils::{rand_value, rand_vector};
 
-type SmallFieldElement17 = BaseElement<17, 3>;
-type SmallFieldElement37 = BaseElement<37, 2>;
+type SmallFieldElement17 = BaseElement<17, 3, 4>;
+type SmallFieldElement37 = BaseElement<37, 2, 2>;
+
+#[test]
+fn test_two_adicity_17() {
+    assert!(4 == SmallFieldElement17::TWO_ADICITY, "Two-adicity of SmallFieldElement17 = {}", SmallFieldElement17::TWO_ADICITY);
+}
+
 
 #[test]
 fn test_add_17() {
@@ -321,7 +327,7 @@ fn test_array_from_bytes_37() {
 // HELPER FUNCTIONS
 // ================================================================================================
 
-impl<const M: u64, const G: u64> BaseElement<M, G> {
+impl<const M: u64, const G: u64, const T: u32> BaseElement<M, G, T> {
     pub fn to_big_uint(&self) -> BigUint {
         BigUint::from_bytes_le(&self.as_bytes())
     }
