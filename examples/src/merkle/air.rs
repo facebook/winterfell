@@ -176,7 +176,7 @@ impl TraceBuilder for MerkleTraceBuilder {
         // fill the trace with data
         let mut state = [BaseElement::ZERO; TRACE_WIDTH];
         self.init_state(&mut state, 0);
-        trace.update_row(0, &mut state);
+        trace.update_row(0, &state);
 
         for step in 0..trace.length() - 1 {
             self.update_state(&mut state, step, 0);
