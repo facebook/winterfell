@@ -8,16 +8,8 @@ use air::{Air, EvaluationFrame, TraceInfo};
 use math::{fft, log2, polynom, StarkField};
 use utils::{collections::Vec, iter_mut, uninit_vector};
 
-#[cfg(not(feature = "concurrent"))]
-use utils::collections::vec;
-
 #[cfg(feature = "concurrent")]
-use utils::{iterators::*, rayon};
-
-// CONSTANTS
-// ================================================================================================
-
-const MIN_FRAGMENT_LENGTH: usize = 2;
+use utils::iterators::*;
 
 // TRACE TABLE
 // ================================================================================================
@@ -251,80 +243,6 @@ impl<B: StarkField> ExecutionTrace<B> {
         }
     }
 
-    // FRAGMENTS
-    // --------------------------------------------------------------------------------------------
-
-    /// Breaks the execution trace into mutable fragments.
-    ///
-    /// The number of rows in each fragment will be equal to `fragment_length` parameter. The
-    /// returned fragments can be used to update data in the trace from multiple threads.
-    ///
-    /// # Panics
-    /// Panics if `fragment_length` is smaller than 2, greater than the length of the trace,
-    /// or is not a power of two.
-    #[cfg(not(feature = "concurrent"))]
-    pub fn fragments(
-        &mut self,
-        fragment_length: usize,
-    ) -> vec::IntoIter<ExecutionTraceFragment<B>> {
-        self.build_fragments(fragment_length).into_iter()
-    }
-
-    /// Breaks the execution trace into mutable fragments.
-    ///
-    /// The number of rows in each fragment will be equal to `fragment_length` parameter. The
-    /// returned fragments can be used to update data in the trace from multiple threads.
-    ///
-    /// # Panics
-    /// Panics if `fragment_length` is smaller than 2, greater than the length of the trace,
-    /// or is not a power of two.
-    #[cfg(feature = "concurrent")]
-    pub fn fragments(
-        &mut self,
-        fragment_length: usize,
-    ) -> rayon::vec::IntoIter<ExecutionTraceFragment<B>> {
-        self.build_fragments(fragment_length).into_par_iter()
-    }
-
-    /// Returns a vector of trace fragments each covering the number of steps specified by the
-    /// `fragment_length` parameter.
-    fn build_fragments(&mut self, fragment_length: usize) -> Vec<ExecutionTraceFragment<B>> {
-        assert!(
-            fragment_length >= MIN_FRAGMENT_LENGTH,
-            "fragment length must be at least {}, but was {}",
-            MIN_FRAGMENT_LENGTH,
-            fragment_length
-        );
-        assert!(
-            fragment_length <= self.length(),
-            "length of a fragment cannot exceed {}, but was {}",
-            self.length(),
-            fragment_length
-        );
-        assert!(
-            fragment_length.is_power_of_two(),
-            "fragment length must be a power of 2"
-        );
-        let num_fragments = self.length() / fragment_length;
-
-        let mut fragment_data = (0..num_fragments).map(|_| Vec::new()).collect::<Vec<_>>();
-        self.trace.iter_mut().for_each(|column| {
-            for (i, fragment) in column.chunks_mut(fragment_length).enumerate() {
-                fragment_data[i].push(fragment);
-            }
-        });
-
-        fragment_data
-            .into_iter()
-            .enumerate()
-            .map(|(i, data)| ExecutionTraceFragment {
-                index: i,
-                offset: i * fragment_length,
-                data,
-            })
-            .collect()
-    }
-
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
@@ -465,86 +383,6 @@ impl<B: StarkField> ExecutionTrace<B> {
             TraceTable::new(extended_trace, domain.trace_to_lde_blowup()),
             TracePolyTable::new(self.trace),
         )
-    }
-}
-
-// TRACE FRAGMENTS
-// ================================================================================================
-/// A set of consecutive rows of an execution trace.
-///
-/// An execution trace fragment is a "view" into the specific execution trace. Updating data in
-/// the fragment, directly updates the data in the underlying execution trace.
-///
-/// A fragment cannot be instantiated directly but is created by executing
-/// [ExecutionTrace::fragments()] method.
-///
-/// A fragment always contains contiguous rows, and the number of rows is guaranteed to be a power
-/// of two.
-pub struct ExecutionTraceFragment<'a, B: StarkField> {
-    index: usize,
-    offset: usize,
-    data: Vec<&'a mut [B]>,
-}
-
-impl<'a, B: StarkField> ExecutionTraceFragment<'a, B> {
-    // PUBLIC ACCESSORS
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns the index of this fragment.
-    pub fn index(&self) -> usize {
-        self.index
-    }
-
-    /// Returns the step at which the fragment starts in the context of the original execution
-    /// trace.
-    pub fn offset(&self) -> usize {
-        self.offset
-    }
-
-    /// Returns the number of rows in this execution trace fragment.
-    pub fn length(&self) -> usize {
-        self.data[0].len()
-    }
-
-    /// Returns the width of the fragment (same as the width of the underlying execution trace).
-    pub fn width(&self) -> usize {
-        self.data.len()
-    }
-
-    // DATA MUTATORS
-    // --------------------------------------------------------------------------------------------
-
-    /// Fills all rows in the fragment.
-    ///
-    /// The rows are filled by executing the provided closures as follows:
-    /// - `init` closure is used to initialize the first row of the fragment; it receives a
-    ///   mutable reference to the first state initialized to all zeros. Contents of the state are
-    ///   copied into the first row of the fragment after the closure returns.
-    /// - `update` closure is used to populate all subsequent rows of the fragment; it receives two
-    ///   parameters:
-    ///   - index of the last updated row (starting with 0).
-    ///   - a mutable reference to the last updated state; the contents of the state are copied
-    ///     into the next row of the fragment after the closure returns.
-    pub fn fill<I, T>(&mut self, init_state: I, update_state: T)
-    where
-        I: Fn(&mut [B]),
-        T: Fn(usize, &mut [B]),
-    {
-        let mut state = vec![B::ZERO; self.width()];
-        init_state(&mut state);
-        self.update_row(0, &state);
-
-        for i in 0..self.length() - 1 {
-            update_state(i, &mut state);
-            self.update_row(i + 1, &state);
-        }
-    }
-
-    /// Updates a single row in the fragment with provided data.
-    pub fn update_row(&mut self, row_idx: usize, row_data: &[B]) {
-        for (column, &value) in self.data.iter_mut().zip(row_data) {
-            column[row_idx] = value;
-        }
     }
 }
 

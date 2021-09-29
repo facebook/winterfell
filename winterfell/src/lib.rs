@@ -458,8 +458,8 @@ pub use prover::{
     crypto, iterators, math, prove, Air, AirContext, Assertion, BoundaryConstraint,
     BoundaryConstraintGroup, ByteReader, ByteWriter, ConstraintCompositionCoefficients,
     ConstraintDivisor, DeepCompositionCoefficients, Deserializable, DeserializationError,
-    EvaluationFrame, ExecutionTrace, ExecutionTraceFragment, FieldExtension, HashFunction,
-    ProofOptions, ProverError, Serializable, StarkProof, TraceBuilder, TraceInfo,
-    TransitionConstraintDegree, TransitionConstraintGroup,
+    EvaluationFrame, ExecutionTrace, FieldExtension, HashFunction, ProofOptions, ProverError,
+    Serializable, StarkProof, TraceBuilder, TraceInfo, TransitionConstraintDegree,
+    TransitionConstraintGroup,
 };
 pub use verifier::{verify, VerifierError};

@@ -12,7 +12,7 @@ mod poly_table;
 pub use poly_table::TracePolyTable;
 
 mod execution_trace;
-pub use execution_trace::{ExecutionTrace, ExecutionTraceFragment};
+pub use execution_trace::ExecutionTrace;
 
 mod trace_builder;
 pub use trace_builder::TraceBuilder;
