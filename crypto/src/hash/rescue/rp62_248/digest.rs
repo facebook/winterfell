@@ -11,7 +11,7 @@ use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serial
 // DIGEST TRAIT IMPLEMENTATIONS
 // ================================================================================================
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Default, Eq, PartialEq)]
 pub struct ElementDigest([BaseElement; DIGEST_SIZE]);
 
 impl ElementDigest {
@@ -44,12 +44,6 @@ impl Digest for ElementDigest {
         result[24..].copy_from_slice(&(v4 >> 6).to_le_bytes());
 
         result
-    }
-}
-
-impl Default for ElementDigest {
-    fn default() -> Self {
-        ElementDigest([BaseElement::default(); DIGEST_SIZE])
     }
 }
 

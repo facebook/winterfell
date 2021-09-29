@@ -11,55 +11,57 @@ use utils::{batch_iter_mut, collections::Vec, uninit_vector};
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
 
-// TRACE TABLE
+// TRACE LDE
 // ================================================================================================
-pub struct TraceTable<B: StarkField> {
+
+/// Trace low-degree extension.
+pub struct TraceLde<B: StarkField> {
     data: Vec<Vec<B>>,
     blowup: usize,
 }
 
-impl<B: StarkField> TraceTable<B> {
+impl<B: StarkField> TraceLde<B> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
-    /// Creates a new trace table from a list of provided register traces.
+    /// Creates a new trace low-degree extension from a list of provided columns.
     pub(super) fn new(data: Vec<Vec<B>>, blowup: usize) -> Self {
-        TraceTable { data, blowup }
+        TraceLde { data, blowup }
     }
 
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns number of registers in the trace table.
+    /// Returns number of columns in this trace LDE.
     pub fn width(&self) -> usize {
         self.data.len()
     }
 
-    /// Returns the number of states in this trace table.
+    /// Returns the number of rows in this trace LDE.
     #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         self.data[0].len()
     }
 
-    /// Returns blowup factor which was used to extend original trace into this trace.
+    /// Returns blowup factor which was used to extend original execution trace into this LDE.
     pub fn blowup(&self) -> usize {
         self.blowup
     }
 
-    /// Returns value in the specified `register` at the specified `step`.
-    pub fn get(&self, register: usize, step: usize) -> B {
-        self.data[register][step]
+    /// Returns value of a trace cell in the column at the specified index at the specified step.
+    pub fn get(&self, col_idx: usize, step: usize) -> B {
+        self.data[col_idx][step]
     }
 
-    /// Returns the entire register trace for the register at the specified index.
+    /// Returns the entire trace for the column at the specified index.
     #[cfg(test)]
-    pub fn get_register(&self, idx: usize) -> &[B] {
-        &self.data[idx]
+    pub fn get_column(&self, col_idx: usize) -> &[B] {
+        &self.data[col_idx]
     }
 
-    /// Copies values of all registers at the specified `step` into the `destination` slice.
+    /// Copies values of all columns at the specified `step` into the `destination` slice.
     pub fn read_row_into(&self, step: usize, row: &mut [B]) {
-        for (register, value) in self.data.iter().zip(row.iter_mut()) {
-            *value = register[step];
+        for (column, value) in self.data.iter().zip(row.iter_mut()) {
+            *value = column[step];
         }
     }
 

@@ -6,7 +6,7 @@
 use super::ExecutionTrace;
 use air::TraceInfo;
 use math::{FieldElement, StarkField};
-use utils::{iter_mut, uninit_vector, Serializable};
+use utils::{collections::Vec, iter_mut, uninit_vector, Serializable};
 
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
@@ -92,7 +92,7 @@ fn build_chunks<B: StarkField>(trace: &mut [Vec<B>], chunk_size: usize) -> Vec<T
     chunk_data
         .into_iter()
         .enumerate()
-        .map(|(i, data)| TraceChunk { index: i, data })
+        .map(|(index, data)| TraceChunk { index, data })
         .collect()
 }
 

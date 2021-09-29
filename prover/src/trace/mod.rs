@@ -5,8 +5,8 @@
 
 use super::StarkDomain;
 
-mod trace_table;
-pub use trace_table::TraceTable;
+mod trace_lde;
+pub use trace_lde::TraceLde;
 
 mod poly_table;
 pub use poly_table::TracePolyTable;

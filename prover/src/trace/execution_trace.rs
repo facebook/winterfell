@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{StarkDomain, TracePolyTable, TraceTable};
+use super::{StarkDomain, TraceLde, TracePolyTable};
 use air::{Air, EvaluationFrame, TraceInfo};
 use math::{fft, log2, polynom, StarkField};
 use utils::{collections::Vec, iter_mut, uninit_vector};
@@ -362,7 +362,7 @@ impl<B: StarkField> ExecutionTrace<B> {
     ///
     /// The extension is done by first interpolating each register into a polynomial over the
     /// trace domain, and then evaluating the polynomial over the LDE domain.
-    pub fn extend(mut self, domain: &StarkDomain<B>) -> (TraceTable<B>, TracePolyTable<B>) {
+    pub fn extend(mut self, domain: &StarkDomain<B>) -> (TraceLde<B>, TracePolyTable<B>) {
         assert_eq!(
             self.length(),
             domain.trace_length(),
@@ -380,7 +380,7 @@ impl<B: StarkField> ExecutionTrace<B> {
             .collect();
 
         (
-            TraceTable::new(extended_trace, domain.trace_to_lde_blowup()),
+            TraceLde::new(extended_trace, domain.trace_to_lde_blowup()),
             TracePolyTable::new(self.trace),
         )
     }

@@ -46,12 +46,9 @@ pub use air::{
     EvaluationFrame, FieldExtension, HashFunction, ProofOptions, TraceInfo,
     TransitionConstraintDegree, TransitionConstraintGroup,
 };
-pub use utils::{
-    iterators, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
-};
+pub use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 use fri::FriProver;
-use utils::collections::Vec;
 
 pub use math;
 use math::{
@@ -116,8 +113,62 @@ pub fn prove<AIR: Air, TB: TraceBuilder<BaseField = AIR::BaseField, PublicInputs
     trace_builder: TB,
     options: ProofOptions,
 ) -> Result<StarkProof, ProverError> {
+    // figure out which version of the generic proof generation procedure to run. this is a sort
+    // of static dispatch for selecting two generic parameter: extension field and hash function.
+    match options.field_extension() {
+        FieldExtension::None => match options.hash_fn() {
+            HashFunction::Blake3_256 => generate_proof::
+                <AIR, TB, AIR::BaseField, Blake3_256<AIR::BaseField>>(trace_builder, options),
+            HashFunction::Blake3_192 => generate_proof::
+                <AIR, TB, AIR::BaseField, Blake3_192<AIR::BaseField>>(trace_builder, options),
+            HashFunction::Sha3_256 => generate_proof::
+                <AIR, TB, AIR::BaseField, Sha3_256<AIR::BaseField>>(trace_builder, options)
+        },
+        FieldExtension::Quadratic => {
+            if !<QuadExtension<AIR::BaseField>>::is_supported() {
+                return Err(ProverError::UnsupportedFieldExtension(2));
+            }
+            match options.hash_fn() {
+                HashFunction::Blake3_256 => generate_proof::
+                    <AIR, TB, QuadExtension<AIR::BaseField>, Blake3_256<AIR::BaseField>>(trace_builder, options),
+                HashFunction::Blake3_192 => generate_proof::
+                    <AIR, TB, QuadExtension<AIR::BaseField>, Blake3_192<AIR::BaseField>>(trace_builder, options),
+                HashFunction::Sha3_256 => generate_proof::
+                    <AIR, TB, QuadExtension<AIR::BaseField>, Sha3_256<AIR::BaseField>>(trace_builder, options),
+            }
+        },
+        FieldExtension::Cubic => {
+            if !<CubeExtension<AIR::BaseField>>::is_supported() {
+                return Err(ProverError::UnsupportedFieldExtension(3));
+            }
+            match options.hash_fn() {
+                HashFunction::Blake3_256 => generate_proof::
+                    <AIR, TB, CubeExtension<AIR::BaseField>, Blake3_256<AIR::BaseField>>(trace_builder, options),
+                HashFunction::Blake3_192 => generate_proof::
+                    <AIR, TB, CubeExtension<AIR::BaseField>, Blake3_192<AIR::BaseField>>(trace_builder, options),
+                HashFunction::Sha3_256 => generate_proof::
+                    <AIR, TB, CubeExtension<AIR::BaseField>, Sha3_256<AIR::BaseField>>(trace_builder, options),
+            }
+        },
+    }
+}
 
-    // build execution trace
+// PROOF GENERATION PROCEDURE
+// ================================================================================================
+/// Performs the actual proof generation procedure, generating the proof that the provided
+/// execution `trace` is valid against the provided `air`.
+fn generate_proof<A, T, E, H>(
+    trace_builder: T,
+    options: ProofOptions,
+) -> Result<StarkProof, ProverError>
+where
+    A: Air,
+    T: TraceBuilder<BaseField = A::BaseField, PublicInputs = A::PublicInputs>,
+    E: FieldElement<BaseField = A::BaseField>,
+    H: ElementHasher<BaseField = A::BaseField>,
+{
+    // 1 ----- Build execution trace --------------------------------------------------------------
+
     #[cfg(feature = "std")]
     let now = Instant::now();
     let trace = trace_builder.build_trace();
@@ -137,7 +188,7 @@ pub fn prove<AIR: Air, TB: TraceBuilder<BaseField = AIR::BaseField, PublicInputs
     // the computation (provided via AIR type), and creates a description of a specific execution
     // of the computation for the provided public inputs.
     let trace_info = trace_builder.trace_info().clone();
-    let air = AIR::new(trace_info, pub_inputs, options);
+    let air = A::new(trace_info, pub_inputs, options);
 
     // make sure the specified trace is valid against the AIR. This checks validity of both,
     // assertions and state transitions. we do this in debug mode only because this is a very
@@ -145,66 +196,12 @@ pub fn prove<AIR: Air, TB: TraceBuilder<BaseField = AIR::BaseField, PublicInputs
     #[cfg(debug_assertions)]
     trace.validate(&air);
 
-    // figure out which version of the generic proof generation procedure to run. this is a sort
-    // of static dispatch for selecting two generic parameter: extension field and hash function.
-    match air.options().field_extension() {
-        FieldExtension::None => match air.options().hash_fn() {
-            HashFunction::Blake3_256 => generate_proof::
-                <AIR, AIR::BaseField, Blake3_256<AIR::BaseField>>(air, trace, pub_inputs_bytes),
-            HashFunction::Blake3_192 => generate_proof::
-                <AIR, AIR::BaseField, Blake3_192<AIR::BaseField>>(air, trace, pub_inputs_bytes),
-            HashFunction::Sha3_256 => generate_proof::
-                <AIR, AIR::BaseField, Sha3_256<AIR::BaseField>>(air, trace, pub_inputs_bytes)
-        },
-        FieldExtension::Quadratic => {
-            if !<QuadExtension<AIR::BaseField>>::is_supported() {
-                return Err(ProverError::UnsupportedFieldExtension(2));
-            }
-            match air.options().hash_fn() {
-                HashFunction::Blake3_256 => generate_proof::
-                    <AIR, QuadExtension<AIR::BaseField>, Blake3_256<AIR::BaseField>>(air, trace, pub_inputs_bytes),
-                HashFunction::Blake3_192 => generate_proof::
-                    <AIR, QuadExtension<AIR::BaseField>, Blake3_192<AIR::BaseField>>(air, trace, pub_inputs_bytes),
-                HashFunction::Sha3_256 => generate_proof::
-                    <AIR, QuadExtension<AIR::BaseField>, Sha3_256<AIR::BaseField>>(air, trace, pub_inputs_bytes),
-            }
-        },
-        FieldExtension::Cubic => {
-            if !<CubeExtension<AIR::BaseField>>::is_supported() {
-                return Err(ProverError::UnsupportedFieldExtension(3));
-            }
-            match air.options().hash_fn() {
-                HashFunction::Blake3_256 => generate_proof::
-                    <AIR, CubeExtension<AIR::BaseField>, Blake3_256<AIR::BaseField>>(air, trace, pub_inputs_bytes),
-                HashFunction::Blake3_192 => generate_proof::
-                    <AIR, CubeExtension<AIR::BaseField>, Blake3_192<AIR::BaseField>>(air, trace, pub_inputs_bytes),
-                HashFunction::Sha3_256 => generate_proof::
-                    <AIR, CubeExtension<AIR::BaseField>, Sha3_256<AIR::BaseField>>(air, trace, pub_inputs_bytes),
-            }
-        },
-    }
-}
-
-// PROOF GENERATION PROCEDURE
-// ================================================================================================
-/// Performs the actual proof generation procedure, generating the proof that the provided
-/// execution `trace` is valid against the provided `air`.
-fn generate_proof<A, E, H>(
-    air: A,
-    trace: ExecutionTrace<A::BaseField>,
-    pub_inputs_bytes: Vec<u8>,
-) -> Result<StarkProof, ProverError>
-where
-    A: Air,
-    E: FieldElement<BaseField = A::BaseField>,
-    H: ElementHasher<BaseField = A::BaseField>,
-{
     // create a channel which is used to simulate interaction between the prover and the verifier;
     // the channel will be used to commit to values and to draw randomness that should come from
     // the verifier.
     let mut channel = ProverChannel::<A, E, H>::new(&air, pub_inputs_bytes);
 
-    // 1 ----- extend execution trace -------------------------------------------------------------
+    // 2 ----- extend execution trace -------------------------------------------------------------
 
     // build computation domain; this is used later for polynomial evaluations
     #[cfg(feature = "std")]
@@ -231,7 +228,7 @@ where
         now.elapsed().as_millis()
     );
 
-    // 2 ----- commit to the extended execution trace ---------------------------------------------
+    // 3 ----- commit to the extended execution trace ---------------------------------------------
     #[cfg(feature = "std")]
     let now = Instant::now();
     let trace_tree = extended_trace.build_commitment::<H>();
