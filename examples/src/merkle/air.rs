@@ -13,8 +13,8 @@ use crate::utils::{
 };
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement},
-    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ExecutionTrace, ProofOptions,
-    Serializable, TraceBuilder, TraceInfo, TransitionConstraintDegree,
+    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ProofOptions, Serializable,
+    TraceBuilder, TraceInfo, TraceTable, TransitionConstraintDegree,
 };
 
 // CONSTANTS
@@ -169,15 +169,19 @@ impl TraceBuilder for MerkleTraceBuilder {
         &self.trace_info
     }
 
-    fn build_trace(&self) -> ExecutionTrace<Self::BaseField> {
+    fn build_trace(&self) -> TraceTable<Self::BaseField> {
         // allocate memory to hold the trace table
-        let mut trace = ExecutionTrace::new(TRACE_WIDTH, self.trace_info().length());
+        let mut trace = unsafe { TraceTable::new_blank(TRACE_WIDTH, self.trace_info().length()) };
 
         // fill the trace with data
-        trace.fill(
-            |state| self.init_state(state, 0),
-            |step, state| self.update_state(state, step, 0),
-        );
+        let mut state = [BaseElement::ZERO; TRACE_WIDTH];
+        self.init_state(&mut state, 0);
+        trace.update_row(0, &mut state);
+
+        for step in 0..trace.length() - 1 {
+            self.update_state(&mut state, step, 0);
+            trace.update_row(step + 1, &state);
+        }
 
         // set index bit at the second step to one; this still results in a valid execution trace
         // because actual index bits are inserted into the trace after step 7, but it ensures
@@ -237,7 +241,7 @@ impl TraceBuilder for MerkleTraceBuilder {
         }
     }
 
-    fn get_pub_inputs(&self, trace: &ExecutionTrace<Self::BaseField>) -> Self::PublicInputs {
+    fn get_pub_inputs(&self, trace: &TraceTable<Self::BaseField>) -> Self::PublicInputs {
         let last_step = trace.length() - 1;
         PublicInputs {
             tree_root: [trace.get(0, last_step), trace.get(1, last_step)],

@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::ExecutionTrace;
+use super::TraceTable;
 use air::TraceInfo;
 use math::{FieldElement, StarkField};
 use utils::{collections::Vec, iter_mut, uninit_vector, Serializable};
@@ -37,13 +37,13 @@ pub trait TraceBuilder: Send + Sync {
     fn update_state(&self, state: &mut [Self::BaseField], step: usize, segment: usize);
 
     /// TODO: add docs
-    fn get_pub_inputs(&self, trace: &ExecutionTrace<Self::BaseField>) -> Self::PublicInputs;
+    fn get_pub_inputs(&self, trace: &TraceTable<Self::BaseField>) -> Self::PublicInputs;
 
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
 
     /// TODO: add docs
-    fn build_trace(&self) -> ExecutionTrace<Self::BaseField> {
+    fn build_trace(&self) -> TraceTable<Self::BaseField> {
         let trace_length = self.trace_info().length();
         let trace_width = self.trace_info().width();
 
@@ -66,7 +66,7 @@ pub trait TraceBuilder: Send + Sync {
             }
         });
 
-        ExecutionTrace::init(trace)
+        TraceTable::new(trace)
     }
 
     /// TODO: add docs

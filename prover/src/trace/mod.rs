@@ -11,11 +11,14 @@ pub use trace_lde::TraceLde;
 mod poly_table;
 pub use poly_table::TracePolyTable;
 
-mod execution_trace;
-pub use execution_trace::ExecutionTrace;
-
 mod trace_builder;
 pub use trace_builder::TraceBuilder;
+
+mod trace_table;
+pub use trace_table::TraceTable;
+
+#[cfg(debug_assertions)]
+pub mod validation;
 
 #[cfg(test)]
 mod tests;

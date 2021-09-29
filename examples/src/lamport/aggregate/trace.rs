@@ -8,7 +8,7 @@ use super::{
 };
 use winterfell::{
     math::{fields::f128::BaseElement, get_power_series, FieldElement, StarkField},
-    ExecutionTrace, TraceBuilder, TraceInfo,
+    TraceBuilder, TraceInfo, TraceTable,
 };
 
 // CONSTANTS
@@ -169,7 +169,7 @@ impl TraceBuilder for LamportAggregateTraceBuilder {
         }
     }
 
-    fn get_pub_inputs(&self, trace: &ExecutionTrace<Self::BaseField>) -> Self::PublicInputs {
+    fn get_pub_inputs(&self, trace: &TraceTable<Self::BaseField>) -> Self::PublicInputs {
         let mut pub_keys = Vec::new();
         let mut messages = Vec::new();
 

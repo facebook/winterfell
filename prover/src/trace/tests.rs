@@ -28,13 +28,13 @@ fn new_trace_table() {
         .into_iter()
         .map(BaseElement::from)
         .collect();
-    assert_eq!(expected, trace.get_register(0));
+    assert_eq!(expected, trace.get_column(0));
 
     let expected: Vec<BaseElement> = vec![1u32, 3, 8, 21, 55, 144, 377, 987]
         .into_iter()
         .map(BaseElement::from)
         .collect();
-    assert_eq!(expected, trace.get_register(1));
+    assert_eq!(expected, trace.get_column(1));
 }
 
 #[test]

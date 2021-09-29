@@ -103,7 +103,7 @@
 //! ```no_run
 //! use winterfell::{
 //!     math::{fields::f128::BaseElement, FieldElement},
-//!     ByteWriter, ExecutionTrace, Serializable, TraceBuilder, TraceInfo,
+//!     ByteWriter, TraceTable, Serializable, TraceBuilder, TraceInfo,
 //! };
 //!
 //! pub struct PublicInputs {
@@ -152,7 +152,7 @@
 //!         state[0] = state[0].exp(3u32.into()) + BaseElement::new(42);
 //!     }
 //!
-//!     fn get_pub_inputs(&self, trace: &ExecutionTrace<BaseElement>) -> PublicInputs {
+//!     fn get_pub_inputs(&self, trace: &TraceTable<BaseElement>) -> PublicInputs {
 //!         PublicInputs {
 //!             start: self.start,
 //!             result: trace.get(0, trace.length() - 1),
@@ -287,7 +287,7 @@
 //! #    math::{fields::f128::BaseElement, FieldElement},
 //! #    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, Serializable,
 //! #    TraceInfo, TransitionConstraintDegree, TraceBuilder,
-//! #    ExecutionTrace, FieldExtension, HashFunction, ProofOptions, StarkProof,
+//! #    TraceTable, FieldExtension, HashFunction, ProofOptions, StarkProof,
 //! # };
 //! #
 //! # fn do_work(start: BaseElement, n: usize) -> BaseElement {
@@ -331,7 +331,7 @@
 //! #         state[0] = state[0].exp(3u32.into()) + BaseElement::new(42);
 //! #     }
 //! #
-//! #     fn get_pub_inputs(&self, trace: &ExecutionTrace<BaseElement>) -> PublicInputs {
+//! #     fn get_pub_inputs(&self, trace: &TraceTable<BaseElement>) -> PublicInputs {
 //! #         PublicInputs {
 //! #             start: self.start,
 //! #             result: trace.get(0, trace.length() - 1),
@@ -458,7 +458,7 @@ pub use prover::{
     crypto, math, prove, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
     ByteReader, ByteWriter, ConstraintCompositionCoefficients, ConstraintDivisor,
     DeepCompositionCoefficients, Deserializable, DeserializationError, EvaluationFrame,
-    ExecutionTrace, FieldExtension, HashFunction, ProofOptions, ProverError, Serializable,
-    StarkProof, TraceBuilder, TraceInfo, TransitionConstraintDegree, TransitionConstraintGroup,
+    FieldExtension, HashFunction, ProofOptions, ProverError, Serializable, StarkProof,
+    TraceBuilder, TraceInfo, TraceTable, TransitionConstraintDegree, TransitionConstraintGroup,
 };
 pub use verifier::{verify, VerifierError};

@@ -10,7 +10,7 @@ use super::{
 use std::collections::HashMap;
 use winterfell::{
     math::{fields::f128::BaseElement, get_power_series, FieldElement, StarkField},
-    ExecutionTrace, TraceBuilder, TraceInfo,
+    TraceBuilder, TraceInfo, TraceTable,
 };
 
 // CONSTANTS
@@ -226,7 +226,7 @@ impl TraceBuilder for LamportThresholdTraceBuilder {
         }
     }
 
-    fn get_pub_inputs(&self, _trace: &ExecutionTrace<Self::BaseField>) -> Self::PublicInputs {
+    fn get_pub_inputs(&self, _trace: &TraceTable<Self::BaseField>) -> Self::PublicInputs {
         self.pub_inputs.clone()
     }
 }
