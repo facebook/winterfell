@@ -27,6 +27,11 @@
 //!   very fast modular arithmetic including branchless multiplication and addition. To achieve
 //!   adequate security (i.e. ~100 bits), proofs must be generated in a quadratic extension of this
 //!   field. For higher levels of security, a cubic extension field should be used.
+//! * A 64-bit field with modulus 2<sup>64</sup> - 2<sup>32</sup> + 1. This field is about 8%
+//!   slower than the 62-bit field described above, but it has a number of other attractive
+//!   properties. To achieve adequate security (i.e. ~100 bits), proofs must be generated in a
+//!   quadratic extension of this field. For higher levels of security, a cubic extension field
+//!   should be used.
 //!
 //! ## Extension fields
 //!
@@ -93,6 +98,7 @@ pub mod fields {
 
     pub use super::field::f128;
     pub use super::field::f62;
+    pub use super::field::f64;
     pub use super::field::QuadExtensionA;
 }
 

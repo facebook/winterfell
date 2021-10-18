@@ -23,7 +23,7 @@ mod internal {
     ///
     /// # Panics
     /// Panics if:
-    /// * A valid value requires at over 32 bytes.
+    /// * A valid value requires over 32 bytes.
     /// * A valid value could not be generated after 100 tries.
     pub fn rand_value<R: Randomizable>() -> R {
         for _ in 0..100 {

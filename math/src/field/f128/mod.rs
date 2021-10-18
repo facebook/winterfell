@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-//! An implementation of a 128-bit STARK-friendly prime field with modulus 2^128 - 45 * 2^40 + 1.
+//! An implementation of a 128-bit STARK-friendly prime field with modulus $2^{128} - 45 \cdot 2^{40} + 1$.
 //!
 //! Operations in this field are implemented using Barret reduction and are stored in their
 //! canonical form using `u128` as the backing type. However, this field was not chosen with any

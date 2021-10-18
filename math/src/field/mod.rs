@@ -8,6 +8,7 @@ pub use traits::{FieldElement, StarkField};
 
 pub mod f128;
 pub mod f62;
+pub mod f64;
 
 mod extensions;
 pub use extensions::QuadExtensionA;
