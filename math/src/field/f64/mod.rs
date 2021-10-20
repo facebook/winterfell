@@ -11,12 +11,12 @@
 //! * Filed arithmetic in this field can be implemented using a few 32-bit addition, subtractions,
 //!   and shifts.
 //! * $8$ is the 64th root of unity which opens up potential for optimized FFT implementations.
-//! 
+//!
 //! Internally, the values are stored in the range $[0, 2^{64})$ using `u64` as the backing type.
 
 use super::{
     traits::{FieldElement, StarkField},
-    QuadExtensionA,
+    ExtensibleField, QuadExtension,
 };
 use core::{
     convert::{TryFrom, TryInto},
@@ -72,6 +72,7 @@ impl FieldElement for BaseElement {
     const ELEMENT_BYTES: usize = ELEMENT_BYTES;
     const IS_CANONICAL: bool = false;
 
+    #[inline]
     fn exp(self, power: Self::PositiveInteger) -> Self {
         let mut b = self;
 
@@ -195,7 +196,7 @@ impl FieldElement for BaseElement {
 }
 
 impl StarkField for BaseElement {
-    type QuadExtension = QuadExtensionA<Self>;
+    type QuadExtension = QuadExtension<Self>;
 
     /// sage: MODULUS = 2^64 - 2^32 + 1 \
     /// sage: GF(MODULUS).is_prime_field() \
@@ -348,6 +349,35 @@ impl Neg for BaseElement {
     }
 }
 
+// QUADRATIC EXTENSION
+// ================================================================================================
+impl ExtensibleField<2> for BaseElement {
+    const EXTENDED_ONE: [Self; 2] = [Self::ONE, Self::ZERO];
+
+    #[inline(always)]
+    fn mul(a: [Self; 2], b: [Self; 2]) -> [Self; 2] {
+        let z = a[0] * b[0];
+        [z - (a[1] * b[1]).double(), (a[0] + a[1]) * (b[0] + b[1]) - z]
+
+        //[a[0] * b[0] + Self::GENERATOR * a[1] * b[1], a[0]*b[1] + b[0] * a[1]]
+    }
+
+    #[inline(always)]
+    fn inv(x: [Self; 2]) -> [Self; 2] {
+        if x[0] == Self::ZERO && x[1] == Self::ZERO {
+            return x;
+        }
+        let denom = x[0].square() + (x[0] * x[1]) - x[1].square();
+        let denom_inv = denom.inv();
+        [(x[0] + x[1]) * denom_inv, -x[1] * denom_inv]
+    }
+
+    #[inline(always)]
+    fn conjugate(x: [Self; 2]) -> [Self; 2] {
+        [x[0] + x[1], Self::ZERO - x[1]]
+    }
+}
+
 // TYPE CONVERSIONS
 // ================================================================================================
 
@@ -467,12 +497,13 @@ impl Deserializable for BaseElement {
 
 // HELPER FUNCTIONS
 // ================================================================================================
-// The following helper functions are adapted from: https://github.com/mir-protocol/plonky2
 
 /// Reduces a 128-bit value by M such that the output is in [0, 2^64) range.
-/// 
-/// The reduction is performed by using only shifts, additions, and subtractions (no 
+///
+/// The reduction is performed by using only shifts, additions, and subtractions (no
 /// multiplications or divisions).
+///
+/// Adapted from: <https://github.com/mir-protocol/plonky2/blob/main/src/field/goldilocks_field.rs>
 #[inline(always)]
 fn mod_reduce(x: u128) -> u64 {
     // assume x consists of four 32-bit values: a, b, c, d such that a contains 32 least

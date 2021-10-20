@@ -8,8 +8,8 @@ use rand_utils::{rand_value, rand_vector};
 use std::time::Duration;
 use winter_math::{
     batch_inversion,
-    fields::{f128, f62, f64, QuadExtensionA},
-    FieldElement,
+    fields::{f128, f62, f64},
+    FieldElement, StarkField,
 };
 
 const SIZES: [usize; 3] = [262_144, 524_288, 1_048_576];
@@ -54,8 +54,8 @@ pub fn f128_extension_ops(c: &mut Criterion) {
     let mut group = c.benchmark_group("f128_quad");
 
     group.bench_function("mul", |bench| {
-        let x = rand_value::<QuadExtensionA<f128::BaseElement>>();
-        let y = rand_value::<QuadExtensionA<f128::BaseElement>>();
+        let x = rand_value::<<f128::BaseElement as StarkField>::QuadExtension>();
+        let y = rand_value::<<f128::BaseElement as StarkField>::QuadExtension>();
         bench.iter(|| black_box(x) * black_box(y))
     });
 }
@@ -112,18 +112,15 @@ pub fn f62_ops(c: &mut Criterion) {
     });
 }
 
-/*
-TODO: re-enable
 pub fn f62_extension_ops(c: &mut Criterion) {
     let mut group = c.benchmark_group("f62_quad");
 
     group.bench_function("mul", |bench| {
-        let x = rand_value::<QuadExtensionA<f62::BaseElement>>();
-        let y = rand_value::<QuadExtensionA<f62::BaseElement>>();
+        let x = rand_value::<<f62::BaseElement as StarkField>::QuadExtension>();
+        let y = rand_value::<<f62::BaseElement as StarkField>::QuadExtension>();
         bench.iter(|| black_box(x) * black_box(y))
     });
 }
-*/
 
 // F64 FIELD
 // ================================================================================================
@@ -161,6 +158,16 @@ pub fn f64_ops(c: &mut Criterion) {
     });
 }
 
+pub fn f64_extension_ops(c: &mut Criterion) {
+    let mut group = c.benchmark_group("f64_quad");
+
+    group.bench_function("mul", |bench| {
+        let x = rand_value::<<f64::BaseElement as StarkField>::QuadExtension>();
+        let y = rand_value::<<f64::BaseElement as StarkField>::QuadExtension>();
+        bench.iter(|| black_box(x) * black_box(y))
+    });
+}
+
 // CRITERION BOILERPLATE
 // ================================================================================================
 
@@ -170,7 +177,8 @@ criterion_group!(
     f128_ops,
     f128_extension_ops,
     f62_ops,
-    //f62_extension_ops,
+    f62_extension_ops,
     f64_ops,
+    f64_extension_ops
 );
 criterion_main!(field_group);

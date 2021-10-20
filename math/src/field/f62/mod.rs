@@ -11,7 +11,7 @@
 
 use super::{
     traits::{FieldElement, StarkField},
-    QuadExtensionA,
+    ExtensibleField, QuadExtension,
 };
 use core::{
     convert::{TryFrom, TryInto},
@@ -157,7 +157,7 @@ impl FieldElement for BaseElement {
 }
 
 impl StarkField for BaseElement {
-    type QuadExtension = QuadExtensionA<Self>;
+    type QuadExtension = QuadExtension<Self>;
 
     /// sage: MODULUS = 2^62 - 111 * 2^39 + 1 \
     /// sage: GF(MODULUS).is_prime_field() \
@@ -283,6 +283,33 @@ impl Neg for BaseElement {
 
     fn neg(self) -> Self {
         Self(sub(0, self.0))
+    }
+}
+
+// QUADRATIC EXTENSION
+// ================================================================================================
+impl ExtensibleField<2> for BaseElement {
+    const EXTENDED_ONE: [Self; 2] = [Self::ONE, Self::ZERO];
+
+    #[inline(always)]
+    fn mul(a: [Self; 2], b: [Self; 2]) -> [Self; 2] {
+        let z = a[0] * b[0];
+        [z + a[1] * b[1], (a[0] + a[1]) * (b[0] + b[1]) - z]
+    }
+
+    #[inline(always)]
+    fn inv(x: [Self; 2]) -> [Self; 2] {
+        if x[0] == Self::ZERO && x[1] == Self::ZERO {
+            return x;
+        }
+        let denom = x[0].square() + (x[0] * x[1]) - x[1].square();
+        let denom_inv = denom.inv();
+        [(x[0] + x[1]) * denom_inv, -x[1] * denom_inv]
+    }
+
+    #[inline(always)]
+    fn conjugate(x: [Self; 2]) -> [Self; 2] {
+        [x[0] + x[1], Self::ZERO - x[1]]
     }
 }
 

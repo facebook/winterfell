@@ -6,11 +6,7 @@
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use rand_utils::rand_vector;
 use std::time::Duration;
-use winter_math::{
-    fft,
-    fields::{f128::BaseElement, QuadExtensionA},
-    FieldElement, StarkField,
-};
+use winter_math::{fft, fields::f128::BaseElement, FieldElement, StarkField};
 
 const SIZES: [usize; 3] = [262_144, 524_288, 1_048_576];
 
@@ -52,10 +48,10 @@ fn fft_evaluate_poly(c: &mut Criterion) {
 
     for &size in SIZES.iter() {
         let twiddles: Vec<BaseElement> = fft::get_twiddles(size);
-        let p: Vec<QuadExtensionA<BaseElement>> = rand_vector(size / blowup_factor);
+        let p: Vec<<BaseElement as StarkField>::QuadExtension> = rand_vector(size / blowup_factor);
         group.bench_function(BenchmarkId::new("extension", size), |bench| {
             bench.iter_with_large_drop(|| {
-                let mut result = QuadExtensionA::<BaseElement>::zeroed_vector(size);
+                let mut result = <BaseElement as StarkField>::QuadExtension::zeroed_vector(size);
                 result[..p.len()].copy_from_slice(&p);
                 fft::evaluate_poly(&mut result, &twiddles);
                 result

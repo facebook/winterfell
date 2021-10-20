@@ -99,7 +99,7 @@ pub mod fields {
     pub use super::field::f128;
     pub use super::field::f62;
     pub use super::field::f64;
-    pub use super::field::QuadExtensionA;
+    pub use super::field::QuadExtension;
 }
 
 mod utils;

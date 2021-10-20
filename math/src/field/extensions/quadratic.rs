@@ -3,32 +3,32 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{FieldElement, StarkField};
+use super::{ExtensibleField, FieldElement};
 use core::{
     convert::TryFrom,
-    fmt::{Debug, Display, Formatter},
+    fmt,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
     slice,
 };
 use utils::{
-    collections::Vec,
-    string::{String, ToString},
-    AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Randomizable,
-    Serializable,
+    collections::Vec, string::ToString, AsBytes, ByteReader, ByteWriter, Deserializable,
+    DeserializationError, Randomizable, Serializable, SliceReader,
 };
 
 // QUADRATIC EXTENSION FIELD
 // ================================================================================================
 
-/// Represents an element in a quadratic extensions field defined as F\[x\]/(x^2-x-1).
-///
-/// The extension element is α + β * φ, where φ is a root of the polynomial x^2 - x - 1, and α
-/// and β are base field elements.
+/// TODO: add documentation
 #[repr(C)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
-pub struct QuadExtensionA<B: StarkField>(B, B);
+pub struct QuadExtension<B: ExtensibleField<2>>(B, B);
 
-impl<B: StarkField> QuadExtensionA<B> {
+impl<B: ExtensibleField<2>> QuadExtension<B> {
+    /// Returns a new extension element instantiated from the provided base elements.
+    pub fn new(a: B, b: B) -> Self {
+        Self(a, b)
+    }
+
     /// Converts a vector of base elements into a vector of elements in a quadratic extension
     /// field by fusing two adjacent base elements together. The output vector is half the length
     /// of the source vector.
@@ -46,7 +46,7 @@ impl<B: StarkField> QuadExtensionA<B> {
     }
 }
 
-impl<B: StarkField> FieldElement for QuadExtensionA<B> {
+impl<B: ExtensibleField<2>> FieldElement for QuadExtension<B> {
     type PositiveInteger = B::PositiveInteger;
     type BaseField = B;
 
@@ -55,18 +55,16 @@ impl<B: StarkField> FieldElement for QuadExtensionA<B> {
     const ZERO: Self = Self(B::ZERO, B::ZERO);
     const ONE: Self = Self(B::ONE, B::ZERO);
 
+    #[inline]
     fn inv(self) -> Self {
-        if self == Self::ZERO {
-            return Self::ZERO;
-        }
-        #[allow(clippy::suspicious_operation_groupings)]
-        let denom = (self.0 * self.0) + (self.0 * self.1) - (self.1 * self.1);
-        let denom_inv = denom.inv();
-        Self((self.0 + self.1) * denom_inv, self.1.neg() * denom_inv)
+        let result = <B as ExtensibleField<2>>::inv([self.0, self.1]);
+        Self(result[0], result[1])
     }
 
+    #[inline]
     fn conjugate(&self) -> Self {
-        Self(self.0 + self.1, B::ZERO - self.1)
+        let result = <B as ExtensibleField<2>>::conjugate([self.0, self.1]);
+        Self(result[0], result[1])
     }
 
     fn elements_as_bytes(elements: &[Self]) -> &[u8] {
@@ -112,7 +110,7 @@ impl<B: StarkField> FieldElement for QuadExtensionA<B> {
     }
 }
 
-impl<B: StarkField> Randomizable for QuadExtensionA<B> {
+impl<B: ExtensibleField<2>> Randomizable for QuadExtension<B> {
     const VALUE_SIZE: usize = Self::ELEMENT_BYTES;
 
     fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
@@ -120,8 +118,8 @@ impl<B: StarkField> Randomizable for QuadExtensionA<B> {
     }
 }
 
-impl<B: StarkField> Display for QuadExtensionA<B> {
-    fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
+impl<B: ExtensibleField<2>> fmt::Display for QuadExtension<B> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "({}, {})", self.0, self.1)
     }
 }
@@ -129,142 +127,146 @@ impl<B: StarkField> Display for QuadExtensionA<B> {
 // OVERLOADED OPERATORS
 // ------------------------------------------------------------------------------------------------
 
-impl<B: StarkField> Add for QuadExtensionA<B> {
+impl<B: ExtensibleField<2>> Add for QuadExtension<B> {
     type Output = Self;
 
+    #[inline]
     fn add(self, rhs: Self) -> Self {
         Self(self.0 + rhs.0, self.1 + rhs.1)
     }
 }
 
-impl<B: StarkField> AddAssign for QuadExtensionA<B> {
+impl<B: ExtensibleField<2>> AddAssign for QuadExtension<B> {
+    #[inline]
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs
     }
 }
 
-impl<B: StarkField> Sub for QuadExtensionA<B> {
+impl<B: ExtensibleField<2>> Sub for QuadExtension<B> {
     type Output = Self;
 
+    #[inline]
     fn sub(self, rhs: Self) -> Self {
         Self(self.0 - rhs.0, self.1 - rhs.1)
     }
 }
 
-impl<B: StarkField> SubAssign for QuadExtensionA<B> {
+impl<B: ExtensibleField<2>> SubAssign for QuadExtension<B> {
+    #[inline]
     fn sub_assign(&mut self, rhs: Self) {
         *self = *self - rhs;
     }
 }
 
-impl<B: StarkField> Mul for QuadExtensionA<B> {
+impl<B: ExtensibleField<2>> Mul for QuadExtension<B> {
     type Output = Self;
 
+    #[inline]
     fn mul(self, rhs: Self) -> Self {
-        let coef0_mul = self.0 * rhs.0;
-        Self(
-            coef0_mul + self.1 * rhs.1,
-            (self.0 + self.1) * (rhs.0 + rhs.1) - coef0_mul,
-        )
+        let result = <B as ExtensibleField<2>>::mul([self.0, self.1], [rhs.0, rhs.1]);
+        Self(result[0], result[1])
     }
 }
 
-impl<B: StarkField> MulAssign for QuadExtensionA<B> {
+impl<B: ExtensibleField<2>> MulAssign for QuadExtension<B> {
+    #[inline]
     fn mul_assign(&mut self, rhs: Self) {
         *self = *self * rhs
     }
 }
 
-impl<B: StarkField> Div for QuadExtensionA<B> {
+impl<B: ExtensibleField<2>> Div for QuadExtension<B> {
     type Output = Self;
 
+    #[inline]
     #[allow(clippy::suspicious_arithmetic_impl)]
     fn div(self, rhs: Self) -> Self {
         self * rhs.inv()
     }
 }
 
-impl<B: StarkField> DivAssign for QuadExtensionA<B> {
+impl<B: ExtensibleField<2>> DivAssign for QuadExtension<B> {
+    #[inline]
     fn div_assign(&mut self, rhs: Self) {
         *self = *self / rhs
     }
 }
 
-impl<B: StarkField> Neg for QuadExtensionA<B> {
+impl<B: ExtensibleField<2>> Neg for QuadExtension<B> {
     type Output = Self;
 
+    #[inline]
     fn neg(self) -> Self {
-        Self(B::ZERO - self.0, B::ZERO - self.1)
+        Self(-self.0, -self.1)
     }
 }
 
 // TYPE CONVERSIONS
 // ------------------------------------------------------------------------------------------------
 
-impl<B: StarkField> From<B> for QuadExtensionA<B> {
-    fn from(e: B) -> Self {
-        Self(e, B::ZERO)
+impl<B: ExtensibleField<2>> From<B> for QuadExtension<B> {
+    fn from(value: B) -> Self {
+        Self(value, B::ZERO)
     }
 }
 
-impl<B: StarkField> From<u128> for QuadExtensionA<B> {
+impl<B: ExtensibleField<2>> From<u128> for QuadExtension<B> {
     fn from(value: u128) -> Self {
         Self(B::from(value), B::ZERO)
     }
 }
 
-impl<B: StarkField> From<u64> for QuadExtensionA<B> {
+impl<B: ExtensibleField<2>> From<u64> for QuadExtension<B> {
     fn from(value: u64) -> Self {
         Self(B::from(value), B::ZERO)
     }
 }
 
-impl<B: StarkField> From<u32> for QuadExtensionA<B> {
+impl<B: ExtensibleField<2>> From<u32> for QuadExtension<B> {
     fn from(value: u32) -> Self {
         Self(B::from(value), B::ZERO)
     }
 }
 
-impl<B: StarkField> From<u16> for QuadExtensionA<B> {
+impl<B: ExtensibleField<2>> From<u16> for QuadExtension<B> {
     fn from(value: u16) -> Self {
         Self(B::from(value), B::ZERO)
     }
 }
 
-impl<B: StarkField> From<u8> for QuadExtensionA<B> {
+impl<B: ExtensibleField<2>> From<u8> for QuadExtension<B> {
     fn from(value: u8) -> Self {
         Self(B::from(value), B::ZERO)
     }
 }
 
-impl<'a, B: StarkField> TryFrom<&'a [u8]> for QuadExtensionA<B> {
-    type Error = String;
+impl<'a, B: ExtensibleField<2>> TryFrom<&'a [u8]> for QuadExtension<B> {
+    type Error = DeserializationError;
 
     /// Converts a slice of bytes into a field element; returns error if the value encoded in bytes
     /// is not a valid field element. The bytes are assumed to be in little-endian byte order.
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
         if bytes.len() < Self::ELEMENT_BYTES {
-            return Err(
-                "need more bytes in order to convert into extension field element".to_string(),
-            );
+            return Err(DeserializationError::InvalidValue(format!(
+                "not enough bytes for a full field element; expected {} bytes, but was {} bytes",
+                Self::ELEMENT_BYTES,
+                bytes.len(),
+            )));
         }
-        let value0 = match B::try_from(&bytes[..B::ELEMENT_BYTES]) {
-            Ok(val) => val,
-            Err(_) => {
-                return Err("could not convert into field element".to_string());
-            }
-        };
-        let value1 = match B::try_from(&bytes[B::ELEMENT_BYTES..]) {
-            Ok(val) => val,
-            Err(_) => {
-                return Err("could not convert into field element".to_string());
-            }
-        };
-        Ok(Self(value0, value1))
+        if bytes.len() > Self::ELEMENT_BYTES {
+            return Err(DeserializationError::InvalidValue(format!(
+                "too many bytes for a field element; expected {} bytes, but was {} bytes",
+                Self::ELEMENT_BYTES,
+                bytes.len(),
+            )));
+        }
+        let mut reader = SliceReader::new(bytes);
+        Self::read_from(&mut reader)
     }
 }
 
-impl<B: StarkField> AsBytes for QuadExtensionA<B> {
+impl<B: ExtensibleField<2>> AsBytes for QuadExtension<B> {
     fn as_bytes(&self) -> &[u8] {
         // TODO: take endianness into account
         let self_ptr: *const Self = self;
@@ -275,14 +277,14 @@ impl<B: StarkField> AsBytes for QuadExtensionA<B> {
 // SERIALIZATION / DESERIALIZATION
 // ------------------------------------------------------------------------------------------------
 
-impl<B: StarkField> Serializable for QuadExtensionA<B> {
+impl<B: ExtensibleField<2>> Serializable for QuadExtension<B> {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.0.write_into(target);
         self.1.write_into(target);
     }
 }
 
-impl<B: StarkField> Deserializable for QuadExtensionA<B> {
+impl<B: ExtensibleField<2>> Deserializable for QuadExtension<B> {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let value0 = B::read_from(source)?;
         let value1 = B::read_from(source)?;
@@ -295,9 +297,9 @@ impl<B: StarkField> Deserializable for QuadExtensionA<B> {
 
 #[cfg(test)]
 mod tests {
-    use super::{DeserializationError, FieldElement, QuadExtensionA, Vec};
+    use super::{DeserializationError, FieldElement, QuadExtension, Vec};
     use crate::field::f128::BaseElement;
-    use rand_utils::{rand_value, rand_vector};
+    use rand_utils::rand_value;
 
     // BASIC ALGEBRA
     // --------------------------------------------------------------------------------------------
@@ -305,78 +307,29 @@ mod tests {
     #[test]
     fn add() {
         // identity
-        let r: QuadExtensionA<BaseElement> = rand_value();
-        assert_eq!(r, r + QuadExtensionA::<BaseElement>::ZERO);
+        let r: QuadExtension<BaseElement> = rand_value();
+        assert_eq!(r, r + QuadExtension::<BaseElement>::ZERO);
 
         // test random values
-        let r1: QuadExtensionA<BaseElement> = rand_value();
-        let r2: QuadExtensionA<BaseElement> = rand_value();
+        let r1: QuadExtension<BaseElement> = rand_value();
+        let r2: QuadExtension<BaseElement> = rand_value();
 
-        let expected = QuadExtensionA(r1.0 + r2.0, r1.1 + r2.1);
+        let expected = QuadExtension(r1.0 + r2.0, r1.1 + r2.1);
         assert_eq!(expected, r1 + r2);
     }
 
     #[test]
     fn sub() {
         // identity
-        let r: QuadExtensionA<BaseElement> = rand_value();
-        assert_eq!(r, r - QuadExtensionA::<BaseElement>::ZERO);
+        let r: QuadExtension<BaseElement> = rand_value();
+        assert_eq!(r, r - QuadExtension::<BaseElement>::ZERO);
 
         // test random values
-        let r1: QuadExtensionA<BaseElement> = rand_value();
-        let r2: QuadExtensionA<BaseElement> = rand_value();
+        let r1: QuadExtension<BaseElement> = rand_value();
+        let r2: QuadExtension<BaseElement> = rand_value();
 
-        let expected = QuadExtensionA(r1.0 - r2.0, r1.1 - r2.1);
+        let expected = QuadExtension(r1.0 - r2.0, r1.1 - r2.1);
         assert_eq!(expected, r1 - r2);
-    }
-
-    #[test]
-    fn mul() {
-        // identity
-        let r: QuadExtensionA<BaseElement> = rand_value();
-        assert_eq!(
-            QuadExtensionA::<BaseElement>::ZERO,
-            r * QuadExtensionA::<BaseElement>::ZERO
-        );
-        assert_eq!(r, r * QuadExtensionA::<BaseElement>::ONE);
-
-        // test random values
-        let r1: QuadExtensionA<BaseElement> = rand_value();
-        let r2: QuadExtensionA<BaseElement> = rand_value();
-
-        let expected = QuadExtensionA(
-            r1.0 * r2.0 + r1.1 * r2.1,
-            (r1.0 + r1.1) * (r2.0 + r2.1) - r1.0 * r2.0,
-        );
-        assert_eq!(expected, r1 * r2);
-    }
-
-    #[test]
-    fn inv() {
-        // identity
-        assert_eq!(
-            QuadExtensionA::<BaseElement>::ONE,
-            QuadExtensionA::<BaseElement>::inv(QuadExtensionA::<BaseElement>::ONE)
-        );
-        assert_eq!(
-            QuadExtensionA::<BaseElement>::ZERO,
-            QuadExtensionA::<BaseElement>::inv(QuadExtensionA::<BaseElement>::ZERO)
-        );
-
-        // test random values
-        let x: Vec<QuadExtensionA<BaseElement>> = rand_vector(1000);
-        for i in 0..x.len() {
-            let y = QuadExtensionA::<BaseElement>::inv(x[i]);
-            assert_eq!(QuadExtensionA::<BaseElement>::ONE, x[i] * y);
-        }
-    }
-
-    #[test]
-    fn conjugate() {
-        let a: QuadExtensionA<BaseElement> = rand_value();
-        let b = a.conjugate();
-        let expected = QuadExtensionA(a.0 + a.1, -a.1);
-        assert_eq!(expected, b);
     }
 
     // INITIALIZATION
@@ -384,10 +337,10 @@ mod tests {
 
     #[test]
     fn zeroed_vector() {
-        let result = QuadExtensionA::<BaseElement>::zeroed_vector(4);
+        let result = QuadExtension::<BaseElement>::zeroed_vector(4);
         assert_eq!(4, result.len());
         for element in result.into_iter() {
-            assert_eq!(QuadExtensionA::<BaseElement>::ZERO, element);
+            assert_eq!(QuadExtension::<BaseElement>::ZERO, element);
         }
     }
 
@@ -397,8 +350,8 @@ mod tests {
     #[test]
     fn elements_as_bytes() {
         let source = vec![
-            QuadExtensionA(BaseElement::new(1), BaseElement::new(2)),
-            QuadExtensionA(BaseElement::new(3), BaseElement::new(4)),
+            QuadExtension(BaseElement::new(1), BaseElement::new(2)),
+            QuadExtension(BaseElement::new(3), BaseElement::new(4)),
         ];
 
         let expected: Vec<u8> = vec![
@@ -409,7 +362,7 @@ mod tests {
 
         assert_eq!(
             expected,
-            QuadExtensionA::<BaseElement>::elements_as_bytes(&source)
+            QuadExtension::<BaseElement>::elements_as_bytes(&source)
         );
     }
 
@@ -422,18 +375,18 @@ mod tests {
         ];
 
         let expected = vec![
-            QuadExtensionA(BaseElement::new(1), BaseElement::new(2)),
-            QuadExtensionA(BaseElement::new(3), BaseElement::new(4)),
+            QuadExtension(BaseElement::new(1), BaseElement::new(2)),
+            QuadExtension(BaseElement::new(3), BaseElement::new(4)),
         ];
 
-        let result = unsafe { QuadExtensionA::<BaseElement>::bytes_as_elements(&bytes[..64]) };
+        let result = unsafe { QuadExtension::<BaseElement>::bytes_as_elements(&bytes[..64]) };
         assert!(result.is_ok());
         assert_eq!(expected, result.unwrap());
 
-        let result = unsafe { QuadExtensionA::<BaseElement>::bytes_as_elements(&bytes) };
+        let result = unsafe { QuadExtension::<BaseElement>::bytes_as_elements(&bytes) };
         assert!(matches!(result, Err(DeserializationError::InvalidValue(_))));
 
-        let result = unsafe { QuadExtensionA::<BaseElement>::bytes_as_elements(&bytes[1..]) };
+        let result = unsafe { QuadExtension::<BaseElement>::bytes_as_elements(&bytes[1..]) };
         assert!(matches!(result, Err(DeserializationError::InvalidValue(_))));
     }
 
@@ -443,8 +396,8 @@ mod tests {
     #[test]
     fn as_base_elements() {
         let elements = vec![
-            QuadExtensionA(BaseElement::new(1), BaseElement::new(2)),
-            QuadExtensionA(BaseElement::new(3), BaseElement::new(4)),
+            QuadExtension(BaseElement::new(1), BaseElement::new(2)),
+            QuadExtension(BaseElement::new(3), BaseElement::new(4)),
         ];
 
         let expected = vec![
@@ -456,7 +409,7 @@ mod tests {
 
         assert_eq!(
             expected,
-            QuadExtensionA::<BaseElement>::as_base_elements(&elements)
+            QuadExtension::<BaseElement>::as_base_elements(&elements)
         );
     }
 }
