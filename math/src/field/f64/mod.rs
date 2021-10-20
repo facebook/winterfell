@@ -364,11 +364,18 @@ impl Neg for BaseElement {
 
 // QUADRATIC EXTENSION
 // ================================================================================================
+
+/// Defines a quadratic extension of the base field over an irreducible polynomial x<sup>2</sup> -
+/// x + 2. Thus, an extension element is defined as α + β * φ, where φ is a root of this polynomial,
+/// and α and β are base field elements.
 impl ExtensibleField<2> for BaseElement {
     const EXTENDED_ONE: [Self; 2] = [Self::ONE, Self::ZERO];
 
     #[inline(always)]
     fn mul(a: [Self; 2], b: [Self; 2]) -> [Self; 2] {
+        // performs multiplication in the extension field using 3 multiplications, 1 doubling,
+        // 2 additions, and 2 subtractions in the base field. overall, a single multiplication
+        // in the extension field is slightly faster than 5 multiplications in the base field.
         let z = a[0] * b[0];
         [
             z - (a[1] * b[1]).double(),

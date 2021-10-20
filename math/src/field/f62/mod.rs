@@ -288,6 +288,10 @@ impl Neg for BaseElement {
 
 // QUADRATIC EXTENSION
 // ================================================================================================
+
+/// Defines a quadratic extension of the base field over an irreducible polynomial x<sup>2</sup> -
+/// x - 1. Thus, an extension element is defined as α + β * φ, where φ is a root of this polynomial,
+/// and α and β are base field elements.
 impl ExtensibleField<2> for BaseElement {
     const EXTENDED_ONE: [Self; 2] = [Self::ONE, Self::ZERO];
 

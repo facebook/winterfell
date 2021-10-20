@@ -12,10 +12,15 @@ Currently, there are two implementations of finite fields:
 
 * A 128-bit field with modulus 2<sup>128</sup> - 45 * 2<sup>40</sup> + 1. This field was not chosen with any significant thought given to performance, and the implementation of most operations is sub-optimal as well. Proofs generated in this field can support security level of ~100 bits. If higher level of security is desired, proofs must be generated in a quadratic extension of the field.
 * A 62-bit field with modulus 2<sup>62</sup> - 111 * 2<sup>39</sup> + 1. This field supports very fast modular arithmetic including branchless multiplication and addition. To achieve adequate security (i.e. ~100 bits), proofs must be generated in a quadratic extension of this field. For higher levels of security, a cubic extension field should be used.
+* A 64-bit field with modulus 2<sup>64</sup> - 2<sup>32</sup> + 1. This field is about 8% slower than the 62-bit field described above, but it has a number of other attractive properties. To achieve adequate security (i.e. ~100 bits), proofs must be generated in a quadratic extension of this field. For higher levels of security, a cubic extension field should be used.
 
 ### Extension fields
-
-Currently, the library provides a generic way to create quadratic extensions of STARK fields. An extension element is defined as α + β * φ, where φ is a root of the polynomial x<sup>2</sup> - x - 1, and α and β are base field elements.
+Currently, the library provides a generic way to create quadratic extensions of STARK fields. This can be done by implementing 'ExtensibleField' trait for degree 2.
+ 
+Quadratic extension fields are defined using the following irreducible polynomials:
+* For `f62` field, the polynomial is x<sup>2</sup> - x - 1.
+* For `f64` field, the polynomial is x<sup>2</sup> - x + 2.
+* For `f128` field, the polynomial is x<sup>2</sup> - x - 1.
 
 Support for cubic extension fields is not yet available.
 

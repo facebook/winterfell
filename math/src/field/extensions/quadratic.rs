@@ -18,7 +18,11 @@ use utils::{
 // QUADRATIC EXTENSION FIELD
 // ================================================================================================
 
-/// TODO: add documentation
+/// Represents an element in a quadratic extension of a [StarkField](crate::StarkField).
+///
+/// The extension element is defined as α + β * φ, where φ is a root of in irreducible polynomial
+/// defined by the implementation of the [ExtensibleField] trait, and α and β are base field
+/// elements.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub struct QuadExtension<B: ExtensibleField<2>>(B, B);

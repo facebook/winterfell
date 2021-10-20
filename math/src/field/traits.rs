@@ -236,11 +236,27 @@ pub trait StarkField: FieldElement<BaseField = Self> {
 // EXTENSIBLE FIELD
 // ================================================================================================
 
-/// TODO: add documentation
+/// Defined basic arithmetic in an extension of a StarkField of a given degree.
+///
+/// This trait defines how to perform multiplication, inversion, and compute a conjugate of an
+/// element in an extension of degree N for a given [StarkField]. It as assumed that an element in
+/// degree N extension field can be represented by N field elements in the base field.
+///
+/// Implementation of this trait implicitly defines the irreducible polynomial over which the
+/// extension field is defined.
 pub trait ExtensibleField<const N: usize>: StarkField {
+    /// Multiplicative identity for the extension field.
+    ///
+    /// We define it here because Rust does not yet support const functions over generic types.
     const EXTENDED_ONE: [Self; N];
 
+    /// Returns a product of `a` and `b` in the field defined by this extension.
     fn mul(a: [Self; N], b: [Self; N]) -> [Self; N];
+
+    /// Returns a multiplicative inverse of `x` in the field defined by this extension. If `x` is
+    /// ZERO, ZERO is returned.
     fn inv(x: [Self; N]) -> [Self; N];
+
+    /// Returns a conjugate of `x` in the field defined by this extension.
     fn conjugate(x: [Self; N]) -> [Self; N];
 }

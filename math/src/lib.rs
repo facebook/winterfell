@@ -36,8 +36,12 @@
 //! ## Extension fields
 //!
 //! Currently, the library provides a generic way to create quadratic extensions of STARK fields.
-//! An extension element is defined as α + β * φ, where φ is a root of the polynomial
-//! x<sup>2</sup> - x - 1, and α and β are base field elements.
+//! This can be done by implementing [ExtensibleField] trait for degree 2.
+//!
+//! Quadratic extension fields are defined using the following irreducible polynomials:
+//! * For [f62](crate::fields::f62) field, the polynomial is x<sup>2</sup> - x - 1.
+//! * For [f64](crate::fields::f64) field, the polynomial is x<sup>2</sup> - x + 2.
+//! * For [f128](crate::fields::f128) field, the polynomial is x<sup>2</sup> - x - 1.
 //!
 //! Support for cubic extension fields is not yet available.
 //!
