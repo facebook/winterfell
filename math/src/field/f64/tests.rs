@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{AsBytes, BaseElement, DeserializationError, FieldElement, Serializable, StarkField};
+use crate::field::QuadExtension;
 use core::convert::TryFrom;
 use num_bigint::BigUint;
 use proptest::prelude::*;
@@ -229,6 +230,66 @@ fn zeroed_vector() {
     }
 }
 
+// QUADRATIC EXTENSION
+// ------------------------------------------------------------------------------------------------
+#[test]
+fn quad_mul() {
+    // identity
+    let r: QuadExtension<BaseElement> = rand_value();
+    assert_eq!(
+        <QuadExtension<BaseElement>>::ZERO,
+        r * <QuadExtension<BaseElement>>::ZERO
+    );
+    assert_eq!(r, r * <QuadExtension<BaseElement>>::ONE);
+
+    // test multiplication within bounds
+    let a = <QuadExtension<BaseElement>>::new(BaseElement::new(3), BaseElement::ONE);
+    let b = <QuadExtension<BaseElement>>::new(BaseElement::new(4), BaseElement::new(2));
+    let expected = <QuadExtension<BaseElement>>::new(BaseElement::new(8), BaseElement::new(12));
+    assert_eq!(expected, a * b);
+
+    // test multiplication with overflow
+    let m = BaseElement::MODULUS;
+    let a = <QuadExtension<BaseElement>>::new(BaseElement::new(3), BaseElement::new(m - 1));
+    let b = <QuadExtension<BaseElement>>::new(BaseElement::new(m - 3), BaseElement::new(5));
+    let expected = <QuadExtension<BaseElement>>::new(BaseElement::ONE, BaseElement::new(13));
+    assert_eq!(expected, a * b);
+
+    let a = <QuadExtension<BaseElement>>::new(BaseElement::new(3), BaseElement::new(m - 1));
+    let b = <QuadExtension<BaseElement>>::new(BaseElement::new(10), BaseElement::new(m - 2));
+    let expected = <QuadExtension<BaseElement>>::new(
+        BaseElement::new(26),
+        BaseElement::new(18446744069414584307),
+    );
+    assert_eq!(expected, a * b);
+}
+
+#[test]
+fn quad_conjugate() {
+    let m = BaseElement::MODULUS;
+
+    let a = <QuadExtension<BaseElement>>::new(BaseElement::new(m - 1), BaseElement::new(3));
+    let expected = <QuadExtension<BaseElement>>::new(
+        BaseElement::new(2),
+        BaseElement::new(18446744069414584318),
+    );
+    assert_eq!(expected, a.conjugate());
+
+    let a = <QuadExtension<BaseElement>>::new(BaseElement::new(m - 3), BaseElement::new(m - 2));
+    let expected = <QuadExtension<BaseElement>>::new(
+        BaseElement::new(18446744069414584316),
+        BaseElement::new(2),
+    );
+    assert_eq!(expected, a.conjugate());
+
+    let a = <QuadExtension<BaseElement>>::new(BaseElement::new(4), BaseElement::new(7));
+    let expected = <QuadExtension<BaseElement>>::new(
+        BaseElement::new(11),
+        BaseElement::new(18446744069414584314),
+    );
+    assert_eq!(expected, a.conjugate());
+}
+
 // RANDOMIZED TESTS
 // ================================================================================================
 
@@ -276,6 +337,15 @@ proptest! {
     }
 
     #[test]
+    fn double_proptest(x in any::<u64>()) {
+        let v = BaseElement::from(x);
+        let result = v.double();
+
+        let expected = (((x as u128) * 2) % super::M as u128) as u64;
+        prop_assert_eq!(expected, result.as_int());
+    }
+
+    #[test]
     fn exp_proptest(a in any::<u64>(), b in any::<u64>()) {
         let result = BaseElement::from(a).exp(b);
 
@@ -304,5 +374,20 @@ proptest! {
     fn from_u128_proptest(v in any::<u128>()) {
         let e = BaseElement::from(v);
         assert_eq!((v % super::M as u128) as u64, e.as_int());
+    }
+
+    // QUADRATIC EXTENSION
+    // --------------------------------------------------------------------------------------------
+    #[test]
+    fn quad_mul_inv_proptest(a0 in any::<u64>(), a1 in any::<u64>()) {
+        let a = QuadExtension::<BaseElement>::new(BaseElement::from(a0), BaseElement::from(a1));
+        let b = a.inv();
+
+        let expected = if a == QuadExtension::<BaseElement>::ZERO {
+            QuadExtension::<BaseElement>::ZERO
+        } else {
+            QuadExtension::<BaseElement>::ONE
+        };
+        prop_assert_eq!(expected, a * b);
     }
 }

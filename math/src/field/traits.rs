@@ -232,3 +232,15 @@ pub trait StarkField: FieldElement<BaseField = Self> {
     /// Returns a canonical integer representation of the field element.
     fn as_int(&self) -> Self::PositiveInteger;
 }
+
+// EXTENSIBLE FIELD
+// ================================================================================================
+
+/// TODO: add documentation
+pub trait ExtensibleField<const N: usize>: StarkField {
+    const EXTENDED_ONE: [Self; N];
+
+    fn mul(a: [Self; N], b: [Self; N]) -> [Self; N];
+    fn inv(x: [Self; N]) -> [Self; N];
+    fn conjugate(x: [Self; N]) -> [Self; N];
+}

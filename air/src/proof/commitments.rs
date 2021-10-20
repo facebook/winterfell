@@ -20,7 +20,7 @@ use utils::{
 ///
 /// Internally, the commitments are stored as a sequence of bytes. Thus, to retrieve the
 /// commitments, [parse()](Commitments::parse) function should be used.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Default, Eq, PartialEq)]
 pub struct Commitments(Vec<u8>);
 
 impl Commitments {
@@ -74,12 +74,6 @@ impl Commitments {
             return Err(DeserializationError::UnconsumedBytes);
         }
         Ok((commitments[0], commitments[1], commitments[2..].to_vec()))
-    }
-}
-
-impl Default for Commitments {
-    fn default() -> Self {
-        Commitments(Vec::new())
     }
 }
 

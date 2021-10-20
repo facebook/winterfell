@@ -4,11 +4,11 @@
 // LICENSE file in the root directory of this source tree.
 
 mod traits;
-pub use traits::{FieldElement, StarkField};
+pub use traits::{ExtensibleField, FieldElement, StarkField};
 
 pub mod f128;
 pub mod f62;
 pub mod f64;
 
 mod extensions;
-pub use extensions::{ExtensibleField, QuadExtension};
+pub use extensions::QuadExtension;

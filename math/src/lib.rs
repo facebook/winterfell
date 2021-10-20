@@ -89,7 +89,7 @@ pub mod fft;
 pub mod polynom;
 
 mod field;
-pub use field::{FieldElement, StarkField};
+pub use field::{ExtensibleField, FieldElement, StarkField};
 pub mod fields {
     //! Finite field implementations.
     //!

@@ -159,19 +159,19 @@ fn update_sig_verification_state(
     // break the state into logical parts; we don't need to do anything with sig_count part
     // because values for these registers are set in the initial state and don't change
     // during the cycle
-    let (mut sec_key_1_hash, rest) = state.split_at_mut(6);
-    let (mut sec_key_2_hash, rest) = rest.split_at_mut(6);
-    let (mut pub_key_hash, rest) = rest.split_at_mut(6);
-    let (mut merkle_path_hash, rest) = rest.split_at_mut(6);
-    let (mut merkle_path_idx, _sig_count) = rest.split_at_mut(2);
+    let (sec_key_1_hash, rest) = state.split_at_mut(6);
+    let (sec_key_2_hash, rest) = rest.split_at_mut(6);
+    let (pub_key_hash, rest) = rest.split_at_mut(6);
+    let (merkle_path_hash, rest) = rest.split_at_mut(6);
+    let (merkle_path_idx, _sig_count) = rest.split_at_mut(2);
 
     if cycle_step < NUM_HASH_ROUNDS {
         // for the first 7 steps in each hash cycle apply Rescue round function to
         // registers where keys are hashed; all other registers retain their values
-        rescue::apply_round(&mut sec_key_1_hash, cycle_step);
-        rescue::apply_round(&mut sec_key_2_hash, cycle_step);
-        rescue::apply_round(&mut pub_key_hash, cycle_step);
-        rescue::apply_round(&mut merkle_path_hash, cycle_step);
+        rescue::apply_round(sec_key_1_hash, cycle_step);
+        rescue::apply_round(sec_key_2_hash, cycle_step);
+        rescue::apply_round(pub_key_hash, cycle_step);
+        rescue::apply_round(merkle_path_hash, cycle_step);
     } else {
         // for the 8th step of very cycle do the following:
 
@@ -181,7 +181,7 @@ fn update_sig_verification_state(
 
         // copy next set of public keys into the registers computing hash of the public key
         update_pub_key_hash(
-            &mut pub_key_hash,
+            pub_key_hash,
             m0_bit,
             m1_bit,
             sec_key_1_hash,
@@ -192,23 +192,23 @@ fn update_sig_verification_state(
 
         // copy next set of private keys into the registers computing private key hashes
         init_hash_state(
-            &mut sec_key_1_hash,
+            sec_key_1_hash,
             &sig_info.key_schedule.sec_keys1[cycle_num + 1],
         );
         init_hash_state(
-            &mut sec_key_2_hash,
+            sec_key_2_hash,
             &sig_info.key_schedule.sec_keys2[cycle_num + 1],
         );
 
         // update merkle path index accumulator with the next index bit
         update_merkle_path_index(
-            &mut merkle_path_idx,
+            merkle_path_idx,
             sig_info.key_index,
             cycle_num,
             powers_of_two[cycle_num],
         );
         // prepare Merkle path hashing registers for hashing of the next node
-        update_merkle_path_hash(&mut merkle_path_hash, mp_bit, cycle_num, &sig_info.key_path);
+        update_merkle_path_hash(merkle_path_hash, mp_bit, cycle_num, &sig_info.key_path);
     }
 }
 

@@ -112,23 +112,23 @@ fn update_sig_verification_state(
     let cycle_step = step % CYCLE_LENGTH;
 
     // break the state into logical parts
-    let (mut msg_acc_state, rest) = state.split_at_mut(4);
-    let (mut sec_key_1_hash, rest) = rest.split_at_mut(6);
-    let (mut sec_key_2_hash, mut pub_key_hash) = rest.split_at_mut(6);
+    let (msg_acc_state, rest) = state.split_at_mut(4);
+    let (sec_key_1_hash, rest) = rest.split_at_mut(6);
+    let (sec_key_2_hash, pub_key_hash) = rest.split_at_mut(6);
 
     if cycle_step < NUM_HASH_ROUNDS {
         // for the first 7 steps in each cycle apply Rescue round function to
         // registers where keys are hashed; all other registers retain their values
-        rescue::apply_round(&mut sec_key_1_hash, cycle_step);
-        rescue::apply_round(&mut sec_key_2_hash, cycle_step);
-        rescue::apply_round(&mut pub_key_hash, cycle_step);
+        rescue::apply_round(sec_key_1_hash, cycle_step);
+        rescue::apply_round(sec_key_2_hash, cycle_step);
+        rescue::apply_round(pub_key_hash, cycle_step);
     } else {
         let m0_bit = msg_acc_state[0];
         let m1_bit = msg_acc_state[1];
 
         // copy next set of public keys into the registers computing hash of the public key
         update_pub_key_hash(
-            &mut pub_key_hash,
+            pub_key_hash,
             m0_bit,
             m1_bit,
             sec_key_1_hash,
@@ -139,17 +139,17 @@ fn update_sig_verification_state(
 
         // copy next set of private keys into the registers computing private key hashes
         init_hash_state(
-            &mut sec_key_1_hash,
+            sec_key_1_hash,
             &sig_info.key_schedule.sec_keys1[cycle_num + 1],
         );
         init_hash_state(
-            &mut sec_key_2_hash,
+            sec_key_2_hash,
             &sig_info.key_schedule.sec_keys2[cycle_num + 1],
         );
 
         // update message accumulator with the next set of message bits
         apply_message_acc(
-            &mut msg_acc_state,
+            msg_acc_state,
             sig_info.m0,
             sig_info.m1,
             cycle_num,
