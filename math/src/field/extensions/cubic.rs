@@ -61,13 +61,30 @@ impl<B: ExtensibleField<3>> FieldElement for CubeExtension<B> {
 
     #[inline]
     fn inv(self) -> Self {
-        let result = <B as ExtensibleField<3>>::inv([self.0, self.1, self.2]);
-        Self(result[0], result[1], result[2])
+        if self == Self::ZERO {
+            return self;
+        }
+
+        let x = [self.0, self.1, self.2];
+        let c1 = <B as ExtensibleField<3>>::frobenius(x);
+        let c2 = <B as ExtensibleField<3>>::frobenius(c1);
+        let numerator = <B as ExtensibleField<3>>::mul(c1, c2);
+
+        let norm = <B as ExtensibleField<3>>::mul(x, numerator);
+        debug_assert_eq!(norm[1], B::ZERO, "norm must be in the base field");
+        debug_assert_eq!(norm[2], B::ZERO, "norm must be in the base field");
+        let denom_inv = norm[0].inv();
+
+        Self(
+            numerator[0] * denom_inv,
+            numerator[1] * denom_inv,
+            numerator[2] * denom_inv,
+        )
     }
 
     #[inline]
     fn conjugate(&self) -> Self {
-        let result = <B as ExtensibleField<3>>::conjugate([self.0, self.1, self.2]);
+        let result = <B as ExtensibleField<3>>::frobenius([self.0, self.1, self.2]);
         Self(result[0], result[1], result[2])
     }
 

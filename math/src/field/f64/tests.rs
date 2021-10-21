@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{AsBytes, BaseElement, DeserializationError, FieldElement, Serializable, StarkField};
-use crate::field::QuadExtension;
+use crate::field::{CubeExtension, QuadExtension};
 use core::convert::TryFrom;
 use num_bigint::BigUint;
 use proptest::prelude::*;
@@ -290,6 +290,72 @@ fn quad_conjugate() {
     assert_eq!(expected, a.conjugate());
 }
 
+// CUBIC EXTENSION
+// ------------------------------------------------------------------------------------------------
+#[test]
+fn cube_mul() {
+    // identity
+    let r: CubeExtension<BaseElement> = rand_value();
+    assert_eq!(
+        <CubeExtension<BaseElement>>::ZERO,
+        r * <CubeExtension<BaseElement>>::ZERO
+    );
+    assert_eq!(r, r * <CubeExtension<BaseElement>>::ONE);
+
+    // test multiplication within bounds
+    let a = <CubeExtension<BaseElement>>::new(
+        BaseElement::new(3),
+        BaseElement::new(5),
+        BaseElement::new(2),
+    );
+    let b = <CubeExtension<BaseElement>>::new(
+        BaseElement::new(320),
+        BaseElement::new(68),
+        BaseElement::new(3),
+    );
+    let expected = <CubeExtension<BaseElement>>::new(
+        BaseElement::new(1111),
+        BaseElement::new(1961),
+        BaseElement::new(995),
+    );
+    assert_eq!(expected, a * b);
+
+    // test multiplication with overflow
+    let a = <CubeExtension<BaseElement>>::new(
+        BaseElement::new(18446744069414584267),
+        BaseElement::new(18446744069414584309),
+        BaseElement::new(9223372034707292160),
+    );
+    let b = <CubeExtension<BaseElement>>::new(
+        BaseElement::new(18446744069414584101),
+        BaseElement::new(420),
+        BaseElement::new(18446744069414584121),
+    );
+    let expected = <CubeExtension<BaseElement>>::new(
+        BaseElement::new(14070),
+        BaseElement::new(18446744069414566571),
+        BaseElement::new(5970),
+    );
+    assert_eq!(expected, a * b);
+
+    let a = <CubeExtension<BaseElement>>::new(
+        BaseElement::new(18446744069414584266),
+        BaseElement::new(18446744069412558094),
+        BaseElement::new(5268562),
+    );
+    let b = <CubeExtension<BaseElement>>::new(
+        BaseElement::new(18446744069414583589),
+        BaseElement::new(1226),
+        BaseElement::new(5346),
+    );
+    let expected = <CubeExtension<BaseElement>>::new(
+        BaseElement::new(18446744065041672051),
+        BaseElement::new(25275910656),
+        BaseElement::new(21824696736),
+    );
+    assert_eq!(expected, a * b);
+}
+
 // RANDOMIZED TESTS
 // ================================================================================================
 
@@ -387,6 +453,21 @@ proptest! {
             QuadExtension::<BaseElement>::ZERO
         } else {
             QuadExtension::<BaseElement>::ONE
+        };
+        prop_assert_eq!(expected, a * b);
+    }
+
+    // CUBIC EXTENSION
+    // --------------------------------------------------------------------------------------------
+    #[test]
+    fn cube_mul_inv_proptest(a0 in any::<u64>(), a1 in any::<u64>(), a2 in any::<u64>()) {
+        let a = CubeExtension::<BaseElement>::new(BaseElement::from(a0), BaseElement::from(a1), BaseElement::from(a2));
+        let b = a.inv();
+
+        let expected = if a == CubeExtension::<BaseElement>::ZERO {
+            CubeExtension::<BaseElement>::ZERO
+        } else {
+            CubeExtension::<BaseElement>::ONE
         };
         prop_assert_eq!(expected, a * b);
     }

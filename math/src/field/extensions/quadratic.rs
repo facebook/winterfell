@@ -61,13 +61,23 @@ impl<B: ExtensibleField<2>> FieldElement for QuadExtension<B> {
 
     #[inline]
     fn inv(self) -> Self {
-        let result = <B as ExtensibleField<2>>::inv([self.0, self.1]);
-        Self(result[0], result[1])
+        if self == Self::ZERO {
+            return self;
+        }
+
+        let x = [self.0, self.1];
+        let numerator = <B as ExtensibleField<2>>::frobenius(x);
+
+        let norm = <B as ExtensibleField<2>>::mul(x, numerator);
+        debug_assert_eq!(norm[1], B::ZERO, "norm must be in the base field");
+        let denom_inv = norm[0].inv();
+
+        Self(numerator[0] * denom_inv, numerator[1] * denom_inv)
     }
 
     #[inline]
     fn conjugate(&self) -> Self {
-        let result = <B as ExtensibleField<2>>::conjugate([self.0, self.1]);
+        let result = <B as ExtensibleField<2>>::frobenius([self.0, self.1]);
         Self(result[0], result[1])
     }
 
