@@ -43,6 +43,7 @@
 //! * For [f64](crate::fields::f64) field, the polynomial is x<sup>2</sup> - x + 2.
 //! * For [f128](crate::fields::f128) field, the polynomial is x<sup>2</sup> - x - 1.
 //!
+//! TODO: update
 //! Support for cubic extension fields is not yet available.
 //!
 //! # Polynomials
@@ -103,6 +104,7 @@ pub mod fields {
     pub use super::field::f128;
     pub use super::field::f62;
     pub use super::field::f64;
+    pub use super::field::CubeExtension;
     pub use super::field::QuadExtension;
 }
 

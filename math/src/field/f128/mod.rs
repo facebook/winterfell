@@ -250,8 +250,6 @@ impl Neg for BaseElement {
 /// x - 1. Thus, an extension element is defined as α + β * φ, where φ is a root of this polynomial,
 /// and α and β are base field elements.
 impl ExtensibleField<2> for BaseElement {
-    const EXTENDED_ONE: [Self; 2] = [Self::ONE, Self::ZERO];
-
     #[inline(always)]
     fn mul(a: [Self; 2], b: [Self; 2]) -> [Self; 2] {
         let z = a[0] * b[0];

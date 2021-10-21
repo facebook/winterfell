@@ -6,4 +6,7 @@
 mod quadratic;
 pub use quadratic::QuadExtension;
 
+mod cubic;
+pub use cubic::CubeExtension;
+
 use super::{ExtensibleField, FieldElement};

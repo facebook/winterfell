@@ -11,4 +11,4 @@ pub mod f62;
 pub mod f64;
 
 mod extensions;
-pub use extensions::QuadExtension;
+pub use extensions::{CubeExtension, QuadExtension};
