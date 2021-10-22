@@ -16,7 +16,7 @@
 
 use super::{
     traits::{FieldElement, StarkField},
-    ExtensibleField, QuadExtension,
+    ExtensibleField,
 };
 use core::{
     convert::{TryFrom, TryInto},
@@ -196,8 +196,6 @@ impl FieldElement for BaseElement {
 }
 
 impl StarkField for BaseElement {
-    type QuadExtension = QuadExtension<Self>;
-
     /// sage: MODULUS = 2^64 - 2^32 + 1 \
     /// sage: GF(MODULUS).is_prime_field() \
     /// True \

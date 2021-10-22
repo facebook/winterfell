@@ -56,6 +56,8 @@ pub enum FieldExtension {
     None = 1,
     /// Composition polynomial is constructed in the quadratic extension of the base field.
     Quadratic = 2,
+    /// Composition polynomial is constructed in the cubic extension of the base field.
+    Cubic = 3,
 }
 
 /// STARK protocol parameters.
@@ -255,6 +257,7 @@ impl FieldExtension {
         match self {
             Self::None => 1,
             Self::Quadratic => 2,
+            Self::Cubic => 3,
         }
     }
 }
@@ -272,6 +275,7 @@ impl Deserializable for FieldExtension {
         match source.read_u8()? {
             1 => Ok(FieldExtension::None),
             2 => Ok(FieldExtension::Quadratic),
+            3 => Ok(FieldExtension::Cubic),
             value => Err(DeserializationError::InvalidValue(format!(
                 "value {} cannot be deserialized as FieldExtension enum",
                 value.to_string()
