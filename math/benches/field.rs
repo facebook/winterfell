@@ -9,7 +9,8 @@ use std::time::Duration;
 use winter_math::{
     batch_inversion,
     fields::{f128, f62, f64},
-    FieldElement, StarkField,
+    fields::{CubeExtension, QuadExtension},
+    FieldElement,
 };
 
 const SIZES: [usize; 3] = [262_144, 524_288, 1_048_576];
@@ -54,8 +55,8 @@ pub fn f128_extension_ops(c: &mut Criterion) {
     let mut group = c.benchmark_group("f128_quad");
 
     group.bench_function("mul", |bench| {
-        let x = rand_value::<<f128::BaseElement as StarkField>::QuadExtension>();
-        let y = rand_value::<<f128::BaseElement as StarkField>::QuadExtension>();
+        let x = rand_value::<QuadExtension<f128::BaseElement>>();
+        let y = rand_value::<QuadExtension<f128::BaseElement>>();
         bench.iter(|| black_box(x) * black_box(y))
     });
 }
@@ -116,8 +117,18 @@ pub fn f62_extension_ops(c: &mut Criterion) {
     let mut group = c.benchmark_group("f62_quad");
 
     group.bench_function("mul", |bench| {
-        let x = rand_value::<<f62::BaseElement as StarkField>::QuadExtension>();
-        let y = rand_value::<<f62::BaseElement as StarkField>::QuadExtension>();
+        let x = rand_value::<QuadExtension<f62::BaseElement>>();
+        let y = rand_value::<QuadExtension<f62::BaseElement>>();
+        bench.iter(|| black_box(x) * black_box(y))
+    });
+}
+
+pub fn f62_extension_ops2(c: &mut Criterion) {
+    let mut group = c.benchmark_group("f62_cube");
+
+    group.bench_function("mul", |bench| {
+        let x = rand_value::<CubeExtension<f62::BaseElement>>();
+        let y = rand_value::<CubeExtension<f62::BaseElement>>();
         bench.iter(|| black_box(x) * black_box(y))
     });
 }
@@ -162,8 +173,18 @@ pub fn f64_extension_ops(c: &mut Criterion) {
     let mut group = c.benchmark_group("f64_quad");
 
     group.bench_function("mul", |bench| {
-        let x = rand_value::<<f64::BaseElement as StarkField>::QuadExtension>();
-        let y = rand_value::<<f64::BaseElement as StarkField>::QuadExtension>();
+        let x = rand_value::<QuadExtension<f64::BaseElement>>();
+        let y = rand_value::<QuadExtension<f64::BaseElement>>();
+        bench.iter(|| black_box(x) * black_box(y))
+    });
+}
+
+pub fn f64_extension_ops2(c: &mut Criterion) {
+    let mut group = c.benchmark_group("f64_cube");
+
+    group.bench_function("mul", |bench| {
+        let x = rand_value::<CubeExtension<f64::BaseElement>>();
+        let y = rand_value::<CubeExtension<f64::BaseElement>>();
         bench.iter(|| black_box(x) * black_box(y))
     });
 }
@@ -178,7 +199,9 @@ criterion_group!(
     f128_extension_ops,
     f62_ops,
     f62_extension_ops,
+    f62_extension_ops2,
     f64_ops,
-    f64_extension_ops
+    f64_extension_ops,
+    f64_extension_ops2
 );
 criterion_main!(field_group);

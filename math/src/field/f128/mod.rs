@@ -12,7 +12,7 @@
 
 use super::{
     traits::{FieldElement, StarkField},
-    ExtensibleField, QuadExtension,
+    ExtensibleField,
 };
 use core::{
     convert::{TryFrom, TryInto},
@@ -130,8 +130,6 @@ impl FieldElement for BaseElement {
 }
 
 impl StarkField for BaseElement {
-    type QuadExtension = QuadExtension<Self>;
-
     /// sage: MODULUS = 2^128 - 45 * 2^40 + 1 \
     /// sage: GF(MODULUS).is_prime_field() \
     /// True \
@@ -250,8 +248,6 @@ impl Neg for BaseElement {
 /// x - 1. Thus, an extension element is defined as α + β * φ, where φ is a root of this polynomial,
 /// and α and β are base field elements.
 impl ExtensibleField<2> for BaseElement {
-    const EXTENDED_ONE: [Self; 2] = [Self::ONE, Self::ZERO];
-
     #[inline(always)]
     fn mul(a: [Self; 2], b: [Self; 2]) -> [Self; 2] {
         let z = a[0] * b[0];
@@ -259,18 +255,28 @@ impl ExtensibleField<2> for BaseElement {
     }
 
     #[inline(always)]
-    fn inv(x: [Self; 2]) -> [Self; 2] {
-        if x[0] == Self::ZERO && x[1] == Self::ZERO {
-            return x;
-        }
-        let denom = x[0].square() + (x[0] * x[1]) - x[1].square();
-        let denom_inv = denom.inv();
-        [(x[0] + x[1]) * denom_inv, -x[1] * denom_inv]
+    fn frobenius(x: [Self; 2]) -> [Self; 2] {
+        [x[0] + x[1], Self::ZERO - x[1]]
+    }
+}
+
+// CUBIC EXTENSION
+// ================================================================================================
+
+/// Cubic extension for this field is not implemented as quadratic extension already provides
+/// sufficient security level.
+impl ExtensibleField<3> for BaseElement {
+    fn mul(_a: [Self; 3], _b: [Self; 3]) -> [Self; 3] {
+        unimplemented!()
     }
 
     #[inline(always)]
-    fn conjugate(x: [Self; 2]) -> [Self; 2] {
-        [x[0] + x[1], Self::ZERO - x[1]]
+    fn frobenius(_x: [Self; 3]) -> [Self; 3] {
+        unimplemented!()
+    }
+
+    fn is_supported() -> bool {
+        false
     }
 }
 

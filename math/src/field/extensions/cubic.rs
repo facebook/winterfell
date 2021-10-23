@@ -18,51 +18,51 @@ use utils::{
 // QUADRATIC EXTENSION FIELD
 // ================================================================================================
 
-/// Represents an element in a quadratic extension of a [StarkField](crate::StarkField).
+/// Represents an element in a cubic extension of a [StarkField](crate::StarkField).
 ///
-/// The extension element is defined as α + β * φ, where φ is a root of in irreducible polynomial
-/// defined by the implementation of the [ExtensibleField] trait, and α and β are base field
-/// elements.
+/// The extension element is defined as α + β * φ + γ * φ^2, where φ is a root of in irreducible
+/// polynomial defined by the implementation of the [ExtensibleField] trait, and α, β, γ are base
+/// field elements.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
-pub struct QuadExtension<B: ExtensibleField<2>>(B, B);
+pub struct CubeExtension<B: ExtensibleField<3>>(B, B, B);
 
-impl<B: ExtensibleField<2>> QuadExtension<B> {
+impl<B: ExtensibleField<3>> CubeExtension<B> {
     /// Returns a new extension element instantiated from the provided base elements.
-    pub fn new(a: B, b: B) -> Self {
-        Self(a, b)
+    pub fn new(a: B, b: B, c: B) -> Self {
+        Self(a, b, c)
     }
 
-    /// Returns true if the base field specified by B type parameter supports quadratic extensions.
+    /// Returns true if the base field specified by B type parameter supports cubic extensions.
     pub fn is_supported() -> bool {
-        <B as ExtensibleField<2>>::is_supported()
+        <B as ExtensibleField<3>>::is_supported()
     }
 
-    /// Converts a vector of base elements into a vector of elements in a quadratic extension
-    /// field by fusing two adjacent base elements together. The output vector is half the length
-    /// of the source vector.
-    fn base_to_quad_vector(source: Vec<B>) -> Vec<Self> {
+    /// Converts a vector of base elements into a vector of elements in a cubic extension field
+    /// by fusing three adjacent base elements together. The output vector is half the length of
+    /// the source vector.
+    fn base_to_cubic_vector(source: Vec<B>) -> Vec<Self> {
         debug_assert!(
-            source.len() % 2 == 0,
-            "source vector length must be divisible by two, but was {}",
+            source.len() % 3 == 0,
+            "source vector length must be divisible by three, but was {}",
             source.len()
         );
         let mut v = core::mem::ManuallyDrop::new(source);
         let p = v.as_mut_ptr();
-        let len = v.len() / 2;
-        let cap = v.capacity() / 2;
+        let len = v.len() / 3;
+        let cap = v.capacity() / 3;
         unsafe { Vec::from_raw_parts(p as *mut Self, len, cap) }
     }
 }
 
-impl<B: ExtensibleField<2>> FieldElement for QuadExtension<B> {
+impl<B: ExtensibleField<3>> FieldElement for CubeExtension<B> {
     type PositiveInteger = B::PositiveInteger;
     type BaseField = B;
 
-    const ELEMENT_BYTES: usize = B::ELEMENT_BYTES * 2;
+    const ELEMENT_BYTES: usize = B::ELEMENT_BYTES * 3;
     const IS_CANONICAL: bool = B::IS_CANONICAL;
-    const ZERO: Self = Self(B::ZERO, B::ZERO);
-    const ONE: Self = Self(B::ONE, B::ZERO);
+    const ZERO: Self = Self(B::ZERO, B::ZERO, B::ZERO);
+    const ONE: Self = Self(B::ONE, B::ZERO, B::ZERO);
 
     #[inline]
     fn inv(self) -> Self {
@@ -70,20 +70,27 @@ impl<B: ExtensibleField<2>> FieldElement for QuadExtension<B> {
             return self;
         }
 
-        let x = [self.0, self.1];
-        let numerator = <B as ExtensibleField<2>>::frobenius(x);
+        let x = [self.0, self.1, self.2];
+        let c1 = <B as ExtensibleField<3>>::frobenius(x);
+        let c2 = <B as ExtensibleField<3>>::frobenius(c1);
+        let numerator = <B as ExtensibleField<3>>::mul(c1, c2);
 
-        let norm = <B as ExtensibleField<2>>::mul(x, numerator);
+        let norm = <B as ExtensibleField<3>>::mul(x, numerator);
         debug_assert_eq!(norm[1], B::ZERO, "norm must be in the base field");
+        debug_assert_eq!(norm[2], B::ZERO, "norm must be in the base field");
         let denom_inv = norm[0].inv();
 
-        Self(numerator[0] * denom_inv, numerator[1] * denom_inv)
+        Self(
+            numerator[0] * denom_inv,
+            numerator[1] * denom_inv,
+            numerator[2] * denom_inv,
+        )
     }
 
     #[inline]
     fn conjugate(&self) -> Self {
-        let result = <B as ExtensibleField<2>>::frobenius([self.0, self.1]);
-        Self(result[0], result[1])
+        let result = <B as ExtensibleField<3>>::frobenius([self.0, self.1, self.2]);
+        Self(result[0], result[1], result[2])
     }
 
     fn elements_as_bytes(elements: &[Self]) -> &[u8] {
@@ -117,19 +124,20 @@ impl<B: ExtensibleField<2>> FieldElement for QuadExtension<B> {
     }
 
     fn zeroed_vector(n: usize) -> Vec<Self> {
-        // get twice the number of base elements, and re-interpret them as quad field elements
-        let result = B::zeroed_vector(n * 2);
-        Self::base_to_quad_vector(result)
+        // get three times the number of base elements and re-interpret them as cubic field
+        // elements
+        let result = B::zeroed_vector(n * 3);
+        Self::base_to_cubic_vector(result)
     }
 
     fn as_base_elements(elements: &[Self]) -> &[Self::BaseField] {
         let ptr = elements.as_ptr();
-        let len = elements.len() * 2;
+        let len = elements.len() * 3;
         unsafe { slice::from_raw_parts(ptr as *const Self::BaseField, len) }
     }
 }
 
-impl<B: ExtensibleField<2>> Randomizable for QuadExtension<B> {
+impl<B: ExtensibleField<3>> Randomizable for CubeExtension<B> {
     const VALUE_SIZE: usize = Self::ELEMENT_BYTES;
 
     fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
@@ -137,65 +145,66 @@ impl<B: ExtensibleField<2>> Randomizable for QuadExtension<B> {
     }
 }
 
-impl<B: ExtensibleField<2>> fmt::Display for QuadExtension<B> {
+impl<B: ExtensibleField<3>> fmt::Display for CubeExtension<B> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({}, {})", self.0, self.1)
+        write!(f, "({}, {}, {})", self.0, self.1, self.2)
     }
 }
 
 // OVERLOADED OPERATORS
 // ------------------------------------------------------------------------------------------------
 
-impl<B: ExtensibleField<2>> Add for QuadExtension<B> {
+impl<B: ExtensibleField<3>> Add for CubeExtension<B> {
     type Output = Self;
 
     #[inline]
     fn add(self, rhs: Self) -> Self {
-        Self(self.0 + rhs.0, self.1 + rhs.1)
+        Self(self.0 + rhs.0, self.1 + rhs.1, self.2 + rhs.2)
     }
 }
 
-impl<B: ExtensibleField<2>> AddAssign for QuadExtension<B> {
+impl<B: ExtensibleField<3>> AddAssign for CubeExtension<B> {
     #[inline]
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs
     }
 }
 
-impl<B: ExtensibleField<2>> Sub for QuadExtension<B> {
+impl<B: ExtensibleField<3>> Sub for CubeExtension<B> {
     type Output = Self;
 
     #[inline]
     fn sub(self, rhs: Self) -> Self {
-        Self(self.0 - rhs.0, self.1 - rhs.1)
+        Self(self.0 - rhs.0, self.1 - rhs.1, self.2 - rhs.2)
     }
 }
 
-impl<B: ExtensibleField<2>> SubAssign for QuadExtension<B> {
+impl<B: ExtensibleField<3>> SubAssign for CubeExtension<B> {
     #[inline]
     fn sub_assign(&mut self, rhs: Self) {
         *self = *self - rhs;
     }
 }
 
-impl<B: ExtensibleField<2>> Mul for QuadExtension<B> {
+impl<B: ExtensibleField<3>> Mul for CubeExtension<B> {
     type Output = Self;
 
     #[inline]
     fn mul(self, rhs: Self) -> Self {
-        let result = <B as ExtensibleField<2>>::mul([self.0, self.1], [rhs.0, rhs.1]);
-        Self(result[0], result[1])
+        let result =
+            <B as ExtensibleField<3>>::mul([self.0, self.1, self.2], [rhs.0, rhs.1, rhs.2]);
+        Self(result[0], result[1], result[2])
     }
 }
 
-impl<B: ExtensibleField<2>> MulAssign for QuadExtension<B> {
+impl<B: ExtensibleField<3>> MulAssign for CubeExtension<B> {
     #[inline]
     fn mul_assign(&mut self, rhs: Self) {
         *self = *self * rhs
     }
 }
 
-impl<B: ExtensibleField<2>> Div for QuadExtension<B> {
+impl<B: ExtensibleField<3>> Div for CubeExtension<B> {
     type Output = Self;
 
     #[inline]
@@ -205,62 +214,62 @@ impl<B: ExtensibleField<2>> Div for QuadExtension<B> {
     }
 }
 
-impl<B: ExtensibleField<2>> DivAssign for QuadExtension<B> {
+impl<B: ExtensibleField<3>> DivAssign for CubeExtension<B> {
     #[inline]
     fn div_assign(&mut self, rhs: Self) {
         *self = *self / rhs
     }
 }
 
-impl<B: ExtensibleField<2>> Neg for QuadExtension<B> {
+impl<B: ExtensibleField<3>> Neg for CubeExtension<B> {
     type Output = Self;
 
     #[inline]
     fn neg(self) -> Self {
-        Self(-self.0, -self.1)
+        Self(-self.0, -self.1, -self.2)
     }
 }
 
 // TYPE CONVERSIONS
 // ------------------------------------------------------------------------------------------------
 
-impl<B: ExtensibleField<2>> From<B> for QuadExtension<B> {
+impl<B: ExtensibleField<3>> From<B> for CubeExtension<B> {
     fn from(value: B) -> Self {
-        Self(value, B::ZERO)
+        Self(value, B::ZERO, B::ZERO)
     }
 }
 
-impl<B: ExtensibleField<2>> From<u128> for QuadExtension<B> {
+impl<B: ExtensibleField<3>> From<u128> for CubeExtension<B> {
     fn from(value: u128) -> Self {
-        Self(B::from(value), B::ZERO)
+        Self(B::from(value), B::ZERO, B::ZERO)
     }
 }
 
-impl<B: ExtensibleField<2>> From<u64> for QuadExtension<B> {
+impl<B: ExtensibleField<3>> From<u64> for CubeExtension<B> {
     fn from(value: u64) -> Self {
-        Self(B::from(value), B::ZERO)
+        Self(B::from(value), B::ZERO, B::ZERO)
     }
 }
 
-impl<B: ExtensibleField<2>> From<u32> for QuadExtension<B> {
+impl<B: ExtensibleField<3>> From<u32> for CubeExtension<B> {
     fn from(value: u32) -> Self {
-        Self(B::from(value), B::ZERO)
+        Self(B::from(value), B::ZERO, B::ZERO)
     }
 }
 
-impl<B: ExtensibleField<2>> From<u16> for QuadExtension<B> {
+impl<B: ExtensibleField<3>> From<u16> for CubeExtension<B> {
     fn from(value: u16) -> Self {
-        Self(B::from(value), B::ZERO)
+        Self(B::from(value), B::ZERO, B::ZERO)
     }
 }
 
-impl<B: ExtensibleField<2>> From<u8> for QuadExtension<B> {
+impl<B: ExtensibleField<3>> From<u8> for CubeExtension<B> {
     fn from(value: u8) -> Self {
-        Self(B::from(value), B::ZERO)
+        Self(B::from(value), B::ZERO, B::ZERO)
     }
 }
 
-impl<'a, B: ExtensibleField<2>> TryFrom<&'a [u8]> for QuadExtension<B> {
+impl<'a, B: ExtensibleField<3>> TryFrom<&'a [u8]> for CubeExtension<B> {
     type Error = DeserializationError;
 
     /// Converts a slice of bytes into a field element; returns error if the value encoded in bytes
@@ -285,7 +294,7 @@ impl<'a, B: ExtensibleField<2>> TryFrom<&'a [u8]> for QuadExtension<B> {
     }
 }
 
-impl<B: ExtensibleField<2>> AsBytes for QuadExtension<B> {
+impl<B: ExtensibleField<3>> AsBytes for CubeExtension<B> {
     fn as_bytes(&self) -> &[u8] {
         // TODO: take endianness into account
         let self_ptr: *const Self = self;
@@ -296,18 +305,20 @@ impl<B: ExtensibleField<2>> AsBytes for QuadExtension<B> {
 // SERIALIZATION / DESERIALIZATION
 // ------------------------------------------------------------------------------------------------
 
-impl<B: ExtensibleField<2>> Serializable for QuadExtension<B> {
+impl<B: ExtensibleField<3>> Serializable for CubeExtension<B> {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.0.write_into(target);
         self.1.write_into(target);
+        self.2.write_into(target);
     }
 }
 
-impl<B: ExtensibleField<2>> Deserializable for QuadExtension<B> {
+impl<B: ExtensibleField<3>> Deserializable for CubeExtension<B> {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let value0 = B::read_from(source)?;
         let value1 = B::read_from(source)?;
-        Ok(Self(value0, value1))
+        let value2 = B::read_from(source)?;
+        Ok(Self(value0, value1, value2))
     }
 }
 
@@ -316,8 +327,8 @@ impl<B: ExtensibleField<2>> Deserializable for QuadExtension<B> {
 
 #[cfg(test)]
 mod tests {
-    use super::{DeserializationError, FieldElement, QuadExtension, Vec};
-    use crate::field::f128::BaseElement;
+    use super::{CubeExtension, DeserializationError, FieldElement, Vec};
+    use crate::field::f64::BaseElement;
     use rand_utils::rand_value;
 
     // BASIC ALGEBRA
@@ -326,28 +337,28 @@ mod tests {
     #[test]
     fn add() {
         // identity
-        let r: QuadExtension<BaseElement> = rand_value();
-        assert_eq!(r, r + QuadExtension::<BaseElement>::ZERO);
+        let r: CubeExtension<BaseElement> = rand_value();
+        assert_eq!(r, r + CubeExtension::<BaseElement>::ZERO);
 
         // test random values
-        let r1: QuadExtension<BaseElement> = rand_value();
-        let r2: QuadExtension<BaseElement> = rand_value();
+        let r1: CubeExtension<BaseElement> = rand_value();
+        let r2: CubeExtension<BaseElement> = rand_value();
 
-        let expected = QuadExtension(r1.0 + r2.0, r1.1 + r2.1);
+        let expected = CubeExtension(r1.0 + r2.0, r1.1 + r2.1, r1.2 + r2.2);
         assert_eq!(expected, r1 + r2);
     }
 
     #[test]
     fn sub() {
         // identity
-        let r: QuadExtension<BaseElement> = rand_value();
-        assert_eq!(r, r - QuadExtension::<BaseElement>::ZERO);
+        let r: CubeExtension<BaseElement> = rand_value();
+        assert_eq!(r, r - CubeExtension::<BaseElement>::ZERO);
 
         // test random values
-        let r1: QuadExtension<BaseElement> = rand_value();
-        let r2: QuadExtension<BaseElement> = rand_value();
+        let r1: CubeExtension<BaseElement> = rand_value();
+        let r2: CubeExtension<BaseElement> = rand_value();
 
-        let expected = QuadExtension(r1.0 - r2.0, r1.1 - r2.1);
+        let expected = CubeExtension(r1.0 - r2.0, r1.1 - r2.1, r1.2 - r2.2);
         assert_eq!(expected, r1 - r2);
     }
 
@@ -356,10 +367,10 @@ mod tests {
 
     #[test]
     fn zeroed_vector() {
-        let result = QuadExtension::<BaseElement>::zeroed_vector(4);
+        let result = CubeExtension::<BaseElement>::zeroed_vector(4);
         assert_eq!(4, result.len());
         for element in result.into_iter() {
-            assert_eq!(QuadExtension::<BaseElement>::ZERO, element);
+            assert_eq!(CubeExtension::<BaseElement>::ZERO, element);
         }
     }
 
@@ -369,43 +380,57 @@ mod tests {
     #[test]
     fn elements_as_bytes() {
         let source = vec![
-            QuadExtension(BaseElement::new(1), BaseElement::new(2)),
-            QuadExtension(BaseElement::new(3), BaseElement::new(4)),
+            CubeExtension(
+                BaseElement::new(1),
+                BaseElement::new(2),
+                BaseElement::new(3),
+            ),
+            CubeExtension(
+                BaseElement::new(4),
+                BaseElement::new(5),
+                BaseElement::new(6),
+            ),
         ];
 
         let expected: Vec<u8> = vec![
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0,
+            1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0,
+            0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0,
         ];
 
         assert_eq!(
             expected,
-            QuadExtension::<BaseElement>::elements_as_bytes(&source)
+            CubeExtension::<BaseElement>::elements_as_bytes(&source)
         );
     }
 
     #[test]
     fn bytes_as_elements() {
         let bytes: Vec<u8> = vec![
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 5,
+            1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0,
+            0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 7,
         ];
 
         let expected = vec![
-            QuadExtension(BaseElement::new(1), BaseElement::new(2)),
-            QuadExtension(BaseElement::new(3), BaseElement::new(4)),
+            CubeExtension(
+                BaseElement::new(1),
+                BaseElement::new(2),
+                BaseElement::new(3),
+            ),
+            CubeExtension(
+                BaseElement::new(4),
+                BaseElement::new(5),
+                BaseElement::new(6),
+            ),
         ];
 
-        let result = unsafe { QuadExtension::<BaseElement>::bytes_as_elements(&bytes[..64]) };
+        let result = unsafe { CubeExtension::<BaseElement>::bytes_as_elements(&bytes[..48]) };
         assert!(result.is_ok());
         assert_eq!(expected, result.unwrap());
 
-        let result = unsafe { QuadExtension::<BaseElement>::bytes_as_elements(&bytes) };
+        let result = unsafe { CubeExtension::<BaseElement>::bytes_as_elements(&bytes) };
         assert!(matches!(result, Err(DeserializationError::InvalidValue(_))));
 
-        let result = unsafe { QuadExtension::<BaseElement>::bytes_as_elements(&bytes[1..]) };
+        let result = unsafe { CubeExtension::<BaseElement>::bytes_as_elements(&bytes[1..]) };
         assert!(matches!(result, Err(DeserializationError::InvalidValue(_))));
     }
 
@@ -415,8 +440,16 @@ mod tests {
     #[test]
     fn as_base_elements() {
         let elements = vec![
-            QuadExtension(BaseElement::new(1), BaseElement::new(2)),
-            QuadExtension(BaseElement::new(3), BaseElement::new(4)),
+            CubeExtension(
+                BaseElement::new(1),
+                BaseElement::new(2),
+                BaseElement::new(3),
+            ),
+            CubeExtension(
+                BaseElement::new(4),
+                BaseElement::new(5),
+                BaseElement::new(6),
+            ),
         ];
 
         let expected = vec![
@@ -424,11 +457,13 @@ mod tests {
             BaseElement::new(2),
             BaseElement::new(3),
             BaseElement::new(4),
+            BaseElement::new(5),
+            BaseElement::new(6),
         ];
 
         assert_eq!(
             expected,
-            QuadExtension::<BaseElement>::as_base_elements(&elements)
+            CubeExtension::<BaseElement>::as_base_elements(&elements)
         );
     }
 }

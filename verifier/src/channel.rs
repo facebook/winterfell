@@ -75,7 +75,7 @@ where
             .map_err(|err| {
                 VerifierError::ProofDeserializationError(format!(
                     "trace query deserialization failed: {}",
-                    err.to_string()
+                    err
                 ))
             })?;
 
@@ -86,7 +86,7 @@ where
             .map_err(|err| {
                 VerifierError::ProofDeserializationError(format!(
                     "constraint evaluation query deserialization failed: {}",
-                    err.to_string()
+                    err
                 ))
             })?;
 

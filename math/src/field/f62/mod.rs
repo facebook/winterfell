@@ -11,7 +11,7 @@
 
 use super::{
     traits::{FieldElement, StarkField},
-    ExtensibleField, QuadExtension,
+    ExtensibleField,
 };
 use core::{
     convert::{TryFrom, TryInto},
@@ -157,8 +157,6 @@ impl FieldElement for BaseElement {
 }
 
 impl StarkField for BaseElement {
-    type QuadExtension = QuadExtension<Self>;
-
     /// sage: MODULUS = 2^62 - 111 * 2^39 + 1 \
     /// sage: GF(MODULUS).is_prime_field() \
     /// True \
@@ -293,8 +291,6 @@ impl Neg for BaseElement {
 /// x - 1. Thus, an extension element is defined as α + β * φ, where φ is a root of this polynomial,
 /// and α and β are base field elements.
 impl ExtensibleField<2> for BaseElement {
-    const EXTENDED_ONE: [Self; 2] = [Self::ONE, Self::ZERO];
-
     #[inline(always)]
     fn mul(a: [Self; 2], b: [Self; 2]) -> [Self; 2] {
         let z = a[0] * b[0];
@@ -302,18 +298,56 @@ impl ExtensibleField<2> for BaseElement {
     }
 
     #[inline(always)]
-    fn inv(x: [Self; 2]) -> [Self; 2] {
-        if x[0] == Self::ZERO && x[1] == Self::ZERO {
-            return x;
-        }
-        let denom = x[0].square() + (x[0] * x[1]) - x[1].square();
-        let denom_inv = denom.inv();
-        [(x[0] + x[1]) * denom_inv, -x[1] * denom_inv]
+    fn frobenius(x: [Self; 2]) -> [Self; 2] {
+        [x[0] + x[1], -x[1]]
+    }
+}
+
+// CUBIC EXTENSION
+// ================================================================================================
+
+/// Defines a cubic extension of the base field over an irreducible polynomial x<sup>3</sup> +
+/// 2x + 2. Thus, an extension element is defined as α + β * φ + γ * φ^2, where φ is a root of this
+/// polynomial, and α, β and γ are base field elements.
+impl ExtensibleField<3> for BaseElement {
+    #[inline(always)]
+    fn mul(a: [Self; 3], b: [Self; 3]) -> [Self; 3] {
+        // performs multiplication in the extension field using 6 multiplications, 8 additions,
+        // and 9 subtractions in the base field. overall, a single multiplication in the extension
+        // field is roughly equal to 12 multiplications in the base field.
+        let a0b0 = a[0] * b[0];
+        let a1b1 = a[1] * b[1];
+        let a2b2 = a[2] * b[2];
+
+        let a0b0_a0b1_a1b0_a1b1 = (a[0] + a[1]) * (b[0] + b[1]);
+        let minus_a0b0_a0b2_a2b0_minus_a2b2 = (a[0] - a[2]) * (b[2] - b[0]);
+        let a1b1_minus_a1b2_minus_a2b1_a2b2 = (a[1] - a[2]) * (b[1] - b[2]);
+        let a0b0_a1b1 = a0b0 + a1b1;
+
+        let minus_2a1b2_minus_2a2b1 = (a1b1_minus_a1b2_minus_a2b1_a2b2 - a1b1 - a2b2).double();
+
+        let a0b0_minus_2a1b2_minus_2a2b1 = a0b0 + minus_2a1b2_minus_2a2b1;
+        let a0b1_a1b0_minus_2a1b2_minus_2a2b1_minus_2a2b2 =
+            a0b0_a0b1_a1b0_a1b1 + minus_2a1b2_minus_2a2b1 - a2b2.double() - a0b0_a1b1;
+        let a0b2_a1b1_a2b0_minus_2a2b2 = minus_a0b0_a0b2_a2b0_minus_a2b2 + a0b0_a1b1 - a2b2;
+        [
+            a0b0_minus_2a1b2_minus_2a2b1,
+            a0b1_a1b0_minus_2a1b2_minus_2a2b1_minus_2a2b2,
+            a0b2_a1b1_a2b0_minus_2a2b2,
+        ]
     }
 
     #[inline(always)]
-    fn conjugate(x: [Self; 2]) -> [Self; 2] {
-        [x[0] + x[1], Self::ZERO - x[1]]
+    fn frobenius(x: [Self; 3]) -> [Self; 3] {
+        // coefficients were computed using SageMath
+        [
+            x[0] + BaseElement::new(2061766055618274781) * x[1]
+                + BaseElement::new(786836585661389001) * x[2],
+            BaseElement::new(2868591307402993000) * x[1]
+                + BaseElement::new(3336695525575160559) * x[2],
+            BaseElement::new(2699230790596717670) * x[1]
+                + BaseElement::new(1743033688129053336) * x[2],
+        ]
     }
 }
 

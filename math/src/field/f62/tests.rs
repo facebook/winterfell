@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{AsBytes, BaseElement, DeserializationError, FieldElement, Serializable, StarkField};
+use crate::field::{CubeExtension, QuadExtension};
 use core::convert::TryFrom;
 use num_bigint::BigUint;
 use proptest::prelude::*;
@@ -116,6 +117,72 @@ fn equals() {
     // but their internal representation is not
     assert_ne!(a.0, b.0);
     assert_ne!(a.as_bytes(), b.as_bytes());
+}
+
+// CUBIC EXTENSION
+// ------------------------------------------------------------------------------------------------
+#[test]
+fn cube_mul() {
+    // identity
+    let r: CubeExtension<BaseElement> = rand_value();
+    assert_eq!(
+        <CubeExtension<BaseElement>>::ZERO,
+        r * <CubeExtension<BaseElement>>::ZERO
+    );
+    assert_eq!(r, r * <CubeExtension<BaseElement>>::ONE);
+
+    // test multiplication within bounds
+    let a = <CubeExtension<BaseElement>>::new(
+        BaseElement::new(15),
+        BaseElement::new(22),
+        BaseElement::new(8),
+    );
+    let b = <CubeExtension<BaseElement>>::new(
+        BaseElement::new(20),
+        BaseElement::new(22),
+        BaseElement::new(6),
+    );
+    let expected = <CubeExtension<BaseElement>>::new(
+        BaseElement::new(4611624995532046021),
+        BaseElement::new(58),
+        BaseElement::new(638),
+    );
+    assert_eq!(expected, a * b);
+
+    // test multiplication with overflow
+    let a = <CubeExtension<BaseElement>>::new(
+        BaseElement::new(4611624995532046322),
+        BaseElement::new(1390),
+        BaseElement::new(4611624995532037737),
+    );
+    let b = <CubeExtension<BaseElement>>::new(
+        BaseElement::new(4611624995532046117),
+        BaseElement::new(2305812497766022990),
+        BaseElement::new(4611624995532046335),
+    );
+    let expected = <CubeExtension<BaseElement>>::new(
+        BaseElement::new(4611624995528984997),
+        BaseElement::new(2305812497762621006),
+        BaseElement::new(1609515),
+    );
+    assert_eq!(expected, a * b);
+
+    let a = <CubeExtension<BaseElement>>::new(
+        BaseElement::new(4611624995532046319),
+        BaseElement::new(4611624995532045209),
+        BaseElement::new(4611624995532030347),
+    );
+    let b = <CubeExtension<BaseElement>>::new(
+        BaseElement::new(4611624995532046117),
+        BaseElement::new(200000476),
+        BaseElement::new(4611624995077500937),
+    );
+    let expected = <CubeExtension<BaseElement>>::new(
+        BaseElement::new(5370560804040),
+        BaseElement::new(4611615826131194009),
+        BaseElement::new(4611610241754952409),
+    );
+    assert_eq!(expected, a * b);
 }
 
 // ROOTS OF UNITY
@@ -287,5 +354,35 @@ proptest! {
     fn from_u128_proptest(v in any::<u128>()) {
         let e = BaseElement::from(v);
         assert_eq!((v % super::M as u128) as u64, e.as_int());
+    }
+
+    // QUADRATIC EXTENSION
+    // --------------------------------------------------------------------------------------------
+    #[test]
+    fn quad_mul_inv_proptest(a0 in any::<u64>(), a1 in any::<u64>()) {
+        let a = QuadExtension::<BaseElement>::new(BaseElement::from(a0), BaseElement::from(a1));
+        let b = a.inv();
+
+        let expected = if a == QuadExtension::<BaseElement>::ZERO {
+            QuadExtension::<BaseElement>::ZERO
+        } else {
+            QuadExtension::<BaseElement>::ONE
+        };
+        prop_assert_eq!(expected, a * b);
+    }
+
+    // CUBIC EXTENSION
+    // --------------------------------------------------------------------------------------------
+    #[test]
+    fn cube_mul_inv_proptest(a0 in any::<u64>(), a1 in any::<u64>(), a2 in any::<u64>()) {
+        let a = CubeExtension::<BaseElement>::new(BaseElement::from(a0), BaseElement::from(a1), BaseElement::from(a2));
+        let b = a.inv();
+
+        let expected = if a == CubeExtension::<BaseElement>::ZERO {
+            CubeExtension::<BaseElement>::ZERO
+        } else {
+            CubeExtension::<BaseElement>::ONE
+        };
+        prop_assert_eq!(expected, a * b);
     }
 }

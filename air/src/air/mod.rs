@@ -5,7 +5,7 @@
 
 use crate::ProofOptions;
 use crypto::{Hasher, RandomCoin, RandomCoinError};
-use math::{fft, FieldElement, StarkField};
+use math::{fft, ExtensibleField, FieldElement, StarkField};
 use utils::{
     collections::{BTreeMap, BTreeSet, Vec},
     Serializable,
@@ -146,7 +146,7 @@ pub trait Air: Send + Sync {
     /// Base field for the computation described by this AIR. STARK protocol for this computation
     /// may be executed in the base field, or in an extension of the base fields as specified
     /// by [ProofOptions] struct.
-    type BaseElement: StarkField;
+    type BaseElement: ExtensibleField<2> + ExtensibleField<3>;
 
     /// A type defining shape of public inputs for the computation described by this protocol.
     /// This could be any type as long as it can be serialized into a sequence of bytes.

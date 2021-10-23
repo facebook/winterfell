@@ -51,9 +51,9 @@ pub struct ExampleOptions {
     #[structopt(short = "g", long = "grinding", default_value = "16")]
     grinding_factor: u32,
 
-    /// Whether to use field extension for composition polynomial
-    #[structopt(short = "e", long = "extension")]
-    field_extension: bool,
+    /// Field extension degree for composition polynomial
+    #[structopt(short = "e", long = "field_extension", default_value = "1")]
+    field_extension: u32,
 
     /// Folding factor for FRI protocol
     #[structopt(short = "f", long = "folding", default_value = "8")]
@@ -64,10 +64,11 @@ impl ExampleOptions {
     pub fn to_proof_options(&self, q: usize, b: usize) -> ProofOptions {
         let num_queries = self.num_queries.unwrap_or(q);
         let blowup_factor = self.blowup_factor.unwrap_or(b);
-        let field_extension = if self.field_extension {
-            FieldExtension::Quadratic
-        } else {
-            FieldExtension::None
+        let field_extension = match self.field_extension {
+            1 => FieldExtension::None,
+            2 => FieldExtension::Quadratic,
+            3 => FieldExtension::Cubic,
+            val => panic!("'{}' is not a valid field extension option", val),
         };
         let hash_fn = match self.hash_fn.as_str() {
             "blake3_192" => HashFunction::Blake3_192,

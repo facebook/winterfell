@@ -91,16 +91,19 @@ pub trait FieldElement:
     // --------------------------------------------------------------------------------------------
 
     /// Returns this field element added to itself.
+    #[inline]
     fn double(self) -> Self {
         self + self
     }
 
     /// Returns this field element raised to power 2.
+    #[inline]
     fn square(self) -> Self {
         self * self
     }
 
     /// Returns this field element raised to power 3.
+    #[inline]
     fn cube(self) -> Self {
         self * self * self
     }
@@ -191,9 +194,6 @@ pub trait FieldElement:
 /// the modulus of the field should be a prime number of the form `k` * 2^`n` + 1 (a Proth prime),
 /// where `n` is relatively larger (e.g., greater than 32).
 pub trait StarkField: FieldElement<BaseField = Self> {
-    /// Type describing quadratic extension of this StarkField.
-    type QuadExtension: FieldElement<BaseField = Self>;
-
     /// Prime modulus of the field. Must be of the form `k` * 2^`n` + 1 (a Proth prime).
     /// This ensures that the field has high 2-adicity.
     const MODULUS: Self::PositiveInteger;
@@ -238,25 +238,21 @@ pub trait StarkField: FieldElement<BaseField = Self> {
 
 /// Defined basic arithmetic in an extension of a StarkField of a given degree.
 ///
-/// This trait defines how to perform multiplication, inversion, and compute a conjugate of an
+/// This trait defines how to perform multiplication and compute a Frobenius automorphisms of an
 /// element in an extension of degree N for a given [StarkField]. It as assumed that an element in
 /// degree N extension field can be represented by N field elements in the base field.
 ///
 /// Implementation of this trait implicitly defines the irreducible polynomial over which the
 /// extension field is defined.
 pub trait ExtensibleField<const N: usize>: StarkField {
-    /// Multiplicative identity for the extension field.
-    ///
-    /// We define it here because Rust does not yet support const functions over generic types.
-    const EXTENDED_ONE: [Self; N];
-
     /// Returns a product of `a` and `b` in the field defined by this extension.
     fn mul(a: [Self; N], b: [Self; N]) -> [Self; N];
 
-    /// Returns a multiplicative inverse of `x` in the field defined by this extension. If `x` is
-    /// ZERO, ZERO is returned.
-    fn inv(x: [Self; N]) -> [Self; N];
+    /// Returns Frobenius automorphisms for `x` in the field defined by this extension.
+    fn frobenius(x: [Self; N]) -> [Self; N];
 
-    /// Returns a conjugate of `x` in the field defined by this extension.
-    fn conjugate(x: [Self; N]) -> [Self; N];
+    /// Returns true if this extension is supported for the underlying base field.
+    fn is_supported() -> bool {
+        true
+    }
 }

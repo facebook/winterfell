@@ -18,6 +18,9 @@ pub enum ProverError {
     /// This error occurs when polynomials built from the columns of a constraint evaluation
     /// table do not all have the same degree.
     MismatchedConstraintPolynomialDegree(usize, usize),
+    /// This error occurs when the base field specified by the AIR does not support field extension
+    /// of degree specified by proof options.
+    UnsupportedFieldExtension(usize),
 }
 
 impl fmt::Display for ProverError {
@@ -29,6 +32,9 @@ impl fmt::Display for ProverError {
             }
             Self::MismatchedConstraintPolynomialDegree(expected, actual) => {
                 write!(f, "the constraint polynomial's components do not all have the same degree; expected {}, but was {}", expected, actual)
+            }
+            Self::UnsupportedFieldExtension(degree) => {
+                write!(f, "field extension of degree {} is not supported for the specified base field", degree)
             }
         }
     }

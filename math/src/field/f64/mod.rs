@@ -16,7 +16,7 @@
 
 use super::{
     traits::{FieldElement, StarkField},
-    ExtensibleField, QuadExtension,
+    ExtensibleField,
 };
 use core::{
     convert::{TryFrom, TryInto},
@@ -71,19 +71,6 @@ impl FieldElement for BaseElement {
 
     const ELEMENT_BYTES: usize = ELEMENT_BYTES;
     const IS_CANONICAL: bool = false;
-
-    #[inline]
-    fn double(self) -> Self {
-        // this is similar to mod_reduce() function but here we know that we can overflow
-        // by at most one bit
-        let (ab, c) = self.0.overflowing_add(self.0);
-
-        // compute c * 2^32 - c; since we know that c is either 0 or 1 we can compute it like so
-        let tmp = 0u32.wrapping_sub(c as u32) as u64;
-
-        let (result, over) = ab.overflowing_add(tmp);
-        Self(result.wrapping_add(0u32.wrapping_sub(over as u32) as u64))
-    }
 
     #[inline]
     fn exp(self, power: Self::PositiveInteger) -> Self {
@@ -209,8 +196,6 @@ impl FieldElement for BaseElement {
 }
 
 impl StarkField for BaseElement {
-    type QuadExtension = QuadExtension<Self>;
-
     /// sage: MODULUS = 2^64 - 2^32 + 1 \
     /// sage: GF(MODULUS).is_prime_field() \
     /// True \
@@ -284,8 +269,9 @@ impl Add for BaseElement {
     #[inline]
     #[allow(clippy::suspicious_arithmetic_impl)]
     fn add(self, rhs: Self) -> Self {
-        let (result, over) = self.0.overflowing_add(rhs.as_int());
-        Self(result.wrapping_sub((over as u64) * M))
+        let (result, over) = self.0.overflowing_add(rhs.0);
+        let (result, over) = result.overflowing_add(0u32.wrapping_sub(over as u32) as u64);
+        Self(result.wrapping_add(0u32.wrapping_sub(over as u32) as u64))
     }
 }
 
@@ -302,8 +288,9 @@ impl Sub for BaseElement {
     #[inline]
     #[allow(clippy::suspicious_arithmetic_impl)]
     fn sub(self, rhs: Self) -> Self {
-        let (result, under) = self.0.overflowing_sub(rhs.as_int());
-        Self(result.wrapping_add((under as u64) * M))
+        let (result, under) = self.0.overflowing_sub(rhs.0);
+        let (result, under) = result.overflowing_sub(0u32.wrapping_sub(under as u32) as u64);
+        Self(result.wrapping_add(0u32.wrapping_sub(under as u32) as u64))
     }
 }
 
@@ -369,13 +356,11 @@ impl Neg for BaseElement {
 /// x + 2. Thus, an extension element is defined as α + β * φ, where φ is a root of this polynomial,
 /// and α and β are base field elements.
 impl ExtensibleField<2> for BaseElement {
-    const EXTENDED_ONE: [Self; 2] = [Self::ONE, Self::ZERO];
-
     #[inline(always)]
     fn mul(a: [Self; 2], b: [Self; 2]) -> [Self; 2] {
-        // performs multiplication in the extension field using 3 multiplications, 1 doubling,
-        // 2 additions, and 2 subtractions in the base field. overall, a single multiplication
-        // in the extension field is slightly faster than 5 multiplications in the base field.
+        // performs multiplication in the extension field using 3 multiplications, 3 additions,
+        // and 2 subtractions in the base field. overall, a single multiplication in the extension
+        // field is slightly faster than 5 multiplications in the base field.
         let z = a[0] * b[0];
         [
             z - (a[1] * b[1]).double(),
@@ -384,18 +369,56 @@ impl ExtensibleField<2> for BaseElement {
     }
 
     #[inline(always)]
-    fn inv(x: [Self; 2]) -> [Self; 2] {
-        if x[0] == Self::ZERO && x[1] == Self::ZERO {
-            return x;
-        }
-        let denom = x[0].square() + (x[0] * x[1]) + x[1].square().double();
-        let denom_inv = denom.inv();
-        [(x[0] + x[1]) * denom_inv, -x[1] * denom_inv]
+    fn frobenius(x: [Self; 2]) -> [Self; 2] {
+        [x[0] + x[1], -x[1]]
+    }
+}
+
+// CUBIC EXTENSION
+// ================================================================================================
+
+/// Defines a cubic extension of the base field over an irreducible polynomial x<sup>3</sup> -
+/// x - 1. Thus, an extension element is defined as α + β * φ + γ * φ^2, where φ is a root of this
+/// polynomial, and α, β and γ are base field elements.
+impl ExtensibleField<3> for BaseElement {
+    #[inline(always)]
+    fn mul(a: [Self; 3], b: [Self; 3]) -> [Self; 3] {
+        // performs multiplication in the extension field using 6 multiplications, 9 additions,
+        // and 4 subtractions in the base field. overall, a single multiplication in the extension
+        // field is roughly equal to 12 multiplications in the base field.
+        let a0b0 = a[0] * b[0];
+        let a1b1 = a[1] * b[1];
+        let a2b2 = a[2] * b[2];
+
+        let a0b0_a0b1_a1b0_a1b1 = (a[0] + a[1]) * (b[0] + b[1]);
+        let a0b0_a0b2_a2b0_a2b2 = (a[0] + a[2]) * (b[0] + b[2]);
+        let a1b1_a1b2_a2b1_a2b2 = (a[1] + a[2]) * (b[1] + b[2]);
+
+        let a0b0_minus_a1b1 = a0b0 - a1b1;
+
+        let a0b0_a1b2_a2b1 = a1b1_a1b2_a2b1_a2b2 + a0b0_minus_a1b1 - a2b2;
+        let a0b1_a1b0_a1b2_a2b1_a2b2 =
+            a0b0_a0b1_a1b0_a1b1 + a1b1_a1b2_a2b1_a2b2 - a1b1.double() - a0b0;
+        let a0b2_a1b1_a2b0_a2b2 = a0b0_a0b2_a2b0_a2b2 - a0b0_minus_a1b1;
+
+        [
+            a0b0_a1b2_a2b1,
+            a0b1_a1b0_a1b2_a2b1_a2b2,
+            a0b2_a1b1_a2b0_a2b2,
+        ]
     }
 
     #[inline(always)]
-    fn conjugate(x: [Self; 2]) -> [Self; 2] {
-        [x[0] + x[1], -x[1]]
+    fn frobenius(x: [Self; 3]) -> [Self; 3] {
+        // coefficients were computed using SageMath
+        [
+            x[0] + BaseElement::new(10615703402128488253) * x[1]
+                + BaseElement::new(6700183068485440220) * x[2],
+            BaseElement::new(10050274602728160328) * x[1]
+                + BaseElement::new(14531223735771536287) * x[2],
+            BaseElement::new(11746561000929144102) * x[1]
+                + BaseElement::new(8396469466686423992) * x[2],
+        ]
     }
 }
 

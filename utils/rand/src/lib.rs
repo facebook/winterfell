@@ -24,9 +24,9 @@ mod internal {
     /// # Panics
     /// Panics if:
     /// * A valid value requires over 32 bytes.
-    /// * A valid value could not be generated after 100 tries.
+    /// * A valid value could not be generated after 1000 tries.
     pub fn rand_value<R: Randomizable>() -> R {
-        for _ in 0..100 {
+        for _ in 0..1000 {
             let bytes = rand::thread_rng().gen::<[u8; 32]>();
             if let Some(value) = R::from_random_bytes(&bytes[..R::VALUE_SIZE]) {
                 return value;
@@ -41,12 +41,12 @@ mod internal {
     /// # Panics
     /// Panics if:
     /// * A valid value requires at over 32 bytes.
-    /// * A valid value could not be generated after 100 tries.
+    /// * A valid value could not be generated after 1000 tries.
     pub fn rand_vector<R: Randomizable>(n: usize) -> Vec<R> {
         let mut result = Vec::with_capacity(n);
         let seed = rand::thread_rng().gen::<[u8; 32]>();
         let mut g = StdRng::from_seed(seed);
-        for _ in 0..100 * n {
+        for _ in 0..1000 * n {
             let bytes = g.gen::<[u8; 32]>();
             if let Some(element) = R::from_random_bytes(&bytes[..R::VALUE_SIZE]) {
                 result.push(element);
@@ -64,7 +64,7 @@ mod internal {
     /// # Panics
     /// Panics if:
     /// * A valid value requires at over 32 bytes.
-    /// * A valid value could not be generated after 100 tries.
+    /// * A valid value could not be generated after 1000 tries.
     pub fn rand_array<R: Randomizable + Debug, const N: usize>() -> [R; N] {
         let elements = rand_vector(N);
         elements
@@ -78,11 +78,11 @@ mod internal {
     /// # Panics
     /// Panics if:
     /// * A valid value requires at over 32 bytes.
-    /// * A valid value could not be generated after 100 tries.
+    /// * A valid value could not be generated after 1000 tries.
     pub fn prng_vector<R: Randomizable>(seed: [u8; 32], n: usize) -> Vec<R> {
         let mut result = Vec::with_capacity(n);
         let mut g = StdRng::from_seed(seed);
-        for _ in 0..100 * n {
+        for _ in 0..1000 * n {
             let bytes = g.gen::<[u8; 32]>();
             if let Some(element) = R::from_random_bytes(&bytes[..R::VALUE_SIZE]) {
                 result.push(element);
@@ -101,7 +101,7 @@ mod internal {
     /// # Panics
     /// Panics if:
     /// * A valid value requires at over 32 bytes.
-    /// * A valid value could not be generated after 100 tries.
+    /// * A valid value could not be generated after 1000 tries.
     pub fn prng_array<R: Randomizable + Debug, const N: usize>(seed: [u8; 32]) -> [R; N] {
         let elements = prng_vector(seed, N);
         elements

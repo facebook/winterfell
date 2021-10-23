@@ -54,7 +54,11 @@ use fri::FriProver;
 use utils::collections::Vec;
 
 pub use math;
-use math::{fft::infer_degree, FieldElement, StarkField};
+use math::{
+    fft::infer_degree,
+    fields::{CubeExtension, QuadExtension},
+    FieldElement,
+};
 
 pub use crypto;
 use crypto::{
@@ -135,25 +139,37 @@ pub fn prove<AIR: Air>(
     match air.options().field_extension() {
         FieldExtension::None => match air.options().hash_fn() {
             HashFunction::Blake3_256 => generate_proof::
-                <AIR, AIR::BaseElement, Blake3_256<AIR::BaseElement>>
-                (air, trace, pub_inputs_bytes),
+                <AIR, AIR::BaseElement, Blake3_256<AIR::BaseElement>>(air, trace, pub_inputs_bytes),
             HashFunction::Blake3_192 => generate_proof::
-                <AIR, AIR::BaseElement, Blake3_192<AIR::BaseElement>>
-                (air, trace, pub_inputs_bytes),
+                <AIR, AIR::BaseElement, Blake3_192<AIR::BaseElement>>(air, trace, pub_inputs_bytes),
             HashFunction::Sha3_256 => generate_proof::
-                <AIR, AIR::BaseElement, Sha3_256<AIR::BaseElement>>
-                (air, trace, pub_inputs_bytes)
+                <AIR, AIR::BaseElement, Sha3_256<AIR::BaseElement>>(air, trace, pub_inputs_bytes)
         },
-        FieldExtension::Quadratic => match air.options().hash_fn() {
-            HashFunction::Blake3_256 => generate_proof::
-                <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Blake3_256<AIR::BaseElement>>
-                (air, trace, pub_inputs_bytes),
-            HashFunction::Blake3_192 => generate_proof::
-                <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Blake3_192<AIR::BaseElement>>
-                (air, trace, pub_inputs_bytes),
-            HashFunction::Sha3_256 => generate_proof::
-                <AIR, <AIR::BaseElement as StarkField>::QuadExtension, Sha3_256<AIR::BaseElement>>
-                (air, trace, pub_inputs_bytes),
+        FieldExtension::Quadratic => {
+            if !<QuadExtension<AIR::BaseElement>>::is_supported() {
+                return Err(ProverError::UnsupportedFieldExtension(2));
+            }
+            match air.options().hash_fn() {
+                HashFunction::Blake3_256 => generate_proof::
+                    <AIR, QuadExtension<AIR::BaseElement>, Blake3_256<AIR::BaseElement>>(air, trace, pub_inputs_bytes),
+                HashFunction::Blake3_192 => generate_proof::
+                    <AIR, QuadExtension<AIR::BaseElement>, Blake3_192<AIR::BaseElement>>(air, trace, pub_inputs_bytes),
+                HashFunction::Sha3_256 => generate_proof::
+                    <AIR, QuadExtension<AIR::BaseElement>, Sha3_256<AIR::BaseElement>>(air, trace, pub_inputs_bytes),
+            }
+        },
+        FieldExtension::Cubic => {
+            if !<CubeExtension<AIR::BaseElement>>::is_supported() {
+                return Err(ProverError::UnsupportedFieldExtension(3));
+            }
+            match air.options().hash_fn() {
+                HashFunction::Blake3_256 => generate_proof::
+                    <AIR, CubeExtension<AIR::BaseElement>, Blake3_256<AIR::BaseElement>>(air, trace, pub_inputs_bytes),
+                HashFunction::Blake3_192 => generate_proof::
+                    <AIR, CubeExtension<AIR::BaseElement>, Blake3_192<AIR::BaseElement>>(air, trace, pub_inputs_bytes),
+                HashFunction::Sha3_256 => generate_proof::
+                    <AIR, CubeExtension<AIR::BaseElement>, Sha3_256<AIR::BaseElement>>(air, trace, pub_inputs_bytes),
+            }
         },
     }
 }
