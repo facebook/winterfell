@@ -3,11 +3,16 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-//! An implementation of a 62-bit STARK-friendly prime field with modulus $2^{62} - 111 \cdot 2^{39} + 1$.
+//! An implementation of a 64-bit STARK-friendly prime field with modulus $2^{64} - 2^{32} + 1$.
 //!
-//! All operations in this field are implemented using Montgomery arithmetic. It supports very
-//! fast modular arithmetic including branchless multiplication and addition. Base elements are
-//! stored in the Montgomery form using `u64` as the backing type.
+//! This field supports very fast modular arithmetic and has a number of other attractive
+//! properties, including:
+//! * Multiplication of two 32-bit values does not overflow field modulus.
+//! * Filed arithmetic in this field can be implemented using a few 32-bit addition, subtractions,
+//!   and shifts.
+//! * $8$ is the 64th root of unity which opens up potential for optimized FFT implementations.
+//!
+//! Internally, the values are stored in the range $[0, 2^{64})$ using `u64` as the backing type.
 
 use super::{
     traits::{FieldElement, StarkField},
@@ -31,43 +36,29 @@ mod tests;
 // CONSTANTS
 // ================================================================================================
 
-/// Field modulus = 2^62 - 111 * 2^39 + 1
-const M: u64 = 4611624995532046337;
+// Field modulus = 2^64 - 2^32 + 1
+const M: u64 = 0xFFFFFFFF00000001;
 
-/// 2^128 mod M; this is used for conversion of elements into Montgomery representation.
-const R2: u64 = 630444561284293700;
-
-/// 2^192 mod M; this is used during element inversion.
-const R3: u64 = 732984146687909319;
-
-/// -M^{-1} mod 2^64; this is used during element multiplication.
-const U: u128 = 4611624995532046335;
+// 2^32 root of unity
+const G: u64 = 1753635133440165772;
 
 /// Number of bytes needed to represent field element
 const ELEMENT_BYTES: usize = core::mem::size_of::<u64>();
-
-// 2^39 root of unity
-const G: u64 = 4421547261963328785;
 
 // FIELD ELEMENT
 // ================================================================================================
 
 /// Represents base field element in the field.
 ///
-/// Internal values are stored in Montgomery representation and can be in the range [0; 2M). The
-/// backing type is `u64`.
+/// Internal values are stored in the range [0, 2^64). The backing type is `u64`.
 #[derive(Copy, Clone, Debug, Default)]
 pub struct BaseElement(u64);
 
 impl BaseElement {
-    /// Creates a new field element from the provided `value`; the value is converted into
-    /// Montgomery representation.
-    pub const fn new(value: u64) -> BaseElement {
-        // multiply the value with R2 to convert to Montgomery representation; this is OK because
-        // given the value of R2, the product of R2 and `value` is guaranteed to be in the range
-        // [0, 4M^2 - 4M + 1)
-        let z = mul(value, R2);
-        BaseElement(z)
+    /// Creates a new field element from the provided `value`. If the value is greater than or
+    /// equal to the field modulus, modular reduction is silently preformed.
+    pub const fn new(value: u64) -> Self {
+        Self(value % M)
     }
 }
 
@@ -75,12 +66,26 @@ impl FieldElement for BaseElement {
     type PositiveInteger = u64;
     type BaseField = Self;
 
-    const ZERO: Self = BaseElement::new(0);
-    const ONE: Self = BaseElement::new(1);
+    const ZERO: Self = Self::new(0);
+    const ONE: Self = Self::new(1);
 
     const ELEMENT_BYTES: usize = ELEMENT_BYTES;
     const IS_CANONICAL: bool = false;
 
+    #[inline]
+    fn double(self) -> Self {
+        // this is similar to mod_reduce() function but here we know that we can overflow
+        // by at most one bit
+        let (ab, c) = self.0.overflowing_add(self.0);
+
+        // compute c * 2^32 - c; since we know that c is either 0 or 1 we can compute it like so
+        let tmp = 0u32.wrapping_sub(c as u32) as u64;
+
+        let (result, over) = ab.overflowing_add(tmp);
+        Self(result.wrapping_add(0u32.wrapping_sub(over as u32) as u64))
+    }
+
+    #[inline]
     fn exp(self, power: Self::PositiveInteger) -> Self {
         let mut b = self;
 
@@ -101,12 +106,58 @@ impl FieldElement for BaseElement {
         r
     }
 
+    #[inline]
+    #[allow(clippy::many_single_char_names)]
     fn inv(self) -> Self {
-        BaseElement(inv(self.0))
+        let x = self.as_int();
+
+        if x == 0 {
+            return Self::ZERO;
+        };
+
+        let mut a: u128 = 0;
+        let mut u: u128 = if x & 1 == 1 {
+            x as u128
+        } else {
+            (x as u128) + (M as u128)
+        };
+        let mut v: u128 = M as u128;
+        let mut d = (M as u128) - 1;
+
+        while v != 1 {
+            while v < u {
+                u -= v;
+                d += a;
+                while u & 1 == 0 {
+                    if d & 1 == 1 {
+                        d += M as u128;
+                    }
+                    u >>= 1;
+                    d >>= 1;
+                }
+            }
+
+            v -= u;
+            a += d;
+
+            while v & 1 == 0 {
+                if a & 1 == 1 {
+                    a += M as u128;
+                }
+                v >>= 1;
+                a >>= 1;
+            }
+        }
+
+        while a > (M as u128) {
+            a -= M as u128;
+        }
+
+        Self(a as u64)
     }
 
     fn conjugate(&self) -> Self {
-        BaseElement(self.0)
+        Self(self.0)
     }
 
     fn elements_as_bytes(elements: &[Self]) -> &[u8] {
@@ -151,6 +202,7 @@ impl FieldElement for BaseElement {
         unsafe { Vec::from_raw_parts(p as *mut Self, len, cap) }
     }
 
+    #[inline]
     fn as_base_elements(elements: &[Self]) -> &[Self::BaseField] {
         elements
     }
@@ -159,36 +211,40 @@ impl FieldElement for BaseElement {
 impl StarkField for BaseElement {
     type QuadExtension = QuadExtension<Self>;
 
-    /// sage: MODULUS = 2^62 - 111 * 2^39 + 1 \
+    /// sage: MODULUS = 2^64 - 2^32 + 1 \
     /// sage: GF(MODULUS).is_prime_field() \
     /// True \
     /// sage: GF(MODULUS).order() \
-    /// 4611624995532046337
+    /// 18446744069414584321
     const MODULUS: Self::PositiveInteger = M;
-    const MODULUS_BITS: u32 = 62;
+    const MODULUS_BITS: u32 = 64;
 
     /// sage: GF(MODULUS).primitive_element() \
-    /// 3
-    const GENERATOR: Self = BaseElement::new(3);
+    /// 7
+    const GENERATOR: Self = Self::new(7);
 
-    /// sage: is_odd((MODULUS - 1) / 2^39) \
+    /// sage: is_odd((MODULUS - 1) / 2^32) \
     /// True
-    const TWO_ADICITY: u32 = 39;
+    const TWO_ADICITY: u32 = 32;
 
-    /// sage: k = (MODULUS - 1) / 2^39 \
+    /// sage: k = (MODULUS - 1) / 2^32 \
     /// sage: GF(MODULUS).primitive_element()^k \
-    /// 4421547261963328785
-    const TWO_ADIC_ROOT_OF_UNITY: Self = BaseElement::new(G);
+    /// 1753635133440165772
+    const TWO_ADIC_ROOT_OF_UNITY: Self = Self::new(G);
 
     fn get_modulus_le_bytes() -> Vec<u8> {
-        Self::MODULUS.to_le_bytes().to_vec()
+        M.to_le_bytes().to_vec()
     }
 
+    #[inline]
     fn as_int(&self) -> Self::PositiveInteger {
-        // convert from Montgomery representation by multiplying by 1
-        let result = mul(self.0, 1);
-        // since the result of multiplication can be in [0, 2M), we need to normalize it
-        normalize(result)
+        // since the internal value of the element can be in [0, 2^64) range, we do an extra check
+        // here to convert it to the canonical form
+        if self.0 >= M {
+            self.0 - M
+        } else {
+            self.0
+        }
     }
 }
 
@@ -211,9 +267,9 @@ impl Display for BaseElement {
 
 impl PartialEq for BaseElement {
     fn eq(&self, other: &Self) -> bool {
-        // since either of the elements can be in [0, 2M) range, we normalize them first to be
-        // in [0, M) range and then compare them.
-        normalize(self.0) == normalize(other.0)
+        // since either of the elements can be in [0, 2^64) range, we first convert them to the
+        // canonical form to ensure that they are in [0, M) range and then compare them.
+        self.as_int() == other.as_int()
     }
 }
 
@@ -225,12 +281,16 @@ impl Eq for BaseElement {}
 impl Add for BaseElement {
     type Output = Self;
 
+    #[inline]
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn add(self, rhs: Self) -> Self {
-        Self(add(self.0, rhs.0))
+        let (result, over) = self.0.overflowing_add(rhs.as_int());
+        Self(result.wrapping_sub((over as u64) * M))
     }
 }
 
 impl AddAssign for BaseElement {
+    #[inline]
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs
     }
@@ -239,12 +299,16 @@ impl AddAssign for BaseElement {
 impl Sub for BaseElement {
     type Output = Self;
 
+    #[inline]
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn sub(self, rhs: Self) -> Self {
-        Self(sub(self.0, rhs.0))
+        let (result, under) = self.0.overflowing_sub(rhs.as_int());
+        Self(result.wrapping_add((under as u64) * M))
     }
 }
 
 impl SubAssign for BaseElement {
+    #[inline]
     fn sub_assign(&mut self, rhs: Self) {
         *self = *self - rhs;
     }
@@ -253,12 +317,15 @@ impl SubAssign for BaseElement {
 impl Mul for BaseElement {
     type Output = Self;
 
+    #[inline]
     fn mul(self, rhs: Self) -> Self {
-        Self(mul(self.0, rhs.0))
+        let z = (self.0 as u128) * (rhs.0 as u128);
+        Self(mod_reduce(z))
     }
 }
 
 impl MulAssign for BaseElement {
+    #[inline]
     fn mul_assign(&mut self, rhs: Self) {
         *self = *self * rhs
     }
@@ -267,12 +334,15 @@ impl MulAssign for BaseElement {
 impl Div for BaseElement {
     type Output = Self;
 
+    #[inline]
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn div(self, rhs: Self) -> Self {
-        Self(mul(self.0, inv(rhs.0)))
+        self * rhs.inv()
     }
 }
 
 impl DivAssign for BaseElement {
+    #[inline]
     fn div_assign(&mut self, rhs: Self) {
         *self = *self / rhs
     }
@@ -281,8 +351,14 @@ impl DivAssign for BaseElement {
 impl Neg for BaseElement {
     type Output = Self;
 
+    #[inline]
     fn neg(self) -> Self {
-        Self(sub(0, self.0))
+        let v = self.as_int();
+        if v == 0 {
+            Self::ZERO
+        } else {
+            Self(M - v)
+        }
     }
 }
 
@@ -290,15 +366,21 @@ impl Neg for BaseElement {
 // ================================================================================================
 
 /// Defines a quadratic extension of the base field over an irreducible polynomial x<sup>2</sup> -
-/// x - 1. Thus, an extension element is defined as α + β * φ, where φ is a root of this polynomial,
+/// x + 2. Thus, an extension element is defined as α + β * φ, where φ is a root of this polynomial,
 /// and α and β are base field elements.
 impl ExtensibleField<2> for BaseElement {
     const EXTENDED_ONE: [Self; 2] = [Self::ONE, Self::ZERO];
 
     #[inline(always)]
     fn mul(a: [Self; 2], b: [Self; 2]) -> [Self; 2] {
+        // performs multiplication in the extension field using 3 multiplications, 1 doubling,
+        // 2 additions, and 2 subtractions in the base field. overall, a single multiplication
+        // in the extension field is slightly faster than 5 multiplications in the base field.
         let z = a[0] * b[0];
-        [z + a[1] * b[1], (a[0] + a[1]) * (b[0] + b[1]) - z]
+        [
+            z - (a[1] * b[1]).double(),
+            (a[0] + a[1]) * (b[0] + b[1]) - z,
+        ]
     }
 
     #[inline(always)]
@@ -306,14 +388,14 @@ impl ExtensibleField<2> for BaseElement {
         if x[0] == Self::ZERO && x[1] == Self::ZERO {
             return x;
         }
-        let denom = x[0].square() + (x[0] * x[1]) - x[1].square();
+        let denom = x[0].square() + (x[0] * x[1]) + x[1].square().double();
         let denom_inv = denom.inv();
         [(x[0] + x[1]) * denom_inv, -x[1] * denom_inv]
     }
 
     #[inline(always)]
     fn conjugate(x: [Self; 2]) -> [Self; 2] {
-        [x[0] + x[1], Self::ZERO - x[1]]
+        [x[0] + x[1], -x[1]]
     }
 }
 
@@ -324,21 +406,7 @@ impl From<u128> for BaseElement {
     /// Converts a 128-bit value into a filed element. If the value is greater than or equal to
     /// the field modulus, modular reduction is silently preformed.
     fn from(value: u128) -> Self {
-        // make sure the value is < 4M^2 - 4M + 1; this is overly conservative and a single
-        // subtraction of (M * 2^65) should be enough, but this needs to be proven
-        const M4: u128 = (2 * M as u128).pow(2) - 4 * (M as u128) + 1;
-        const Q: u128 = (2 * M as u128).pow(2) - 4 * (M as u128);
-        let mut v = value;
-        while v >= M4 {
-            v -= Q;
-        }
-
-        // apply similar reduction as during multiplication; as output we get z = v * R^{-1} mod M,
-        // so we need to Montgomery-multiply it be R^3 to get z = v * R mod M
-        let q = (((v as u64) as u128) * U) as u64;
-        let z = v + (q as u128) * (M as u128);
-        let z = mul((z >> 64) as u64, R3);
-        BaseElement(z)
+        Self(mod_reduce(value))
     }
 }
 
@@ -346,28 +414,28 @@ impl From<u64> for BaseElement {
     /// Converts a 64-bit value into a filed element. If the value is greater than or equal to
     /// the field modulus, modular reduction is silently preformed.
     fn from(value: u64) -> Self {
-        BaseElement::new(value)
+        Self::new(value)
     }
 }
 
 impl From<u32> for BaseElement {
     /// Converts a 32-bit value into a filed element.
     fn from(value: u32) -> Self {
-        BaseElement::new(value as u64)
+        Self::new(value as u64)
     }
 }
 
 impl From<u16> for BaseElement {
     /// Converts a 16-bit value into a filed element.
     fn from(value: u16) -> Self {
-        BaseElement::new(value as u64)
+        Self::new(value as u64)
     }
 }
 
 impl From<u8> for BaseElement {
     /// Converts an 8-bit value into a filed element.
     fn from(value: u8) -> Self {
-        BaseElement::new(value as u64)
+        Self::new(value as u64)
     }
 }
 
@@ -378,7 +446,7 @@ impl From<[u8; 8]> for BaseElement {
     /// preformed.
     fn from(bytes: [u8; 8]) -> Self {
         let value = u64::from_le_bytes(bytes);
-        BaseElement::new(value)
+        Self::new(value)
     }
 }
 
@@ -448,98 +516,34 @@ impl Deserializable for BaseElement {
     }
 }
 
-// FINITE FIELD ARITHMETIC
-// ================================================================================================
-
-/// Computes (a + b) reduced by M such that the output is in [0, 2M) range; a and b are assumed to
-/// be in [0, 2M).
-#[inline(always)]
-fn add(a: u64, b: u64) -> u64 {
-    let z = a + b;
-    let q = (z >> 62) * M;
-    z - q
-}
-
-/// Computes (a - b) reduced by M such that the output is in [0, 2M) range; a and b are assumed to
-/// be in [0, 2M).
-#[inline(always)]
-fn sub(a: u64, b: u64) -> u64 {
-    if a < b {
-        2 * M - b + a
-    } else {
-        a - b
-    }
-}
-
-/// Computes (a * b) reduced by M such that the output is in [0, 2M) range; a and b are assumed to
-/// be in [0, 2M).
-#[inline(always)]
-const fn mul(a: u64, b: u64) -> u64 {
-    let z = (a as u128) * (b as u128);
-    let q = (((z as u64) as u128) * U) as u64;
-    let z = z + (q as u128) * (M as u128);
-    (z >> 64) as u64
-}
-
-/// Computes y such that (x * y) % M = 1 except for when when x = 0; in such a case, 0 is returned;
-/// x is assumed to in [0, 2M) range, and the output will also be in [0, 2M) range.
-#[inline(always)]
-#[allow(clippy::many_single_char_names)]
-fn inv(x: u64) -> u64 {
-    if x == 0 {
-        return 0;
-    };
-
-    let mut a: u128 = 0;
-    let mut u: u128 = if x & 1 == 1 {
-        x as u128
-    } else {
-        (x as u128) + (M as u128)
-    };
-    let mut v: u128 = M as u128;
-    let mut d = (M as u128) - 1;
-
-    while v != 1 {
-        while v < u {
-            u -= v;
-            d += a;
-            while u & 1 == 0 {
-                if d & 1 == 1 {
-                    d += M as u128;
-                }
-                u >>= 1;
-                d >>= 1;
-            }
-        }
-
-        v -= u;
-        a += d;
-
-        while v & 1 == 0 {
-            if a & 1 == 1 {
-                a += M as u128;
-            }
-            v >>= 1;
-            a >>= 1;
-        }
-    }
-
-    while a > (M as u128) {
-        a -= M as u128;
-    }
-
-    mul(a as u64, R3)
-}
-
 // HELPER FUNCTIONS
 // ================================================================================================
 
-/// Reduces any value in [0, 2M) range to [0, M) range
+/// Reduces a 128-bit value by M such that the output is in [0, 2^64) range.
+///
+/// The reduction is performed by using only shifts, additions, and subtractions (no
+/// multiplications or divisions).
+///
+/// Adapted from: <https://github.com/mir-protocol/plonky2/blob/main/src/field/goldilocks_field.rs>
 #[inline(always)]
-fn normalize(value: u64) -> u64 {
-    if value >= M {
-        value - M
-    } else {
-        value
-    }
+fn mod_reduce(x: u128) -> u64 {
+    // assume x consists of four 32-bit values: a, b, c, d such that a contains 32 least
+    // significant bits and d contains 32 most significant bits. we break x into corresponding
+    // values as shown below
+    let ab = x as u64;
+    let cd = (x >> 64) as u64;
+    let c = (cd as u32) as u64;
+    let d = cd >> 32;
+
+    // compute ab - d; because d may be greater than ab we need to handle potential underflow
+    let (tmp0, under) = ab.overflowing_sub(d);
+    let tmp0 = tmp0.wrapping_sub(0u32.wrapping_sub(under as u32) as u64);
+
+    // compute c * 2^32 - c; this is guaranteed not to underflow
+    let tmp1 = (c << 32) - c;
+
+    // add temp values and return the result; because each of the temp may be up to 64 bits,
+    // we need to handle potential overflow
+    let (result, over) = tmp0.overflowing_add(tmp1);
+    result.wrapping_add(0u32.wrapping_sub(over as u32) as u64)
 }

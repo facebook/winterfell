@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-//! An implementation of a 128-bit STARK-friendly prime field with modulus 2^128 - 45 * 2^40 + 1.
+//! An implementation of a 128-bit STARK-friendly prime field with modulus $2^{128} - 45 \cdot 2^{40} + 1$.
 //!
 //! Operations in this field are implemented using Barret reduction and are stored in their
 //! canonical form using `u128` as the backing type. However, this field was not chosen with any
@@ -12,7 +12,7 @@
 
 use super::{
     traits::{FieldElement, StarkField},
-    QuadExtensionA,
+    ExtensibleField, QuadExtension,
 };
 use core::{
     convert::{TryFrom, TryInto},
@@ -130,7 +130,7 @@ impl FieldElement for BaseElement {
 }
 
 impl StarkField for BaseElement {
-    type QuadExtension = QuadExtensionA<Self>;
+    type QuadExtension = QuadExtension<Self>;
 
     /// sage: MODULUS = 2^128 - 45 * 2^40 + 1 \
     /// sage: GF(MODULUS).is_prime_field() \
@@ -240,6 +240,37 @@ impl Neg for BaseElement {
 
     fn neg(self) -> Self {
         Self(sub(0, self.0))
+    }
+}
+
+// QUADRATIC EXTENSION
+// ================================================================================================
+
+/// Defines a quadratic extension of the base field over an irreducible polynomial x<sup>2</sup> -
+/// x - 1. Thus, an extension element is defined as α + β * φ, where φ is a root of this polynomial,
+/// and α and β are base field elements.
+impl ExtensibleField<2> for BaseElement {
+    const EXTENDED_ONE: [Self; 2] = [Self::ONE, Self::ZERO];
+
+    #[inline(always)]
+    fn mul(a: [Self; 2], b: [Self; 2]) -> [Self; 2] {
+        let z = a[0] * b[0];
+        [z + a[1] * b[1], (a[0] + a[1]) * (b[0] + b[1]) - z]
+    }
+
+    #[inline(always)]
+    fn inv(x: [Self; 2]) -> [Self; 2] {
+        if x[0] == Self::ZERO && x[1] == Self::ZERO {
+            return x;
+        }
+        let denom = x[0].square() + (x[0] * x[1]) - x[1].square();
+        let denom_inv = denom.inv();
+        [(x[0] + x[1]) * denom_inv, -x[1] * denom_inv]
+    }
+
+    #[inline(always)]
+    fn conjugate(x: [Self; 2]) -> [Self; 2] {
+        [x[0] + x[1], Self::ZERO - x[1]]
     }
 }
 

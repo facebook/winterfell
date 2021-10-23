@@ -209,23 +209,22 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> ConstraintEvaluationTable<B,
         }
 
         // make sure expected and actual degrees are equal
-        if self.t_expected_degrees != actual_degrees {
-            panic!(
-                "transition constraint degrees didn't match\nexpected: {:>3?}\nactual:   {:>3?}",
-                self.t_expected_degrees, actual_degrees
-            );
-        }
+        assert_eq!(
+            self.t_expected_degrees, actual_degrees,
+            "transition constraint degrees didn't match\nexpected: {:>3?}\nactual:   {:>3?}",
+            self.t_expected_degrees, actual_degrees
+        );
 
         // make sure evaluation domain size does not exceed the size required by max degree
         let expected_domain_size =
             core::cmp::max(max_degree, self.trace_length + 1).next_power_of_two();
-        if expected_domain_size != self.num_rows() {
-            panic!(
-                "incorrect constraint evaluation domain size; expected {}, actual: {}",
-                expected_domain_size,
-                self.num_rows()
-            );
-        }
+        assert_eq!(
+            expected_domain_size,
+            self.num_rows(),
+            "incorrect constraint evaluation domain size; expected {}, actual: {}",
+            expected_domain_size,
+            self.num_rows()
+        );
     }
 }
 

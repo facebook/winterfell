@@ -23,7 +23,7 @@ use utils::{
 ///
 /// Internally, the evaluations are stored as a sequence of bytes. Thus, to retrieve the
 /// evaluations, [parse()](OodFrame::parse) function should be used.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct OodFrame {
     trace_at_z1: Vec<u8>,
     trace_at_z2: Vec<u8>,
@@ -125,16 +125,6 @@ impl OodFrame {
         }
 
         Ok((EvaluationFrame::from_rows(current, next), evaluations))
-    }
-}
-
-impl Default for OodFrame {
-    fn default() -> Self {
-        OodFrame {
-            trace_at_z1: Vec::new(),
-            trace_at_z2: Vec::new(),
-            evaluations: Vec::new(),
-        }
     }
 }
 

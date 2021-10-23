@@ -4,6 +4,6 @@
 // LICENSE file in the root directory of this source tree.
 
 mod quadratic;
-pub use quadratic::QuadExtensionA;
+pub use quadratic::QuadExtension;
 
-use super::{FieldElement, StarkField};
+use super::{ExtensibleField, FieldElement};

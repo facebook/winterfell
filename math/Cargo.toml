@@ -39,3 +39,7 @@ criterion = "0.3"
 num-bigint = "0.4"
 proptest = "1.0"
 rand-utils = { version = "0.2", path = "../utils/rand", package = "winter-rand-utils" }
+
+# Allow math in docs
+[package.metadata.docs.rs]
+rustdoc-args = ["--html-in-header", ".cargo/katex-header.html"]

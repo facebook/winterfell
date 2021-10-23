@@ -3,7 +3,11 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::*;
+use super::{
+    AsBytes, BaseElement, ByteReader, Deserializable, DeserializationError, FieldElement,
+    StarkField, M,
+};
+use core::convert::TryFrom;
 use num_bigint::BigUint;
 use rand_utils::{rand_value, rand_vector};
 use utils::SliceReader;
