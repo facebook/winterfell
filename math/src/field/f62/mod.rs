@@ -182,6 +182,7 @@ impl StarkField for BaseElement {
         Self::MODULUS.to_le_bytes().to_vec()
     }
 
+    #[inline]
     fn as_int(&self) -> Self::PositiveInteger {
         // convert from Montgomery representation by multiplying by 1
         let result = mul(self.0, 1);
@@ -208,6 +209,7 @@ impl Display for BaseElement {
 // ================================================================================================
 
 impl PartialEq for BaseElement {
+    #[inline]
     fn eq(&self, other: &Self) -> bool {
         // since either of the elements can be in [0, 2M) range, we normalize them first to be
         // in [0, M) range and then compare them.

@@ -8,6 +8,9 @@ use super::{Digest, ElementHasher, Hasher, StarkField};
 mod rp62_248;
 pub use rp62_248::Rp62_248;
 
+mod rp64_256;
+pub use rp64_256::Rp64_256;
+
 // HELPER FUNCTIONS
 // ================================================================================================
 

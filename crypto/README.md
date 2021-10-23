@@ -25,11 +25,12 @@ The above parameters target 124-bit security level. The digest consists of four 
 ### Hash function performance
 One of the core operations performed during STARK proof generation is construction of Merkle trees. We care greatly about building these trees as quickly as possible, and thus, for the purposes of STARK protocol, 2-to-1 hash operation (e.g., computing a hash of two 32-byte values) is especially important. The table below contains rough benchmarks for computing a 2-to-1 hash for all currently implemented hash functions.
 
-| CPU                      | BLAKE3_256 | SHA3_256 | RP62_248 |
-| ------------------------ | :--------: | :------: | :------: |
-| Core i9-9980KH @ 2.4 GHz | 66 ns      | 400 ns   | 6.6 us   |
-| Core i5-7300U @ 2.6 GHz  | 81 ns      | 540 ns   | 9.5 us   |
-| Core i5-4300U @ 1.9 GHz  | 106 ns     | 675 ns   | 13.9 us  |
+| CPU                      | BLAKE3_256 | SHA3_256 | RP62_248 | RP64_256 |
+| ------------------------ | :--------: | :------: | :------: | :------: |
+| AMD Ryzen 9 5950X        | 58 ns      | 310 ns   | 6.8 us   | 8.2 us   |
+| Core i9-9980KH @ 2.4 GHz | 66 ns      | 400 ns   | 6.6 us   | -        |
+| Core i5-7300U @ 2.6 GHz  | 81 ns      | 540 ns   | 9.5 us   | -        |
+| Core i5-4300U @ 1.9 GHz  | 106 ns     | 675 ns   | 13.9 us  | -        |
 
 As can be seen from the table, BLAKE3 is by far the fastest hash function, while our implementation of Rescue Prime is roughly 100x slower than BLAKE3 and about 17x slower than SHA3.
 

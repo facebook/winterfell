@@ -155,6 +155,7 @@ impl StarkField for BaseElement {
         Self::MODULUS.to_le_bytes().to_vec()
     }
 
+    #[inline]
     fn as_int(&self) -> Self::PositiveInteger {
         self.0
     }

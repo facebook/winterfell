@@ -39,6 +39,9 @@ mod tests;
 // Field modulus = 2^64 - 2^32 + 1
 const M: u64 = 0xFFFFFFFF00000001;
 
+// Epsilon = 2^32 - 1;
+const E: u64 = 0xFFFFFFFF;
+
 // 2^32 root of unity
 const G: u64 = 1753635133440165772;
 
@@ -251,6 +254,7 @@ impl Display for BaseElement {
 // ================================================================================================
 
 impl PartialEq for BaseElement {
+    #[inline]
     fn eq(&self, other: &Self) -> bool {
         // since either of the elements can be in [0, 2^64) range, we first convert them to the
         // canonical form to ensure that they are in [0, M) range and then compare them.
@@ -270,8 +274,8 @@ impl Add for BaseElement {
     #[allow(clippy::suspicious_arithmetic_impl)]
     fn add(self, rhs: Self) -> Self {
         let (result, over) = self.0.overflowing_add(rhs.0);
-        let (result, over) = result.overflowing_add(0u32.wrapping_sub(over as u32) as u64);
-        Self(result.wrapping_add(0u32.wrapping_sub(over as u32) as u64))
+        let (result, over) = result.overflowing_add(E * (over as u64));
+        Self(result.wrapping_add(E * (over as u64)))
     }
 }
 
@@ -289,8 +293,8 @@ impl Sub for BaseElement {
     #[allow(clippy::suspicious_arithmetic_impl)]
     fn sub(self, rhs: Self) -> Self {
         let (result, under) = self.0.overflowing_sub(rhs.0);
-        let (result, under) = result.overflowing_sub(0u32.wrapping_sub(under as u32) as u64);
-        Self(result.wrapping_add(0u32.wrapping_sub(under as u32) as u64))
+        let (result, under) = result.overflowing_sub(E * (under as u64));
+        Self(result.wrapping_add(E * (under as u64)))
     }
 }
 
@@ -560,7 +564,7 @@ fn mod_reduce(x: u128) -> u64 {
 
     // compute ab - d; because d may be greater than ab we need to handle potential underflow
     let (tmp0, under) = ab.overflowing_sub(d);
-    let tmp0 = tmp0.wrapping_sub(0u32.wrapping_sub(under as u32) as u64);
+    let tmp0 = tmp0.wrapping_sub(E * (under as u64));
 
     // compute c * 2^32 - c; this is guaranteed not to underflow
     let tmp1 = (c << 32) - c;
@@ -568,5 +572,5 @@ fn mod_reduce(x: u128) -> u64 {
     // add temp values and return the result; because each of the temp may be up to 64 bits,
     // we need to handle potential overflow
     let (result, over) = tmp0.overflowing_add(tmp1);
-    result.wrapping_add(0u32.wrapping_sub(over as u32) as u64)
+    result.wrapping_add(E * (over as u64))
 }
