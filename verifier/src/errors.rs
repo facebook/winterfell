@@ -16,6 +16,9 @@ pub enum VerifierError {
     /// This error occurs when base field read by a verifier from a proof does not match the
     /// base field of AIR with which the verifier was instantiated.
     InconsistentBaseField,
+    /// This error occurs when the base field in which the proof was generated does not support
+    /// field extension of degree specified by the proof.
+    UnsupportedFieldExtension(usize),
     /// This error occurs when a verifier cannot deserialize the specified proof.
     ProofDeserializationError(String),
     /// This error occurs when a verifier fails to draw a random value from a random coin
@@ -46,6 +49,9 @@ impl fmt::Display for VerifierError {
         match self {
             Self::InconsistentBaseField =>  {
                 write!(f, "base field of the proof does not match base field of the specified AIR")
+            }
+            Self::UnsupportedFieldExtension(degree) => {
+                write!(f, "field extension of degree {} is not supported for the proof base field", degree)
             }
             Self::ProofDeserializationError(msg) => {
                 write!(f, "proof deserialization failed: {}", msg)

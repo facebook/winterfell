@@ -33,10 +33,15 @@ impl<B: ExtensibleField<3>> CubeExtension<B> {
         Self(a, b, c)
     }
 
+    /// Returns true if the base field specified by B type parameter supports cubic extensions.
+    pub fn is_supported() -> bool {
+        <B as ExtensibleField<3>>::is_supported()
+    }
+
     /// Converts a vector of base elements into a vector of elements in a cubic extension field
     /// by fusing three adjacent base elements together. The output vector is half the length of
     /// the source vector.
-    fn base_to_quad_vector(source: Vec<B>) -> Vec<Self> {
+    fn base_to_cubic_vector(source: Vec<B>) -> Vec<Self> {
         debug_assert!(
             source.len() % 3 == 0,
             "source vector length must be divisible by three, but was {}",
@@ -119,9 +124,10 @@ impl<B: ExtensibleField<3>> FieldElement for CubeExtension<B> {
     }
 
     fn zeroed_vector(n: usize) -> Vec<Self> {
-        // get twice the number of base elements, and re-interpret them as quad field elements
-        let result = B::zeroed_vector(n * 2);
-        Self::base_to_quad_vector(result)
+        // get three times the number of base elements and re-interpret them as cubic field
+        // elements
+        let result = B::zeroed_vector(n * 3);
+        Self::base_to_cubic_vector(result)
     }
 
     fn as_base_elements(elements: &[Self]) -> &[Self::BaseField] {
@@ -316,16 +322,13 @@ impl<B: ExtensibleField<3>> Deserializable for CubeExtension<B> {
     }
 }
 
-/*
-TODO: enable
-
 // TESTS
 // ================================================================================================
 
 #[cfg(test)]
 mod tests {
-    use super::{DeserializationError, FieldElement, CubeExtension, Vec};
-    use crate::field::f128::BaseElement;
+    use super::{CubeExtension, DeserializationError, FieldElement, Vec};
+    use crate::field::f64::BaseElement;
     use rand_utils::rand_value;
 
     // BASIC ALGEBRA
@@ -341,7 +344,7 @@ mod tests {
         let r1: CubeExtension<BaseElement> = rand_value();
         let r2: CubeExtension<BaseElement> = rand_value();
 
-        let expected = CubeExtension(r1.0 + r2.0, r1.1 + r2.1);
+        let expected = CubeExtension(r1.0 + r2.0, r1.1 + r2.1, r1.2 + r2.2);
         assert_eq!(expected, r1 + r2);
     }
 
@@ -355,7 +358,7 @@ mod tests {
         let r1: CubeExtension<BaseElement> = rand_value();
         let r2: CubeExtension<BaseElement> = rand_value();
 
-        let expected = CubeExtension(r1.0 - r2.0, r1.1 - r2.1);
+        let expected = CubeExtension(r1.0 - r2.0, r1.1 - r2.1, r1.2 - r2.2);
         assert_eq!(expected, r1 - r2);
     }
 
@@ -377,14 +380,21 @@ mod tests {
     #[test]
     fn elements_as_bytes() {
         let source = vec![
-            CubeExtension(BaseElement::new(1), BaseElement::new(2)),
-            CubeExtension(BaseElement::new(3), BaseElement::new(4)),
+            CubeExtension(
+                BaseElement::new(1),
+                BaseElement::new(2),
+                BaseElement::new(3),
+            ),
+            CubeExtension(
+                BaseElement::new(4),
+                BaseElement::new(5),
+                BaseElement::new(6),
+            ),
         ];
 
         let expected: Vec<u8> = vec![
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0,
+            1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0,
+            0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0,
         ];
 
         assert_eq!(
@@ -396,17 +406,24 @@ mod tests {
     #[test]
     fn bytes_as_elements() {
         let bytes: Vec<u8> = vec![
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 5,
+            1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0,
+            0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 7,
         ];
 
         let expected = vec![
-            CubeExtension(BaseElement::new(1), BaseElement::new(2)),
-            CubeExtension(BaseElement::new(3), BaseElement::new(4)),
+            CubeExtension(
+                BaseElement::new(1),
+                BaseElement::new(2),
+                BaseElement::new(3),
+            ),
+            CubeExtension(
+                BaseElement::new(4),
+                BaseElement::new(5),
+                BaseElement::new(6),
+            ),
         ];
 
-        let result = unsafe { CubeExtension::<BaseElement>::bytes_as_elements(&bytes[..64]) };
+        let result = unsafe { CubeExtension::<BaseElement>::bytes_as_elements(&bytes[..48]) };
         assert!(result.is_ok());
         assert_eq!(expected, result.unwrap());
 
@@ -423,8 +440,16 @@ mod tests {
     #[test]
     fn as_base_elements() {
         let elements = vec![
-            CubeExtension(BaseElement::new(1), BaseElement::new(2)),
-            CubeExtension(BaseElement::new(3), BaseElement::new(4)),
+            CubeExtension(
+                BaseElement::new(1),
+                BaseElement::new(2),
+                BaseElement::new(3),
+            ),
+            CubeExtension(
+                BaseElement::new(4),
+                BaseElement::new(5),
+                BaseElement::new(6),
+            ),
         ];
 
         let expected = vec![
@@ -432,6 +457,8 @@ mod tests {
             BaseElement::new(2),
             BaseElement::new(3),
             BaseElement::new(4),
+            BaseElement::new(5),
+            BaseElement::new(6),
         ];
 
         assert_eq!(
@@ -440,4 +467,3 @@ mod tests {
         );
     }
 }
-*/

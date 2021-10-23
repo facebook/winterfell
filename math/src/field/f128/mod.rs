@@ -274,6 +274,10 @@ impl ExtensibleField<3> for BaseElement {
     fn frobenius(_x: [Self; 3]) -> [Self; 3] {
         unimplemented!()
     }
+
+    fn is_supported() -> bool {
+        false
+    }
 }
 
 // TYPE CONVERSIONS

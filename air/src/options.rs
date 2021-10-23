@@ -5,9 +5,7 @@
 
 use fri::FriOptions;
 use math::StarkField;
-use utils::{
-    string::ToString, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
-};
+use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 // TYPES AND INTERFACES
 // ================================================================================================
@@ -278,7 +276,7 @@ impl Deserializable for FieldExtension {
             3 => Ok(FieldExtension::Cubic),
             value => Err(DeserializationError::InvalidValue(format!(
                 "value {} cannot be deserialized as FieldExtension enum",
-                value.to_string()
+                value
             ))),
         }
     }
@@ -314,7 +312,7 @@ impl Deserializable for HashFunction {
             3 => Ok(HashFunction::Sha3_256),
             value => Err(DeserializationError::InvalidValue(format!(
                 "value {} cannot be deserialized as HashFunction enum",
-                value.to_string()
+                value
             ))),
         }
     }

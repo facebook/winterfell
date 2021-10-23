@@ -299,7 +299,7 @@ impl ExtensibleField<2> for BaseElement {
 
     #[inline(always)]
     fn frobenius(x: [Self; 2]) -> [Self; 2] {
-        [x[0] + x[1], Self::ZERO - x[1]]
+        [x[0] + x[1], -x[1]]
     }
 }
 
@@ -339,6 +339,7 @@ impl ExtensibleField<3> for BaseElement {
 
     #[inline(always)]
     fn frobenius(x: [Self; 3]) -> [Self; 3] {
+        // coefficients were computed using SageMath
         [
             x[0] + BaseElement::new(2061766055618274781) * x[1]
                 + BaseElement::new(786836585661389001) * x[2],

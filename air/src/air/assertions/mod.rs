@@ -9,7 +9,7 @@ use core::{
     fmt::{Display, Formatter},
 };
 use math::StarkField;
-use utils::{collections::Vec, string::ToString};
+use utils::collections::Vec;
 
 #[cfg(test)]
 mod tests;
@@ -266,7 +266,7 @@ impl<B: StarkField> Assertion<B> {
     {
         self.validate_trace_length(trace_length)
             .unwrap_or_else(|err| {
-                panic!("invalid trace length: {}", err.to_string());
+                panic!("invalid trace length: {}", err);
             });
         if self.is_single() {
             f(self.first_step, self.values[0]);
@@ -293,7 +293,7 @@ impl<B: StarkField> Assertion<B> {
     pub fn get_num_steps(&self, trace_length: usize) -> usize {
         self.validate_trace_length(trace_length)
             .unwrap_or_else(|err| {
-                panic!("invalid trace length: {}", err.to_string());
+                panic!("invalid trace length: {}", err);
             });
         if self.is_single() {
             1

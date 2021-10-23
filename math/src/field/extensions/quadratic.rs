@@ -33,6 +33,11 @@ impl<B: ExtensibleField<2>> QuadExtension<B> {
         Self(a, b)
     }
 
+    /// Returns true if the base field specified by B type parameter supports quadratic extensions.
+    pub fn is_supported() -> bool {
+        <B as ExtensibleField<2>>::is_supported()
+    }
+
     /// Converts a vector of base elements into a vector of elements in a quadratic extension
     /// field by fusing two adjacent base elements together. The output vector is half the length
     /// of the source vector.

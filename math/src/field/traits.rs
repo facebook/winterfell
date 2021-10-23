@@ -250,4 +250,9 @@ pub trait ExtensibleField<const N: usize>: StarkField {
 
     /// Returns Frobenius automorphisms for `x` in the field defined by this extension.
     fn frobenius(x: [Self; N]) -> [Self; N];
+
+    /// Returns true if this extension is supported for the underlying base field.
+    fn is_supported() -> bool {
+        true
+    }
 }
