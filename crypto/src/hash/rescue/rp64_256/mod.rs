@@ -63,8 +63,8 @@ const INV_ALPHA: u64 = 10540996611094048183;
 /// * Number of founds: 7.
 /// * S-Box degree: 7.
 ///
-/// The above parameters target 124-bit security level. The digest consists of four field elements
-/// and it can be serialized into 31 bytes (248 bits).
+/// The above parameters target 128-bit security level. The digest consists of four field elements
+/// and it can be serialized into 32 bytes (256 bits).
 ///
 /// ## Hash output consistency
 /// Functions [hash_elements()](Rp64_256::hash_elements), [merge()](Rp64_256::merge), and
