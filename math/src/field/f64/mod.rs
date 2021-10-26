@@ -273,9 +273,8 @@ impl Add for BaseElement {
     #[inline]
     #[allow(clippy::suspicious_arithmetic_impl)]
     fn add(self, rhs: Self) -> Self {
-        let (result, over) = self.0.overflowing_add(rhs.0);
-        let (result, over) = result.overflowing_add(E * (over as u64));
-        Self(result.wrapping_add(E * (over as u64)))
+        let (result, over) = self.0.overflowing_add(rhs.as_int());
+        Self(result.wrapping_sub(M * (over as u64)))
     }
 }
 
@@ -292,9 +291,8 @@ impl Sub for BaseElement {
     #[inline]
     #[allow(clippy::suspicious_arithmetic_impl)]
     fn sub(self, rhs: Self) -> Self {
-        let (result, under) = self.0.overflowing_sub(rhs.0);
-        let (result, under) = result.overflowing_sub(E * (under as u64));
-        Self(result.wrapping_add(E * (under as u64)))
+        let (result, under) = self.0.overflowing_sub(rhs.as_int());
+        Self(result.wrapping_add(M * (under as u64)))
     }
 }
 
