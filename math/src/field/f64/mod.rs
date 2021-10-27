@@ -39,6 +39,9 @@ mod tests;
 // Field modulus = 2^64 - 2^32 + 1
 const M: u64 = 0xFFFFFFFF00000001;
 
+// Epsilon = 2^32 - 1;
+const E: u64 = 0xFFFFFFFF;
+
 // 2^32 root of unity
 const G: u64 = 1753635133440165772;
 
@@ -251,6 +254,7 @@ impl Display for BaseElement {
 // ================================================================================================
 
 impl PartialEq for BaseElement {
+    #[inline]
     fn eq(&self, other: &Self) -> bool {
         // since either of the elements can be in [0, 2^64) range, we first convert them to the
         // canonical form to ensure that they are in [0, M) range and then compare them.
@@ -269,9 +273,8 @@ impl Add for BaseElement {
     #[inline]
     #[allow(clippy::suspicious_arithmetic_impl)]
     fn add(self, rhs: Self) -> Self {
-        let (result, over) = self.0.overflowing_add(rhs.0);
-        let (result, over) = result.overflowing_add(0u32.wrapping_sub(over as u32) as u64);
-        Self(result.wrapping_add(0u32.wrapping_sub(over as u32) as u64))
+        let (result, over) = self.0.overflowing_add(rhs.as_int());
+        Self(result.wrapping_sub(M * (over as u64)))
     }
 }
 
@@ -288,9 +291,8 @@ impl Sub for BaseElement {
     #[inline]
     #[allow(clippy::suspicious_arithmetic_impl)]
     fn sub(self, rhs: Self) -> Self {
-        let (result, under) = self.0.overflowing_sub(rhs.0);
-        let (result, under) = result.overflowing_sub(0u32.wrapping_sub(under as u32) as u64);
-        Self(result.wrapping_add(0u32.wrapping_sub(under as u32) as u64))
+        let (result, under) = self.0.overflowing_sub(rhs.as_int());
+        Self(result.wrapping_add(M * (under as u64)))
     }
 }
 
@@ -361,10 +363,10 @@ impl ExtensibleField<2> for BaseElement {
         // performs multiplication in the extension field using 3 multiplications, 3 additions,
         // and 2 subtractions in the base field. overall, a single multiplication in the extension
         // field is slightly faster than 5 multiplications in the base field.
-        let z = a[0] * b[0];
+        let a0b0 = a[0] * b[0];
         [
-            z - (a[1] * b[1]).double(),
-            (a[0] + a[1]) * (b[0] + b[1]) - z,
+            a0b0 - (a[1] * b[1]).double(),
+            (a[0] + a[1]) * (b[0] + b[1]) - a0b0,
         ]
     }
 
@@ -544,9 +546,6 @@ impl Deserializable for BaseElement {
 
 /// Reduces a 128-bit value by M such that the output is in [0, 2^64) range.
 ///
-/// The reduction is performed by using only shifts, additions, and subtractions (no
-/// multiplications or divisions).
-///
 /// Adapted from: <https://github.com/mir-protocol/plonky2/blob/main/src/field/goldilocks_field.rs>
 #[inline(always)]
 fn mod_reduce(x: u128) -> u64 {
@@ -560,7 +559,7 @@ fn mod_reduce(x: u128) -> u64 {
 
     // compute ab - d; because d may be greater than ab we need to handle potential underflow
     let (tmp0, under) = ab.overflowing_sub(d);
-    let tmp0 = tmp0.wrapping_sub(0u32.wrapping_sub(under as u32) as u64);
+    let tmp0 = tmp0.wrapping_sub(E * (under as u64));
 
     // compute c * 2^32 - c; this is guaranteed not to underflow
     let tmp1 = (c << 32) - c;
@@ -568,5 +567,5 @@ fn mod_reduce(x: u128) -> u64 {
     // add temp values and return the result; because each of the temp may be up to 64 bits,
     // we need to handle potential overflow
     let (result, over) = tmp0.overflowing_add(tmp1);
-    result.wrapping_add(0u32.wrapping_sub(over as u32) as u64)
+    result.wrapping_add(E * (over as u64))
 }

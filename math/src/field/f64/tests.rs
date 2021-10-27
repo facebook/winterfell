@@ -3,7 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{AsBytes, BaseElement, DeserializationError, FieldElement, Serializable, StarkField};
+use super::{
+    AsBytes, BaseElement, DeserializationError, FieldElement, Serializable, StarkField, E, M,
+};
 use crate::field::{CubeExtension, QuadExtension};
 use core::convert::TryFrom;
 use num_bigint::BigUint;
@@ -21,14 +23,19 @@ fn add() {
 
     // test addition within bounds
     assert_eq!(
-        BaseElement::from(5u8),
-        BaseElement::from(2u8) + BaseElement::from(3u8)
+        BaseElement::new(5),
+        BaseElement::new(2) + BaseElement::new(3)
     );
 
     // test overflow
-    let t = BaseElement::from(BaseElement::MODULUS - 1);
+    let t = BaseElement::new(M - 1);
     assert_eq!(BaseElement::ZERO, t + BaseElement::ONE);
-    assert_eq!(BaseElement::ONE, t + BaseElement::from(2u8));
+    assert_eq!(BaseElement::ONE, t + BaseElement::new(2));
+
+    // test non-canonical representation
+    let a = BaseElement::new(M - 1) + BaseElement::new(E);
+    let expected = ((((M - 1 + E) as u128) * 2) % (M as u128)) as u64;
+    assert_eq!(expected, (a + a).as_int());
 }
 
 #[test]
@@ -39,13 +46,13 @@ fn sub() {
 
     // test subtraction within bounds
     assert_eq!(
-        BaseElement::from(2u8),
-        BaseElement::from(5u8) - BaseElement::from(3u8)
+        BaseElement::new(2),
+        BaseElement::new(5) - BaseElement::new(3)
     );
 
     // test underflow
-    let expected = BaseElement::from(BaseElement::MODULUS - 2);
-    assert_eq!(expected, BaseElement::from(3u8) - BaseElement::from(5u8));
+    let expected = BaseElement::new(M - 2);
+    assert_eq!(expected, BaseElement::new(3) - BaseElement::new(5));
 }
 
 #[test]

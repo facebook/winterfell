@@ -3,6 +3,7 @@
 ## 0.3.0 (TBD)
 * Added `f64` filed.
 * Added support for cubic field extensions.
+* Added an implementation of Rescue Prime hash function in `f64` field.
 
 ## 0.2.0 (2021-08-23)
 * Added `Blake3_192` as hash function option.

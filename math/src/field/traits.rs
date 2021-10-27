@@ -229,7 +229,7 @@ pub trait StarkField: FieldElement<BaseField = Self> {
     /// Returns byte representation of the field modulus in little-endian byte order.
     fn get_modulus_le_bytes() -> Vec<u8>;
 
-    /// Returns a canonical integer representation of the field element.
+    /// Returns a canonical integer representation of this field element.
     fn as_int(&self) -> Self::PositiveInteger;
 }
 
