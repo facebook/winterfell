@@ -284,7 +284,7 @@ fn apply_sbox(state: &mut [BaseElement; STATE_WIDTH]) {
 #[inline(always)]
 fn apply_inv_sbox(state: &mut [BaseElement; STATE_WIDTH]) {
     // compute base^10540996611094048183 using 72 multiplications per array element
-    // 3074416663688030891 = b1001001001001001001001001001000110110110110110110110110110110111
+    // 10540996611094048183 = b1001001001001001001001001001000110110110110110110110110110110111
 
     // compute base^10
     let mut t1 = *state;

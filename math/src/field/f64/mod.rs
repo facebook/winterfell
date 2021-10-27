@@ -363,10 +363,10 @@ impl ExtensibleField<2> for BaseElement {
         // performs multiplication in the extension field using 3 multiplications, 3 additions,
         // and 2 subtractions in the base field. overall, a single multiplication in the extension
         // field is slightly faster than 5 multiplications in the base field.
-        let z = a[0] * b[0];
+        let a0b0 = a[0] * b[0];
         [
-            z - (a[1] * b[1]).double(),
-            (a[0] + a[1]) * (b[0] + b[1]) - z,
+            a0b0 - (a[1] * b[1]).double(),
+            (a[0] + a[1]) * (b[0] + b[1]) - a0b0,
         ]
     }
 
@@ -545,9 +545,6 @@ impl Deserializable for BaseElement {
 // ================================================================================================
 
 /// Reduces a 128-bit value by M such that the output is in [0, 2^64) range.
-///
-/// The reduction is performed by using only shifts, additions, and subtractions (no
-/// multiplications or divisions).
 ///
 /// Adapted from: <https://github.com/mir-protocol/plonky2/blob/main/src/field/goldilocks_field.rs>
 #[inline(always)]
