@@ -21,7 +21,7 @@ mod tests;
 const STATE_WIDTH: usize = 12;
 const RATE_WIDTH: usize = 8;
 
-/// The output of the hash function is a digest which consists of 4 field elements or 31 bytes.
+/// The output of the hash function is a digest which consists of 4 field elements or 32 bytes.
 const DIGEST_SIZE: usize = 4;
 
 /// The number of rounds is set to 7 to target 128-bit security level with 40% security margin;
