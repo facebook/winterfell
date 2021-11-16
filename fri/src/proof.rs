@@ -206,7 +206,7 @@ impl Serializable for FriProof {
         }
 
         // write remainder
-        target.write_u8(self.remainder.len().trailing_zeros() as u8);
+        target.write_u16(self.remainder.len() as u16);
         target.write_u8_slice(&self.remainder);
 
         // write number of partitions
@@ -225,7 +225,7 @@ impl Deserializable for FriProof {
         let layers = FriProofLayer::read_batch_from(source, num_layers)?;
 
         // read remainder
-        let remainder_bytes = 2usize.pow(source.read_u8()? as u32);
+        let remainder_bytes = source.read_u16()? as usize;
         let remainder = source.read_u8_vec(remainder_bytes)?;
 
         // read number of partitions
