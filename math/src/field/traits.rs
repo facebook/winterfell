@@ -25,7 +25,7 @@ use utils::{
 /// Moreover, it defines interfaces for serializing and deserializing field elements.
 ///
 /// The elements could be in a prime field or an extension of a prime field. Currently, only
-/// quadratic field extensions are supported.
+/// quadratic and cubic field extensions are supported.
 pub trait FieldElement:
     Copy
     + Clone
@@ -192,7 +192,7 @@ pub trait FieldElement:
 ///
 /// A STARK-friendly field is defined as a prime field with high two-addicity. That is, the
 /// the modulus of the field should be a prime number of the form `k` * 2^`n` + 1 (a Proth prime),
-/// where `n` is relatively larger (e.g., greater than 32).
+/// where `n` is relatively large (e.g., greater than 32).
 pub trait StarkField: FieldElement<BaseField = Self> {
     /// Prime modulus of the field. Must be of the form `k` * 2^`n` + 1 (a Proth prime).
     /// This ensures that the field has high 2-adicity.
@@ -236,7 +236,7 @@ pub trait StarkField: FieldElement<BaseField = Self> {
 // EXTENSIBLE FIELD
 // ================================================================================================
 
-/// Defined basic arithmetic in an extension of a StarkField of a given degree.
+/// Defines basic arithmetic in an extension of a StarkField of a given degree.
 ///
 /// This trait defines how to perform multiplication and compute a Frobenius automorphisms of an
 /// element in an extension of degree N for a given [StarkField]. It as assumed that an element in

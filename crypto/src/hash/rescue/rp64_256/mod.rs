@@ -127,7 +127,7 @@ impl Hasher for Rp64_256 {
                 buf[chunk_len] = 1;
             }
 
-            // convert the bytes into a filed element and absorb it into the rate portion of the
+            // convert the bytes into a field element and absorb it into the rate portion of the
             // state; if the rate is filled up, apply the Rescue permutation and start absorbing
             // again from zero index.
             state[i] += BaseElement::new(u64::from_le_bytes(buf));

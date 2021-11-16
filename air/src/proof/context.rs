@@ -149,7 +149,7 @@ impl Deserializable for Context {
         let num_modulus_bytes = source.read_u8()? as usize;
         if num_modulus_bytes == 0 {
             return Err(DeserializationError::InvalidValue(
-                "filed modulus cannot be an empty value".to_string(),
+                "field modulus cannot be an empty value".to_string(),
             ));
         }
         let field_modulus_bytes = source.read_u8_vec(num_modulus_bytes)?;
