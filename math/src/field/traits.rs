@@ -92,23 +92,27 @@ pub trait FieldElement:
 
     /// Returns this field element added to itself.
     #[inline]
+    #[must_use]
     fn double(self) -> Self {
         self + self
     }
 
     /// Returns this field element raised to power 2.
     #[inline]
+    #[must_use]
     fn square(self) -> Self {
         self * self
     }
 
     /// Returns this field element raised to power 3.
     #[inline]
+    #[must_use]
     fn cube(self) -> Self {
         self * self * self
     }
 
     /// Exponentiates this field element by `power` parameter.
+    #[must_use]
     fn exp(self, power: Self::PositiveInteger) -> Self {
         let mut r = Self::ONE;
         let mut b = self;
@@ -136,9 +140,11 @@ pub trait FieldElement:
 
     /// Returns a multiplicative inverse of this field element. If this element is ZERO, ZERO is
     /// returned.
+    #[must_use]
     fn inv(self) -> Self;
 
     /// Returns a conjugate of this field element.
+    #[must_use]
     fn conjugate(&self) -> Self;
 
     // SERIALIZATION / DESERIALIZATION

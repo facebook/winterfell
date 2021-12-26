@@ -9,7 +9,8 @@ repository = "https://github.com/novifinancial/winterfell"
 documentation = "https://docs.rs/winter-crypto/0.2.0"
 categories = ["cryptography", "no-std"]
 keywords = ["crypto", "merkle-tree", "hash"]
-edition = "2018"
+edition = "2021"
+rust-version = "1.57"
 
 [lib]
 bench = false
@@ -31,7 +32,7 @@ std = ["blake3/std", "math/std", "sha3/std", "utils/std"]
 [dependencies]
 blake3 = { version = "1.0", default-features = false }
 math = { version = "0.2", path = "../math", package = "winter-math", default-features = false }
-sha3 = { version = "0.9", default-features = false }
+sha3 = { version = "0.10", default-features = false }
 utils = { version = "0.2", path = "../utils/core", package = "winter-utils", default-features = false }
 
 [dev-dependencies]
