@@ -1,12 +1,7 @@
-// Copyright (c) Facebook, Inc. and its affiliates.
-//
-// This source code is licensed under the MIT license found in the
-// LICENSE file in the root directory of this source tree.
-
-use super::{rescue, Signature, CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH, TRACE_WIDTH};
-use winterfell::{
-    math::{fields::f128::BaseElement, get_power_series, FieldElement, StarkField},
-    ExecutionTrace,
+use super::{
+    get_power_series, rescue, BaseElement, ExecutionTrace, FieldElement, LamportAggregateAir,
+    ProofOptions, Prover, Signature, StarkField, CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH,
+    TRACE_WIDTH,
 };
 
 #[cfg(feature = "concurrent")]
@@ -34,33 +29,53 @@ struct KeySchedule {
     pub_keys2: Vec<[BaseElement; 2]>,
 }
 
-// TRACE GENERATOR
+// LAMPORT PROVER
 // ================================================================================================
 
-pub fn generate_trace(
-    messages: &[[BaseElement; 2]],
-    signatures: &[Signature],
-) -> ExecutionTrace<BaseElement> {
-    // allocate memory to hold the trace table
-    let trace_length = SIG_CYCLE_LENGTH * messages.len();
-    let mut trace = ExecutionTrace::new(TRACE_WIDTH, trace_length);
+pub struct LamportAggregateProver {
+    options: ProofOptions,
+}
 
-    let powers_of_two = get_power_series(TWO, 128);
+impl LamportAggregateProver {
+    pub fn new(options: ProofOptions) -> Self {
+        Self { options }
+    }
 
-    trace.fragments(SIG_CYCLE_LENGTH).for_each(|mut sig_trace| {
-        let i = sig_trace.index();
-        let sig_info = build_sig_info(&messages[i], &signatures[i]);
-        sig_trace.fill(
-            |state| {
-                init_sig_verification_state(&sig_info, state);
-            },
-            |step, state| {
-                update_sig_verification_state(step, &sig_info, &powers_of_two, state);
-            },
-        );
-    });
+    pub fn build_trace(
+        &self,
+        messages: &[[BaseElement; 2]],
+        signatures: &[Signature],
+    ) -> ExecutionTrace<BaseElement> {
+        // allocate memory to hold the trace table
+        let trace_length = SIG_CYCLE_LENGTH * messages.len();
+        let mut trace = ExecutionTrace::new(TRACE_WIDTH, trace_length);
 
-    trace
+        let powers_of_two = get_power_series(TWO, 128);
+
+        trace.fragments(SIG_CYCLE_LENGTH).for_each(|mut sig_trace| {
+            let i = sig_trace.index();
+            let sig_info = build_sig_info(&messages[i], &signatures[i]);
+            sig_trace.fill(
+                |state| {
+                    init_sig_verification_state(&sig_info, state);
+                },
+                |step, state| {
+                    update_sig_verification_state(step, &sig_info, &powers_of_two, state);
+                },
+            );
+        });
+
+        trace
+    }
+}
+
+impl Prover for LamportAggregateProver {
+    type BaseField = BaseElement;
+    type AIR = LamportAggregateAir;
+
+    fn options(&self) -> &ProofOptions {
+        &self.options
+    }
 }
 
 // TRACE INITIALIZATION

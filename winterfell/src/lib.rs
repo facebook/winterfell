@@ -253,8 +253,8 @@
 //! # use winterfell::{
 //! #    math::{fields::f128::BaseElement, FieldElement},
 //! #    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, Serializable,
-//! #    TraceInfo, TransitionConstraintDegree,
-//! #    ExecutionTrace, FieldExtension, HashFunction, ProofOptions, StarkProof,
+//! #    TraceInfo, TransitionConstraintDegree, ExecutionTrace, FieldExtension,
+//! #    HashFunction, Prover, ProofOptions, StarkProof,
 //! # };
 //! #
 //! # pub fn build_do_work_trace(start: BaseElement, n: usize) -> ExecutionTrace<BaseElement> {
@@ -348,9 +348,29 @@
 //!     128, // FRI max remainder length
 //! );
 //!
+//! struct WorkProver {
+//!     options: ProofOptions
+//! }
+//!
+//! impl WorkProver {
+//!     pub fn new(options: ProofOptions) -> Self {
+//!         Self { options }
+//!     }
+//! }
+//!
+//! impl Prover for WorkProver {
+//!     type BaseField = BaseElement;
+//!     type AIR = WorkAir;
+//!
+//!     fn options(&self) -> &ProofOptions {
+//!         &self.options
+//!     }
+//! }
+//!
 //! // Generate the proof.
 //! let pub_inputs = PublicInputs { start, result };
-//! let proof = winterfell::prove::<WorkAir>(trace, pub_inputs, options).unwrap();
+//! let prover = WorkProver::new(options);
+//! let proof = prover.prove(trace, pub_inputs).unwrap();
 //!
 //! // Verify the proof. The number of steps and options are encoded in the proof itself,
 //! // so we don't need to pass them explicitly to the verifier.
@@ -384,11 +404,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub use prover::{
-    crypto, iterators, math, prove, Air, AirContext, Assertion, BoundaryConstraint,
+    crypto, iterators, math, Air, AirContext, Assertion, BoundaryConstraint,
     BoundaryConstraintGroup, ByteReader, ByteWriter, ConstraintCompositionCoefficients,
     ConstraintDivisor, DeepCompositionCoefficients, Deserializable, DeserializationError,
     EvaluationFrame, ExecutionTrace, ExecutionTraceFragment, FieldExtension, HashFunction,
-    ProofOptions, ProverError, Serializable, StarkProof, TraceInfo, TransitionConstraintDegree,
-    TransitionConstraintGroup,
+    ProofOptions, Prover, ProverError, Serializable, StarkProof, TraceInfo,
+    TransitionConstraintDegree, TransitionConstraintGroup,
 };
 pub use verifier::{verify, VerifierError};

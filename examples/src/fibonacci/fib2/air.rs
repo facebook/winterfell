@@ -3,17 +3,14 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use super::{BaseElement, FieldElement, ProofOptions, TRACE_WIDTH};
 use crate::utils::are_equal;
 use winterfell::{
-    math::{fields::f128::BaseElement, FieldElement},
-    Air, AirContext, Assertion, EvaluationFrame, ExecutionTrace, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
+    Air, AirContext, Assertion, EvaluationFrame, TraceInfo, TransitionConstraintDegree,
 };
 
 // FIBONACCI AIR
 // ================================================================================================
-
-const TRACE_WIDTH: usize = 2;
 
 pub struct FibAir {
     context: AirContext<BaseElement>,
@@ -71,27 +68,4 @@ impl Air for FibAir {
             Assertion::single(1, last_step, self.result),
         ]
     }
-}
-
-// FIBONACCI TRACE BUILDER
-// ================================================================================================
-pub fn build_trace(sequence_length: usize) -> ExecutionTrace<BaseElement> {
-    assert!(
-        sequence_length.is_power_of_two(),
-        "sequence length must be a power of 2"
-    );
-
-    let mut trace = ExecutionTrace::new(TRACE_WIDTH, sequence_length / 2);
-    trace.fill(
-        |state| {
-            state[0] = BaseElement::ONE;
-            state[1] = BaseElement::ONE;
-        },
-        |_, state| {
-            state[0] += state[1];
-            state[1] += state[0];
-        },
-    );
-
-    trace
 }

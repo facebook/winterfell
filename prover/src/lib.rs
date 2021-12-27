@@ -57,7 +57,7 @@ pub use math;
 use math::{
     fft::infer_degree,
     fields::{CubeExtension, QuadExtension},
-    FieldElement,
+    ExtensibleField, FieldElement, StarkField,
 };
 
 pub use crypto;
@@ -97,80 +97,88 @@ pub mod tests;
 
 // PROVER
 // ================================================================================================
-/// Returns a STARK proof attesting to a correct execution of a computation.
-///
-/// Function parameters have the following meanings:
+
+/// TODO: add docs
 /// * `AIR` is a type implementing [Air] trait for the computation. Among other things, it defines
 ///    algebraic constraints which define the computation.
-/// * `trace` is an execution trace of the computation executed against some set of inputs. These
-///   inputs may include both public and private inputs.
-/// * `pub_inputs` is the set of public inputs against which the computation was executed. These
-///   these inputs will need to be shared with the verifier in order for them to verify the proof.
-/// * `options` defines basic protocol parameters such as: number of queries, blowup factor,
-///   grinding factor, hash function to be used in the protocol etc. These properties directly
-///   inform such metrics as proof generation time, proof size, and proof security level.
-///
-/// The function returns a [StarkProof] attesting that the specified `trace` is a valid execution
-/// trace of the computation described by the specified `AIR` and generated using the specified
-/// public inputs.
-#[rustfmt::skip]
-pub fn prove<AIR: Air>(
-    trace: ExecutionTrace<AIR::BaseElement>,
-    pub_inputs: AIR::PublicInputs,
-    options: ProofOptions,
-) -> Result<StarkProof, ProverError> {
-    // serialize public inputs; these will be included in the seed for the public coin
-    let mut pub_inputs_bytes = Vec::new();
-    pub_inputs.write_into(&mut pub_inputs_bytes);
+pub trait Prover {
+    type BaseField: StarkField + ExtensibleField<2> + ExtensibleField<3>;
+    type AIR: Air<BaseElement = Self::BaseField>;
 
-    // create an instance of AIR for the provided parameters. this takes a generic description of
-    // the computation (provided via AIR type), and creates a description of a specific execution
-    // of the computation for the provided public inputs.
-    let air = AIR::new(trace.get_info(), pub_inputs, options);
+    // REQUIRED METHODS
+    // --------------------------------------------------------------------------------------------
 
-    // make sure the specified trace is valid against the AIR. This checks validity of both,
-    // assertions and state transitions. we do this in debug mode only because this is a very
-    // expensive operation.
-    #[cfg(debug_assertions)]
-    trace.validate(&air);
+    /// TODO: add docs
+    /// * `options` defines basic protocol parameters such as: number of queries, blowup factor,
+    ///   grinding factor, hash function to be used in the protocol etc. These properties directly
+    ///   inform such metrics as proof generation time, proof size, and proof security level.
+    fn options(&self) -> &ProofOptions;
 
-    // figure out which version of the generic proof generation procedure to run. this is a sort
-    // of static dispatch for selecting two generic parameter: extension field and hash function.
-    match air.options().field_extension() {
-        FieldExtension::None => match air.options().hash_fn() {
-            HashFunction::Blake3_256 => generate_proof::
-                <AIR, AIR::BaseElement, Blake3_256<AIR::BaseElement>>(air, trace, pub_inputs_bytes),
-            HashFunction::Blake3_192 => generate_proof::
-                <AIR, AIR::BaseElement, Blake3_192<AIR::BaseElement>>(air, trace, pub_inputs_bytes),
-            HashFunction::Sha3_256 => generate_proof::
-                <AIR, AIR::BaseElement, Sha3_256<AIR::BaseElement>>(air, trace, pub_inputs_bytes)
-        },
-        FieldExtension::Quadratic => {
-            if !<QuadExtension<AIR::BaseElement>>::is_supported() {
-                return Err(ProverError::UnsupportedFieldExtension(2));
+    // PROVIDED METHODS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns a STARK proof attesting to a correct execution of a computation specified by
+    /// `Self::AIR` type parameter.
+    ///
+    /// Function parameters have the following meanings:
+    /// * `trace` is an execution trace of the computation executed against some set of inputs. These
+    ///   inputs may include both public and private inputs.
+    /// * `pub_inputs` is the set of public inputs against which the computation was executed. These
+    ///   these inputs will need to be shared with the verifier in order for them to verify the proof.
+    ///
+    /// The function returns a [StarkProof] attesting that the specified `trace` is a valid execution
+    /// trace of the computation described by `Self::AIR` and generated using the specified/ public
+    /// inputs.
+    #[rustfmt::skip]
+    fn prove(
+        &self,
+        trace: ExecutionTrace<Self::BaseField>,
+        pub_inputs: <<Self as Prover>::AIR as Air>::PublicInputs,
+    ) -> Result<StarkProof, ProverError> {
+        // serialize public inputs; these will be included in the seed for the public coin
+        let mut pub_inputs_bytes = Vec::new();
+        pub_inputs.write_into(&mut pub_inputs_bytes);
+
+        // create an instance of AIR for the provided parameters. this takes a generic description of
+        // the computation (provided via AIR type), and creates a description of a specific execution
+        // of the computation for the provided public inputs.
+        let air = Self::AIR::new(trace.get_info(), pub_inputs, self.options().clone());
+
+        // make sure the specified trace is valid against the AIR. This checks validity of both,
+        // assertions and state transitions. we do this in debug mode only because this is a very
+        // expensive operation.
+        #[cfg(debug_assertions)]
+        trace.validate(&air);
+
+        // figure out which version of the generic proof generation procedure to run. this is a sort
+        // of static dispatch for selecting two generic parameter: extension field and hash function.
+        match air.options().field_extension() {
+            FieldExtension::None => match air.options().hash_fn() {
+                HashFunction::Blake3_256 => generate_proof::<Self::AIR, Self::BaseField, Blake3_256<Self::BaseField>>(air, trace, pub_inputs_bytes),
+                HashFunction::Blake3_192 => generate_proof::<Self::AIR, Self::BaseField, Blake3_192<Self::BaseField>>(air, trace, pub_inputs_bytes),
+                HashFunction::Sha3_256 => generate_proof::<Self::AIR, Self::BaseField, Sha3_256<Self::BaseField>>(air, trace, pub_inputs_bytes),
+            },
+            FieldExtension::Quadratic => {
+                if !<QuadExtension<Self::BaseField>>::is_supported() {
+                    return Err(ProverError::UnsupportedFieldExtension(2));
+                }
+                match air.options().hash_fn() {
+                    HashFunction::Blake3_256 => generate_proof::<Self::AIR, QuadExtension<Self::BaseField>, Blake3_256<Self::BaseField>>(air, trace, pub_inputs_bytes),
+                    HashFunction::Blake3_192 => generate_proof::<Self::AIR, QuadExtension<Self::BaseField>, Blake3_192<Self::BaseField>>(air, trace, pub_inputs_bytes),
+                    HashFunction::Sha3_256 => generate_proof::<Self::AIR, QuadExtension<Self::BaseField>, Sha3_256<Self::BaseField>>(air, trace, pub_inputs_bytes),
+                }
             }
-            match air.options().hash_fn() {
-                HashFunction::Blake3_256 => generate_proof::
-                    <AIR, QuadExtension<AIR::BaseElement>, Blake3_256<AIR::BaseElement>>(air, trace, pub_inputs_bytes),
-                HashFunction::Blake3_192 => generate_proof::
-                    <AIR, QuadExtension<AIR::BaseElement>, Blake3_192<AIR::BaseElement>>(air, trace, pub_inputs_bytes),
-                HashFunction::Sha3_256 => generate_proof::
-                    <AIR, QuadExtension<AIR::BaseElement>, Sha3_256<AIR::BaseElement>>(air, trace, pub_inputs_bytes),
+            FieldExtension::Cubic => {
+                if !<CubeExtension<Self::BaseField>>::is_supported() {
+                    return Err(ProverError::UnsupportedFieldExtension(3));
+                }
+                match air.options().hash_fn() {
+                    HashFunction::Blake3_256 => generate_proof::<Self::AIR, CubeExtension<Self::BaseField>, Blake3_256<Self::BaseField>>(air, trace, pub_inputs_bytes),
+                    HashFunction::Blake3_192 => generate_proof::<Self::AIR, CubeExtension<Self::BaseField>, Blake3_192<Self::BaseField>>(air, trace, pub_inputs_bytes),
+                    HashFunction::Sha3_256 => generate_proof::<Self::AIR, CubeExtension<Self::BaseField>, Sha3_256<Self::BaseField>>(air, trace, pub_inputs_bytes),
+                }
             }
-        },
-        FieldExtension::Cubic => {
-            if !<CubeExtension<AIR::BaseElement>>::is_supported() {
-                return Err(ProverError::UnsupportedFieldExtension(3));
-            }
-            match air.options().hash_fn() {
-                HashFunction::Blake3_256 => generate_proof::
-                    <AIR, CubeExtension<AIR::BaseElement>, Blake3_256<AIR::BaseElement>>(air, trace, pub_inputs_bytes),
-                HashFunction::Blake3_192 => generate_proof::
-                    <AIR, CubeExtension<AIR::BaseElement>, Blake3_192<AIR::BaseElement>>(air, trace, pub_inputs_bytes),
-                HashFunction::Sha3_256 => generate_proof::
-                    <AIR, CubeExtension<AIR::BaseElement>, Sha3_256<AIR::BaseElement>>(air, trace, pub_inputs_bytes),
-            }
-        },
+        }
     }
 }
 
