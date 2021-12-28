@@ -6,7 +6,7 @@
 use core::ops::Range;
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement, StarkField},
-    ExecutionTrace,
+    ExecutionTrace, Trace,
 };
 
 pub mod rescue;

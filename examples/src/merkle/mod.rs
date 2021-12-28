@@ -17,7 +17,7 @@ use std::time::Instant;
 use winterfell::{
     crypto::{Digest, MerkleTree},
     math::{fields::f128::BaseElement, log2, FieldElement, StarkField},
-    ExecutionTrace, ProofOptions, Prover, StarkProof, VerifierError,
+    ExecutionTrace, ProofOptions, Prover, StarkProof, Trace, VerifierError,
 };
 
 mod air;

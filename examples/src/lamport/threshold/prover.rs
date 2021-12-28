@@ -1,3 +1,8 @@
+// Copyright (c) Facebook, Inc. and its affiliates.
+//
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
 use super::{
     get_power_series, rescue, AggPublicKey, BaseElement, ExecutionTrace, FieldElement,
     LamportThresholdAir, ProofOptions, Prover, Signature, StarkField, HASH_CYCLE_LENGTH,
@@ -109,7 +114,8 @@ impl LamportThresholdProver {
 
 impl Prover for LamportThresholdProver {
     type BaseField = BaseElement;
-    type AIR = LamportThresholdAir;
+    type Air = LamportThresholdAir;
+    type Trace = ExecutionTrace<BaseElement>;
 
     fn options(&self) -> &ProofOptions {
         &self.options

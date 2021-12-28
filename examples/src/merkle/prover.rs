@@ -1,3 +1,8 @@
+// Copyright (c) Facebook, Inc. and its affiliates.
+//
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
 use super::{
     rescue, BaseElement, ExecutionTrace, FieldElement, MerkleAir, ProofOptions, Prover,
     HASH_CYCLE_LEN, HASH_STATE_WIDTH, NUM_HASH_ROUNDS, TRACE_WIDTH,
@@ -86,7 +91,8 @@ impl MerkleProver {
 
 impl Prover for MerkleProver {
     type BaseField = BaseElement;
-    type AIR = MerkleAir;
+    type Air = MerkleAir;
+    type Trace = ExecutionTrace<BaseElement>;
 
     fn options(&self) -> &ProofOptions {
         &self.options

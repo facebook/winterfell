@@ -1,3 +1,8 @@
+// Copyright (c) Facebook, Inc. and its affiliates.
+//
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
 use super::{
     rescue, BaseElement, ExecutionTrace, FieldElement, ProofOptions, Prover, RescueAir,
     CYCLE_LENGTH, NUM_HASH_ROUNDS,
@@ -53,7 +58,8 @@ impl RescueProver {
 
 impl Prover for RescueProver {
     type BaseField = BaseElement;
-    type AIR = RescueAir;
+    type Air = RescueAir;
+    type Trace = ExecutionTrace<BaseElement>;
 
     fn options(&self) -> &ProofOptions {
         &self.options

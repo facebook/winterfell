@@ -84,7 +84,7 @@ use composer::DeepCompositionPoly;
 
 mod trace;
 use trace::TracePolyTable;
-pub use trace::{ExecutionTrace, ExecutionTraceFragment};
+pub use trace::{ExecutionTrace, ExecutionTraceFragment, Trace};
 
 mod channel;
 use channel::ProverChannel;
@@ -103,7 +103,8 @@ pub mod tests;
 ///    algebraic constraints which define the computation.
 pub trait Prover {
     type BaseField: StarkField + ExtensibleField<2> + ExtensibleField<3>;
-    type AIR: Air<BaseElement = Self::BaseField>;
+    type Air: Air<BaseElement = Self::BaseField>;
+    type Trace: Trace<Self::BaseField>;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -132,8 +133,8 @@ pub trait Prover {
     #[rustfmt::skip]
     fn prove(
         &self,
-        trace: ExecutionTrace<Self::BaseField>,
-        pub_inputs: <<Self as Prover>::AIR as Air>::PublicInputs,
+        trace: Self::Trace,
+        pub_inputs: <<Self as Prover>::Air as Air>::PublicInputs,
     ) -> Result<StarkProof, ProverError> {
         // serialize public inputs; these will be included in the seed for the public coin
         let mut pub_inputs_bytes = Vec::new();
@@ -142,7 +143,7 @@ pub trait Prover {
         // create an instance of AIR for the provided parameters. this takes a generic description of
         // the computation (provided via AIR type), and creates a description of a specific execution
         // of the computation for the provided public inputs.
-        let air = Self::AIR::new(trace.get_info(), pub_inputs, self.options().clone());
+        let air = Self::Air::new(trace.get_info(), pub_inputs, self.options().clone());
 
         // make sure the specified trace is valid against the AIR. This checks validity of both,
         // assertions and state transitions. we do this in debug mode only because this is a very
@@ -154,18 +155,18 @@ pub trait Prover {
         // of static dispatch for selecting two generic parameter: extension field and hash function.
         match air.options().field_extension() {
             FieldExtension::None => match air.options().hash_fn() {
-                HashFunction::Blake3_256 => generate_proof::<Self::AIR, Self::BaseField, Blake3_256<Self::BaseField>>(air, trace, pub_inputs_bytes),
-                HashFunction::Blake3_192 => generate_proof::<Self::AIR, Self::BaseField, Blake3_192<Self::BaseField>>(air, trace, pub_inputs_bytes),
-                HashFunction::Sha3_256 => generate_proof::<Self::AIR, Self::BaseField, Sha3_256<Self::BaseField>>(air, trace, pub_inputs_bytes),
+                HashFunction::Blake3_256 => generate_proof::<Self::Air, Self::Trace, Self::BaseField, Blake3_256<Self::BaseField>>(air, trace, pub_inputs_bytes),
+                HashFunction::Blake3_192 => generate_proof::<Self::Air, Self::Trace, Self::BaseField, Blake3_192<Self::BaseField>>(air, trace, pub_inputs_bytes),
+                HashFunction::Sha3_256 => generate_proof::<Self::Air, Self::Trace, Self::BaseField, Sha3_256<Self::BaseField>>(air, trace, pub_inputs_bytes),
             },
             FieldExtension::Quadratic => {
                 if !<QuadExtension<Self::BaseField>>::is_supported() {
                     return Err(ProverError::UnsupportedFieldExtension(2));
                 }
                 match air.options().hash_fn() {
-                    HashFunction::Blake3_256 => generate_proof::<Self::AIR, QuadExtension<Self::BaseField>, Blake3_256<Self::BaseField>>(air, trace, pub_inputs_bytes),
-                    HashFunction::Blake3_192 => generate_proof::<Self::AIR, QuadExtension<Self::BaseField>, Blake3_192<Self::BaseField>>(air, trace, pub_inputs_bytes),
-                    HashFunction::Sha3_256 => generate_proof::<Self::AIR, QuadExtension<Self::BaseField>, Sha3_256<Self::BaseField>>(air, trace, pub_inputs_bytes),
+                    HashFunction::Blake3_256 => generate_proof::<Self::Air, Self::Trace, QuadExtension<Self::BaseField>, Blake3_256<Self::BaseField>>(air, trace, pub_inputs_bytes),
+                    HashFunction::Blake3_192 => generate_proof::<Self::Air, Self::Trace, QuadExtension<Self::BaseField>, Blake3_192<Self::BaseField>>(air, trace, pub_inputs_bytes),
+                    HashFunction::Sha3_256 => generate_proof::<Self::Air, Self::Trace, QuadExtension<Self::BaseField>, Sha3_256<Self::BaseField>>(air, trace, pub_inputs_bytes),
                 }
             }
             FieldExtension::Cubic => {
@@ -173,9 +174,9 @@ pub trait Prover {
                     return Err(ProverError::UnsupportedFieldExtension(3));
                 }
                 match air.options().hash_fn() {
-                    HashFunction::Blake3_256 => generate_proof::<Self::AIR, CubeExtension<Self::BaseField>, Blake3_256<Self::BaseField>>(air, trace, pub_inputs_bytes),
-                    HashFunction::Blake3_192 => generate_proof::<Self::AIR, CubeExtension<Self::BaseField>, Blake3_192<Self::BaseField>>(air, trace, pub_inputs_bytes),
-                    HashFunction::Sha3_256 => generate_proof::<Self::AIR, CubeExtension<Self::BaseField>, Sha3_256<Self::BaseField>>(air, trace, pub_inputs_bytes),
+                    HashFunction::Blake3_256 => generate_proof::<Self::Air, Self::Trace, CubeExtension<Self::BaseField>, Blake3_256<Self::BaseField>>(air, trace, pub_inputs_bytes),
+                    HashFunction::Blake3_192 => generate_proof::<Self::Air, Self::Trace, CubeExtension<Self::BaseField>, Blake3_192<Self::BaseField>>(air, trace, pub_inputs_bytes),
+                    HashFunction::Sha3_256 => generate_proof::<Self::Air, Self::Trace, CubeExtension<Self::BaseField>, Sha3_256<Self::BaseField>>(air, trace, pub_inputs_bytes),
                 }
             }
         }
@@ -186,13 +187,14 @@ pub trait Prover {
 // ================================================================================================
 /// Performs the actual proof generation procedure, generating the proof that the provided
 /// execution `trace` is valid against the provided `air`.
-fn generate_proof<A, E, H>(
+fn generate_proof<A, T, E, H>(
     air: A,
-    trace: ExecutionTrace<A::BaseElement>,
+    trace: T,
     pub_inputs_bytes: Vec<u8>,
 ) -> Result<StarkProof, ProverError>
 where
     A: Air,
+    T: Trace<A::BaseElement>,
     E: FieldElement<BaseField = A::BaseElement>,
     H: ElementHasher<BaseField = A::BaseElement>,
 {
