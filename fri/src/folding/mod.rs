@@ -32,7 +32,7 @@ use utils::{collections::Vec, iter_mut, uninit_vector};
 /// - evaluate f'(x) on a domain which consists of x^4 from the original domain (and thus is
 ///   1/4 the size).
 ///
-/// However, the reduction is preformed without converting the polynomials into coefficient form.
+/// However, the reduction is performed without converting the polynomials into coefficient form.
 /// That is, we can go directly form evaluations to folded evaluations. For this, for each
 /// evaluation in the folded domain, we need `N` evaluations in the source domain. For example,
 /// for the case of `N` = 4, to compute the evaluation of *f'*(x) we need to have evaluations of

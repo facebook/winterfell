@@ -1,7 +1,7 @@
 # Changelog
 
 ## 0.3.0 (TBD)
-* Added `f64` filed.
+* Added `f64` field.
 * Added support for cubic field extensions.
 * Added an implementation of Rescue Prime hash function in `f64` field.
 * Switched to Rust 2021 and increased min version of `rustc` to 1.57

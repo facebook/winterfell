@@ -23,7 +23,7 @@ const MIN_CYCLE_LENGTH: usize = 2;
 /// `evaluation` table by the [Air::evaluate_transition()](crate::Air::evaluate_transition)
 /// function.
 ///
-/// A transition constraint is described by a ration function of the form $\frac{C(x)}{z(x)}$,
+/// A transition constraint is described by a rational function of the form $\frac{C(x)}{z(x)}$,
 /// where:
 /// * $C(x)$ is the constraint polynomial.
 /// * $z(x)$ is the constraint divisor polynomial.
