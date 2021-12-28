@@ -55,7 +55,7 @@ pub struct BaseElement(u128);
 
 impl BaseElement {
     /// Creates a new field element from a u128 value. If the value is greater than or equal to
-    /// the field modulus, modular reduction is silently preformed. This function can also be used
+    /// the field modulus, modular reduction is silently performed. This function can also be used
     /// to initialize constants.
     pub const fn new(value: u128) -> Self {
         BaseElement(if value < M { value } else { value - M })
@@ -285,36 +285,36 @@ impl ExtensibleField<3> for BaseElement {
 // ================================================================================================
 
 impl From<u128> for BaseElement {
-    /// Converts a 128-bit value into a filed element. If the value is greater than or equal to
-    /// the field modulus, modular reduction is silently preformed.
+    /// Converts a 128-bit value into a field element. If the value is greater than or equal to
+    /// the field modulus, modular reduction is silently performed.
     fn from(value: u128) -> Self {
         BaseElement::new(value)
     }
 }
 
 impl From<u64> for BaseElement {
-    /// Converts a 64-bit value into a filed element.
+    /// Converts a 64-bit value into a field element.
     fn from(value: u64) -> Self {
         BaseElement(value as u128)
     }
 }
 
 impl From<u32> for BaseElement {
-    /// Converts a 32-bit value into a filed element.
+    /// Converts a 32-bit value into a field element.
     fn from(value: u32) -> Self {
         BaseElement(value as u128)
     }
 }
 
 impl From<u16> for BaseElement {
-    /// Converts a 16-bit value into a filed element.
+    /// Converts a 16-bit value into a field element.
     fn from(value: u16) -> Self {
         BaseElement(value as u128)
     }
 }
 
 impl From<u8> for BaseElement {
-    /// Converts an 8-bit value into a filed element.
+    /// Converts an 8-bit value into a field element.
     fn from(value: u8) -> Self {
         BaseElement(value as u128)
     }
@@ -323,7 +323,7 @@ impl From<u8> for BaseElement {
 impl From<[u8; 16]> for BaseElement {
     /// Converts the value encoded in an array of 16 bytes into a field element. The bytes
     /// are assumed to be in little-endian byte order. If the value is greater than or equal
-    /// to the field modulus, modular reduction is silently preformed.
+    /// to the field modulus, modular reduction is silently performed.
     fn from(bytes: [u8; 16]) -> Self {
         let value = u128::from_le_bytes(bytes);
         BaseElement::from(value)
