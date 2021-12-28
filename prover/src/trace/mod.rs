@@ -13,8 +13,8 @@ pub use trace_lde::TraceLde;
 mod poly_table;
 pub use poly_table::TracePolyTable;
 
-mod execution_trace;
-pub use execution_trace::{ExecutionTrace, ExecutionTraceFragment};
+mod trace_table;
+pub use trace_table::{TraceTable, TraceTableFragment};
 
 use utils::{collections::Vec, iter_mut};
 

@@ -29,7 +29,7 @@ const MIN_FRAGMENT_LENGTH: usize = 2;
 ///
 /// There are two ways to create an execution trace.
 ///
-/// First, you can use the [ExecutionTrace::init()] function which takes a set of vectors as a
+/// First, you can use the [TraceTable::init()] function which takes a set of vectors as a
 /// parameter, where each vector contains values for a given column of the trace. This approach
 /// allows you to build an execution trace as you see fit, as long as it meets a basic set of
 /// requirements. These requirements are:
@@ -37,9 +37,9 @@ const MIN_FRAGMENT_LENGTH: usize = 2;
 /// 1. Lengths of all columns in the execution trace must be the same.
 /// 2. The length of the columns must be some power of two.
 ///
-/// The other approach is to use [ExecutionTrace::new()] function, which takes trace width and
+/// The other approach is to use [TraceTable::new()] function, which takes trace width and
 /// length as parameters. This function will allocate memory for the trace, but will not fill it
-/// with data. To fill the execution trace, you can use the [fill()](ExecutionTrace::fill) method,
+/// with data. To fill the execution trace, you can use the [fill()](TraceTable::fill) method,
 /// which takes two closures as parameters:
 ///
 /// 1. The first closure is responsible for initializing the first state of the computation
@@ -47,8 +47,8 @@ const MIN_FRAGMENT_LENGTH: usize = 2;
 /// 2. The second closure receives the previous state of the execution trace as input, and must
 ///    update it to the next state of the computation.
 ///
-/// You can also use [ExecutionTrace::with_meta()] function to create a blank execution trace.
-/// This function work just like [ExecutionTrace::new()] function, but also takes a metadata
+/// You can also use [TraceTable::with_meta()] function to create a blank execution trace.
+/// This function work just like [TraceTable::new()] function, but also takes a metadata
 /// parameter which can be an arbitrary sequence of bytes up to 64KB in size.
 ///
 /// # Concurrent trace generation
@@ -56,18 +56,18 @@ const MIN_FRAGMENT_LENGTH: usize = 2;
 /// execution trace of the entire computation by building fragments of the trace in parallel,
 /// and then joining these fragments together.
 ///
-/// For this purpose, `ExecutionTrace` struct exposes [fragments()](ExecutionTrace::fragments)
+/// For this purpose, `TraceTable` struct exposes [fragments()](TraceTable::fragments)
 /// method, which takes fragment length as a parameter, breaks the execution trace into equally
 /// sized fragments, and returns an iterator over these fragments. You can then use fragment's
-/// [fill()](ExecutionTraceFragment::fill) method to fill all fragments with data in parallel.
-/// The semantics of the fragment's [ExecutionTraceFragment::fill()] method are identical to the
-/// semantics of the [ExecutionTrace::fill()] method.
-pub struct ExecutionTrace<B: StarkField> {
+/// [fill()](TraceTableFragment::fill) method to fill all fragments with data in parallel.
+/// The semantics of the fragment's [TraceTableFragment::fill()] method are identical to the
+/// semantics of the [TraceTable::fill()] method.
+pub struct TraceTable<B: StarkField> {
     trace: Vec<Vec<B>>,
     meta: Vec<u8>,
 }
 
-impl<B: StarkField> ExecutionTrace<B> {
+impl<B: StarkField> TraceTable<B> {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
@@ -132,7 +132,7 @@ impl<B: StarkField> ExecutionTrace<B> {
         );
 
         let registers = unsafe { (0..width).map(|_| uninit_vector(length)).collect() };
-        ExecutionTrace {
+        Self {
             trace: registers,
             meta,
         }
@@ -184,7 +184,7 @@ impl<B: StarkField> ExecutionTrace<B> {
             );
         }
 
-        ExecutionTrace {
+        Self {
             trace: registers,
             meta: vec![],
         }
@@ -263,10 +263,7 @@ impl<B: StarkField> ExecutionTrace<B> {
     /// Panics if `fragment_length` is smaller than 2, greater than the length of the trace,
     /// or is not a power of two.
     #[cfg(not(feature = "concurrent"))]
-    pub fn fragments(
-        &mut self,
-        fragment_length: usize,
-    ) -> vec::IntoIter<ExecutionTraceFragment<B>> {
+    pub fn fragments(&mut self, fragment_length: usize) -> vec::IntoIter<TraceTableFragment<B>> {
         self.build_fragments(fragment_length).into_iter()
     }
 
@@ -282,13 +279,13 @@ impl<B: StarkField> ExecutionTrace<B> {
     pub fn fragments(
         &mut self,
         fragment_length: usize,
-    ) -> rayon::vec::IntoIter<ExecutionTraceFragment<B>> {
+    ) -> rayon::vec::IntoIter<TraceTableFragment<B>> {
         self.build_fragments(fragment_length).into_par_iter()
     }
 
     /// Returns a vector of trace fragments each covering the number of steps specified by the
     /// `fragment_length` parameter.
-    fn build_fragments(&mut self, fragment_length: usize) -> Vec<ExecutionTraceFragment<B>> {
+    fn build_fragments(&mut self, fragment_length: usize) -> Vec<TraceTableFragment<B>> {
         assert!(
             fragment_length >= MIN_FRAGMENT_LENGTH,
             "fragment length must be at least {}, but was {}",
@@ -317,7 +314,7 @@ impl<B: StarkField> ExecutionTrace<B> {
         fragment_data
             .into_iter()
             .enumerate()
-            .map(|(i, data)| ExecutionTraceFragment {
+            .map(|(i, data)| TraceTableFragment {
                 index: i,
                 offset: i * fragment_length,
                 data,
@@ -334,7 +331,7 @@ impl<B: StarkField> ExecutionTrace<B> {
     }
 }
 
-impl<B: StarkField> Trace for ExecutionTrace<B> {
+impl<B: StarkField> Trace for TraceTable<B> {
     type BaseField = B;
 
     fn meta(&self) -> &[u8] {
@@ -372,17 +369,17 @@ impl<B: StarkField> Trace for ExecutionTrace<B> {
 /// the fragment, directly updates the data in the underlying execution trace.
 ///
 /// A fragment cannot be instantiated directly but is created by executing
-/// [ExecutionTrace::fragments()] method.
+/// [TraceTable::fragments()] method.
 ///
 /// A fragment always contains contiguous rows, and the number of rows is guaranteed to be a power
 /// of two.
-pub struct ExecutionTraceFragment<'a, B: StarkField> {
+pub struct TraceTableFragment<'a, B: StarkField> {
     index: usize,
     offset: usize,
     data: Vec<&'a mut [B]>,
 }
 
-impl<'a, B: StarkField> ExecutionTraceFragment<'a, B> {
+impl<'a, B: StarkField> TraceTableFragment<'a, B> {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 

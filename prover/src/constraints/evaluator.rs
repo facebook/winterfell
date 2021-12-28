@@ -108,7 +108,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         // single value) so that we can check their degree late
         #[cfg(not(debug_assertions))]
         let mut evaluation_table =
-            ConstraintEvaluationTable::<A::BaseElement, E>::new(domain, self.divisors.clone());
+            ConstraintEvaluationTable::<A::BaseField, E>::new(domain, self.divisors.clone());
         #[cfg(debug_assertions)]
         let mut evaluation_table = ConstraintEvaluationTable::<A::BaseField, E>::new(
             domain,

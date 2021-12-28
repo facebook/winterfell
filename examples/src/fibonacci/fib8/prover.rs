@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{BaseElement, ExecutionTrace, Fib8Air, FieldElement, ProofOptions, Prover};
+use super::{BaseElement, Fib8Air, FieldElement, ProofOptions, Prover, TraceTable};
 
 // FIBONACCI PROVER
 // ================================================================================================
@@ -19,7 +19,7 @@ impl Fib8Prover {
 
     /// Builds an execution trace for computing a Fibonacci sequence of the specified length such
     /// that each row advances the sequence by 8 terms.
-    pub fn build_trace(&self, length: usize) -> ExecutionTrace<BaseElement> {
+    pub fn build_trace(&self, length: usize) -> TraceTable<BaseElement> {
         assert!(
             length.is_power_of_two(),
             "sequence length must be a power of 2"
@@ -52,14 +52,14 @@ impl Fib8Prover {
             reg1.push(n7);
         }
 
-        ExecutionTrace::init(vec![reg0, reg1])
+        TraceTable::init(vec![reg0, reg1])
     }
 }
 
 impl Prover for Fib8Prover {
     type BaseField = BaseElement;
     type Air = Fib8Air;
-    type Trace = ExecutionTrace<BaseElement>;
+    type Trace = TraceTable<BaseElement>;
 
     fn options(&self) -> &ProofOptions {
         &self.options

@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{BaseElement, ExecutionTrace, FibAir, FieldElement, ProofOptions, Prover, TRACE_WIDTH};
+use super::{BaseElement, FibAir, FieldElement, ProofOptions, Prover, TraceTable, TRACE_WIDTH};
 
 // FIBONACCI PROVER
 // ================================================================================================
@@ -19,13 +19,13 @@ impl FibProver {
 
     /// Builds an execution trace for computing a Fibonacci sequence of the specified length such
     /// that each row advances the sequence by 2 terms.
-    pub fn build_trace(&self, sequence_length: usize) -> ExecutionTrace<BaseElement> {
+    pub fn build_trace(&self, sequence_length: usize) -> TraceTable<BaseElement> {
         assert!(
             sequence_length.is_power_of_two(),
             "sequence length must be a power of 2"
         );
 
-        let mut trace = ExecutionTrace::new(TRACE_WIDTH, sequence_length / 2);
+        let mut trace = TraceTable::new(TRACE_WIDTH, sequence_length / 2);
         trace.fill(
             |state| {
                 state[0] = BaseElement::ONE;
@@ -44,7 +44,7 @@ impl FibProver {
 impl Prover for FibProver {
     type BaseField = BaseElement;
     type Air = FibAir;
-    type Trace = ExecutionTrace<BaseElement>;
+    type Trace = TraceTable<BaseElement>;
 
     fn options(&self) -> &ProofOptions {
         &self.options

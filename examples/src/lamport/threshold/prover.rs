@@ -4,9 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    get_power_series, rescue, AggPublicKey, BaseElement, ExecutionTrace, FieldElement,
-    LamportThresholdAir, ProofOptions, Prover, Signature, StarkField, HASH_CYCLE_LENGTH,
-    NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH, TRACE_WIDTH,
+    get_power_series, rescue, AggPublicKey, BaseElement, FieldElement, LamportThresholdAir,
+    ProofOptions, Prover, Signature, StarkField, TraceTable, HASH_CYCLE_LENGTH, NUM_HASH_ROUNDS,
+    SIG_CYCLE_LENGTH, TRACE_WIDTH,
 };
 use std::collections::HashMap;
 
@@ -57,11 +57,11 @@ impl LamportThresholdProver {
         pub_key: &AggPublicKey,
         message: [BaseElement; 2],
         signatures: &[(usize, Signature)],
-    ) -> ExecutionTrace<BaseElement> {
+    ) -> TraceTable<BaseElement> {
         // allocate memory to hold the trace table
         let num_cycles = pub_key.num_keys().next_power_of_two();
         let trace_length = SIG_CYCLE_LENGTH * num_cycles;
-        let mut trace = ExecutionTrace::new(TRACE_WIDTH, trace_length);
+        let mut trace = TraceTable::new(TRACE_WIDTH, trace_length);
 
         let powers_of_two = get_power_series(TWO, 128);
 
@@ -115,7 +115,7 @@ impl LamportThresholdProver {
 impl Prover for LamportThresholdProver {
     type BaseField = BaseElement;
     type Air = LamportThresholdAir;
-    type Trace = ExecutionTrace<BaseElement>;
+    type Trace = TraceTable<BaseElement>;
 
     fn options(&self) -> &ProofOptions {
         &self.options

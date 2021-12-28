@@ -11,7 +11,7 @@ use log::debug;
 use std::time::Instant;
 use winterfell::{
     math::{fields::f128::BaseElement, get_power_series, log2, FieldElement, StarkField},
-    ExecutionTrace, ProofOptions, Prover, StarkProof, Trace, VerifierError,
+    ProofOptions, Prover, StarkProof, Trace, TraceTable, VerifierError,
 };
 
 mod air;

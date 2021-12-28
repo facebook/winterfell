@@ -17,7 +17,7 @@
 //!
 //! 1. Define an *algebraic intermediate representation* (AIR) for your computation. This can
 //!    be done by implementing [Air] trait.
-//! 2. Execute your computation and record its execution trace in [ExecutionTrace] struct.
+//! 2. Execute your computation and record its execution trace in [TraceTable] struct.
 //! 3. Execute [prove()] function and supply the AIR of your computation together with its
 //!    execution trace as input parameters. The function will produce a instance of [StarkProof]
 //!    as an output.
@@ -96,21 +96,21 @@
 //! | ...       |
 //! | 1,048,575 | 247770943907079986105389697876176586605 |
 //!
-//! To record the trace, we'll use the [ExecutionTrace] struct. The function below, is just a
+//! To record the trace, we'll use the [TraceTable] struct. The function below, is just a
 //! modified version of the `do_work()` function which records every intermediate state of the
-//! computation in the [ExecutionTrace] struct:
+//! computation in the [TraceTable] struct:
 //!
 //! ```no_run
 //! use winterfell::{
 //!     math::{fields::f128::BaseElement, FieldElement},
-//!     ExecutionTrace,
+//!     TraceTable,
 //! };
 //!
-//! pub fn build_do_work_trace(start: BaseElement, n: usize) -> ExecutionTrace<BaseElement> {
+//! pub fn build_do_work_trace(start: BaseElement, n: usize) -> TraceTable<BaseElement> {
 //!     // Instantiate the trace with a given width and length; this will allocate all
 //!     // required memory for the trace
 //!     let trace_width = 1;
-//!     let mut trace = ExecutionTrace::new(trace_width, n);
+//!     let mut trace = TraceTable::new(trace_width, n);
 //!
 //!     // Fill the trace with data; the first closure initializes the first state of the
 //!     // computation; the second closure computes the next state of the computation based
@@ -253,13 +253,13 @@
 //! # use winterfell::{
 //! #    math::{fields::f128::BaseElement, FieldElement},
 //! #    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, Serializable,
-//! #    TraceInfo, TransitionConstraintDegree, ExecutionTrace, FieldExtension,
+//! #    TraceInfo, TransitionConstraintDegree, TraceTable, FieldExtension,
 //! #    HashFunction, Prover, ProofOptions, StarkProof, Trace,
 //! # };
 //! #
-//! # pub fn build_do_work_trace(start: BaseElement, n: usize) -> ExecutionTrace<BaseElement> {
+//! # pub fn build_do_work_trace(start: BaseElement, n: usize) -> TraceTable<BaseElement> {
 //! #     let trace_width = 1;
-//! #     let mut trace = ExecutionTrace::new(trace_width, n);
+//! #     let mut trace = TraceTable::new(trace_width, n);
 //! #     trace.fill(
 //! #         |state| {
 //! #             state[0] = start;
@@ -361,7 +361,7 @@
 //! impl Prover for WorkProver {
 //!     type BaseField = BaseElement;
 //!     type Air = WorkAir;
-//!     type Trace = ExecutionTrace<Self::BaseField>;
+//!     type Trace = TraceTable<Self::BaseField>;
 //!
 //!     fn options(&self) -> &ProofOptions {
 //!         &self.options
@@ -408,8 +408,8 @@ pub use prover::{
     crypto, iterators, math, Air, AirContext, Assertion, BoundaryConstraint,
     BoundaryConstraintGroup, ByteReader, ByteWriter, ConstraintCompositionCoefficients,
     ConstraintDivisor, DeepCompositionCoefficients, Deserializable, DeserializationError,
-    EvaluationFrame, ExecutionTrace, ExecutionTraceFragment, FieldExtension, HashFunction,
-    ProofOptions, Prover, ProverError, Serializable, StarkProof, Trace, TraceInfo,
-    TransitionConstraintDegree, TransitionConstraintGroup,
+    EvaluationFrame, FieldExtension, HashFunction, ProofOptions, Prover, ProverError, Serializable,
+    StarkProof, Trace, TraceInfo, TraceTable, TraceTableFragment, TransitionConstraintDegree,
+    TransitionConstraintGroup,
 };
 pub use verifier::{verify, VerifierError};

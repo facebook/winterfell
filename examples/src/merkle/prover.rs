@@ -4,8 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    rescue, BaseElement, ExecutionTrace, FieldElement, MerkleAir, ProofOptions, Prover,
-    HASH_CYCLE_LEN, HASH_STATE_WIDTH, NUM_HASH_ROUNDS, TRACE_WIDTH,
+    rescue, BaseElement, FieldElement, MerkleAir, ProofOptions, Prover, TraceTable, HASH_CYCLE_LEN,
+    HASH_STATE_WIDTH, NUM_HASH_ROUNDS, TRACE_WIDTH,
 };
 
 // MERKLE PROVER
@@ -25,10 +25,10 @@ impl MerkleProver {
         value: [BaseElement; 2],
         branch: &[rescue::Hash],
         index: usize,
-    ) -> ExecutionTrace<BaseElement> {
+    ) -> TraceTable<BaseElement> {
         // allocate memory to hold the trace table
         let trace_length = branch.len() * HASH_CYCLE_LEN;
-        let mut trace = ExecutionTrace::new(TRACE_WIDTH, trace_length);
+        let mut trace = TraceTable::new(TRACE_WIDTH, trace_length);
 
         // skip the first node of the branch because it will be computed in the trace as hash(value)
         let branch = &branch[1..];
@@ -92,7 +92,7 @@ impl MerkleProver {
 impl Prover for MerkleProver {
     type BaseField = BaseElement;
     type Air = MerkleAir;
-    type Trace = ExecutionTrace<BaseElement>;
+    type Trace = TraceTable<BaseElement>;
 
     fn options(&self) -> &ProofOptions {
         &self.options

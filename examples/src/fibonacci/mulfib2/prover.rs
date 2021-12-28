@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{BaseElement, ExecutionTrace, MulFib2Air, ProofOptions, Prover};
+use super::{BaseElement, MulFib2Air, ProofOptions, Prover, TraceTable};
 
 // FIBONACCI PROVER
 // ================================================================================================
@@ -19,7 +19,7 @@ impl MulFib2Prover {
 
     /// Builds an execution trace for computing a multiplicative version of a Fibonacci sequence of
     /// the specified length such that each row advances the sequence by 2 terms.
-    pub fn build_trace(&self, length: usize) -> ExecutionTrace<BaseElement> {
+    pub fn build_trace(&self, length: usize) -> TraceTable<BaseElement> {
         assert!(
             length.is_power_of_two(),
             "sequence length must be a power of 2"
@@ -33,14 +33,14 @@ impl MulFib2Prover {
             reg1.push(reg1[i] * reg0[i + 1]);
         }
 
-        ExecutionTrace::init(vec![reg0, reg1])
+        TraceTable::init(vec![reg0, reg1])
     }
 }
 
 impl Prover for MulFib2Prover {
     type BaseField = BaseElement;
     type Air = MulFib2Air;
-    type Trace = ExecutionTrace<BaseElement>;
+    type Trace = TraceTable<BaseElement>;
 
     fn options(&self) -> &ProofOptions {
         &self.options
