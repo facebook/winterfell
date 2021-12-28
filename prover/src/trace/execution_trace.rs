@@ -334,7 +334,9 @@ impl<B: StarkField> ExecutionTrace<B> {
     }
 }
 
-impl<B: StarkField> Trace<B> for ExecutionTrace<B> {
+impl<B: StarkField> Trace for ExecutionTrace<B> {
+    type BaseField = B;
+
     fn meta(&self) -> &[u8] {
         &self.meta
     }

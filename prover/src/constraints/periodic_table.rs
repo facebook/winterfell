@@ -22,7 +22,7 @@ impl<B: StarkField> PeriodicValueTable<B> {
     /// Builds a table of periodic column values for the specified AIR. The table contains expanded
     /// values of all periodic columns normalized to the same length. This enables simple lookup
     /// into the able using step index of the constraint evaluation domain.
-    pub fn new<A: Air<BaseElement = B>>(air: &A) -> PeriodicValueTable<B> {
+    pub fn new<A: Air<BaseField = B>>(air: &A) -> PeriodicValueTable<B> {
         // get a list of polynomials describing periodic columns from AIR. if there are no
         // periodic columns return an empty table
         let polys = air.get_periodic_column_polys();

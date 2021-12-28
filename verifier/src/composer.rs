@@ -10,15 +10,15 @@ use utils::collections::Vec;
 // DEEP COMPOSER
 // ================================================================================================
 
-pub struct DeepComposer<A: Air, E: FieldElement + From<A::BaseElement>> {
+pub struct DeepComposer<A: Air, E: FieldElement + From<A::BaseField>> {
     field_extension: FieldExtension,
     cc: DeepCompositionCoefficients<E>,
-    x_coordinates: Vec<A::BaseElement>,
+    x_coordinates: Vec<A::BaseField>,
     z: E,
     next_z: E,
 }
 
-impl<A: Air, E: FieldElement + From<A::BaseElement>> DeepComposer<A, E> {
+impl<A: Air, E: FieldElement + From<A::BaseField>> DeepComposer<A, E> {
     /// Creates a new composer for computing DEEP composition polynomial values.
     pub fn new(
         air: &A,
@@ -29,7 +29,7 @@ impl<A: Air, E: FieldElement + From<A::BaseElement>> DeepComposer<A, E> {
         // compute LDE domain coordinates for all query positions
         let g_lde = air.lde_domain_generator();
         let domain_offset = air.domain_offset();
-        let x_coordinates: Vec<A::BaseElement> = query_positions
+        let x_coordinates: Vec<A::BaseField> = query_positions
             .iter()
             .map(|&p| g_lde.exp((p as u64).into()) * domain_offset)
             .collect();
@@ -62,7 +62,7 @@ impl<A: Air, E: FieldElement + From<A::BaseElement>> DeepComposer<A, E> {
     /// this function via the `ood_frame` parameter.
     pub fn compose_registers(
         &self,
-        queried_trace_states: Vec<Vec<A::BaseElement>>,
+        queried_trace_states: Vec<Vec<A::BaseField>>,
         ood_frame: EvaluationFrame<E>,
     ) -> Vec<E> {
         let trace_at_z1 = ood_frame.current();

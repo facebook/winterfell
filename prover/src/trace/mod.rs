@@ -7,7 +7,7 @@ use super::StarkDomain;
 
 mod trace_lde;
 use air::{Air, EvaluationFrame, TraceInfo};
-use math::{fft, polynom, StarkField};
+use math::{fft, polynom, FieldElement, StarkField};
 pub use trace_lde::TraceLde;
 
 mod poly_table;
@@ -28,7 +28,9 @@ mod tests;
 // ================================================================================================
 
 // TODO: add docs
-pub trait Trace<B: StarkField>: Sized {
+pub trait Trace: Sized {
+    type BaseField: StarkField;
+
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
 
@@ -42,13 +44,13 @@ pub trait Trace<B: StarkField>: Sized {
     fn meta(&self) -> &[u8];
 
     /// Returns value of the cell in the specified column at the specified row.
-    fn get(&self, col_idx: usize, row_idx: usize) -> B;
+    fn get(&self, col_idx: usize, row_idx: usize) -> Self::BaseField;
 
     /// Reads a single row of this trace at the specified index into the specified target.
-    fn read_row_into(&self, step: usize, target: &mut [B]);
+    fn read_row_into(&self, step: usize, target: &mut [Self::BaseField]);
 
     /// Transforms this trace into a vector of columns containing trace data.
-    fn into_columns(self) -> Vec<Vec<B>>;
+    fn into_columns(self) -> Vec<Vec<Self::BaseField>>;
 
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
@@ -63,7 +65,7 @@ pub trait Trace<B: StarkField>: Sized {
     /// Checks if this trace is valid against the specified AIR, and panics if not.
     ///
     /// NOTE: this is a very expensive operation and is intended for use only in debug mode.
-    fn validate<A: Air<BaseElement = B>>(&self, air: &A) {
+    fn validate<A: Air<BaseField = Self::BaseField>>(&self, air: &A) {
         // TODO: eventually, this should return errors instead of panicking
 
         // make sure the width align; if they don't something went terribly wrong
@@ -93,12 +95,12 @@ pub trait Trace<B: StarkField>: Sized {
         // collect the info needed to build periodic values for a specific step
         let g = air.trace_domain_generator();
         let periodic_values_polys = air.get_periodic_column_polys();
-        let mut periodic_values = vec![B::ZERO; periodic_values_polys.len()];
+        let mut periodic_values = vec![Self::BaseField::ZERO; periodic_values_polys.len()];
 
         // initialize buffers to hold evaluation frames and results of constraint evaluations
-        let mut x = B::ONE;
+        let mut x = Self::BaseField::ONE;
         let mut ev_frame = EvaluationFrame::new(self.width());
-        let mut evaluations = vec![B::ZERO; air.num_transition_constraints()];
+        let mut evaluations = vec![Self::BaseField::ZERO; air.num_transition_constraints()];
 
         for step in 0..self.length() - 1 {
             // build periodic values
@@ -118,7 +120,7 @@ pub trait Trace<B: StarkField>: Sized {
             // make sure all constraints evaluated to ZERO
             for (i, &evaluation) in evaluations.iter().enumerate() {
                 assert!(
-                    evaluation == B::ZERO,
+                    evaluation == Self::BaseField::ZERO,
                     "transition constraint {} did not evaluate to ZERO at step {}",
                     i,
                     step
@@ -136,7 +138,10 @@ pub trait Trace<B: StarkField>: Sized {
     ///
     /// The extension is done by first interpolating each register into a polynomial over the
     /// trace domain, and then evaluating the polynomial over the LDE domain.
-    fn extend(self, domain: &StarkDomain<B>) -> (TraceLde<B>, TracePolyTable<B>) {
+    fn extend(
+        self,
+        domain: &StarkDomain<Self::BaseField>,
+    ) -> (TraceLde<Self::BaseField>, TracePolyTable<Self::BaseField>) {
         assert_eq!(
             self.length(),
             domain.trace_length(),
@@ -144,7 +149,7 @@ pub trait Trace<B: StarkField>: Sized {
         );
         // build and cache trace twiddles for FFT interpolation; we do it here so that we
         // don't have to rebuild these twiddles for every register.
-        let inv_twiddles = fft::get_inv_twiddles::<B>(domain.trace_length());
+        let inv_twiddles = fft::get_inv_twiddles::<Self::BaseField>(domain.trace_length());
 
         // extend all registers; the extension procedure first interpolates register traces into
         // polynomials (in-place), then evaluates these polynomials over a larger domain, and

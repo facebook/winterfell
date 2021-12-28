@@ -103,8 +103,8 @@ pub mod tests;
 ///    algebraic constraints which define the computation.
 pub trait Prover {
     type BaseField: StarkField + ExtensibleField<2> + ExtensibleField<3>;
-    type Air: Air<BaseElement = Self::BaseField>;
-    type Trace: Trace<Self::BaseField>;
+    type Air: Air<BaseField = Self::BaseField>;
+    type Trace: Trace<BaseField = Self::BaseField>;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -194,9 +194,9 @@ fn generate_proof<A, T, E, H>(
 ) -> Result<StarkProof, ProverError>
 where
     A: Air,
-    T: Trace<A::BaseElement>,
-    E: FieldElement<BaseField = A::BaseElement>,
-    H: ElementHasher<BaseField = A::BaseElement>,
+    T: Trace<BaseField = A::BaseField>,
+    E: FieldElement<BaseField = A::BaseField>,
+    H: ElementHasher<BaseField = A::BaseField>,
 {
     // create a channel which is used to simulate interaction between the prover and the verifier;
     // the channel will be used to commit to values and to draw randomness that should come from

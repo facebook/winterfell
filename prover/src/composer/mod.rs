@@ -14,7 +14,7 @@ use utils::iterators::*;
 
 // DEEP COMPOSITION POLYNOMIAL
 // ================================================================================================
-pub struct DeepCompositionPoly<A: Air, E: FieldElement<BaseField = A::BaseElement>> {
+pub struct DeepCompositionPoly<A: Air, E: FieldElement<BaseField = A::BaseField>> {
     coefficients: Vec<E>,
     cc: DeepCompositionCoefficients<E>,
     z: E,
@@ -22,7 +22,7 @@ pub struct DeepCompositionPoly<A: Air, E: FieldElement<BaseField = A::BaseElemen
     _air: PhantomData<A>,
 }
 
-impl<A: Air, E: FieldElement<BaseField = A::BaseElement>> DeepCompositionPoly<A, E> {
+impl<A: Air, E: FieldElement<BaseField = A::BaseField>> DeepCompositionPoly<A, E> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Returns a new DEEP composition polynomial. Initially, this polynomial will be empty, and
@@ -70,7 +70,7 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseElement>> DeepCompositionPoly<A,
     /// Note that evaluations of T_i(z) and T_i(z * g) are passed in via the `ood_frame` parameter.
     pub fn add_trace_polys(
         &mut self,
-        trace_polys: TracePolyTable<A::BaseElement>,
+        trace_polys: TracePolyTable<A::BaseField>,
         ood_frame: EvaluationFrame<E>,
     ) {
         assert!(self.coefficients.is_empty());
@@ -78,7 +78,7 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseElement>> DeepCompositionPoly<A,
         // compute a second out-of-domain point offset from z by exactly trace generator; this
         // point defines the "next" computation state in relation to point z
         let trace_length = trace_polys.poly_size();
-        let g = E::from(A::BaseElement::get_root_of_unity(log2(trace_length)));
+        let g = E::from(A::BaseField::get_root_of_unity(log2(trace_length)));
         let next_z = self.z * g;
 
         // cache state of registers at points z and z * g
@@ -154,7 +154,7 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseElement>> DeepCompositionPoly<A,
     /// Note that evaluations of H_i(x) at z^m are passed in via the `ood_evaluations` parameter.
     pub fn add_composition_poly(
         &mut self,
-        composition_poly: CompositionPoly<A::BaseElement, E>,
+        composition_poly: CompositionPoly<A::BaseField, E>,
         ood_evaluations: Vec<E>,
     ) {
         assert!(!self.coefficients.is_empty());
@@ -211,7 +211,7 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseElement>> DeepCompositionPoly<A,
     // LOW-DEGREE EXTENSION
     // --------------------------------------------------------------------------------------------
     /// Evaluates DEEP composition polynomial over the specified LDE domain and returns the result.
-    pub fn evaluate(self, domain: &StarkDomain<A::BaseElement>) -> Vec<E> {
+    pub fn evaluate(self, domain: &StarkDomain<A::BaseField>) -> Vec<E> {
         fft::evaluate_poly_with_offset(
             &self.coefficients,
             domain.trace_twiddles(),
