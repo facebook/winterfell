@@ -72,11 +72,11 @@ fn extend_trace_table() {
     let lde_domain = build_lde_domain(domain.lde_domain_size());
     assert_eq!(
         trace_polys.get_poly(0),
-        polynom::interpolate(&lde_domain, extended_trace.get_register(0), true)
+        polynom::interpolate(&lde_domain, extended_trace.get_column(0), true)
     );
     assert_eq!(
         trace_polys.get_poly(1),
-        polynom::interpolate(&lde_domain, extended_trace.get_register(1), true)
+        polynom::interpolate(&lde_domain, extended_trace.get_column(1), true)
     );
 }
 

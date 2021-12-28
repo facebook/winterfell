@@ -5,10 +5,10 @@
 
 use super::StarkDomain;
 
-mod trace_table;
+mod trace_lde;
 use air::{Air, EvaluationFrame, TraceInfo};
 use math::{fft, polynom, StarkField};
-pub use trace_table::TraceTable;
+pub use trace_lde::TraceLde;
 
 mod poly_table;
 pub use poly_table::TracePolyTable;
@@ -136,7 +136,7 @@ pub trait Trace<B: StarkField>: Sized {
     ///
     /// The extension is done by first interpolating each register into a polynomial over the
     /// trace domain, and then evaluating the polynomial over the LDE domain.
-    fn extend(self, domain: &StarkDomain<B>) -> (TraceTable<B>, TracePolyTable<B>) {
+    fn extend(self, domain: &StarkDomain<B>) -> (TraceLde<B>, TracePolyTable<B>) {
         assert_eq!(
             self.length(),
             domain.trace_length(),
@@ -155,7 +155,7 @@ pub trait Trace<B: StarkField>: Sized {
             .collect();
 
         (
-            TraceTable::new(extended_trace, domain.trace_to_lde_blowup()),
+            TraceLde::new(extended_trace, domain.trace_to_lde_blowup()),
             TracePolyTable::new(columns),
         )
     }

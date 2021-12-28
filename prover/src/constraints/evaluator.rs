@@ -5,7 +5,7 @@
 
 use super::{
     evaluation_table::EvaluationTableFragment, BoundaryConstraintGroup, ConstraintEvaluationTable,
-    PeriodicValueTable, StarkDomain, TraceTable,
+    PeriodicValueTable, StarkDomain, TraceLde,
 };
 use air::{
     Air, ConstraintCompositionCoefficients, ConstraintDivisor, EvaluationFrame,
@@ -95,7 +95,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>> ConstraintEvaluato
     /// evaluation domain can be many times smaller than the full LDE domain.
     pub fn evaluate(
         &self,
-        trace: &TraceTable<A::BaseElement>,
+        trace: &TraceLde<A::BaseElement>,
         domain: &StarkDomain<A::BaseElement>,
     ) -> ConstraintEvaluationTable<A::BaseElement, E> {
         assert_eq!(
@@ -147,7 +147,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>> ConstraintEvaluato
     /// Evaluates constraints for a single fragment of the evaluation table.
     fn evaluate_fragment(
         &self,
-        trace: &TraceTable<A::BaseElement>,
+        trace: &TraceLde<A::BaseElement>,
         domain: &StarkDomain<A::BaseElement>,
         fragment: &mut EvaluationTableFragment<A::BaseElement, E>,
     ) {

@@ -254,7 +254,7 @@
 //! #    math::{fields::f128::BaseElement, FieldElement},
 //! #    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, Serializable,
 //! #    TraceInfo, TransitionConstraintDegree, ExecutionTrace, FieldExtension,
-//! #    HashFunction, Prover, ProofOptions, StarkProof,
+//! #    HashFunction, Prover, ProofOptions, StarkProof, Trace,
 //! # };
 //! #
 //! # pub fn build_do_work_trace(start: BaseElement, n: usize) -> ExecutionTrace<BaseElement> {
