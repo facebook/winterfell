@@ -99,8 +99,15 @@ impl Example for LamportThresholdExample {
             self.pub_key.num_keys(),
         );
 
-        let prover = LamportThresholdProver::new(self.options.clone());
+        // create a prover
+        let prover = LamportThresholdProver::new(
+            &self.pub_key,
+            self.message,
+            &self.signatures,
+            self.options.clone(),
+        );
 
+        // generate execution trace
         let now = Instant::now();
         let trace = prover.build_trace(&self.pub_key, self.message, &self.signatures);
         let trace_length = trace.length();
@@ -111,14 +118,8 @@ impl Example for LamportThresholdExample {
             now.elapsed().as_millis()
         );
 
-        // create a prover and generate the proof
-        let pub_inputs = PublicInputs {
-            pub_key_root: self.pub_key.root().to_elements(),
-            num_pub_keys: self.pub_key.num_keys(),
-            num_signatures: self.signatures.len(),
-            message: self.message,
-        };
-        prover.prove(trace, pub_inputs).unwrap()
+        // generate the proof
+        prover.prove(trace).unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {

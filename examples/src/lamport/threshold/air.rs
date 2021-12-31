@@ -21,6 +21,7 @@ const TWO: BaseElement = BaseElement::new(2);
 // THRESHOLD LAMPORT PLUS SIGNATURE AIR
 // ================================================================================================
 
+#[derive(Clone)]
 pub struct PublicInputs {
     pub pub_key_root: [BaseElement; 2],
     pub num_pub_keys: usize,

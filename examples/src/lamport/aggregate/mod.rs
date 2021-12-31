@@ -113,7 +113,9 @@ impl Example for LamportAggregateExample {
             self.signatures.len(),
         );
 
-        let prover = LamportAggregateProver::new(self.options.clone());
+        // create a prover
+        let prover =
+            LamportAggregateProver::new(&self.pub_keys, &self.messages, self.options.clone());
 
         let now = Instant::now();
         let trace = prover.build_trace(&self.messages, &self.signatures);
@@ -125,12 +127,8 @@ impl Example for LamportAggregateExample {
             now.elapsed().as_millis()
         );
 
-        // create a prover and generate the proof
-        let pub_inputs = PublicInputs {
-            pub_keys: self.pub_keys.clone(),
-            messages: self.messages.clone(),
-        };
-        prover.prove(trace, pub_inputs).unwrap()
+        // generate the proof
+        prover.prove(trace).unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {

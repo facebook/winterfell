@@ -4,8 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    rescue, BaseElement, FieldElement, ProofOptions, Prover, RescueAir, TraceTable, CYCLE_LENGTH,
-    NUM_HASH_ROUNDS,
+    rescue, BaseElement, FieldElement, ProofOptions, Prover, PublicInputs, RescueAir, Trace,
+    TraceTable, CYCLE_LENGTH, NUM_HASH_ROUNDS,
 };
 
 // RESCUE PROVER
@@ -60,6 +60,14 @@ impl Prover for RescueProver {
     type BaseField = BaseElement;
     type Air = RescueAir;
     type Trace = TraceTable<BaseElement>;
+
+    fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
+        let last_step = trace.length() - 1;
+        PublicInputs {
+            seed: [trace.get(0, 0), trace.get(1, 0)],
+            result: [trace.get(0, last_step), trace.get(1, last_step)],
+        }
+    }
 
     fn options(&self) -> &ProofOptions {
         &self.options

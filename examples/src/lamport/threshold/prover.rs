@@ -5,8 +5,8 @@
 
 use super::{
     get_power_series, rescue, AggPublicKey, BaseElement, FieldElement, LamportThresholdAir,
-    ProofOptions, Prover, Signature, StarkField, TraceTable, HASH_CYCLE_LENGTH, NUM_HASH_ROUNDS,
-    SIG_CYCLE_LENGTH, TRACE_WIDTH,
+    ProofOptions, Prover, PublicInputs, Signature, StarkField, TraceTable, HASH_CYCLE_LENGTH,
+    NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH, TRACE_WIDTH,
 };
 use std::collections::HashMap;
 
@@ -44,12 +44,27 @@ struct KeySchedule {
 // ================================================================================================
 
 pub struct LamportThresholdProver {
+    pub_inputs: PublicInputs,
     options: ProofOptions,
 }
 
 impl LamportThresholdProver {
-    pub fn new(options: ProofOptions) -> Self {
-        Self { options }
+    pub fn new(
+        pub_key: &AggPublicKey,
+        message: [BaseElement; 2],
+        signatures: &[(usize, Signature)],
+        options: ProofOptions,
+    ) -> Self {
+        let pub_inputs = PublicInputs {
+            pub_key_root: pub_key.root().to_elements(),
+            num_pub_keys: pub_key.num_keys(),
+            num_signatures: signatures.len(),
+            message,
+        };
+        Self {
+            pub_inputs,
+            options,
+        }
     }
 
     pub fn build_trace(
@@ -116,6 +131,10 @@ impl Prover for LamportThresholdProver {
     type BaseField = BaseElement;
     type Air = LamportThresholdAir;
     type Trace = TraceTable<BaseElement>;
+
+    fn get_pub_inputs(&self, _trace: &Self::Trace) -> PublicInputs {
+        self.pub_inputs.clone()
+    }
 
     fn options(&self) -> &ProofOptions {
         &self.options

@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{BaseElement, MulFib2Air, ProofOptions, Prover, TraceTable};
+use super::{BaseElement, MulFib2Air, ProofOptions, Prover, Trace, TraceTable};
 
 // FIBONACCI PROVER
 // ================================================================================================
@@ -41,6 +41,11 @@ impl Prover for MulFib2Prover {
     type BaseField = BaseElement;
     type Air = MulFib2Air;
     type Trace = TraceTable<BaseElement>;
+
+    fn get_pub_inputs(&self, trace: &Self::Trace) -> BaseElement {
+        let last_step = trace.length() - 1;
+        trace.get(0, last_step)
+    }
 
     fn options(&self) -> &ProofOptions {
         &self.options

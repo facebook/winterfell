@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{BaseElement, Fib8Air, FieldElement, ProofOptions, Prover, TraceTable};
+use super::{BaseElement, Fib8Air, FieldElement, ProofOptions, Prover, Trace, TraceTable};
 
 // FIBONACCI PROVER
 // ================================================================================================
@@ -60,6 +60,11 @@ impl Prover for Fib8Prover {
     type BaseField = BaseElement;
     type Air = Fib8Air;
     type Trace = TraceTable<BaseElement>;
+
+    fn get_pub_inputs(&self, trace: &Self::Trace) -> BaseElement {
+        let last_step = trace.length() - 1;
+        trace.get(1, last_step)
+    }
 
     fn options(&self) -> &ProofOptions {
         &self.options

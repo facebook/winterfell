@@ -101,8 +101,10 @@ impl Example for MerkleExample {
             ---------------------",
             self.path.len()
         );
+        // create the prover
         let prover = MerkleProver::new(self.options.clone());
 
+        // generate the execution trace
         let now = Instant::now();
         let trace = prover.build_trace(self.value, &self.path, self.index);
         let trace_length = trace.length();
@@ -114,10 +116,7 @@ impl Example for MerkleExample {
         );
 
         // generate the proof
-        let pub_inputs = PublicInputs {
-            tree_root: self.tree_root.to_elements(),
-        };
-        prover.prove(trace, pub_inputs).unwrap()
+        prover.prove(trace).unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {

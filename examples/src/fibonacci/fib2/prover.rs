@@ -3,7 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{BaseElement, FibAir, FieldElement, ProofOptions, Prover, TraceTable, TRACE_WIDTH};
+use super::{
+    BaseElement, FibAir, FieldElement, ProofOptions, Prover, Trace, TraceTable, TRACE_WIDTH,
+};
 
 // FIBONACCI PROVER
 // ================================================================================================
@@ -45,6 +47,11 @@ impl Prover for FibProver {
     type BaseField = BaseElement;
     type Air = FibAir;
     type Trace = TraceTable<BaseElement>;
+
+    fn get_pub_inputs(&self, trace: &Self::Trace) -> BaseElement {
+        let last_step = trace.length() - 1;
+        trace.get(1, last_step)
+    }
 
     fn options(&self) -> &ProofOptions {
         &self.options

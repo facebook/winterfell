@@ -363,15 +363,22 @@
 //!     type Air = WorkAir;
 //!     type Trace = TraceTable<Self::BaseField>;
 //!
+//!     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
+//!         let last_step = trace.length() - 1;
+//!         PublicInputs {
+//!             start: trace.get(0, 0),
+//!             result: trace.get(0, last_step),
+//!         }
+//!     }
+//!
 //!     fn options(&self) -> &ProofOptions {
 //!         &self.options
 //!     }
 //! }
 //!
 //! // Generate the proof.
-//! let pub_inputs = PublicInputs { start, result };
 //! let prover = WorkProver::new(options);
-//! let proof = prover.prove(trace, pub_inputs).unwrap();
+//! let proof = prover.prove(trace).unwrap();
 //!
 //! // Verify the proof. The number of steps and options are encoded in the proof itself,
 //! // so we don't need to pass them explicitly to the verifier.

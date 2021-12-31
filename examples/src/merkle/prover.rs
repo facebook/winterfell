@@ -4,8 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    rescue, BaseElement, FieldElement, MerkleAir, ProofOptions, Prover, TraceTable, HASH_CYCLE_LEN,
-    HASH_STATE_WIDTH, NUM_HASH_ROUNDS, TRACE_WIDTH,
+    rescue, BaseElement, FieldElement, MerkleAir, ProofOptions, Prover, PublicInputs, Trace,
+    TraceTable, HASH_CYCLE_LEN, HASH_STATE_WIDTH, NUM_HASH_ROUNDS, TRACE_WIDTH,
 };
 
 // MERKLE PROVER
@@ -93,6 +93,13 @@ impl Prover for MerkleProver {
     type BaseField = BaseElement;
     type Air = MerkleAir;
     type Trace = TraceTable<BaseElement>;
+
+    fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
+        let last_step = trace.length() - 1;
+        PublicInputs {
+            tree_root: [trace.get(0, last_step), trace.get(1, last_step)],
+        }
+    }
 
     fn options(&self) -> &ProofOptions {
         &self.options

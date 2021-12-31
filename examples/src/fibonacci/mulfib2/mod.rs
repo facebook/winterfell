@@ -88,7 +88,7 @@ impl Example for MulFib2Example {
         );
 
         // generate the proof
-        prover.prove(trace, self.result).unwrap()
+        prover.prove(trace).unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {

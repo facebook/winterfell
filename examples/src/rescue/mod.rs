@@ -85,8 +85,10 @@ impl Example for RescueExample {
             self.chain_length
         );
 
+        // create a prover
         let prover = RescueProver::new(self.options.clone());
 
+        // generate the execution trace
         let now = Instant::now();
         let trace = prover.build_trace(self.seed, self.chain_length);
         let trace_length = trace.length();
@@ -98,11 +100,7 @@ impl Example for RescueExample {
         );
 
         // generate the proof
-        let pub_inputs = PublicInputs {
-            seed: self.seed,
-            result: self.result,
-        };
-        prover.prove(trace, pub_inputs).unwrap()
+        prover.prove(trace).unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {

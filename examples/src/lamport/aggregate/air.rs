@@ -20,6 +20,7 @@ const TWO: BaseElement = BaseElement::new(2);
 // AGGREGATE LAMPORT PLUS SIGNATURE AIR
 // ================================================================================================
 
+#[derive(Clone)]
 pub struct PublicInputs {
     pub pub_keys: Vec<[BaseElement; 2]>,
     pub messages: Vec<[BaseElement; 2]>,

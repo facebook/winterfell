@@ -5,8 +5,8 @@
 
 use super::{
     get_power_series, rescue, BaseElement, FieldElement, LamportAggregateAir, ProofOptions, Prover,
-    Signature, StarkField, TraceTable, CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH,
-    TRACE_WIDTH,
+    PublicInputs, Signature, StarkField, TraceTable, CYCLE_LENGTH, NUM_HASH_ROUNDS,
+    SIG_CYCLE_LENGTH, TRACE_WIDTH,
 };
 
 #[cfg(feature = "concurrent")]
@@ -38,12 +38,24 @@ struct KeySchedule {
 // ================================================================================================
 
 pub struct LamportAggregateProver {
+    pub_inputs: PublicInputs,
     options: ProofOptions,
 }
 
 impl LamportAggregateProver {
-    pub fn new(options: ProofOptions) -> Self {
-        Self { options }
+    pub fn new(
+        pub_keys: &[[BaseElement; 2]],
+        messages: &[[BaseElement; 2]],
+        options: ProofOptions,
+    ) -> Self {
+        let pub_inputs = PublicInputs {
+            pub_keys: pub_keys.to_vec(),
+            messages: messages.to_vec(),
+        };
+        Self {
+            pub_inputs,
+            options,
+        }
     }
 
     pub fn build_trace(
@@ -78,6 +90,10 @@ impl Prover for LamportAggregateProver {
     type BaseField = BaseElement;
     type Air = LamportAggregateAir;
     type Trace = TraceTable<BaseElement>;
+
+    fn get_pub_inputs(&self, _trace: &Self::Trace) -> PublicInputs {
+        self.pub_inputs.clone()
+    }
 
     fn options(&self) -> &ProofOptions {
         &self.options
