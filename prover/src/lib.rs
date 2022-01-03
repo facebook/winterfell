@@ -20,12 +20,15 @@
 //!
 //! 1. Define an *algebraic intermediate representation* (AIR) for your computation. This can
 //!    be done by implementing [Air] trait.
-//! 2. Execute your computation and record its execution trace in [ExecutionTrace] struct.
-//! 3. Execute [prove()] function and supply the AIR of your computation together with its
-//!    execution trace as input parameters. The function will produce a instance of [StarkProof]
-//!    as an output.
+//! 2. Define an execution trace for your computation. This can be done by implementing [Trace]
+//!    trait. Alternatively, you can use [TraceTable] struct which already implements [Trace]
+//!    trait in cases when this generic implementation works for your use case.
+//! 3. Execute your computation and record its execution trace.
+//! 4. Define your prover by implementing [Prover] trait. Then execute [Prover::prove()] function
+//!    passing the trace generated in the previous step into it as a parameter. The function will
+//!    return a instance of [StarkProof].
 //!
-//! This `StarkProof` can be serialized and sent to a STARK verifier for verification. The size
+//! This [StarkProof] can be serialized and sent to a STARK verifier for verification. The size
 //! of proof depends on the specifics of a given computation, but for most computations it should
 //! be in the range between 15 KB (for very small computations) and 300 KB (for very large
 //! computations).
@@ -98,41 +101,57 @@ pub mod tests;
 // PROVER
 // ================================================================================================
 
-/// TODO: add docs
-/// * `AIR` is a type implementing [Air] trait for the computation. Among other things, it defines
-///    algebraic constraints which define the computation.
+/// Defines a STARK prover for a computation.
+///
+/// A STARK prover can be used to generate STARK proofs. The prover contains definitions of a
+/// computation's AIR (specified via [Air](Prover::Air) associated type) and execution trace
+/// (specified via [Trace](Prover::Trace) associated type), and exposes [prove()](Prover::prove)
+/// method which can be used to build STARK proofs for provided execution traces.
+///
+/// Thus, once a prover is defined and instantiated, generating a STARK proof consists of two
+/// steps:
+/// 1. Build an execution trace for a specific instance of the computation.
+/// 2. Invoke [Prover::prove()] method generate a proof using the trace from the previous step
+///    as a witness.
+///
+/// The generated proof is built using protocol parameters defined by the [ProofOptions] struct
+/// return from [Prover::options] method.
 pub trait Prover {
+    /// Base field for the computation described by this prover.
     type BaseField: StarkField + ExtensibleField<2> + ExtensibleField<3>;
+
+    /// Algebraic intermediate representation (AIR) for the computation described by this prover.
     type Air: Air<BaseField = Self::BaseField>;
+
+    /// Execution trace of the computation described by this prover.
     type Trace: Trace<BaseField = Self::BaseField>;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
 
-    /// TODO: add docs
-    /// * `options` defines basic protocol parameters such as: number of queries, blowup factor,
-    ///   grinding factor, hash function to be used in the protocol etc. These properties directly
-    ///   inform such metrics as proof generation time, proof size, and proof security level.
-    fn options(&self) -> &ProofOptions;
-
-    /// TODO: add docs
+    /// Returns a set of public inputs for an instance of the computation defined by the provided
+    /// trace.
+    ///
+    /// Public inputs need to be shared with the verifier in order for them to verify a proof.
     fn get_pub_inputs(&self, trace: &Self::Trace) -> <<Self as Prover>::Air as Air>::PublicInputs;
+
+    /// Returns [ProofOptions] which this prover uses to generate STARK proofs.
+    ///
+    /// Proof options defines basic protocol parameters such as: number of queries, blowup factor,
+    /// grinding factor, hash function to be used in the protocol etc. These properties directly
+    /// inform such metrics as proof generation time, proof size, and proof security level.
+    fn options(&self) -> &ProofOptions;
 
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a STARK proof attesting to a correct execution of a computation specified by
-    /// `Self::AIR` type parameter.
+    /// Returns a STARK proof attesting to a correct execution of a computation defined by the
+    /// provided trace.
     ///
-    /// Function parameters have the following meanings:
-    /// * `trace` is an execution trace of the computation executed against some set of inputs. These
-    ///   inputs may include both public and private inputs.
-    /// * `pub_inputs` is the set of public inputs against which the computation was executed. These
-    ///   these inputs will need to be shared with the verifier in order for them to verify the proof.
-    ///
-    /// The function returns a [StarkProof] attesting that the specified `trace` is a valid execution
-    /// trace of the computation described by `Self::AIR` and generated using the specified/ public
-    /// inputs.
+    /// The returned [StarkProof] attests that the specified `trace` is a valid execution trace of
+    /// the computation described by [Self::Air](Prover::Air) and generated using some set of
+    /// secret and public inputs. Public inputs must match the value returned from
+    /// [Self::get_pub_inputs()](Prover::get_pub_inputs) for the provided trace.
     #[rustfmt::skip]
     fn prove(&self, trace: Self::Trace) -> Result<StarkProof, ProverError> {
         // figure out which version of the generic proof generation procedure to run. this is a sort
@@ -166,8 +185,11 @@ pub trait Prover {
         }
     }
 
+    // HELPER METHODS
+    // --------------------------------------------------------------------------------------------
+
     /// Performs the actual proof generation procedure, generating the proof that the provided
-    /// execution `trace` is valid against the provided `air`.
+    /// execution `trace` is valid against this prover's AIR.
     /// TODO: make this function un-callable externally?
     #[doc(hidden)]
     fn generate_proof<E, H>(&self, trace: Self::Trace) -> Result<StarkProof, ProverError>

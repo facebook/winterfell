@@ -47,7 +47,7 @@ const MIN_CYCLE_LENGTH: usize = 2;
 /// To describe AIR for a given computation, you'll need to implement the `Air` trait which
 /// involves the following:
 ///
-/// 1. Define base field for your computation via the [Air::BaseElement] associated type (see
+/// 1. Define base field for your computation via the [Air::BaseField] associated type (see
 ///    [math::fields] for available field options).
 /// 2. Define a set of public inputs which are required for your computation via the
 ///    [Air::PublicInputs] associated type.

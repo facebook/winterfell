@@ -21,13 +21,10 @@ const MIN_FRAGMENT_LENGTH: usize = 2;
 
 // TRACE TABLE
 // ================================================================================================
-/// An execution trace of a computation.
+/// A concrete implementation of the [Trace] trait.
 ///
-/// Execution trace is a two-dimensional matrix in which each row represents the state of a
-/// computation at a single point in time and each column corresponds to an algebraic register
-/// tracked over all steps of the computation.
-///
-/// There are two ways to create an execution trace.
+/// This implementation supports concurrent trace generation and should be sufficient for most use
+/// cases. There are two ways to create a trace table trace.
 ///
 /// First, you can use the [TraceTable::init()] function which takes a set of vectors as a
 /// parameter, where each vector contains values for a given column of the trace. This approach
@@ -331,11 +328,26 @@ impl<B: StarkField> TraceTable<B> {
     }
 }
 
+// TRACE TRAIT IMPLEMENTATION
+// ================================================================================================
+
 impl<B: StarkField> Trace for TraceTable<B> {
     type BaseField = B;
 
+    fn width(&self) -> usize {
+        self.trace.len()
+    }
+
+    fn length(&self) -> usize {
+        self.trace[0].len()
+    }
+
     fn meta(&self) -> &[u8] {
         &self.meta
+    }
+
+    fn get(&self, register: usize, step: usize) -> B {
+        self.trace[register][step]
     }
 
     fn read_row_into(&self, step: usize, target: &mut [B]) {
@@ -346,18 +358,6 @@ impl<B: StarkField> Trace for TraceTable<B> {
 
     fn into_columns(self) -> Vec<Vec<B>> {
         self.trace
-    }
-
-    fn width(&self) -> usize {
-        self.trace.len()
-    }
-
-    fn length(&self) -> usize {
-        self.trace[0].len()
-    }
-
-    fn get(&self, register: usize, step: usize) -> B {
-        self.trace[register][step]
     }
 }
 

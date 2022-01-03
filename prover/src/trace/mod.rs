@@ -4,10 +4,10 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::StarkDomain;
-
-mod trace_lde;
 use air::{Air, EvaluationFrame, TraceInfo};
 use math::{fft, polynom, FieldElement, StarkField};
+
+mod trace_lde;
 pub use trace_lde::TraceLde;
 
 mod poly_table;
@@ -26,15 +26,30 @@ mod tests;
 
 // TRACE TRAIT
 // ================================================================================================
-
-// TODO: add docs
+/// Defines an execution trace of a computation.
+///
+/// Execution trace can be reduced to a two-dimensional matrix in which each row represents the
+/// state of a computation at a single point in time and each column corresponds to an algebraic
+/// register tracked over all steps of the computation.
+///
+/// Building a trace is required for STARK proof generation. An execution trace of a specific
+/// instance of a computation must be supplied to [Prover::prove()](super::Prover::prove) method
+/// to generate a STARK proof.
+///
+/// This crate exposes one concrete implementation of the [Trace] trait: [TraceTable]. This
+/// implementation supports concurrent trace generation and should be sufficient in most
+/// situations. However, if functionality provided by [TraceTable] is not sufficient, uses can
+/// provide custom implementations of the [Trace] trait which better suit their needs.
 pub trait Trace: Sized {
+    /// Base field for this execution trace.
+    ///
+    /// All cells of this execution trace contain values which are elements in this filed.
     type BaseField: StarkField;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns number of columns in the trace.
+    /// Returns number of columns in this trace.
     fn width(&self) -> usize;
 
     /// Returns the number of rows in this trace.
@@ -43,7 +58,7 @@ pub trait Trace: Sized {
     /// Returns metadata associated with this trace.
     fn meta(&self) -> &[u8];
 
-    /// Returns value of the cell in the specified column at the specified row.
+    /// Returns value of the cell in the specified column at the specified row of this trace.
     fn get(&self, col_idx: usize, row_idx: usize) -> Self::BaseField;
 
     /// Reads a single row of this trace at the specified index into the specified target.
