@@ -103,60 +103,60 @@ pub fn verify<AIR: Air>(
             HashFunction::Blake3_256 => {
                 let public_coin = RandomCoin::new(&public_coin_seed);
                 let channel = VerifierChannel::new(&air, proof)?;
-                perform_verification::<AIR, AIR::BaseElement, Blake3_256<AIR::BaseElement>>(air, channel, public_coin)
+                perform_verification::<AIR, AIR::BaseField, Blake3_256<AIR::BaseField>>(air, channel, public_coin)
             }
             HashFunction::Blake3_192 => {
                 let public_coin = RandomCoin::new(&public_coin_seed);
                 let channel = VerifierChannel::new(&air, proof)?;
-                perform_verification::<AIR, AIR::BaseElement, Blake3_192<AIR::BaseElement>>(air, channel, public_coin)
+                perform_verification::<AIR, AIR::BaseField, Blake3_192<AIR::BaseField>>(air, channel, public_coin)
             }
             HashFunction::Sha3_256 => {
                 let public_coin = RandomCoin::new(&public_coin_seed);
                 let channel = VerifierChannel::new(&air, proof)?;
-                perform_verification::<AIR, AIR::BaseElement, Sha3_256<AIR::BaseElement>>(air, channel, public_coin)
+                perform_verification::<AIR, AIR::BaseField, Sha3_256<AIR::BaseField>>(air, channel, public_coin)
             }
         },
         FieldExtension::Quadratic => {
-            if !<QuadExtension<AIR::BaseElement>>::is_supported() {
+            if !<QuadExtension<AIR::BaseField>>::is_supported() {
                 return Err(VerifierError::UnsupportedFieldExtension(2));
             }
             match air.options().hash_fn() {
                 HashFunction::Blake3_256 => {
                     let public_coin = RandomCoin::new(&public_coin_seed);
                     let channel = VerifierChannel::new(&air, proof)?;
-                    perform_verification::<AIR, QuadExtension<AIR::BaseElement>, Blake3_256<AIR::BaseElement>>(air, channel, public_coin)
+                    perform_verification::<AIR, QuadExtension<AIR::BaseField>, Blake3_256<AIR::BaseField>>(air, channel, public_coin)
                 }
                 HashFunction::Blake3_192 => {
                     let public_coin = RandomCoin::new(&public_coin_seed);
                     let channel = VerifierChannel::new(&air, proof)?;
-                    perform_verification::<AIR, QuadExtension<AIR::BaseElement>, Blake3_192<AIR::BaseElement>>(air, channel, public_coin)
+                    perform_verification::<AIR, QuadExtension<AIR::BaseField>, Blake3_192<AIR::BaseField>>(air, channel, public_coin)
                 }
                 HashFunction::Sha3_256 => {
                     let public_coin = RandomCoin::new(&public_coin_seed);
                     let channel = VerifierChannel::new(&air, proof)?;
-                    perform_verification::<AIR, QuadExtension<AIR::BaseElement>, Sha3_256<AIR::BaseElement>>(air, channel, public_coin)
+                    perform_verification::<AIR, QuadExtension<AIR::BaseField>, Sha3_256<AIR::BaseField>>(air, channel, public_coin)
                 }
             }
         },
         FieldExtension::Cubic => {
-            if !<CubeExtension<AIR::BaseElement>>::is_supported() {
+            if !<CubeExtension<AIR::BaseField>>::is_supported() {
                 return Err(VerifierError::UnsupportedFieldExtension(3));
             }
             match air.options().hash_fn() {
                 HashFunction::Blake3_256 => {
                     let public_coin = RandomCoin::new(&public_coin_seed);
                     let channel = VerifierChannel::new(&air, proof)?;
-                    perform_verification::<AIR, CubeExtension<AIR::BaseElement>, Blake3_256<AIR::BaseElement>>(air, channel, public_coin)
+                    perform_verification::<AIR, CubeExtension<AIR::BaseField>, Blake3_256<AIR::BaseField>>(air, channel, public_coin)
                 }
                 HashFunction::Blake3_192 => {
                     let public_coin = RandomCoin::new(&public_coin_seed);
                     let channel = VerifierChannel::new(&air, proof)?;
-                    perform_verification::<AIR, CubeExtension<AIR::BaseElement>, Blake3_192<AIR::BaseElement>>(air, channel, public_coin)
+                    perform_verification::<AIR, CubeExtension<AIR::BaseField>, Blake3_192<AIR::BaseField>>(air, channel, public_coin)
                 }
                 HashFunction::Sha3_256 => {
                     let public_coin = RandomCoin::new(&public_coin_seed);
                     let channel = VerifierChannel::new(&air, proof)?;
-                    perform_verification::<AIR, CubeExtension<AIR::BaseElement>, Sha3_256<AIR::BaseElement>>(air, channel, public_coin)
+                    perform_verification::<AIR, CubeExtension<AIR::BaseField>, Sha3_256<AIR::BaseField>>(air, channel, public_coin)
                 }
             }
         },
@@ -169,13 +169,13 @@ pub fn verify<AIR: Air>(
 /// attests to a correct execution of the computation specified by the provided `air`.
 fn perform_verification<A, E, H>(
     air: A,
-    mut channel: VerifierChannel<A::BaseElement, E, H>,
-    mut public_coin: RandomCoin<A::BaseElement, H>,
+    mut channel: VerifierChannel<A::BaseField, E, H>,
+    mut public_coin: RandomCoin<A::BaseField, H>,
 ) -> Result<(), VerifierError>
 where
     A: Air,
-    E: FieldElement<BaseField = A::BaseElement>,
-    H: ElementHasher<BaseField = A::BaseElement>,
+    E: FieldElement<BaseField = A::BaseField>,
+    H: ElementHasher<BaseField = A::BaseField>,
 {
     // 1 ----- trace commitment -------------------------------------------------------------------
     // read the commitment to evaluations of the trace polynomials over the LDE domain sent by the

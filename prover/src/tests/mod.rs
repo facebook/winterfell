@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::ExecutionTrace;
+use crate::TraceTable;
 use air::{
     Air, AirContext, Assertion, EvaluationFrame, FieldExtension, HashFunction, ProofOptions,
     TraceInfo, TransitionConstraintDegree,
@@ -14,7 +14,7 @@ use utils::collections::Vec;
 // FIBONACCI TRACE BUILDER
 // ================================================================================================
 
-pub fn build_fib_trace(length: usize) -> ExecutionTrace<BaseElement> {
+pub fn build_fib_trace(length: usize) -> TraceTable<BaseElement> {
     assert!(length.is_power_of_two(), "length must be a power of 2");
 
     let mut reg1 = vec![BaseElement::ONE];
@@ -25,7 +25,7 @@ pub fn build_fib_trace(length: usize) -> ExecutionTrace<BaseElement> {
         reg2.push(reg1[i] + BaseElement::from(2u8) * reg2[i]);
     }
 
-    ExecutionTrace::init(vec![reg1, reg2])
+    TraceTable::init(vec![reg1, reg2])
 }
 
 // MOCK AIR
@@ -95,7 +95,7 @@ impl MockAir {
 }
 
 impl Air for MockAir {
-    type BaseElement = BaseElement;
+    type BaseField = BaseElement;
     type PublicInputs = ();
 
     fn new(trace_info: TraceInfo, _pub_inputs: (), _options: ProofOptions) -> Self {
@@ -107,11 +107,11 @@ impl Air for MockAir {
         }
     }
 
-    fn context(&self) -> &AirContext<Self::BaseElement> {
+    fn context(&self) -> &AirContext<Self::BaseField> {
         &self.context
     }
 
-    fn evaluate_transition<E: FieldElement + From<Self::BaseElement>>(
+    fn evaluate_transition<E: FieldElement + From<Self::BaseField>>(
         &self,
         _frame: &EvaluationFrame<E>,
         _periodic_values: &[E],
@@ -119,11 +119,11 @@ impl Air for MockAir {
     ) {
     }
 
-    fn get_assertions(&self) -> Vec<Assertion<Self::BaseElement>> {
+    fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>> {
         self.assertions.clone()
     }
 
-    fn get_periodic_column_values(&self) -> Vec<Vec<Self::BaseElement>> {
+    fn get_periodic_column_values(&self) -> Vec<Vec<Self::BaseField>> {
         self.periodic_columns.clone()
     }
 }

@@ -4,14 +4,11 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    rescue, AggPublicKey, Signature, HASH_CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH,
-    TRACE_WIDTH,
+    get_power_series, rescue, AggPublicKey, BaseElement, FieldElement, LamportThresholdAir,
+    ProofOptions, Prover, PublicInputs, Signature, StarkField, TraceTable, HASH_CYCLE_LENGTH,
+    NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH, TRACE_WIDTH,
 };
 use std::collections::HashMap;
-use winterfell::{
-    math::{fields::f128::BaseElement, get_power_series, FieldElement, StarkField},
-    ExecutionTrace,
-};
 
 #[cfg(feature = "concurrent")]
 use winterfell::iterators::*;
@@ -43,65 +40,105 @@ struct KeySchedule {
     pub_keys2: Vec<[BaseElement; 2]>,
 }
 
-// TRACE GENERATOR
+// LAMPORT PROVER
 // ================================================================================================
 
-pub fn generate_trace(
-    pub_key: &AggPublicKey,
-    message: [BaseElement; 2],
-    signatures: &[(usize, Signature)],
-) -> ExecutionTrace<BaseElement> {
-    // allocate memory to hold the trace table
-    let num_cycles = pub_key.num_keys().next_power_of_two();
-    let trace_length = SIG_CYCLE_LENGTH * num_cycles;
-    let mut trace = ExecutionTrace::new(TRACE_WIDTH, trace_length);
+pub struct LamportThresholdProver {
+    pub_inputs: PublicInputs,
+    options: ProofOptions,
+}
 
-    let powers_of_two = get_power_series(TWO, 128);
-
-    // transform a list of signatures into a hashmap; this way we can look up signature
-    // by index of the corresponding public key
-    let mut signature_map = HashMap::new();
-    for (i, sig) in signatures {
-        signature_map.insert(i, sig);
-    }
-
-    // build a map of signature indexes to the running sum of valid signatures
-    let mut sig_count = vec![0];
-    for i in 1..num_cycles {
-        match signature_map.get(&(i - 1)) {
-            Some(_) => sig_count.push(sig_count[i - 1] + 1),
-            None => sig_count.push(sig_count[i - 1]),
+impl LamportThresholdProver {
+    pub fn new(
+        pub_key: &AggPublicKey,
+        message: [BaseElement; 2],
+        signatures: &[(usize, Signature)],
+        options: ProofOptions,
+    ) -> Self {
+        let pub_inputs = PublicInputs {
+            pub_key_root: pub_key.root().to_elements(),
+            num_pub_keys: pub_key.num_keys(),
+            num_signatures: signatures.len(),
+            message,
+        };
+        Self {
+            pub_inputs,
+            options,
         }
     }
 
-    // create a dummy signature; this will be used in place of signatures for keys
-    // which did not sign the message
-    let zero_sig = Signature {
-        ones: vec![[BaseElement::ZERO; 2]; 254],
-        zeros: vec![[BaseElement::ZERO; 2]; 254],
-    };
+    pub fn build_trace(
+        &self,
+        pub_key: &AggPublicKey,
+        message: [BaseElement; 2],
+        signatures: &[(usize, Signature)],
+    ) -> TraceTable<BaseElement> {
+        // allocate memory to hold the trace table
+        let num_cycles = pub_key.num_keys().next_power_of_two();
+        let trace_length = SIG_CYCLE_LENGTH * num_cycles;
+        let mut trace = TraceTable::new(TRACE_WIDTH, trace_length);
 
-    // iterate over all leaves of the aggregated public key; and if a signature exists for the
-    // corresponding individual public key, use it go generate signature verification trace;
-    // otherwise, use zero signature;
-    trace.fragments(SIG_CYCLE_LENGTH).for_each(|mut sig_trace| {
-        let i = sig_trace.index();
-        let sig_info = match signature_map.get(&i) {
-            Some(sig) => build_sig_info(i, &message, sig, 1, pub_key, sig_count[i]),
-            None => build_sig_info(i, &message, &zero_sig, 0, pub_key, sig_count[i]),
+        let powers_of_two = get_power_series(TWO, 128);
+
+        // transform a list of signatures into a hashmap; this way we can look up signature
+        // by index of the corresponding public key
+        let mut signature_map = HashMap::new();
+        for (i, sig) in signatures {
+            signature_map.insert(i, sig);
+        }
+
+        // build a map of signature indexes to the running sum of valid signatures
+        let mut sig_count = vec![0];
+        for i in 1..num_cycles {
+            match signature_map.get(&(i - 1)) {
+                Some(_) => sig_count.push(sig_count[i - 1] + 1),
+                None => sig_count.push(sig_count[i - 1]),
+            }
+        }
+
+        // create a dummy signature; this will be used in place of signatures for keys
+        // which did not sign the message
+        let zero_sig = Signature {
+            ones: vec![[BaseElement::ZERO; 2]; 254],
+            zeros: vec![[BaseElement::ZERO; 2]; 254],
         };
 
-        sig_trace.fill(
-            |state| {
-                init_sig_verification_state(&sig_info, state);
-            },
-            |step, state| {
-                update_sig_verification_state(step, &sig_info, &powers_of_two, state);
-            },
-        );
-    });
+        // iterate over all leaves of the aggregated public key; and if a signature exists for the
+        // corresponding individual public key, use it go generate signature verification trace;
+        // otherwise, use zero signature;
+        trace.fragments(SIG_CYCLE_LENGTH).for_each(|mut sig_trace| {
+            let i = sig_trace.index();
+            let sig_info = match signature_map.get(&i) {
+                Some(sig) => build_sig_info(i, &message, sig, 1, pub_key, sig_count[i]),
+                None => build_sig_info(i, &message, &zero_sig, 0, pub_key, sig_count[i]),
+            };
 
-    trace
+            sig_trace.fill(
+                |state| {
+                    init_sig_verification_state(&sig_info, state);
+                },
+                |step, state| {
+                    update_sig_verification_state(step, &sig_info, &powers_of_two, state);
+                },
+            );
+        });
+
+        trace
+    }
+}
+
+impl Prover for LamportThresholdProver {
+    type BaseField = BaseElement;
+    type Air = LamportThresholdAir;
+    type Trace = TraceTable<BaseElement>;
+
+    fn get_pub_inputs(&self, _trace: &Self::Trace) -> PublicInputs {
+        self.pub_inputs.clone()
+    }
+
+    fn options(&self) -> &ProofOptions {
+        &self.options
+    }
 }
 
 // TRACE INITIALIZATION

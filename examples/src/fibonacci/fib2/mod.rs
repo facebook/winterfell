@@ -9,14 +9,22 @@ use log::debug;
 use std::time::Instant;
 use winterfell::{
     math::{fields::f128::BaseElement, log2, FieldElement},
-    ProofOptions, StarkProof, VerifierError,
+    ProofOptions, Prover, StarkProof, Trace, TraceTable, VerifierError,
 };
 
 mod air;
-use air::{build_trace, FibAir};
+use air::FibAir;
+
+mod prover;
+use prover::FibProver;
 
 #[cfg(test)]
 mod tests;
+
+// CONSTANTS
+// ================================================================================================
+
+const TRACE_WIDTH: usize = 2;
 
 // FIBONACCI EXAMPLE
 // ================================================================================================
@@ -69,9 +77,12 @@ impl Example for FibExample {
             self.sequence_length
         );
 
+        // create a prover
+        let prover = FibProver::new(self.options.clone());
+
         // generate execution trace
         let now = Instant::now();
-        let trace = build_trace(self.sequence_length);
+        let trace = prover.build_trace(self.sequence_length);
 
         let trace_width = trace.width();
         let trace_length = trace.length();
@@ -83,7 +94,7 @@ impl Example for FibExample {
         );
 
         // generate the proof
-        winterfell::prove::<FibAir>(trace, self.result, self.options.clone()).unwrap()
+        prover.prove(trace).unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {

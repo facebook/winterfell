@@ -3,17 +3,15 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use super::{BaseElement, FieldElement, TRACE_WIDTH};
 use crate::utils::are_equal;
 use winterfell::{
-    math::{fields::f128::BaseElement, FieldElement},
-    Air, AirContext, Assertion, EvaluationFrame, ExecutionTrace, ProofOptions, TraceInfo,
+    Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
 
 // FIBONACCI AIR
 // ================================================================================================
-
-const TRACE_WIDTH: usize = 2;
 
 pub struct Fib8Air {
     context: AirContext<BaseElement>,
@@ -21,12 +19,12 @@ pub struct Fib8Air {
 }
 
 impl Air for Fib8Air {
-    type BaseElement = BaseElement;
+    type BaseField = BaseElement;
     type PublicInputs = BaseElement;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
-    fn new(trace_info: TraceInfo, pub_inputs: Self::BaseElement, options: ProofOptions) -> Self {
+    fn new(trace_info: TraceInfo, pub_inputs: Self::BaseField, options: ProofOptions) -> Self {
         let degrees = vec![
             TransitionConstraintDegree::new(1),
             TransitionConstraintDegree::new(1),
@@ -38,11 +36,11 @@ impl Air for Fib8Air {
         }
     }
 
-    fn context(&self) -> &AirContext<Self::BaseElement> {
+    fn context(&self) -> &AirContext<Self::BaseField> {
         &self.context
     }
 
-    fn evaluate_transition<E: FieldElement + From<Self::BaseElement>>(
+    fn evaluate_transition<E: FieldElement + From<Self::BaseField>>(
         &self,
         frame: &EvaluationFrame<E>,
         _periodic_values: &[E],
@@ -68,7 +66,7 @@ impl Air for Fib8Air {
         result[1] = are_equal(next[1], n7);
     }
 
-    fn get_assertions(&self) -> Vec<Assertion<Self::BaseElement>> {
+    fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>> {
         // assert that the trace starts with 7th and 8th terms of Fibonacci sequence (the first
         // 6 terms are not recorded in the trace), and ends with the expected result
         let last_step = self.trace_length() - 1;
@@ -78,43 +76,4 @@ impl Air for Fib8Air {
             Assertion::single(1, last_step, self.result),
         ]
     }
-}
-
-// FIBONACCI TRACE BUILDER
-// ================================================================================================
-
-pub fn build_trace(length: usize) -> ExecutionTrace<BaseElement> {
-    assert!(
-        length.is_power_of_two(),
-        "sequence length must be a power of 2"
-    );
-
-    // initialize the trace with 7th and 8th terms of Fibonacci sequence (skipping the first 6)
-    let n0 = BaseElement::ONE;
-    let n1 = BaseElement::ONE;
-    let n2 = n0 + n1;
-    let n3 = n1 + n2;
-    let n4 = n2 + n3;
-    let n5 = n3 + n4;
-    let n6 = n4 + n5;
-    let n7 = n5 + n6;
-
-    let mut reg0 = vec![n6];
-    let mut reg1 = vec![n7];
-
-    for i in 0..(length / 8 - 1) {
-        let n0 = reg0[i] + reg1[i];
-        let n1 = reg1[i] + n0;
-        let n2 = n0 + n1;
-        let n3 = n1 + n2;
-        let n4 = n2 + n3;
-        let n5 = n3 + n4;
-        let n6 = n4 + n5;
-        let n7 = n5 + n6;
-
-        reg0.push(n6);
-        reg1.push(n7);
-    }
-
-    ExecutionTrace::init(vec![reg0, reg1])
 }

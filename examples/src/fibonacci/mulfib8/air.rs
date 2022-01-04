@@ -6,7 +6,7 @@
 use crate::utils::are_equal;
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement},
-    Air, AirContext, Assertion, EvaluationFrame, ExecutionTrace, ProofOptions, TraceInfo,
+    Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
 
@@ -21,12 +21,12 @@ pub struct MulFib8Air {
 }
 
 impl Air for MulFib8Air {
-    type BaseElement = BaseElement;
+    type BaseField = BaseElement;
     type PublicInputs = BaseElement;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
-    fn new(trace_info: TraceInfo, pub_inputs: Self::BaseElement, options: ProofOptions) -> Self {
+    fn new(trace_info: TraceInfo, pub_inputs: Self::BaseField, options: ProofOptions) -> Self {
         let degrees = vec![
             TransitionConstraintDegree::new(2),
             TransitionConstraintDegree::new(2),
@@ -44,11 +44,11 @@ impl Air for MulFib8Air {
         }
     }
 
-    fn context(&self) -> &AirContext<Self::BaseElement> {
+    fn context(&self) -> &AirContext<Self::BaseField> {
         &self.context
     }
 
-    fn evaluate_transition<E: FieldElement + From<Self::BaseElement>>(
+    fn evaluate_transition<E: FieldElement + From<Self::BaseField>>(
         &self,
         frame: &EvaluationFrame<E>,
         _periodic_values: &[E],
@@ -79,7 +79,7 @@ impl Air for MulFib8Air {
         result[7] = are_equal(next[7], next[5] * next[6]);
     }
 
-    fn get_assertions(&self) -> Vec<Assertion<Self::BaseElement>> {
+    fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>> {
         // a valid multiplicative Fibonacci sequence should start with 1, 2 and terminate
         // with the expected result
         let last_step = self.trace_length() - 1;
@@ -89,36 +89,4 @@ impl Air for MulFib8Air {
             Assertion::single(6, last_step, self.result),
         ]
     }
-}
-
-// FIBONACCI TRACE BUILDER
-// ================================================================================================
-
-pub fn build_trace(length: usize) -> ExecutionTrace<BaseElement> {
-    assert!(
-        length.is_power_of_two(),
-        "sequence length must be a power of 2"
-    );
-
-    let mut reg0 = vec![BaseElement::new(1)];
-    let mut reg1 = vec![BaseElement::new(2)];
-    let mut reg2 = vec![reg0[0] * reg1[0]];
-    let mut reg3 = vec![reg1[0] * reg2[0]];
-    let mut reg4 = vec![reg2[0] * reg3[0]];
-    let mut reg5 = vec![reg3[0] * reg4[0]];
-    let mut reg6 = vec![reg4[0] * reg5[0]];
-    let mut reg7 = vec![reg5[0] * reg6[0]];
-
-    for i in 0..(length / 8 - 1) {
-        reg0.push(reg6[i] * reg7[i]);
-        reg1.push(reg7[i] * reg0[i + 1]);
-        reg2.push(reg0[i + 1] * reg1[i + 1]);
-        reg3.push(reg1[i + 1] * reg2[i + 1]);
-        reg4.push(reg2[i + 1] * reg3[i + 1]);
-        reg5.push(reg3[i + 1] * reg4[i + 1]);
-        reg6.push(reg4[i + 1] * reg5[i + 1]);
-        reg7.push(reg5[i + 1] * reg6[i + 1]);
-    }
-
-    ExecutionTrace::init(vec![reg0, reg1, reg2, reg3, reg4, reg5, reg6, reg7])
 }

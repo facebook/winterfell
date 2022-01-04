@@ -11,18 +11,18 @@ use crate::ExampleOptions;
 use log::debug;
 use std::time::Instant;
 use winterfell::{
-    math::{fields::f128::BaseElement, log2},
-    ProofOptions, StarkProof, VerifierError,
+    math::{fields::f128::BaseElement, get_power_series, log2, FieldElement, StarkField},
+    ProofOptions, Prover, StarkProof, Trace, TraceTable, VerifierError,
 };
 
 mod signature;
 use signature::AggPublicKey;
 
-mod trace;
-use trace::generate_trace;
-
 mod air;
 use air::{LamportThresholdAir, PublicInputs};
+
+mod prover;
+use prover::LamportThresholdProver;
 
 // CONSTANTS
 // ================================================================================================
@@ -99,8 +99,17 @@ impl Example for LamportThresholdExample {
             self.pub_key.num_keys(),
         );
 
+        // create a prover
+        let prover = LamportThresholdProver::new(
+            &self.pub_key,
+            self.message,
+            &self.signatures,
+            self.options.clone(),
+        );
+
+        // generate execution trace
         let now = Instant::now();
-        let trace = generate_trace(&self.pub_key, self.message, &self.signatures);
+        let trace = prover.build_trace(&self.pub_key, self.message, &self.signatures);
         let trace_length = trace.length();
         debug!(
             "Generated execution trace of {} registers and 2^{} steps in {} ms",
@@ -110,13 +119,7 @@ impl Example for LamportThresholdExample {
         );
 
         // generate the proof
-        let pub_inputs = PublicInputs {
-            pub_key_root: self.pub_key.root().to_elements(),
-            num_pub_keys: self.pub_key.num_keys(),
-            num_signatures: self.signatures.len(),
-            message: self.message,
-        };
-        winterfell::prove::<LamportThresholdAir>(trace, pub_inputs, self.options.clone()).unwrap()
+        prover.prove(trace).unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {

@@ -223,6 +223,50 @@ impl Air for WorkAir {
 }
 ```
 
+Next, we need define our prover. This can be done by implementing [Prover] trait. The trait is
+pretty simple and has just a few required methods. Here is how our implementation could look
+like:
+```Rust
+use winterfell::{
+    math::{fields::f128::BaseElement, FieldElement},
+    ProofOptions, Prover, Trace, TraceTable
+};
+
+// Our prover needs to hold STARK protocol parameters which are specified via ProofOptions
+// struct.
+struct WorkProver {
+    options: ProofOptions
+}
+
+impl WorkProver {
+    pub fn new(options: ProofOptions) -> Self {
+        Self { options }
+    }
+}
+
+// When implementing Prover trait we set the `Air` associated type to the AIR of the
+// computation we defined previously, and set the `Trace` associated type to `TraceTable`
+// struct as we don't need to define a custom trace for our computation.
+impl Prover for WorkProver {
+    type BaseField = BaseElement;
+    type Air = WorkAir;
+    type Trace = TraceTable<Self::BaseField>;
+
+    // Our public inputs consist of the first and last value in the execution trace.
+    fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
+        let last_step = trace.length() - 1;
+        PublicInputs {
+            start: trace.get(0, 0),
+            result: trace.get(0, last_step),
+        }
+    }
+
+    fn options(&self) -> &ProofOptions {
+        &self.options
+    }
+}
+```
+
 Now, we are finally ready to generate a STARK proof. The function below, will execute our computation, and will return the result together with the proof that the computation was executed correctly.
 
 ```Rust
@@ -251,9 +295,9 @@ pub fn prove_work() -> (BaseElement, StarkProof) {
         128, // FRI max remainder length
     );
 
-    // Generate the proof.
-    let pub_inputs = PublicInputs { start, result };
-    let proof = winterfell::prove::<WorkAir>(trace, pub_inputs, options).unwrap();
+    // Instantiate the prover and generate the proof.
+    let prover = WorkProver::new(options);
+    let proof = prover.prove(trace).unwrap();
 
     (result, proof)
 }

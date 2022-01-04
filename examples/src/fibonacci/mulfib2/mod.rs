@@ -9,11 +9,14 @@ use log::debug;
 use std::time::Instant;
 use winterfell::{
     math::{fields::f128::BaseElement, log2, FieldElement},
-    ProofOptions, StarkProof, VerifierError,
+    ProofOptions, Prover, StarkProof, Trace, TraceTable, VerifierError,
 };
 
 mod air;
-use air::{build_trace, MulFib2Air};
+use air::MulFib2Air;
+
+mod prover;
+use prover::MulFib2Prover;
 
 #[cfg(test)]
 mod tests;
@@ -69,9 +72,12 @@ impl Example for MulFib2Example {
             sequence_length
         );
 
+        // create a prover
+        let prover = MulFib2Prover::new(self.options.clone());
+
         // generate execution trace
         let now = Instant::now();
-        let trace = build_trace(sequence_length);
+        let trace = prover.build_trace(sequence_length);
         let trace_width = trace.width();
         let trace_length = trace.length();
         debug!(
@@ -82,7 +88,7 @@ impl Example for MulFib2Example {
         );
 
         // generate the proof
-        winterfell::prove::<MulFib2Air>(trace, self.result, self.options.clone()).unwrap()
+        prover.prove(trace).unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {

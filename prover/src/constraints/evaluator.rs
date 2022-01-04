@@ -5,7 +5,7 @@
 
 use super::{
     evaluation_table::EvaluationTableFragment, BoundaryConstraintGroup, ConstraintEvaluationTable,
-    PeriodicValueTable, StarkDomain, TraceTable,
+    PeriodicValueTable, StarkDomain, TraceLde,
 };
 use air::{
     Air, ConstraintCompositionCoefficients, ConstraintDivisor, EvaluationFrame,
@@ -29,18 +29,18 @@ const MIN_CONCURRENT_DOMAIN_SIZE: usize = 8192;
 // CONSTRAINT EVALUATOR
 // ================================================================================================
 
-pub struct ConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>> {
+pub struct ConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> {
     air: &'a A,
-    boundary_constraints: Vec<BoundaryConstraintGroup<A::BaseElement, E>>,
+    boundary_constraints: Vec<BoundaryConstraintGroup<A::BaseField, E>>,
     transition_constraints: Vec<TransitionConstraintGroup<E>>,
-    periodic_values: PeriodicValueTable<A::BaseElement>,
-    divisors: Vec<ConstraintDivisor<A::BaseElement>>,
+    periodic_values: PeriodicValueTable<A::BaseField>,
+    divisors: Vec<ConstraintDivisor<A::BaseField>>,
 
     #[cfg(debug_assertions)]
     transition_constraint_degrees: Vec<usize>,
 }
 
-impl<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>> ConstraintEvaluator<'a, A, E> {
+impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<'a, A, E> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Returns a new evaluator which can be used to evaluate transition and boundary constraints
@@ -95,9 +95,9 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>> ConstraintEvaluato
     /// evaluation domain can be many times smaller than the full LDE domain.
     pub fn evaluate(
         &self,
-        trace: &TraceTable<A::BaseElement>,
-        domain: &StarkDomain<A::BaseElement>,
-    ) -> ConstraintEvaluationTable<A::BaseElement, E> {
+        trace: &TraceLde<A::BaseField>,
+        domain: &StarkDomain<A::BaseField>,
+    ) -> ConstraintEvaluationTable<A::BaseField, E> {
         assert_eq!(
             trace.len(),
             domain.lde_domain_size(),
@@ -108,9 +108,9 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>> ConstraintEvaluato
         // single value) so that we can check their degree late
         #[cfg(not(debug_assertions))]
         let mut evaluation_table =
-            ConstraintEvaluationTable::<A::BaseElement, E>::new(domain, self.divisors.clone());
+            ConstraintEvaluationTable::<A::BaseField, E>::new(domain, self.divisors.clone());
         #[cfg(debug_assertions)]
-        let mut evaluation_table = ConstraintEvaluationTable::<A::BaseElement, E>::new(
+        let mut evaluation_table = ConstraintEvaluationTable::<A::BaseField, E>::new(
             domain,
             self.divisors.clone(),
             self.transition_constraint_degrees.to_vec(),
@@ -147,14 +147,14 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>> ConstraintEvaluato
     /// Evaluates constraints for a single fragment of the evaluation table.
     fn evaluate_fragment(
         &self,
-        trace: &TraceTable<A::BaseElement>,
-        domain: &StarkDomain<A::BaseElement>,
-        fragment: &mut EvaluationTableFragment<A::BaseElement, E>,
+        trace: &TraceLde<A::BaseField>,
+        domain: &StarkDomain<A::BaseField>,
+        fragment: &mut EvaluationTableFragment<A::BaseField, E>,
     ) {
         // initialize buffers to hold trace values and evaluation results at each step;
         let mut ev_frame = EvaluationFrame::new(trace.width());
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
-        let mut t_evaluations = vec![A::BaseElement::ZERO; self.air.num_transition_constraints()];
+        let mut t_evaluations = vec![A::BaseField::ZERO; self.air.num_transition_constraints()];
 
         // pre-compute values needed to determine x coordinates in the constraint evaluation domain
         let g = domain.ce_domain_generator();
@@ -200,13 +200,13 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>> ConstraintEvaluato
     /// is the domain offset.
     fn evaluate_transition_constraints(
         &self,
-        frame: &EvaluationFrame<A::BaseElement>,
-        x: A::BaseElement,
+        frame: &EvaluationFrame<A::BaseField>,
+        x: A::BaseField,
         step: usize,
-        evaluations: &mut [A::BaseElement],
+        evaluations: &mut [A::BaseField],
     ) -> E {
         // TODO: use a more efficient way to zero out memory
-        evaluations.fill(A::BaseElement::ZERO);
+        evaluations.fill(A::BaseField::ZERO);
 
         // get periodic values at the evaluation step
         let periodic_values = self.periodic_values.get_row(step);
@@ -230,8 +230,8 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseElement>> ConstraintEvaluato
     /// evaluation domain, and s is the domain offset.
     fn evaluate_boundary_constraints(
         &self,
-        state: &[A::BaseElement],
-        x: A::BaseElement,
+        state: &[A::BaseField],
+        x: A::BaseField,
         step: usize,
         result: &mut [E],
     ) {

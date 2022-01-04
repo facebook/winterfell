@@ -17,10 +17,13 @@
 //!
 //! 1. Define an *algebraic intermediate representation* (AIR) for your computation. This can
 //!    be done by implementing [Air] trait.
-//! 2. Execute your computation and record its execution trace in [ExecutionTrace] struct.
-//! 3. Execute [prove()] function and supply the AIR of your computation together with its
-//!    execution trace as input parameters. The function will produce a instance of [StarkProof]
-//!    as an output.
+//! 2. Define an execution trace for your computation. This can be done by implementing [Trace]
+//!    trait. Alternatively, you can use [TraceTable] struct which already implements [Trace]
+//!    trait in cases when this generic implementation works for your use case.
+//! 3. Execute your computation and record its execution trace.
+//! 4. Define your prover by implementing [Prover] trait. Then execute [Prover::prove()] function
+//!    passing the trace generated in the previous step into it as a parameter. The function will
+//!    return a instance of [StarkProof].
 //!
 //! This `StarkProof` can be serialized and sent to a STARK verifier for verification. The size
 //! of proof depends on the specifics of a given computation, but for most computations it should
@@ -96,21 +99,21 @@
 //! | ...       |
 //! | 1,048,575 | 247770943907079986105389697876176586605 |
 //!
-//! To record the trace, we'll use the [ExecutionTrace] struct. The function below, is just a
+//! To record the trace, we'll use the [TraceTable] struct. The function below, is just a
 //! modified version of the `do_work()` function which records every intermediate state of the
-//! computation in the [ExecutionTrace] struct:
+//! computation in the [TraceTable] struct:
 //!
 //! ```no_run
 //! use winterfell::{
 //!     math::{fields::f128::BaseElement, FieldElement},
-//!     ExecutionTrace,
+//!     TraceTable,
 //! };
 //!
-//! pub fn build_do_work_trace(start: BaseElement, n: usize) -> ExecutionTrace<BaseElement> {
+//! pub fn build_do_work_trace(start: BaseElement, n: usize) -> TraceTable<BaseElement> {
 //!     // Instantiate the trace with a given width and length; this will allocate all
 //!     // required memory for the trace
 //!     let trace_width = 1;
-//!     let mut trace = ExecutionTrace::new(trace_width, n);
+//!     let mut trace = TraceTable::new(trace_width, n);
 //!
 //!     // Fill the trace with data; the first closure initializes the first state of the
 //!     // computation; the second closure computes the next state of the computation based
@@ -177,7 +180,7 @@
 //! impl Air for WorkAir {
 //!     // First, we'll specify which finite field to use for our computation, and also how
 //!     // the public inputs must look like.
-//!     type BaseElement = BaseElement;
+//!     type BaseField = BaseElement;
 //!     type PublicInputs = PublicInputs;
 //!
 //!     // Here, we'll construct a new instance of our computation which is defined by 3
@@ -206,7 +209,7 @@
 //!     // be valid, if for all valid state transitions, transition constraints evaluate to all
 //!     // zeros, and for any invalid transition, at least one constraint evaluates to a non-zero
 //!     // value. The `frame` parameter will contain current and next states of the computation.
-//!     fn evaluate_transition<E: FieldElement + From<Self::BaseElement>>(
+//!     fn evaluate_transition<E: FieldElement + From<Self::BaseField>>(
 //!         &self,
 //!         frame: &EvaluationFrame<E>,
 //!         _periodic_values: &[E],
@@ -224,7 +227,7 @@
 //!     // Here, we'll define a set of assertions about the execution trace which must be
 //!     // satisfied for the computation to be valid. Essentially, this ties computation's
 //!     // execution trace to the public inputs.
-//!     fn get_assertions(&self) -> Vec<Assertion<Self::BaseElement>> {
+//!     fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>> {
 //!         // for our computation to be valid, value in column 0 at step 0 must be equal to the
 //!         // starting value, and at the last step it must be equal to the result.
 //!         let last_step = self.trace_length() - 1;
@@ -236,8 +239,114 @@
 //!
 //!     // This is just boilerplate which is used by the Winterfell prover/verifier to retrieve
 //!     // the context of the computation.
-//!     fn context(&self) -> &AirContext<Self::BaseElement> {
+//!     fn context(&self) -> &AirContext<Self::BaseField> {
 //!         &self.context
+//!     }
+//! }
+//! ```
+//!
+//! Next, we need define our prover. This can be done by implementing [Prover] trait. The trait is
+//! pretty simple and has just a few required methods. Here is how our implementation could look
+//! like:
+//!
+//! ```no_run
+//! use winterfell::{
+//!     math::{fields::f128::BaseElement, FieldElement},
+//!     ProofOptions, Prover, Trace, TraceTable
+//! };
+//!
+//! # use winterfell::{
+//! #   Air, AirContext, Assertion, ByteWriter, EvaluationFrame, Serializable,
+//! #   TraceInfo, TransitionConstraintDegree,
+//! # };
+//! #
+//! # pub struct PublicInputs {
+//! #     start: BaseElement,
+//! #     result: BaseElement,
+//! # }
+//! #
+//! # impl Serializable for PublicInputs {
+//! #     fn write_into<W: ByteWriter>(&self, target: &mut W) {
+//! #         target.write(self.start);
+//! #         target.write(self.result);
+//! #     }
+//! # }
+//! #
+//! # pub struct WorkAir {
+//! #     context: AirContext<BaseElement>,
+//! #     start: BaseElement,
+//! #     result: BaseElement,
+//! # }
+//! #
+//! # impl Air for WorkAir {
+//! #     type BaseField = BaseElement;
+//! #     type PublicInputs = PublicInputs;
+//! #
+//! #     fn new(trace_info: TraceInfo, pub_inputs: PublicInputs, options: ProofOptions) -> Self {
+//! #         assert_eq!(1, trace_info.width());
+//! #         let degrees = vec![TransitionConstraintDegree::new(3)];
+//! #         WorkAir {
+//! #             context: AirContext::new(trace_info, degrees, options),
+//! #             start: pub_inputs.start,
+//! #             result: pub_inputs.result,
+//! #         }
+//! #     }
+//! #
+//! #     fn evaluate_transition<E: FieldElement + From<Self::BaseField>>(
+//! #         &self,
+//! #         frame: &EvaluationFrame<E>,
+//! #         _periodic_values: &[E],
+//! #         result: &mut [E],
+//! #     ) {
+//! #         let current_state = &frame.current()[0];
+//! #         let next_state = current_state.exp(3u32.into()) + E::from(42u32);
+//! #         result[0] = frame.next()[0] - next_state;
+//! #     }
+//! #
+//! #     fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>> {
+//! #         let last_step = self.trace_length() - 1;
+//! #         vec![
+//! #             Assertion::single(0, 0, self.start),
+//! #             Assertion::single(0, last_step, self.result),
+//! #         ]
+//! #     }
+//! #
+//! #     fn context(&self) -> &AirContext<Self::BaseField> {
+//! #         &self.context
+//! #     }
+//! # }
+//! #
+//! // Our prover needs to hold STARK protocol parameters which are specified via ProofOptions
+//! // struct.
+//! struct WorkProver {
+//!     options: ProofOptions
+//! }
+//!
+//! impl WorkProver {
+//!     pub fn new(options: ProofOptions) -> Self {
+//!         Self { options }
+//!     }
+//! }
+//!
+//! // When implementing Prover trait we set the `Air` associated type to the AIR of the
+//! // computation we defined previously, and set the `Trace` associated type to `TraceTable`
+//! // struct as we don't need to define a custom trace for our computation.
+//! impl Prover for WorkProver {
+//!     type BaseField = BaseElement;
+//!     type Air = WorkAir;
+//!     type Trace = TraceTable<Self::BaseField>;
+//!
+//!     // Our public inputs consist of the first and last value in the execution trace.
+//!     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
+//!         let last_step = trace.length() - 1;
+//!         PublicInputs {
+//!             start: trace.get(0, 0),
+//!             result: trace.get(0, last_step),
+//!         }
+//!     }
+//!
+//!     fn options(&self) -> &ProofOptions {
+//!         &self.options
 //!     }
 //! }
 //! ```
@@ -253,13 +362,13 @@
 //! # use winterfell::{
 //! #    math::{fields::f128::BaseElement, FieldElement},
 //! #    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, Serializable,
-//! #    TraceInfo, TransitionConstraintDegree,
-//! #    ExecutionTrace, FieldExtension, HashFunction, ProofOptions, StarkProof,
+//! #    TraceInfo, TransitionConstraintDegree, TraceTable, FieldExtension,
+//! #    HashFunction, Prover, ProofOptions, StarkProof, Trace,
 //! # };
 //! #
-//! # pub fn build_do_work_trace(start: BaseElement, n: usize) -> ExecutionTrace<BaseElement> {
+//! # pub fn build_do_work_trace(start: BaseElement, n: usize) -> TraceTable<BaseElement> {
 //! #     let trace_width = 1;
-//! #     let mut trace = ExecutionTrace::new(trace_width, n);
+//! #     let mut trace = TraceTable::new(trace_width, n);
 //! #     trace.fill(
 //! #         |state| {
 //! #             state[0] = start;
@@ -291,7 +400,7 @@
 //! # }
 //! #
 //! # impl Air for WorkAir {
-//! #     type BaseElement = BaseElement;
+//! #     type BaseField = BaseElement;
 //! #     type PublicInputs = PublicInputs;
 //! #
 //! #     fn new(trace_info: TraceInfo, pub_inputs: PublicInputs, options: ProofOptions) -> Self {
@@ -304,7 +413,7 @@
 //! #         }
 //! #     }
 //! #
-//! #     fn evaluate_transition<E: FieldElement + From<Self::BaseElement>>(
+//! #     fn evaluate_transition<E: FieldElement + From<Self::BaseField>>(
 //! #         &self,
 //! #         frame: &EvaluationFrame<E>,
 //! #         _periodic_values: &[E],
@@ -315,7 +424,7 @@
 //! #         result[0] = frame.next()[0] - next_state;
 //! #     }
 //! #
-//! #     fn get_assertions(&self) -> Vec<Assertion<Self::BaseElement>> {
+//! #     fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>> {
 //! #         let last_step = self.trace_length() - 1;
 //! #         vec![
 //! #             Assertion::single(0, 0, self.start),
@@ -323,10 +432,38 @@
 //! #         ]
 //! #     }
 //! #
-//! #     fn context(&self) -> &AirContext<Self::BaseElement> {
+//! #     fn context(&self) -> &AirContext<Self::BaseField> {
 //! #         &self.context
 //! #     }
 //! # }
+//! #
+//! # struct WorkProver {
+//! #    options: ProofOptions
+//! # }
+//! #
+//! # impl WorkProver {
+//! #    pub fn new(options: ProofOptions) -> Self {
+//! #        Self { options }
+//! #    }
+//! # }
+//! #
+//! # impl Prover for WorkProver {
+//! #    type BaseField = BaseElement;
+//! #    type Air = WorkAir;
+//! #    type Trace = TraceTable<Self::BaseField>;
+//! #
+//! #    fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
+//! #        let last_step = trace.length() - 1;
+//! #        PublicInputs {
+//! #            start: trace.get(0, 0),
+//! #            result: trace.get(0, last_step),
+//! #        }
+//! #    }
+//! #
+//! #    fn options(&self) -> &ProofOptions {
+//! #        &self.options
+//! #    }
+//! #  }
 //! #
 //! // We'll just hard-code the parameters here for this example. We'll also just run the
 //! // computation just for 1024 steps to save time during testing.
@@ -348,9 +485,9 @@
 //!     128, // FRI max remainder length
 //! );
 //!
-//! // Generate the proof.
-//! let pub_inputs = PublicInputs { start, result };
-//! let proof = winterfell::prove::<WorkAir>(trace, pub_inputs, options).unwrap();
+//! // Instantiate the prover and generate the proof.
+//! let prover = WorkProver::new(options);
+//! let proof = prover.prove(trace).unwrap();
 //!
 //! // Verify the proof. The number of steps and options are encoded in the proof itself,
 //! // so we don't need to pass them explicitly to the verifier.
@@ -384,11 +521,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub use prover::{
-    crypto, iterators, math, prove, Air, AirContext, Assertion, BoundaryConstraint,
+    crypto, iterators, math, Air, AirContext, Assertion, BoundaryConstraint,
     BoundaryConstraintGroup, ByteReader, ByteWriter, ConstraintCompositionCoefficients,
     ConstraintDivisor, DeepCompositionCoefficients, Deserializable, DeserializationError,
-    EvaluationFrame, ExecutionTrace, ExecutionTraceFragment, FieldExtension, HashFunction,
-    ProofOptions, ProverError, Serializable, StarkProof, TraceInfo, TransitionConstraintDegree,
+    EvaluationFrame, FieldExtension, HashFunction, ProofOptions, Prover, ProverError, Serializable,
+    StarkProof, Trace, TraceInfo, TraceTable, TraceTableFragment, TransitionConstraintDegree,
     TransitionConstraintGroup,
 };
 pub use verifier::{verify, VerifierError};

@@ -47,7 +47,7 @@ const MIN_CYCLE_LENGTH: usize = 2;
 /// To describe AIR for a given computation, you'll need to implement the `Air` trait which
 /// involves the following:
 ///
-/// 1. Define base field for your computation via the [Air::BaseElement] associated type (see
+/// 1. Define base field for your computation via the [Air::BaseField] associated type (see
 ///    [math::fields] for available field options).
 /// 2. Define a set of public inputs which are required for your computation via the
 ///    [Air::PublicInputs] associated type.
@@ -146,7 +146,7 @@ pub trait Air: Send + Sync {
     /// Base field for the computation described by this AIR. STARK protocol for this computation
     /// may be executed in the base field, or in an extension of the base fields as specified
     /// by [ProofOptions] struct.
-    type BaseElement: ExtensibleField<2> + ExtensibleField<3>;
+    type BaseField: StarkField + ExtensibleField<2> + ExtensibleField<3>;
 
     /// A type defining shape of public inputs for the computation described by this protocol.
     /// This could be any type as long as it can be serialized into a sequence of bytes.
@@ -166,7 +166,7 @@ pub trait Air: Send + Sync {
     fn new(trace_info: TraceInfo, pub_inputs: Self::PublicInputs, options: ProofOptions) -> Self;
 
     /// Returns context for this instance of the computation.
-    fn context(&self) -> &AirContext<Self::BaseElement>;
+    fn context(&self) -> &AirContext<Self::BaseField>;
 
     /// Evaluates transition constraints over the specified evaluation frame.
     ///
@@ -174,7 +174,7 @@ pub trait Air: Send + Sync {
     /// the order of transition constraint degree descriptors used to instantiate [AirContext]
     /// for this AIR. Thus, the length of the `result` slice will equal to the number of
     /// transition constraints defined for this computation.
-    fn evaluate_transition<E: FieldElement<BaseField = Self::BaseElement>>(
+    fn evaluate_transition<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         frame: &EvaluationFrame<E>,
         periodic_values: &[E],
@@ -182,7 +182,7 @@ pub trait Air: Send + Sync {
     );
 
     /// Returns a set of assertions against a concrete execution trace of this computation.
-    fn get_assertions(&self) -> Vec<Assertion<Self::BaseElement>>;
+    fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>>;
 
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
@@ -196,7 +196,7 @@ pub trait Air: Send + Sync {
     /// The default implementation of this method returns an empty vector. For computations which
     /// rely on periodic columns, this method should be overridden in the specialized
     /// implementation. Number of values for each periodic column must be a power of two.
-    fn get_periodic_column_values(&self) -> Vec<Vec<Self::BaseElement>> {
+    fn get_periodic_column_values(&self) -> Vec<Vec<Self::BaseField>> {
         Vec::new()
     }
 
@@ -204,7 +204,7 @@ pub trait Air: Send + Sync {
     ///
     /// These polynomials are interpolated from the values returned from the
     /// [get_periodic_column_values()](Air::get_periodic_column_values) method.
-    fn get_periodic_column_polys(&self) -> Vec<Vec<Self::BaseElement>> {
+    fn get_periodic_column_polys(&self) -> Vec<Vec<Self::BaseField>> {
         // cache inverse twiddles for each cycle length so that we don't have to re-build them
         // for columns with identical cycle lengths
         let mut twiddle_map = BTreeMap::new();
@@ -233,7 +233,7 @@ pub trait Air: Send + Sync {
                 // get twiddles for interpolation and interpolate values into a polynomial
                 let inv_twiddles = twiddle_map
                     .entry(cycle_length)
-                    .or_insert_with(|| fft::get_inv_twiddles::<Self::BaseElement>(cycle_length));
+                    .or_insert_with(|| fft::get_inv_twiddles::<Self::BaseField>(cycle_length));
                 fft::interpolate_poly(&mut column, inv_twiddles);
                 column
             })
@@ -245,7 +245,7 @@ pub trait Air: Send + Sync {
     /// This function also assigns coefficients to each constraint. These coefficients will be
     /// used to compute a random linear combination of transition constraints evaluations during
     /// constraint merging performed by [TransitionConstraintGroup::merge_evaluations()] function.
-    fn get_transition_constraints<E: FieldElement<BaseField = Self::BaseElement>>(
+    fn get_transition_constraints<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         coefficients: &[(E, E)],
     ) -> Vec<TransitionConstraintGroup<E>> {
@@ -281,10 +281,10 @@ pub trait Air: Send + Sync {
     /// This function also assign coefficients to each constraint, and group the constraints by
     /// denominator. The coefficients will be used to compute random linear combination of boundary
     /// constraints during constraint merging.
-    fn get_boundary_constraints<E: FieldElement<BaseField = Self::BaseElement>>(
+    fn get_boundary_constraints<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         coefficients: &[(E, E)],
-    ) -> Vec<BoundaryConstraintGroup<Self::BaseElement, E>> {
+    ) -> Vec<BoundaryConstraintGroup<Self::BaseField, E>> {
         // compute inverse of the trace domain generator; this will be used for offset
         // computations when creating sequence constraints
         let inv_g = self.trace_domain_generator().inv();
@@ -371,7 +371,7 @@ pub trait Air: Send + Sync {
     /// by this AIR.
     ///
     /// The generator is the $n$th root of unity where $n$ is the length of the execution trace.
-    fn trace_domain_generator(&self) -> Self::BaseElement {
+    fn trace_domain_generator(&self) -> Self::BaseField {
         self.context().trace_domain_generator
     }
 
@@ -421,13 +421,13 @@ pub trait Air: Send + Sync {
     ///
     /// The generator is the $n$th root of unity where $n$ is the size of the low-degree extension
     /// domain.
-    fn lde_domain_generator(&self) -> Self::BaseElement {
+    fn lde_domain_generator(&self) -> Self::BaseField {
         self.context().lde_domain_generator
     }
 
     /// Returns the offset by which the domain for low-degree extension is shifted in relation
     /// to the execution trace domain.
-    fn domain_offset(&self) -> Self::BaseElement {
+    fn domain_offset(&self) -> Self::BaseField {
         self.context().options.domain_offset()
     }
 
@@ -460,7 +460,7 @@ pub trait Air: Send + Sync {
     ///
     /// This divisor specifies that transition constraints must hold on all steps of the
     /// execution trace except for the last one.
-    fn transition_constraint_divisor(&self) -> ConstraintDivisor<Self::BaseElement> {
+    fn transition_constraint_divisor(&self) -> ConstraintDivisor<Self::BaseField> {
         ConstraintDivisor::from_transition(self.trace_length())
     }
 
@@ -471,10 +471,10 @@ pub trait Air: Send + Sync {
     /// composition polynomial.
     fn get_constraint_composition_coefficients<E, H>(
         &self,
-        public_coin: &mut RandomCoin<Self::BaseElement, H>,
+        public_coin: &mut RandomCoin<Self::BaseField, H>,
     ) -> Result<ConstraintCompositionCoefficients<E>, RandomCoinError>
     where
-        E: FieldElement<BaseField = Self::BaseElement>,
+        E: FieldElement<BaseField = Self::BaseField>,
         H: Hasher,
     {
         let mut t_coefficients = Vec::new();
@@ -499,10 +499,10 @@ pub trait Air: Send + Sync {
     /// composition polynomial.
     fn get_deep_composition_coefficients<E, H>(
         &self,
-        public_coin: &mut RandomCoin<Self::BaseElement, H>,
+        public_coin: &mut RandomCoin<Self::BaseField, H>,
     ) -> Result<DeepCompositionCoefficients<E>, RandomCoinError>
     where
-        E: FieldElement<BaseField = Self::BaseElement>,
+        E: FieldElement<BaseField = Self::BaseField>,
         H: Hasher,
     {
         let mut t_coefficients = Vec::new();

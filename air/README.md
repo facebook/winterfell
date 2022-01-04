@@ -12,7 +12,7 @@ Coming up with efficient arithmetizations for computations is highly non-trivial
 
 To define AIR for a given computation, you'll need to implement the `Air` trait which involves the following:
 
-1. Define base field for your computation via the `BaseElement` associated type (see [math crate](../math) for available field options).
+1. Define base field for your computation via the `BaseField` associated type (see [math crate](../math) for available field options).
 2. Define a set of public inputs which are required for your computation via the `PublicInputs` associated type.
 3. Implement `Air::new()` function. As a part of this function you should create a `AirContext` struct which takes degrees for all transition constraints as one of the constructor parameters.
 4. Implement `context()` method which should return a reference to the `AirContext` struct created in `Air::new()` function.

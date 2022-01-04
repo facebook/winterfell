@@ -6,7 +6,7 @@
 use crate::utils::are_equal;
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement},
-    Air, AirContext, Assertion, EvaluationFrame, ExecutionTrace, ProofOptions, TraceInfo,
+    Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
 
@@ -21,12 +21,12 @@ pub struct MulFib2Air {
 }
 
 impl Air for MulFib2Air {
-    type BaseElement = BaseElement;
+    type BaseField = BaseElement;
     type PublicInputs = BaseElement;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
-    fn new(trace_info: TraceInfo, pub_inputs: Self::BaseElement, options: ProofOptions) -> Self {
+    fn new(trace_info: TraceInfo, pub_inputs: Self::BaseField, options: ProofOptions) -> Self {
         let degrees = vec![
             TransitionConstraintDegree::new(2),
             TransitionConstraintDegree::new(2),
@@ -38,11 +38,11 @@ impl Air for MulFib2Air {
         }
     }
 
-    fn context(&self) -> &AirContext<Self::BaseElement> {
+    fn context(&self) -> &AirContext<Self::BaseField> {
         &self.context
     }
 
-    fn evaluate_transition<E: FieldElement + From<Self::BaseElement>>(
+    fn evaluate_transition<E: FieldElement + From<Self::BaseField>>(
         &self,
         frame: &EvaluationFrame<E>,
         _periodic_values: &[E],
@@ -61,34 +61,14 @@ impl Air for MulFib2Air {
         result[1] = are_equal(next[1], current[1] * next[0]);
     }
 
-    fn get_assertions(&self) -> Vec<Assertion<Self::BaseElement>> {
+    fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>> {
         // a valid multiplicative Fibonacci sequence should start with 1, 2 and terminate
         // with the expected result
         let last_step = self.trace_length() - 1;
         vec![
-            Assertion::single(0, 0, Self::BaseElement::new(1)),
-            Assertion::single(1, 0, Self::BaseElement::new(2)),
+            Assertion::single(0, 0, Self::BaseField::new(1)),
+            Assertion::single(1, 0, Self::BaseField::new(2)),
             Assertion::single(0, last_step, self.result),
         ]
     }
-}
-
-// FIBONACCI TRACE BUILDER
-// ================================================================================================
-
-pub fn build_trace(length: usize) -> ExecutionTrace<BaseElement> {
-    assert!(
-        length.is_power_of_two(),
-        "sequence length must be a power of 2"
-    );
-
-    let mut reg0 = vec![BaseElement::new(1)];
-    let mut reg1 = vec![BaseElement::new(2)];
-
-    for i in 0..(length / 2 - 1) {
-        reg0.push(reg0[i] * reg1[i]);
-        reg1.push(reg1[i] * reg0[i + 1]);
-    }
-
-    ExecutionTrace::init(vec![reg0, reg1])
 }

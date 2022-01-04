@@ -3,6 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use crate::utils::rescue::{
+    self, CYCLE_LENGTH as HASH_CYCLE_LEN, NUM_ROUNDS as NUM_HASH_ROUNDS,
+    STATE_WIDTH as HASH_STATE_WIDTH,
+};
 use crate::{
     utils::rescue::{Hash, Rescue128},
     Example, ExampleOptions,
@@ -12,15 +16,23 @@ use rand_utils::{rand_value, rand_vector};
 use std::time::Instant;
 use winterfell::{
     crypto::{Digest, MerkleTree},
-    math::{fields::f128::BaseElement, log2, StarkField},
-    ProofOptions, StarkProof, VerifierError,
+    math::{fields::f128::BaseElement, log2, FieldElement, StarkField},
+    ProofOptions, Prover, StarkProof, Trace, TraceTable, VerifierError,
 };
 
 mod air;
-use air::{build_trace, MerkleAir, PublicInputs};
+use air::{MerkleAir, PublicInputs};
+
+mod prover;
+use prover::MerkleProver;
 
 #[cfg(test)]
 mod tests;
+
+// CONSTANTS
+// ================================================================================================
+
+const TRACE_WIDTH: usize = 7;
 
 // MERKLE AUTHENTICATION PATH EXAMPLE
 // ================================================================================================
@@ -89,8 +101,12 @@ impl Example for MerkleExample {
             ---------------------",
             self.path.len()
         );
+        // create the prover
+        let prover = MerkleProver::new(self.options.clone());
+
+        // generate the execution trace
         let now = Instant::now();
-        let trace = build_trace(self.value, &self.path, self.index);
+        let trace = prover.build_trace(self.value, &self.path, self.index);
         let trace_length = trace.length();
         debug!(
             "Generated execution trace of {} registers and 2^{} steps in {} ms",
@@ -100,10 +116,7 @@ impl Example for MerkleExample {
         );
 
         // generate the proof
-        let pub_inputs = PublicInputs {
-            tree_root: self.tree_root.to_elements(),
-        };
-        winterfell::prove::<MerkleAir>(trace, pub_inputs, self.options.clone()).unwrap()
+        prover.prove(trace).unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {
