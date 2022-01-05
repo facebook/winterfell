@@ -1,12 +1,12 @@
 [package]
 name = "winter-utils"
-version = "0.2.0"
+version = "0.3.0"
 description = "Utilities for the Winterfell STARK prover/verifier"
 authors = ["winterfell contributors"]
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/novifinancial/winterfell"
-documentation = "https://docs.rs/winter-utils/0.2.0"
+documentation = "https://docs.rs/winter-utils/0.3.0"
 categories = ["cryptography", "no-std"]
 keywords = ["serialization", "transmute"]
 edition = "2021"

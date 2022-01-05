@@ -272,7 +272,7 @@ Now, we are finally ready to generate a STARK proof. The function below, will ex
 ```Rust
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement},
-    ExecutionTrace, FieldExtension, HashFunction, ProofOptions, StarkProof,
+    FieldExtension, HashFunction, ProofOptions, StarkProof,
 };
 
 pub fn prove_work() -> (BaseElement, StarkProof) {
