@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 (TBD)
+## 0.3.0 (2022-01-04)
 * Added `f64` field.
 * Added support for cubic field extensions.
 * Added an implementation of Rescue Prime hash function in `f64` field.
