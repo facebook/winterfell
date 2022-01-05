@@ -160,7 +160,7 @@ pub struct WorkAir {
 impl Air for WorkAir {
     // First, we'll specify which finite field to use for our computation, and also how
     // the public inputs must look like.
-    type BaseElement = BaseElement;
+    type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
 
     // Here, we'll construct a new instance of our computation which is defined by 3 parameters:
@@ -187,7 +187,7 @@ impl Air for WorkAir {
     // be valid, if for all valid state transitions, transition constraints evaluate to all
     // zeros, and for any invalid transition, at least one constraint evaluates to a non-zero
     // value. The `frame` parameter will contain current and next states of the computation.
-    fn evaluate_transition<E: FieldElement + From<Self::BaseElement>>(
+    fn evaluate_transition<E: FieldElement + From<Self::BaseField>>(
         &self,
         frame: &EvaluationFrame<E>,
         _periodic_values: &[E],
@@ -205,7 +205,7 @@ impl Air for WorkAir {
     // Here, we'll define a set of assertions about the execution trace which must be satisfied
     // for the computation to be valid. Essentially, this ties computation's execution trace
     // to the public inputs.
-    fn get_assertions(&self) -> Vec<Assertion<Self::BaseElement>> {
+    fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>> {
         // for our computation to be valid, value in column 0 at step 0 must be equal to the
         // starting value, and at the last step it must be equal to the result.
         let last_step = self.trace_length() - 1;
@@ -217,7 +217,7 @@ impl Air for WorkAir {
 
     // This is just boilerplate which is used by the Winterfell prover/verifier to retrieve
     // the context of the computation.
-    fn context(&self) -> &AirContext<Self::BaseElement> {
+    fn context(&self) -> &AirContext<Self::BaseField> {
         &self.context
     }
 }
