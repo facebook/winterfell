@@ -443,6 +443,9 @@ Vitalik Buterin's blog series on zk-STARKs:
 * [STARKs, part 2: Thank Goodness it's FRI-day](https://vitalik.ca/general/2017/11/22/starks_part_2.html)
 * [STARKs, part 3: Into the Weeds](https://vitalik.ca/general/2018/07/21/starks_part_3.html)
 
+Alan Szepieniec's STARK tutorial:
+* [Anatomy of a STARK](https://aszepieniec.github.io/stark-anatomy/)
+
 StarkWare's STARK Math blog series:
 * [STARK Math: The Journey Begins](https://medium.com/starkware/stark-math-the-journey-begins-51bd2b063c71)
 * [Arithmetization I](https://medium.com/starkware/arithmetization-i-15c046390862)
