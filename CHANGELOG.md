@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.1 (TBD) - crypto
+## 0.3.1 (2022-01-13) - crypto
 * Implemented digest to array conversion for Rp64_256 digest.
 * Exposed some internal functions of Rp64_256 publicly.
 
