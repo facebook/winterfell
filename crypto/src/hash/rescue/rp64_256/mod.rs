@@ -133,7 +133,7 @@ impl Hasher for Rp64_256 {
             state[i] += BaseElement::new(u64::from_le_bytes(buf));
             i += 1;
             if i % RATE_WIDTH == 0 {
-                apply_permutation(&mut state);
+                Self::apply_permutation(&mut state);
                 i = 0;
             }
         }
@@ -143,7 +143,7 @@ impl Hasher for Rp64_256 {
         // we don't need to apply any extra padding because we injected total number of elements
         // in the input list into the capacity portion of the state during initialization.
         if i > 0 {
-            apply_permutation(&mut state);
+            Self::apply_permutation(&mut state);
         }
 
         // return the first 4 elements of the state as hash result
@@ -159,7 +159,7 @@ impl Hasher for Rp64_256 {
         state[STATE_WIDTH - 1] = BaseElement::new(RATE_WIDTH as u64);
 
         // apply the Rescue permutation and return the first four elements of the state
-        apply_permutation(&mut state);
+        Self::apply_permutation(&mut state);
         ElementDigest::new(state[..DIGEST_SIZE].try_into().unwrap())
     }
 
@@ -182,7 +182,7 @@ impl Hasher for Rp64_256 {
         }
 
         // apply the Rescue permutation and return the first four elements of the state
-        apply_permutation(&mut state);
+        Self::apply_permutation(&mut state);
         ElementDigest::new(state[..DIGEST_SIZE].try_into().unwrap())
     }
 }
@@ -208,7 +208,7 @@ impl ElementHasher for Rp64_256 {
             state[i] += element;
             i += 1;
             if i % RATE_WIDTH == 0 {
-                apply_permutation(&mut state);
+                Self::apply_permutation(&mut state);
                 i = 0;
             }
         }
@@ -218,7 +218,7 @@ impl ElementHasher for Rp64_256 {
         // we don't need to apply any extra padding because we injected total number of elements
         // in the input list into the capacity portion of the state during initialization.
         if i > 0 {
-            apply_permutation(&mut state);
+            Self::apply_permutation(&mut state);
         }
 
         // return the first 4 elements of the state as hash result
@@ -226,94 +226,108 @@ impl ElementHasher for Rp64_256 {
     }
 }
 
-// RESCUE PERMUTATION
+// HASH FUNCTION IMPLEMENTATION
 // ================================================================================================
 
-/// Applies Rescue-XLIX permutation to the provided state.
-///
-/// Implementation is based on algorithm 3 from <https://eprint.iacr.org/2020/1143.pdf>
-fn apply_permutation(state: &mut [BaseElement; STATE_WIDTH]) {
-    // apply round function 7 times; this provides 128-bit security with 40% security margin
-    for i in 0..NUM_ROUNDS {
-        apply_round(state, i);
+impl Rp64_256 {
+    // CONSTANTS
+    // --------------------------------------------------------------------------------------------
+
+    /// The number of rounds is set to 7 to target 128-bit security level with 40% security margin.
+    pub const NUM_ROUNDS: usize = NUM_ROUNDS;
+
+    /// Sponge state is set to 12 field elements or 768 bytes; 8 elements are reserved for rate and
+    /// the remaining 4 elements are reserved for capacity.
+    pub const STATE_WIDTH: usize = STATE_WIDTH;
+
+    // RESCUE PERMUTATION
+    // --------------------------------------------------------------------------------------------
+
+    /// Applies Rescue-XLIX permutation to the provided state.
+    pub fn apply_permutation(state: &mut [BaseElement; STATE_WIDTH]) {
+        // implementation is based on algorithm 3 from <https://eprint.iacr.org/2020/1143.pdf>
+        // apply round function 7 times; this provides 128-bit security with 40% security margin
+        for i in 0..NUM_ROUNDS {
+            Self::apply_round(state, i);
+        }
     }
-}
 
-/// Rescue-XLIX round function.
-#[inline(always)]
-fn apply_round(state: &mut [BaseElement; STATE_WIDTH], round: usize) {
-    // apply first half of Rescue round
-    apply_sbox(state);
-    apply_mds(state);
-    add_constants(state, &ARK1[round]);
+    /// Rescue-XLIX round function.
+    #[inline(always)]
+    pub fn apply_round(state: &mut [BaseElement; STATE_WIDTH], round: usize) {
+        // apply first half of Rescue round
+        Self::apply_sbox(state);
+        Self::apply_mds(state);
+        Self::add_constants(state, &ARK1[round]);
 
-    // apply second half of Rescue round
-    apply_inv_sbox(state);
-    apply_mds(state);
-    add_constants(state, &ARK2[round]);
-}
+        // apply second half of Rescue round
+        Self::apply_inv_sbox(state);
+        Self::apply_mds(state);
+        Self::add_constants(state, &ARK2[round]);
+    }
 
-// HELPER FUNCTIONS
-// ================================================================================================
+    // HELPER FUNCTIONS
+    // --------------------------------------------------------------------------------------------
 
-#[inline(always)]
-fn apply_mds(state: &mut [BaseElement; STATE_WIDTH]) {
-    let mut result = [BaseElement::ZERO; STATE_WIDTH];
-    result.iter_mut().zip(MDS).for_each(|(r, mds_row)| {
-        state.iter().zip(mds_row).for_each(|(&s, m)| {
-            *r += m * s;
+    #[inline(always)]
+    fn apply_mds(state: &mut [BaseElement; STATE_WIDTH]) {
+        let mut result = [BaseElement::ZERO; STATE_WIDTH];
+        result.iter_mut().zip(MDS).for_each(|(r, mds_row)| {
+            state.iter().zip(mds_row).for_each(|(&s, m)| {
+                *r += m * s;
+            });
         });
-    });
-    *state = result
-}
+        *state = result
+    }
 
-#[inline(always)]
-fn add_constants(state: &mut [BaseElement; STATE_WIDTH], ark: &[BaseElement; STATE_WIDTH]) {
-    state.iter_mut().zip(ark).for_each(|(s, &k)| *s += k);
-}
+    #[inline(always)]
+    fn add_constants(state: &mut [BaseElement; STATE_WIDTH], ark: &[BaseElement; STATE_WIDTH]) {
+        state.iter_mut().zip(ark).for_each(|(s, &k)| *s += k);
+    }
 
-#[inline(always)]
-fn apply_sbox(state: &mut [BaseElement; STATE_WIDTH]) {
-    state.iter_mut().for_each(|v| {
-        let t2 = v.square();
-        let t4 = t2.square();
-        *v *= t2 * t4;
-    });
-}
+    #[inline(always)]
+    fn apply_sbox(state: &mut [BaseElement; STATE_WIDTH]) {
+        state.iter_mut().for_each(|v| {
+            let t2 = v.square();
+            let t4 = t2.square();
+            *v *= t2 * t4;
+        });
+    }
 
-#[inline(always)]
-fn apply_inv_sbox(state: &mut [BaseElement; STATE_WIDTH]) {
-    // compute base^10540996611094048183 using 72 multiplications per array element
-    // 10540996611094048183 = b1001001001001001001001001001000110110110110110110110110110110111
+    #[inline(always)]
+    fn apply_inv_sbox(state: &mut [BaseElement; STATE_WIDTH]) {
+        // compute base^10540996611094048183 using 72 multiplications per array element
+        // 10540996611094048183 = b1001001001001001001001001001000110110110110110110110110110110111
 
-    // compute base^10
-    let mut t1 = *state;
-    t1.iter_mut().for_each(|t| *t = t.square());
+        // compute base^10
+        let mut t1 = *state;
+        t1.iter_mut().for_each(|t| *t = t.square());
 
-    // compute base^100
-    let mut t2 = t1;
-    t2.iter_mut().for_each(|t| *t = t.square());
+        // compute base^100
+        let mut t2 = t1;
+        t2.iter_mut().for_each(|t| *t = t.square());
 
-    // compute base^100100
-    let t3 = exp_acc::<BaseElement, STATE_WIDTH, 3>(t2, t2);
+        // compute base^100100
+        let t3 = exp_acc::<BaseElement, STATE_WIDTH, 3>(t2, t2);
 
-    // compute base^100100100100
-    let t4 = exp_acc::<BaseElement, STATE_WIDTH, 6>(t3, t3);
+        // compute base^100100100100
+        let t4 = exp_acc::<BaseElement, STATE_WIDTH, 6>(t3, t3);
 
-    // compute base^100100100100100100100100
-    let t4 = exp_acc::<BaseElement, STATE_WIDTH, 12>(t4, t4);
+        // compute base^100100100100100100100100
+        let t5 = exp_acc::<BaseElement, STATE_WIDTH, 12>(t4, t4);
 
-    // compute base^100100100100100100100100100100
-    let t5 = exp_acc::<BaseElement, STATE_WIDTH, 6>(t4, t3);
+        // compute base^100100100100100100100100100100
+        let t6 = exp_acc::<BaseElement, STATE_WIDTH, 6>(t5, t3);
 
-    // compute base^1001001001001001001001001001000100100100100100100100100100100
-    let t6 = exp_acc::<BaseElement, STATE_WIDTH, 31>(t5, t5);
+        // compute base^1001001001001001001001001001000100100100100100100100100100100
+        let t7 = exp_acc::<BaseElement, STATE_WIDTH, 31>(t6, t6);
 
-    // compute base^1001001001001001001001001001000110110110110110110110110110110111
-    for (i, s) in state.iter_mut().enumerate() {
-        let a = (t6[i].square() * t5[i]).square().square();
-        let b = t1[i] * t2[i] * *s;
-        *s = a * b;
+        // compute base^1001001001001001001001001001000110110110110110110110110110110111
+        for (i, s) in state.iter_mut().enumerate() {
+            let a = (t7[i].square() * t6[i]).square().square();
+            let b = t1[i] * t2[i] * *s;
+            *s = a * b;
+        }
     }
 }
 
@@ -500,7 +514,7 @@ const MDS: [[BaseElement; STATE_WIDTH]; STATE_WIDTH] = [
 ///
 /// The constants are broken up into two arrays ARK1 and ARK2; ARK1 contains the constants for the
 /// first half of Rescue round, and ARK2 contains constants for the second half of Rescue round.
-pub const ARK1: [[BaseElement; STATE_WIDTH]; NUM_ROUNDS] = [
+const ARK1: [[BaseElement; STATE_WIDTH]; NUM_ROUNDS] = [
     [
         BaseElement::new(13917550007135091859),
         BaseElement::new(16002276252647722320),
@@ -601,7 +615,7 @@ pub const ARK1: [[BaseElement; STATE_WIDTH]; NUM_ROUNDS] = [
     ],
 ];
 
-pub const ARK2: [[BaseElement; STATE_WIDTH]; NUM_ROUNDS] = [
+const ARK2: [[BaseElement; STATE_WIDTH]; NUM_ROUNDS] = [
     [
         BaseElement::new(7989257206380839449),
         BaseElement::new(8639509123020237648),

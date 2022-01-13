@@ -1,12 +1,12 @@
 [package]
 name = "winter-crypto"
-version = "0.3.0"
+version = "0.3.1"
 description = "Cryptographic library for the Winterfell STARK prover/verifier"
 authors = ["winterfell contributors"]
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/novifinancial/winterfell"
-documentation = "https://docs.rs/winter-crypto/0.3.0"
+documentation = "https://docs.rs/winter-crypto/0.3.1"
 categories = ["cryptography", "no-std"]
 keywords = ["crypto", "merkle-tree", "hash"]
 edition = "2021"
