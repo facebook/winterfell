@@ -26,7 +26,7 @@ fn test_sbox() {
     expected.iter_mut().for_each(|v| *v = v.exp(ALPHA));
 
     let mut actual = state;
-    super::apply_sbox(&mut actual);
+    Rp64_256::apply_sbox(&mut actual);
 
     assert_eq!(expected, actual);
 }
@@ -39,7 +39,7 @@ fn test_inv_sbox() {
     expected.iter_mut().for_each(|v| *v = v.exp(INV_ALPHA));
 
     let mut actual = state;
-    super::apply_inv_sbox(&mut actual);
+    Rp64_256::apply_inv_sbox(&mut actual);
 
     assert_eq!(expected, actual);
 }
@@ -61,7 +61,7 @@ fn apply_permutation() {
         BaseElement::new(11),
     ];
 
-    super::apply_permutation(&mut state);
+    Rp64_256::apply_permutation(&mut state);
 
     // expected values are obtained by executing sage reference implementation code
     let expected = vec![

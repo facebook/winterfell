@@ -67,6 +67,18 @@ impl Deserializable for ElementDigest {
     }
 }
 
+impl From<[BaseElement; DIGEST_SIZE]> for ElementDigest {
+    fn from(value: [BaseElement; DIGEST_SIZE]) -> Self {
+        Self(value)
+    }
+}
+
+impl From<ElementDigest> for [BaseElement; DIGEST_SIZE] {
+    fn from(value: ElementDigest) -> Self {
+        value.0
+    }
+}
+
 // TESTS
 // ================================================================================================
 

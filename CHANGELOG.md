@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1 (TBD) - crypto
+* Implemented digest to array conversion for Rp64_256 digest.
+* Exposed some internal functions of Rp64_256 publicly.
+
 ## 0.3.0 (2022-01-04)
 * Added `f64` field.
 * Added support for cubic field extensions.
