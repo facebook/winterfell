@@ -79,6 +79,12 @@ impl From<ElementDigest> for [BaseElement; DIGEST_SIZE] {
     }
 }
 
+impl From<ElementDigest> for [u8; 32] {
+    fn from(value: ElementDigest) -> Self {
+        value.as_bytes()
+    }
+}
+
 // TESTS
 // ================================================================================================
 
