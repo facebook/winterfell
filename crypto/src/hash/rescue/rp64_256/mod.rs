@@ -5,6 +5,7 @@
 
 use super::{exp_acc, Digest, ElementHasher, Hasher};
 use core::convert::TryInto;
+use core::ops::Range;
 use math::{fields::f64::BaseElement, FieldElement, StarkField};
 
 mod digest;
@@ -19,10 +20,23 @@ mod tests;
 /// Sponge state is set to 12 field elements or 768 bytes; 8 elements are reserved for rate and
 /// the remaining 4 elements are reserved for capacity.
 const STATE_WIDTH: usize = 12;
-const RATE_WIDTH: usize = 8;
+
+/// The rate portion of the state is located in elements 4 through 11.
+const RATE_RANGE: Range<usize> = 4..12;
+const RATE_WIDTH: usize = RATE_RANGE.end - RATE_RANGE.start;
+
+const INPUT1_RANGE: Range<usize> = 4..8;
+const INPUT2_RANGE: Range<usize> = 8..12;
+
+/// The capacity portion of the state is located in elements 0, 1, 2, and 3.
+const CAPACITY_RANGE: Range<usize> = 0..4;
 
 /// The output of the hash function is a digest which consists of 4 field elements or 32 bytes.
-const DIGEST_SIZE: usize = 4;
+///
+/// The digest is returned from state elements 4, 5, 6, and 7 (the first four elements of the
+/// rate portion).
+const DIGEST_RANGE: Range<usize> = 4..8;
+const DIGEST_SIZE: usize = DIGEST_RANGE.end - DIGEST_RANGE.start;
 
 /// The number of rounds is set to 7 to target 128-bit security level with 40% security margin;
 /// computed using algorithm 7 from <https://eprint.iacr.org/2020/1143.pdf>
@@ -49,8 +63,13 @@ const INV_ALPHA: u64 = 10540996611094048183;
 ///   margin used in the specifications (a 50% margin rounds up to 8 rounds). The primary
 ///   motivation for this is that having the number of rounds be one less than a power of two
 ///   simplifies AIR design for computations involving the hash function.
+/// * We use the first 4 elements of the state (rather than the last 4 elements of the state) for
+///   capacity and the remaining 8 elements for rate. The output of the hash function comes from
+///   the first four elements of the rate portion of the state (elements 4, 5, 6, and 7). This
+///   effectively applies a fixed bit permutation before and after XLIX permutation. We assert
+///   without proof that this does not affect security of the construction.
 /// * When hashing a sequence of elements, we do not append Fp(1) followed by Fp(0) elements
-///   to the end of the sequence as padding. Instead, we initialize one of the capacity elements
+///   to the end of the sequence as padding. Instead, we initialize the first capacity element
 ///   to the number of elements to be hashed, and pad the sequence with Fp(0) elements only. This
 ///   ensures consistency of hash outputs between different hashing methods (see section below).
 ///   However, it also means that our instantiation of Rescue Prime cannot be used in a stream
@@ -102,11 +121,11 @@ impl Hasher for Rp64_256 {
             bytes.len() / 7 + 1
         };
 
-        // initialize state to all zeros, except for the last element of the capacity part, which
+        // initialize state to all zeros, except for the first element of the capacity part, which
         // is set to the number of elements to be hashed. this is done so that adding zero elements
         // at the end of the list always results in a different hash.
         let mut state = [BaseElement::ZERO; STATE_WIDTH];
-        state[STATE_WIDTH - 1] = BaseElement::new(num_elements as u64);
+        state[CAPACITY_RANGE.start] = BaseElement::new(num_elements as u64);
 
         // break the string into 7-byte chunks, convert each chunk into a field element, and
         // absorb the element into the rate portion of the state. we use 7-byte chunks because
@@ -130,7 +149,7 @@ impl Hasher for Rp64_256 {
             // convert the bytes into a field element and absorb it into the rate portion of the
             // state; if the rate is filled up, apply the Rescue permutation and start absorbing
             // again from zero index.
-            state[i] += BaseElement::new(u64::from_le_bytes(buf));
+            state[RATE_RANGE.start + i] += BaseElement::new(u64::from_le_bytes(buf));
             i += 1;
             if i % RATE_WIDTH == 0 {
                 Self::apply_permutation(&mut state);
@@ -147,43 +166,43 @@ impl Hasher for Rp64_256 {
         }
 
         // return the first 4 elements of the state as hash result
-        ElementDigest::new(state[..DIGEST_SIZE].try_into().unwrap())
+        ElementDigest::new(state[DIGEST_RANGE].try_into().unwrap())
     }
 
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest {
         // initialize the state by copying the digest elements into the rate portion of the state
-        // (8 total elements), and set the last capacity element to 8 (the number of elements to
+        // (8 total elements), and set the first capacity element to 8 (the number of elements to
         // be hashed).
         let mut state = [BaseElement::ZERO; STATE_WIDTH];
-        state[..RATE_WIDTH].copy_from_slice(Self::Digest::digests_as_elements(values));
-        state[STATE_WIDTH - 1] = BaseElement::new(RATE_WIDTH as u64);
+        state[RATE_RANGE].copy_from_slice(Self::Digest::digests_as_elements(values));
+        state[CAPACITY_RANGE.start] = BaseElement::new(RATE_WIDTH as u64);
 
         // apply the Rescue permutation and return the first four elements of the state
         Self::apply_permutation(&mut state);
-        ElementDigest::new(state[..DIGEST_SIZE].try_into().unwrap())
+        ElementDigest::new(state[DIGEST_RANGE].try_into().unwrap())
     }
 
     fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest {
         // initialize the state as follows:
-        // - seed is copied into the first 4 elements of the state.
-        // - if the value fits into a single field element, copy it into the fifth state element
-        //   and set the last capacity element to 5 (the number of elements to be hashed).
+        // - seed is copied into the first 4 elements of the rate portion of the state.
+        // - if the value fits into a single field element, copy it into the fifth rate element
+        //   and set the first capacity element to 5 (the number of elements to be hashed).
         // - if the value doesn't fit into a single field element, split it into two field
-        //   elements, copy them into state elements 5 and 6, and set the last capacity element
+        //   elements, copy them into rate elements 5 and 6, and set the first capacity element
         //   to 6.
         let mut state = [BaseElement::ZERO; STATE_WIDTH];
-        state[..DIGEST_SIZE].copy_from_slice(seed.as_elements());
-        state[DIGEST_SIZE] = BaseElement::new(value);
+        state[INPUT1_RANGE].copy_from_slice(seed.as_elements());
+        state[INPUT2_RANGE.start] = BaseElement::new(value);
         if value < BaseElement::MODULUS {
-            state[STATE_WIDTH - 1] = BaseElement::new(DIGEST_SIZE as u64 + 1);
+            state[CAPACITY_RANGE.start] = BaseElement::new(DIGEST_SIZE as u64 + 1);
         } else {
-            state[DIGEST_SIZE + 1] = BaseElement::new(value / BaseElement::MODULUS);
-            state[STATE_WIDTH - 1] = BaseElement::new(DIGEST_SIZE as u64 + 2);
+            state[INPUT2_RANGE.start + 1] = BaseElement::new(value / BaseElement::MODULUS);
+            state[CAPACITY_RANGE.start] = BaseElement::new(DIGEST_SIZE as u64 + 2);
         }
 
         // apply the Rescue permutation and return the first four elements of the state
         Self::apply_permutation(&mut state);
-        ElementDigest::new(state[..DIGEST_SIZE].try_into().unwrap())
+        ElementDigest::new(state[DIGEST_RANGE].try_into().unwrap())
     }
 }
 
@@ -198,14 +217,14 @@ impl ElementHasher for Rp64_256 {
         // is set to the number of elements to be hashed. this is done so that adding zero elements
         // at the end of the list always results in a different hash.
         let mut state = [BaseElement::ZERO; STATE_WIDTH];
-        state[STATE_WIDTH - 1] = BaseElement::new(elements.len() as u64);
+        state[CAPACITY_RANGE.start] = BaseElement::new(elements.len() as u64);
 
         // absorb elements into the state one by one until the rate portion of the state is filled
         // up; then apply the Rescue permutation and start absorbing again; repeat until all
         // elements have been absorbed
         let mut i = 0;
         for &element in elements.iter() {
-            state[i] += element;
+            state[RATE_RANGE.start + i] += element;
             i += 1;
             if i % RATE_WIDTH == 0 {
                 Self::apply_permutation(&mut state);
@@ -222,7 +241,7 @@ impl ElementHasher for Rp64_256 {
         }
 
         // return the first 4 elements of the state as hash result
-        ElementDigest::new(state[..DIGEST_SIZE].try_into().unwrap())
+        ElementDigest::new(state[DIGEST_RANGE].try_into().unwrap())
     }
 }
 
@@ -239,6 +258,15 @@ impl Rp64_256 {
     /// Sponge state is set to 12 field elements or 768 bytes; 8 elements are reserved for rate and
     /// the remaining 4 elements are reserved for capacity.
     pub const STATE_WIDTH: usize = STATE_WIDTH;
+
+    /// The rate portion of the state is located in elements 4 through 11 (inclusive).
+    pub const RATE_RANGE: Range<usize> = RATE_RANGE;
+
+    /// The capacity portion of the state is located in elements 0, 1, 2, and 3.
+    pub const CAPACITY_RANGE: Range<usize> = CAPACITY_RANGE;
+
+    /// The output of the hash function can be read from state elements 4, 5, 6, and 7.
+    pub const DIGEST_RANGE: Range<usize> = DIGEST_RANGE;
 
     // RESCUE PERMUTATION
     // --------------------------------------------------------------------------------------------
