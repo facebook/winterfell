@@ -49,9 +49,6 @@ pub trait ElementHasher: Hasher {
     type BaseField: StarkField;
 
     /// Returns a hash of the provided field elements.
-    ///
-    /// For malleable field elements, the elements are normalized first, and the hash is computed
-    /// from internal representations of the normalized elements.
     fn hash_elements<E>(elements: &[E]) -> Self::Digest
     where
         E: FieldElement<BaseField = Self::BaseField>;
