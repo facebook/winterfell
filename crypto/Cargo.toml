@@ -1,6 +1,6 @@
 [package]
 name = "winter-crypto"
-version = "0.3.1"
+version = "0.3.2"
 description = "Cryptographic library for the Winterfell STARK prover/verifier"
 authors = ["winterfell contributors"]
 readme = "README.md"

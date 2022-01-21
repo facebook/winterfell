@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2 (2022-01-20) - crypto
+* Implemented into byte conversion for Rp64_256 digest.
+* Moved capacity elements to the front of the state for Rp64_256.
+
 ## 0.3.1 (2022-01-13) - crypto
 * Implemented digest to array conversion for Rp64_256 digest.
 * Exposed some internal functions of Rp64_256 publicly.
