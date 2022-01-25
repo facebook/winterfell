@@ -99,51 +99,33 @@ impl FieldElement for BaseElement {
     #[inline]
     #[allow(clippy::many_single_char_names)]
     fn inv(self) -> Self {
-        let x = self.as_int();
+        // compute base^(M - 2) using 72 multiplications
+        // M - 2 = 0b1111111111111111111111111111111011111111111111111111111111111111
 
-        if x == 0 {
-            return Self::ZERO;
-        };
+        // compute base^11
+        let t2 = self.square() * self;
 
-        let mut a: u128 = 0;
-        let mut u: u128 = if x & 1 == 1 {
-            x as u128
-        } else {
-            (x as u128) + (M as u128)
-        };
-        let mut v: u128 = M as u128;
-        let mut d = (M as u128) - 1;
+        // compute base^111
+        let t3 = t2.square() * self;
 
-        while v != 1 {
-            while v < u {
-                u -= v;
-                d += a;
-                while u & 1 == 0 {
-                    if d & 1 == 1 {
-                        d += M as u128;
-                    }
-                    u >>= 1;
-                    d >>= 1;
-                }
-            }
+        // compute base^111111 (6 ones)
+        let t6 = exp_acc::<3>(t3, t3);
 
-            v -= u;
-            a += d;
+        // compute base^111111111111 (12 ones)
+        let t12 = exp_acc::<6>(t6, t6);
 
-            while v & 1 == 0 {
-                if a & 1 == 1 {
-                    a += M as u128;
-                }
-                v >>= 1;
-                a >>= 1;
-            }
-        }
+        // compute base^111111111111111111111111 (24 ones)
+        let t24 = exp_acc::<12>(t12, t12);
 
-        while a > (M as u128) {
-            a -= M as u128;
-        }
+        // compute base^1111111111111111111111111111111 (31 ones)
+        let t30 = exp_acc::<6>(t24, t6);
+        let t31 = t30.square() * self;
 
-        Self(a as u64)
+        // compute base^111111111111111111111111111111101111111111111111111111111111111
+        let t63 = exp_acc::<32>(t31, t31);
+
+        // compute base^1111111111111111111111111111111011111111111111111111111111111111
+        t63.square() * self
     }
 
     fn conjugate(&self) -> Self {
@@ -568,4 +550,14 @@ fn mod_reduce(x: u128) -> u64 {
     // we need to handle potential overflow
     let (result, over) = tmp0.overflowing_add(tmp1);
     result.wrapping_add(E * (over as u64))
+}
+
+/// Squares the base N number of times and multiplies the result by the tail value.
+#[inline(always)]
+fn exp_acc<const N: usize>(base: BaseElement, tail: BaseElement) -> BaseElement {
+    let mut result = base;
+    for _ in 0..N {
+        result = result.square();
+    }
+    result * tail
 }
