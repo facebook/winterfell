@@ -6,6 +6,7 @@
 use super::StarkDomain;
 use air::{Air, EvaluationFrame, TraceInfo};
 use math::{fft, polynom, FieldElement, StarkField};
+use log::debug;
 
 mod trace_lde;
 pub use trace_lde::TraceLde;
@@ -94,6 +95,7 @@ pub trait Trace: Sized {
 
         // --- 1. make sure the assertions are valid ----------------------------------------------
         for assertion in air.get_assertions() {
+            debug!("{}", assertion);
             assertion.apply(self.length(), |step, value| {
                 assert!(
                     value == self.get(assertion.register(), step),

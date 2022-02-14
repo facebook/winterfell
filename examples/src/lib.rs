@@ -13,6 +13,8 @@ pub mod lamport;
 pub mod merkle;
 pub mod rescue;
 pub mod utils;
+pub mod factorial;
+pub mod sum;
 
 #[cfg(test)]
 mod tests;
@@ -90,10 +92,22 @@ impl ExampleOptions {
 }
 
 #[derive(StructOpt, Debug)]
-//#[structopt(about = "available examples")]
+#[structopt(about = "available examples")]
 pub enum ExampleType {
     /// Compute a Fibonacci sequence using trace table with 2 registers
     Fib {
+        /// Length of Fibonacci sequence; must be a power of two
+        #[structopt(short = "n", default_value = "1048576")]
+        sequence_length: usize,
+    },
+    /// Compute a Sum sequence using trace table with 2 registers
+    Sum {
+        /// Length of Fibonacci sequence; must be a power of two
+        #[structopt(short = "n", default_value = "1048576")]
+        sequence_length: usize,
+    },
+    /// Compute a factorial sequence using trace table with 2 registers
+    Fact {
         /// Length of Fibonacci sequence; must be a power of two
         #[structopt(short = "n", default_value = "1048576")]
         sequence_length: usize,

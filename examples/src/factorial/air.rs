@@ -13,12 +13,12 @@ use log::debug;
 // FIBONACCI AIR
 // ================================================================================================
 
-pub struct FibAir {
+pub struct FactAir {
     context: AirContext<BaseElement>,
     result: BaseElement,
 }
 
-impl Air for FibAir {
+impl Air for FactAir {
     type BaseField = BaseElement;
     type PublicInputs = BaseElement;
 
@@ -27,10 +27,10 @@ impl Air for FibAir {
     fn new(trace_info: TraceInfo, pub_inputs: Self::BaseField, options: ProofOptions) -> Self {
         let degrees = vec![
             TransitionConstraintDegree::new(1),
-            TransitionConstraintDegree::new(1),
+            TransitionConstraintDegree::new(2),
         ];
         assert_eq!(TRACE_WIDTH, trace_info.width());
-        FibAir {
+        FactAir {
             context: AirContext::new(trace_info, degrees, options),
             result: pub_inputs,
         }
@@ -48,17 +48,14 @@ impl Air for FibAir {
     ) {
         let current = frame.current();
         let next = frame.next();
-        // expected state width is 2 field elements
-        debug_assert_eq!(TRACE_WIDTH, current.len());
-        debug_assert_eq!(TRACE_WIDTH, next.len());
 
         debug!("current: {:?}, next: {:?}", current, next);
 
-        // constraints of Fibonacci sequence (2 terms per step):
-        // s_{0, i+1} = s_{0, i} + s_{1, i}
-        // s_{1, i+1} = s_{1, i} + s_{0, i+1}
-        result[0] = are_equal(next[0], current[0] + current[1]);
-        result[1] = are_equal(next[1], current[1] + next[0]);
+        debug_assert_eq!(TRACE_WIDTH, current.len());
+        debug_assert_eq!(TRACE_WIDTH, next.len());
+
+        result[0] = are_equal(next[0], current[0] + FieldElement::ONE);
+        result[1] = are_equal(next[1], next[0] * current[1]);
     }
 
     fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>> {
@@ -66,8 +63,8 @@ impl Air for FibAir {
         // the expected result
         let last_step = self.trace_length() - 1;
         vec![
-            Assertion::single(0, 0, Self::BaseField::ONE),
             Assertion::single(1, 0, Self::BaseField::ONE),
+            Assertion::single(1, 1, Self::BaseField::ONE),
             Assertion::single(1, last_step, self.result),
         ]
     }
