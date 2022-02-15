@@ -29,12 +29,13 @@ impl FactProver {
         // holds results - start with 0! == 1
         let mut reg1 = vec![BaseElement::ONE, BaseElement::ONE];
 
-        for i in 2..(sequence_length-1) {
+        for i in 2..sequence_length {
             let n0 = BaseElement::new(i.try_into().unwrap());
             let n1 = n0 * reg1[i-1];
             reg0.push(n0);
             reg1.push(n1);
         }
+        debug!("trace length is: {}", reg0.len());
 
         TraceTable::init(vec![reg0, reg1])
     }

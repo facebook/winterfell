@@ -63,7 +63,7 @@ impl FactExample {
 pub fn compute_fact_term(n: usize) -> BaseElement {
     let mut t1 = BaseElement::ONE;
 
-    for i in 0..(n - 1) {
+    for i in 2..n {
         t1 = t1 * BaseElement::new(i.try_into().unwrap());
     }
 

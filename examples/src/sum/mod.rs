@@ -63,7 +63,7 @@ impl SumExample {
 pub fn compute_sum_term(n: usize) -> BaseElement {
     let mut t1 = BaseElement::ZERO;
 
-    for i in 1..(n - 1) {
+    for i in 1..n {
         t1 = t1 + BaseElement::new(i.try_into().unwrap());
     }
 
