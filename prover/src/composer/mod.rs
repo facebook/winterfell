@@ -248,7 +248,7 @@ fn merge_trace_compositions<E: FieldElement>(mut polys: Vec<Vec<E>>, divisors: V
 }
 
 /// Computes (P(x) - value) * k and saves the result into the accumulator
-fn acc_poly<B, E>(accumulator: &mut Vec<E>, poly: &[B], value: E, k: E)
+fn acc_poly<B, E>(accumulator: &mut [E], poly: &[B], value: E, k: E)
 where
     B: StarkField,
     E: FieldElement<BaseField = B>,
