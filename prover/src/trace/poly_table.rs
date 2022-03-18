@@ -3,48 +3,29 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use crate::{matrix::ColumnIter, Matrix};
 use air::EvaluationFrame;
-use math::{log2, polynom, FieldElement, StarkField};
-use utils::{collections::Vec, iter};
-
-#[cfg(feature = "concurrent")]
-use utils::iterators::*;
+use math::{log2, FieldElement, StarkField};
+use utils::collections::Vec;
 
 // POLYNOMIAL TABLE
 // ================================================================================================
-pub struct TracePolyTable<B: StarkField>(Vec<Vec<B>>);
+pub struct TracePolyTable<B: StarkField>(Matrix<B>);
 
 impl<B: StarkField> TracePolyTable<B> {
     /// Creates a new table of trace polynomials from the provided vectors.
-    pub fn new(polys: Vec<Vec<B>>) -> Self {
-        assert!(
-            !polys.is_empty(),
-            "trace polynomial table must contain at least one polynomial"
-        );
-        let poly_size = polys[0].len();
-        assert!(
-            poly_size.is_power_of_two(),
-            "trace polynomial size must be a power of 2"
-        );
-        for poly in polys.iter() {
-            assert_eq!(
-                poly.len(),
-                poly_size,
-                "all trace polynomials must have the same size"
-            );
-        }
-
+    pub fn new(polys: Matrix<B>) -> Self {
         TracePolyTable(polys)
     }
 
     /// Returns the size of each polynomial - i.e. size of a vector needed to hold a polynomial.
     pub fn poly_size(&self) -> usize {
-        self.0[0].len()
+        self.0.num_rows()
     }
 
     /// Evaluates all trace polynomials the the specified point `x`.
     pub fn evaluate_at<E: FieldElement<BaseField = B>>(&self, x: E) -> Vec<E> {
-        iter!(self.0).map(|p| polynom::eval(p, x)).collect()
+        self.0.evaluate_columns_at(x)
     }
 
     /// Returns an out-of-domain evaluation frame constructed by evaluating trace polynomials
@@ -56,17 +37,17 @@ impl<B: StarkField> TracePolyTable<B> {
 
     /// Returns the number of trace polynomials in the table.
     pub fn num_polys(&self) -> usize {
-        self.0.len()
+        self.0.num_cols()
     }
 
     /// Returns a trace polynomial at the specified index.
     #[cfg(test)]
     pub fn get_poly(&self, idx: usize) -> &[B] {
-        &self.0[idx]
+        &self.0.get_column(idx)
     }
 
-    /// Converts this table into a vector of polynomials.
-    pub fn into_vec(self) -> Vec<Vec<B>> {
-        self.0
+    /// Returns an iterator over the polynomials of this table.
+    pub fn iter(&self) -> ColumnIter<B> {
+        self.0.columns()
     }
 }

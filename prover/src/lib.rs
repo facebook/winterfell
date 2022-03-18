@@ -79,6 +79,9 @@ use std::time::Instant;
 mod domain;
 use domain::StarkDomain;
 
+mod matrix;
+pub use matrix::Matrix;
+
 mod constraints;
 use constraints::{CompositionPoly, ConstraintCommitment, ConstraintEvaluator};
 
@@ -235,7 +238,7 @@ pub trait Prover {
 
         // extend the execution trace and build a Merkle tree from the extended trace
         let (extended_trace, trace_polys, main_trace_tree) =
-            self.build_trace_commitment::<H>(trace, &domain);
+            self.build_trace_commitment::<H>(trace.into_matrix(), &domain);
 
         // commit to the extended trace by writing the root of the Merkle tree into the channel
         channel.commit_trace(*main_trace_tree.root());
@@ -415,7 +418,7 @@ pub trait Prover {
     /// building a Merkle tree from the resulting hashes.
     fn build_trace_commitment<H>(
         &self,
-        trace: Self::Trace,
+        trace: Matrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
     ) -> (
         TraceLde<Self::BaseField>,
@@ -428,7 +431,14 @@ pub trait Prover {
         // extend the execution trace
         #[cfg(feature = "std")]
         let now = Instant::now();
-        let (extended_trace, trace_polys) = trace.extend(domain);
+        let trace_polys = trace.interpolate_columns_into();
+
+        let extended_trace = TraceLde::new(
+            trace_polys.evaluate_columns_over(domain),
+            domain.trace_to_lde_blowup(),
+        );
+        let trace_polys = TracePolyTable::new(trace_polys);
+
         #[cfg(feature = "std")]
         debug!(
             "Extended execution trace of {} columns from 2^{} to 2^{} steps ({}x blowup) in {} ms",
@@ -463,7 +473,7 @@ pub trait Prover {
     /// a Merkle tree from the resulting hashes.
     fn build_constraint_commitment<E, H>(
         &self,
-        composition_poly: &CompositionPoly<Self::BaseField, E>,
+        composition_poly: &CompositionPoly<E>,
         domain: &StarkDomain<Self::BaseField>,
     ) -> ConstraintCommitment<E, H>
     where
@@ -477,14 +487,15 @@ pub trait Prover {
         #[cfg(feature = "std")]
         debug!(
             "Evaluated composition polynomial columns over LDE domain (2^{} elements) in {} ms",
-            log2(composed_evaluations[0].len()),
+            log2(composed_evaluations.num_cols()),
             now.elapsed().as_millis()
         );
 
         // build constraint evaluation commitment
         #[cfg(feature = "std")]
         let now = Instant::now();
-        let constraint_commitment = ConstraintCommitment::<E, H>::new(composed_evaluations);
+        let commitment = composed_evaluations.commit_to_rows();
+        let constraint_commitment = ConstraintCommitment::new(composed_evaluations, commitment);
         #[cfg(feature = "std")]
         debug!(
             "Computed constraint evaluation commitment (Merkle tree of depth {}) in {} ms",

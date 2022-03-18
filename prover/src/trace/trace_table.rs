@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::Trace;
+use super::{Matrix, Trace};
 use air::TraceInfo;
 use math::{log2, StarkField};
 use utils::{collections::Vec, uninit_vector};
@@ -60,7 +60,7 @@ const MIN_FRAGMENT_LENGTH: usize = 2;
 /// The semantics of the fragment's [TraceTableFragment::fill()] method are identical to the
 /// semantics of the [TraceTable::fill()] method.
 pub struct TraceTable<B: StarkField> {
-    trace: Vec<Vec<B>>,
+    trace: Matrix<B>,
     meta: Vec<u8>,
 }
 
@@ -128,35 +128,33 @@ impl<B: StarkField> TraceTable<B> {
             meta.len()
         );
 
-        let registers = unsafe { (0..width).map(|_| uninit_vector(length)).collect() };
+        let columns = unsafe { (0..width).map(|_| uninit_vector(length)).collect() };
         Self {
-            trace: registers,
+            trace: Matrix::new(columns),
             meta,
         }
     }
 
-    /// Creates a new execution trace from a list of provided register traces.
-    ///
-    /// The provides `registers` vector is expected to contain register traces.
+    /// Creates a new execution trace from a list of provided trace columns.
     ///
     /// # Panics
     /// Panics if:
-    /// * The `registers` vector is empty or has over 255 registers.
-    /// * Number of elements in any of the registers is smaller than 8, greater than the biggest
+    /// * The `columns` vector is empty or has over 255 columns.
+    /// * Number of elements in any of the columns is smaller than 8, greater than the biggest
     ///   multiplicative subgroup in the field `B`, or is not a power of two.
-    /// * Number of elements is not identical for all registers.
-    pub fn init(registers: Vec<Vec<B>>) -> Self {
+    /// * Number of elements is not identical for all columns.
+    pub fn init(columns: Vec<Vec<B>>) -> Self {
         assert!(
-            !registers.is_empty(),
-            "execution trace must consist of at least one register"
+            !columns.is_empty(),
+            "execution trace must consist of at least one column"
         );
         assert!(
-            registers.len() <= TraceInfo::MAX_TRACE_WIDTH,
+            columns.len() <= TraceInfo::MAX_TRACE_WIDTH,
             "execution trace width cannot be greater than {}, but was {}",
             TraceInfo::MAX_TRACE_WIDTH,
-            registers.len()
+            columns.len()
         );
-        let trace_length = registers[0].len();
+        let trace_length = columns[0].len();
         assert!(
             trace_length >= TraceInfo::MIN_TRACE_LENGTH,
             "execution trace must be at lest {} steps long, but was {}",
@@ -173,16 +171,16 @@ impl<B: StarkField> TraceTable<B> {
             B::TWO_ADICITY,
             log2(trace_length)
         );
-        for register in registers.iter() {
+        for column in columns.iter().skip(1) {
             assert_eq!(
-                register.len(),
+                column.len(),
                 trace_length,
-                "all register traces must have the same length"
+                "all columns traces must have the same length"
             );
         }
 
         Self {
-            trace: registers,
+            trace: Matrix::new(columns),
             meta: vec![],
         }
     }
@@ -192,13 +190,13 @@ impl<B: StarkField> TraceTable<B> {
 
     /// Updates a value in a single cell of the execution trace.
     ///
-    /// Specifically, the value in the specified `register` and the specified `step` is set to the
+    /// Specifically, the value in the specified `column` and the specified `step` is set to the
     /// provide `value`.
     ///
     /// # Panics
-    /// Panics if either `register` or `step` are out of bounds for this execution trace.
-    pub fn set(&mut self, register: usize, step: usize, value: B) {
-        self.trace[register][step] = value;
+    /// Panics if either `column` or `step` are out of bounds for this execution trace.
+    pub fn set(&mut self, column: usize, step: usize, value: B) {
+        self.trace.set(column, step, value)
     }
 
     /// Updates metadata for this execution trace to the specified vector of bytes.
@@ -243,9 +241,7 @@ impl<B: StarkField> TraceTable<B> {
 
     /// Updates a single row in the execution trace with provided data.
     pub fn update_row(&mut self, step: usize, state: &[B]) {
-        for (register, &value) in self.trace.iter_mut().zip(state) {
-            register[step] = value;
-        }
+        self.trace.update_row(step, state);
     }
 
     // FRAGMENTS
@@ -302,7 +298,7 @@ impl<B: StarkField> TraceTable<B> {
         let num_fragments = self.length() / fragment_length;
 
         let mut fragment_data = (0..num_fragments).map(|_| Vec::new()).collect::<Vec<_>>();
-        self.trace.iter_mut().for_each(|column| {
+        self.trace.columns_mut().for_each(|column| {
             for (i, fragment) in column.chunks_mut(fragment_length).enumerate() {
                 fragment_data[i].push(fragment);
             }
@@ -324,7 +320,7 @@ impl<B: StarkField> TraceTable<B> {
 
     /// Returns the entire register trace for the register at the specified index.
     pub fn get_register(&self, idx: usize) -> &[B] {
-        &self.trace[idx]
+        self.trace.get_column(idx)
     }
 }
 
@@ -335,11 +331,11 @@ impl<B: StarkField> Trace for TraceTable<B> {
     type BaseField = B;
 
     fn width(&self) -> usize {
-        self.trace.len()
+        self.trace.num_cols()
     }
 
     fn length(&self) -> usize {
-        self.trace[0].len()
+        self.trace.num_rows()
     }
 
     fn meta(&self) -> &[u8] {
@@ -347,16 +343,14 @@ impl<B: StarkField> Trace for TraceTable<B> {
     }
 
     fn get(&self, register: usize, step: usize) -> B {
-        self.trace[register][step]
+        self.trace.get(register, step)
     }
 
     fn read_row_into(&self, step: usize, target: &mut [B]) {
-        for (i, register) in self.trace.iter().enumerate() {
-            target[i] = register[step];
-        }
+        self.trace.read_row_into(step, target);
     }
 
-    fn into_columns(self) -> Vec<Vec<B>> {
+    fn into_matrix(self) -> Matrix<B> {
         self.trace
     }
 }

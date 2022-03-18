@@ -161,7 +161,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> ConstraintEvaluationTable<B,
     /// Divides constraint evaluation columns by their respective divisor (in evaluation form),
     /// combines the results into a single column, and interpolates this column into a composition
     /// polynomial in coefficient form.
-    pub fn into_poly(self) -> Result<CompositionPoly<B, E>, ProverError> {
+    pub fn into_poly(self) -> Result<CompositionPoly<E>, ProverError> {
         let domain_offset = self.domain_offset;
 
         // allocate memory for the combined polynomial

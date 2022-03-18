@@ -5,7 +5,8 @@
 
 use crate::{
     tests::{build_fib_trace, MockAir},
-    StarkDomain, Trace,
+    trace::TracePolyTable,
+    StarkDomain, Trace, TraceLde,
 };
 use crypto::{hashers::Blake3_256, ElementHasher, MerkleTree};
 use math::{
@@ -39,12 +40,19 @@ fn new_trace_table() {
 
 #[test]
 fn extend_trace_table() {
-    // build and extend trace table
+    // build the trace and the domain
     let trace_length = 8;
     let air = MockAir::with_trace_length(trace_length);
     let trace = build_fib_trace(trace_length * 2);
     let domain = StarkDomain::new(&air);
-    let (extended_trace, trace_polys) = trace.extend(&domain);
+
+    // extend the trace
+    let trace_polys = trace.into_matrix().interpolate_columns_into();
+    let extended_trace = TraceLde::new(
+        trace_polys.evaluate_columns_over(&domain),
+        domain.trace_to_lde_blowup(),
+    );
+    let trace_polys = TracePolyTable::new(trace_polys);
 
     assert_eq!(2, extended_trace.width());
     assert_eq!(64, extended_trace.len());
@@ -82,12 +90,18 @@ fn extend_trace_table() {
 
 #[test]
 fn commit_trace_table() {
-    // build and extend trace table
+    // build the trade and the domain
     let trace_length = 8;
     let air = MockAir::with_trace_length(trace_length);
     let trace = build_fib_trace(trace_length * 2);
     let domain = StarkDomain::new(&air);
-    let (extended_trace, _) = trace.extend(&domain);
+
+    // extend the trace
+    let trace_polys = trace.into_matrix().interpolate_columns_into();
+    let extended_trace = TraceLde::new(
+        trace_polys.evaluate_columns_over(&domain),
+        domain.trace_to_lde_blowup(),
+    );
 
     // commit to the trace
     let trace_tree = extended_trace.build_commitment::<Blake3>();

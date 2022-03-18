@@ -3,9 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::StarkDomain;
+use super::Matrix;
 use air::{Air, EvaluationFrame, TraceInfo};
-use math::{fft, polynom, FieldElement, StarkField};
+use math::{polynom, FieldElement, StarkField};
 
 mod trace_lde;
 pub use trace_lde::TraceLde;
@@ -15,11 +15,6 @@ pub use poly_table::TracePolyTable;
 
 mod trace_table;
 pub use trace_table::{TraceTable, TraceTableFragment};
-
-use utils::{collections::Vec, iter_mut};
-
-#[cfg(feature = "concurrent")]
-use utils::iterators::*;
 
 #[cfg(test)]
 mod tests;
@@ -64,8 +59,8 @@ pub trait Trace: Sized {
     /// Reads a single row of this trace at the specified index into the specified target.
     fn read_row_into(&self, step: usize, target: &mut [Self::BaseField]);
 
-    /// Transforms this trace into a vector of columns containing trace data.
-    fn into_columns(self) -> Vec<Vec<Self::BaseField>>;
+    /// Returns a [Matrix] containing the data of this trace.
+    fn into_matrix(self) -> Matrix<Self::BaseField>;
 
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
@@ -146,58 +141,4 @@ pub trait Trace: Sized {
             x *= g;
         }
     }
-
-    // LOW-DEGREE EXTENSION
-    // --------------------------------------------------------------------------------------------
-    /// Extends all columns of the trace table to the length of the LDE domain.
-    ///
-    /// The extension is done by first interpolating each register into a polynomial over the
-    /// trace domain, and then evaluating the polynomial over the LDE domain.
-    fn extend(
-        self,
-        domain: &StarkDomain<Self::BaseField>,
-    ) -> (TraceLde<Self::BaseField>, TracePolyTable<Self::BaseField>) {
-        assert_eq!(
-            self.length(),
-            domain.trace_length(),
-            "inconsistent trace length"
-        );
-        // build and cache trace twiddles for FFT interpolation; we do it here so that we
-        // don't have to rebuild these twiddles for every register.
-        let inv_twiddles = fft::get_inv_twiddles::<Self::BaseField>(domain.trace_length());
-
-        // extend all registers; the extension procedure first interpolates register traces into
-        // polynomials (in-place), then evaluates these polynomials over a larger domain, and
-        // then returns extended evaluations.
-        let mut columns = self.into_columns();
-        let extended_trace = iter_mut!(columns)
-            .map(|register_trace| extend_column(register_trace, domain, &inv_twiddles))
-            .collect();
-
-        (
-            TraceLde::new(extended_trace, domain.trace_to_lde_blowup()),
-            TracePolyTable::new(columns),
-        )
-    }
-}
-
-// HELPER FUNCTIONS
-// ================================================================================================
-
-#[inline(always)]
-fn extend_column<B: StarkField>(
-    column: &mut [B],
-    domain: &StarkDomain<B>,
-    inv_twiddles: &[B],
-) -> Vec<B> {
-    let domain_offset = domain.offset();
-    let twiddles = domain.trace_twiddles();
-    let blowup_factor = domain.trace_to_lde_blowup();
-
-    // interpolate register trace into a polynomial; we do this over the un-shifted trace_domain
-    fft::interpolate_poly(column, inv_twiddles);
-
-    // evaluate the polynomial over extended domain; the domain may be shifted by the
-    // domain_offset
-    fft::evaluate_poly_with_offset(column, twiddles, domain_offset, blowup_factor)
 }

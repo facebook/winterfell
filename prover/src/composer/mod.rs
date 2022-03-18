@@ -87,7 +87,6 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseField>> DeepCompositionPoly<A, E
 
         // combine trace polynomials into 2 composition polynomials T'(x) and T''(x), and if
         // we are using a field extension, also T'''(x)
-        let polys = trace_polys.into_vec();
         let mut t1_composition = E::zeroed_vector(trace_length);
         let mut t2_composition = E::zeroed_vector(trace_length);
         let mut t3_composition = if self.field_extension {
@@ -95,12 +94,12 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseField>> DeepCompositionPoly<A, E
         } else {
             Vec::new()
         };
-        for (i, poly) in polys.into_iter().enumerate() {
+        for (i, poly) in trace_polys.iter().enumerate() {
             // compute T'(x) = T(x) - T(z), multiply it by a pseudo-random coefficient,
             // and add the result into composition polynomial
             acc_poly(
                 &mut t1_composition,
-                &poly,
+                poly,
                 trace_state1[i],
                 self.cc.trace[i].0,
             );
@@ -109,7 +108,7 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseField>> DeepCompositionPoly<A, E
             // and add the result into composition polynomial
             acc_poly(
                 &mut t2_composition,
-                &poly,
+                poly,
                 trace_state2[i],
                 self.cc.trace[i].1,
             );
@@ -119,7 +118,7 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseField>> DeepCompositionPoly<A, E
             if self.field_extension {
                 acc_poly(
                     &mut t3_composition,
-                    &poly,
+                    poly,
                     trace_state1[i].conjugate(),
                     self.cc.trace[i].2,
                 );
@@ -154,7 +153,7 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseField>> DeepCompositionPoly<A, E
     /// Note that evaluations of H_i(x) at z^m are passed in via the `ood_evaluations` parameter.
     pub fn add_composition_poly(
         &mut self,
-        composition_poly: CompositionPoly<A::BaseField, E>,
+        composition_poly: CompositionPoly<E>,
         ood_evaluations: Vec<E>,
     ) {
         assert!(!self.coefficients.is_empty());
