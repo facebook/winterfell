@@ -66,7 +66,7 @@ use math::{
 pub use crypto;
 use crypto::{
     hashers::{Blake3_192, Blake3_256, Sha3_256},
-    ElementHasher, MerkleTree,
+    ElementHasher,
 };
 
 #[cfg(feature = "std")]
@@ -90,7 +90,7 @@ use composer::DeepCompositionPoly;
 
 mod trace;
 use trace::TracePolyTable;
-pub use trace::{Trace, TraceLde, TraceTable, TraceTableFragment};
+pub use trace::{Trace, TraceCommitment, TraceTable, TraceTableFragment};
 
 mod channel;
 use channel::ProverChannel;
@@ -237,11 +237,11 @@ pub trait Prover {
         );
 
         // extend the execution trace and build a Merkle tree from the extended trace
-        let (extended_trace, trace_polys, main_trace_tree) =
+        let (trace_commitment, trace_polys) =
             self.build_trace_commitment::<H>(trace.into_matrix(), &domain);
 
         // commit to the extended trace by writing the root of the Merkle tree into the channel
-        channel.commit_trace(*main_trace_tree.root());
+        channel.commit_trace(trace_commitment.root());
 
         // 2 ----- evaluate constraints -----------------------------------------------------------
         // evaluate constraints specified by the AIR over the constraint evaluation domain, and
@@ -254,7 +254,7 @@ pub trait Prover {
         let now = Instant::now();
         let constraint_coeffs = channel.get_constraint_composition_coeffs();
         let evaluator = ConstraintEvaluator::new(&air, constraint_coeffs);
-        let constraint_evaluations = evaluator.evaluate(&extended_trace, &domain);
+        let constraint_evaluations = evaluator.evaluate(&trace_commitment, &domain);
         #[cfg(feature = "std")]
         debug!(
             "Evaluated constraints over domain of 2^{} elements in {} ms",
@@ -392,7 +392,7 @@ pub trait Prover {
 
         // query the execution trace at the selected position; for each query, we need the
         // state of the trace at that position + Merkle authentication path
-        let trace_queries = extended_trace.query(main_trace_tree, &query_positions);
+        let trace_queries = trace_commitment.query(&query_positions);
 
         // query the constraint commitment at the selected positions; for each query, we need just
         // a Merkle authentication path. this is because constraint evaluations for each step are
@@ -421,9 +421,8 @@ pub trait Prover {
         trace: Matrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
     ) -> (
-        TraceLde<Self::BaseField>,
+        TraceCommitment<Self::BaseField, H>,
         TracePolyTable<Self::BaseField>,
-        MerkleTree<H>,
     )
     where
         H: ElementHasher<BaseField = Self::BaseField>,
@@ -432,27 +431,21 @@ pub trait Prover {
         #[cfg(feature = "std")]
         let now = Instant::now();
         let trace_polys = trace.interpolate_columns_into();
-
-        let extended_trace = TraceLde::new(
-            trace_polys.evaluate_columns_over(domain),
-            domain.trace_to_lde_blowup(),
-        );
-        let trace_polys = TracePolyTable::new(trace_polys);
-
+        let trace_lde = trace_polys.evaluate_columns_over(domain);
         #[cfg(feature = "std")]
         debug!(
             "Extended execution trace of {} columns from 2^{} to 2^{} steps ({}x blowup) in {} ms",
-            extended_trace.width(),
-            log2(trace_polys.poly_size()),
-            log2(extended_trace.len()),
-            extended_trace.blowup(),
+            trace_lde.num_cols(),
+            log2(trace_polys.num_rows()),
+            log2(trace_lde.num_rows()),
+            domain.trace_to_lde_blowup(),
             now.elapsed().as_millis()
         );
 
         // build trace commitment
         #[cfg(feature = "std")]
         let now = Instant::now();
-        let trace_tree = extended_trace.build_commitment::<H>();
+        let trace_tree = trace_lde.commit_to_rows();
         #[cfg(feature = "std")]
         debug!(
             "Computed execution trace commitment (Merkle tree of depth {}) in {} ms",
@@ -460,7 +453,10 @@ pub trait Prover {
             now.elapsed().as_millis()
         );
 
-        (extended_trace, trace_polys, trace_tree)
+        (
+            TraceCommitment::new(trace_lde, trace_tree, domain.trace_to_lde_blowup()),
+            TracePolyTable::new(trace_polys),
+        )
     }
 
     /// Evaluates constraint composition polynomial over the LDE domain and builds a commitment

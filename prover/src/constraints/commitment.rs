@@ -12,18 +12,26 @@ use utils::collections::Vec;
 // CONSTRAINT COMMITMENT
 // ================================================================================================
 
+/// Constraint evaluation commitment.
+///
+/// The commitment consists of two components:
+/// * Evaluations of composition polynomial columns over the LDE domain.
+/// * Merkle tree where each leaf in the tree corresponds to a row in the composition polynomial
+///   evaluation matrix.
 pub struct ConstraintCommitment<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> {
-    /// Evaluations of composition polynomial columns over the LDE domain.
     evaluations: Matrix<E>,
-    /// Commitment to the evaluation matrix where each leaf in the tree corresponds to a row
-    /// in the matrix.
     commitment: MerkleTree<H>,
 }
 
 impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> ConstraintCommitment<E, H> {
-    /// Returns a new constraint commitment.
+    /// Creates a new constraint evaluation commitment from the provided composition polynomial
+    /// evaluations and the corresponding Merkle tree commitment.
     pub fn new(evaluations: Matrix<E>, commitment: MerkleTree<H>) -> ConstraintCommitment<E, H> {
-        // build Merkle tree out of hashed evaluation values
+        assert_eq!(
+            evaluations.num_rows(),
+            commitment.leaves().len(),
+            "number of rows in constraint evaluation matrix must be the same as number of leaves in constraint commitment"
+        );
         ConstraintCommitment {
             evaluations,
             commitment,
