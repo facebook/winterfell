@@ -28,7 +28,7 @@ impl Air for FibAir {
             TransitionConstraintDegree::new(1),
             TransitionConstraintDegree::new(1),
         ];
-        assert_eq!(TRACE_WIDTH, trace_info.width());
+        assert_eq!(TRACE_WIDTH, trace_info.full_width());
         FibAir {
             context: AirContext::new(trace_info, degrees, options),
             result: pub_inputs,

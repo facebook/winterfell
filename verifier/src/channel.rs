@@ -71,7 +71,7 @@ where
         // --- parse trace queries ----------------------------------------------------------------
         let (trace_proof, trace_states) = proof
             .trace_queries
-            .parse::<H, B>(lde_domain_size, num_queries, air.trace_width())
+            .parse::<H, B>(lde_domain_size, num_queries, air.trace_full_width())
             .map_err(|err| {
                 VerifierError::ProofDeserializationError(format!(
                     "trace query deserialization failed: {}",
@@ -104,7 +104,7 @@ where
         // --- parse out-of-domain evaluation frame -----------------------------------------------
         let (ood_frame, ood_evaluations) = proof
             .ood_frame
-            .parse(air.trace_width(), air.ce_blowup_factor())
+            .parse(air.trace_full_width(), air.ce_blowup_factor())
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         Ok(VerifierChannel {

@@ -348,7 +348,7 @@ impl Air for MockAir {
     type PublicInputs = ();
 
     fn new(trace_info: TraceInfo, _pub_inputs: (), _options: ProofOptions) -> Self {
-        let context = build_context(trace_info.length(), trace_info.width());
+        let context = build_context(trace_info.length(), trace_info.full_width());
         MockAir {
             context,
             assertions: Vec::new(),

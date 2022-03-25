@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{Matrix, Trace};
-use air::TraceInfo;
+use air::{TraceInfo, TraceLayout};
 use math::{log2, StarkField};
 use utils::{collections::Vec, uninit_vector};
 
@@ -60,6 +60,7 @@ const MIN_FRAGMENT_LENGTH: usize = 2;
 /// The semantics of the fragment's [TraceTableFragment::fill()] method are identical to the
 /// semantics of the [TraceTable::fill()] method.
 pub struct TraceTable<B: StarkField> {
+    layout: TraceLayout,
     trace: Matrix<B>,
     meta: Vec<u8>,
 }
@@ -130,6 +131,7 @@ impl<B: StarkField> TraceTable<B> {
 
         let columns = unsafe { (0..width).map(|_| uninit_vector(length)).collect() };
         Self {
+            layout: TraceLayout::new(width, [0], [0]),
             trace: Matrix::new(columns),
             meta,
         }
@@ -180,6 +182,7 @@ impl<B: StarkField> TraceTable<B> {
         }
 
         Self {
+            layout: TraceLayout::new(columns.len(), [0], [0]),
             trace: Matrix::new(columns),
             meta: vec![],
         }
@@ -330,8 +333,8 @@ impl<B: StarkField> TraceTable<B> {
 impl<B: StarkField> Trace for TraceTable<B> {
     type BaseField = B;
 
-    fn width(&self) -> usize {
-        self.trace.num_cols()
+    fn layout(&self) -> &TraceLayout {
+        &self.layout
     }
 
     fn length(&self) -> usize {
@@ -350,8 +353,8 @@ impl<B: StarkField> Trace for TraceTable<B> {
         self.trace.read_row_into(step, target);
     }
 
-    fn into_matrix(self) -> Matrix<B> {
-        self.trace
+    fn main_segment(&self) -> &Matrix<B> {
+        &self.trace
     }
 }
 

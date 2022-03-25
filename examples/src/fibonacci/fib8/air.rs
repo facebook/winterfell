@@ -29,7 +29,7 @@ impl Air for Fib8Air {
             TransitionConstraintDegree::new(1),
             TransitionConstraintDegree::new(1),
         ];
-        assert_eq!(TRACE_WIDTH, trace_info.width());
+        assert_eq!(TRACE_WIDTH, trace_info.full_width());
         Fib8Air {
             context: AirContext::new(trace_info, degrees, options),
             result: pub_inputs,

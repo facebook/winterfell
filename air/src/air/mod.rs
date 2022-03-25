@@ -12,7 +12,7 @@ use utils::{
 };
 
 mod trace_info;
-pub use trace_info::TraceInfo;
+pub use trace_info::{TraceInfo, TraceLayout};
 
 mod context;
 pub use context::AirContext;
@@ -351,12 +351,13 @@ pub trait Air: Send + Sync {
         self.context().trace_info.length()
     }
 
-    /// Returns width of the execution trace for an instance of the computation described by
-    /// this AIR.
+    /// Returns the total number of columns in the execution trace for an instance of the
+    /// computation described by this AIR.
     ///
-    /// This is guaranteed to be between 1 and 255.
-    fn trace_width(&self) -> usize {
-        self.context().trace_info.width()
+    /// The total number of columns is defined as the number of columns in all trace segments.
+    /// This value is guaranteed to be between 1 and 255.
+    fn trace_full_width(&self) -> usize {
+        self.context().trace_info.full_width()
     }
 
     /// Returns degree of trace polynomials for an instance of the computation described by
@@ -464,6 +465,33 @@ pub trait Air: Send + Sync {
         ConstraintDivisor::from_transition(self.trace_length())
     }
 
+    // TRACE SEGMENT RANDOMNESS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns a vector of field elements required for construction of a trace segment with the
+    /// specified index.
+    ///
+    /// The elements are drawn uniformly at random from the provided public coin.
+    fn get_trace_segment_random_elements<E, H>(
+        &self,
+        segment_idx: usize,
+        public_coin: &mut RandomCoin<Self::BaseField, H>,
+    ) -> Result<Vec<E>, RandomCoinError>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+        H: Hasher,
+    {
+        let num_elements = self
+            .trace_info()
+            .layout()
+            .get_aux_segment_rand_elements(segment_idx);
+        let mut result = Vec::with_capacity(num_elements);
+        for _ in 0..num_elements {
+            result.push(public_coin.draw()?);
+        }
+        Ok(result)
+    }
+
     // LINEAR COMBINATION COEFFICIENTS
     // --------------------------------------------------------------------------------------------
 
@@ -506,7 +534,7 @@ pub trait Air: Send + Sync {
         H: Hasher,
     {
         let mut t_coefficients = Vec::new();
-        for _ in 0..self.trace_width() {
+        for _ in 0..self.trace_full_width() {
             t_coefficients.push(public_coin.draw_triple()?);
         }
 
@@ -540,7 +568,7 @@ fn prepare_assertions<B: StarkField>(
 
     for assertion in assertions.into_iter() {
         assertion
-            .validate_trace_width(context.trace_info.width())
+            .validate_trace_width(context.trace_info.full_width())
             .unwrap_or_else(|err| {
                 panic!("assertion {} is invalid: {}", assertion, err);
             });

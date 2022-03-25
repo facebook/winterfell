@@ -22,6 +22,7 @@ use utils::iterators::*;
 /// - A matrix must consist of at least 1 column and at least 2 rows.
 /// - All columns must be of the same length.
 /// - Number of rows must be a power of two.
+#[derive(Debug, Clone)]
 pub struct Matrix<E: FieldElement> {
     columns: Vec<Vec<E>>,
 }
@@ -136,6 +137,24 @@ impl<E: FieldElement> Matrix<E> {
 
     // POLYNOMIAL METHODS
     // --------------------------------------------------------------------------------------------
+
+    /// Interpolates columns of the matrix into polynomials in coefficient form and returns the
+    /// result.
+    ///
+    /// The interpolation is performed as follows:
+    /// * Each column of the matrix is interpreted as evaluations of degree `num_rows - 1`
+    ///   polynomial over a subgroup of size `num_rows`.
+    /// * Then each column is interpolated using iFFT algorithm into a polynomial in coefficient
+    ///   form.
+    /// * The resulting polynomials are returned as a single matrix where each column contains
+    ///   coefficients of a degree `num_rows - 1` polynomial.
+    pub fn interpolate_columns(&self) -> Self {
+        let inv_twiddles = fft::get_inv_twiddles::<E::BaseField>(self.num_rows());
+        // TODO: get ride of cloning by introducing another version of fft::interpolate_poly()
+        let mut result = self.clone();
+        iter_mut!(result.columns).for_each(|column| fft::interpolate_poly(column, &inv_twiddles));
+        result
+    }
 
     /// Interpolates columns of the matrix into polynomials in coefficient form and returns the
     /// result. The input matrix is consumed in the process.

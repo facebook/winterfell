@@ -37,7 +37,7 @@ impl Air for MulFib8Air {
             TransitionConstraintDegree::new(2),
             TransitionConstraintDegree::new(2),
         ];
-        assert_eq!(TRACE_WIDTH, trace_info.width());
+        assert_eq!(TRACE_WIDTH, trace_info.full_width());
         MulFib8Air {
             context: AirContext::new(trace_info, degrees, options),
             result: pub_inputs,

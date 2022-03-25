@@ -236,9 +236,9 @@ pub trait Prover {
             now.elapsed().as_millis()
         );
 
-        // extend the execution trace and build a Merkle tree from the extended trace
+        // extend the main execution trace and build a Merkle tree from the extended trace
         let (trace_commitment, trace_polys) =
-            self.build_trace_commitment::<H>(trace.into_matrix(), &domain);
+            self.build_trace_commitment::<H>(trace.main_segment(), &domain);
 
         // commit to the extended trace by writing the root of the Merkle tree into the channel
         channel.commit_trace(trace_commitment.root());
@@ -418,7 +418,7 @@ pub trait Prover {
     /// building a Merkle tree from the resulting hashes.
     fn build_trace_commitment<H>(
         &self,
-        trace: Matrix<Self::BaseField>,
+        trace: &Matrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
     ) -> (
         TraceCommitment<Self::BaseField, H>,
@@ -430,7 +430,7 @@ pub trait Prover {
         // extend the execution trace
         #[cfg(feature = "std")]
         let now = Instant::now();
-        let trace_polys = trace.interpolate_columns_into();
+        let trace_polys = trace.interpolate_columns();
         let trace_lde = trace_polys.evaluate_columns_over(domain);
         #[cfg(feature = "std")]
         debug!(

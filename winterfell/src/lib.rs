@@ -189,7 +189,7 @@
 //!     // the do_work() function.
 //!     fn new(trace_info: TraceInfo, pub_inputs: PublicInputs, options: ProofOptions) -> Self {
 //!         // our execution trace should have only one column.
-//!         assert_eq!(1, trace_info.width());
+//!         assert_eq!(1, trace_info.full_width());
 //!
 //!         // Our computation requires a single transition constraint. The constraint itself
 //!         // is defined in the evaluate_transition() method below, but here we need to specify
@@ -283,7 +283,7 @@
 //! #     type PublicInputs = PublicInputs;
 //! #
 //! #     fn new(trace_info: TraceInfo, pub_inputs: PublicInputs, options: ProofOptions) -> Self {
-//! #         assert_eq!(1, trace_info.width());
+//! #         assert_eq!(1, trace_info.full_width());
 //! #         let degrees = vec![TransitionConstraintDegree::new(3)];
 //! #         WorkAir {
 //! #             context: AirContext::new(trace_info, degrees, options),
@@ -404,7 +404,7 @@
 //! #     type PublicInputs = PublicInputs;
 //! #
 //! #     fn new(trace_info: TraceInfo, pub_inputs: PublicInputs, options: ProofOptions) -> Self {
-//! #         assert_eq!(1, trace_info.width());
+//! #         assert_eq!(1, trace_info.full_width());
 //! #         let degrees = vec![TransitionConstraintDegree::new(3)];
 //! #         WorkAir {
 //! #             context: AirContext::new(trace_info, degrees, options),

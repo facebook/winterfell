@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::Matrix;
-use air::{Air, EvaluationFrame, TraceInfo};
+use air::{Air, EvaluationFrame, TraceInfo, TraceLayout};
 use math::{polynom, FieldElement, StarkField};
 
 mod poly_table;
@@ -38,14 +38,14 @@ mod tests;
 pub trait Trace: Sized {
     /// Base field for this execution trace.
     ///
-    /// All cells of this execution trace contain values which are elements in this filed.
+    /// All cells of this execution trace contain values which are elements in this field.
     type BaseField: StarkField;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns number of columns in this trace.
-    fn width(&self) -> usize;
+    /// Returns a description of how columns of this trace are arranged into trace segments.
+    fn layout(&self) -> &TraceLayout;
 
     /// Returns the number of rows in this trace.
     fn length(&self) -> usize;
@@ -59,15 +59,20 @@ pub trait Trace: Sized {
     /// Reads a single row of this trace at the specified index into the specified target.
     fn read_row_into(&self, step: usize, target: &mut [Self::BaseField]);
 
-    /// Returns a [Matrix] containing the data of this trace.
-    fn into_matrix(self) -> Matrix<Self::BaseField>;
+    /// Returns a reference to a [Matrix] describing the main segment of this trace.
+    fn main_segment(&self) -> &Matrix<Self::BaseField>;
 
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
 
     /// Returns trace info for this trace.
     fn get_info(&self) -> TraceInfo {
-        TraceInfo::with_meta(self.width(), self.length(), self.meta().to_vec())
+        TraceInfo::new_multi_segment(self.layout().clone(), self.length(), self.meta().to_vec())
+    }
+
+    /// Returns number of columns in the main segment this trace.
+    fn width(&self) -> usize {
+        self.layout().main_segment_width()
     }
 
     // VALIDATION
@@ -81,10 +86,10 @@ pub trait Trace: Sized {
         // make sure the width align; if they don't something went terribly wrong
         assert_eq!(
             self.width(),
-            air.trace_width(),
+            air.trace_full_width(),
             "inconsistent trace width: expected {}, but was {}",
             self.width(),
-            air.trace_width()
+            air.trace_full_width()
         );
 
         // --- 1. make sure the assertions are valid ----------------------------------------------

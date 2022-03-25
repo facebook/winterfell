@@ -5,7 +5,7 @@
 
 //! Contains STARK proof struct and associated components.
 
-use crate::{ProofOptions, TraceInfo};
+use crate::{ProofOptions, TraceInfo, TraceLayout};
 use core::cmp;
 use fri::FriProof;
 use math::log2;
@@ -69,14 +69,15 @@ impl StarkProof {
         self.context.options()
     }
 
+    /// Returns a layout describing how columns of the execution trace described by this context
+    /// are arranged into segments.
+    pub fn trace_layout(&self) -> &TraceLayout {
+        self.context.trace_layout()
+    }
+
     /// Returns trace length for the computation described by this proof.
     pub fn trace_length(&self) -> usize {
         self.context.trace_length()
-    }
-
-    /// Returns trace width for the computation described by this proof.
-    pub fn trace_width(&self) -> usize {
-        self.context.trace_width()
     }
 
     /// Returns trace info for the computation described by this proof.
