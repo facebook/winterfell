@@ -5,7 +5,7 @@
 
 use super::{Matrix, Trace};
 use air::{TraceInfo, TraceLayout};
-use math::{log2, StarkField};
+use math::{log2, FieldElement, StarkField};
 use utils::{collections::Vec, uninit_vector};
 
 #[cfg(not(feature = "concurrent"))]
@@ -355,6 +355,13 @@ impl<B: StarkField> Trace for TraceTable<B> {
 
     fn main_segment(&self) -> &Matrix<B> {
         &self.trace
+    }
+
+    fn build_aux_segment<E>(&mut self, _rand_elements: &[E]) -> Option<&Matrix<Self::BaseField>>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        None
     }
 }
 

@@ -6,6 +6,7 @@
 use super::Matrix;
 use air::{Air, EvaluationFrame, TraceInfo, TraceLayout};
 use math::{polynom, FieldElement, StarkField};
+use utils::collections::Vec;
 
 mod poly_table;
 pub use poly_table::TracePolyTable;
@@ -62,6 +63,12 @@ pub trait Trace: Sized {
     /// Returns a reference to a [Matrix] describing the main segment of this trace.
     fn main_segment(&self) -> &Matrix<Self::BaseField>;
 
+    /// Builds and returns the next auxiliary trace segment. If there are no more segments to
+    /// build (i.e., the trace is complete), None is returned.
+    fn build_aux_segment<E>(&mut self, rand_elements: &[E]) -> Option<&Matrix<Self::BaseField>>
+    where
+        E: FieldElement<BaseField = Self::BaseField>;
+
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
 
@@ -80,8 +87,12 @@ pub trait Trace: Sized {
     /// Checks if this trace is valid against the specified AIR, and panics if not.
     ///
     /// NOTE: this is a very expensive operation and is intended for use only in debug mode.
-    fn validate<A: Air<BaseField = Self::BaseField>>(&self, air: &A) {
-        // TODO: eventually, this should return errors instead of panicking
+    fn validate<A, E>(&self, air: &A, _aux_segment_rand_elements: &[Vec<E>])
+    where
+        A: Air<BaseField = Self::BaseField>,
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        // TODO: pass aux_segment_rand_elements to transition evaluation
 
         // make sure the width align; if they don't something went terribly wrong
         assert_eq!(

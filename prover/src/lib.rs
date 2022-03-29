@@ -66,7 +66,7 @@ use math::{
 pub use crypto;
 use crypto::{
     hashers::{Blake3_192, Blake3_256, Sha3_256},
-    ElementHasher,
+    ElementHasher, MerkleTree,
 };
 
 #[cfg(feature = "std")]
@@ -195,7 +195,7 @@ pub trait Prover {
     /// execution `trace` is valid against this prover's AIR.
     /// TODO: make this function un-callable externally?
     #[doc(hidden)]
-    fn generate_proof<E, H>(&self, trace: Self::Trace) -> Result<StarkProof, ProverError>
+    fn generate_proof<E, H>(&self, mut trace: Self::Trace) -> Result<StarkProof, ProverError>
     where
         E: FieldElement<BaseField = Self::BaseField>,
         H: ElementHasher<BaseField = Self::BaseField>,
@@ -211,12 +211,6 @@ pub trait Prover {
         // of the computation (provided via AIR type), and creates a description of a specific
         // execution of the computation for the provided public inputs.
         let air = Self::Air::new(trace.get_info(), pub_inputs, self.options().clone());
-
-        // make sure the specified trace is valid against the AIR. This checks validity of both,
-        // assertions and state transitions. we do this in debug mode only because this is a very
-        // expensive operation.
-        #[cfg(debug_assertions)]
-        trace.validate(&air);
 
         // create a channel which is used to simulate interaction between the prover and the
         // verifier; the channel will be used to commit to values and to draw randomness that
@@ -237,11 +231,54 @@ pub trait Prover {
         );
 
         // extend the main execution trace and build a Merkle tree from the extended trace
-        let (trace_commitment, trace_polys) =
+        let (main_trace_lde, main_trace_tree, main_trace_polys) =
             self.build_trace_commitment::<H>(trace.main_segment(), &domain);
 
-        // commit to the extended trace by writing the root of the Merkle tree into the channel
-        channel.commit_trace(trace_commitment.root());
+        // commit to the LDE of the main trace by writing the root of its Merkle tree into
+        // the channel
+        channel.commit_trace(*main_trace_tree.root());
+
+        // initialize trace commitment and trace polynomial table structs with the main trace
+        // data; for multi-segment traces these structs will be used as accumulators of all
+        // trace segments
+        let trace_commitment = TraceCommitment::new(
+            main_trace_lde,
+            main_trace_tree,
+            domain.trace_to_lde_blowup(),
+        );
+        let mut trace_polys = TracePolyTable::new(main_trace_polys);
+
+        // build auxiliary trace segments (if any), and append the resulting segments to trace
+        // commitment and trace polynomial table structs
+        let mut aux_segment_rand_elements = Vec::new();
+        for i in 0..trace.layout().num_aux_segments() {
+            // draw a set of random elements required to build an auxiliary trace segment
+            let rand_elements = channel.get_trace_segment_rand_elements(i);
+
+            // build the trace segment
+            let aux_segment = trace
+                .build_aux_segment(&rand_elements)
+                .expect("failed build auxiliary trace segment");
+
+            // extend the auxiliary trace segment and build a Merkle tree from the extended trace
+            let (_aux_segment_lde, aux_segment_tree, aux_segment_polys) =
+                self.build_trace_commitment::<H>(aux_segment, &domain);
+
+            // commit to the LDE of the extended auxiliary trace segment  by writing the root of
+            // its Merkle tree into the channel
+            channel.commit_trace(*aux_segment_tree.root());
+
+            // append the segment to the trace commitment and trace polynomial table structs
+            // TODO: merge commitments
+            trace_polys.add_aux_segment(aux_segment_polys);
+            aux_segment_rand_elements.push(rand_elements);
+        }
+
+        // make sure the specified trace (including auxiliary segments) is valid against the AIR.
+        // This checks validity of both, assertions and state transitions. We do this in debug
+        // mode only because this is a very expensive operation.
+        #[cfg(debug_assertions)]
+        trace.validate(&air, &aux_segment_rand_elements);
 
         // 2 ----- evaluate constraints -----------------------------------------------------------
         // evaluate constraints specified by the AIR over the constraint evaluation domain, and
@@ -421,8 +458,9 @@ pub trait Prover {
         trace: &Matrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
     ) -> (
-        TraceCommitment<Self::BaseField, H>,
-        TracePolyTable<Self::BaseField>,
+        Matrix<Self::BaseField>,
+        MerkleTree<H>,
+        Matrix<Self::BaseField>,
     )
     where
         H: ElementHasher<BaseField = Self::BaseField>,
@@ -453,10 +491,7 @@ pub trait Prover {
             now.elapsed().as_millis()
         );
 
-        (
-            TraceCommitment::new(trace_lde, trace_tree, domain.trace_to_lde_blowup()),
-            TracePolyTable::new(trace_polys),
-        )
+        (trace_lde, trace_tree, trace_polys)
     }
 
     /// Evaluates constraint composition polynomial over the LDE domain and builds a commitment
