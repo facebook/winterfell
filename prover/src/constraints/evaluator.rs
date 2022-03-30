@@ -5,12 +5,13 @@
 
 use super::{
     evaluation_table::EvaluationTableFragment, BoundaryConstraintGroup, ConstraintEvaluationTable,
-    PeriodicValueTable, StarkDomain, TraceLde,
+    PeriodicValueTable, StarkDomain, TraceCommitment,
 };
 use air::{
     Air, ConstraintCompositionCoefficients, ConstraintDivisor, EvaluationFrame,
     TransitionConstraintGroup,
 };
+use crypto::ElementHasher;
 use math::FieldElement;
 use utils::{
     collections::{BTreeMap, Vec},
@@ -93,13 +94,13 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     /// Evaluates constraints against the provided extended execution trace. Constraints are
     /// evaluated over a constraint evaluation domain. This is an optimization because constraint
     /// evaluation domain can be many times smaller than the full LDE domain.
-    pub fn evaluate(
+    pub fn evaluate<H: ElementHasher<BaseField = A::BaseField>>(
         &self,
-        trace: &TraceLde<A::BaseField>,
+        trace: &TraceCommitment<A::BaseField, H>,
         domain: &StarkDomain<A::BaseField>,
     ) -> ConstraintEvaluationTable<A::BaseField, E> {
         assert_eq!(
-            trace.len(),
+            trace.trace_len(),
             domain.lde_domain_size(),
             "extended trace length is not consistent with evaluation domain"
         );
@@ -145,14 +146,14 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     // --------------------------------------------------------------------------------------------
 
     /// Evaluates constraints for a single fragment of the evaluation table.
-    fn evaluate_fragment(
+    fn evaluate_fragment<H: ElementHasher<BaseField = A::BaseField>>(
         &self,
-        trace: &TraceLde<A::BaseField>,
+        trace: &TraceCommitment<A::BaseField, H>,
         domain: &StarkDomain<A::BaseField>,
         fragment: &mut EvaluationTableFragment<A::BaseField, E>,
     ) {
         // initialize buffers to hold trace values and evaluation results at each step;
-        let mut ev_frame = EvaluationFrame::new(trace.width());
+        let mut ev_frame = EvaluationFrame::new(trace.trace_width());
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
         let mut t_evaluations = vec![A::BaseField::ZERO; self.air.num_transition_constraints()];
 

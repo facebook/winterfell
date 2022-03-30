@@ -15,9 +15,8 @@ pub struct StarkDomain<B: StarkField> {
     /// vector is half the length of the trace domain size.
     trace_twiddles: Vec<B>,
 
-    /// Twiddles which can be used to evaluate polynomials in the constraint evaluation domain.
-    /// Length of this vector is half the length of constraint evaluation domain size.
-    ce_twiddles: Vec<B>,
+    /// Size of the constraint evaluation domain.
+    ce_domain_size: usize,
 
     /// LDE domain size / constraint evaluation domain size
     ce_to_lde_blowup: usize,
@@ -33,10 +32,9 @@ impl<B: StarkField> StarkDomain<B> {
     /// Returns a new STARK domain initialized with the provided `context`.
     pub fn new<A: Air<BaseField = B>>(air: &A) -> Self {
         let trace_twiddles = fft::get_twiddles(air.trace_length());
-        let ce_twiddles = fft::get_twiddles(air.ce_domain_size());
         StarkDomain {
             trace_twiddles,
-            ce_twiddles,
+            ce_domain_size: air.ce_domain_size(),
             ce_to_lde_blowup: air.lde_domain_size() / air.ce_domain_size(),
             domain_offset: air.domain_offset(),
         }
@@ -71,17 +69,12 @@ impl<B: StarkField> StarkDomain<B> {
 
     /// Returns the size of the constraint evaluation domain for this computation.
     pub fn ce_domain_size(&self) -> usize {
-        &self.ce_twiddles.len() * 2
+        self.ce_domain_size
     }
 
     /// Returns the generator of constraint evaluation domain.
     pub fn ce_domain_generator(&self) -> B {
         B::get_root_of_unity(log2(self.ce_domain_size()))
-    }
-
-    /// Returns twiddles which can be used to evaluate constraint polynomials.
-    pub fn ce_twiddles(&self) -> &[B] {
-        &self.ce_twiddles
     }
 
     /// Returns blowup factor from constraint evaluation to LDE domain.
