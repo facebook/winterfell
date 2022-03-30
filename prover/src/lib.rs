@@ -77,7 +77,7 @@ use math::log2;
 use std::time::Instant;
 
 mod domain;
-use domain::StarkDomain;
+pub use domain::StarkDomain;
 
 mod matrix;
 pub use matrix::Matrix;
@@ -89,8 +89,8 @@ mod composer;
 use composer::DeepCompositionPoly;
 
 mod trace;
-use trace::TracePolyTable;
-pub use trace::{Trace, TraceCommitment, TraceTable, TraceTableFragment};
+pub use trace::{Trace, TraceTable, TraceTableFragment};
+use trace::{TraceCommitment, TracePolyTable};
 
 mod channel;
 use channel::ProverChannel;
@@ -241,7 +241,7 @@ pub trait Prover {
         // initialize trace commitment and trace polynomial table structs with the main trace
         // data; for multi-segment traces these structs will be used as accumulators of all
         // trace segments
-        let trace_commitment = TraceCommitment::new(
+        let mut trace_commitment = TraceCommitment::new(
             main_trace_lde,
             main_trace_tree,
             domain.trace_to_lde_blowup(),
@@ -261,7 +261,7 @@ pub trait Prover {
                 .expect("failed build auxiliary trace segment");
 
             // extend the auxiliary trace segment and build a Merkle tree from the extended trace
-            let (_aux_segment_lde, aux_segment_tree, aux_segment_polys) =
+            let (aux_segment_lde, aux_segment_tree, aux_segment_polys) =
                 self.build_trace_commitment::<H>(aux_segment, &domain);
 
             // commit to the LDE of the extended auxiliary trace segment  by writing the root of
@@ -269,7 +269,7 @@ pub trait Prover {
             channel.commit_trace(*aux_segment_tree.root());
 
             // append the segment to the trace commitment and trace polynomial table structs
-            // TODO: merge commitments
+            trace_commitment.add_segment(aux_segment_lde, aux_segment_tree);
             trace_polys.add_aux_segment(aux_segment_polys);
             aux_segment_rand_elements.push(rand_elements);
         }

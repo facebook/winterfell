@@ -171,7 +171,7 @@ where
     /// this method.
     pub fn build_proof(
         self,
-        trace_queries: Queries,
+        mut trace_queries: Vec<Queries>,
         constraint_queries: Queries,
         fri_proof: FriProof,
     ) -> StarkProof {
@@ -179,7 +179,7 @@ where
             context: self.context,
             commitments: self.commitments,
             ood_frame: self.ood_frame,
-            trace_queries,
+            trace_queries: trace_queries.remove(0), // TODO: update proof to handle multiple segments
             constraint_queries,
             fri_proof,
             pow_nonce: self.pow_nonce,

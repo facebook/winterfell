@@ -79,11 +79,11 @@ fn extend_trace_table() {
     let lde_domain = build_lde_domain(domain.lde_domain_size());
     assert_eq!(
         trace_polys.get_poly(0),
-        polynom::interpolate(&lde_domain, trace_comm.get_trace_column(0), true)
+        polynom::interpolate(&lde_domain, trace_comm.get_main_trace_column(0), true)
     );
     assert_eq!(
         trace_polys.get_poly(1),
-        polynom::interpolate(&lde_domain, trace_comm.get_trace_column(1), true)
+        polynom::interpolate(&lde_domain, trace_comm.get_main_trace_column(1), true)
     );
 }
 
@@ -107,7 +107,7 @@ fn commit_trace_table() {
     #[allow(clippy::needless_range_loop)]
     for i in 0..trace_comm.trace_len() {
         for j in 0..trace_comm.trace_width() {
-            trace_state[j] = trace_comm.get_trace_cell(j, i);
+            trace_state[j] = trace_comm.get_main_trace_cell(j, i);
         }
         let buf = Blake3::hash_elements(&trace_state);
         hashed_states.push(buf);
@@ -115,7 +115,7 @@ fn commit_trace_table() {
     let expected_tree = MerkleTree::<Blake3>::new(hashed_states).unwrap();
 
     // compare the result
-    assert_eq!(*expected_tree.root(), trace_comm.root())
+    assert_eq!(*expected_tree.root(), trace_comm.main_trace_root())
 }
 
 // HELPER FUNCTIONS

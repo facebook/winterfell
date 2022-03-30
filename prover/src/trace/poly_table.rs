@@ -31,8 +31,13 @@ impl<B: StarkField> TracePolyTable<B> {
     // --------------------------------------------------------------------------------------------
 
     /// Adds the provided auxiliary segment polynomials to this polynomial table.
-    pub fn add_aux_segment(&mut self, segment_polys: Matrix<B>) {
-        self.aux_segment_polys.push(segment_polys);
+    pub fn add_aux_segment(&mut self, aux_segment_polys: Matrix<B>) {
+        assert_eq!(
+            self.main_segment_polys.num_rows(),
+            aux_segment_polys.num_rows(),
+            "polynomials in auxiliary segment must be of the same size as in the main segment"
+        );
+        self.aux_segment_polys.push(aux_segment_polys);
     }
 
     // PUBLIC ACCESSORS
