@@ -44,10 +44,10 @@
 extern crate alloc;
 
 pub use air::{
-    proof::StarkProof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
-    ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
-    EvaluationFrame, FieldExtension, HashFunction, ProofOptions, TraceInfo,
-    TransitionConstraintDegree, TransitionConstraintGroup,
+    proof::StarkProof, Air, AirContext, Assertion, AuxTraceSegmentRandElements, BoundaryConstraint,
+    BoundaryConstraintGroup, ConstraintCompositionCoefficients, ConstraintDivisor,
+    DeepCompositionCoefficients, EvaluationFrame, FieldExtension, HashFunction, ProofOptions,
+    TraceInfo, TransitionConstraintDegree, TransitionConstraintGroup,
 };
 pub use utils::{
     iterators, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
@@ -250,10 +250,10 @@ pub trait Prover {
 
         // build auxiliary trace segments (if any), and append the resulting segments to trace
         // commitment and trace polynomial table structs
-        let mut aux_segment_rand_elements = Vec::new();
+        let mut aux_trace_rand_elements = AuxTraceSegmentRandElements::new();
         for i in 0..trace.layout().num_aux_segments() {
             // draw a set of random elements required to build an auxiliary trace segment
-            let rand_elements = channel.get_trace_segment_rand_elements(i);
+            let rand_elements = channel.get_aux_trace_segment_rand_elements(i);
 
             // build the trace segment
             let aux_segment = trace
@@ -271,14 +271,14 @@ pub trait Prover {
             // append the segment to the trace commitment and trace polynomial table structs
             trace_commitment.add_segment(aux_segment_lde, aux_segment_tree);
             trace_polys.add_aux_segment(aux_segment_polys);
-            aux_segment_rand_elements.push(rand_elements);
+            aux_trace_rand_elements.add_segment_elements(rand_elements);
         }
 
         // make sure the specified trace (including auxiliary segments) is valid against the AIR.
         // This checks validity of both, assertions and state transitions. We do this in debug
         // mode only because this is a very expensive operation.
         #[cfg(debug_assertions)]
-        trace.validate(&air, &aux_segment_rand_elements);
+        trace.validate(&air, &aux_trace_rand_elements);
 
         // 2 ----- evaluate constraints -----------------------------------------------------------
         // evaluate constraints specified by the AIR over the constraint evaluation domain, and

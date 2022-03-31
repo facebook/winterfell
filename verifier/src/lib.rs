@@ -33,10 +33,10 @@
 extern crate alloc;
 
 pub use air::{
-    proof::StarkProof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
-    ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
-    EvaluationFrame, FieldExtension, HashFunction, ProofOptions, TraceInfo,
-    TransitionConstraintDegree, TransitionConstraintGroup,
+    proof::StarkProof, Air, AirContext, Assertion, AuxTraceSegmentRandElements, BoundaryConstraint,
+    BoundaryConstraintGroup, ConstraintCompositionCoefficients, ConstraintDivisor,
+    DeepCompositionCoefficients, EvaluationFrame, FieldExtension, HashFunction, ProofOptions,
+    TraceInfo, TransitionConstraintDegree, TransitionConstraintGroup,
 };
 
 pub use math;
@@ -178,12 +178,30 @@ where
     H: ElementHasher<BaseField = A::BaseField>,
 {
     // 1 ----- trace commitment -------------------------------------------------------------------
-    // read the commitment to evaluations of the trace polynomials over the LDE domain sent by the
-    // prover, use it to update the public coin, and draw a set of random coefficients from the
-    // coin; in the interactive version of the protocol, the verifier sends these coefficients to
-    // the prover, and prover uses them to compute constraint composition polynomial.
-    let trace_commitment = channel.read_trace_commitment();
-    public_coin.reseed(trace_commitment);
+    // read the commitments to evaluations of the trace polynomials over the LDE domain sent by the
+    // prover. the commitments are used to update the public coin, and draw sets of random elements
+    // from the coin (in the interactive version of the protocol the verifier sends these random
+    // elements to the prover after each commitment is made). when there are multiple trace
+    // commitments (i.e., the trace consists of more than one segment), each previous commitment is
+    // used to draw random elements needed for the next trace segment. the last trace commitment is
+    // used to draw a set of random coefficients which the the prover uses to compute constraint
+    // composition polynomial.
+    let trace_commitments = channel.read_trace_commitments();
+
+    // reseed the coin with the commitment to the main trace segment
+    public_coin.reseed(trace_commitments[0]);
+
+    // process auxiliary trace segments (if any), to build a set of random elements for each segment
+    let mut aux_trace_rand_elements = AuxTraceSegmentRandElements::<E>::new();
+    for (i, commitment) in trace_commitments.iter().skip(1).enumerate() {
+        let rand_elements = air
+            .get_aux_trace_segment_random_elements(i, &mut public_coin)
+            .map_err(|_| VerifierError::RandomCoinError)?;
+        aux_trace_rand_elements.add_segment_elements(rand_elements);
+        public_coin.reseed(*commitment);
+    }
+
+    // build random coefficients for the composition polynomial
     let constraint_coeffs = air
         .get_constraint_composition_coefficients(&mut public_coin)
         .map_err(|_| VerifierError::RandomCoinError)?;
@@ -272,9 +290,8 @@ where
 
     // read evaluations of trace and constraint composition polynomials at the queried positions;
     // this also checks that the read values are valid against trace and constraint commitments
-    let queried_trace_states = channel.read_trace_states(&query_positions, &trace_commitment)?;
-    let queried_evaluations =
-        channel.read_constraint_evaluations(&query_positions, &constraint_commitment)?;
+    let queried_trace_states = channel.read_trace_states(&query_positions)?;
+    let queried_evaluations = channel.read_constraint_evaluations(&query_positions)?;
 
     // 6 ----- DEEP composition -------------------------------------------------------------------
     // compute evaluations of the DEEP composition polynomial at the queried positions

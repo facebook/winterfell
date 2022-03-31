@@ -50,8 +50,9 @@ pub struct StarkProof {
     pub context: Context,
     /// Commitments made by the prover during the commit phase of the protocol.
     pub commitments: Commitments,
-    /// Decommitments of extended execution trace values at positions queried by the verifier.
-    pub trace_queries: Queries,
+    /// Decommitments of extended execution trace values (for all trace segments) at position
+    ///  queried by the verifier.
+    pub trace_queries: Vec<Queries>,
     /// Decommitments of constraint composition polynomial evaluations at positions queried by
     /// the verifier.
     pub constraint_queries: Queries,
@@ -133,10 +134,25 @@ impl StarkProof {
     /// Returns an error of a valid STARK proof could not be read from the specified `source`.
     pub fn from_bytes(source: &[u8]) -> Result<Self, DeserializationError> {
         let mut source = SliceReader::new(source);
+
+        // parse the context
+        let context = Context::read_from(&mut source)?;
+
+        // parse the commitments
+        let commitments = Commitments::read_from(&mut source)?;
+
+        // parse trace queries
+        let num_trace_segments = context.trace_layout().num_aux_segments() + 1;
+        let mut trace_queries = Vec::with_capacity(num_trace_segments);
+        for _ in 0..num_trace_segments {
+            trace_queries.push(Queries::read_from(&mut source)?);
+        }
+
+        // parse the rest of the proof
         let proof = StarkProof {
-            context: Context::read_from(&mut source)?,
-            commitments: Commitments::read_from(&mut source)?,
-            trace_queries: Queries::read_from(&mut source)?,
+            context,
+            commitments,
+            trace_queries,
             constraint_queries: Queries::read_from(&mut source)?,
             ood_frame: OodFrame::read_from(&mut source)?,
             fri_proof: FriProof::read_from(&mut source)?,

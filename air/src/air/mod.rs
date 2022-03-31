@@ -27,7 +27,9 @@ mod transition;
 pub use transition::{EvaluationFrame, TransitionConstraintDegree, TransitionConstraintGroup};
 
 mod coefficients;
-pub use coefficients::{ConstraintCompositionCoefficients, DeepCompositionCoefficients};
+pub use coefficients::{
+    AuxTraceSegmentRandElements, ConstraintCompositionCoefficients, DeepCompositionCoefficients,
+};
 
 mod divisor;
 pub use divisor::ConstraintDivisor;
@@ -351,6 +353,14 @@ pub trait Air: Send + Sync {
         self.context().trace_info.length()
     }
 
+    /// Returns the total number of segments in the execution trace for an instance of the
+    /// computation described by this AIR.
+    ///
+    /// The number of segments is guaranteed to be at least one.
+    fn num_trace_segments(&self) -> usize {
+        self.context().trace_info.layout().num_aux_segments() + 1
+    }
+
     /// Returns the total number of columns in the execution trace for an instance of the
     /// computation described by this AIR.
     ///
@@ -472,7 +482,7 @@ pub trait Air: Send + Sync {
     /// with the specified index.
     ///
     /// The elements are drawn uniformly at random from the provided public coin.
-    fn get_trace_segment_random_elements<E, H>(
+    fn get_aux_trace_segment_random_elements<E, H>(
         &self,
         aux_segment_idx: usize,
         public_coin: &mut RandomCoin<Self::BaseField, H>,

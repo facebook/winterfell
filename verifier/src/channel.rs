@@ -20,9 +20,9 @@ where
     H: ElementHasher<BaseField = B>,
 {
     // trace queries
-    trace_root: H::Digest,
-    trace_proof: BatchMerkleProof<H>,
-    trace_states: Option<Vec<Vec<B>>>,
+    trace_roots: Vec<H::Digest>,
+    trace_proof: BatchMerkleProof<H>, // TODO: update to multi-segment
+    trace_states: Option<Vec<Vec<B>>>, // TODO: update to multi-segment
     // constraint queries
     constraint_root: H::Digest,
     constraint_proof: BatchMerkleProof<H>,
@@ -53,24 +53,37 @@ where
     // --------------------------------------------------------------------------------------------
     /// Creates and returns a new verifier channel initialized from the specified `proof`.
     pub fn new<A: Air<BaseField = B>>(air: &A, proof: StarkProof) -> Result<Self, VerifierError> {
+        let StarkProof {
+            context,
+            commitments,
+            mut trace_queries, // TODO
+            constraint_queries,
+            ood_frame,
+            fri_proof,
+            pow_nonce,
+        } = proof;
+
         // make AIR and proof base fields are the same
-        if B::get_modulus_le_bytes() != proof.context.field_modulus_bytes() {
+        if B::get_modulus_le_bytes() != context.field_modulus_bytes() {
             return Err(VerifierError::InconsistentBaseField);
         }
 
+        let num_trace_segments = air.num_trace_segments();
         let lde_domain_size = air.lde_domain_size();
         let num_queries = air.options().num_queries();
         let fri_options = air.options().to_fri_options();
 
         // --- parse commitments ------------------------------------------------------------------
-        let (trace_root, constraint_root, fri_roots) = proof
-            .commitments
-            .parse::<H>(fri_options.num_fri_layers(lde_domain_size))
+        let (trace_roots, constraint_root, fri_roots) = commitments
+            .parse::<H>(
+                num_trace_segments,
+                fri_options.num_fri_layers(lde_domain_size),
+            )
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         // --- parse trace queries ----------------------------------------------------------------
-        let (trace_proof, trace_states) = proof
-            .trace_queries
+        let trace_queries = trace_queries.remove(0);
+        let (trace_proof, trace_states) = trace_queries
             .parse::<H, B>(lde_domain_size, num_queries, air.trace_full_width())
             .map_err(|err| {
                 VerifierError::ProofDeserializationError(format!(
@@ -80,8 +93,7 @@ where
             })?;
 
         // --- parse constraint evaluation queries ------------------------------------------------
-        let (constraint_proof, constraint_evaluations) = proof
-            .constraint_queries
+        let (constraint_proof, constraint_evaluations) = constraint_queries
             .parse::<H, E>(lde_domain_size, num_queries, air.ce_blowup_factor())
             .map_err(|err| {
                 VerifierError::ProofDeserializationError(format!(
@@ -91,25 +103,22 @@ where
             })?;
 
         // --- parse FRI proofs -------------------------------------------------------------------
-        let fri_num_partitions = proof.fri_proof.num_partitions();
-        let fri_remainder = proof
-            .fri_proof
+        let fri_num_partitions = fri_proof.num_partitions();
+        let fri_remainder = fri_proof
             .parse_remainder()
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
-        let (fri_layer_queries, fri_layer_proofs) = proof
-            .fri_proof
+        let (fri_layer_queries, fri_layer_proofs) = fri_proof
             .parse_layers::<H, E>(lde_domain_size, fri_options.folding_factor())
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         // --- parse out-of-domain evaluation frame -----------------------------------------------
-        let (ood_frame, ood_evaluations) = proof
-            .ood_frame
+        let (ood_frame, ood_evaluations) = ood_frame
             .parse(air.trace_full_width(), air.ce_blowup_factor())
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         Ok(VerifierChannel {
             // trace queries
-            trace_root,
+            trace_roots,
             trace_proof,
             trace_states: Some(trace_states),
             // constraint queries
@@ -126,7 +135,7 @@ where
             ood_frame: Some(ood_frame),
             ood_evaluations: Some(ood_evaluations),
             // query seed
-            pow_nonce: proof.pow_nonce,
+            pow_nonce,
         })
     }
 
@@ -134,8 +143,8 @@ where
     // --------------------------------------------------------------------------------------------
 
     /// Returns execution trace commitment sent by the prover.
-    pub fn read_trace_commitment(&self) -> H::Digest {
-        self.trace_root
+    pub fn read_trace_commitments(&self) -> &[H::Digest] {
+        &self.trace_roots
     }
 
     /// Returns constraint evaluation commitment sent by the prover.
@@ -162,13 +171,10 @@ where
 
     /// Returns trace states at the specified positions of the LDE domain. This also checks if
     /// the trace states are valid against the trace commitment sent by the prover.
-    pub fn read_trace_states(
-        &mut self,
-        positions: &[usize],
-        commitment: &H::Digest,
-    ) -> Result<Vec<Vec<B>>, VerifierError> {
+    pub fn read_trace_states(&mut self, positions: &[usize]) -> Result<Vec<Vec<B>>, VerifierError> {
         // make sure the states included in the proof correspond to the trace commitment
-        MerkleTree::verify_batch(commitment, positions, &self.trace_proof)
+        let trace_commitment = &self.trace_roots[0]; // TODO
+        MerkleTree::verify_batch(trace_commitment, positions, &self.trace_proof)
             .map_err(|_| VerifierError::TraceQueryDoesNotMatchCommitment)?;
 
         Ok(self.trace_states.take().expect("already read"))
@@ -180,9 +186,8 @@ where
     pub fn read_constraint_evaluations(
         &mut self,
         positions: &[usize],
-        commitment: &H::Digest,
     ) -> Result<Vec<Vec<E>>, VerifierError> {
-        MerkleTree::verify_batch(commitment, positions, &self.constraint_proof)
+        MerkleTree::verify_batch(&self.constraint_root, positions, &self.constraint_proof)
             .map_err(|_| VerifierError::ConstraintQueryDoesNotMatchCommitment)?;
 
         Ok(self.constraint_evaluations.take().expect("already read"))

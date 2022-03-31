@@ -103,9 +103,9 @@ where
     /// the specified index.
     ///
     /// The elements are drawn from the public coin uniformly at random.
-    pub fn get_trace_segment_rand_elements(&mut self, aux_segment_idx: usize) -> Vec<E> {
+    pub fn get_aux_trace_segment_rand_elements(&mut self, aux_segment_idx: usize) -> Vec<E> {
         self.air
-            .get_trace_segment_random_elements(aux_segment_idx, &mut self.public_coin)
+            .get_aux_trace_segment_random_elements(aux_segment_idx, &mut self.public_coin)
             .expect("failed to draw random elements for an auxiliary trace segment")
     }
 
@@ -171,7 +171,7 @@ where
     /// this method.
     pub fn build_proof(
         self,
-        mut trace_queries: Vec<Queries>,
+        trace_queries: Vec<Queries>,
         constraint_queries: Queries,
         fri_proof: FriProof,
     ) -> StarkProof {
@@ -179,7 +179,7 @@ where
             context: self.context,
             commitments: self.commitments,
             ood_frame: self.ood_frame,
-            trace_queries: trace_queries.remove(0), // TODO: update proof to handle multiple segments
+            trace_queries,
             constraint_queries,
             fri_proof,
             pow_nonce: self.pow_nonce,
