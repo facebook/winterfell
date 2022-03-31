@@ -3,25 +3,20 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::StarkDomain;
-use core::marker::PhantomData;
-use math::{fft, polynom, FieldElement, StarkField};
-use utils::{collections::Vec, iter, uninit_vector};
-
-#[cfg(feature = "concurrent")]
-use utils::iterators::*;
+use super::{Matrix, StarkDomain};
+use math::{polynom, FieldElement, StarkField};
+use utils::{collections::Vec, uninit_vector};
 
 // COMPOSITION POLYNOMIAL
 // ================================================================================================
 /// Represents a composition polynomial split into columns with each column being of length equal
 /// to trace_length. Thus, for example, if the composition polynomial has degree 2N - 1, where N
 /// is the trace length, it will be stored as two columns of size N (each of degree N - 1).
-pub struct CompositionPoly<B: StarkField, E: FieldElement<BaseField = B>> {
-    columns: Vec<Vec<E>>,
-    _base_field: PhantomData<B>,
+pub struct CompositionPoly<E: FieldElement> {
+    data: Matrix<E>,
 }
 
-impl<B: StarkField, E: FieldElement<BaseField = B>> CompositionPoly<B, E> {
+impl<E: FieldElement> CompositionPoly<E> {
     /// Returns a new composition polynomial.
     pub fn new(coefficients: Vec<E>, trace_length: usize) -> Self {
         assert!(
@@ -49,8 +44,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> CompositionPoly<B, E> {
         let polys = transpose(coefficients, num_columns);
 
         CompositionPoly {
-            columns: polys,
-            _base_field: PhantomData,
+            data: Matrix::new(polys),
         }
     }
 
@@ -60,12 +54,12 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> CompositionPoly<B, E> {
     /// Returns the number of individual column polynomials used to describe this composition
     /// polynomial.
     pub fn num_columns(&self) -> usize {
-        self.columns.len()
+        self.data.num_cols()
     }
 
     /// Returns the length of individual column polynomials; this is guaranteed to be a power of 2.
     pub fn column_len(&self) -> usize {
-        self.columns[0].len()
+        self.data.num_rows()
     }
 
     /// Returns the degree of individual column polynomial.
@@ -78,10 +72,10 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> CompositionPoly<B, E> {
     // --------------------------------------------------------------------------------------------
     /// Evaluates the columns of the composition polynomial over the specified LDE domain and
     /// returns the result.
-    pub fn evaluate(&self, domain: &StarkDomain<B>) -> Vec<Vec<E>>
+    pub fn evaluate<B>(&self, domain: &StarkDomain<B>) -> Matrix<E>
     where
         B: StarkField,
-        E: From<B>,
+        E: FieldElement<BaseField = B>,
     {
         assert_eq!(
             self.column_len(),
@@ -91,30 +85,19 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> CompositionPoly<B, E> {
             domain.trace_length()
         );
 
-        iter!(self.columns)
-            .map(|poly| {
-                fft::evaluate_poly_with_offset(
-                    poly,
-                    domain.trace_twiddles(),
-                    domain.offset(),
-                    domain.trace_to_lde_blowup(),
-                )
-            })
-            .collect()
+        self.data.evaluate_columns_over(domain)
     }
 
     /// Returns evaluations of all composition polynomial columns at point z^m, where m is
     /// the number of column polynomials.
     pub fn evaluate_at(&self, z: E) -> Vec<E> {
-        let z_m = z.exp((self.columns.len() as u32).into());
-        iter!(self.columns)
-            .map(|poly| polynom::eval(poly, z_m))
-            .collect()
+        let z_m = z.exp((self.num_columns() as u32).into());
+        self.data.evaluate_columns_at(z_m)
     }
 
     /// Transforms this composition polynomial into a vector of individual column polynomials.
     pub fn into_columns(self) -> Vec<Vec<E>> {
-        self.columns
+        self.data.into_columns()
     }
 }
 

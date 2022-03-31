@@ -79,15 +79,18 @@ use std::time::Instant;
 mod domain;
 use domain::StarkDomain;
 
+mod matrix;
+pub use matrix::Matrix;
+
 mod constraints;
-use constraints::{ConstraintCommitment, ConstraintEvaluator};
+use constraints::{CompositionPoly, ConstraintCommitment, ConstraintEvaluator};
 
 mod composer;
 use composer::DeepCompositionPoly;
 
 mod trace;
 use trace::TracePolyTable;
-pub use trace::{Trace, TraceTable, TraceTableFragment};
+pub use trace::{Trace, TraceCommitment, TraceTable, TraceTableFragment};
 
 mod channel;
 use channel::ProverChannel;
@@ -220,7 +223,7 @@ pub trait Prover {
         // should come from the verifier.
         let mut channel = ProverChannel::<Self::Air, E, H>::new(&air, pub_inputs_bytes);
 
-        // 1 ----- extend execution trace ---------------------------------------------------------
+        // 1 ----- Commit to the execution trace --------------------------------------------------
 
         // build computation domain; this is used later for polynomial evaluations
         #[cfg(feature = "std")]
@@ -233,33 +236,14 @@ pub trait Prover {
             now.elapsed().as_millis()
         );
 
-        // extend the execution trace; this interpolates each register of the trace into a
-        // polynomial, and then evaluates the polynomial over the LDE domain; each of the trace
-        // polynomials has degree = trace_length - 1
-        let (extended_trace, trace_polys) = trace.extend(&domain);
-        #[cfg(feature = "std")]
-        debug!(
-        "Extended execution trace of {} registers from 2^{} to 2^{} steps ({}x blowup) in {} ms",
-        extended_trace.width(),
-        log2(trace_polys.poly_size()),
-        log2(extended_trace.len()),
-        extended_trace.blowup(),
-        now.elapsed().as_millis()
-    );
+        // extend the execution trace and build a Merkle tree from the extended trace
+        let (trace_commitment, trace_polys) =
+            self.build_trace_commitment::<H>(trace.into_matrix(), &domain);
 
-        // 2 ----- commit to the extended execution trace -----------------------------------------
-        #[cfg(feature = "std")]
-        let now = Instant::now();
-        let trace_tree = extended_trace.build_commitment::<H>();
-        channel.commit_trace(*trace_tree.root());
-        #[cfg(feature = "std")]
-        debug!(
-            "Committed to extended execution trace by building a Merkle tree of depth {} in {} ms",
-            trace_tree.depth(),
-            now.elapsed().as_millis()
-        );
+        // commit to the extended trace by writing the root of the Merkle tree into the channel
+        channel.commit_trace(trace_commitment.root());
 
-        // 3 ----- evaluate constraints -----------------------------------------------------------
+        // 2 ----- evaluate constraints -----------------------------------------------------------
         // evaluate constraints specified by the AIR over the constraint evaluation domain, and
         // compute random linear combinations of these evaluations using coefficients drawn from
         // the channel; this step evaluates only constraint numerators, thus, only constraints with
@@ -270,7 +254,7 @@ pub trait Prover {
         let now = Instant::now();
         let constraint_coeffs = channel.get_constraint_composition_coeffs();
         let evaluator = ConstraintEvaluator::new(&air, constraint_coeffs);
-        let constraint_evaluations = evaluator.evaluate(&extended_trace, &domain);
+        let constraint_evaluations = evaluator.evaluate(&trace_commitment, &domain);
         #[cfg(feature = "std")]
         debug!(
             "Evaluated constraints over domain of 2^{} elements in {} ms",
@@ -278,7 +262,7 @@ pub trait Prover {
             now.elapsed().as_millis()
         );
 
-        // 4 ----- commit to constraint evaluations -----------------------------------------------
+        // 3 ----- commit to constraint evaluations -----------------------------------------------
 
         // first, build constraint composition polynomial from the constraint evaluation table:
         // - divide all constraint evaluation columns by their respective divisors
@@ -291,36 +275,21 @@ pub trait Prover {
         let composition_poly = constraint_evaluations.into_poly()?;
         #[cfg(feature = "std")]
         debug!(
-        "Converted constraint evaluations into {} composition polynomial columns of degree {} in {} ms",
-        composition_poly.num_columns(),
-        composition_poly.column_degree(),
-        now.elapsed().as_millis()
-    );
-
-        // then, evaluate composition polynomial columns over the LDE domain
-        #[cfg(feature = "std")]
-        let now = Instant::now();
-        let composed_evaluations = composition_poly.evaluate(&domain);
-        #[cfg(feature = "std")]
-        debug!(
-            "Evaluated composition polynomial columns over LDE domain (2^{} elements) in {} ms",
-            log2(composed_evaluations[0].len()),
+            "Converted constraint evaluations into {} composition polynomial columns of degree {} in {} ms",
+            composition_poly.num_columns(),
+            composition_poly.column_degree(),
             now.elapsed().as_millis()
         );
 
-        // finally, commit to the composition polynomial evaluations
-        #[cfg(feature = "std")]
-        let now = Instant::now();
-        let constraint_commitment = ConstraintCommitment::<E, H>::new(composed_evaluations);
+        // then, build a commitment to the evaluations of the composition polynomial columns
+        let constraint_commitment =
+            self.build_constraint_commitment::<E, H>(&composition_poly, &domain);
+
+        // then, commit to the evaluations of constraints by writing the root of the constraint
+        // Merkle tree into the channel
         channel.commit_constraints(constraint_commitment.root());
-        #[cfg(feature = "std")]
-        debug!(
-            "Committed to composed evaluations by building a Merkle tree of depth {} in {} ms",
-            constraint_commitment.tree_depth(),
-            now.elapsed().as_millis()
-        );
 
-        // 5 ----- build DEEP composition polynomial ----------------------------------------------
+        // 4 ----- build DEEP composition polynomial ----------------------------------------------
         #[cfg(feature = "std")]
         let now = Instant::now();
 
@@ -369,7 +338,7 @@ pub trait Prover {
         // degree
         assert_eq!(domain.trace_length() - 1, deep_composition_poly.degree());
 
-        // 6 ----- evaluate DEEP composition polynomial over LDE domain ---------------------------
+        // 5 ----- evaluate DEEP composition polynomial over LDE domain ---------------------------
         #[cfg(feature = "std")]
         let now = Instant::now();
         let deep_evaluations = deep_composition_poly.evaluate(&domain);
@@ -386,7 +355,7 @@ pub trait Prover {
             now.elapsed().as_millis()
         );
 
-        // 7 ----- compute FRI layers for the composition polynomial ------------------------------
+        // 6 ----- compute FRI layers for the composition polynomial ------------------------------
         #[cfg(feature = "std")]
         let now = Instant::now();
         let mut fri_prover = FriProver::new(air.options().to_fri_options());
@@ -398,7 +367,7 @@ pub trait Prover {
             now.elapsed().as_millis()
         );
 
-        // 8 ----- determine query positions ------------------------------------------------------
+        // 7 ----- determine query positions ------------------------------------------------------
         #[cfg(feature = "std")]
         let now = Instant::now();
 
@@ -414,7 +383,7 @@ pub trait Prover {
             now.elapsed().as_millis()
         );
 
-        // 9 ----- build proof object -------------------------------------------------------------
+        // 8 ----- build proof object -------------------------------------------------------------
         #[cfg(feature = "std")]
         let now = Instant::now();
 
@@ -423,7 +392,7 @@ pub trait Prover {
 
         // query the execution trace at the selected position; for each query, we need the
         // state of the trace at that position + Merkle authentication path
-        let trace_queries = extended_trace.query(trace_tree, &query_positions);
+        let trace_queries = trace_commitment.query(&query_positions);
 
         // query the constraint commitment at the selected positions; for each query, we need just
         // a Merkle authentication path. this is because constraint evaluations for each step are
@@ -436,5 +405,99 @@ pub trait Prover {
         debug!("Built proof object in {} ms", now.elapsed().as_millis());
 
         Ok(proof)
+    }
+
+    /// Computes a low-degree extension (LDE) of the provided execution trace over the specified
+    /// domain and build a commitment to the extended trace.
+    ///
+    /// The extension is performed by interpolating each column of the execution trace into a
+    /// polynomial of degree = trace_length - 1, and then evaluating the polynomial over the LDE
+    /// domain.
+    ///
+    /// Trace commitment is computed by hashing each row of the extended execution trace, and then
+    /// building a Merkle tree from the resulting hashes.
+    fn build_trace_commitment<H>(
+        &self,
+        trace: Matrix<Self::BaseField>,
+        domain: &StarkDomain<Self::BaseField>,
+    ) -> (
+        TraceCommitment<Self::BaseField, H>,
+        TracePolyTable<Self::BaseField>,
+    )
+    where
+        H: ElementHasher<BaseField = Self::BaseField>,
+    {
+        // extend the execution trace
+        #[cfg(feature = "std")]
+        let now = Instant::now();
+        let trace_polys = trace.interpolate_columns_into();
+        let trace_lde = trace_polys.evaluate_columns_over(domain);
+        #[cfg(feature = "std")]
+        debug!(
+            "Extended execution trace of {} columns from 2^{} to 2^{} steps ({}x blowup) in {} ms",
+            trace_lde.num_cols(),
+            log2(trace_polys.num_rows()),
+            log2(trace_lde.num_rows()),
+            domain.trace_to_lde_blowup(),
+            now.elapsed().as_millis()
+        );
+
+        // build trace commitment
+        #[cfg(feature = "std")]
+        let now = Instant::now();
+        let trace_tree = trace_lde.commit_to_rows();
+        #[cfg(feature = "std")]
+        debug!(
+            "Computed execution trace commitment (Merkle tree of depth {}) in {} ms",
+            trace_tree.depth(),
+            now.elapsed().as_millis()
+        );
+
+        (
+            TraceCommitment::new(trace_lde, trace_tree, domain.trace_to_lde_blowup()),
+            TracePolyTable::new(trace_polys),
+        )
+    }
+
+    /// Evaluates constraint composition polynomial over the LDE domain and builds a commitment
+    /// to these evaluations.
+    ///
+    /// The evaluation is done by evaluating each composition polynomial column over the LDE
+    /// domain.
+    ///
+    /// The commitment is computed by hashing each row in the evaluation matrix, and then building
+    /// a Merkle tree from the resulting hashes.
+    fn build_constraint_commitment<E, H>(
+        &self,
+        composition_poly: &CompositionPoly<E>,
+        domain: &StarkDomain<Self::BaseField>,
+    ) -> ConstraintCommitment<E, H>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+        H: ElementHasher<BaseField = Self::BaseField>,
+    {
+        // evaluate composition polynomial columns over the LDE domain
+        #[cfg(feature = "std")]
+        let now = Instant::now();
+        let composed_evaluations = composition_poly.evaluate(domain);
+        #[cfg(feature = "std")]
+        debug!(
+            "Evaluated composition polynomial columns over LDE domain (2^{} elements) in {} ms",
+            log2(composed_evaluations.num_cols()),
+            now.elapsed().as_millis()
+        );
+
+        // build constraint evaluation commitment
+        #[cfg(feature = "std")]
+        let now = Instant::now();
+        let commitment = composed_evaluations.commit_to_rows();
+        let constraint_commitment = ConstraintCommitment::new(composed_evaluations, commitment);
+        #[cfg(feature = "std")]
+        debug!(
+            "Computed constraint evaluation commitment (Merkle tree of depth {}) in {} ms",
+            constraint_commitment.tree_depth(),
+            now.elapsed().as_millis()
+        );
+        constraint_commitment
     }
 }
