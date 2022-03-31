@@ -36,7 +36,7 @@ impl TraceInfo {
     pub const MAX_TRACE_WIDTH: usize = 255;
     /// Maximum number of bytes in trace metadata; currently set at 65535.
     pub const MAX_META_LENGTH: usize = 65535;
-    /// Maximum number of random elements per auxiliary trace segment.
+    /// Maximum number of random elements per auxiliary trace segment; currently set to 255.
     pub const MAX_RAND_SEGMENT_ELEMENTS: usize = 255;
 
     // CONSTRUCTORS
@@ -114,8 +114,8 @@ impl TraceInfo {
     /// Returns the total number of columns in an execution trace.
     ///
     /// This is guaranteed to be between 1 and 255.
-    pub fn full_width(&self) -> usize {
-        self.layout.full_width()
+    pub fn width(&self) -> usize {
+        self.layout.main_trace_width() + self.layout().aux_trace_width()
     }
 
     /// Returns execution trace length.
@@ -148,7 +148,6 @@ pub struct TraceLayout {
     aux_segment_widths: [usize; NUM_AUX_SEGMENTS],
     aux_segment_rands: [usize; NUM_AUX_SEGMENTS],
     num_aux_segments: usize,
-    full_width: usize,
 }
 
 impl TraceLayout {
@@ -216,7 +215,6 @@ impl TraceLayout {
             aux_segment_widths: aux_widths,
             aux_segment_rands: aux_rands,
             num_aux_segments,
-            full_width,
         }
     }
 
@@ -224,15 +222,20 @@ impl TraceLayout {
     // --------------------------------------------------------------------------------------------
 
     /// Returns the number of column in the main segment of an execution trace.
-    pub fn main_segment_width(&self) -> usize {
+    ///
+    /// This is guaranteed to be between 1 and 255.
+    pub fn main_trace_width(&self) -> usize {
         self.main_segment_width
     }
 
-    /// Returns the total number of columns in an execution trace.
-    ///
-    /// This is guaranteed to be between 1 and 255.
-    pub fn full_width(&self) -> usize {
-        self.full_width
+    /// Returns the number of columns in all auxiliary segments of an execution trace.
+    pub fn aux_trace_width(&self) -> usize {
+        self.aux_segment_widths.iter().sum()
+    }
+
+    /// Returns the total number of segments in an execution trace.
+    pub fn num_segments(&self) -> usize {
+        self.num_aux_segments + 1
     }
 
     /// Returns the number of auxiliary trace segments in an execution trace.

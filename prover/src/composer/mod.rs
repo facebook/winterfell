@@ -70,7 +70,7 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseField>> DeepCompositionPoly<A, E
     /// Note that evaluations of T_i(z) and T_i(z * g) are passed in via the `ood_frame` parameter.
     pub fn add_trace_polys(
         &mut self,
-        trace_polys: TracePolyTable<A::BaseField>,
+        trace_polys: TracePolyTable<A::BaseField, E>,
         ood_frame: EvaluationFrame<E>,
     ) {
         assert!(self.coefficients.is_empty());
@@ -94,10 +94,12 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseField>> DeepCompositionPoly<A, E
         } else {
             Vec::new()
         };
-        for (i, poly) in trace_polys.iter().enumerate() {
+
+        // --- merge polynomials of the main trace segment ----------------------------------------
+        for (i, poly) in trace_polys.main_trace_polys().enumerate() {
             // compute T'(x) = T(x) - T(z), multiply it by a pseudo-random coefficient,
             // and add the result into composition polynomial
-            acc_poly(
+            acc_main_trace_poly(
                 &mut t1_composition,
                 poly,
                 trace_state1[i],
@@ -106,7 +108,7 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseField>> DeepCompositionPoly<A, E
 
             // compute T''(x) = T(x) - T(z * g), multiply it by a pseudo-random coefficient,
             // and add the result into composition polynomial
-            acc_poly(
+            acc_main_trace_poly(
                 &mut t2_composition,
                 poly,
                 trace_state2[i],
@@ -116,13 +118,19 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseField>> DeepCompositionPoly<A, E
             // when extension field is enabled, compute T'''(x) = T(x) - T(z_conjugate), multiply
             // it by a pseudo-random coefficient, and add the result into composition polynomial
             if self.field_extension {
-                acc_poly(
+                acc_main_trace_poly(
                     &mut t3_composition,
                     poly,
                     trace_state1[i].conjugate(),
                     self.cc.trace[i].2,
                 );
             }
+        }
+
+        // --- merge polynomials of the auxiliary trace segments ----------------------------------
+        for _poly in trace_polys.aux_trace_polys() {
+            // TODO: implement
+            unimplemented!()
         }
 
         // divide the composition polynomials by (x - z), (x - z * g), and (x - z_conjugate)
@@ -246,8 +254,10 @@ fn merge_trace_compositions<E: FieldElement>(mut polys: Vec<Vec<E>>, divisors: V
     result
 }
 
-/// Computes (P(x) - value) * k and saves the result into the accumulator
-fn acc_poly<B, E>(accumulator: &mut [E], poly: &[B], value: E, k: E)
+/// Computes (P(x) - value) * k and saves the result into the accumulator.
+///
+/// Polynomial coefficients are expected to be in the base field.
+fn acc_main_trace_poly<B, E>(accumulator: &mut [E], poly: &[B], value: E, k: E)
 where
     B: StarkField,
     E: FieldElement<BaseField = B>,

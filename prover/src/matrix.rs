@@ -330,3 +330,65 @@ impl<'a, E: FieldElement> ExactSizeIterator for ColumnIterMut<'a, E> {
 }
 
 impl<'a, E: FieldElement> FusedIterator for ColumnIterMut<'a, E> {}
+
+// MULTI-MATRIX COLUMN ITERATOR
+// ================================================================================================
+
+pub struct MultiColumnIter<'a, E: FieldElement> {
+    matrixes: &'a [Matrix<E>],
+    m_cursor: usize,
+    c_cursor: usize,
+}
+
+impl<'a, E: FieldElement> MultiColumnIter<'a, E> {
+    pub fn new(matrixes: &'a [Matrix<E>]) -> Self {
+        // make sure all matrixes have the same number of rows
+        if !matrixes.is_empty() {
+            let num_rows = matrixes[0].num_rows();
+            for matrix in matrixes.iter().skip(1) {
+                assert_eq!(
+                    matrix.num_rows(),
+                    num_rows,
+                    "all matrixes must have the same number of rows"
+                );
+            }
+        }
+
+        Self {
+            matrixes,
+            m_cursor: 0,
+            c_cursor: 0,
+        }
+    }
+}
+
+impl<'a, E: FieldElement> Iterator for MultiColumnIter<'a, E> {
+    type Item = &'a [E];
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.matrixes.is_empty() {
+            return None;
+        }
+        let matrix = &self.matrixes[self.m_cursor];
+        match matrix.num_cols() - self.c_cursor {
+            0 => None,
+            _ => {
+                let column = matrix.get_column(self.c_cursor);
+                self.c_cursor += 1;
+                if self.c_cursor == matrix.num_cols() && self.m_cursor < self.matrixes.len() - 1 {
+                    self.m_cursor += 1;
+                    self.c_cursor = 0;
+                }
+                Some(column)
+            }
+        }
+    }
+}
+
+impl<'a, E: FieldElement> ExactSizeIterator for MultiColumnIter<'a, E> {
+    fn len(&self) -> usize {
+        self.matrixes.iter().fold(0, |s, m| s + m.num_cols())
+    }
+}
+
+impl<'a, E: FieldElement> FusedIterator for MultiColumnIter<'a, E> {}

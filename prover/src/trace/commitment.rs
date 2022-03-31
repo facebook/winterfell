@@ -4,10 +4,12 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::Matrix;
-use air::{proof::Queries, EvaluationFrame};
+use air::proof::Queries;
 use crypto::{ElementHasher, MerkleTree};
-use math::StarkField;
+use math::{FieldElement, StarkField};
 use utils::collections::Vec;
+
+use super::TraceLde;
 
 // TRACE COMMITMENT
 // ================================================================================================
@@ -17,15 +19,20 @@ use utils::collections::Vec;
 /// The described one or more trace segments, each consisting of the following components:
 /// * Evaluations of a trace segment's polynomials over the LDE domain.
 /// * Merkle tree where each leaf in the tree corresponds to a row in the trace LDE matrix.
-pub struct TraceCommitment<B: StarkField, H: ElementHasher<BaseField = B>> {
-    main_segment_lde: Matrix<B>,
+pub struct TraceCommitment<B, E, H>
+where
+    B: StarkField,
+    E: FieldElement<BaseField = B>,
+    H: ElementHasher<BaseField = B>,
+{
+    trace_lde: TraceLde<B, E>,
     main_segment_tree: MerkleTree<H>,
-    aux_segment_ldes: Vec<Matrix<B>>,
     aux_segment_trees: Vec<MerkleTree<H>>,
-    blowup: usize,
 }
 
-impl<B: StarkField, H: ElementHasher<BaseField = B>> TraceCommitment<B, H> {
+impl<B: StarkField, E: FieldElement<BaseField = B>, H: ElementHasher<BaseField = B>>
+    TraceCommitment<B, E, H>
+{
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Creates a new trace commitment from the provided main trace low-degree extension and the
@@ -37,11 +44,9 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> TraceCommitment<B, H> {
             "number of rows in trace LDE must be the same as number of leaves in trace commitment"
         );
         Self {
-            main_segment_lde: main_trace_lde,
+            trace_lde: TraceLde::new(main_trace_lde, blowup),
             main_segment_tree: main_trace_tree,
-            aux_segment_ldes: Vec::new(),
             aux_segment_trees: Vec::new(),
-            blowup,
         }
     }
 
@@ -49,62 +54,25 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> TraceCommitment<B, H> {
     // --------------------------------------------------------------------------------------------
 
     /// Adds the provided auxiliary segment trace LDE and Merkle tree to this trace commitment.
-    pub fn add_segment(&mut self, aux_segment_lde: Matrix<B>, aux_segment_tree: MerkleTree<H>) {
-        assert_eq!(
-            aux_segment_lde.num_rows(),
-            self.main_segment_lde.num_rows(),
-            "auxiliary segment LDE length must be the same as the main segment LDE length"
-        );
+    pub fn add_segment(&mut self, aux_segment_lde: Matrix<E>, aux_segment_tree: MerkleTree<H>) {
         assert_eq!(
             aux_segment_lde.num_rows(),
             aux_segment_tree.leaves().len(),
             "number of rows in trace LDE must be the same as number of leaves in trace commitment"
         );
 
-        self.aux_segment_ldes.push(aux_segment_lde);
+        self.trace_lde.add_aux_segment(aux_segment_lde);
         self.aux_segment_trees.push(aux_segment_tree);
     }
 
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns number of columns in the execution trace.
-    pub fn trace_width(&self) -> usize {
-        self.main_segment_lde.num_cols()
-            + self
-                .aux_segment_ldes
-                .iter()
-                .fold(0, |s, m| s + m.num_cols())
-    }
-
-    /// Returns the number of rows in the execution trace.
-    pub fn trace_len(&self) -> usize {
-        self.main_segment_lde.num_rows()
-    }
-
-    /// Returns blowup factor which was used to extend original execution trace into trace LDE.
-    pub fn blowup(&self) -> usize {
-        self.blowup
-    }
-
-    /// Reads current and next rows from the execution trace table into the specified frame.
-    pub fn read_frame_into(&self, lde_step: usize, frame: &mut EvaluationFrame<B>) {
-        // at the end of the trace, next state wraps around and we read the first step again
-        let next_lde_step = (lde_step + self.blowup()) % self.trace_len();
-
-        // copy main trace segment values into the frame
-        self.main_segment_lde
-            .read_row_into(lde_step, frame.current_mut());
-        self.main_segment_lde
-            .read_row_into(next_lde_step, frame.next_mut());
-
-        // copy auxiliary trace segment values into the frame
-        let mut offset = self.main_segment_lde.num_cols();
-        for segment in self.aux_segment_ldes.iter() {
-            segment.read_row_into(lde_step, &mut frame.current_mut()[offset..]);
-            segment.read_row_into(next_lde_step, &mut frame.next_mut()[offset..]);
-            offset += segment.num_cols();
-        }
+    /// Returns the execution trace for this commitment.
+    ///
+    /// The trace contains both the main trace segment and the auxiliary trace segments (if any).
+    pub fn trace_table(&self) -> &TraceLde<B, E> {
+        &self.trace_lde
     }
 
     // QUERY TRACE
@@ -114,17 +82,14 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> TraceCommitment<B, H> {
     pub fn query(&self, positions: &[usize]) -> Vec<Queries> {
         // build queries for the main trace segment
         let mut result = vec![build_segment_queries(
-            &self.main_segment_lde,
+            self.trace_lde.get_main_segment(),
             &self.main_segment_tree,
             positions,
         )];
 
         // build queries for auxiliary trace segments
-        for (segment_lde, segment_tree) in self
-            .aux_segment_ldes
-            .iter()
-            .zip(self.aux_segment_trees.iter())
-        {
+        for (i, segment_tree) in self.aux_segment_trees.iter().enumerate() {
+            let segment_lde = self.trace_lde.get_aux_segment(i);
             result.push(build_segment_queries(segment_lde, segment_tree, positions));
         }
 
@@ -143,27 +108,21 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> TraceCommitment<B, H> {
     /// Returns the entire trace for the column at the specified index.
     #[cfg(test)]
     pub fn get_main_trace_column(&self, col_idx: usize) -> &[B] {
-        self.main_segment_lde.get_column(col_idx)
-    }
-
-    /// Returns value of a trace cell in the column at the specified index at the specified step.
-    #[cfg(test)]
-    pub fn get_main_trace_cell(&self, col_idx: usize, step: usize) -> B {
-        self.main_segment_lde.get(col_idx, step)
+        self.trace_lde.get_main_segment().get_column(col_idx)
     }
 }
 
 // HELPER FUNCTIONS
 // ================================================================================================
 
-fn build_segment_queries<B, H>(
-    segment_lde: &Matrix<B>,
+fn build_segment_queries<E, H>(
+    segment_lde: &Matrix<E>,
     segment_tree: &MerkleTree<H>,
     positions: &[usize],
 ) -> Queries
 where
-    B: StarkField,
-    H: ElementHasher<BaseField = B>,
+    E: FieldElement,
+    H: ElementHasher<BaseField = E::BaseField>,
 {
     // allocate memory for queried trace states
     let mut trace_states = Vec::with_capacity(positions.len());

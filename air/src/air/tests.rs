@@ -247,16 +247,16 @@ fn prepare_assertions() {
         Assertion::periodic(1, 3, 8, BaseElement::new(7)), //register 1, steps 3, 11
     ];
 
-    let context = build_context(16, 2);
-    let result = super::prepare_assertions(assertions.clone(), &context);
+    let trace_info = TraceInfo::new(2, 16);
+    let result = super::prepare_assertions(assertions.clone(), &trace_info);
     assert_eq!(expected, result);
 
     shuffle(&mut assertions);
-    let result = super::prepare_assertions(assertions.clone(), &context);
+    let result = super::prepare_assertions(assertions.clone(), &trace_info);
     assert_eq!(expected, result);
 
     shuffle(&mut assertions);
-    let result = super::prepare_assertions(assertions.clone(), &context);
+    let result = super::prepare_assertions(assertions.clone(), &trace_info);
     assert_eq!(expected, result);
 }
 
@@ -269,8 +269,8 @@ fn prepare_assertions_with_overlap() {
         Assertion::single(0, 9, BaseElement::new(5)),
         Assertion::periodic(0, 1, 8, BaseElement::new(7)),
     ];
-    let context = build_context(16, 2);
-    let _ = super::prepare_assertions(assertions.clone(), &context);
+    let trace_info = TraceInfo::new(2, 16);
+    let _ = super::prepare_assertions(assertions.clone(), &trace_info);
 }
 
 #[test]
@@ -279,8 +279,8 @@ fn prepare_assertions_with_overlap() {
 )]
 fn prepare_assertions_with_invalid_trace_length() {
     let assertions = vec![Assertion::single(0, 16, BaseElement::new(5))];
-    let context = build_context(16, 2);
-    let _ = super::prepare_assertions(assertions.clone(), &context);
+    let trace_info = TraceInfo::new(2, 16);
+    let _ = super::prepare_assertions(assertions.clone(), &trace_info);
 }
 
 #[test]
@@ -289,8 +289,8 @@ fn prepare_assertions_with_invalid_trace_length() {
 )]
 fn prepare_assertions_with_invalid_trace_width() {
     let assertions = vec![Assertion::single(3, 17, BaseElement::new(5))];
-    let context = build_context(16, 2);
-    let _ = super::prepare_assertions(assertions.clone(), &context);
+    let trace_info = TraceInfo::new(2, 16);
+    let _ = super::prepare_assertions(assertions.clone(), &trace_info);
 }
 
 // MOCK AIR
@@ -348,7 +348,7 @@ impl Air for MockAir {
     type PublicInputs = ();
 
     fn new(trace_info: TraceInfo, _pub_inputs: (), _options: ProofOptions) -> Self {
-        let context = build_context(trace_info.length(), trace_info.full_width());
+        let context = build_context(trace_info.length(), trace_info.width());
         MockAir {
             context,
             assertions: Vec::new(),

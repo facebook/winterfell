@@ -68,7 +68,8 @@ where
             return Err(VerifierError::InconsistentBaseField);
         }
 
-        let num_trace_segments = air.num_trace_segments();
+        let num_trace_segments = air.trace_layout().num_segments();
+        let main_trace_width = air.trace_layout().main_trace_width();
         let lde_domain_size = air.lde_domain_size();
         let num_queries = air.options().num_queries();
         let fri_options = air.options().to_fri_options();
@@ -84,7 +85,7 @@ where
         // --- parse trace queries ----------------------------------------------------------------
         let trace_queries = trace_queries.remove(0);
         let (trace_proof, trace_states) = trace_queries
-            .parse::<H, B>(lde_domain_size, num_queries, air.trace_full_width())
+            .parse::<H, B>(lde_domain_size, num_queries, main_trace_width)
             .map_err(|err| {
                 VerifierError::ProofDeserializationError(format!(
                     "trace query deserialization failed: {}",
@@ -113,7 +114,7 @@ where
 
         // --- parse out-of-domain evaluation frame -----------------------------------------------
         let (ood_frame, ood_evaluations) = ood_frame
-            .parse(air.trace_full_width(), air.ce_blowup_factor())
+            .parse(main_trace_width, air.ce_blowup_factor())
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         Ok(VerifierChannel {

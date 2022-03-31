@@ -4,14 +4,13 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    evaluation_table::EvaluationTableFragment, BoundaryConstraintGroup, ConstraintEvaluationTable,
-    PeriodicValueTable, StarkDomain, TraceCommitment,
+    super::TraceLde, evaluation_table::EvaluationTableFragment, BoundaryConstraintGroup,
+    ConstraintEvaluationTable, PeriodicValueTable, StarkDomain,
 };
 use air::{
     Air, ConstraintCompositionCoefficients, ConstraintDivisor, EvaluationFrame,
     TransitionConstraintGroup,
 };
-use crypto::ElementHasher;
 use math::FieldElement;
 use utils::{
     collections::{BTreeMap, Vec},
@@ -94,9 +93,9 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     /// Evaluates constraints against the provided extended execution trace. Constraints are
     /// evaluated over a constraint evaluation domain. This is an optimization because constraint
     /// evaluation domain can be many times smaller than the full LDE domain.
-    pub fn evaluate<H: ElementHasher<BaseField = A::BaseField>>(
+    pub fn evaluate(
         &self,
-        trace: &TraceCommitment<A::BaseField, H>,
+        trace: &TraceLde<A::BaseField, E>,
         domain: &StarkDomain<A::BaseField>,
     ) -> ConstraintEvaluationTable<A::BaseField, E> {
         assert_eq!(
@@ -146,14 +145,14 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     // --------------------------------------------------------------------------------------------
 
     /// Evaluates constraints for a single fragment of the evaluation table.
-    fn evaluate_fragment<H: ElementHasher<BaseField = A::BaseField>>(
+    fn evaluate_fragment(
         &self,
-        trace: &TraceCommitment<A::BaseField, H>,
+        trace: &TraceLde<A::BaseField, E>,
         domain: &StarkDomain<A::BaseField>,
         fragment: &mut EvaluationTableFragment<A::BaseField, E>,
     ) {
         // initialize buffers to hold trace values and evaluation results at each step;
-        let mut ev_frame = EvaluationFrame::new(trace.trace_width());
+        let mut ev_frame = EvaluationFrame::new(trace.main_trace_width());
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
         let mut t_evaluations = vec![A::BaseField::ZERO; self.air.num_transition_constraints()];
 
@@ -172,7 +171,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
             // read current and next rows from the trace into the buffer; data in the trace
             // table is extended over the LDE domain, so, we need to convert step in constraint
             // evaluation domain, into a step in LDE domain, in case these domains are different
-            trace.read_frame_into(step << lde_shift, &mut ev_frame);
+            trace.read_main_trace_frame_into(step << lde_shift, &mut ev_frame);
 
             // evaluate transition constraints and save the merged result the first slot of the
             // evaluations buffer

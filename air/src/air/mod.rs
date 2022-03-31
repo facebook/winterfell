@@ -28,7 +28,7 @@ pub use transition::{EvaluationFrame, TransitionConstraintDegree, TransitionCons
 
 mod coefficients;
 pub use coefficients::{
-    AuxTraceSegmentRandElements, ConstraintCompositionCoefficients, DeepCompositionCoefficients,
+    AuxTraceRandElements, ConstraintCompositionCoefficients, DeepCompositionCoefficients,
 };
 
 mod divisor;
@@ -299,7 +299,7 @@ pub trait Air: Send + Sync {
         // the context of this computation; also, sort the assertions in the deterministic order
         // so that changing the order of assertions does not change random coefficients that
         // get assigned to them
-        let assertions = prepare_assertions(self.get_assertions(), self.context());
+        let assertions = prepare_assertions(self.get_assertions(), self.trace_info());
         assert_eq!(
             assertions.len(),
             coefficients.len(),
@@ -353,21 +353,10 @@ pub trait Air: Send + Sync {
         self.context().trace_info.length()
     }
 
-    /// Returns the total number of segments in the execution trace for an instance of the
-    /// computation described by this AIR.
-    ///
-    /// The number of segments is guaranteed to be at least one.
-    fn num_trace_segments(&self) -> usize {
-        self.context().trace_info.layout().num_aux_segments() + 1
-    }
-
-    /// Returns the total number of columns in the execution trace for an instance of the
-    /// computation described by this AIR.
-    ///
-    /// The total number of columns is defined as the number of columns in all trace segments.
-    /// This value is guaranteed to be between 1 and 255.
-    fn trace_full_width(&self) -> usize {
-        self.context().trace_info.full_width()
+    /// Returns a description of how execution trace columns are arranged into segments for
+    /// an instance of a computation described by this AIR.
+    fn trace_layout(&self) -> &TraceLayout {
+        self.context().trace_info.layout()
     }
 
     /// Returns degree of trace polynomials for an instance of the computation described by
@@ -544,7 +533,7 @@ pub trait Air: Send + Sync {
         H: Hasher,
     {
         let mut t_coefficients = Vec::new();
-        for _ in 0..self.trace_full_width() {
+        for _ in 0..self.trace_info().width() {
             t_coefficients.push(public_coin.draw_triple()?);
         }
 
@@ -569,21 +558,22 @@ pub trait Air: Send + Sync {
 /// each other - i.e. no two assertions are placed against the same register and step combination.
 fn prepare_assertions<B: StarkField>(
     assertions: Vec<Assertion<B>>,
-    context: &AirContext<B>,
+    trace_info: &TraceInfo,
 ) -> Vec<Assertion<B>> {
     // we use a sorted set to help us sort the assertions by their 'natural' order. The natural
     // order is defined as sorting first by stride, then by first step, and finally by register,
     // all in ascending order.
     let mut result = BTreeSet::<Assertion<B>>::new();
 
+    let main_trace_width = trace_info.layout().main_trace_width();
     for assertion in assertions.into_iter() {
         assertion
-            .validate_trace_width(context.trace_info.full_width())
+            .validate_trace_width(main_trace_width)
             .unwrap_or_else(|err| {
                 panic!("assertion {} is invalid: {}", assertion, err);
             });
         assertion
-            .validate_trace_length(context.trace_info.length())
+            .validate_trace_length(trace_info.length())
             .unwrap_or_else(|err| {
                 panic!("assertion {} is invalid: {}", assertion, err);
             });

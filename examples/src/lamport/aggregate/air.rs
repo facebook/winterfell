@@ -80,7 +80,7 @@ impl Air for LamportAggregateAir {
             TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
             TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
         ];
-        assert_eq!(TRACE_WIDTH, trace_info.full_width());
+        assert_eq!(TRACE_WIDTH, trace_info.width());
         LamportAggregateAir {
             context: AirContext::new(trace_info, degrees, options),
             pub_keys: pub_inputs.pub_keys,

@@ -232,7 +232,7 @@ impl<B: StarkField> TraceTable<B> {
         I: Fn(&mut [B]),
         U: Fn(usize, &mut [B]),
     {
-        let mut state = vec![B::ZERO; self.width()];
+        let mut state = vec![B::ZERO; self.main_trace_width()];
         init(&mut state);
         self.update_row(0, &state);
 
@@ -321,9 +321,14 @@ impl<B: StarkField> TraceTable<B> {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the entire register trace for the register at the specified index.
-    pub fn get_register(&self, idx: usize) -> &[B] {
-        self.trace.get_column(idx)
+    /// Returns the number of columns in this execution trace.
+    pub fn width(&self) -> usize {
+        self.main_trace_width()
+    }
+
+    /// Returns the entire trace column at the specified index.
+    pub fn get_column(&self, col_idx: usize) -> &[B] {
+        self.trace.get_column(col_idx)
     }
 }
 
@@ -357,7 +362,7 @@ impl<B: StarkField> Trace for TraceTable<B> {
         &self.trace
     }
 
-    fn build_aux_segment<E>(&mut self, _rand_elements: &[E]) -> Option<&Matrix<Self::BaseField>>
+    fn build_aux_segment<E>(&mut self, _rand_elements: &[E]) -> Option<&Matrix<E>>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {

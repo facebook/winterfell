@@ -33,7 +33,7 @@
 extern crate alloc;
 
 pub use air::{
-    proof::StarkProof, Air, AirContext, Assertion, AuxTraceSegmentRandElements, BoundaryConstraint,
+    proof::StarkProof, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
     BoundaryConstraintGroup, ConstraintCompositionCoefficients, ConstraintDivisor,
     DeepCompositionCoefficients, EvaluationFrame, FieldExtension, HashFunction, ProofOptions,
     TraceInfo, TransitionConstraintDegree, TransitionConstraintGroup,
@@ -192,7 +192,7 @@ where
     public_coin.reseed(trace_commitments[0]);
 
     // process auxiliary trace segments (if any), to build a set of random elements for each segment
-    let mut aux_trace_rand_elements = AuxTraceSegmentRandElements::<E>::new();
+    let mut aux_trace_rand_elements = AuxTraceRandElements::<E>::new();
     for (i, commitment) in trace_commitments.iter().skip(1).enumerate() {
         let rand_elements = air
             .get_aux_trace_segment_random_elements(i, &mut public_coin)

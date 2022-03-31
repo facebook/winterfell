@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{trace::TraceCommitment, Matrix, ProverError, StarkDomain};
+use super::{Matrix, ProverError, StarkDomain};
 
 mod boundary;
 use boundary::BoundaryConstraintGroup;

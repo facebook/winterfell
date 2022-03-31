@@ -43,8 +43,7 @@ pub use options::{FieldExtension, HashFunction, ProofOptions};
 
 mod air;
 pub use air::{
-    Air, AirContext, Assertion, AuxTraceSegmentRandElements, BoundaryConstraint,
-    BoundaryConstraintGroup, ConstraintCompositionCoefficients, ConstraintDivisor,
-    DeepCompositionCoefficients, EvaluationFrame, TraceInfo, TraceLayout,
-    TransitionConstraintDegree, TransitionConstraintGroup,
+    Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint, BoundaryConstraintGroup,
+    ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
+    EvaluationFrame, TraceInfo, TraceLayout, TransitionConstraintDegree, TransitionConstraintGroup,
 };
