@@ -8,7 +8,7 @@ use core::{
     cmp::{Ord, Ordering, PartialOrd},
     fmt::{Display, Formatter},
 };
-use math::StarkField;
+use math::FieldElement;
 use utils::collections::Vec;
 
 #[cfg(test)]
@@ -46,21 +46,21 @@ const NO_STRIDE: usize = 0;
 /// asserted values. Though, unless many thousands of values are asserted, practical impact of
 /// this linear complexity should be negligible.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Assertion<B: StarkField> {
+pub struct Assertion<E: FieldElement> {
     pub(super) register: usize,
     pub(super) first_step: usize,
     pub(super) stride: usize,
-    pub(super) values: Vec<B>,
+    pub(super) values: Vec<E>,
 }
 
-impl<B: StarkField> Assertion<B> {
+impl<E: FieldElement> Assertion<E> {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
     /// Returns an assertion against a single cell of an execution trace.
     ///
     /// The returned assertion requires that the value in the specified `register` at the specified
     /// `step` is equal to the provided `value`.
-    pub fn single(register: usize, step: usize, value: B) -> Self {
+    pub fn single(register: usize, step: usize, value: E) -> Self {
         Assertion {
             register,
             first_step: step,
@@ -79,7 +79,7 @@ impl<B: StarkField> Assertion<B> {
     /// Panics if:
     /// * `stride` is not a power of two, or is smaller than 2.
     /// * `first_step` is greater than `stride`.
-    pub fn periodic(register: usize, first_step: usize, stride: usize, value: B) -> Self {
+    pub fn periodic(register: usize, first_step: usize, stride: usize, value: E) -> Self {
         validate_stride(stride, first_step, register);
         Assertion {
             register,
@@ -100,7 +100,7 @@ impl<B: StarkField> Assertion<B> {
     /// * `stride` is not a power of two, or is smaller than 2.
     /// * `first_step` is greater than `stride`.
     /// * `values` is empty or number of values in not a power of two.
-    pub fn sequence(register: usize, first_step: usize, stride: usize, values: Vec<B>) -> Self {
+    pub fn sequence(register: usize, first_step: usize, stride: usize, values: Vec<E>) -> Self {
         validate_stride(stride, first_step, register);
         assert!(
             !values.is_empty(),
@@ -146,7 +146,7 @@ impl<B: StarkField> Assertion<B> {
     /// Returns asserted values.
     ///
     /// For single value and periodic assertions this will be a slice containing one value.
-    pub fn values(&self) -> &[B] {
+    pub fn values(&self) -> &[E] {
         &self.values
     }
 
@@ -171,7 +171,7 @@ impl<B: StarkField> Assertion<B> {
     /// Checks if this assertion overlaps with the provided assertion.
     ///
     /// Overlap is defined as asserting a value for the same step in the same register.
-    pub fn overlaps_with(&self, other: &Assertion<B>) -> bool {
+    pub fn overlaps_with(&self, other: &Assertion<E>) -> bool {
         if self.register != other.register {
             return false;
         }
@@ -262,7 +262,7 @@ impl<B: StarkField> Assertion<B> {
     /// Panics if the specified trace length is not valid for this assertion.
     pub fn apply<F>(&self, trace_length: usize, mut f: F)
     where
-        F: FnMut(usize, B),
+        F: FnMut(usize, E),
     {
         self.validate_trace_length(trace_length)
             .unwrap_or_else(|err| {
@@ -310,7 +310,7 @@ impl<B: StarkField> Assertion<B> {
 
 /// We define ordering of assertions to be first by stride, then by first_step, and finally by
 /// register in ascending order.
-impl<B: StarkField> Ord for Assertion<B> {
+impl<E: FieldElement> Ord for Assertion<E> {
     fn cmp(&self, other: &Self) -> Ordering {
         if self.stride == other.stride {
             if self.first_step == other.first_step {
@@ -324,13 +324,13 @@ impl<B: StarkField> Ord for Assertion<B> {
     }
 }
 
-impl<B: StarkField> PartialOrd for Assertion<B> {
+impl<E: FieldElement> PartialOrd for Assertion<E> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<B: StarkField> Display for Assertion<B> {
+impl<E: FieldElement> Display for Assertion<E> {
     fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
         write!(f, "(register={}, ", self.register)?;
         match self.stride {
