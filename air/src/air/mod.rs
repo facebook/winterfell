@@ -5,9 +5,9 @@
 
 use crate::ProofOptions;
 use crypto::{Hasher, RandomCoin, RandomCoinError};
-use math::{fft, ExtensibleField, FieldElement, StarkField};
+use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField};
 use utils::{
-    collections::{BTreeMap, BTreeSet, Vec},
+    collections::{BTreeMap, Vec},
     Serializable,
 };
 
@@ -21,7 +21,7 @@ mod assertions;
 pub use assertions::Assertion;
 
 mod boundary;
-pub use boundary::{BoundaryConstraint, BoundaryConstraintGroup};
+pub use boundary::{BoundaryConstraint, BoundaryConstraintGroup, BoundaryConstraints};
 
 mod transition;
 pub use transition::{
@@ -99,16 +99,16 @@ const MIN_CYCLE_LENGTH: usize = 2;
 /// Usually, we want to keep this degree as low as possible - e.g. under 4 or 8. To accurately
 /// describe degrees of your transition constraints, keep the following in mind:
 ///
-/// * All trace registers have degree `1`.
-/// * When multiplying trace registers together, the degree increases by `1`. For example, if our
-///   constraint involves multiplication of two registers, the degree of this constraint will be
+/// * All trace columns have degree `1`.
+/// * When multiplying trace columns together, the degree increases by `1`. For example, if our
+///   constraint involves multiplication of two columns, the degree of this constraint will be
 ///   `2`. We can describe this constraint using [TransitionConstraintDegree] struct as follows:
 ///   `TransitionConstraintDegree::new(2)`.
 /// * Degrees of periodic columns depend on the length of their cycles, but in most cases, these
 ///   degrees are very close to `1`.
-/// * To describe a degree of a constraint involving multiplication of trace registers and
+/// * To describe a degree of a constraint involving multiplication of trace columns and
 ///   periodic columns, use the [TransitionConstraintDegree::with_cycles()] constructor. For
-///   example, if our constraint involves multiplication of one trace register and one periodic
+///   example, if our constraint involves multiplication of one trace column and one periodic
 ///   column with a cycle of 32 steps, the degree can be described as:
 ///   `TransitionConstraintDegree::with_cycles(1, vec![32])`.
 ///
@@ -126,19 +126,19 @@ const MIN_CYCLE_LENGTH: usize = 2;
 /// least one assertion. Assertions can be of the following types:
 ///
 /// * A single assertion - such assertion specifies that a single cell of an execution trace must
-///   be equal to a specific value. For example: *value in register 0, at step 0, must be equal
+///   be equal to a specific value. For example: *value in column 0, at step 0, must be equal
 ///   to 1*.
-/// * A periodic assertion - such assertion specifies that values in a given register at specified
-///   intervals should be equal to some value. For example: *values in register 0, at steps 0, 8,
+/// * A periodic assertion - such assertion specifies that values in a given column at specified
+///   intervals should be equal to some value. For example: *values in column 0, at steps 0, 8,
 ///   16, 24 etc. must be equal to 2*.
-/// * A sequence assertion - such assertion specifies that values in a given register at specific
-///   intervals must be equal to a sequence of provided values. For example: *values in register 0,
+/// * A sequence assertion - such assertion specifies that values in a given column at specific
+///   intervals must be equal to a sequence of provided values. For example: *values in column 0,
 ///   at step 0 must be equal to 1, at step 8 must be equal to 2, at step 16 must be equal to 3
 ///   etc.*
 ///
 /// ### Periodic values
 /// Sometimes, it may be useful to define a column in an execution trace which contains a set of
-/// repeating values. For example, let's say we have a register which contains value 1 on every
+/// repeating values. For example, let's say we have a column which contains value 1 on every
 /// 4th step, and 0 otherwise. Such a column can be described with a simple periodic sequence of
 /// `[1, 0, 0, 0]`.
 ///
@@ -178,6 +178,10 @@ pub trait Air: Send + Sync {
     /// the order of transition constraint degree descriptors used to instantiate [AirContext]
     /// for this AIR. Thus, the length of the `result` slice will equal to the number of
     /// transition constraints defined for this computation.
+    ///
+    /// We define type `E` separately from `Self::BaseField` to allow evaluation of constraints
+    /// over the out-of-domain evaluation frame, which may be defined over an extension field
+    /// (when extension fields are used).
     fn evaluate_transition<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         frame: &EvaluationFrame<E>,
@@ -187,6 +191,66 @@ pub trait Air: Send + Sync {
 
     /// Returns a set of assertions against a concrete execution trace of this computation.
     fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>>;
+
+    // AUXILIARY TRACE CONSTRAINTS
+    // --------------------------------------------------------------------------------------------
+
+    /// Evaluates transition constraints over the specified evaluation frames for the main and
+    /// auxiliary trace segments.
+    ///
+    /// The evaluations should be written into the `results` slice in the same order as the
+    /// the order of auxiliary transition constraint degree descriptors used to instantiate
+    /// [AirContext] for this AIR. Thus, the length of the `result` slice will equal to the number
+    /// of auxiliary transition constraints defined for this computation.
+    ///
+    /// The default implementation of this function panics. It must be overridden for AIRs
+    /// describing computations which require multiple trace segments.
+    ///
+    /// The types for main and auxiliary trace evaluation frames are defined as follows:
+    /// * When the entire protocol is executed in a prime field, types `F` and `E` are the same,
+    ///   and thus, both the main and the auxiliary trace frames are defined over the base filed.
+    /// * When the protocol is executed in an extension field, the main trace frame is defined
+    ///   over the base field, while the auxiliary trace frame is defined over the extension field.
+    ///
+    /// We define type `F` separately from `Self::BaseField` to allow evaluation of constraints
+    /// over the out-of-domain evaluation frame, which may be defined over an extension field
+    /// (when extension fields are used). The type bounds specified for this function allow the
+    /// following:
+    /// * `F` and `E` could be the same [StarkField] or extensions of the same [StarkField].
+    /// * `F` and `E` could be the same field, because a field is always an extension of itself.
+    /// * If `F` and `E` are different, then `E` must be an extension of `F`.
+    #[allow(unused_variables)]
+    fn evaluate_aux_transition<F, E>(
+        &self,
+        main_frame: &EvaluationFrame<F>,
+        aux_frame: &EvaluationFrame<E>,
+        periodic_values: &[F],
+        aux_rand_elements: &AuxTraceRandElements<E>,
+        result: &mut [E],
+    ) -> Vec<Assertion<F>>
+    where
+        F: FieldElement<BaseField = Self::BaseField>,
+        E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
+    {
+        unimplemented!("evaluation of auxiliary transition constraints has not been implemented");
+    }
+
+    /// Returns a set of assertions placed against auxiliary trace segments.
+    ///
+    /// When the protocol is executed using an extension field, auxiliary assertions are defined
+    /// over the extension field. This is in contrast with the assertions returned from
+    /// [get_assertions()](Air::get_assertions) function, which always returns assertions defined
+    /// over the base field of the protocol.
+    ///
+    /// The default implementation of this function returns an empty vector. It should be
+    /// overridden only if the computation relies on auxiliary trace segments. In such a case,
+    /// the vector returned from this function must contain at least one assertion.
+    fn get_aux_assertions<E>(&self) -> Vec<Assertion<E>>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        Vec::new()
+    }
 
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
@@ -246,9 +310,10 @@ pub trait Air: Send + Sync {
 
     /// Groups transition constraints together by their degree.
     ///
-    /// This function also assigns coefficients to each constraint. These coefficients will be
-    /// used to compute a random linear combination of transition constraints evaluations during
-    /// constraint merging performed by [TransitionConstraintGroup::merge_evaluations()] function.
+    /// This function also assigns composition coefficients to each constraint. These coefficients
+    /// will be used to compute a random linear combination of transition constraints evaluations
+    /// during constraint merging performed by [TransitionConstraintGroup::merge_evaluations()]
+    /// function.
     fn get_transition_constraints<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         composition_coefficients: &[(E, E)],
@@ -256,57 +321,22 @@ pub trait Air: Send + Sync {
         TransitionConstraints::new(self.context(), composition_coefficients)
     }
 
-    /// Convert assertions returned from [get_assertions()](Air::get_assertions) method into
-    /// boundary constraints.
+    /// Convert assertions returned from [get_assertions()](Air::get_assertions) and
+    /// [get_aux_assertions()](Air::get_aux_assertions) methods into boundary constraints.
     ///
-    /// This function also assign coefficients to each constraint, and group the constraints by
-    /// denominator. The coefficients will be used to compute random linear combination of boundary
-    /// constraints during constraint merging.
+    /// This function also assign composition coefficients to each constraint, and group the
+    /// constraints by denominator. The coefficients will be used to compute random linear
+    /// combination of boundary constraints during constraint merging.
     fn get_boundary_constraints<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        coefficients: &[(E, E)],
-    ) -> Vec<BoundaryConstraintGroup<Self::BaseField, E>> {
-        // compute inverse of the trace domain generator; this will be used for offset
-        // computations when creating sequence constraints
-        let inv_g = self.trace_domain_generator().inv();
-
-        // cache inverse twiddles for multi-value assertions in this map so that we don't have
-        // to re-build them for assertions with identical strides
-        let mut twiddle_map = BTreeMap::new();
-
-        // get the assertions for this computation and make sure that they are all valid in
-        // the context of this computation; also, sort the assertions in the deterministic order
-        // so that changing the order of assertions does not change random coefficients that
-        // get assigned to them
-        let assertions = prepare_assertions(self.get_assertions(), self.trace_info());
-        assert_eq!(
-            assertions.len(),
-            coefficients.len(),
-            "number of assertions must match the number of coefficient tuples"
-        );
-
-        // iterate over all assertions, which are sorted first by stride and then by first_step
-        // in ascending order
-        let mut groups = BTreeMap::new();
-        for (i, assertion) in assertions.into_iter().enumerate() {
-            let key = (assertion.stride(), assertion.first_step());
-            let group = groups.entry(key).or_insert_with(|| {
-                BoundaryConstraintGroup::new(
-                    ConstraintDivisor::from_assertion(&assertion, self.trace_length()),
-                    self.trace_poly_degree(),
-                    self.composition_degree(),
-                )
-            });
-
-            // add a new assertion constraint to the current group (last group in the list)
-            group.add(assertion, inv_g, &mut twiddle_map, coefficients[i]);
-        }
-
-        // make sure groups are sorted by adjustment degree
-        let mut groups = groups.into_iter().map(|e| e.1).collect::<Vec<_>>();
-        groups.sort_by_key(|c| c.degree_adjustment());
-
-        groups
+        composition_coefficients: &[(E, E)],
+    ) -> BoundaryConstraints<Self::BaseField, E> {
+        BoundaryConstraints::new(
+            self.context(),
+            self.get_assertions(),
+            self.get_aux_assertions(),
+            composition_coefficients,
+        )
     }
 
     // PUBLIC ACCESSORS
@@ -455,10 +485,8 @@ pub trait Air: Send + Sync {
             t_coefficients.push(public_coin.draw_pair()?);
         }
 
-        // TODO: calling self.get_assertions() is heavy; find a better way to specify the number
-        // assertions
         let mut b_coefficients = Vec::new();
-        for _ in 0..self.get_assertions().len() {
+        for _ in 0..self.context().num_assertions() {
             b_coefficients.push(public_coin.draw_pair()?);
         }
 
@@ -495,64 +523,4 @@ pub trait Air: Send + Sync {
             degree: public_coin.draw_pair()?,
         })
     }
-
-    // AUXILIARY TRACE CONSTRAINTS
-    // --------------------------------------------------------------------------------------------
-
-    // TODO: add docs
-    #[allow(unused_variables)]
-    fn evaluate_aux_transition<E1, E2>(
-        &self,
-        frame: &EvaluationFrame<E1>,
-        aux_frame: &EvaluationFrame<E2>,
-        periodic_values: &[E1],
-        aux_rand_elements: &AuxTraceRandElements<E2>,
-        result: &mut [E2],
-    ) where
-        E1: FieldElement<BaseField = Self::BaseField>,
-        E2: FieldElement + From<E1>,
-    {
-        unimplemented!("evaluation of auxiliary transition constraints has not been implemented");
-    }
-}
-
-// HELPER FUNCTIONS
-// ================================================================================================
-
-/// Makes sure the assertions are valid in the context of this computation and don't overlap with
-/// each other - i.e. no two assertions are placed against the same register and step combination.
-fn prepare_assertions<B: StarkField>(
-    assertions: Vec<Assertion<B>>,
-    trace_info: &TraceInfo,
-) -> Vec<Assertion<B>> {
-    // we use a sorted set to help us sort the assertions by their 'natural' order. The natural
-    // order is defined as sorting first by stride, then by first step, and finally by register,
-    // all in ascending order.
-    let mut result = BTreeSet::<Assertion<B>>::new();
-
-    let main_trace_width = trace_info.layout().main_trace_width();
-    for assertion in assertions.into_iter() {
-        assertion
-            .validate_trace_width(main_trace_width)
-            .unwrap_or_else(|err| {
-                panic!("assertion {} is invalid: {}", assertion, err);
-            });
-        assertion
-            .validate_trace_length(trace_info.length())
-            .unwrap_or_else(|err| {
-                panic!("assertion {} is invalid: {}", assertion, err);
-            });
-        for a in result.iter().filter(|a| a.register == assertion.register) {
-            assert!(
-                !a.overlaps_with(&assertion),
-                "assertion {} overlaps with assertion {}",
-                assertion,
-                a
-            );
-        }
-
-        result.insert(assertion);
-    }
-
-    result.into_iter().collect()
 }

@@ -11,9 +11,9 @@ use core::cmp;
 /// Degree descriptor of a transition constraint.
 ///
 /// Describes constraint degree as a combination of multiplications of periodic and trace
-/// registers. For example, degree of a constraint which requires multiplication of two trace
-/// registers can be described as: `base: 2, cycles: []`. A constraint which requires
-/// multiplication of 3 trace registers and a periodic register with a period of 32 steps can be
+/// columns. For example, degree of a constraint which requires multiplication of two trace
+/// columns can be described as: `base: 2, cycles: []`. A constraint which requires
+/// multiplication of 3 trace columns and a periodic column with a period of 32 steps can be
 /// described as: `base: 3, cycles: [32]`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TransitionConstraintDegree {
@@ -23,10 +23,10 @@ pub struct TransitionConstraintDegree {
 
 impl TransitionConstraintDegree {
     /// Creates a new transition constraint degree descriptor for constraints which involve
-    /// multiplications of trace registers only.
+    /// multiplications of trace columns only.
     ///
-    /// For example, if a constraint involves multiplication of two trace registers, `degree`
-    /// should be set to 2. If a constraint involves multiplication of three trace registers,
+    /// For example, if a constraint involves multiplication of two trace columns, `degree`
+    /// should be set to 2. If a constraint involves multiplication of three trace columns,
     /// `degree` should be set to 3 etc.
     ///
     /// # Panics
@@ -43,9 +43,9 @@ impl TransitionConstraintDegree {
     }
 
     /// Creates a new transition degree descriptor for constraints which involve multiplication
-    /// of trace registers and periodic columns.
+    /// of trace columns and periodic columns.
     ///
-    /// For example, if a constraint involves multiplication of two trace registers and one
+    /// For example, if a constraint involves multiplication of two trace columns and one
     /// periodic column with a period length of 32 steps, `base_degree` should be set to 2,
     /// and `cycles` should be set to `vec![32]`.
     ///
@@ -93,7 +93,7 @@ impl TransitionConstraintDegree {
     /// descriptor.
     ///
     /// Thus, evaluation degree of a transition constraint which involves multiplication of two
-    /// trace registers and one periodic column with a period length of 32 steps when evaluated
+    /// trace columns and one periodic column with a period length of 32 steps when evaluated
     /// over an execution trace of 64 steps would be:
     ///
     /// $$

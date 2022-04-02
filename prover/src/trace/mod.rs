@@ -28,7 +28,7 @@ mod tests;
 ///
 /// Execution trace can be reduced to a two-dimensional matrix in which each row represents the
 /// state of a computation at a single point in time and each column corresponds to an algebraic
-/// register tracked over all steps of the computation.
+/// column tracked over all steps of the computation.
 ///
 /// Building a trace is required for STARK proof generation. An execution trace of a specific
 /// instance of a computation must be supplied to [Prover::prove()](super::Prover::prove) method
@@ -109,9 +109,9 @@ pub trait Trace: Sized {
         for assertion in air.get_assertions() {
             assertion.apply(self.length(), |step, value| {
                 assert!(
-                    value == self.get(assertion.register(), step),
+                    value == self.get(assertion.column(), step),
                     "trace does not satisfy assertion trace({}, {}) == {}",
-                    assertion.register(),
+                    assertion.column(),
                     step,
                     value
                 );

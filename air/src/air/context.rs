@@ -16,6 +16,8 @@ pub struct AirContext<B: StarkField> {
     pub(super) trace_info: TraceInfo,
     pub(super) main_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
     pub(super) aux_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
+    pub(super) num_main_assertions: usize,
+    pub(super) num_aux_assertions: usize,
     pub(super) ce_blowup_factor: usize,
     pub(super) trace_domain_generator: B,
     pub(super) lde_domain_generator: B,
@@ -33,16 +35,28 @@ impl<B: StarkField> AirContext<B> {
     /// in the order defined by this list.
     ///
     /// # Panics
-    /// Panics if `transition_constraint_degrees` is an empty vector.
+    /// Panics if
+    /// * `transition_constraint_degrees` is an empty vector.
+    /// * `num_main_assertions` is zero.
+    /// * Blowup factor specified by the provided `options` is too small to accommodate degrees
+    ///   of the specified transition constraints.
+    /// * `trace_info` describes an multi-segment execution trace.
     pub fn new(
         trace_info: TraceInfo,
         transition_constraint_degrees: Vec<TransitionConstraintDegree>,
+        num_assertions: usize,
         options: ProofOptions,
     ) -> Self {
+        assert!(
+            !trace_info.is_multi_segment(),
+            "provided trace info describes a multi-segment execution trace"
+        );
         Self::new_multi_segment(
             trace_info,
             transition_constraint_degrees,
             Vec::new(),
+            num_assertions,
+            0,
             options,
         )
     }
@@ -58,17 +72,53 @@ impl<B: StarkField> AirContext<B> {
     /// are expected to be in the order defined by `aux_transition_constraint_degrees` list.
     ///
     /// # Panics
-    /// Panics if `transition_constraint_degrees` is an empty vector.
+    /// Panics if
+    /// * `main_transition_constraint_degrees` is an empty vector.
+    /// * `num_main_assertions` is zero.
+    /// * `trace_info.is_multi_segment() == true` but:
+    ///   - `aux_transition_constraint_degrees` is an empty vector.
+    ///   - `num_aux_assertions` is zero.
+    /// * `trace_info.is_multi_segment() == false` but:
+    ///   - `aux_transition_constraint_degrees` is a non-empty vector.
+    ///   - `num_aux_assertions` is greater than zero.
+    /// * Blowup factor specified by the provided `options` is too small to accommodate degrees
+    ///   of the specified transition constraints.
     pub fn new_multi_segment(
         trace_info: TraceInfo,
         main_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
         aux_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
+        num_main_assertions: usize,
+        num_aux_assertions: usize,
         options: ProofOptions,
     ) -> Self {
         assert!(
             !main_transition_constraint_degrees.is_empty(),
             "at least one transition constraint degree must be specified"
         );
+        assert!(
+            num_main_assertions > 0,
+            "at least one assertion must be specified"
+        );
+
+        if trace_info.is_multi_segment() {
+            assert!(
+                !aux_transition_constraint_degrees.is_empty(),
+                "at least one transition constraint degree must be specified for auxiliary trace segments"
+            );
+            assert!(
+                num_aux_assertions > 0,
+                "at least one assertion must be specified against auxiliary trace segments"
+            );
+        } else {
+            assert!(
+                aux_transition_constraint_degrees.is_empty(),
+                "auxiliary transition constraint degrees specified for a single-segment trace"
+            );
+            assert!(
+                num_aux_assertions == 0,
+                "auxiliary assertions specified for a single-segment trace"
+            );
+        }
 
         // determine minimum blowup factor needed to evaluate transition constraints by taking
         // the blowup factor of the highest degree constraint
@@ -100,6 +150,8 @@ impl<B: StarkField> AirContext<B> {
             trace_info,
             main_transition_constraint_degrees,
             aux_transition_constraint_degrees,
+            num_main_assertions,
+            num_aux_assertions,
             ce_blowup_factor,
             trace_domain_generator: B::get_root_of_unity(log2(trace_length)),
             lde_domain_generator: B::get_root_of_unity(log2(lde_domain_size)),
@@ -153,5 +205,13 @@ impl<B: StarkField> AirContext<B> {
     /// generated for merging transition constraints into a composition polynomial.
     pub fn num_transition_constraints(&self) -> usize {
         self.main_transition_constraint_degrees.len() + self.aux_transition_constraint_degrees.len()
+    }
+
+    /// Returns the total number of assertions defined for a computation.
+    ///
+    /// The number of assertions consists of the assertions placed against the main segment of an
+    /// execution trace as well as assertions placed against all auxiliary trace segments.
+    pub fn num_assertions(&self) -> usize {
+        self.num_main_assertions + self.num_aux_assertions
     }
 }

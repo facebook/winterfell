@@ -70,7 +70,8 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         let mut twiddle_map = BTreeMap::new();
         let boundary_constraints = air
             .get_boundary_constraints(&coefficients.boundary)
-            .into_iter()
+            .main_constraints()
+            .iter()
             .map(|group| {
                 divisors.push(group.divisor().clone());
                 BoundaryConstraintGroup::new(group, air, &mut twiddle_map)

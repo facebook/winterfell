@@ -98,7 +98,7 @@ impl<B: StarkField> TraceTable<B> {
     pub fn with_meta(width: usize, length: usize, meta: Vec<u8>) -> Self {
         assert!(
             width > 0,
-            "execution trace must consist of at least one register"
+            "execution trace must consist of at least one column"
         );
         assert!(
             width <= TraceInfo::MAX_TRACE_WIDTH,
@@ -350,8 +350,8 @@ impl<B: StarkField> Trace for TraceTable<B> {
         &self.meta
     }
 
-    fn get(&self, register: usize, step: usize) -> B {
-        self.trace.get(register, step)
+    fn get(&self, column: usize, step: usize) -> B {
+        self.trace.get(column, step)
     }
 
     fn read_row_into(&self, step: usize, target: &mut [B]) {

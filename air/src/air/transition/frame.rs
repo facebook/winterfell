@@ -22,18 +22,18 @@ impl<E: FieldElement> EvaluationFrame<E> {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a new evaluation frame instantiated with the specified number of registers.
+    /// Returns a new evaluation frame instantiated with the specified number of columns.
     ///
     /// # Panics
-    /// Panics if `num_registers` is zero.
-    pub fn new(num_registers: usize) -> Self {
+    /// Panics if `num_columns` is zero.
+    pub fn new(num_columns: usize) -> Self {
         assert!(
-            num_registers > 0,
-            "number of registers must be greater than zero"
+            num_columns > 0,
+            "number of columns must be greater than zero"
         );
         EvaluationFrame {
-            current: E::zeroed_vector(num_registers),
-            next: E::zeroed_vector(num_registers),
+            current: E::zeroed_vector(num_columns),
+            next: E::zeroed_vector(num_columns),
         }
     }
 

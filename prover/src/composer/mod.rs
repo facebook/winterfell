@@ -58,7 +58,7 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseField>> DeepCompositionPoly<A, E
     ///
     /// - Compute polynomials T'_i(x) = (T_i(x) - T_i(z)) / (x - z) and
     ///   T''_i(x) = (T_i(x) - T_i(z * g)) / (x - z * g) for all i, where T_i(x) is a trace
-    ///   polynomial for register i.
+    ///   polynomial for column i.
     /// - Then, combine together all T'_i(x) polynomials using random liner combination as
     ///   T(x) = sum(T'_i(x) * cc'_i + T''_i(x) * cc''_i) for all i, where cc'_i and cc''_i are
     ///   the coefficients for the random linear combination drawn from the public coin.
@@ -81,7 +81,7 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseField>> DeepCompositionPoly<A, E
         let g = E::from(A::BaseField::get_root_of_unity(log2(trace_length)));
         let next_z = self.z * g;
 
-        // cache state of registers at points z and z * g
+        // cache state of columns at points z and z * g
         let trace_state1 = ood_frame.current();
         let trace_state2 = ood_frame.next();
 

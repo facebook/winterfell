@@ -296,7 +296,7 @@ where
     // 6 ----- DEEP composition -------------------------------------------------------------------
     // compute evaluations of the DEEP composition polynomial at the queried positions
     let composer = DeepComposer::new(&air, &query_positions, z, deep_coefficients);
-    let t_composition = composer.compose_registers(queried_trace_states, ood_frame);
+    let t_composition = composer.compose_columns(queried_trace_states, ood_frame);
     let c_composition = composer.compose_constraints(queried_evaluations, ood_evaluations);
     let deep_evaluations = composer.combine_compositions(t_composition, c_composition);
 

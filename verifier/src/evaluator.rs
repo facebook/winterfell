@@ -59,10 +59,10 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     // constraints in each group and add them to the evaluations vector
 
     // cache power of x here so that we only re-compute it when degree_adjustment changes
-    let mut degree_adjustment = b_constraints[0].degree_adjustment();
+    let mut degree_adjustment = b_constraints.main_constraints()[0].degree_adjustment();
     let mut xp = x.exp(degree_adjustment.into());
 
-    for group in b_constraints.iter() {
+    for group in b_constraints.main_constraints().iter() {
         // if adjustment degree hasn't changed, no need to recompute `xp` - so just reuse the
         // previous value; otherwise, compute new `xp`
         if group.degree_adjustment() != degree_adjustment {

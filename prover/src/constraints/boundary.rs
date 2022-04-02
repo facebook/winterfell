@@ -30,7 +30,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraintGroup<B, E
     /// Creates a new specialized constraint group; twiddles and ce_blowup_factor are passed in for
     /// evaluating large polynomial constraints (if any).
     pub fn new<A: Air<BaseField = B>>(
-        group: air::BoundaryConstraintGroup<B, E>,
+        group: &air::BoundaryConstraintGroup<B, E>,
         air: &A,
         twiddle_map: &mut BTreeMap<usize, Vec<B>>,
     ) -> BoundaryConstraintGroup<B, E> {
@@ -44,13 +44,13 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraintGroup<B, E
         for constraint in group.constraints() {
             if constraint.poly().len() == 1 {
                 result.single_value_constraints.push(SingleValueConstraint {
-                    register: constraint.register(),
+                    column: constraint.column(),
                     value: constraint.poly()[0],
                     coefficients: *constraint.cc(),
                 });
             } else if constraint.poly().len() < SMALL_POLY_DEGREE {
                 result.small_poly_constraints.push(SmallPolyConstraint {
-                    register: constraint.register(),
+                    column: constraint.column(),
                     poly: constraint.poly().to_vec(),
                     x_offset: constraint.poly_offset().1,
                     coefficients: *constraint.cc(),
@@ -71,7 +71,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraintGroup<B, E
                 );
 
                 result.large_poly_constraints.push(LargePolyConstraint {
-                    register: constraint.register(),
+                    column: constraint.column(),
                     values,
                     step_offset: constraint.poly_offset().0 * air.ce_blowup_factor(),
                     coefficients: *constraint.cc(),
@@ -110,16 +110,16 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraintGroup<B, E
 // ================================================================================================
 
 /// A constraint where the numerator can be represented by p(x) - v, where v is the asserted value,
-/// and p(x) is the trace polynomial for the register against which the constraint is applied.
+/// and p(x) is the trace polynomial for the column against which the constraint is applied.
 struct SingleValueConstraint<B: StarkField, E: FieldElement<BaseField = B>> {
-    register: usize,
+    column: usize,
     value: B,
     coefficients: (E, E),
 }
 
 impl<B: StarkField, E: FieldElement<BaseField = B>> SingleValueConstraint<B, E> {
     pub fn evaluate(&self, state: &[B], xp: E) -> E {
-        let evaluation = E::from(state[self.register] - self.value);
+        let evaluation = E::from(state[self.column] - self.value);
         evaluation * (self.coefficients.0 + self.coefficients.1 * xp)
     }
 }
@@ -128,7 +128,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> SingleValueConstraint<B, E> 
 /// polynomial describing a set of asserted values. This specialization is useful when the
 // degree of c(x) is relatively small, and thus, is cheap to evaluate on the fly.
 struct SmallPolyConstraint<B: StarkField, E: FieldElement<BaseField = B>> {
-    register: usize,
+    column: usize,
     poly: Vec<B>,
     x_offset: B,
     coefficients: (E, E),
@@ -139,7 +139,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> SmallPolyConstraint<B, E> {
         let x = x * self.x_offset;
         // evaluate constraint polynomial as x * offset
         let assertion_value = polynom::eval(&self.poly, x);
-        let evaluation = E::from(state[self.register] - assertion_value);
+        let evaluation = E::from(state[self.column] - assertion_value);
         evaluation * (self.coefficients.0 + self.coefficients.1 * xp)
     }
 }
@@ -148,7 +148,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> SmallPolyConstraint<B, E> {
 /// polynomial. In such cases, we pre-compute evaluations of c(x) by evaluating it over the
 /// entire constraint evaluation domain (using FFT).
 struct LargePolyConstraint<B: StarkField, E: FieldElement<BaseField = B>> {
-    register: usize,
+    column: usize,
     values: Vec<B>,
     step_offset: usize,
     coefficients: (E, E),
@@ -168,7 +168,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> LargePolyConstraint<B, E> {
         } else {
             ce_step
         };
-        let evaluation = E::from(state[self.register] - self.values[value_index]);
+        let evaluation = E::from(state[self.column] - self.values[value_index]);
         evaluation * (self.coefficients.0 + self.coefficients.1 * xp)
     }
 }

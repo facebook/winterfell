@@ -70,7 +70,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> TracePolyTable<B, E> {
     }
 
     /// Returns an out-of-domain evaluation frame constructed by evaluating trace polynomials
-    /// for all registers at points z and z * g, where g is the generator of the trace domain.
+    /// for all columns at points z and z * g, where g is the generator of the trace domain.
     pub fn get_ood_frame(&self, z: E) -> EvaluationFrame<E> {
         let g = E::from(B::get_root_of_unity(log2(self.poly_size())));
         EvaluationFrame::from_rows(self.evaluate_at(z), self.evaluate_at(z * g))

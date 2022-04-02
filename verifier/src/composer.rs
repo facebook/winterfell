@@ -43,10 +43,10 @@ impl<A: Air, E: FieldElement + From<A::BaseField>> DeepComposer<A, E> {
         }
     }
 
-    /// For each queried trace state, combines register values into a single value by computing
+    /// For each queried trace state, combines column values into a single value by computing
     /// their random linear combinations as follows:
     ///
-    /// - Assume each register value is an evaluation of a trace polynomial T_i(x).
+    /// - Assume each column value is an evaluation of a trace polynomial T_i(x).
     /// - For each T_i(x) compute T'_i(x) = (T_i(x) - T_i(z)) / (x - z) and
     ///   T''_i = (T_i(x) - T_i(z * g)) / (x - z * g), where z is the out-of-domain point and
     ///   g is the generation of the LDE domain.
@@ -60,7 +60,7 @@ impl<A: Air, E: FieldElement + From<A::BaseField>> DeepComposer<A, E> {
     ///
     /// Note that values of T_i(z) and T_i(z * g) are received from teh prover and passed into
     /// this function via the `ood_frame` parameter.
-    pub fn compose_registers(
+    pub fn compose_columns(
         &self,
         queried_trace_states: Vec<Vec<A::BaseField>>,
         ood_frame: EvaluationFrame<E>,
@@ -73,10 +73,10 @@ impl<A: Air, E: FieldElement + From<A::BaseField>> DeepComposer<A, E> {
         let conjugate_values = get_conjugate_values(self.field_extension, trace_at_z1, self.z);
 
         let mut result = Vec::with_capacity(queried_trace_states.len());
-        for (registers, &x) in queried_trace_states.iter().zip(&self.x_coordinates) {
+        for (columns, &x) in queried_trace_states.iter().zip(&self.x_coordinates) {
             let x = E::from(x);
             let mut composition = E::ZERO;
-            for (i, &value) in registers.iter().enumerate() {
+            for (i, &value) in columns.iter().enumerate() {
                 let value = E::from(value);
                 // compute T'_i(x) = (T_i(x) - T_i(z)) / (x - z)
                 let t1 = (value - trace_at_z1[i]) / (x - self.z);

@@ -129,6 +129,11 @@ impl TraceInfo {
     pub fn meta(&self) -> &[u8] {
         &self.meta
     }
+
+    /// Returns true if an execution trace contains more than one segment.
+    pub fn is_multi_segment(&self) -> bool {
+        self.layout.num_aux_segments > 0
+    }
 }
 
 // TRACE LAYOUT

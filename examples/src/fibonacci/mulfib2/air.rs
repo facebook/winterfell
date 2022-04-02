@@ -33,7 +33,7 @@ impl Air for MulFib2Air {
         ];
         assert_eq!(TRACE_WIDTH, trace_info.width());
         MulFib2Air {
-            context: AirContext::new(trace_info, degrees, options),
+            context: AirContext::new(trace_info, degrees, 3, options),
             result: pub_inputs,
         }
     }
