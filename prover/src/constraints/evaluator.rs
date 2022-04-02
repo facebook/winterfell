@@ -9,7 +9,7 @@ use super::{
 };
 use air::{
     Air, ConstraintCompositionCoefficients, ConstraintDivisor, EvaluationFrame,
-    TransitionConstraintGroup,
+    TransitionConstraints,
 };
 use math::FieldElement;
 use utils::{
@@ -32,7 +32,7 @@ const MIN_CONCURRENT_DOMAIN_SIZE: usize = 8192;
 pub struct ConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> {
     air: &'a A,
     boundary_constraints: Vec<BoundaryConstraintGroup<A::BaseField, E>>,
-    transition_constraints: Vec<TransitionConstraintGroup<E>>,
+    transition_constraints: TransitionConstraints<E>,
     periodic_values: PeriodicValueTable<A::BaseField>,
     divisors: Vec<ConstraintDivisor<A::BaseField>>,
 
@@ -46,24 +46,24 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     /// Returns a new evaluator which can be used to evaluate transition and boundary constraints
     /// over extended execution trace.
     pub fn new(air: &'a A, coefficients: ConstraintCompositionCoefficients<E>) -> Self {
-        // collect expected degrees for all transition constraints to compare them against actual
-        // degrees; we do this in debug mode only because this comparison is expensive
-        #[cfg(debug_assertions)]
-        let transition_constraint_degrees = air
-            .transition_constraint_degrees()
-            .iter()
-            .map(|d| d.get_evaluation_degree(air.trace_length()))
-            .collect();
-
         // build transition constraint groups; these will be used later to compute a random
         // linear combination of transition constraint evaluations.
         let transition_constraints = air.get_transition_constraints(&coefficients.transition);
+
+        // collect expected degrees for all transition constraints to compare them against actual
+        // degrees; we do this in debug mode only because this comparison is expensive
+        #[cfg(debug_assertions)]
+        let transition_constraint_degrees = transition_constraints
+            .main_constraint_degrees()
+            .iter()
+            .map(|d| d.get_evaluation_degree(air.trace_length()))
+            .collect();
 
         // build periodic value table
         let periodic_values = PeriodicValueTable::new(air);
 
         // set divisor for transition constraints; all transition constraints have the same divisor
-        let mut divisors = vec![air.transition_constraint_divisor()];
+        let mut divisors = vec![transition_constraints.divisor().clone()];
 
         // build boundary constraints and also append divisors for each group of boundary
         // constraints to the divisor list
@@ -154,7 +154,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         // initialize buffers to hold trace values and evaluation results at each step;
         let mut ev_frame = EvaluationFrame::new(trace.main_trace_width());
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
-        let mut t_evaluations = vec![A::BaseField::ZERO; self.air.num_transition_constraints()];
+        let mut t_evaluations = vec![A::BaseField::ZERO; self.num_main_transition_constraints()];
 
         // pre-compute values needed to determine x coordinates in the constraint evaluation domain
         let g = domain.ce_domain_generator();
@@ -218,6 +218,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         // merge transition constraint evaluations into a single value and return it;
         // we can do this here because all transition constraints have the same divisor.
         self.transition_constraints
+            .main_constraints()
             .iter()
             .fold(E::ZERO, |result, group| {
                 result + group.merge_evaluations(evaluations, x)
@@ -249,5 +250,14 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
             // evaluate the group and save the result
             *result = group.evaluate(state, step, x, xp);
         }
+    }
+
+    // ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns the number of transition constraints applied against the main segment of the
+    /// execution trace.
+    fn num_main_transition_constraints(&self) -> usize {
+        self.transition_constraints.num_main_constraints()
     }
 }

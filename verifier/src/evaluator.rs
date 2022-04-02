@@ -20,7 +20,8 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     // 1 ----- evaluate transition constraints ----------------------------------------------------
 
     // initialize a buffer to hold transition constraint evaluations
-    let mut t_evaluations = E::zeroed_vector(air.num_transition_constraints());
+    let t_constraints = air.get_transition_constraints(&coefficients.transition);
+    let mut t_evaluations = E::zeroed_vector(t_constraints.num_main_constraints());
 
     // compute values of periodic columns at x
     let periodic_values = air
@@ -38,13 +39,15 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
 
     // merge all constraint evaluations into a single value by computing their random linear
     // combination using coefficients drawn from the public coin
-    let t_constraints = air.get_transition_constraints(&coefficients.transition);
-    let t_evaluation = t_constraints.iter().fold(E::ZERO, |acc, group| {
-        acc + group.merge_evaluations(&t_evaluations, x)
-    });
+    let t_evaluation = t_constraints
+        .main_constraints()
+        .iter()
+        .fold(E::ZERO, |acc, group| {
+            acc + group.merge_evaluations(&t_evaluations, x)
+        });
 
     // divide out the evaluation of divisor at x
-    let z = air.transition_constraint_divisor().evaluate_at(x);
+    let z = t_constraints.divisor().evaluate_at(x);
     let mut result = t_evaluation / z;
 
     // 2 ----- evaluate boundary constraints ------------------------------------------------------

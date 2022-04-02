@@ -14,7 +14,8 @@ use utils::collections::Vec;
 pub struct AirContext<B: StarkField> {
     pub(super) options: ProofOptions,
     pub(super) trace_info: TraceInfo,
-    pub(super) transition_constraint_degrees: Vec<TransitionConstraintDegree>,
+    pub(super) main_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
+    pub(super) aux_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
     pub(super) ce_blowup_factor: usize,
     pub(super) trace_domain_generator: B,
     pub(super) lde_domain_generator: B,
@@ -23,7 +24,8 @@ pub struct AirContext<B: StarkField> {
 impl<B: StarkField> AirContext<B> {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
-    /// Returns a new instance of [AirContext] instantiated from the specified parameters.
+    /// Returns a new instance of [AirContext] instantiated for computations which require a single
+    /// execution trace segment.
     ///
     /// The list of transition constraint degrees defines the total number of transition
     /// constraints and their expected degrees. Constraint evaluations computed by
@@ -37,15 +39,47 @@ impl<B: StarkField> AirContext<B> {
         transition_constraint_degrees: Vec<TransitionConstraintDegree>,
         options: ProofOptions,
     ) -> Self {
+        Self::new_multi_segment(
+            trace_info,
+            transition_constraint_degrees,
+            Vec::new(),
+            options,
+        )
+    }
+
+    /// Returns a new instance of [AirContext] instantiated for computations which require multiple
+    /// execution trace segments.
+    ///
+    /// The lists of transition constraint degrees defines the total number of transition
+    /// constraints and their expected degrees. Constraint evaluations computed by
+    /// [Air::evaluate_transition()](crate::Air::evaluate_transition) function are expected to be
+    /// in the order defined by `main_transition_constraint_degrees` list. Constraint evaluations
+    /// computed by [Air::evaluate_aux_transition()](crate::Air::evaluate_aux_transition) function
+    /// are expected to be in the order defined by `aux_transition_constraint_degrees` list.
+    ///
+    /// # Panics
+    /// Panics if `transition_constraint_degrees` is an empty vector.
+    pub fn new_multi_segment(
+        trace_info: TraceInfo,
+        main_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
+        aux_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
+        options: ProofOptions,
+    ) -> Self {
         assert!(
-            !transition_constraint_degrees.is_empty(),
+            !main_transition_constraint_degrees.is_empty(),
             "at least one transition constraint degree must be specified"
         );
 
         // determine minimum blowup factor needed to evaluate transition constraints by taking
         // the blowup factor of the highest degree constraint
         let mut ce_blowup_factor = 0;
-        for degree in transition_constraint_degrees.iter() {
+        for degree in main_transition_constraint_degrees.iter() {
+            if degree.min_blowup_factor() > ce_blowup_factor {
+                ce_blowup_factor = degree.min_blowup_factor();
+            }
+        }
+
+        for degree in aux_transition_constraint_degrees.iter() {
             if degree.min_blowup_factor() > ce_blowup_factor {
                 ce_blowup_factor = degree.min_blowup_factor();
             }
@@ -64,10 +98,60 @@ impl<B: StarkField> AirContext<B> {
         AirContext {
             options,
             trace_info,
-            transition_constraint_degrees,
+            main_transition_constraint_degrees,
+            aux_transition_constraint_degrees,
             ce_blowup_factor,
             trace_domain_generator: B::get_root_of_unity(log2(trace_length)),
             lde_domain_generator: B::get_root_of_unity(log2(lde_domain_size)),
         }
+    }
+
+    // PUBLIC ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns length of the execution trace for an instance of a computation.
+    ///
+    // This is guaranteed to be a power of two greater than or equal to 8.
+    pub fn trace_len(&self) -> usize {
+        self.trace_info.length()
+    }
+
+    /// Returns degree of trace polynomials for an instance of a computation.
+    ///
+    /// The degree is always `trace_length` - 1.
+    pub fn trace_poly_degree(&self) -> usize {
+        self.trace_info.length() - 1
+    }
+
+    /// Returns size of the constraint evaluation domain.
+    ///
+    /// This is guaranteed to be a power of two, and is equal to `trace_length * ce_blowup_factor`.
+    pub fn ce_domain_size(&self) -> usize {
+        self.trace_info.length() * self.ce_blowup_factor
+    }
+
+    /// Returns the degree to which all constraint polynomials are normalized before they are
+    /// composed together.
+    ///
+    /// This degree is always `ce_domain_size` - 1.
+    pub fn composition_degree(&self) -> usize {
+        self.ce_domain_size() - 1
+    }
+
+    /// Returns the size of the low-degree extension domain.
+    ///
+    /// This is guaranteed to be a power of two, and is equal to `trace_length * lde_blowup_factor`.
+    pub fn lde_domain_size(&self) -> usize {
+        self.trace_info.length() * self.options.blowup_factor()
+    }
+
+    /// Returns the number of transition constraints for a computation.
+    ///
+    /// The number of transition constraints is defined by the total number of transition
+    /// constraint degree descriptors (for both the main and the auxiliary trace constraints).
+    /// This number is used to determine how many transition constraint coefficients need to be
+    /// generated for merging transition constraints into a composition polynomial.
+    pub fn num_transition_constraints(&self) -> usize {
+        self.main_transition_constraint_degrees.len() + self.aux_transition_constraint_degrees.len()
     }
 }

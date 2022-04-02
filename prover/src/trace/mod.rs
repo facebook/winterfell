@@ -128,7 +128,8 @@ pub trait Trace: Sized {
         // initialize buffers to hold evaluation frames and results of constraint evaluations
         let mut x = Self::BaseField::ONE;
         let mut ev_frame = EvaluationFrame::new(self.main_trace_width());
-        let mut evaluations = vec![Self::BaseField::ZERO; air.num_transition_constraints()];
+        let mut evaluations =
+            vec![Self::BaseField::ZERO; air.context().num_transition_constraints()];
 
         for step in 0..self.length() - 1 {
             // build periodic values

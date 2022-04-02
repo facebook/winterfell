@@ -24,7 +24,9 @@ mod boundary;
 pub use boundary::{BoundaryConstraint, BoundaryConstraintGroup};
 
 mod transition;
-pub use transition::{EvaluationFrame, TransitionConstraintDegree, TransitionConstraintGroup};
+pub use transition::{
+    EvaluationFrame, TransitionConstraintDegree, TransitionConstraintGroup, TransitionConstraints,
+};
 
 mod coefficients;
 pub use coefficients::{
@@ -249,32 +251,9 @@ pub trait Air: Send + Sync {
     /// constraint merging performed by [TransitionConstraintGroup::merge_evaluations()] function.
     fn get_transition_constraints<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        coefficients: &[(E, E)],
-    ) -> Vec<TransitionConstraintGroup<E>> {
-        assert_eq!(
-            self.num_transition_constraints(),
-            coefficients.len(),
-            "number of transition constraints must match the number of coefficient tuples"
-        );
-
-        // iterate over all transition constraint degrees, and assign each constraint to the
-        // appropriate group based on degree
-        let context = self.context();
-        let mut groups = BTreeMap::new();
-        for (i, degree) in context.transition_constraint_degrees.iter().enumerate() {
-            let evaluation_degree = degree.get_evaluation_degree(self.trace_length());
-            let group = groups.entry(evaluation_degree).or_insert_with(|| {
-                TransitionConstraintGroup::new(
-                    degree.clone(),
-                    self.trace_poly_degree(),
-                    self.composition_degree(),
-                )
-            });
-            group.add(i, coefficients[i]);
-        }
-
-        // convert from hash map into a vector and return
-        groups.into_iter().map(|e| e.1).collect()
+        composition_coefficients: &[(E, E)],
+    ) -> TransitionConstraints<E> {
+        TransitionConstraints::new(self.context(), composition_coefficients)
     }
 
     /// Convert assertions returned from [get_assertions()](Air::get_assertions) method into
@@ -348,7 +327,7 @@ pub trait Air: Send + Sync {
     /// Returns length of the execution trace for an instance of the computation described by
     /// this AIR.
     ///
-    // This is guaranteed to be greater than or equal to 8 and a power of two.
+    // This is guaranteed to be a power of two greater than or equal to 8.
     fn trace_length(&self) -> usize {
         self.context().trace_info.length()
     }
@@ -364,7 +343,7 @@ pub trait Air: Send + Sync {
     ///
     /// The degree is always `trace_length` - 1.
     fn trace_poly_degree(&self) -> usize {
-        self.trace_length() - 1
+        self.context().trace_poly_degree()
     }
 
     /// Returns the generator of the trace domain for an instance of the computation described
@@ -391,7 +370,7 @@ pub trait Air: Send + Sync {
     ///
     /// This is guaranteed to be a power of two, and is equal to `trace_length * ce_blowup_factor`.
     fn ce_domain_size(&self) -> usize {
-        self.trace_length() * self.ce_blowup_factor()
+        self.context().ce_domain_size()
     }
 
     /// Returns the degree to which all constraint polynomials are normalized before they are
@@ -399,7 +378,7 @@ pub trait Air: Send + Sync {
     ///
     /// This degree is one less than the size of constraint evaluation domain.
     fn composition_degree(&self) -> usize {
-        self.ce_domain_size() - 1
+        self.context().composition_degree()
     }
 
     /// Returns low-degree extension domain blowup factor for the computation described by this
@@ -413,7 +392,7 @@ pub trait Air: Send + Sync {
     ///
     /// This is guaranteed to be a power of two, and is equal to `trace_length * lde_blowup_factor`.
     fn lde_domain_size(&self) -> usize {
-        self.trace_length() * self.lde_blowup_factor()
+        self.context().lde_domain_size()
     }
 
     /// Returns the generator of the low-degree extension domain for an instance of the
@@ -429,39 +408,6 @@ pub trait Air: Send + Sync {
     /// to the execution trace domain.
     fn domain_offset(&self) -> Self::BaseField {
         self.context().options.domain_offset()
-    }
-
-    /// Returns a list of transition constraint degree description for an instance of the
-    /// computation described by this AIR.
-    ///
-    /// This list will be identical to the list passed into the [AirContext::new()] method as
-    /// the `transition_constraint_degrees` parameter.
-    fn transition_constraint_degrees(&self) -> &[TransitionConstraintDegree] {
-        &self.context().transition_constraint_degrees
-    }
-
-    /// Returns the number of transition constraints for an instance of the computation described
-    /// by this AIR.
-    ///
-    /// The number of transition constraints is defined by the number of transition constraint
-    /// degree descriptors.
-    fn num_transition_constraints(&self) -> usize {
-        self.context().transition_constraint_degrees.len()
-    }
-
-    /// Returns a divisor for transition constraints.
-    ///
-    /// All transition constraints have the same divisor which has the form:
-    /// $$
-    /// z(x) = \frac{x^n - 1}{x - g^{n - 1}}
-    /// $$
-    /// where: $n$ is the length of the execution trace and $g$ is the generator of the trace
-    /// domain.
-    ///
-    /// This divisor specifies that transition constraints must hold on all steps of the
-    /// execution trace except for the last one.
-    fn transition_constraint_divisor(&self) -> ConstraintDivisor<Self::BaseField> {
-        ConstraintDivisor::from_transition(self.trace_length())
     }
 
     // TRACE SEGMENT RANDOMNESS
@@ -505,7 +451,7 @@ pub trait Air: Send + Sync {
         H: Hasher,
     {
         let mut t_coefficients = Vec::new();
-        for _ in 0..self.num_transition_constraints() {
+        for _ in 0..self.context().num_transition_constraints() {
             t_coefficients.push(public_coin.draw_pair()?);
         }
 
@@ -548,6 +494,25 @@ pub trait Air: Send + Sync {
             constraints: c_coefficients,
             degree: public_coin.draw_pair()?,
         })
+    }
+
+    // AUXILIARY TRACE CONSTRAINTS
+    // --------------------------------------------------------------------------------------------
+
+    // TODO: add docs
+    #[allow(unused_variables)]
+    fn evaluate_aux_transition<E1, E2>(
+        &self,
+        frame: &EvaluationFrame<E1>,
+        aux_frame: &EvaluationFrame<E2>,
+        periodic_values: &[E1],
+        aux_rand_elements: &AuxTraceRandElements<E2>,
+        result: &mut [E2],
+    ) where
+        E1: FieldElement<BaseField = Self::BaseField>,
+        E2: FieldElement + From<E1>,
+    {
+        unimplemented!("evaluation of auxiliary transition constraints has not been implemented");
     }
 }
 
