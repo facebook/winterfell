@@ -4,10 +4,10 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    AsBytes, BaseElement, ByteReader, Deserializable, DeserializationError, ExtensionOf,
-    FieldElement, StarkField, M,
+    AsBytes, BaseElement, ByteReader, Deserializable, DeserializationError, FieldElement,
+    StarkField, M,
 };
-use crate::field::QuadExtension;
+use crate::field::{ExtensionOf, QuadExtension};
 use core::convert::TryFrom;
 use num_bigint::BigUint;
 use rand_utils::{rand_value, rand_vector};

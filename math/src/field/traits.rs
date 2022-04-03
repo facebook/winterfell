@@ -277,6 +277,14 @@ pub trait ExtensibleField<const N: usize>: StarkField {
 /// - An element in the extension field can be multiplied by a base field element directly. This
 ///   can be used for optimization purposes as such multiplication could be much more efficient
 ///   than multiplication of two extension field elements.
-pub trait ExtensionOf<F: FieldElement>: From<F> {
-    fn mul_base(self, other: F) -> Self;
+pub trait ExtensionOf<E: FieldElement>: From<E> {
+    fn mul_base(self, other: E) -> Self;
+}
+
+/// A field is always an extension of itself.
+impl<E: FieldElement> ExtensionOf<E> for E {
+    #[inline(always)]
+    fn mul_base(self, other: E) -> Self {
+        self * other
+    }
 }

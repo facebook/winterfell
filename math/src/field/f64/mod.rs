@@ -14,7 +14,7 @@
 //!
 //! Internally, the values are stored in the range $[0, 2^{64})$ using `u64` as the backing type.
 
-use super::{ExtensibleField, ExtensionOf, FieldElement, StarkField};
+use super::{ExtensibleField, FieldElement, StarkField};
 use core::{
     convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter},
@@ -212,14 +212,6 @@ impl StarkField for BaseElement {
         } else {
             self.0
         }
-    }
-}
-
-/// A base [StarkField] field is always an extension of itself.
-impl ExtensionOf<BaseElement> for BaseElement {
-    #[inline(always)]
-    fn mul_base(self, other: BaseElement) -> Self {
-        self * other
     }
 }
 

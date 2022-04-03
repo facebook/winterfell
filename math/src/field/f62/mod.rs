@@ -9,7 +9,7 @@
 //! fast modular arithmetic including branchless multiplication and addition. Base elements are
 //! stored in the Montgomery form using `u64` as the backing type.
 
-use super::{ExtensibleField, ExtensionOf, FieldElement, StarkField};
+use super::{ExtensibleField, FieldElement, StarkField};
 use core::{
     convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter},
@@ -185,13 +185,6 @@ impl StarkField for BaseElement {
         let result = mul(self.0, 1);
         // since the result of multiplication can be in [0, 2M), we need to normalize it
         normalize(result)
-    }
-}
-
-impl ExtensionOf<BaseElement> for BaseElement {
-    #[inline(always)]
-    fn mul_base(self, other: BaseElement) -> Self {
-        self * other
     }
 }
 
