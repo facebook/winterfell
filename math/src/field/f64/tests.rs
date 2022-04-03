@@ -6,7 +6,7 @@
 use super::{
     AsBytes, BaseElement, DeserializationError, FieldElement, Serializable, StarkField, E, M,
 };
-use crate::field::{CubeExtension, QuadExtension};
+use crate::field::{CubeExtension, ExtensionOf, QuadExtension};
 use core::convert::TryFrom;
 use num_bigint::BigUint;
 use proptest::prelude::*;
@@ -272,6 +272,16 @@ fn quad_mul() {
 }
 
 #[test]
+fn quad_mul_base() {
+    let a = <QuadExtension<BaseElement>>::new(rand_value(), rand_value());
+    let b0 = rand_value();
+    let b = <QuadExtension<BaseElement>>::new(b0, BaseElement::ZERO);
+
+    let expected = a * b;
+    assert_eq!(expected, a.mul_base(b0));
+}
+
+#[test]
 fn quad_conjugate() {
     let m = BaseElement::MODULUS;
 
@@ -361,6 +371,16 @@ fn cube_mul() {
         BaseElement::new(21824696736),
     );
     assert_eq!(expected, a * b);
+}
+
+#[test]
+fn cube_mul_base() {
+    let a = <CubeExtension<BaseElement>>::new(rand_value(), rand_value(), rand_value());
+    let b0 = rand_value();
+    let b = <CubeExtension<BaseElement>>::new(b0, BaseElement::ZERO, BaseElement::ZERO);
+
+    let expected = a * b;
+    assert_eq!(expected, a.mul_base(b0));
 }
 
 // RANDOMIZED TESTS

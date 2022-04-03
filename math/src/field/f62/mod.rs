@@ -9,10 +9,7 @@
 //! fast modular arithmetic including branchless multiplication and addition. Base elements are
 //! stored in the Montgomery form using `u64` as the backing type.
 
-use super::{
-    traits::{FieldElement, StarkField},
-    ExtensibleField,
-};
+use super::{ExtensibleField, ExtensionOf, FieldElement, StarkField};
 use core::{
     convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter},
@@ -191,6 +188,13 @@ impl StarkField for BaseElement {
     }
 }
 
+impl ExtensionOf<BaseElement> for BaseElement {
+    #[inline(always)]
+    fn mul_base(self, other: BaseElement) -> Self {
+        self * other
+    }
+}
+
 impl Randomizable for BaseElement {
     const VALUE_SIZE: usize = Self::ELEMENT_BYTES;
 
@@ -300,6 +304,11 @@ impl ExtensibleField<2> for BaseElement {
     }
 
     #[inline(always)]
+    fn mul_base(a: [Self; 2], b: Self) -> [Self; 2] {
+        [a[0] * b, a[1] * b]
+    }
+
+    #[inline(always)]
     fn frobenius(x: [Self; 2]) -> [Self; 2] {
         [x[0] + x[1], -x[1]]
     }
@@ -337,6 +346,11 @@ impl ExtensibleField<3> for BaseElement {
             a0b1_a1b0_minus_2a1b2_minus_2a2b1_minus_2a2b2,
             a0b2_a1b1_a2b0_minus_2a2b2,
         ]
+    }
+
+    #[inline(always)]
+    fn mul_base(a: [Self; 3], b: Self) -> [Self; 3] {
+        [a[0] * b, a[1] * b, a[2] * b]
     }
 
     #[inline(always)]
