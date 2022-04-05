@@ -342,8 +342,8 @@ pub trait Prover {
         // evaluate trace and constraint polynomials at the OOD point z, and send the results to
         // the verifier. the trace polynomials are actually evaluated over two points: z and z * g,
         // where g is the generator of the trace domain.
-        let ood_frame = trace_polys.get_ood_frame(z);
-        channel.send_ood_evaluation_frame(&ood_frame);
+        let ood_trace_states = trace_polys.get_ood_frame(z);
+        channel.send_ood_trace_states(&ood_trace_states);
 
         let ood_evaluations = composition_poly.evaluate_at(z);
         channel.send_ood_constraint_evaluations(&ood_evaluations);
@@ -355,7 +355,7 @@ pub trait Prover {
 
         // combine all trace polynomials together and merge them into the DEEP composition
         // polynomial
-        deep_composition_poly.add_trace_polys(trace_polys, ood_frame);
+        deep_composition_poly.add_trace_polys(trace_polys, ood_trace_states);
 
         // merge columns of constraint composition polynomial into the DEEP composition polynomial;
         deep_composition_poly.add_composition_poly(composition_poly, ood_evaluations);

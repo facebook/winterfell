@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{constraints::CompositionPoly, StarkDomain, TracePolyTable};
-use air::{Air, DeepCompositionCoefficients, EvaluationFrame};
+use air::{Air, DeepCompositionCoefficients};
 use core::marker::PhantomData;
 use math::{add_in_place, fft, log2, mul_acc, polynom, FieldElement, StarkField};
 use utils::{collections::Vec, iter_mut};
@@ -71,7 +71,7 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseField>> DeepCompositionPoly<A, E
     pub fn add_trace_polys(
         &mut self,
         trace_polys: TracePolyTable<A::BaseField, E>,
-        ood_frame: EvaluationFrame<E>,
+        ood_trace_states: Vec<Vec<E>>,
     ) {
         assert!(self.coefficients.is_empty());
 
@@ -82,8 +82,9 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseField>> DeepCompositionPoly<A, E
         let next_z = self.z * g;
 
         // cache state of columns at points z and z * g
-        let trace_state1 = ood_frame.current();
-        let trace_state2 = ood_frame.next();
+        // TODO: handle generically
+        let trace_state1 = &ood_trace_states[0];
+        let trace_state2 = &ood_trace_states[1];
 
         // combine trace polynomials into 2 composition polynomials T'(x) and T''(x), and if
         // we are using a field extension, also T'''(x)

@@ -7,7 +7,6 @@ use crate::{
     matrix::{ColumnIter, MultiColumnIter},
     Matrix,
 };
-use air::EvaluationFrame;
 use math::{log2, FieldElement, StarkField};
 use utils::collections::Vec;
 
@@ -60,7 +59,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> TracePolyTable<B, E> {
         self.main_segment_polys.num_rows()
     }
 
-    /// Evaluates all trace polynomials ate the specified point `x`.
+    /// Evaluates all trace polynomials (across all trace segments) at the specified point `x`.
     pub fn evaluate_at(&self, x: E) -> Vec<E> {
         let mut result = self.main_segment_polys.evaluate_columns_at(x);
         for aux_polys in self.aux_segment_polys.iter() {
@@ -71,9 +70,9 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> TracePolyTable<B, E> {
 
     /// Returns an out-of-domain evaluation frame constructed by evaluating trace polynomials
     /// for all columns at points z and z * g, where g is the generator of the trace domain.
-    pub fn get_ood_frame(&self, z: E) -> EvaluationFrame<E> {
+    pub fn get_ood_frame(&self, z: E) -> Vec<Vec<E>> {
         let g = E::from(B::get_root_of_unity(log2(self.poly_size())));
-        EvaluationFrame::from_rows(self.evaluate_at(z), self.evaluate_at(z * g))
+        vec![self.evaluate_at(z), self.evaluate_at(z * g)]
     }
 
     /// Returns an iterator over the polynomials of the main trace segment.

@@ -70,6 +70,7 @@ where
 
         let num_trace_segments = air.trace_layout().num_segments();
         let main_trace_width = air.trace_layout().main_trace_width();
+        let aux_trace_width = air.trace_layout().aux_trace_width();
         let lde_domain_size = air.lde_domain_size();
         let num_queries = air.options().num_queries();
         let fri_options = air.options().to_fri_options();
@@ -113,8 +114,8 @@ where
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         // --- parse out-of-domain evaluation frame -----------------------------------------------
-        let (ood_frame, ood_evaluations) = ood_frame
-            .parse(main_trace_width, air.ce_blowup_factor())
+        let (ood_frame, _aux_ood_frame, ood_evaluations) = ood_frame
+            .parse(main_trace_width, aux_trace_width, air.ce_blowup_factor())
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         Ok(VerifierChannel {

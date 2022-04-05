@@ -5,7 +5,7 @@
 
 use air::{
     proof::{Commitments, Context, OodFrame, Queries, StarkProof},
-    Air, ConstraintCompositionCoefficients, DeepCompositionCoefficients, EvaluationFrame,
+    Air, ConstraintCompositionCoefficients, DeepCompositionCoefficients,
 };
 use core::marker::PhantomData;
 use crypto::{ElementHasher, RandomCoin};
@@ -81,12 +81,13 @@ where
         self.public_coin.reseed(constraint_root);
     }
 
-    /// Saves the out-of-domain evaluation frame. This also reseeds the public coin with the
-    /// hashes of the evaluation frame states.
-    pub fn send_ood_evaluation_frame(&mut self, frame: &EvaluationFrame<E>) {
-        self.ood_frame.set_evaluation_frame(frame);
-        self.public_coin.reseed(H::hash_elements(frame.current()));
-        self.public_coin.reseed(H::hash_elements(frame.next()));
+    /// Saves the evaluations of trace polynomials over the out-of-domain evaluation frame. This
+    /// also reseeds the public coin with the hashes of the evaluation frame states.
+    pub fn send_ood_trace_states(&mut self, trace_states: &[Vec<E>]) {
+        self.ood_frame.set_trace_states(trace_states);
+        for trace_state in trace_states {
+            self.public_coin.reseed(H::hash_elements(trace_state));
+        }
     }
 
     /// Saves the evaluations of constraint composition polynomial columns at the out-of-domain
