@@ -25,6 +25,9 @@ pub use queries::Queries;
 mod ood_frame;
 pub use ood_frame::OodFrame;
 
+mod table;
+pub use table::Table;
+
 // CONSTANTS
 // ================================================================================================
 
