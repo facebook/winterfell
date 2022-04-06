@@ -10,7 +10,7 @@ use utils::iterators::*;
 // MATRIX
 // ================================================================================================
 
-/// A two dimensional matrix of field elements arranged in column-major order.
+/// A two-dimensional matrix of field elements arranged in column-major order.
 ///
 /// This struct is used as a backing type for many objects manipulated by the prover. The matrix
 /// itself does not assign any contextual meaning to the values stored in it. For example, columns

@@ -145,7 +145,7 @@ impl StarkProof {
         let commitments = Commitments::read_from(&mut source)?;
 
         // parse trace queries
-        let num_trace_segments = context.trace_layout().num_aux_segments() + 1;
+        let num_trace_segments = context.trace_layout().num_segments();
         let mut trace_queries = Vec::with_capacity(num_trace_segments);
         for _ in 0..num_trace_segments {
             trace_queries.push(Queries::read_from(&mut source)?);

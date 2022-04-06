@@ -169,7 +169,7 @@ pub fn verify<AIR: Air>(
 /// attests to a correct execution of the computation specified by the provided `air`.
 fn perform_verification<A, E, H>(
     air: A,
-    mut channel: VerifierChannel<A::BaseField, E, H>,
+    mut channel: VerifierChannel<E, H>,
     mut public_coin: RandomCoin<A::BaseField, H>,
 ) -> Result<(), VerifierError>
 where
@@ -224,16 +224,22 @@ where
 
     // read the out-of-domain evaluation frame sent by the prover and evaluate constraints over it;
     // also, reseed the public coin with the OOD frame received from the prover
-    let ood_frame = channel.read_ood_evaluation_frame();
-    let ood_constraint_evaluation_1 = evaluate_constraints(&air, constraint_coeffs, &ood_frame, z);
-    public_coin.reseed(H::hash_elements(ood_frame.current()));
-    public_coin.reseed(H::hash_elements(ood_frame.next()));
+    let (ood_main_trace_frame, ood_aux_trace_frame) = channel.read_ood_trace_frame();
+    let ood_constraint_evaluation_1 = evaluate_constraints(
+        &air,
+        constraint_coeffs,
+        &ood_main_trace_frame,
+        &ood_aux_trace_frame,
+        z,
+    );
+    public_coin.reseed(H::hash_elements(ood_main_trace_frame.current()));
+    public_coin.reseed(H::hash_elements(ood_main_trace_frame.next()));
 
     // read evaluations of composition polynomial columns sent by the prover, and reduce them into
     // a single value by computing sum(z^i * value_i), where value_i is the evaluation of the ith
     // column polynomial at z^m, where m is the total number of column polynomials; also, reseed
     // the public coin with the OOD constraint evaluations received from the prover.
-    let ood_evaluations = channel.read_ood_evaluations();
+    let ood_evaluations = channel.read_ood_constraint_evaluations();
     let ood_constraint_evaluation_2 = ood_evaluations
         .iter()
         .enumerate()
@@ -290,13 +296,14 @@ where
 
     // read evaluations of trace and constraint composition polynomials at the queried positions;
     // this also checks that the read values are valid against trace and constraint commitments
-    let queried_trace_states = channel.read_trace_states(&query_positions)?;
+    let (queried_main_trace_states, _queried_aux_trace_states) =
+        channel.read_queried_trace_states(&query_positions)?;
     let queried_evaluations = channel.read_constraint_evaluations(&query_positions)?;
 
     // 6 ----- DEEP composition -------------------------------------------------------------------
     // compute evaluations of the DEEP composition polynomial at the queried positions
     let composer = DeepComposer::new(&air, &query_positions, z, deep_coefficients);
-    let t_composition = composer.compose_columns(queried_trace_states, ood_frame);
+    let t_composition = composer.compose_columns(queried_main_trace_states, ood_main_trace_frame);
     let c_composition = composer.compose_constraints(queried_evaluations, ood_evaluations);
     let deep_evaluations = composer.combine_compositions(t_composition, c_composition);
 

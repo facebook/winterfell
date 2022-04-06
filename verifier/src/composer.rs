@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use air::{Air, DeepCompositionCoefficients, EvaluationFrame, FieldExtension};
+use air::{proof::Table, Air, DeepCompositionCoefficients, EvaluationFrame, FieldExtension};
 use math::FieldElement;
 use utils::collections::Vec;
 
@@ -62,7 +62,7 @@ impl<A: Air, E: FieldElement + From<A::BaseField>> DeepComposer<A, E> {
     /// this function via the `ood_frame` parameter.
     pub fn compose_columns(
         &self,
-        queried_trace_states: Vec<Vec<A::BaseField>>,
+        queried_trace_states: Table<E::BaseField>,
         ood_frame: EvaluationFrame<E>,
     ) -> Vec<E> {
         let trace_at_z1 = ood_frame.current();
@@ -72,8 +72,8 @@ impl<A: Air, E: FieldElement + From<A::BaseField>> DeepComposer<A, E> {
         // z as well as conjugate of z itself
         let conjugate_values = get_conjugate_values(self.field_extension, trace_at_z1, self.z);
 
-        let mut result = Vec::with_capacity(queried_trace_states.len());
-        for (columns, &x) in queried_trace_states.iter().zip(&self.x_coordinates) {
+        let mut result = Vec::with_capacity(queried_trace_states.num_rows());
+        for (columns, &x) in queried_trace_states.rows().zip(&self.x_coordinates) {
             let x = E::from(x);
             let mut composition = E::ZERO;
             for (i, &value) in columns.iter().enumerate() {
@@ -116,18 +116,18 @@ impl<A: Air, E: FieldElement + From<A::BaseField>> DeepComposer<A, E> {
     /// via the `ood_evaluations` parameter.
     pub fn compose_constraints(
         &self,
-        queried_evaluations: Vec<Vec<E>>,
+        queried_evaluations: Table<E>,
         ood_evaluations: Vec<E>,
     ) -> Vec<E> {
-        assert_eq!(queried_evaluations.len(), self.x_coordinates.len());
+        assert_eq!(queried_evaluations.num_rows(), self.x_coordinates.len());
 
-        let mut result = Vec::with_capacity(queried_evaluations.len());
+        let mut result = Vec::with_capacity(queried_evaluations.num_rows());
 
         // compute z^m
         let num_evaluation_columns = ood_evaluations.len() as u32;
         let z_m = self.z.exp(num_evaluation_columns.into());
 
-        for (query_values, &x) in queried_evaluations.iter().zip(&self.x_coordinates) {
+        for (query_values, &x) in queried_evaluations.rows().zip(&self.x_coordinates) {
             let mut composition = E::ZERO;
             for (i, &evaluation) in query_values.iter().enumerate() {
                 // compute H'_i(x) = (H_i(x) - H(z^m)) / (x - z^m)

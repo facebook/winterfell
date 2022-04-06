@@ -14,7 +14,8 @@ use utils::collections::Vec;
 pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     air: &A,
     coefficients: ConstraintCompositionCoefficients<E>,
-    ood_frame: &EvaluationFrame<E>,
+    main_trace_frame: &EvaluationFrame<E>,
+    aux_trace_frame: &Option<EvaluationFrame<E>>,
     x: E,
 ) -> E {
     // 1 ----- evaluate transition constraints ----------------------------------------------------
@@ -35,7 +36,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
         .collect::<Vec<_>>();
 
     // evaluate transition constraints over OOD evaluation frame
-    air.evaluate_transition(ood_frame, &periodic_values, &mut t_evaluations);
+    air.evaluate_transition(main_trace_frame, &periodic_values, &mut t_evaluations);
 
     // merge all constraint evaluations into a single value by computing their random linear
     // combination using coefficients drawn from the public coin
@@ -49,6 +50,10 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     // divide out the evaluation of divisor at x
     let z = t_constraints.divisor().evaluate_at(x);
     let mut result = t_evaluation / z;
+
+    if let Some(_aux_trace_frame) = aux_trace_frame {
+        unimplemented!()
+    }
 
     // 2 ----- evaluate boundary constraints ------------------------------------------------------
 
@@ -70,7 +75,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
             xp = x.exp(degree_adjustment.into());
         }
         // evaluate all constraints in the group, and add the evaluation to the result
-        result += group.evaluate_at(ood_frame.current(), x, xp);
+        result += group.evaluate_at(main_trace_frame.current(), x, xp);
     }
 
     result
