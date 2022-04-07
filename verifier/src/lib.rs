@@ -230,10 +230,15 @@ where
         constraint_coeffs,
         &ood_main_trace_frame,
         &ood_aux_trace_frame,
+        aux_trace_rand_elements,
         z,
     );
     public_coin.reseed(H::hash_elements(ood_main_trace_frame.current()));
     public_coin.reseed(H::hash_elements(ood_main_trace_frame.next()));
+    if let Some(aux_trace_frame) = ood_aux_trace_frame {
+        public_coin.reseed(H::hash_elements(aux_trace_frame.current()));
+        public_coin.reseed(H::hash_elements(aux_trace_frame.next()));
+    }
 
     // read evaluations of composition polynomial columns sent by the prover, and reduce them into
     // a single value by computing sum(z^i * value_i), where value_i is the evaluation of the ith

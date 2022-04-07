@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{AirContext, BTreeMap, ConstraintDivisor, FieldElement, Vec};
+use super::{AirContext, BTreeMap, ConstraintDivisor, ExtensionOf, FieldElement, Vec};
 
 mod frame;
 pub use frame::EvaluationFrame;
@@ -135,6 +135,48 @@ impl<E: FieldElement> TransitionConstraints<E> {
     pub fn divisor(&self) -> &ConstraintDivisor<E::BaseField> {
         &self.divisor
     }
+
+    // CONSTRAINT COMPOSITION
+    // --------------------------------------------------------------------------------------------
+
+    /// Computes a linear combination of all transition constraint evaluations and divides the
+    /// result by transition constraint divisor.
+    ///
+    /// A transition constraint is described by a rational function of the form $\frac{C(x)}{z(x)}$,
+    /// where:
+    /// * $C(x)$ is the constraint polynomial.
+    /// * $z(x)$ is the constraint divisor polynomial.
+    ///
+    /// Thus, this function computes a linear combination of $C(x)$ evaluations. For more detail on
+    ///  how this linear combination is computed refer to [TransitionConstraintGroup::merge_evaluations].
+    ///
+    /// Since, the divisor polynomial is the same for all transition constraints (see
+    /// [ConstraintDivisor::from_transition]), we can divide the linear combination by the
+    /// divisor rather than dividing each individual $C(x)$ evaluation. This requires executing only
+    /// one division at the end.
+    pub fn combine_evaluations<F>(&self, main_evaluations: &[F], aux_evaluations: &[E], x: F) -> E
+    where
+        F: FieldElement<BaseField = E::BaseField>,
+        E: ExtensionOf<F>,
+    {
+        // merge constraint evaluations for the main trace segment
+        let mut result = self.main_constraints().iter().fold(E::ZERO, |acc, group| {
+            acc + group.merge_evaluations(main_evaluations, x)
+        });
+
+        // merge constraint evaluations for auxiliary trace segments (if any)
+        if self.num_aux_constraints() > 0 {
+            let x = E::from(x);
+            result += self.aux_constraints().iter().fold(E::ZERO, |acc, group| {
+                acc + group.merge_evaluations(aux_evaluations, x)
+            });
+        }
+
+        // divide out the evaluation of divisor at x
+        let z = E::from(self.divisor.evaluate_at(x));
+
+        result / z
+    }
 }
 
 // TRANSITION CONSTRAINT GROUP
@@ -144,17 +186,8 @@ impl<E: FieldElement> TransitionConstraints<E> {
 /// A transition constraint group does not actually store transition constraints - it stores only
 /// their indexes and the info needed to compute their random linear combination. The indexes are
 /// assumed to be consistent with the order in which constraint evaluations are written into the
-/// `evaluation` table by the [Air::evaluate_transition()](crate::Air::evaluate_transition)
-/// function.
-///
-/// A transition constraint is described by a rational function of the form $\frac{C(x)}{z(x)}$,
-/// where:
-/// * $C(x)$ is the constraint polynomial.
-/// * $z(x)$ is the constraint divisor polynomial.
-///
-/// The divisor polynomial is the same for all transition constraints (see
-/// [Air::transition_constraint_divisor()](crate::Air::transition_constraint_divisor())) and for
-/// this reason is not stored in a transition constraint group.
+/// `evaluation` table by the [Air::evaluate_transition()](crate::Air::evaluate_transition) or
+/// [Air::evaluate_aux_transition()](crate::Air::evaluate_aux_transition) function.
 #[derive(Clone, Debug)]
 pub struct TransitionConstraintGroup<E: FieldElement> {
     degree: TransitionConstraintDegree,
@@ -231,10 +264,10 @@ impl<E: FieldElement> TransitionConstraintGroup<E> {
     /// them by the divisor later on. The degree of the divisor for transition constraints is
     /// always $n - 1$. Thus, once we divide out the divisor, the evaluations will represent a
     /// polynomial of degree $D$.
-    pub fn merge_evaluations<B>(&self, evaluations: &[B], x: B) -> E
+    pub fn merge_evaluations<F>(&self, evaluations: &[F], x: F) -> E
     where
-        B: FieldElement,
-        E: From<B>,
+        F: FieldElement<BaseField = E::BaseField>,
+        E: ExtensionOf<F>,
     {
         // compute degree adjustment factor for this group
         let xp = E::from(x.exp(self.degree_adjustment.into()));
