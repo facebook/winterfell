@@ -18,20 +18,16 @@ use utils::collections::Vec;
 /// Coefficients of the polynomials for the main trace segment are always in the base field.
 /// However, coefficients of the polynomials for the auxiliary trace segments may be either in the
 /// base field, or in the extension field, depending on whether extension field is being used.
-pub struct TracePolyTable<B, E>
-where
-    B: StarkField,
-    E: FieldElement<BaseField = B>,
-{
-    main_segment_polys: Matrix<B>,
+pub struct TracePolyTable<E: FieldElement> {
+    main_segment_polys: Matrix<E::BaseField>,
     aux_segment_polys: Vec<Matrix<E>>,
 }
 
-impl<B: StarkField, E: FieldElement<BaseField = B>> TracePolyTable<B, E> {
+impl<E: FieldElement> TracePolyTable<E> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Creates a new table of trace polynomials from the provided main trace segment polynomials.
-    pub fn new(main_trace_polys: Matrix<B>) -> Self {
+    pub fn new(main_trace_polys: Matrix<E::BaseField>) -> Self {
         Self {
             main_segment_polys: main_trace_polys,
             aux_segment_polys: Vec::new(),
@@ -71,12 +67,12 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> TracePolyTable<B, E> {
     /// Returns an out-of-domain evaluation frame constructed by evaluating trace polynomials
     /// for all columns at points z and z * g, where g is the generator of the trace domain.
     pub fn get_ood_frame(&self, z: E) -> Vec<Vec<E>> {
-        let g = E::from(B::get_root_of_unity(log2(self.poly_size())));
+        let g = E::from(E::BaseField::get_root_of_unity(log2(self.poly_size())));
         vec![self.evaluate_at(z), self.evaluate_at(z * g)]
     }
 
     /// Returns an iterator over the polynomials of the main trace segment.
-    pub fn main_trace_polys(&self) -> ColumnIter<B> {
+    pub fn main_trace_polys(&self) -> ColumnIter<E::BaseField> {
         self.main_segment_polys.columns()
     }
 
@@ -96,7 +92,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> TracePolyTable<B, E> {
 
     /// Returns a polynomial from the main segment of the trace at the specified index.
     #[cfg(test)]
-    pub fn get_main_trace_poly(&self, idx: usize) -> &[B] {
+    pub fn get_main_trace_poly(&self, idx: usize) -> &[E::BaseField] {
         &self.main_segment_polys.get_column(idx)
     }
 }

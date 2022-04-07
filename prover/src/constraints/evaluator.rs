@@ -31,7 +31,7 @@ const MIN_CONCURRENT_DOMAIN_SIZE: usize = 8192;
 
 pub struct ConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> {
     air: &'a A,
-    boundary_constraints: Vec<BoundaryConstraintGroup<A::BaseField, E>>,
+    boundary_constraints: Vec<BoundaryConstraintGroup<E>>,
     transition_constraints: TransitionConstraints<E>,
     periodic_values: PeriodicValueTable<A::BaseField>,
     divisors: Vec<ConstraintDivisor<A::BaseField>>,
@@ -96,9 +96,9 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     /// evaluation domain can be many times smaller than the full LDE domain.
     pub fn evaluate(
         &self,
-        trace: &TraceLde<A::BaseField, E>,
+        trace: &TraceLde<E>,
         domain: &StarkDomain<A::BaseField>,
-    ) -> ConstraintEvaluationTable<A::BaseField, E> {
+    ) -> ConstraintEvaluationTable<E> {
         assert_eq!(
             trace.trace_len(),
             domain.lde_domain_size(),
@@ -109,9 +109,9 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         // single value) so that we can check their degree late
         #[cfg(not(debug_assertions))]
         let mut evaluation_table =
-            ConstraintEvaluationTable::<A::BaseField, E>::new(domain, self.divisors.clone());
+            ConstraintEvaluationTable::<E>::new(domain, self.divisors.clone());
         #[cfg(debug_assertions)]
-        let mut evaluation_table = ConstraintEvaluationTable::<A::BaseField, E>::new(
+        let mut evaluation_table = ConstraintEvaluationTable::<E>::new(
             domain,
             self.divisors.clone(),
             self.transition_constraint_degrees.to_vec(),
@@ -148,9 +148,9 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     /// Evaluates constraints for a single fragment of the evaluation table.
     fn evaluate_fragment(
         &self,
-        trace: &TraceLde<A::BaseField, E>,
+        trace: &TraceLde<E>,
         domain: &StarkDomain<A::BaseField>,
-        fragment: &mut EvaluationTableFragment<A::BaseField, E>,
+        fragment: &mut EvaluationTableFragment<E>,
     ) {
         // initialize buffers to hold trace values and evaluation results at each step;
         let mut ev_frame = EvaluationFrame::new(trace.main_trace_width());

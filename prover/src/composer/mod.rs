@@ -5,8 +5,7 @@
 
 use super::{constraints::CompositionPoly, StarkDomain, TracePolyTable};
 use air::{Air, DeepCompositionCoefficients};
-use core::marker::PhantomData;
-use math::{add_in_place, fft, log2, mul_acc, polynom, FieldElement, StarkField};
+use math::{add_in_place, fft, log2, mul_acc, polynom, ExtensionOf, FieldElement, StarkField};
 use utils::{collections::Vec, iter_mut};
 
 #[cfg(feature = "concurrent")]
@@ -14,27 +13,28 @@ use utils::iterators::*;
 
 // DEEP COMPOSITION POLYNOMIAL
 // ================================================================================================
-pub struct DeepCompositionPoly<A: Air, E: FieldElement<BaseField = A::BaseField>> {
+pub struct DeepCompositionPoly<E: FieldElement> {
     coefficients: Vec<E>,
     cc: DeepCompositionCoefficients<E>,
     z: E,
     field_extension: bool,
-    _air: PhantomData<A>,
 }
 
-impl<A: Air, E: FieldElement<BaseField = A::BaseField>> DeepCompositionPoly<A, E> {
+impl<E: FieldElement> DeepCompositionPoly<E> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Returns a new DEEP composition polynomial. Initially, this polynomial will be empty, and
     /// the intent is to populate the coefficients via add_trace_polys() and add_constraint_polys()
     /// methods.
-    pub fn new(air: &A, z: E, cc: DeepCompositionCoefficients<E>) -> Self {
+    pub fn new<A>(air: &A, z: E, cc: DeepCompositionCoefficients<E>) -> Self
+    where
+        A: Air<BaseField = E::BaseField>,
+    {
         DeepCompositionPoly {
             coefficients: vec![],
             cc,
             z,
             field_extension: !air.options().field_extension().is_none(),
-            _air: PhantomData,
         }
     }
 
@@ -70,7 +70,7 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseField>> DeepCompositionPoly<A, E
     /// Note that evaluations of T_i(z) and T_i(z * g) are passed in via the `ood_frame` parameter.
     pub fn add_trace_polys(
         &mut self,
-        trace_polys: TracePolyTable<A::BaseField, E>,
+        trace_polys: TracePolyTable<E>,
         ood_trace_states: Vec<Vec<E>>,
     ) {
         assert!(self.coefficients.is_empty());
@@ -78,13 +78,8 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseField>> DeepCompositionPoly<A, E
         // compute a second out-of-domain point offset from z by exactly trace generator; this
         // point defines the "next" computation state in relation to point z
         let trace_length = trace_polys.poly_size();
-        let g = E::from(A::BaseField::get_root_of_unity(log2(trace_length)));
+        let g = E::from(E::BaseField::get_root_of_unity(log2(trace_length)));
         let next_z = self.z * g;
-
-        // cache state of columns at points z and z * g
-        // TODO: handle generically
-        let trace_state1 = &ood_trace_states[0];
-        let trace_state2 = &ood_trace_states[1];
 
         // combine trace polynomials into 2 composition polynomials T'(x) and T''(x), and if
         // we are using a field extension, also T'''(x)
@@ -103,7 +98,7 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseField>> DeepCompositionPoly<A, E
             acc_main_trace_poly(
                 &mut t1_composition,
                 poly,
-                trace_state1[i],
+                ood_trace_states[0][i],
                 self.cc.trace[i].0,
             );
 
@@ -112,7 +107,7 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseField>> DeepCompositionPoly<A, E
             acc_main_trace_poly(
                 &mut t2_composition,
                 poly,
-                trace_state2[i],
+                ood_trace_states[1][i],
                 self.cc.trace[i].1,
             );
 
@@ -122,7 +117,7 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseField>> DeepCompositionPoly<A, E
                 acc_main_trace_poly(
                     &mut t3_composition,
                     poly,
-                    trace_state1[i].conjugate(),
+                    ood_trace_states[0][i].conjugate(),
                     self.cc.trace[i].2,
                 );
             }
@@ -184,7 +179,7 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseField>> DeepCompositionPoly<A, E
 
         // add H'_i(x) * cc_i for all i into the DEEP composition polynomial
         for (i, poly) in column_polys.into_iter().enumerate() {
-            mul_acc(&mut self.coefficients, &poly, self.cc.constraints[i]);
+            mul_acc::<E, E>(&mut self.coefficients, &poly, self.cc.constraints[i]);
         }
         assert_eq!(self.poly_size() - 2, self.degree());
     }
@@ -204,9 +199,9 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseField>> DeepCompositionPoly<A, E
         let mut result = E::zeroed_vector(self.coefficients.len());
 
         // this is equivalent to C(x) * cc_0
-        mul_acc(&mut result, &self.coefficients, self.cc.degree.0);
+        mul_acc::<E, E>(&mut result, &self.coefficients, self.cc.degree.0);
         // this is equivalent to C(x) * x * cc_1
-        mul_acc(
+        mul_acc::<E, E>(
             &mut result[1..],
             &self.coefficients[..(self.coefficients.len() - 1)],
             self.cc.degree.1,
@@ -219,7 +214,7 @@ impl<A: Air, E: FieldElement<BaseField = A::BaseField>> DeepCompositionPoly<A, E
     // LOW-DEGREE EXTENSION
     // --------------------------------------------------------------------------------------------
     /// Evaluates DEEP composition polynomial over the specified LDE domain and returns the result.
-    pub fn evaluate(self, domain: &StarkDomain<A::BaseField>) -> Vec<E> {
+    pub fn evaluate(self, domain: &StarkDomain<E::BaseField>) -> Vec<E> {
         fft::evaluate_poly_with_offset(
             &self.coefficients,
             domain.trace_twiddles(),
@@ -258,10 +253,10 @@ fn merge_trace_compositions<E: FieldElement>(mut polys: Vec<Vec<E>>, divisors: V
 /// Computes (P(x) - value) * k and saves the result into the accumulator.
 ///
 /// Polynomial coefficients are expected to be in the base field.
-fn acc_main_trace_poly<B, E>(accumulator: &mut [E], poly: &[B], value: E, k: E)
+fn acc_main_trace_poly<F, E>(accumulator: &mut [E], poly: &[F], value: E, k: E)
 where
-    B: StarkField,
-    E: FieldElement<BaseField = B>,
+    F: FieldElement,
+    E: FieldElement<BaseField = F::BaseField> + ExtensionOf<F>,
 {
     mul_acc(accumulator, poly, k);
     let adjusted_tz = value * k;

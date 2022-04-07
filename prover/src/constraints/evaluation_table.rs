@@ -11,9 +11,6 @@ use utils::{batch_iter_mut, collections::Vec, iter_mut, uninit_vector};
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
 
-#[cfg(not(debug_assertions))]
-use core::marker::PhantomData;
-
 // CONSTANTS
 // ================================================================================================
 
@@ -22,25 +19,28 @@ const MIN_FRAGMENT_SIZE: usize = 16;
 // CONSTRAINT EVALUATION TABLE
 // ================================================================================================
 
-pub struct ConstraintEvaluationTable<B: StarkField, E: FieldElement<BaseField = B>> {
+pub struct ConstraintEvaluationTable<E: FieldElement> {
     evaluations: Vec<Vec<E>>,
-    divisors: Vec<ConstraintDivisor<B>>,
-    domain_offset: B,
+    divisors: Vec<ConstraintDivisor<E::BaseField>>,
+    domain_offset: E::BaseField,
     trace_length: usize,
 
     #[cfg(debug_assertions)]
-    t_evaluations: Vec<Vec<B>>,
+    t_evaluations: Vec<Vec<E::BaseField>>,
     #[cfg(debug_assertions)]
     t_expected_degrees: Vec<usize>,
 }
 
-impl<B: StarkField, E: FieldElement<BaseField = B>> ConstraintEvaluationTable<B, E> {
+impl<E: FieldElement> ConstraintEvaluationTable<E> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Returns a new constraint evaluation table with number of columns equal to the number of
     /// specified divisors, and number of rows equal to the size of constraint evaluation domain.
     #[cfg(not(debug_assertions))]
-    pub fn new(domain: &StarkDomain<B>, divisors: Vec<ConstraintDivisor<B>>) -> Self {
+    pub fn new(
+        domain: &StarkDomain<E::BaseField>,
+        divisors: Vec<ConstraintDivisor<E::BaseField>>,
+    ) -> Self {
         let num_columns = divisors.len();
         let num_rows = domain.ce_domain_size();
         ConstraintEvaluationTable {
@@ -56,8 +56,8 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> ConstraintEvaluationTable<B,
     /// expected degrees match their actual degrees.
     #[cfg(debug_assertions)]
     pub fn new(
-        domain: &StarkDomain<B>,
-        divisors: Vec<ConstraintDivisor<B>>,
+        domain: &StarkDomain<E::BaseField>,
+        divisors: Vec<ConstraintDivisor<E::BaseField>>,
         transition_constraint_degrees: Vec<usize>,
     ) -> Self {
         let num_columns = divisors.len();
@@ -99,7 +99,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> ConstraintEvaluationTable<B,
 
     /// Break the table into the number of specified fragments. All fragments can be updated
     /// independently - e.g. in different threads.
-    pub fn fragments(&mut self, num_fragments: usize) -> Vec<EvaluationTableFragment<B, E>> {
+    pub fn fragments(&mut self, num_fragments: usize) -> Vec<EvaluationTableFragment<E>> {
         let fragment_size = self.num_rows() / num_fragments;
         assert!(
             fragment_size >= MIN_FRAGMENT_SIZE,
@@ -148,7 +148,6 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> ConstraintEvaluationTable<B,
                 .map(|(i, evaluations)| EvaluationTableFragment {
                     offset: i * fragment_size,
                     evaluations,
-                    _base_field: PhantomData,
                 })
                 .collect()
         };
@@ -182,7 +181,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> ConstraintEvaluationTable<B,
 
         // at this point, combined_poly contains evaluations of the combined constraint polynomial;
         // we interpolate this polynomial to transform it into coefficient form.
-        let inv_twiddles = fft::get_inv_twiddles::<B>(combined_poly.len());
+        let inv_twiddles = fft::get_inv_twiddles::<E::BaseField>(combined_poly.len());
         fft::interpolate_poly_with_offset(&mut combined_poly, &inv_twiddles, domain_offset);
 
         Ok(CompositionPoly::new(combined_poly, self.trace_length))
@@ -198,7 +197,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> ConstraintEvaluationTable<B,
         // determine max transition constraint degree
         let mut actual_degrees = Vec::with_capacity(self.t_expected_degrees.len());
         let mut max_degree = 0;
-        let inv_twiddles = fft::get_inv_twiddles::<B>(self.num_rows());
+        let inv_twiddles = fft::get_inv_twiddles::<E::BaseField>(self.num_rows());
         for evaluations in self.t_evaluations.iter() {
             let mut poly = evaluations.clone();
             fft::interpolate_poly(&mut poly, &inv_twiddles);
@@ -231,18 +230,15 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> ConstraintEvaluationTable<B,
 // TABLE FRAGMENTS
 // ================================================================================================
 
-pub struct EvaluationTableFragment<'a, B: StarkField, E: FieldElement<BaseField = B>> {
+pub struct EvaluationTableFragment<'a, E: FieldElement> {
     offset: usize,
     evaluations: Vec<&'a mut [E]>,
 
     #[cfg(debug_assertions)]
-    t_evaluations: Vec<&'a mut [B]>,
-
-    #[cfg(not(debug_assertions))]
-    _base_field: PhantomData<B>,
+    t_evaluations: Vec<&'a mut [E::BaseField]>,
 }
 
-impl<'a, B: StarkField, E: FieldElement<BaseField = B>> EvaluationTableFragment<'a, B, E> {
+impl<'a, E: FieldElement> EvaluationTableFragment<'a, E> {
     /// Returns the row at which the fragment starts.
     pub fn offset(&self) -> usize {
         self.offset
@@ -267,7 +263,7 @@ impl<'a, B: StarkField, E: FieldElement<BaseField = B>> EvaluationTableFragment<
 
     /// Updates transition evaluations row with the provided data; available only in debug mode.
     #[cfg(debug_assertions)]
-    pub fn update_transition_evaluations(&mut self, row_idx: usize, row_data: &[B]) {
+    pub fn update_transition_evaluations(&mut self, row_idx: usize, row_data: &[E::BaseField]) {
         for (column, &value) in self.t_evaluations.iter_mut().zip(row_data) {
             column[row_idx] = value;
         }
@@ -278,10 +274,10 @@ impl<'a, B: StarkField, E: FieldElement<BaseField = B>> EvaluationTableFragment<
 // ================================================================================================
 
 #[allow(clippy::many_single_char_names)]
-fn acc_column<B: StarkField, E: FieldElement<BaseField = B>>(
+fn acc_column<E: FieldElement>(
     column: Vec<E>,
-    divisor: &ConstraintDivisor<B>,
-    domain_offset: B,
+    divisor: &ConstraintDivisor<E::BaseField>,
+    domain_offset: E::BaseField,
     result: &mut [E],
 ) {
     let numerator = divisor.numerator();
@@ -318,7 +314,7 @@ fn acc_column<B: StarkField, E: FieldElement<BaseField = B>>(
         // value * (x - b) * z, where z = 1 / (x^a - 1) and has already been computed above.
 
         // set up variables for computing x at every point in the domain
-        let g = B::get_root_of_unity(domain_size.trailing_zeros());
+        let g = E::BaseField::get_root_of_unity(domain_size.trailing_zeros());
         let b = divisor.exclude()[0];
 
         batch_iter_mut!(

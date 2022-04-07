@@ -50,12 +50,12 @@ fn extend_trace_table() {
     let trace_polys = trace.main_segment().interpolate_columns();
     let trace_lde = trace_polys.evaluate_columns_over(&domain);
     let trace_tree = trace_lde.commit_to_rows::<Blake3>();
-    let trace_comm = TraceCommitment::<BaseElement, BaseElement, Blake3>::new(
+    let trace_comm = TraceCommitment::<BaseElement, Blake3>::new(
         trace_lde,
         trace_tree,
         domain.trace_to_lde_blowup(),
     );
-    let trace_polys = TracePolyTable::<BaseElement, BaseElement>::new(trace_polys);
+    let trace_polys = TracePolyTable::<BaseElement>::new(trace_polys);
 
     assert_eq!(2, trace_comm.trace_table().main_trace_width());
     assert_eq!(64, trace_comm.trace_table().trace_len());
@@ -103,7 +103,7 @@ fn commit_trace_table() {
     let trace_polys = trace.main_segment().interpolate_columns();
     let trace_lde = trace_polys.evaluate_columns_over(&domain);
     let trace_tree = trace_lde.commit_to_rows::<Blake3>();
-    let trace_comm = TraceCommitment::<BaseElement, BaseElement, Blake3>::new(
+    let trace_comm = TraceCommitment::<BaseElement, Blake3>::new(
         trace_lde,
         trace_tree,
         domain.trace_to_lde_blowup(),

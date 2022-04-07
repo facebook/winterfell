@@ -5,27 +5,23 @@
 
 use crate::Matrix;
 use air::EvaluationFrame;
-use math::{FieldElement, StarkField};
+use math::FieldElement;
 use utils::collections::Vec;
 
 // TRACE LOW DEGREE EXTENSION
 // ================================================================================================
 /// TODO: add docs
-pub struct TraceLde<B, E>
-where
-    B: StarkField,
-    E: FieldElement<BaseField = B>,
-{
-    main_segment_lde: Matrix<B>,
+pub struct TraceLde<E: FieldElement> {
+    main_segment_lde: Matrix<E::BaseField>,
     aux_segment_ldes: Vec<Matrix<E>>,
     blowup: usize,
 }
 
-impl<B: StarkField, E: FieldElement<BaseField = B>> TraceLde<B, E> {
+impl<E: FieldElement> TraceLde<E> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Creates a new trace low-degree extension table from the provided main trace segment LDE.
-    pub fn new(main_trace_lde: Matrix<B>, blowup: usize) -> Self {
+    pub fn new(main_trace_lde: Matrix<E::BaseField>, blowup: usize) -> Self {
         Self {
             main_segment_lde: main_trace_lde,
             aux_segment_ldes: Vec::new(),
@@ -73,7 +69,11 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> TraceLde<B, E> {
     }
 
     /// Reads current and next rows from the main trace segment into the specified frame.
-    pub fn read_main_trace_frame_into(&self, lde_step: usize, frame: &mut EvaluationFrame<B>) {
+    pub fn read_main_trace_frame_into(
+        &self,
+        lde_step: usize,
+        frame: &mut EvaluationFrame<E::BaseField>,
+    ) {
         // at the end of the trace, next state wraps around and we read the first step again
         let next_lde_step = (lde_step + self.blowup()) % self.trace_len();
 
@@ -99,12 +99,13 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> TraceLde<B, E> {
         }
     }
 
-    /// TODO: add comments
-    pub fn get_main_segment(&self) -> &Matrix<B> {
+    /// Returns a reference to [Matrix] representing the main trace segment.
+    pub fn get_main_segment(&self) -> &Matrix<E::BaseField> {
         &self.main_segment_lde
     }
 
-    /// TODO: add comments
+    /// Returns a reference to a [Matrix] representing an auxiliary trace segment at the specified
+    /// index.
     pub fn get_aux_segment(&self, aux_segment_idx: usize) -> &Matrix<E> {
         &self.aux_segment_ldes[aux_segment_idx]
     }

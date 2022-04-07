@@ -6,7 +6,7 @@
 use crate::Matrix;
 use air::proof::Queries;
 use crypto::{ElementHasher, MerkleTree};
-use math::{FieldElement, StarkField};
+use math::FieldElement;
 use utils::collections::Vec;
 
 use super::TraceLde;
@@ -19,25 +19,22 @@ use super::TraceLde;
 /// The described one or more trace segments, each consisting of the following components:
 /// * Evaluations of a trace segment's polynomials over the LDE domain.
 /// * Merkle tree where each leaf in the tree corresponds to a row in the trace LDE matrix.
-pub struct TraceCommitment<B, E, H>
-where
-    B: StarkField,
-    E: FieldElement<BaseField = B>,
-    H: ElementHasher<BaseField = B>,
-{
-    trace_lde: TraceLde<B, E>,
+pub struct TraceCommitment<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> {
+    trace_lde: TraceLde<E>,
     main_segment_tree: MerkleTree<H>,
     aux_segment_trees: Vec<MerkleTree<H>>,
 }
 
-impl<B: StarkField, E: FieldElement<BaseField = B>, H: ElementHasher<BaseField = B>>
-    TraceCommitment<B, E, H>
-{
+impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> TraceCommitment<E, H> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Creates a new trace commitment from the provided main trace low-degree extension and the
     /// corresponding Merkle tree commitment.
-    pub fn new(main_trace_lde: Matrix<B>, main_trace_tree: MerkleTree<H>, blowup: usize) -> Self {
+    pub fn new(
+        main_trace_lde: Matrix<E::BaseField>,
+        main_trace_tree: MerkleTree<H>,
+        blowup: usize,
+    ) -> Self {
         assert_eq!(
             main_trace_lde.num_rows(),
             main_trace_tree.leaves().len(),
@@ -71,7 +68,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>, H: ElementHasher<BaseField =
     /// Returns the execution trace for this commitment.
     ///
     /// The trace contains both the main trace segment and the auxiliary trace segments (if any).
-    pub fn trace_table(&self) -> &TraceLde<B, E> {
+    pub fn trace_table(&self) -> &TraceLde<E> {
         &self.trace_lde
     }
 
@@ -107,7 +104,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>, H: ElementHasher<BaseField =
 
     /// Returns the entire trace for the column at the specified index.
     #[cfg(test)]
-    pub fn get_main_trace_column(&self, col_idx: usize) -> &[B] {
+    pub fn get_main_trace_column(&self, col_idx: usize) -> &[E::BaseField] {
         self.trace_lde.get_main_segment().get_column(col_idx)
     }
 }
