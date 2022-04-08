@@ -6,7 +6,7 @@
 use super::{Matrix, ProverError, StarkDomain};
 
 mod boundary;
-use boundary::BoundaryConstraintGroup;
+use boundary::BoundaryConstraints;
 
 mod periodic_table;
 use periodic_table::PeriodicValueTable;

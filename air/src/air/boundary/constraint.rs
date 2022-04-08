@@ -35,7 +35,7 @@ where
 {
     column: usize,
     poly: Vec<F>,
-    poly_offset: (usize, F),
+    poly_offset: (usize, F::BaseField),
     cc: (E, E),
 }
 
@@ -57,7 +57,7 @@ where
         // single-value assertions we use the value as constant coefficient of degree 0
         // polynomial; but for multi-value assertions, we need to interpolate the values
         // into a polynomial using inverse FFT
-        let mut poly_offset = (0, F::ONE);
+        let mut poly_offset = (0, F::BaseField::ONE);
         let mut poly = assertion.values;
         if poly.len() > 1 {
             // get the twiddles from the map; if twiddles for this domain haven't been built
@@ -72,7 +72,7 @@ where
                 // use FFT to interpolate the values into a polynomial. This would make such
                 // assertions quite impractical. To get around this, we still use FFT to build
                 // the polynomial, but then we evaluate it as f(x * offset) instead of f(x)
-                let x_offset = F::from(inv_g.exp((assertion.first_step as u64).into()));
+                let x_offset = inv_g.exp((assertion.first_step as u64).into());
                 poly_offset = (assertion.first_step, x_offset);
             }
         }
@@ -103,7 +103,7 @@ where
     /// The offset is returned as a tuple describing both, the number of steps by which the
     /// domain needs to be shifted, and field element by which a domain element needs to be
     /// multiplied to achieve the desired shift.
-    pub fn poly_offset(&self) -> (usize, F) {
+    pub fn poly_offset(&self) -> (usize, F::BaseField) {
         self.poly_offset
     }
 

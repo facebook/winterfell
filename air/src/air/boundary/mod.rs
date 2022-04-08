@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{AirContext, Assertion, ConstraintDivisor};
-use math::{ExtensionOf, FieldElement, StarkField};
+use math::{ExtensionOf, FieldElement};
 use utils::collections::{BTreeMap, BTreeSet, Vec};
 
 mod constraint;
@@ -34,12 +34,12 @@ mod tests;
 ///   over the field specified by `E`.
 /// * Constraint composition coefficients are defined over the field specified by `E`.
 /// * Constraint divisors are defined over the field specified by `B`.
-pub struct BoundaryConstraints<B: StarkField, E: FieldElement<BaseField = B>> {
-    main_constraints: Vec<BoundaryConstraintGroup<B, E>>,
+pub struct BoundaryConstraints<E: FieldElement> {
+    main_constraints: Vec<BoundaryConstraintGroup<E::BaseField, E>>,
     aux_constraints: Vec<BoundaryConstraintGroup<E, E>>,
 }
 
-impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraints<B, E> {
+impl<E: FieldElement> BoundaryConstraints<E> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Returns a new instance of [BoundaryConstraints] for a computation described by the provided
@@ -54,8 +54,8 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraints<B, E> {
     /// * The specified assertions are not valid in the context of the computation (e.g., assertion
     ///   column index is out of bounds).
     pub fn new(
-        context: &AirContext<B>,
-        main_assertions: Vec<Assertion<B>>,
+        context: &AirContext<E::BaseField>,
+        main_assertions: Vec<Assertion<E::BaseField>>,
         aux_assertions: Vec<Assertion<E>>,
         composition_coefficients: &[(E, E)],
     ) -> Self {
@@ -133,7 +133,7 @@ impl<B: StarkField, E: FieldElement<BaseField = B>> BoundaryConstraints<B, E> {
 
     /// Returns a reference to the boundary constraints against the main segment of an execution
     /// trace. The constraints are grouped by their divisors.
-    pub fn main_constraints(&self) -> &[BoundaryConstraintGroup<B, E>] {
+    pub fn main_constraints(&self) -> &[BoundaryConstraintGroup<E::BaseField, E>] {
         &self.main_constraints
     }
 

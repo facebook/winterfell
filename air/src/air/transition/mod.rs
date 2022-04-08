@@ -270,14 +270,14 @@ impl<E: FieldElement> TransitionConstraintGroup<E> {
         E: ExtensionOf<F>,
     {
         // compute degree adjustment factor for this group
-        let xp = E::from(x.exp(self.degree_adjustment.into()));
+        let xp = x.exp(self.degree_adjustment.into());
 
         // compute linear combination of evaluations as D(x) * (cc_0 + cc_1 * x^p), where D(x)
         // is an evaluation of a particular constraint, and x^p is the degree adjustment factor
         let mut result = E::ZERO;
         for (&constraint_idx, coefficients) in self.indexes.iter().zip(self.coefficients.iter()) {
-            let evaluation = E::from(evaluations[constraint_idx]);
-            result += evaluation * (coefficients.0 + coefficients.1 * xp);
+            let evaluation = evaluations[constraint_idx];
+            result += (coefficients.0 + coefficients.1.mul_base(xp)).mul_base(evaluation);
         }
         result
     }

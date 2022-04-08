@@ -4,18 +4,15 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    super::TraceLde, evaluation_table::EvaluationTableFragment, BoundaryConstraintGroup,
+    super::TraceLde, evaluation_table::EvaluationTableFragment, BoundaryConstraints,
     ConstraintEvaluationTable, PeriodicValueTable, StarkDomain,
 };
-use air::{
-    Air, ConstraintCompositionCoefficients, ConstraintDivisor, EvaluationFrame,
-    TransitionConstraints,
-};
+use air::{Air, ConstraintCompositionCoefficients, EvaluationFrame, TransitionConstraints};
 use math::FieldElement;
-use utils::{
-    collections::{BTreeMap, Vec},
-    iter_mut,
-};
+use utils::iter_mut;
+
+#[cfg(not(feature = "concurrent"))]
+use utils::collections::Vec;
 
 #[cfg(feature = "concurrent")]
 use utils::{iterators::*, rayon};
@@ -31,10 +28,9 @@ const MIN_CONCURRENT_DOMAIN_SIZE: usize = 8192;
 
 pub struct ConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> {
     air: &'a A,
-    boundary_constraints: Vec<BoundaryConstraintGroup<E>>,
+    boundary_constraints: BoundaryConstraints<E>,
     transition_constraints: TransitionConstraints<E>,
     periodic_values: PeriodicValueTable<A::BaseField>,
-    divisors: Vec<ConstraintDivisor<A::BaseField>>,
 
     #[cfg(debug_assertions)]
     transition_constraint_degrees: Vec<usize>,
@@ -62,28 +58,15 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         // build periodic value table
         let periodic_values = PeriodicValueTable::new(air);
 
-        // set divisor for transition constraints; all transition constraints have the same divisor
-        let mut divisors = vec![transition_constraints.divisor().clone()];
-
         // build boundary constraints and also append divisors for each group of boundary
         // constraints to the divisor list
-        let mut twiddle_map = BTreeMap::new();
-        let boundary_constraints = air
-            .get_boundary_constraints(&coefficients.boundary)
-            .main_constraints()
-            .iter()
-            .map(|group| {
-                divisors.push(group.divisor().clone());
-                BoundaryConstraintGroup::new(group, air, &mut twiddle_map)
-            })
-            .collect();
+        let boundary_constraints = BoundaryConstraints::new(air, &coefficients.boundary);
 
         ConstraintEvaluator {
             air,
             boundary_constraints,
             transition_constraints,
             periodic_values,
-            divisors,
             #[cfg(debug_assertions)]
             transition_constraint_degrees,
         }
@@ -95,25 +78,28 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     /// evaluated over a constraint evaluation domain. This is an optimization because constraint
     /// evaluation domain can be many times smaller than the full LDE domain.
     pub fn evaluate(
-        &self,
+        self,
         trace: &TraceLde<E>,
-        domain: &StarkDomain<A::BaseField>,
+        domain: &StarkDomain<E::BaseField>,
     ) -> ConstraintEvaluationTable<E> {
         assert_eq!(
             trace.trace_len(),
             domain.lde_domain_size(),
             "extended trace length is not consistent with evaluation domain"
         );
+
+        let mut divisors = vec![self.transition_constraints.divisor().clone()];
+        divisors.append(&mut self.boundary_constraints.get_divisors());
+
         // allocate space for constraint evaluations; when we are in debug mode, we also allocate
         // memory to hold all transition constraint evaluations (before they are merged into a
         // single value) so that we can check their degree late
         #[cfg(not(debug_assertions))]
-        let mut evaluation_table =
-            ConstraintEvaluationTable::<E>::new(domain, self.divisors.clone());
+        let mut evaluation_table = ConstraintEvaluationTable::<E>::new(domain, divisors);
         #[cfg(debug_assertions)]
         let mut evaluation_table = ConstraintEvaluationTable::<E>::new(
             domain,
-            self.divisors.clone(),
+            divisors,
             self.transition_constraint_degrees.to_vec(),
         );
 
@@ -153,9 +139,9 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         fragment: &mut EvaluationTableFragment<E>,
     ) {
         // initialize buffers to hold trace values and evaluation results at each step;
-        let mut ev_frame = EvaluationFrame::new(trace.main_trace_width());
+        let mut main_frame = EvaluationFrame::new(trace.main_trace_width());
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
-        let mut t_evaluations = vec![A::BaseField::ZERO; self.num_main_transition_constraints()];
+        let mut t_evaluations = vec![E::BaseField::ZERO; self.num_main_transition_constraints()];
 
         // pre-compute values needed to determine x coordinates in the constraint evaluation domain
         let g = domain.ce_domain_generator();
@@ -172,12 +158,12 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
             // read current and next rows from the trace into the buffer; data in the trace
             // table is extended over the LDE domain, so, we need to convert step in constraint
             // evaluation domain, into a step in LDE domain, in case these domains are different
-            trace.read_main_trace_frame_into(step << lde_shift, &mut ev_frame);
+            trace.read_main_trace_frame_into(step << lde_shift, &mut main_frame);
 
             // evaluate transition constraints and save the merged result the first slot of the
             // evaluations buffer
             evaluations[0] =
-                self.evaluate_transition_constraints(&ev_frame, x, step, &mut t_evaluations);
+                self.evaluate_transition_constraints(&main_frame, x, step, &mut t_evaluations);
 
             // when in debug mode, save transition constraint evaluations
             #[cfg(debug_assertions)]
@@ -185,7 +171,12 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
 
             // evaluate boundary constraints; the results go into remaining slots of the
             // evaluations buffer
-            self.evaluate_boundary_constraints(ev_frame.current(), x, step, &mut evaluations[1..]);
+            self.boundary_constraints.evaluate_main(
+                main_frame.current(),
+                x,
+                step,
+                &mut evaluations[1..],
+            );
 
             // record the result in the evaluation table
             fragment.update_row(i, &evaluations);
@@ -224,33 +215,6 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
             .fold(E::ZERO, |result, group| {
                 result + group.merge_evaluations(evaluations, x)
             })
-    }
-
-    /// Evaluates all boundary constraint groups at a specific step of the execution trace.
-    /// `step` is the step in the constraint evaluation domain, and `x` is the corresponding
-    /// domain value. That is, x = s * g^step, where g is the generator of the constraint
-    /// evaluation domain, and s is the domain offset.
-    fn evaluate_boundary_constraints(
-        &self,
-        state: &[A::BaseField],
-        x: A::BaseField,
-        step: usize,
-        result: &mut [E],
-    ) {
-        // compute the adjustment degree outside of the group so that we can re-use
-        // it for groups which have the same adjustment degree
-        let mut degree_adjustment = self.boundary_constraints[0].degree_adjustment;
-        let mut xp = E::from(x.exp(degree_adjustment.into()));
-
-        for (group, result) in self.boundary_constraints.iter().zip(result.iter_mut()) {
-            // recompute adjustment degree only when it has changed
-            if group.degree_adjustment != degree_adjustment {
-                degree_adjustment = group.degree_adjustment;
-                xp = E::from(x.exp(degree_adjustment.into()));
-            }
-            // evaluate the group and save the result
-            *result = group.evaluate(state, step, x, xp);
-        }
     }
 
     // ACCESSORS

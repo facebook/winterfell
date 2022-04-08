@@ -330,7 +330,7 @@ pub trait Air: Send + Sync {
     fn get_boundary_constraints<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         composition_coefficients: &[(E, E)],
-    ) -> BoundaryConstraints<Self::BaseField, E> {
+    ) -> BoundaryConstraints<E> {
         BoundaryConstraints::new(
             self.context(),
             self.get_assertions(),
