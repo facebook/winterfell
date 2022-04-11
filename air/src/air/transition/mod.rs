@@ -161,20 +161,18 @@ impl<E: FieldElement> TransitionConstraints<E> {
     {
         // merge constraint evaluations for the main trace segment
         let mut result = self.main_constraints().iter().fold(E::ZERO, |acc, group| {
-            acc + group.merge_evaluations(main_evaluations, x)
+            acc + group.merge_evaluations::<F, F>(main_evaluations, x)
         });
 
         // merge constraint evaluations for auxiliary trace segments (if any)
         if self.num_aux_constraints() > 0 {
-            let x = E::from(x);
             result += self.aux_constraints().iter().fold(E::ZERO, |acc, group| {
-                acc + group.merge_evaluations(aux_evaluations, x)
+                acc + group.merge_evaluations::<F, E>(aux_evaluations, x)
             });
         }
 
-        // divide out the evaluation of divisor at x
+        // divide out the evaluation of divisor at x and return the result
         let z = E::from(self.divisor.evaluate_at(x));
-
         result / z
     }
 }
@@ -264,10 +262,11 @@ impl<E: FieldElement> TransitionConstraintGroup<E> {
     /// them by the divisor later on. The degree of the divisor for transition constraints is
     /// always $n - 1$. Thus, once we divide out the divisor, the evaluations will represent a
     /// polynomial of degree $D$.
-    pub fn merge_evaluations<F>(&self, evaluations: &[F], x: F) -> E
+    pub fn merge_evaluations<B, F>(&self, evaluations: &[F], x: B) -> E
     where
-        F: FieldElement<BaseField = E::BaseField>,
-        E: ExtensionOf<F>,
+        B: FieldElement,
+        F: FieldElement<BaseField = B::BaseField> + ExtensionOf<B>,
+        E: FieldElement<BaseField = B::BaseField> + ExtensionOf<B> + ExtensionOf<F>,
     {
         // compute degree adjustment factor for this group
         let xp = x.exp(self.degree_adjustment.into());
