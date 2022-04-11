@@ -7,7 +7,7 @@ use super::{
     Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
-use crate::{FieldExtension, HashFunction};
+use crate::{AuxTraceRandElements, FieldExtension, HashFunction};
 use crypto::{hashers::Blake3_256, RandomCoin};
 use math::{fields::f128::BaseElement, get_power_series, log2, polynom, FieldElement, StarkField};
 use utils::collections::{BTreeMap, Vec};
@@ -110,7 +110,7 @@ fn get_boundary_constraints() {
     let coefficients = (0..8)
         .map(|_| prng.draw_pair().unwrap())
         .collect::<Vec<(BaseElement, BaseElement)>>();
-    let constraints = air.get_boundary_constraints(&coefficients);
+    let constraints = air.get_boundary_constraints(&AuxTraceRandElements::new(), &coefficients);
     let mut groups = constraints.main_constraints().to_vec();
 
     groups.sort_by(|g1, g2| {

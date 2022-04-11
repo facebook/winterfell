@@ -290,7 +290,7 @@ pub trait Prover {
         #[cfg(feature = "std")]
         let now = Instant::now();
         let constraint_coeffs = channel.get_constraint_composition_coeffs();
-        let evaluator = ConstraintEvaluator::new(&air, constraint_coeffs);
+        let evaluator = ConstraintEvaluator::new(&air, &aux_trace_rand_elements, constraint_coeffs);
         let constraint_evaluations = evaluator.evaluate(trace_commitment.trace_table(), &domain);
         #[cfg(feature = "std")]
         debug!(

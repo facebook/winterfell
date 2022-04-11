@@ -245,10 +245,11 @@ pub trait Air: Send + Sync {
     /// The default implementation of this function returns an empty vector. It should be
     /// overridden only if the computation relies on auxiliary trace segments. In such a case,
     /// the vector returned from this function must contain at least one assertion.
-    fn get_aux_assertions<E>(&self) -> Vec<Assertion<E>>
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
+    #[allow(unused_variables)]
+    fn get_aux_assertions<E: FieldElement<BaseField = Self::BaseField>>(
+        &self,
+        aux_rand_elements: &AuxTraceRandElements<E>,
+    ) -> Vec<Assertion<E>> {
         Vec::new()
     }
 
@@ -325,16 +326,17 @@ pub trait Air: Send + Sync {
     /// [get_aux_assertions()](Air::get_aux_assertions) methods into boundary constraints.
     ///
     /// This function also assign composition coefficients to each constraint, and group the
-    /// constraints by denominator. The coefficients will be used to compute random linear
+    /// constraints by their divisors. The coefficients will be used to compute random linear
     /// combination of boundary constraints during constraint merging.
     fn get_boundary_constraints<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
+        aux_rand_elements: &AuxTraceRandElements<E>,
         composition_coefficients: &[(E, E)],
     ) -> BoundaryConstraints<E> {
         BoundaryConstraints::new(
             self.context(),
             self.get_assertions(),
-            self.get_aux_assertions(),
+            self.get_aux_assertions(aux_rand_elements),
             composition_coefficients,
         )
     }

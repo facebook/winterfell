@@ -7,7 +7,10 @@ use super::{
     super::TraceLde, evaluation_table::EvaluationTableFragment, BoundaryConstraints,
     ConstraintEvaluationTable, PeriodicValueTable, StarkDomain,
 };
-use air::{Air, ConstraintCompositionCoefficients, EvaluationFrame, TransitionConstraints};
+use air::{
+    Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
+    TransitionConstraints,
+};
 use math::FieldElement;
 use utils::iter_mut;
 
@@ -41,10 +44,15 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     // --------------------------------------------------------------------------------------------
     /// Returns a new evaluator which can be used to evaluate transition and boundary constraints
     /// over extended execution trace.
-    pub fn new(air: &'a A, coefficients: ConstraintCompositionCoefficients<E>) -> Self {
+    pub fn new(
+        air: &'a A,
+        aux_rand_elements: &AuxTraceRandElements<E>,
+        composition_coefficients: ConstraintCompositionCoefficients<E>,
+    ) -> Self {
         // build transition constraint groups; these will be used later to compute a random
         // linear combination of transition constraint evaluations.
-        let transition_constraints = air.get_transition_constraints(&coefficients.transition);
+        let transition_constraints =
+            air.get_transition_constraints(&composition_coefficients.transition);
 
         // collect expected degrees for all transition constraints to compare them against actual
         // degrees; we do this in debug mode only because this comparison is expensive
@@ -60,7 +68,8 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
 
         // build boundary constraints and also append divisors for each group of boundary
         // constraints to the divisor list
-        let boundary_constraints = BoundaryConstraints::new(air, &coefficients.boundary);
+        let boundary_constraints =
+            BoundaryConstraints::new(air, aux_rand_elements, &composition_coefficients.boundary);
 
         ConstraintEvaluator {
             air,

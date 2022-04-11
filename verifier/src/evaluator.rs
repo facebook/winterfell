@@ -59,7 +59,8 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     // 2 ----- evaluate boundary constraints ------------------------------------------------------
 
     // get boundary constraints grouped by common divisor from the AIR
-    let b_constraints = air.get_boundary_constraints(&composition_coefficients.boundary);
+    let b_constraints =
+        air.get_boundary_constraints(&aux_rand_elements, &composition_coefficients.boundary);
 
     // cache power of x here so that we only re-compute it when degree_adjustment changes
     let mut degree_adjustment = b_constraints.main_constraints()[0].degree_adjustment();

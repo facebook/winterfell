@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use air::{Air, ConstraintDivisor};
+use air::{Air, AuxTraceRandElements, ConstraintDivisor};
 use math::{fft, ExtensionOf, FieldElement};
 use utils::collections::{BTreeMap, Vec};
 
@@ -32,10 +32,11 @@ impl<E: FieldElement> BoundaryConstraints<E> {
     /// by an instance of AIR for a specific computation.
     pub fn new<A: Air<BaseField = E::BaseField>>(
         air: &A,
+        aux_rand_elements: &AuxTraceRandElements<E>,
         composition_coefficients: &[(E, E)],
     ) -> Self {
         // get constraints from the AIR instance
-        let source = air.get_boundary_constraints(composition_coefficients);
+        let source = air.get_boundary_constraints(aux_rand_elements, composition_coefficients);
 
         // initialize a map of twiddles here so that we can keep track of already computed
         // twiddles; this helps us avoid building twiddles over and over again for constraints
