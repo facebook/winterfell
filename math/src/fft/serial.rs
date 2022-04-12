@@ -186,7 +186,7 @@ where
     let i = offset;
     let j = offset + stride;
     let temp = values[i];
-    values[j] *= E::from(twiddle);
+    values[j] = values[j].mul_base(twiddle);
     values[i] = temp + values[j];
     values[j] = temp - values[j];
 }

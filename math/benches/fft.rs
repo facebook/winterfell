@@ -8,7 +8,7 @@ use rand_utils::rand_vector;
 use std::time::Duration;
 use winter_math::{
     fft,
-    fields::{f128, f62, f64, QuadExtension},
+    fields::{f128, f62, f64, CubeExtension, QuadExtension},
     FieldElement, StarkField,
 };
 
@@ -108,6 +108,8 @@ fn bench_fft(c: &mut Criterion) {
     fft_evaluate_poly::<f62::BaseElement, QuadExtension<f62::BaseElement>>(c, "f62_quad");
     fft_evaluate_poly::<f64::BaseElement, QuadExtension<f64::BaseElement>>(c, "f64_quad");
     fft_evaluate_poly::<f128::BaseElement, QuadExtension<f128::BaseElement>>(c, "f128_quad");
+
+    fft_evaluate_poly::<f64::BaseElement, CubeExtension<f64::BaseElement>>(c, "f64_cube");
 
     fft_interpolate_poly::<f62::BaseElement, f62::BaseElement>(c, "f62");
     fft_interpolate_poly::<f64::BaseElement, f64::BaseElement>(c, "f64");

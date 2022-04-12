@@ -10,10 +10,7 @@
 //! significant thought given to performance, and the implementations of most operations are
 //! sub-optimal as well.
 
-use super::{
-    traits::{FieldElement, StarkField},
-    ExtensibleField,
-};
+use super::{ExtensibleField, FieldElement, StarkField};
 use core::{
     convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter},
@@ -256,6 +253,11 @@ impl ExtensibleField<2> for BaseElement {
     }
 
     #[inline(always)]
+    fn mul_base(a: [Self; 2], b: Self) -> [Self; 2] {
+        [a[0] * b, a[1] * b]
+    }
+
+    #[inline(always)]
     fn frobenius(x: [Self; 2]) -> [Self; 2] {
         [x[0] + x[1], Self::ZERO - x[1]]
     }
@@ -268,6 +270,11 @@ impl ExtensibleField<2> for BaseElement {
 /// sufficient security level.
 impl ExtensibleField<3> for BaseElement {
     fn mul(_a: [Self; 3], _b: [Self; 3]) -> [Self; 3] {
+        unimplemented!()
+    }
+
+    #[inline(always)]
+    fn mul_base(_a: [Self; 3], _b: Self) -> [Self; 3] {
         unimplemented!()
     }
 

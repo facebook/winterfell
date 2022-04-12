@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{ExtensibleField, FieldElement};
+use super::{ExtensibleField, ExtensionOf, FieldElement};
 use core::{
     convert::TryFrom,
     fmt,
@@ -126,6 +126,14 @@ impl<B: ExtensibleField<2>> FieldElement for QuadExtension<B> {
         let ptr = elements.as_ptr();
         let len = elements.len() * 2;
         unsafe { slice::from_raw_parts(ptr as *const Self::BaseField, len) }
+    }
+}
+
+impl<B: ExtensibleField<2>> ExtensionOf<B> for QuadExtension<B> {
+    #[inline(always)]
+    fn mul_base(self, other: B) -> Self {
+        let result = <B as ExtensibleField<2>>::mul_base([self.0, self.1], other);
+        Self(result[0], result[1])
     }
 }
 
