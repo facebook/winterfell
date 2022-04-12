@@ -14,9 +14,6 @@ use air::{
 use math::FieldElement;
 use utils::iter_mut;
 
-#[cfg(not(feature = "concurrent"))]
-use utils::collections::Vec;
-
 #[cfg(feature = "concurrent")]
 use utils::{iterators::*, rayon};
 
@@ -35,9 +32,6 @@ pub struct ConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A::BaseFi
     transition_constraints: TransitionConstraints<E>,
     aux_rand_elements: AuxTraceRandElements<E>,
     periodic_values: PeriodicValueTable<E::BaseField>,
-
-    #[cfg(debug_assertions)]
-    transition_constraint_degrees: Vec<usize>,
 }
 
 impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<'a, A, E> {
@@ -55,12 +49,6 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         let transition_constraints =
             air.get_transition_constraints(&composition_coefficients.transition);
 
-        // collect expected degrees for all transition constraints to compare them against actual
-        // degrees; we do this in debug mode only because this comparison is expensive
-        #[cfg(debug_assertions)]
-        let transition_constraint_degrees =
-            build_transition_constraint_degrees(&transition_constraints, air.trace_length());
-
         // build periodic value table
         let periodic_values = PeriodicValueTable::new(air);
 
@@ -75,8 +63,6 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
             transition_constraints,
             aux_rand_elements,
             periodic_values,
-            #[cfg(debug_assertions)]
-            transition_constraint_degrees,
         }
     }
 
@@ -108,11 +94,8 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         #[cfg(not(debug_assertions))]
         let mut evaluation_table = ConstraintEvaluationTable::<E>::new(domain, divisors);
         #[cfg(debug_assertions)]
-        let mut evaluation_table = ConstraintEvaluationTable::<E>::new(
-            domain,
-            divisors,
-            self.transition_constraint_degrees.to_vec(),
-        );
+        let mut evaluation_table =
+            ConstraintEvaluationTable::<E>::new(domain, divisors, &self.transition_constraints);
 
         // when `concurrent` feature is enabled, break the evaluation table into multiple fragments
         // to evaluate them into multiple threads; unless the constraint evaluation domain is small,
@@ -189,7 +172,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
 
             // when in debug mode, save transition constraint evaluations
             #[cfg(debug_assertions)]
-            fragment.update_transition_evaluations(step, &t_evaluations);
+            fragment.update_transition_evaluations(step, &t_evaluations, &[]);
 
             // evaluate boundary constraints; the results go into remaining slots of the
             // evaluations buffer
@@ -218,8 +201,8 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         // initialize buffers to hold trace values and evaluation results at each step
         let mut main_frame = EvaluationFrame::new(trace.main_trace_width());
         let mut aux_frame = EvaluationFrame::new(trace.aux_trace_width());
-        let mut mt_evaluations = vec![E::BaseField::ZERO; self.num_main_transition_constraints()];
-        let mut at_evaluations = vec![E::ZERO; self.num_aux_transition_constraints()];
+        let mut tm_evaluations = vec![E::BaseField::ZERO; self.num_main_transition_constraints()];
+        let mut ta_evaluations = vec![E::ZERO; self.num_aux_transition_constraints()];
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
 
         // pre-compute values needed to determine x coordinates in the constraint evaluation domain
@@ -241,13 +224,13 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
             // evaluations buffer; we evaluate and compose constraints in the same function, we
             // can just add up the results of evaluating main and auxiliary constraints.
             evaluations[0] =
-                self.evaluate_main_transition(&main_frame, x, step, &mut mt_evaluations);
+                self.evaluate_main_transition(&main_frame, x, step, &mut tm_evaluations);
             evaluations[0] +=
-                self.evaluate_aux_transition(&main_frame, &aux_frame, x, step, &mut at_evaluations);
+                self.evaluate_aux_transition(&main_frame, &aux_frame, x, step, &mut ta_evaluations);
 
             // when in debug mode, save transition constraint evaluations
             #[cfg(debug_assertions)]
-            fragment.update_transition_evaluations(step, &mt_evaluations);
+            fragment.update_transition_evaluations(step, &tm_evaluations, &ta_evaluations);
 
             // evaluate boundary constraints; the results go into remaining slots of the
             // evaluations buffer
@@ -352,31 +335,4 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     fn num_aux_transition_constraints(&self) -> usize {
         self.transition_constraints.num_aux_constraints()
     }
-}
-
-// HELPER FUNCTIONS
-// ================================================================================================
-
-/// Returns evaluation degrees of all transition constraints.
-///
-/// An evaluation degree is defined as degree of transition constraints in the context of a given
-/// execution trace. For most constraints, this degree is computed as:
-/// [trace_length - 1] * [constraint degree], however, for constraints which rely on periodic
-/// columns this computation is slightly more complex.
-#[cfg(debug_assertions)]
-fn build_transition_constraint_degrees<E: FieldElement>(
-    constraints: &TransitionConstraints<E>,
-    trace_length: usize,
-) -> Vec<usize> {
-    let mut result = Vec::new();
-
-    for degree in constraints.main_constraint_degrees() {
-        result.push(degree.get_evaluation_degree(trace_length))
-    }
-
-    for degree in constraints.aux_constraint_degrees() {
-        result.push(degree.get_evaluation_degree(trace_length))
-    }
-
-    result
 }
