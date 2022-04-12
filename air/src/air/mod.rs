@@ -156,6 +156,8 @@ pub trait Air: Send + Sync {
     /// This could be any type as long as it can be serialized into a sequence of bytes.
     type PublicInputs: Serializable;
 
+    type Frame: EvaluationFrame<Self::BaseField>;
+
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
 
@@ -184,7 +186,7 @@ pub trait Air: Send + Sync {
     /// (when extension fields are used).
     fn evaluate_transition<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        frame: &EvaluationFrame<E>,
+        frame: &Self::Frame,
         periodic_values: &[E],
         result: &mut [E],
     );
@@ -222,8 +224,8 @@ pub trait Air: Send + Sync {
     #[allow(unused_variables)]
     fn evaluate_aux_transition<F, E>(
         &self,
-        main_frame: &EvaluationFrame<F>,
-        aux_frame: &EvaluationFrame<E>,
+        main_frame: &Self::Frame,
+        aux_frame: &Self::Frame,
         periodic_values: &[F],
         aux_rand_elements: &AuxTraceRandElements<E>,
         result: &mut [E],
@@ -440,6 +442,11 @@ pub trait Air: Send + Sync {
     /// to the execution trace domain.
     fn domain_offset(&self) -> Self::BaseField {
         self.context().options.domain_offset()
+    }
+
+    fn eval_frame_window_size(&self) -> usize {
+        // TODO
+        2
     }
 
     // TRACE SEGMENT RANDOMNESS

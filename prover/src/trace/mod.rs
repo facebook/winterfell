@@ -89,7 +89,7 @@ pub trait Trace: Sized {
     /// Checks if this trace is valid against the specified AIR, and panics if not.
     ///
     /// NOTE: this is a very expensive operation and is intended for use only in debug mode.
-    fn validate<A, E>(&self, air: &A, _aux_trace_rand_elements: &AuxTraceRandElements<E>)
+    fn validate<'a, A, E>(&self, air: &A, _aux_trace_rand_elements: &AuxTraceRandElements<E>)
     where
         A: Air<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField>,
@@ -127,7 +127,7 @@ pub trait Trace: Sized {
 
         // initialize buffers to hold evaluation frames and results of constraint evaluations
         let mut x = Self::BaseField::ONE;
-        let mut ev_frame = EvaluationFrame::new(self.main_trace_width());
+        let mut ev_frame = A::Frame::new(self.main_trace_width());
         let mut evaluations =
             vec![Self::BaseField::ZERO; air.context().num_transition_constraints()];
 
@@ -140,8 +140,7 @@ pub trait Trace: Sized {
             }
 
             // build evaluation frame
-            self.read_row_into(step, ev_frame.current_mut());
-            self.read_row_into(step + 1, ev_frame.next_mut());
+            ev_frame.read_segment_into(step, &self.main_segment().columns);
 
             // evaluate transition constraints
             air.evaluate_transition(&ev_frame, &periodic_values, &mut evaluations);

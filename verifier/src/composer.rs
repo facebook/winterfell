@@ -58,13 +58,15 @@ impl<E: FieldElement> DeepComposer<E> {
     ///
     /// Note that values of T_i(z) and T_i(z * g) are received from the prover and passed into
     /// this function via the `ood_frame` parameter.
-    pub fn compose_trace_columns(
+    pub fn compose_trace_columns<F: EvaluationFrame<E::BaseField>>(
         &self,
         queried_main_trace_states: Table<E::BaseField>,
         queried_aux_trace_states: Option<Table<E>>,
-        ood_main_frame: EvaluationFrame<E>,
-        ood_aux_frame: Option<EvaluationFrame<E>>,
+        ood_main_frame: F,
+        ood_aux_frame: Option<F>,
     ) -> Vec<E> {
+        // TODO: Rewrite to span more than two consecutive row offsets
+
         let ood_main_trace_states = [ood_main_frame.current(), ood_main_frame.next()];
 
         // when field extension is enabled, these will be set to conjugates of trace values at

@@ -148,7 +148,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         fragment: &mut EvaluationTableFragment<E>,
     ) {
         // initialize buffers to hold trace values and evaluation results at each step;
-        let mut main_frame = EvaluationFrame::new(trace.main_trace_width());
+        let mut main_frame = A::Frame::new(trace.main_trace_width());
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
         let mut t_evaluations = vec![E::BaseField::ZERO; self.num_main_transition_constraints()];
 
@@ -161,7 +161,8 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
 
         for i in 0..fragment.num_rows() {
-            let step = i + fragment.offset();
+            // main frame offset is the window size of the evaluation frame
+            let step = i + fragment.offset(); // TODO: + main_frame.offset();
 
             // update evaluation frame buffer with data from the execution trace; this will
             // read current and next rows from the trace into the buffer; data in the trace
@@ -201,7 +202,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     /// is the domain offset.
     fn evaluate_transition_constraints(
         &self,
-        frame: &EvaluationFrame<A::BaseField>,
+        frame: &A::Frame,
         x: A::BaseField,
         step: usize,
         evaluations: &mut [A::BaseField],

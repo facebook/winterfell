@@ -24,7 +24,7 @@ use utils::iterators::*;
 /// - Number of rows must be a power of two.
 #[derive(Debug, Clone)]
 pub struct Matrix<E: FieldElement> {
-    columns: Vec<Vec<E>>,
+    pub columns: Vec<Vec<E>>,
 }
 
 impl<E: FieldElement> Matrix<E> {
@@ -97,7 +97,7 @@ impl<E: FieldElement> Matrix<E> {
         &self.columns[col_idx]
     }
 
-    /// Returns a reference to the column at the specified index.
+    /// Returns a mutable reference to the column at the specified index.
     pub fn get_column_mut(&mut self, col_idx: usize) -> &mut [E] {
         &mut self.columns[col_idx]
     }

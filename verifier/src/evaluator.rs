@@ -11,11 +11,15 @@ use utils::collections::Vec;
 // ================================================================================================
 
 /// Evaluates constraints for the specified evaluation frame.
-pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
+pub fn evaluate_constraints<
+    A: Air,
+    E: FieldElement<BaseField = A::BaseField>,
+    //F: EvaluationFrame<E>,
+>(
     air: &A,
     composition_coefficients: ConstraintCompositionCoefficients<E>,
-    main_trace_frame: &EvaluationFrame<E>,
-    aux_trace_frame: &Option<EvaluationFrame<E>>,
+    main_trace_frame: &A::Frame,
+    aux_trace_frame: &Option<A::Frame>,
     aux_rand_elements: AuxTraceRandElements<E>,
     x: E,
 ) -> E {

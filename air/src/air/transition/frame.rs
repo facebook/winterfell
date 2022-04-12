@@ -5,20 +5,103 @@
 
 use super::{FieldElement, Vec};
 
-// EVALUATION FRAME
-// ================================================================================================
 /// A set of execution trace rows required for evaluation of transition constraints.
-///
-/// In the current implementation, an evaluation frame always contains two consecutive rows of the
-/// execution trace. It is passed in as one of the parameters into
+/// It is passed in as one of the parameters into
 /// [Air::evaluate_transition()](crate::Air::evaluate_transition) function.
+pub trait EvaluationFrame<E: FieldElement> {
+    type Chunk<'a>
+    where
+        Self: 'a;
+
+    fn new(width: usize) -> Self;
+    fn from_rows(current: Vec<E>, next: Vec<E>) -> Self;
+    fn read_segment_into(&mut self, step: usize, segment: &Vec<Vec<E>>);
+    fn current<'a>(&'a self) -> Self::Chunk<'a>;
+    fn next<'a>(&'a self) -> Self::Chunk<'a>;
+}
+
+/// Contains two consecutive (multi)row chunks of the execution trace.
 #[derive(Debug, Clone)]
-pub struct EvaluationFrame<E: FieldElement> {
+pub struct ChunkedEvaluationFrame<E: FieldElement> {
+    data: Vec<Vec<E>>, // row major indexing
+    window_size: usize,
+}
+
+/// Contains two consecutive single rows of the execution trace.
+#[derive(Debug, Clone)]
+pub struct RowEvaluationFrame<E: FieldElement> {
     current: Vec<E>,
     next: Vec<E>,
 }
 
-impl<E: FieldElement> EvaluationFrame<E> {
+// WINDOWED EVALUATION FRAME
+// ================================================================================================
+
+impl<E: FieldElement> ChunkedEvaluationFrame<E> {}
+
+impl<E: FieldElement> EvaluationFrame<E> for ChunkedEvaluationFrame<E> {
+    type Chunk<'a>
+    where
+        Self: 'a,
+    = &'a [Vec<E>];
+
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
+    fn new(num_columns: usize) -> Self {
+        // TODO: Move constructor outside of trait definition?
+        assert!(
+            num_columns > 0,
+            "number of columns must be greater than zero"
+        );
+        ChunkedEvaluationFrame {
+            data: vec![],
+            window_size: 0,
+        }
+    }
+
+    fn from_rows(_current: Vec<E>, _next: Vec<E>) -> Self {
+        // TODO: See above comment for ChunkedEvaluationFrame::new
+        Self {
+            data: vec![],
+            window_size: 0,
+        }
+    }
+
+    // ROW MUTATORS
+    // --------------------------------------------------------------------------------------------
+
+    fn read_segment_into(&mut self, step: usize, segment: &Vec<Vec<E>>) {
+        // TODO
+    }
+
+    // ROW ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns a reference to the current chunk of rows.
+    #[inline(always)]
+    fn current<'a>(&'a self) -> Self::Chunk<'a> {
+        &self.data[0..self.window_size]
+    }
+
+    /// Returns a reference to the next chunk of rows.
+    #[inline(always)]
+    fn next<'a>(&'a self) -> Self::Chunk<'a> {
+        &self.data[self.window_size..(2 * self.window_size)]
+    }
+}
+
+// CONSECUTIVE ROW EVALUATION FRAME
+// ================================================================================================
+
+impl<E: FieldElement> RowEvaluationFrame<E> {}
+
+impl<E: FieldElement> EvaluationFrame<E> for RowEvaluationFrame<E> {
+    type Chunk<'a>
+    where
+        Self: 'a,
+    = &'a [E];
+
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
@@ -26,12 +109,12 @@ impl<E: FieldElement> EvaluationFrame<E> {
     ///
     /// # Panics
     /// Panics if `num_columns` is zero.
-    pub fn new(num_columns: usize) -> Self {
+    fn new(num_columns: usize) -> Self {
         assert!(
             num_columns > 0,
             "number of columns must be greater than zero"
         );
-        EvaluationFrame {
+        RowEvaluationFrame {
             current: E::zeroed_vector(num_columns),
             next: E::zeroed_vector(num_columns),
         }
@@ -43,7 +126,7 @@ impl<E: FieldElement> EvaluationFrame<E> {
     /// Panics if:
     /// * Lengths of the provided rows are zero.
     /// * Lengths of the provided rows are not the same.
-    pub fn from_rows(current: Vec<E>, next: Vec<E>) -> Self {
+    fn from_rows(current: Vec<E>, next: Vec<E>) -> Self {
         assert!(!current.is_empty(), "a row must contain at least one value");
         assert_eq!(
             current.len(),
@@ -53,30 +136,25 @@ impl<E: FieldElement> EvaluationFrame<E> {
         Self { current, next }
     }
 
+    // ROW MUTATORS
+    // --------------------------------------------------------------------------------------------
+
+    fn read_segment_into<'t>(&'t mut self, _step: usize, _segment: &'t Vec<Vec<E>>) {
+        // TODO
+    }
+
     // ROW ACCESSORS
     // --------------------------------------------------------------------------------------------
 
     /// Returns a reference to the current row.
     #[inline(always)]
-    pub fn current(&self) -> &[E] {
+    fn current<'a>(&'a self) -> Self::Chunk<'a> {
         &self.current
-    }
-
-    /// Returns a mutable reference to the current row.
-    #[inline(always)]
-    pub fn current_mut(&mut self) -> &mut [E] {
-        &mut self.current
     }
 
     /// Returns a reference to the next row.
     #[inline(always)]
-    pub fn next(&self) -> &[E] {
+    fn next<'a>(&'a self) -> Self::Chunk<'a> {
         &self.next
-    }
-
-    /// Returns a mutable reference to the next row.
-    #[inline(always)]
-    pub fn next_mut(&mut self) -> &mut [E] {
-        &mut self.next
     }
 }

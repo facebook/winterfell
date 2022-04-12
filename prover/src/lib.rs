@@ -37,6 +37,7 @@
 //! also depends on the capabilities of the machine used to generate the proofs (i.e. on number
 //! of CPU cores and memory bandwidth).
 
+#![feature(generic_associated_types)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(not(feature = "std"))]
@@ -128,6 +129,8 @@ pub trait Prover {
 
     /// Execution trace of the computation described by this prover.
     type Trace: Trace<BaseField = Self::BaseField>;
+
+    type Frame: EvaluationFrame<Self::BaseField>;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -342,7 +345,7 @@ pub trait Prover {
         // evaluate trace and constraint polynomials at the OOD point z, and send the results to
         // the verifier. the trace polynomials are actually evaluated over two points: z and z * g,
         // where g is the generator of the trace domain.
-        let ood_trace_states = trace_polys.get_ood_frame(z);
+        let ood_trace_states = trace_polys.get_ood_frame(z, air.eval_frame_window_size());
         channel.send_ood_trace_states(&ood_trace_states);
 
         let ood_evaluations = composition_poly.evaluate_at(z);
