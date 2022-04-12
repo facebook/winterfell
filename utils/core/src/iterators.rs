@@ -115,3 +115,11 @@ macro_rules! batch_iter_mut {
         $c($e, 0);
     };
 }
+
+pub trait StreamingIterator {
+    type Item<'a>
+    where
+        Self: 'a;
+
+    fn next<'a>(&'a mut self) -> Option<Self::Item<'a>>;
+}

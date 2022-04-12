@@ -144,7 +144,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         fragment: &mut EvaluationTableFragment<E>,
     ) {
         // initialize buffers to hold trace values and evaluation results at each step;
-        let mut main_frame = EvaluationFrame::new(trace.main_trace_width());
+        let mut main_frame = A::Frame::new(self.air);
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
         let mut t_evaluations = vec![E::BaseField::ZERO; self.num_main_transition_constraints()];
 
@@ -157,7 +157,8 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
 
         for i in 0..fragment.num_rows() {
-            let step = i + fragment.offset();
+            // main frame offset is the window size of the evaluation frame
+            let step = i + fragment.offset(); // TODO: + main_frame.offset();
 
             // update evaluation frame buffer with data from the execution trace; this will
             // read current and next rows from the trace into the buffer; data in the trace
@@ -176,7 +177,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
 
             // evaluate boundary constraints; the results go into remaining slots of the
             // evaluations buffer
-            let main_state = main_frame.current();
+            let main_state = main_frame.row(0);
             self.boundary_constraints
                 .evaluate_main(main_state, x, step, &mut evaluations[1..]);
 
@@ -199,8 +200,8 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         fragment: &mut EvaluationTableFragment<E>,
     ) {
         // initialize buffers to hold trace values and evaluation results at each step
-        let mut main_frame = EvaluationFrame::new(trace.main_trace_width());
-        let mut aux_frame = EvaluationFrame::new(trace.aux_trace_width());
+        let mut main_frame = A::Frame::new(self.air);
+        let mut aux_frame = A::AuxFrame::new(self.air);
         let mut tm_evaluations = vec![E::BaseField::ZERO; self.num_main_transition_constraints()];
         let mut ta_evaluations = vec![E::ZERO; self.num_aux_transition_constraints()];
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
@@ -234,8 +235,8 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
 
             // evaluate boundary constraints; the results go into remaining slots of the
             // evaluations buffer
-            let main_state = main_frame.current();
-            let aux_state = aux_frame.current();
+            let main_state = main_frame.row(step);
+            let aux_state = aux_frame.row(step);
             self.boundary_constraints.evaluate_all(
                 main_state,
                 aux_state,
@@ -263,7 +264,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     #[rustfmt::skip]
     fn evaluate_main_transition(
         &self,
-        main_frame: &EvaluationFrame<E::BaseField>,
+        main_frame: &A::Frame<E::BaseField>,
         x: E::BaseField,
         step: usize,
         evaluations: &mut [E::BaseField],
@@ -293,8 +294,8 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     #[rustfmt::skip]
     fn evaluate_aux_transition(
         &self,
-        main_frame: &EvaluationFrame<E::BaseField>,
-        aux_frame: &EvaluationFrame<E>,
+        main_frame: &A::Frame<E::BaseField>,
+        aux_frame: &A::AuxFrame<E>,
         x: E::BaseField,
         step: usize,
         evaluations: &mut [E],

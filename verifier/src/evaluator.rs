@@ -14,8 +14,8 @@ use utils::collections::Vec;
 pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     air: &A,
     composition_coefficients: ConstraintCompositionCoefficients<E>,
-    main_trace_frame: &EvaluationFrame<E>,
-    aux_trace_frame: &Option<EvaluationFrame<E>>,
+    main_trace_frame: &A::Frame<E>,
+    aux_trace_frame: &Option<A::AuxFrame<E>>,
     aux_rand_elements: AuxTraceRandElements<E>,
     x: E,
 ) -> E {
@@ -57,6 +57,9 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     let mut result = t_constraints.combine_evaluations::<E>(&t_evaluations1, &t_evaluations2, x);
 
     // 2 ----- evaluate boundary constraints ------------------------------------------------------
+    //
+    // TODO: Account for frame size that may be greater than 2, when its no longer sufficient to
+    // use the zeroth row as the "current" row.
 
     // get boundary constraints grouped by common divisor from the AIR
     let b_constraints =
@@ -77,7 +80,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
             xp = x.exp(degree_adjustment.into());
         }
         // evaluate all constraints in the group, and add the evaluation to the result
-        result += group.evaluate_at(main_trace_frame.current(), x, xp);
+        result += group.evaluate_at(main_trace_frame.row(0), x, xp);
     }
 
     // iterate over boundary constraint groups for auxiliary trace segments (each group has a
@@ -92,7 +95,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
                 xp = x.exp(degree_adjustment.into());
             }
             // evaluate all constraints in the group, and add the evaluation to the result
-            result += group.evaluate_at(aux_trace_frame.current(), x, xp);
+            result += group.evaluate_at(aux_trace_frame.row(0), x, xp);
         }
     }
 

@@ -167,7 +167,7 @@ pub trait Trace: Sized {
 
         // initialize buffers to hold evaluation frames and results of constraint evaluations
         let mut x = Self::BaseField::ONE;
-        let mut main_frame = EvaluationFrame::new(self.main_trace_width());
+        let mut main_frame = A::Frame::new(self.main_trace_width());
         let mut aux_frame = if air.trace_info().is_multi_segment() {
             Some(EvaluationFrame::<E>::new(self.aux_trace_width()))
         } else {
@@ -189,7 +189,7 @@ pub trait Trace: Sized {
 
             // evaluate transition constraints for the main trace segment and make sure they all
             // evaluate to zeros
-            self.read_main_frame(step, &mut main_frame);
+            main_frame.read_from(self.main_segment().columns(), step);
             air.evaluate_transition(&main_frame, &periodic_values, &mut main_evaluations);
             for (i, &evaluation) in main_evaluations.iter().enumerate() {
                 assert!(
@@ -203,7 +203,7 @@ pub trait Trace: Sized {
             // evaluate transition constraints for auxiliary trace segments (if any) and make
             // sure they all evaluate to zeros
             if let Some(ref mut aux_frame) = aux_frame {
-                read_aux_frame(aux_segments, step, aux_frame);
+                aux_frame.read_from(self.get_aux_segment::<E>(0).columns(), step); // TODO: Handle multiple aux segments
                 air.evaluate_aux_transition(
                     &main_frame,
                     aux_frame,
