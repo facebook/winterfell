@@ -71,6 +71,14 @@ pub trait Trace: Sized {
     where
         E: FieldElement<BaseField = Self::BaseField>;
 
+    /// Reads an evaluation frame from the main trace segment at the specified row.
+    fn read_main_frame(&self, row_idx: usize, frame: &mut EvaluationFrame<Self::BaseField>);
+
+    /// Reads an evaluation frame from auxiliary trace segments at the specified row.
+    fn read_aux_frame<E>(&self, row_idx: usize, frame: &mut EvaluationFrame<E>)
+    where
+        E: FieldElement<BaseField = Self::BaseField>;
+
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
 
@@ -86,16 +94,8 @@ pub trait Trace: Sized {
 
     /// Returns the number of columns in all auxiliary trace segments.
     fn aux_trace_width(&self) -> usize {
-        self.layout().main_trace_width()
+        self.layout().aux_trace_width()
     }
-
-    /// Reads an evaluation frame from the main trace segment at the specified row.
-    fn read_main_frame(&self, row_idx: usize, frame: &mut EvaluationFrame<Self::BaseField>);
-
-    /// Reads an evaluation frame from auxiliary trace segments at the specified row.
-    fn read_aux_frame<E>(&self, row_idx: usize, frame: &mut EvaluationFrame<E>)
-    where
-        E: FieldElement<BaseField = Self::BaseField>;
 
     // VALIDATION
     // --------------------------------------------------------------------------------------------

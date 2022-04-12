@@ -422,8 +422,7 @@ where
             .iter()
             .rev()
             .fold(F::ZERO, |acc, &coeff| acc.mul_base(x) + coeff);
-
-        //let assertion_value = polynom::eval(&self.poly, x);
+        // evaluate the constraint
         let evaluation = state[self.column] - assertion_value;
         (self.coefficients.0 + self.coefficients.1.mul_base(xp)).mul_base(evaluation)
     }

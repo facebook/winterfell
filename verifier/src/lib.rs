@@ -178,12 +178,12 @@ where
     H: ElementHasher<BaseField = A::BaseField>,
 {
     // 1 ----- trace commitment -------------------------------------------------------------------
-    // read the commitments to evaluations of the trace polynomials over the LDE domain sent by the
-    // prover. the commitments are used to update the public coin, and draw sets of random elements
+    // Read the commitments to evaluations of the trace polynomials over the LDE domain sent by the
+    // prover. The commitments are used to update the public coin, and draw sets of random elements
     // from the coin (in the interactive version of the protocol the verifier sends these random
-    // elements to the prover after each commitment is made). when there are multiple trace
+    // elements to the prover after each commitment is made). When there are multiple trace
     // commitments (i.e., the trace consists of more than one segment), each previous commitment is
-    // used to draw random elements needed to construct the next trace segment. the last trace
+    // used to draw random elements needed to construct the next trace segment. The last trace
     // commitment is used to draw a set of random coefficients which the prover uses to compute
     // constraint composition polynomial.
     let trace_commitments = channel.read_trace_commitments();
