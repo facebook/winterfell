@@ -526,7 +526,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub use prover::{
-    crypto, iterators, math, Air, AirContext, Assertion, BoundaryConstraint,
+    crypto, iterators, math, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
     BoundaryConstraintGroup, ByteReader, ByteWriter, ConstraintCompositionCoefficients,
     ConstraintDivisor, DeepCompositionCoefficients, Deserializable, DeserializationError,
     EvaluationFrame, FieldExtension, HashFunction, ProofOptions, Prover, ProverError, Serializable,

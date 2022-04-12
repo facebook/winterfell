@@ -226,7 +226,7 @@ impl TraceLayout {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the number of column in the main segment of an execution trace.
+    /// Returns the number of columns in the main segment of an execution trace.
     ///
     /// This is guaranteed to be between 1 and 255.
     pub fn main_trace_width(&self) -> usize {

@@ -37,10 +37,10 @@ impl<B: StarkField> AirContext<B> {
     /// # Panics
     /// Panics if
     /// * `transition_constraint_degrees` is an empty vector.
-    /// * `num_main_assertions` is zero.
+    /// * `num_assertions` is zero.
     /// * Blowup factor specified by the provided `options` is too small to accommodate degrees
     ///   of the specified transition constraints.
-    /// * `trace_info` describes an multi-segment execution trace.
+    /// * `trace_info` describes a multi-segment execution trace.
     pub fn new(
         trace_info: TraceInfo,
         transition_constraint_degrees: Vec<TransitionConstraintDegree>,

@@ -90,7 +90,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
 
         // allocate space for constraint evaluations; when we are in debug mode, we also allocate
         // memory to hold all transition constraint evaluations (before they are merged into a
-        // single value) so that we can check their degrees late
+        // single value) so that we can check their degrees later
         #[cfg(not(debug_assertions))]
         let mut evaluation_table = ConstraintEvaluationTable::<E>::new(domain, divisors);
         #[cfg(debug_assertions)]

@@ -86,7 +86,7 @@ impl<E: FieldElement> BoundaryConstraints<E> {
         let main_trace_width = context.trace_info.layout().main_trace_width();
         let aux_trace_width = context.trace_info.layout().aux_trace_width();
 
-        // make sure the assertions are valid in he context of their respective trace segments;
+        // make sure the assertions are valid in the context of their respective trace segments;
         // also, sort the assertions in the deterministic order so that changing the order of
         // assertions does not change random coefficients that get assigned to them.
         let main_assertions = prepare_assertions(main_assertions, main_trace_width, trace_length);
