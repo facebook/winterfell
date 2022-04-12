@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{Matrix, Trace};
-use air::{TraceInfo, TraceLayout};
+use air::{EvaluationFrame, TraceInfo, TraceLayout};
 use math::{log2, FieldElement, StarkField};
 use utils::{collections::Vec, uninit_vector};
 
@@ -330,6 +330,16 @@ impl<B: StarkField> TraceTable<B> {
     pub fn get_column(&self, col_idx: usize) -> &[B] {
         self.trace.get_column(col_idx)
     }
+
+    /// Returns value of the cell in the specified column at the specified row of this trace.
+    pub fn get(&self, column: usize, step: usize) -> B {
+        self.trace.get(column, step)
+    }
+
+    /// Reads a single row from this execution trace into the provided target.
+    pub fn read_row_into(&self, step: usize, target: &mut [B]) {
+        self.trace.read_row_into(step, target);
+    }
 }
 
 // TRACE TRAIT IMPLEMENTATION
@@ -350,12 +360,14 @@ impl<B: StarkField> Trace for TraceTable<B> {
         &self.meta
     }
 
-    fn get(&self, column: usize, step: usize) -> B {
-        self.trace.get(column, step)
+    fn read_main_frame(&self, row_idx: usize, frame: &mut EvaluationFrame<Self::BaseField>) {
+        let next_row_idx = (row_idx + 1) % self.length();
+        self.trace.read_row_into(row_idx, frame.current_mut());
+        self.trace.read_row_into(next_row_idx, frame.next_mut());
     }
 
-    fn read_row_into(&self, step: usize, target: &mut [B]) {
-        self.trace.read_row_into(step, target);
+    fn read_aux_frame<E: FieldElement>(&self, _row_idx: usize, _frame: &mut EvaluationFrame<E>) {
+        unimplemented!("default trace table implementation does not support auxiliary segments");
     }
 
     fn main_segment(&self) -> &Matrix<B> {
@@ -367,6 +379,13 @@ impl<B: StarkField> Trace for TraceTable<B> {
         E: FieldElement<BaseField = Self::BaseField>,
     {
         None
+    }
+
+    fn get_aux_segment<E>(&self, _segment_idx: usize) -> &Matrix<E>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        unimplemented!("default trace table implementation does not support auxiliary segments");
     }
 }
 

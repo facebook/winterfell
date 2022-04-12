@@ -54,7 +54,6 @@ impl<B: StarkField> StarkDomain<B> {
     }
 
     /// Returns blowup factor from trace to constraint evaluation domain.
-    #[allow(dead_code)]
     pub fn trace_to_ce_blowup(&self) -> usize {
         self.ce_domain_size() / self.trace_length()
     }

@@ -26,7 +26,7 @@ pub struct ConstraintEvaluationTable<E: FieldElement> {
     trace_length: usize,
 
     #[cfg(debug_assertions)]
-    t_evaluations: Vec<Vec<E::BaseField>>,
+    mt_evaluations: Vec<Vec<E::BaseField>>,
     #[cfg(debug_assertions)]
     t_expected_degrees: Vec<usize>,
 }
@@ -68,7 +68,7 @@ impl<E: FieldElement> ConstraintEvaluationTable<E> {
             divisors,
             domain_offset: domain.offset(),
             trace_length: domain.trace_length(),
-            t_evaluations: unsafe {
+            mt_evaluations: unsafe {
                 (0..num_t_columns)
                     .map(|_| uninit_vector(num_rows))
                     .collect()
@@ -120,7 +120,7 @@ impl<E: FieldElement> ConstraintEvaluationTable<E> {
         let result = {
             // in debug mode, also break individual transition evaluations into fragments
             let mut t_evaluation_data = (0..num_fragments).map(|_| Vec::new()).collect::<Vec<_>>();
-            self.t_evaluations.iter_mut().for_each(|column| {
+            self.mt_evaluations.iter_mut().for_each(|column| {
                 for (i, fragment) in column.chunks_mut(fragment_size).enumerate() {
                     t_evaluation_data[i].push(fragment);
                 }
@@ -198,7 +198,7 @@ impl<E: FieldElement> ConstraintEvaluationTable<E> {
         let mut actual_degrees = Vec::with_capacity(self.t_expected_degrees.len());
         let mut max_degree = 0;
         let inv_twiddles = fft::get_inv_twiddles::<E::BaseField>(self.num_rows());
-        for evaluations in self.t_evaluations.iter() {
+        for evaluations in self.mt_evaluations.iter() {
             let mut poly = evaluations.clone();
             fft::interpolate_poly(&mut poly, &inv_twiddles);
             let degree = math::polynom::degree_of(&poly);

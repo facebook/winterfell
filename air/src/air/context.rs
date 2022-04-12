@@ -207,6 +207,16 @@ impl<B: StarkField> AirContext<B> {
         self.main_transition_constraint_degrees.len() + self.aux_transition_constraint_degrees.len()
     }
 
+    /// Returns the number of transition constraints placed against the main trace segment.
+    pub fn num_main_transition_constraints(&self) -> usize {
+        self.main_transition_constraint_degrees.len()
+    }
+
+    /// Returns the number of transition constraints placed against all auxiliary trace segments.
+    pub fn num_aux_transition_constraints(&self) -> usize {
+        self.aux_transition_constraint_degrees.len()
+    }
+
     /// Returns the total number of assertions defined for a computation.
     ///
     /// The number of assertions consists of the assertions placed against the main segment of an
