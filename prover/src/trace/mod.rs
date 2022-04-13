@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::Matrix;
+use super::{matrix::MultiColumnIter, Matrix};
 use air::{Air, AuxTraceRandElements, EvaluationFrame, TraceInfo, TraceLayout};
 use math::{polynom, FieldElement, StarkField};
 
@@ -61,23 +61,19 @@ pub trait Trace: Sized {
 
     /// Builds and returns the next auxiliary trace segment. If there are no more segments to
     /// build (i.e., the trace is complete), None is returned.
-    fn build_aux_segment<E>(&mut self, rand_elements: &[E]) -> Option<&Matrix<E>>
-    where
-        E: FieldElement<BaseField = Self::BaseField>;
-
-    /// Returns a reference to a [Matrix] describing the auxiliary trace segment at the specified
-    /// index.
-    fn get_aux_segment<E>(&self, segment_idx: usize) -> &Matrix<E>
-    where
-        E: FieldElement<BaseField = Self::BaseField>;
+    ///
+    /// The `aux_segments` slice contains a list of auxiliary trace segments built as a result
+    /// of prior invocations of this function. Thus, for example, on the first invocation,
+    /// `aux_segments` will be empty; on the second invocation, it will contain a single matrix
+    /// (the one built during the first invocation) etc.
+    fn build_aux_segment<E: FieldElement<BaseField = Self::BaseField>>(
+        &mut self,
+        aux_segments: &[Matrix<E>],
+        rand_elements: &[E],
+    ) -> Option<Matrix<E>>;
 
     /// Reads an evaluation frame from the main trace segment at the specified row.
     fn read_main_frame(&self, row_idx: usize, frame: &mut EvaluationFrame<Self::BaseField>);
-
-    /// Reads an evaluation frame from auxiliary trace segments at the specified row.
-    fn read_aux_frame<E>(&self, row_idx: usize, frame: &mut EvaluationFrame<E>)
-    where
-        E: FieldElement<BaseField = Self::BaseField>;
 
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
@@ -102,8 +98,12 @@ pub trait Trace: Sized {
     /// Checks if this trace is valid against the specified AIR, and panics if not.
     ///
     /// NOTE: this is a very expensive operation and is intended for use only in debug mode.
-    fn validate<A, E>(&self, air: &A, aux_rand_elements: &AuxTraceRandElements<E>)
-    where
+    fn validate<A, E>(
+        &self,
+        air: &A,
+        aux_segments: &[Matrix<E>],
+        aux_rand_elements: &AuxTraceRandElements<E>,
+    ) where
         A: Air<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField>,
     {
@@ -147,10 +147,9 @@ pub trait Trace: Sized {
             }
 
             // get the matrix and verify the assertion against it
-            let segment = self.get_aux_segment::<E>(segment_idx);
             assertion.apply(self.length(), |step, value| {
                 assert!(
-                    value == segment.get(column_idx, step),
+                    value == aux_segments[segment_idx].get(column_idx, step),
                     "trace does not satisfy assertion aux_trace({}, {}) == {}",
                     assertion.column(),
                     step,
@@ -202,7 +201,7 @@ pub trait Trace: Sized {
             // evaluate transition constraints for auxiliary trace segments (if any) and make
             // sure they all evaluate to zeros
             if let Some(ref mut aux_frame) = aux_frame {
-                self.read_aux_frame(step, aux_frame);
+                read_aux_frame(aux_segments, step, aux_frame);
                 air.evaluate_aux_transition(
                     &main_frame,
                     aux_frame,
@@ -223,5 +222,28 @@ pub trait Trace: Sized {
             // update x coordinate of the domain
             x *= g;
         }
+    }
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+/// Reads an evaluation frame from the set of provided auxiliary segments. This expects that
+/// `aux_segments` contains at least one entry.
+///
+/// This is probably not the most efficient implementation, but since we call this function only
+/// for trace validation purposes (which is done in debug mode only), we don't care all that much
+/// about its performance.
+fn read_aux_frame<E>(aux_segments: &[Matrix<E>], row_idx: usize, frame: &mut EvaluationFrame<E>)
+where
+    E: FieldElement,
+{
+    for (column, current_value) in MultiColumnIter::new(aux_segments).zip(frame.current_mut()) {
+        *current_value = column[row_idx];
+    }
+
+    let next_row_idx = (row_idx + 1) % aux_segments[0].num_rows();
+    for (column, next_value) in MultiColumnIter::new(aux_segments).zip(frame.next_mut()) {
+        *next_value = column[next_row_idx];
     }
 }

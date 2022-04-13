@@ -250,6 +250,7 @@ pub trait Prover {
 
         // build auxiliary trace segments (if any), and append the resulting segments to trace
         // commitment and trace polynomial table structs
+        let mut aux_trace_segments = Vec::new();
         let mut aux_trace_rand_elements = AuxTraceRandElements::new();
         for i in 0..trace.layout().num_aux_segments() {
             // draw a set of random elements required to build an auxiliary trace segment
@@ -257,12 +258,12 @@ pub trait Prover {
 
             // build the trace segment
             let aux_segment = trace
-                .build_aux_segment(&rand_elements)
+                .build_aux_segment(&aux_trace_segments, &rand_elements)
                 .expect("failed build auxiliary trace segment");
 
             // extend the auxiliary trace segment and build a Merkle tree from the extended trace
             let (aux_segment_lde, aux_segment_tree, aux_segment_polys) =
-                self.build_trace_commitment::<E, H>(aux_segment, &domain);
+                self.build_trace_commitment::<E, H>(&aux_segment, &domain);
 
             // commit to the LDE of the extended auxiliary trace segment  by writing the root of
             // its Merkle tree into the channel
@@ -272,13 +273,14 @@ pub trait Prover {
             trace_commitment.add_segment(aux_segment_lde, aux_segment_tree);
             trace_polys.add_aux_segment(aux_segment_polys);
             aux_trace_rand_elements.add_segment_elements(rand_elements);
+            aux_trace_segments.push(aux_segment);
         }
 
         // make sure the specified trace (including auxiliary segments) is valid against the AIR.
         // This checks validity of both, assertions and state transitions. We do this in debug
         // mode only because this is a very expensive operation.
         #[cfg(debug_assertions)]
-        trace.validate(&air, &aux_trace_rand_elements);
+        trace.validate(&air, &aux_trace_segments, &aux_trace_rand_elements);
 
         // 2 ----- evaluate constraints -----------------------------------------------------------
         // evaluate constraints specified by the AIR over the constraint evaluation domain, and

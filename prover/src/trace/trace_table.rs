@@ -366,26 +366,19 @@ impl<B: StarkField> Trace for TraceTable<B> {
         self.trace.read_row_into(next_row_idx, frame.next_mut());
     }
 
-    fn read_aux_frame<E: FieldElement>(&self, _row_idx: usize, _frame: &mut EvaluationFrame<E>) {
-        unimplemented!("default trace table implementation does not support auxiliary segments");
-    }
-
     fn main_segment(&self) -> &Matrix<B> {
         &self.trace
     }
 
-    fn build_aux_segment<E>(&mut self, _rand_elements: &[E]) -> Option<&Matrix<E>>
+    fn build_aux_segment<E>(
+        &mut self,
+        _aux_segments: &[Matrix<E>],
+        _rand_elements: &[E],
+    ) -> Option<Matrix<E>>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
         None
-    }
-
-    fn get_aux_segment<E>(&self, _segment_idx: usize) -> &Matrix<E>
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        unimplemented!("default trace table implementation does not support auxiliary segments");
     }
 }
 
