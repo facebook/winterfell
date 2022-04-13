@@ -51,7 +51,6 @@ impl<E: FieldElement> TraceLde<E> {
     }
 
     /// Returns number of columns in the auxiliary segments of the execution trace.
-    #[allow(dead_code)]
     pub fn aux_trace_width(&self) -> usize {
         self.aux_segment_ldes
             .iter()
@@ -83,7 +82,6 @@ impl<E: FieldElement> TraceLde<E> {
     }
 
     /// Reads current and next rows from the auxiliary trace segment into the specified frame.
-    #[allow(dead_code)]
     pub fn read_aux_trace_frame_into<F: EvaluationFrame<E>>(&self, lde_step: usize, frame: &mut F) {
         // at the end of the trace, next state wraps around and we read the first step again
         // TODO: handle next step

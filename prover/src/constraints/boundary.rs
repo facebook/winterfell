@@ -119,8 +119,7 @@ impl<E: FieldElement> BoundaryConstraints<E> {
     /// Specifically, `step` is the step in the constraint evaluation domain, and `x` is the
     /// corresponding domain value. That is, x = s * g^step, where g is the generator of the
     /// constraint evaluation domain, and s is the domain offset.
-    #[allow(dead_code)]
-    pub fn evaluate_full(
+    pub fn evaluate_all(
         &self,
         main_state: &[E::BaseField],
         aux_state: &[E],
@@ -140,7 +139,7 @@ impl<E: FieldElement> BoundaryConstraints<E> {
                 xp = x.exp(degree_adjustment.into());
             }
             // evaluate the group and save the result
-            *result = group.evaluate_full(main_state, aux_state, step, x, xp);
+            *result = group.evaluate_all(main_state, aux_state, step, x, xp);
         }
     }
 }
@@ -301,7 +300,7 @@ impl<E: FieldElement> BoundaryConstraintGroup<E> {
 
     /// Evaluates all constraints contained in this group at the specified step of the
     /// execution trace.
-    pub fn evaluate_full(
+    pub fn evaluate_all(
         &self,
         main_state: &[E::BaseField],
         aux_state: &[E],
@@ -423,8 +422,7 @@ where
             .iter()
             .rev()
             .fold(F::ZERO, |acc, &coeff| acc.mul_base(x) + coeff);
-
-        //let assertion_value = polynom::eval(&self.poly, x);
+        // evaluate the constraint
         let evaluation = state[self.column] - assertion_value;
         (self.coefficients.0 + self.coefficients.1.mul_base(xp)).mul_base(evaluation)
     }

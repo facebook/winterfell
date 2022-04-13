@@ -330,6 +330,16 @@ impl<B: StarkField> TraceTable<B> {
     pub fn get_column(&self, col_idx: usize) -> &[B] {
         self.trace.get_column(col_idx)
     }
+
+    /// Returns value of the cell in the specified column at the specified row of this trace.
+    pub fn get(&self, column: usize, step: usize) -> B {
+        self.trace.get(column, step)
+    }
+
+    /// Reads a single row from this execution trace into the provided target.
+    pub fn read_row_into(&self, step: usize, target: &mut [B]) {
+        self.trace.read_row_into(step, target);
+    }
 }
 
 // TRACE TRAIT IMPLEMENTATION
@@ -350,14 +360,6 @@ impl<B: StarkField> Trace for TraceTable<B> {
         &self.meta
     }
 
-    fn get(&self, column: usize, step: usize) -> B {
-        self.trace.get(column, step)
-    }
-
-    fn read_row_into(&self, step: usize, target: &mut [B]) {
-        self.trace.read_row_into(step, target);
-    }
-
     fn main_segment(&self) -> &Matrix<B> {
         &self.trace
     }
@@ -367,6 +369,13 @@ impl<B: StarkField> Trace for TraceTable<B> {
         E: FieldElement<BaseField = Self::BaseField>,
     {
         None
+    }
+
+    fn get_aux_segment<E>(&self, _segment_idx: usize) -> &Matrix<E>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        unimplemented!("default trace table implementation does not support auxiliary segments");
     }
 }
 

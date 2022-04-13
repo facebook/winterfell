@@ -526,11 +526,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub use prover::{
-    crypto, iterators, math, Air, AirContext, Assertion, BoundaryConstraint,
+    crypto, iterators, math, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
     BoundaryConstraintGroup, ByteReader, ByteWriter, ConstraintCompositionCoefficients,
     ConstraintDivisor, DeepCompositionCoefficients, Deserializable, DeserializationError,
-    EvaluationFrame, FieldExtension, HashFunction, ProofOptions, Prover, ProverError, Serializable,
-    StarkProof, Trace, TraceInfo, TraceTable, TraceTableFragment, TransitionConstraintDegree,
-    TransitionConstraintGroup,
+    EvaluationFrame, FieldExtension, HashFunction, Matrix, ProofOptions, Prover, ProverError,
+    Serializable, StarkProof, Trace, TraceInfo, TraceLayout, TraceTable, TraceTableFragment,
+    TransitionConstraintDegree, TransitionConstraintGroup,
 };
 pub use verifier::{verify, VerifierError};

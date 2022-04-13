@@ -48,7 +48,7 @@ pub use air::{
     proof::StarkProof, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
     BoundaryConstraintGroup, ConstraintCompositionCoefficients, ConstraintDivisor,
     DeepCompositionCoefficients, EvaluationFrame, FieldExtension, HashFunction, ProofOptions,
-    TraceInfo, TransitionConstraintDegree, TransitionConstraintGroup,
+    TraceInfo, TraceLayout, TransitionConstraintDegree, TransitionConstraintGroup,
 };
 pub use utils::{
     iterators, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
@@ -293,7 +293,7 @@ pub trait Prover {
         #[cfg(feature = "std")]
         let now = Instant::now();
         let constraint_coeffs = channel.get_constraint_composition_coeffs();
-        let evaluator = ConstraintEvaluator::new(&air, &aux_trace_rand_elements, constraint_coeffs);
+        let evaluator = ConstraintEvaluator::new(&air, aux_trace_rand_elements, constraint_coeffs);
         let constraint_evaluations = evaluator.evaluate(trace_commitment.trace_table(), &domain);
         #[cfg(feature = "std")]
         debug!(

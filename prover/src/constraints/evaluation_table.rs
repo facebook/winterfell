@@ -3,10 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{CompositionPoly, ProverError, StarkDomain};
-use air::ConstraintDivisor;
+use super::{CompositionPoly, ConstraintDivisor, ProverError, StarkDomain};
 use math::{batch_inversion, fft, FieldElement, StarkField};
 use utils::{batch_iter_mut, collections::Vec, iter_mut, uninit_vector};
+
+#[cfg(debug_assertions)]
+use air::TransitionConstraints;
 
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
@@ -26,9 +28,11 @@ pub struct ConstraintEvaluationTable<E: FieldElement> {
     trace_length: usize,
 
     #[cfg(debug_assertions)]
-    t_evaluations: Vec<Vec<E::BaseField>>,
+    main_transition_evaluations: Vec<Vec<E::BaseField>>,
     #[cfg(debug_assertions)]
-    t_expected_degrees: Vec<usize>,
+    aux_transition_evaluations: Vec<Vec<E>>,
+    #[cfg(debug_assertions)]
+    expected_transition_degrees: Vec<usize>,
 }
 
 impl<E: FieldElement> ConstraintEvaluationTable<E> {
@@ -44,7 +48,7 @@ impl<E: FieldElement> ConstraintEvaluationTable<E> {
         let num_columns = divisors.len();
         let num_rows = domain.ce_domain_size();
         ConstraintEvaluationTable {
-            evaluations: unsafe { (0..num_columns).map(|_| uninit_vector(num_rows)).collect() },
+            evaluations: uninit_matrix(num_columns, num_rows),
             divisors,
             domain_offset: domain.offset(),
             trace_length: domain.trace_length(),
@@ -58,22 +62,26 @@ impl<E: FieldElement> ConstraintEvaluationTable<E> {
     pub fn new(
         domain: &StarkDomain<E::BaseField>,
         divisors: Vec<ConstraintDivisor<E::BaseField>>,
-        transition_constraint_degrees: Vec<usize>,
+        transition_constraints: &TransitionConstraints<E>,
     ) -> Self {
         let num_columns = divisors.len();
         let num_rows = domain.ce_domain_size();
-        let num_t_columns = transition_constraint_degrees.len();
+        let num_tm_columns = transition_constraints.num_main_constraints();
+        let num_ta_columns = transition_constraints.num_aux_constraints();
+
+        // collect expected degrees for all transition constraints to compare them against actual
+        // degrees; we do this in debug mode only because this comparison is expensive
+        let expected_transition_degrees =
+            build_transition_constraint_degrees(transition_constraints, domain.trace_length());
+
         ConstraintEvaluationTable {
-            evaluations: unsafe { (0..num_columns).map(|_| uninit_vector(num_rows)).collect() },
+            evaluations: uninit_matrix(num_columns, num_rows),
             divisors,
             domain_offset: domain.offset(),
             trace_length: domain.trace_length(),
-            t_evaluations: unsafe {
-                (0..num_t_columns)
-                    .map(|_| uninit_vector(num_rows))
-                    .collect()
-            },
-            t_expected_degrees: transition_constraint_degrees,
+            main_transition_evaluations: uninit_matrix(num_tm_columns, num_rows),
+            aux_transition_evaluations: uninit_matrix(num_ta_columns, num_rows),
+            expected_transition_degrees,
         }
     }
 
@@ -109,48 +117,41 @@ impl<E: FieldElement> ConstraintEvaluationTable<E> {
         );
 
         // break evaluations into fragments
-        let mut evaluation_data = (0..num_fragments).map(|_| Vec::new()).collect::<Vec<_>>();
-        self.evaluations.iter_mut().for_each(|column| {
-            for (i, fragment) in column.chunks_mut(fragment_size).enumerate() {
-                evaluation_data[i].push(fragment);
-            }
-        });
+        let evaluation_data = make_fragments(&mut self.evaluations, num_fragments);
 
         #[cfg(debug_assertions)]
         let result = {
             // in debug mode, also break individual transition evaluations into fragments
-            let mut t_evaluation_data = (0..num_fragments).map(|_| Vec::new()).collect::<Vec<_>>();
-            self.t_evaluations.iter_mut().for_each(|column| {
-                for (i, fragment) in column.chunks_mut(fragment_size).enumerate() {
-                    t_evaluation_data[i].push(fragment);
-                }
-            });
+            let tm_evaluation_data =
+                make_fragments(&mut self.main_transition_evaluations, num_fragments);
+            let ta_evaluation_data =
+                make_fragments(&mut self.aux_transition_evaluations, num_fragments);
 
             evaluation_data
                 .into_iter()
-                .zip(t_evaluation_data)
+                .zip(tm_evaluation_data)
+                .zip(ta_evaluation_data)
                 .enumerate()
-                .map(
-                    |(i, (evaluations, t_evaluations))| EvaluationTableFragment {
+                .map(|(i, ((evaluations, tm_evaluations), ta_evaluations))| {
+                    EvaluationTableFragment {
                         offset: i * fragment_size,
                         evaluations,
-                        t_evaluations,
-                    },
-                )
+                        tm_evaluations,
+                        ta_evaluations,
+                    }
+                })
                 .collect()
         };
 
         #[cfg(not(debug_assertions))]
-        let result = {
-            evaluation_data
-                .into_iter()
-                .enumerate()
-                .map(|(i, evaluations)| EvaluationTableFragment {
-                    offset: i * fragment_size,
-                    evaluations,
-                })
-                .collect()
-        };
+        let result = evaluation_data
+            .into_iter()
+            .enumerate()
+            .map(|(i, evaluations)| EvaluationTableFragment {
+                offset: i * fragment_size,
+                evaluations,
+            })
+            .collect();
 
         result
     }
@@ -195,10 +196,22 @@ impl<E: FieldElement> ConstraintEvaluationTable<E> {
         // collect actual degrees for all transition constraints by interpolating saved
         // constraint evaluations into polynomials and checking their degree; also
         // determine max transition constraint degree
-        let mut actual_degrees = Vec::with_capacity(self.t_expected_degrees.len());
+        let mut actual_degrees = Vec::with_capacity(self.expected_transition_degrees.len());
         let mut max_degree = 0;
         let inv_twiddles = fft::get_inv_twiddles::<E::BaseField>(self.num_rows());
-        for evaluations in self.t_evaluations.iter() {
+
+        // first process transition constraint evaluations for the main trace segment
+        for evaluations in self.main_transition_evaluations.iter() {
+            let mut poly = evaluations.clone();
+            fft::interpolate_poly(&mut poly, &inv_twiddles);
+            let degree = math::polynom::degree_of(&poly);
+            actual_degrees.push(degree);
+
+            max_degree = core::cmp::max(max_degree, degree);
+        }
+
+        // then process transition constraint evaluations for auxiliary trace segments
+        for evaluations in self.aux_transition_evaluations.iter() {
             let mut poly = evaluations.clone();
             fft::interpolate_poly(&mut poly, &inv_twiddles);
             let degree = math::polynom::degree_of(&poly);
@@ -209,9 +222,9 @@ impl<E: FieldElement> ConstraintEvaluationTable<E> {
 
         // make sure expected and actual degrees are equal
         assert_eq!(
-            self.t_expected_degrees, actual_degrees,
+            self.expected_transition_degrees, actual_degrees,
             "transition constraint degrees didn't match\nexpected: {:>3?}\nactual:   {:>3?}",
-            self.t_expected_degrees, actual_degrees
+            self.expected_transition_degrees, actual_degrees
         );
 
         // make sure evaluation domain size does not exceed the size required by max degree
@@ -235,7 +248,9 @@ pub struct EvaluationTableFragment<'a, E: FieldElement> {
     evaluations: Vec<&'a mut [E]>,
 
     #[cfg(debug_assertions)]
-    t_evaluations: Vec<&'a mut [E::BaseField]>,
+    tm_evaluations: Vec<&'a mut [E::BaseField]>,
+    #[cfg(debug_assertions)]
+    ta_evaluations: Vec<&'a mut [E]>,
 }
 
 impl<'a, E: FieldElement> EvaluationTableFragment<'a, E> {
@@ -263,8 +278,16 @@ impl<'a, E: FieldElement> EvaluationTableFragment<'a, E> {
 
     /// Updates transition evaluations row with the provided data; available only in debug mode.
     #[cfg(debug_assertions)]
-    pub fn update_transition_evaluations(&mut self, row_idx: usize, row_data: &[E::BaseField]) {
-        for (column, &value) in self.t_evaluations.iter_mut().zip(row_data) {
+    pub fn update_transition_evaluations(
+        &mut self,
+        row_idx: usize,
+        main_evaluations: &[E::BaseField],
+        aux_evaluations: &[E],
+    ) {
+        for (column, &value) in self.tm_evaluations.iter_mut().zip(main_evaluations) {
+            column[row_idx] = value;
+        }
+        for (column, &value) in self.ta_evaluations.iter_mut().zip(aux_evaluations) {
             column[row_idx] = value;
         }
     }
@@ -272,6 +295,57 @@ impl<'a, E: FieldElement> EvaluationTableFragment<'a, E> {
 
 // HELPER FUNCTIONS
 // ================================================================================================
+
+/// Allocates memory for a two-dimensional data structure without initializing it.
+fn uninit_matrix<E: FieldElement>(num_cols: usize, num_rows: usize) -> Vec<Vec<E>> {
+    unsafe { (0..num_cols).map(|_| uninit_vector(num_rows)).collect() }
+}
+
+/// Returns evaluation degrees of all transition constraints.
+///
+/// An evaluation degree is defined as degree of transition constraints in the context of a given
+/// execution trace. For most constraints, this degree is computed as:
+/// [trace_length - 1] * [constraint degree], however, for constraints which rely on periodic
+/// columns this computation is slightly more complex.
+#[cfg(debug_assertions)]
+fn build_transition_constraint_degrees<E: FieldElement>(
+    constraints: &TransitionConstraints<E>,
+    trace_length: usize,
+) -> Vec<usize> {
+    let mut result = Vec::new();
+
+    for degree in constraints.main_constraint_degrees() {
+        result.push(degree.get_evaluation_degree(trace_length))
+    }
+
+    for degree in constraints.aux_constraint_degrees() {
+        result.push(degree.get_evaluation_degree(trace_length))
+    }
+
+    result
+}
+
+/// Breaks the source data into a mutable set of fragments such that each fragment has the same
+/// number of columns as the source data, and the number of rows equal to `num_fragments`
+/// parameter.
+///
+/// If the source data is empty, the returned vector will contain number of empty vectors equal
+/// to `num_fragments` parameter.
+fn make_fragments<E: FieldElement>(
+    source: &mut [Vec<E>],
+    num_fragments: usize,
+) -> Vec<Vec<&mut [E]>> {
+    let mut result = (0..num_fragments).map(|_| Vec::new()).collect::<Vec<_>>();
+    if !source.is_empty() {
+        let fragment_size = source[0].len() / num_fragments;
+        source.iter_mut().for_each(|column| {
+            for (i, fragment) in column.chunks_mut(fragment_size).enumerate() {
+                result[i].push(fragment);
+            }
+        });
+    }
+    result
+}
 
 #[allow(clippy::many_single_char_names)]
 fn acc_column<E: FieldElement>(

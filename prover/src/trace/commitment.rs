@@ -16,7 +16,7 @@ use super::TraceLde;
 
 /// Execution trace commitment.
 ///
-/// The described one or more trace segments, each consisting of the following components:
+/// The describes one or more trace segments, each consisting of the following components:
 /// * Evaluations of a trace segment's polynomials over the LDE domain.
 /// * Merkle tree where each leaf in the tree corresponds to a row in the trace LDE matrix.
 pub struct TraceCommitment<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> {

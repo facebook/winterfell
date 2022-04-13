@@ -157,6 +157,7 @@ pub trait Air: Send + Sync {
     type PublicInputs: Serializable;
 
     type Frame: EvaluationFrame<Self::BaseField>;
+    type AuxFrame: EvaluationFrame<Self::BaseField>;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -200,17 +201,17 @@ pub trait Air: Send + Sync {
     /// Evaluates transition constraints over the specified evaluation frames for the main and
     /// auxiliary trace segments.
     ///
-    /// The evaluations should be written into the `results` slice in the same order as the
-    /// the order of auxiliary transition constraint degree descriptors used to instantiate
-    /// [AirContext] for this AIR. Thus, the length of the `result` slice will equal to the number
-    /// of auxiliary transition constraints defined for this computation.
+    /// The evaluations should be written into the `results` slice in the same order as the order
+    /// of auxiliary transition constraint degree descriptors used to instantiate [AirContext] for
+    /// this AIR. Thus, the length of the `result` slice will equal to the number of auxiliary
+    /// transition constraints defined for this computation.
     ///
     /// The default implementation of this function panics. It must be overridden for AIRs
     /// describing computations which require multiple trace segments.
     ///
     /// The types for main and auxiliary trace evaluation frames are defined as follows:
     /// * When the entire protocol is executed in a prime field, types `F` and `E` are the same,
-    ///   and thus, both the main and the auxiliary trace frames are defined over the base filed.
+    ///   and thus, both the main and the auxiliary trace frames are defined over the base field.
     /// * When the protocol is executed in an extension field, the main trace frame is defined
     ///   over the base field, while the auxiliary trace frame is defined over the extension field.
     ///
@@ -229,8 +230,7 @@ pub trait Air: Send + Sync {
         periodic_values: &[F],
         aux_rand_elements: &AuxTraceRandElements<E>,
         result: &mut [E],
-    ) -> Vec<Assertion<F>>
-    where
+    ) where
         F: FieldElement<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
     {
@@ -327,7 +327,7 @@ pub trait Air: Send + Sync {
     /// Convert assertions returned from [get_assertions()](Air::get_assertions) and
     /// [get_aux_assertions()](Air::get_aux_assertions) methods into boundary constraints.
     ///
-    /// This function also assign composition coefficients to each constraint, and group the
+    /// This function also assigns composition coefficients to each constraint, and groups the
     /// constraints by their divisors. The coefficients will be used to compute random linear
     /// combination of boundary constraints during constraint merging.
     fn get_boundary_constraints<E: FieldElement<BaseField = Self::BaseField>>(

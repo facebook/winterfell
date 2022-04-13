@@ -27,7 +27,7 @@ use super::{
 /// * `F` could be the base field of the protocol, in which case `E` is the extension field used.
 /// * `F` could be the extension field, in which case `F` and `E` are the same type.
 ///
-/// The above arrangement allows use to describe boundary constraints for main and auxiliary
+/// The above arrangement allows us to describe boundary constraints for main and auxiliary
 /// segments of the execution trace. Specifically:
 /// * For the constraints against columns of the main execution trace, `F` is set to the base field
 ///   of the protocol, and `E` is set to the extension field.
