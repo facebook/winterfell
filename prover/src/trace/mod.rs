@@ -180,7 +180,7 @@ pub trait Trace: Sized {
 
             // evaluate transition constraints for the main trace segment and make sure they all
             // evaluate to zeros
-            main_frame.read_from(self.main_segment(), step);
+            main_frame.read_from(self.main_segment().columns(), step);
             air.evaluate_transition(&main_frame, &periodic_values, &mut main_evaluations);
             for (i, &evaluation) in main_evaluations.iter().enumerate() {
                 assert!(
@@ -194,7 +194,7 @@ pub trait Trace: Sized {
             // evaluate transition constraints for auxiliary trace segments (if any) and make
             // sure they all evaluate to zeros
             if let Some(ref mut aux_frame) = aux_frame {
-                aux_frame.read_from(self.get_aux_segment(0), step); // TODO: Handle multiple aux segments
+                aux_frame.read_from(self.get_aux_segment(0).columns(), step); // TODO: Handle multiple aux segments
                 air.evaluate_aux_transition(
                     &main_frame,
                     aux_frame,

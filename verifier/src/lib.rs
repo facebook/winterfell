@@ -234,11 +234,13 @@ where
         aux_trace_rand_elements,
         z,
     );
-    public_coin.reseed(H::hash_elements(ood_main_trace_frame.current()));
-    public_coin.reseed(H::hash_elements(ood_main_trace_frame.next()));
+    for i in 0..ood_main_trace_frame.row_count() {
+        public_coin.reseed(H::hash_elements(ood_main_trace_frame.row(i)));
+    }
     if let Some(ref aux_trace_frame) = ood_aux_trace_frame {
-        public_coin.reseed(H::hash_elements(aux_trace_frame.current()));
-        public_coin.reseed(H::hash_elements(aux_trace_frame.next()));
+        for i in 0..aux_trace_frame.row_count() {
+            public_coin.reseed(H::hash_elements(aux_trace_frame.row(i)));
+        }
     }
 
     // read evaluations of composition polynomial columns sent by the prover, and reduce them into

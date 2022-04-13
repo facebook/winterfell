@@ -295,7 +295,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     fn evaluate_aux_transition(
         &self,
         main_frame: &A::Frame,
-        aux_frame: &A::Frame,
+        aux_frame: &A::AuxFrame,
         x: E::BaseField,
         step: usize,
         evaluations: &mut [E],

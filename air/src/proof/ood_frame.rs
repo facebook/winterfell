@@ -89,25 +89,30 @@ impl OodFrame {
         self,
         main_trace_width: usize,
         aux_trace_width: usize,
+        eval_frame_window: usize,
         num_evaluations: usize,
     ) -> Result<ParsedOodFrame<E, F>, DeserializationError> {
         assert!(main_trace_width > 0, "trace width cannot be zero");
         assert!(num_evaluations > 0, "number of evaluations cannot be zero");
 
+        let mut rows = vec![];
+        let mut aux_rows = vec![];
+
         // parse current and next trace states for main and auxiliary trace evaluation frames
         let mut reader = SliceReader::new(&self.trace_states);
-        let current = E::read_batch_from(&mut reader, main_trace_width)?;
-        let current_aux = E::read_batch_from(&mut reader, aux_trace_width)?;
-        let next = E::read_batch_from(&mut reader, main_trace_width)?;
-        let next_aux = E::read_batch_from(&mut reader, aux_trace_width)?;
+        for _ in 0..eval_frame_window {
+            let row = E::read_batch_from(&mut reader, main_trace_width)?;
+            let aux_row = E::read_batch_from(&mut reader, aux_trace_width)?;
+            rows.push(row);
+            aux_rows.push(aux_row);
+        }
         if reader.has_more_bytes() {
             return Err(DeserializationError::UnconsumedBytes);
         }
 
-        // instantiate the frames from the parsed rows
-        let main_frame = EvaluationFrame::from_rows(current, next);
+        let main_frame = F::from_rows(rows);
         let aux_frame = if aux_trace_width > 0 {
-            Some(EvaluationFrame::from_rows(current_aux, next_aux))
+            Some(F::from_rows(aux_rows))
         } else {
             None
         };

@@ -78,7 +78,7 @@ impl<E: FieldElement> TraceLde<E> {
         let _next_lde_step = (lde_step + self.blowup()) % self.trace_len();
 
         // copy main trace segment values into the frame
-        frame.read_segment_into(lde_step, &self.main_segment_lde.columns);
+        frame.read_from(self.main_segment_lde.columns(), lde_step);
     }
 
     /// Reads current and next rows from the auxiliary trace segment into the specified frame.
@@ -90,7 +90,7 @@ impl<E: FieldElement> TraceLde<E> {
         //copy auxiliary trace segment values into the frame
         let mut offset = 0;
         for segment in self.aux_segment_ldes.iter() {
-            frame.read_segment_into(lde_step, &segment.columns);
+            frame.read_from(segment.columns(), lde_step);
             offset += segment.num_cols();
         }
     }

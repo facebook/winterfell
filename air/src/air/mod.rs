@@ -226,7 +226,7 @@ pub trait Air: Send + Sync {
     fn evaluate_aux_transition<F, E>(
         &self,
         main_frame: &Self::Frame,
-        aux_frame: &Self::Frame,
+        aux_frame: &Self::AuxFrame,
         periodic_values: &[F],
         aux_rand_elements: &AuxTraceRandElements<E>,
         result: &mut [E],
