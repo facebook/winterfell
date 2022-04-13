@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{Vec, MIN_BLOWUP_FACTOR, MIN_CYCLE_LENGTH};
+use super::{super::super::ProofOptions, Vec, MIN_CYCLE_LENGTH};
 use core::cmp;
 
 // TRANSITION CONSTRAINT DEGREE
@@ -111,9 +111,21 @@ impl TransitionConstraintDegree {
     ///
     /// This is guaranteed to be a power of two, greater than one.
     pub fn min_blowup_factor(&self) -> usize {
+        // The blowup factor needs to be a power of two large enough to accommodate degree of
+        // transition constraints defined by rational functions `C(x) / z(x)` where `C(x)` is the
+        // constraint polynomial and `z(x)` is the transition constraint divisor.
+        //
+        // Degree of `C(x)` is always smaller than or equal to `[self.base + self.cycles.len()] * [trace_length - 1]`.
+        // Degree of `z(x)` is `[trace_length - 1]`. Thus, the degree of `C(x) / z(x)` is
+        // `[self.base + self.cycles.len() - 1] * [trace_length - 1]` and the blowup factor needed
+        // to accommodate this degree can be estimated as `self.base + self.cycles.len() - 1`.
+        //
+        // For example, if degree of our constraints is 6, the blowup factor would need to be 8.
+        // However, if the degree is 5, the blowup factor could be as small as 4.
+        let degree_bound = self.base + self.cycles.len() - 1;
         cmp::max(
-            (self.base + self.cycles.len()).next_power_of_two(),
-            MIN_BLOWUP_FACTOR,
+            degree_bound.next_power_of_two(),
+            ProofOptions::MIN_BLOWUP_FACTOR,
         )
     }
 }

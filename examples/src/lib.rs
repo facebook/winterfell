@@ -13,6 +13,7 @@ pub mod lamport;
 pub mod merkle;
 pub mod rescue;
 pub mod utils;
+pub mod vdf;
 
 #[cfg(test)]
 mod tests;
@@ -115,6 +116,12 @@ pub enum ExampleType {
         /// Length of Fibonacci sequence; must be a power of two
         #[structopt(short = "n", default_value = "1048576")]
         sequence_length: usize,
+    },
+    /// Execute a simple VDF function
+    Vdf {
+        /// Number of steps in the VDF function; must be a power of two
+        #[structopt(short = "n", default_value = "1048576")]
+        num_steps: usize,
     },
     /// Compute a hash chain using Rescue hash function
     Rescue {
