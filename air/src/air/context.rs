@@ -156,7 +156,7 @@ impl<B: StarkField> AirContext<B> {
             ce_blowup_factor,
             trace_domain_generator: B::get_root_of_unity(log2(trace_length)),
             lde_domain_generator: B::get_root_of_unity(log2(lde_domain_size)),
-            num_transition_exemptions: 1, // TODO: make configurable
+            num_transition_exemptions: 1,
         }
     }
 
@@ -235,5 +235,50 @@ impl<B: StarkField> AirContext<B> {
     /// degrees and blowup factor specified for the computation.
     pub fn num_transition_exemptions(&self) -> usize {
         self.num_transition_exemptions
+    }
+
+    // DATA MUTATORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Sets the number of transition exemptions for this context.
+    ///
+    /// # Panics
+    /// Panics if:
+    /// * The number of exemptions is zero.
+    /// * The number of exemptions exceeds half of the trace length.
+    /// * Given the combination of transition constraints degrees and the blowup factor in this
+    ///   context, the number of exemptions is too larger for a valid computation of the constraint
+    ///   composition polynomial.
+    pub fn set_num_transition_exemptions(mut self, n: usize) -> Self {
+        assert!(
+            n > 0,
+            "number of transition exemptions must be greater than zero"
+        );
+        // exemptions which are for more than half the trace are probably a mistake
+        assert!(
+            n <= self.trace_len() / 2,
+            "number of transition exemptions cannot exceed {}, but was {}",
+            self.trace_len() / 2,
+            n
+        );
+        // make sure the composition polynomial can be computed correctly with the specified
+        // number of exemptions
+        for degree in self
+            .main_transition_constraint_degrees
+            .iter()
+            .chain(self.aux_transition_constraint_degrees.iter())
+        {
+            let eval_degree = degree.get_evaluation_degree(self.trace_len());
+            let max_exemptions = self.composition_degree() + self.trace_len() - eval_degree;
+            assert!(
+                n <= max_exemptions,
+                "number of transition exemptions cannot exceed: {}, but was {}",
+                max_exemptions,
+                n
+            )
+        }
+
+        self.num_transition_exemptions = n;
+        self
     }
 }
