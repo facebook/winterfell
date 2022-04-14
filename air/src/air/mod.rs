@@ -444,7 +444,7 @@ pub trait Air: Send + Sync {
         self.context().options.domain_offset()
     }
 
-    fn eval_frame_window_size(&self) -> usize {
+    fn eval_frame_size(&self) -> usize {
         // TODO
         2
     }
@@ -517,7 +517,11 @@ pub trait Air: Send + Sync {
     {
         let mut t_coefficients = Vec::new();
         for _ in 0..self.trace_info().width() {
-            t_coefficients.push(public_coin.draw_triple()?);
+            let mut values = Vec::new();
+            for _ in 0..self.eval_frame_size() + 1 {
+                values.push(public_coin.draw()?);
+            }
+            t_coefficients.push(values);
         }
 
         // self.ce_blowup_factor() is the same as number of composition columns

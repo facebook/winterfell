@@ -235,8 +235,8 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
 
             // evaluate boundary constraints; the results go into remaining slots of the
             // evaluations buffer
-            let main_state = main_frame.current();
-            let aux_state = aux_frame.current();
+            let main_state = main_frame.row(step);
+            let aux_state = aux_frame.row(step);
             self.boundary_constraints.evaluate_all(
                 main_state,
                 aux_state,

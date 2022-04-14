@@ -4,15 +4,12 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{super::Air, FieldElement, Vec};
+use utils::iterators::StreamingIterator;
 
 /// A set of execution trace rows required for evaluation of transition constraints.
 /// It is passed in as one of the parameters into
 /// [Air::evaluate_transition()](crate::Air::evaluate_transition) function.
 pub trait EvaluationFrame<E: FieldElement> {
-    type Chunk<'a>
-    where
-        Self: 'a;
-
     /// Creates an empty frame
     fn new<A: Air<BaseField = E>>(air: &A) -> Self;
 
@@ -20,7 +17,7 @@ pub trait EvaluationFrame<E: FieldElement> {
     fn from_rows(rows: Vec<Vec<E>>) -> Self;
 
     /// Fills the frame using the provided column iterator
-    fn read_from<'a, I: Iterator<Item = Self::Chunk<'a>>>(&'a mut self, columns: I, step: usize);
+    fn read_from<'a, I: StreamingIterator>(&mut self, columns: I, step: usize);
 
     /// Returns the specified row
     fn row<'a>(&'a self, index: usize) -> &'a [E];
@@ -41,11 +38,6 @@ pub struct DefaultEvaluationFrame<E: FieldElement> {
 impl<E: FieldElement> DefaultEvaluationFrame<E> {}
 
 impl<E: FieldElement> EvaluationFrame<E> for DefaultEvaluationFrame<E> {
-    type Chunk<'a>
-    where
-        Self: 'a,
-    = &'a [E];
-
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
@@ -64,7 +56,7 @@ impl<E: FieldElement> EvaluationFrame<E> for DefaultEvaluationFrame<E> {
     // ROW MUTATORS
     // --------------------------------------------------------------------------------------------
 
-    fn read_from<'a, I: Iterator<Item = Self::Chunk<'a>>>(&'a mut self, _columns: I, _step: usize) {
+    fn read_from<'a, I: StreamingIterator>(&mut self, _columns: I, _step: usize) {
         // TODO
     }
 

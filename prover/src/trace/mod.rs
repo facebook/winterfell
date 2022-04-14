@@ -194,7 +194,7 @@ pub trait Trace: Sized {
             // evaluate transition constraints for auxiliary trace segments (if any) and make
             // sure they all evaluate to zeros
             if let Some(ref mut aux_frame) = aux_frame {
-                aux_frame.read_from(self.get_aux_segment(0).columns(), step); // TODO: Handle multiple aux segments
+                aux_frame.read_from(self.get_aux_segment::<E>(0).columns(), step); // TODO: Handle multiple aux segments
                 air.evaluate_aux_transition(
                     &main_frame,
                     aux_frame,

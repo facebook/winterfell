@@ -89,7 +89,7 @@ impl OodFrame {
         self,
         main_trace_width: usize,
         aux_trace_width: usize,
-        eval_frame_window: usize,
+        eval_frame_size: usize,
         num_evaluations: usize,
     ) -> Result<ParsedOodFrame<E, F>, DeserializationError> {
         assert!(main_trace_width > 0, "trace width cannot be zero");
@@ -100,7 +100,7 @@ impl OodFrame {
 
         // parse current and next trace states for main and auxiliary trace evaluation frames
         let mut reader = SliceReader::new(&self.trace_states);
-        for _ in 0..eval_frame_window {
+        for _ in 0..eval_frame_size {
             let row = E::read_batch_from(&mut reader, main_trace_width)?;
             let aux_row = E::read_batch_from(&mut reader, aux_trace_width)?;
             rows.push(row);

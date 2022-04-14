@@ -4,6 +4,7 @@ use crypto::{ElementHasher, MerkleTree};
 use math::{fft, polynom, FieldElement};
 use utils::{batch_iter_mut, collections::Vec, iter, iter_mut, uninit_vector};
 
+use utils::iterators::StreamingIterator;
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
 
@@ -263,6 +264,24 @@ pub struct ColumnIter<'a, E: FieldElement> {
 impl<'a, E: FieldElement> ColumnIter<'a, E> {
     pub fn new(matrix: &'a Matrix<E>) -> Self {
         Self { matrix, cursor: 0 }
+    }
+}
+
+impl<'t, E: FieldElement> StreamingIterator for ColumnIter<'t, E> {
+    type Item<'a>
+    where
+        Self: 'a,
+    = &'a [E];
+
+    fn next<'a>(&'a mut self) -> Option<Self::Item<'a>> {
+        match self.matrix.num_cols() - self.cursor {
+            0 => None,
+            _ => {
+                let column = self.matrix.get_column(self.cursor);
+                self.cursor += 1;
+                Some(column)
+            }
+        }
     }
 }
 
