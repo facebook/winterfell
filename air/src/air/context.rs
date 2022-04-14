@@ -21,6 +21,7 @@ pub struct AirContext<B: StarkField> {
     pub(super) ce_blowup_factor: usize,
     pub(super) trace_domain_generator: B,
     pub(super) lde_domain_generator: B,
+    pub(super) num_transition_exemptions: usize,
 }
 
 impl<B: StarkField> AirContext<B> {
@@ -155,6 +156,7 @@ impl<B: StarkField> AirContext<B> {
             ce_blowup_factor,
             trace_domain_generator: B::get_root_of_unity(log2(trace_length)),
             lde_domain_generator: B::get_root_of_unity(log2(lde_domain_size)),
+            num_transition_exemptions: 1, // TODO: make configurable
         }
     }
 
@@ -223,5 +225,15 @@ impl<B: StarkField> AirContext<B> {
     /// execution trace as well as assertions placed against all auxiliary trace segments.
     pub fn num_assertions(&self) -> usize {
         self.num_main_assertions + self.num_aux_assertions
+    }
+
+    /// Returns the number of rows at the end of an execution trace to which transition constraints
+    /// do not apply.
+    ///
+    /// This is guaranteed to be at least 1 (which is the default value), but could be greater.
+    /// The maximum number of exemptions is determined by a combination of transition constraint
+    /// degrees and blowup factor specified for the computation.
+    pub fn num_transition_exemptions(&self) -> usize {
+        self.num_transition_exemptions
     }
 }
