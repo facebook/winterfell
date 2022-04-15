@@ -27,7 +27,6 @@
 //! This crate also contains components describing STARK protocol parameters ([ProofOptions]) and
 //! proof structure ([StarkProof](proof::StarkProof)).
 
-#![feature(associated_type_bounds)]
 #![feature(generic_associated_types)]
 #![cfg_attr(not(feature = "std"), no_std)]
 

@@ -201,7 +201,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     ) {
         // initialize buffers to hold trace values and evaluation results at each step
         let mut main_frame = A::Frame::new(self.air);
-        let mut aux_frame = A::AuxFrame::new(self.air);
+        let mut aux_frame = A::AuxFrame::<E>::new(self.air);
         let mut tm_evaluations = vec![E::BaseField::ZERO; self.num_main_transition_constraints()];
         let mut ta_evaluations = vec![E::ZERO; self.num_aux_transition_constraints()];
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
@@ -264,7 +264,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     #[rustfmt::skip]
     fn evaluate_main_transition(
         &self,
-        main_frame: &A::Frame,
+        main_frame: &A::Frame<E::BaseField>,
         x: E::BaseField,
         step: usize,
         evaluations: &mut [E::BaseField],
@@ -294,8 +294,8 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     #[rustfmt::skip]
     fn evaluate_aux_transition(
         &self,
-        main_frame: &A::Frame,
-        aux_frame: &A::AuxFrame,
+        main_frame: &A::Frame<E::BaseField>,
+        aux_frame: &A::AuxFrame<E>,
         x: E::BaseField,
         step: usize,
         evaluations: &mut [E],

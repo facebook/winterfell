@@ -169,7 +169,7 @@ pub fn verify<AIR: Air>(
 /// attests to a correct execution of the computation specified by the provided `air`.
 fn perform_verification<A, E, H>(
     air: A,
-    mut channel: VerifierChannel<E, H, A::Frame, A::AuxFrame>,
+    mut channel: VerifierChannel<E, H, A::Frame<E>, A::AuxFrame<E>>,
     mut public_coin: RandomCoin<A::BaseField, H>,
 ) -> Result<(), VerifierError>
 where

@@ -156,8 +156,8 @@ pub trait Air: Send + Sync {
     /// This could be any type as long as it can be serialized into a sequence of bytes.
     type PublicInputs: Serializable;
 
-    type Frame: EvaluationFrame<Self::BaseField>;
-    type AuxFrame: EvaluationFrame<Self::BaseField>;
+    type Frame<E: FieldElement>: EvaluationFrame<E>;
+    type AuxFrame<E: FieldElement>: EvaluationFrame<E>;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -187,7 +187,7 @@ pub trait Air: Send + Sync {
     /// (when extension fields are used).
     fn evaluate_transition<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        frame: &Self::Frame,
+        frame: &Self::Frame<E>,
         periodic_values: &[E],
         result: &mut [E],
     );
@@ -225,8 +225,8 @@ pub trait Air: Send + Sync {
     #[allow(unused_variables)]
     fn evaluate_aux_transition<F, E>(
         &self,
-        main_frame: &Self::Frame,
-        aux_frame: &Self::AuxFrame,
+        main_frame: &Self::Frame<F>,
+        aux_frame: &Self::AuxFrame<E>,
         periodic_values: &[F],
         aux_rand_elements: &AuxTraceRandElements<E>,
         result: &mut [E],

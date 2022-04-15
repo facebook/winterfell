@@ -11,7 +11,7 @@ use utils::iterators::StreamingIterator;
 /// [Air::evaluate_transition()](crate::Air::evaluate_transition) function.
 pub trait EvaluationFrame<E: FieldElement> {
     /// Creates an empty frame
-    fn new<A: Air<BaseField = E>>(air: &A) -> Self;
+    fn new<A: Air>(air: &A) -> Self;
 
     /// Creates an frame instantiated from the provided rows
     fn from_rows(rows: Vec<Vec<E>>) -> Self;
@@ -41,7 +41,7 @@ impl<E: FieldElement> EvaluationFrame<E> for DefaultEvaluationFrame<E> {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    fn new<A: Air<BaseField = E>>(air: &A) -> Self {
+    fn new<A: Air>(air: &A) -> Self {
         let num_columns = air.trace_layout().main_trace_width();
         let num_rows = 2; // TODO: Specify in Air context
         DefaultEvaluationFrame {

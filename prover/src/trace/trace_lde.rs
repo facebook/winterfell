@@ -82,11 +82,7 @@ impl<E: FieldElement> TraceLde<E> {
     }
 
     /// Reads current and next rows from the auxiliary trace segment into the specified frame.
-    pub fn read_aux_trace_frame_into<F: EvaluationFrame<E::BaseField>>(
-        &self,
-        lde_step: usize,
-        frame: &mut F,
-    ) {
+    pub fn read_aux_trace_frame_into<F: EvaluationFrame<E>>(&self, lde_step: usize, frame: &mut F) {
         // at the end of the trace, next state wraps around and we read the first step again
         // TODO: handle next step
         let _next_lde_step = (lde_step + self.blowup()) % self.trace_len();

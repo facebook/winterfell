@@ -14,8 +14,8 @@ use utils::collections::Vec;
 pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     air: &A,
     composition_coefficients: ConstraintCompositionCoefficients<E>,
-    main_trace_frame: &A::Frame,
-    aux_trace_frame: &Option<A::AuxFrame>,
+    main_trace_frame: &A::Frame<E>,
+    aux_trace_frame: &Option<A::AuxFrame<E>>,
     aux_rand_elements: AuxTraceRandElements<E>,
     x: E,
 ) -> E {
