@@ -56,8 +56,18 @@ impl<E: FieldElement> EvaluationFrame<E> for DefaultEvaluationFrame<E> {
     // ROW MUTATORS
     // --------------------------------------------------------------------------------------------
 
-    fn read_from<'a, I: StreamingIterator>(&mut self, _columns: I, _step: usize) {
+    fn read_from<'a, I: StreamingIterator>(&mut self, mut columns: I, step: usize) {
         // TODO
+        //loop {
+        //    match columns.next() {
+        //        Some(col) => {
+        //            for (i, row) in self.data.iter_mut().enumerate() {
+        //                row[j] = col[i];
+        //            }
+        //        }
+        //        None => break,
+        //    }
+        //}
     }
 
     // ROW ACCESSORS

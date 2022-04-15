@@ -144,7 +144,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         fragment: &mut EvaluationTableFragment<E>,
     ) {
         // initialize buffers to hold trace values and evaluation results at each step;
-        let mut main_frame = A::Frame::new(trace.main_trace_width());
+        let mut main_frame = A::Frame::new(self.air);
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
         let mut t_evaluations = vec![E::BaseField::ZERO; self.num_main_transition_constraints()];
 
@@ -177,7 +177,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
 
             // evaluate boundary constraints; the results go into remaining slots of the
             // evaluations buffer
-            let main_state = main_frame.current();
+            let main_state = main_frame.row(0);
             self.boundary_constraints
                 .evaluate_main(main_state, x, step, &mut evaluations[1..]);
 

@@ -25,7 +25,8 @@ use utils::{collections::Vec, string::ToString};
 pub struct VerifierChannel<
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
-    F: EvaluationFrame<E::BaseField>,
+    F1: EvaluationFrame<E>,
+    F2: EvaluationFrame<E>,
 > {
     // trace queries
     trace_roots: Vec<H::Digest>,
@@ -40,7 +41,7 @@ pub struct VerifierChannel<
     fri_remainder: Option<Vec<E>>,
     fri_num_partitions: usize,
     // out-of-domain frame
-    ood_trace_frame: Option<TraceOodFrame<E::BaseField, F>>,
+    ood_trace_frame: Option<TraceOodFrame<E, F1, F2>>,
     ood_constraint_evaluations: Option<Vec<E>>,
     // query proof-of-work
     pow_nonce: u64,
@@ -49,8 +50,9 @@ pub struct VerifierChannel<
 impl<
         E: FieldElement,
         H: ElementHasher<BaseField = E::BaseField>,
-        F: EvaluationFrame<E::BaseField>,
-    > VerifierChannel<E, H, F>
+        F1: EvaluationFrame<E>,
+        F2: EvaluationFrame<E>,
+    > VerifierChannel<E, H, F1, F2>
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -155,7 +157,7 @@ impl<
     /// For computations requiring multiple trace segments, evaluations of auxiliary trace
     /// polynomials are also included as the second value of the returned tuple. Otherwise, the
     /// second value is None.
-    pub fn read_ood_trace_frame(&mut self) -> (F, Option<F>) {
+    pub fn read_ood_trace_frame(&mut self) -> (F1, Option<F2>) {
         let frame = self.ood_trace_frame.take().expect("already read");
         (frame.main_frame, frame.aux_frame)
     }
@@ -214,11 +216,12 @@ impl<
 // FRI VERIFIER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-impl<E, H, F> FriVerifierChannel<E> for VerifierChannel<E, H, F>
+impl<E, H, F1, F2> FriVerifierChannel<E> for VerifierChannel<E, H, F1, F2>
 where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
-    F: EvaluationFrame<E::BaseField>,
+    F1: EvaluationFrame<E>,
+    F2: EvaluationFrame<E>,
 {
     type Hasher = H;
 
@@ -362,14 +365,14 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> ConstraintQuer
 // TRACE OUT-OF-DOMAIN FRAME
 // ================================================================================================
 
-struct TraceOodFrame<E: FieldElement, F: EvaluationFrame<E>> {
+struct TraceOodFrame<E: FieldElement, F1: EvaluationFrame<E>, F2: EvaluationFrame<E>> {
     marker: PhantomData<E>, // What is the correct way to avoid unusued parameter E error?
-    main_frame: F,
-    aux_frame: Option<F>,
+    main_frame: F1,
+    aux_frame: Option<F2>,
 }
 
-impl<E: FieldElement, F: EvaluationFrame<E>> TraceOodFrame<E, F> {
-    pub fn new(main_frame: F, aux_frame: Option<F>) -> Self {
+impl<E: FieldElement, F1: EvaluationFrame<E>, F2: EvaluationFrame<E>> TraceOodFrame<E, F1, F2> {
+    pub fn new(main_frame: F1, aux_frame: Option<F2>) -> Self {
         Self {
             marker: PhantomData,
             main_frame,

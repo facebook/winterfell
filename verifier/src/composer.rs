@@ -62,12 +62,12 @@ impl<E: FieldElement> DeepComposer<E> {
     ///
     /// Note that values of T_i(z) and T_i(z * g) are received from the prover and passed into
     /// this function via the `ood_frame` parameter.
-    pub fn compose_trace_columns<F: EvaluationFrame<E>>(
+    pub fn compose_trace_columns<F1: EvaluationFrame<E>, F2: EvaluationFrame<E>>(
         &self,
         queried_main_trace_states: Table<E::BaseField>,
         queried_aux_trace_states: Option<Table<E>>,
-        ood_main_frame: F,
-        ood_aux_frame: Option<F>,
+        ood_main_frame: F1,
+        ood_aux_frame: Option<F2>,
     ) -> Vec<E> {
         // when field extension is enabled, these will be set to conjugates of trace values at
         // z as well as conjugate of z itself. we do this only for the main trace since auxiliary
