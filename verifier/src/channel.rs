@@ -5,8 +5,8 @@
 
 use crate::VerifierError;
 use air::{
-    proof::{Queries, StarkProof, Table},
-    Air, EvaluationFrame,
+    proof::{Queries, StarkProof},
+    Air, EvaluationFrame, Table,
 };
 use crypto::{BatchMerkleProof, ElementHasher, MerkleTree};
 use fri::VerifierChannel as FriVerifierChannel;

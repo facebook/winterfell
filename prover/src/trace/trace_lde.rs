@@ -73,26 +73,18 @@ impl<E: FieldElement> TraceLde<E> {
         lde_step: usize,
         frame: &mut F,
     ) {
-        // at the end of the trace, next state wraps around and we read the first step again
-        // TODO: handle next step
-        let _next_lde_step = (lde_step + self.blowup()) % self.trace_len();
-
         // copy main trace segment values into the frame
-        frame.read_from(self.main_segment_lde.columns(), lde_step);
+        frame.read_from(&self.main_segment_lde, lde_step, self.blowup());
     }
 
     /// Reads current and next rows from the auxiliary trace segment into the specified frame.
     #[allow(dead_code)]
     pub fn read_aux_trace_frame_into<F: EvaluationFrame<E>>(&self, lde_step: usize, frame: &mut F) {
-        // at the end of the trace, next state wraps around and we read the first step again
-        // TODO: handle next step
-        let _next_lde_step = (lde_step + self.blowup()) % self.trace_len();
-
         //copy auxiliary trace segment values into the frame
-        let mut offset = 0;
+        //let mut offset = 0;
         for segment in self.aux_segment_ldes.iter() {
-            frame.read_from(segment.columns(), lde_step);
-            offset += segment.num_cols();
+            frame.read_from(segment, lde_step, self.blowup());
+            //offset += segment.num_cols();
         }
     }
 

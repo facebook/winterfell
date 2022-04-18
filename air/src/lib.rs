@@ -42,6 +42,9 @@ pub use errors::AssertionError;
 mod options;
 pub use options::{FieldExtension, HashFunction, ProofOptions};
 
+mod table;
+pub use table::Table;
+
 mod air;
 pub use air::{
     Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint, BoundaryConstraintGroup,
