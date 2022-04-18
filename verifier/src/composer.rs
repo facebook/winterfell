@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use air::{proof::Table, Air, DeepCompositionCoefficients, EvaluationFrame, FieldExtension};
+use air::{Air, DeepCompositionCoefficients, EvaluationFrame, FieldExtension, Table};
 use math::FieldElement;
 use utils::collections::Vec;
 
@@ -85,7 +85,7 @@ impl<E: FieldElement> DeepComposer<E> {
             for (i, &value) in row.iter().enumerate() {
                 let value = E::from(value);
 
-                let row_count = ood_main_frame.row_count();
+                let row_count = F1::num_rows();
                 for j in 0..row_count {
                     // compute T^j_i(x) = (T_i(x) - T_i(z * g^j)) / (x - z * g^j), multiply it by a composition
                     // coefficient, and add the result to T(x)
@@ -116,7 +116,7 @@ impl<E: FieldElement> DeepComposer<E> {
                 .zip(&self.x_coordinates)
             {
                 for (i, &value) in row.iter().enumerate() {
-                    let row_count = ood_main_frame.row_count();
+                    let row_count = F2::num_rows();
                     for j in 0..row_count {
                         // compute T^j_i(x) = (T_i(x) - T_i(z * g^j)) / (x - z * g^j), multiply it by a composition
                         // coefficient, and add the result to T(x)

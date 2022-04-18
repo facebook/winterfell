@@ -4,35 +4,55 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{super::Air, FieldElement, Vec};
-use utils::iterators::StreamingIterator;
+use crate::Table;
+use utils::TableReader;
 
 /// A set of execution trace rows required for evaluation of transition constraints.
 /// It is passed in as one of the parameters into
 /// [Air::evaluate_transition()](crate::Air::evaluate_transition) function.
 pub trait EvaluationFrame<E: FieldElement> {
+    const FRAME_OFFSETS: [usize; 2] = [0, 1];
+    const FRAME_SHIFT: usize = 1;
+
     /// Creates an empty frame
     fn new<A: Air>(air: &A) -> Self;
 
-    /// Creates an frame instantiated from the provided rows
-    fn from_rows(rows: Vec<Vec<E>>) -> Self;
+    /// Creates a new frame instantiated from the provided row-major table
+    fn from_table(table: Table<E>) -> Self;
 
-    /// Fills the frame using the provided column iterator
-    fn read_from<'a, I: StreamingIterator>(&mut self, columns: I, step: usize);
+    /// Convert frame to a row-major table
+    fn to_table(&self) -> Table<E>;
 
-    /// Returns the specified row
+    /// Reads selected trace rows from the supplied data into the frame
+    fn read_from<R: TableReader<E>>(&mut self, data: R, step: usize, blowup: usize);
+
+    /// Returns the specified frame row
     fn row<'a>(&'a self, index: usize) -> &'a [E];
 
-    /// Returns the number of rows
-    fn row_count(&self) -> usize;
+    /// Returns the number of frame rows
+    fn num_rows() -> usize {
+        Self::offsets().len()
+    }
+
+    /// Returns the offsets that make up a frame
+    fn offsets() -> &'static [usize] {
+        &Self::FRAME_OFFSETS
+    }
+
+    /// Returns the amount of trace rows that the evaluation frame should shift across
+    /// consecutive constraint evaluation steps
+    fn shift() -> usize {
+        Self::FRAME_SHIFT
+    }
 }
 
 /// Contains rows of the execution trace
 #[derive(Debug, Clone)]
 pub struct DefaultEvaluationFrame<E: FieldElement> {
-    data: Vec<Vec<E>>, // row-major indexing
+    table: Table<E>, // row-major indexing
 }
 
-// WINDOWED EVALUATION FRAME
+// DEFAULT EVALUATION FRAME
 // ================================================================================================
 
 impl<E: FieldElement> DefaultEvaluationFrame<E> {}
@@ -42,42 +62,37 @@ impl<E: FieldElement> EvaluationFrame<E> for DefaultEvaluationFrame<E> {
     // --------------------------------------------------------------------------------------------
 
     fn new<A: Air>(air: &A) -> Self {
-        let num_columns = air.trace_layout().main_trace_width();
-        let num_rows = 2; // TODO: Specify in Air context
+        let num_cols = air.trace_layout().main_trace_width();
+        let num_rows = Self::num_rows();
         DefaultEvaluationFrame {
-            data: vec![E::zeroed_vector(num_columns); num_rows],
+            table: Table::new(num_rows, num_cols),
         }
     }
 
-    fn from_rows(rows: Vec<Vec<E>>) -> Self {
-        Self { data: rows }
+    fn from_table(table: Table<E>) -> Self {
+        Self { table }
     }
 
     // ROW MUTATORS
     // --------------------------------------------------------------------------------------------
 
-    fn read_from<'a, I: StreamingIterator>(&mut self, mut columns: I, step: usize) {
-        // TODO
-        //loop {
-        //    match columns.next() {
-        //        Some(col) => {
-        //            for (i, row) in self.data.iter_mut().enumerate() {
-        //                row[j] = col[i];
-        //            }
-        //        }
-        //        None => break,
-        //    }
-        //}
+    fn read_from<R: TableReader<E>>(&mut self, data: R, step: usize, blowup: usize) {
+        let trace_len = data.num_rows();
+        for (row, row_idx) in self.table.rows_mut().zip(Self::FRAME_OFFSETS.into_iter()) {
+            for col_idx in 0..data.num_cols() {
+                row[col_idx] = data.get(col_idx, (step + row_idx * blowup) % trace_len);
+            }
+        }
     }
 
     // ROW ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    fn row<'a>(&'a self, index: usize) -> &'a [E] {
-        &self.data[index]
+    fn row<'a>(&'a self, row_idx: usize) -> &'a [E] {
+        &self.table.get_row(row_idx)
     }
 
-    fn row_count(&self) -> usize {
-        self.data.len()
+    fn to_table(&self) -> Table<E> {
+        self.table.clone()
     }
 }

@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::EvaluationFrame;
+use crate::{EvaluationFrame, Table};
 use math::FieldElement;
 use utils::{
     collections::Vec, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
@@ -110,9 +110,9 @@ impl OodFrame {
             return Err(DeserializationError::UnconsumedBytes);
         }
 
-        let main_frame = F1::from_rows(rows);
+        let main_frame = F1::from_table(Table::from_rows(rows));
         let aux_frame = if aux_trace_width > 0 {
-            Some(F2::from_rows(aux_rows))
+            Some(F2::from_table(Table::from_rows(aux_rows)))
         } else {
             None
         };

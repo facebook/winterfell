@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{Matrix, Trace};
-use air::{EvaluationFrame, TraceInfo, TraceLayout};
+use air::{TraceInfo, TraceLayout};
 use math::{log2, FieldElement, StarkField};
 use utils::{collections::Vec, uninit_vector};
 

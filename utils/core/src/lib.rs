@@ -614,3 +614,12 @@ impl Randomizable for u64 {
         }
     }
 }
+
+// ================================================================================================
+
+pub trait TableReader<E> {
+    fn num_cols(&self) -> usize;
+    fn num_rows(&self) -> usize;
+
+    fn get(&self, col_idx: usize, row_idx: usize) -> E;
+}

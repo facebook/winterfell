@@ -5,7 +5,7 @@
 
 //! Contains STARK proof struct and associated components.
 
-use crate::{ProofOptions, TraceInfo, TraceLayout};
+use crate::{ProofOptions, Table, TraceInfo, TraceLayout};
 use core::cmp;
 use fri::FriProof;
 use math::log2;
@@ -24,9 +24,6 @@ pub use queries::Queries;
 
 mod ood_frame;
 pub use ood_frame::OodFrame;
-
-mod table;
-pub use table::Table;
 
 // CONSTANTS
 // ================================================================================================
