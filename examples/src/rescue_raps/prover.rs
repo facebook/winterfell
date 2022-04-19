@@ -5,18 +5,18 @@
 
 use super::{
     rescue::{self, STATE_WIDTH},
-    BaseElement, FieldElement, ProofOptions, Prover, PublicInputs, RescueAir, Trace, TraceTable,
-    CYCLE_LENGTH, NUM_HASH_ROUNDS,
+    BaseElement, FieldElement, ProofOptions, Prover, PublicInputs, RapTraceTable, RescueRapsAir,
+    Trace, CYCLE_LENGTH, NUM_HASH_ROUNDS,
 };
 
 // RESCUE PROVER
 // ================================================================================================
 
-pub struct RescueProver {
+pub struct RescueRapsProver {
     options: ProofOptions,
 }
 
-impl RescueProver {
+impl RescueRapsProver {
     pub fn new(options: ProofOptions) -> Self {
         Self { options }
     }
@@ -26,10 +26,10 @@ impl RescueProver {
         seed: [BaseElement; 2],
         result: ([BaseElement; 2], [BaseElement; 2]),
         iterations: usize,
-    ) -> TraceTable<BaseElement> {
+    ) -> RapTraceTable<BaseElement> {
         // allocate memory to hold the trace table
         let trace_length = iterations * CYCLE_LENGTH;
-        let mut trace = TraceTable::new(2 * STATE_WIDTH, trace_length);
+        let mut trace = RapTraceTable::new(2 * STATE_WIDTH, trace_length);
 
         trace.fill(
             |state| {
@@ -73,10 +73,10 @@ impl RescueProver {
     }
 }
 
-impl Prover for RescueProver {
+impl Prover for RescueRapsProver {
     type BaseField = BaseElement;
-    type Air = RescueAir;
-    type Trace = TraceTable<BaseElement>;
+    type Air = RescueRapsAir;
+    type Trace = RapTraceTable<BaseElement>;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
         let last_step = trace.length() - 1;

@@ -7,18 +7,22 @@ use crate::{Example, ExampleOptions};
 use log::debug;
 use std::time::Instant;
 use winterfell::{
-    math::{fields::f128::BaseElement, log2, FieldElement},
-    ProofOptions, Prover, StarkProof, Trace, TraceTable, VerifierError,
+    math::{fields::f128::BaseElement, log2, ExtensionOf, FieldElement},
+    ProofOptions, Prover, StarkProof, Trace, VerifierError,
 };
+
+mod custom_trace_table;
+use custom_trace_table::RapTraceTable;
 
 #[allow(clippy::module_inception)]
 mod rescue;
+use rescue::STATE_WIDTH;
 
 mod air;
-use air::{PublicInputs, RescueAir};
+use air::{PublicInputs, RescueRapsAir};
 
 mod prover;
-use prover::RescueProver;
+use prover::RescueRapsProver;
 
 #[cfg(test)]
 mod tests;
@@ -34,13 +38,13 @@ const TRACE_WIDTH: usize = 4 * 2;
 // ================================================================================================
 
 pub fn get_example(options: ExampleOptions, chain_length: usize) -> Box<dyn Example> {
-    Box::new(RescueExample::new(
+    Box::new(RescueRapsExample::new(
         chain_length,
         options.to_proof_options(42, 4),
     ))
 }
 
-pub struct RescueExample {
+pub struct RescueRapsExample {
     options: ProofOptions,
     chain_length: usize,
     seed: [BaseElement; 2],
@@ -49,8 +53,8 @@ pub struct RescueExample {
     result: ([BaseElement; 2], [BaseElement; 2]),
 }
 
-impl RescueExample {
-    pub fn new(chain_length: usize, options: ProofOptions) -> RescueExample {
+impl RescueRapsExample {
+    pub fn new(chain_length: usize, options: ProofOptions) -> RescueRapsExample {
         assert!(
             chain_length.is_power_of_two(),
             "chain length must a power of 2"
@@ -66,7 +70,7 @@ impl RescueExample {
             now.elapsed().as_millis(),
         );
 
-        RescueExample {
+        RescueRapsExample {
             options,
             chain_length,
             seed,
@@ -78,7 +82,7 @@ impl RescueExample {
 // EXAMPLE IMPLEMENTATION
 // ================================================================================================
 
-impl Example for RescueExample {
+impl Example for RescueRapsExample {
     fn prove(&self) -> StarkProof {
         // generate the execution trace
         debug!(
@@ -88,7 +92,7 @@ impl Example for RescueExample {
         );
 
         // create a prover
-        let prover = RescueProver::new(self.options.clone());
+        let prover = RescueRapsProver::new(self.options.clone());
 
         // generate the execution trace
         let now = Instant::now();
@@ -110,7 +114,7 @@ impl Example for RescueExample {
             seed: self.seed,
             result: self.result.1,
         };
-        winterfell::verify::<RescueAir>(proof, pub_inputs)
+        winterfell::verify::<RescueRapsAir>(proof, pub_inputs)
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
@@ -118,7 +122,7 @@ impl Example for RescueExample {
             seed: self.seed,
             result: [self.result.1[0], self.result.1[1] + BaseElement::ONE],
         };
-        winterfell::verify::<RescueAir>(proof, pub_inputs)
+        winterfell::verify::<RescueRapsAir>(proof, pub_inputs)
     }
 }
 
