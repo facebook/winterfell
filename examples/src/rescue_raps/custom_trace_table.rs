@@ -393,6 +393,7 @@ impl<B: StarkField> Trace for RapTraceTable<B> {
         let copied_values = row
             .iter()
             .skip(4)
+            .take(2)
             .enumerate()
             .fold(E::ZERO, |acc, (idx, &cell)| {
                 acc + rand_elements[idx] * row[super::STATE_WIDTH + idx].into()
@@ -405,8 +406,8 @@ impl<B: StarkField> Trace for RapTraceTable<B> {
         aux_columns[2][0] = E::ONE;
 
         for index in 1..self.length() {
-            let num = aux_columns[0][index - 1] + rand_elements[4];
-            let denom = aux_columns[1][index - 1] + rand_elements[4];
+            let num = aux_columns[0][index - 1] + rand_elements[2];
+            let denom = aux_columns[1][index - 1] + rand_elements[2];
             aux_columns[2][index] = aux_columns[2][index - 1] * num * denom.inv();
         }
 
