@@ -162,13 +162,8 @@ impl Air for RescueRapsAir {
         let copy_flag_1 = periodic_values[STATE_WIDTH * 2 + 1];
         let copy_flag_2 = periodic_values[STATE_WIDTH * 2 + 2];
 
-        let copied_value_1 = main_current
-            .iter()
-            .take(4)
-            .enumerate()
-            .fold(E::ZERO, |acc, (idx, &cell)| {
-                acc + random_elements[idx] * cell.into()
-            });
+        let copied_value_1 = random_elements[0] * main_current[0].into()
+            + random_elements[1] * main_current[1].into();
 
         result.agg_constraint(
             0,
@@ -176,14 +171,8 @@ impl Air for RescueRapsAir {
             are_equal(aux_current[0], copied_value_1),
         );
 
-        let copied_value_2 = main_current
-            .iter()
-            .skip(4)
-            .take(4)
-            .enumerate()
-            .fold(E::ZERO, |acc, (idx, &cell)| {
-                acc + random_elements[idx] * cell.into()
-            });
+        let copied_value_2 = random_elements[0] * main_current[4].into()
+            + random_elements[1] * main_current[5].into();
 
         result.agg_constraint(
             1,
@@ -196,8 +185,8 @@ impl Air for RescueRapsAir {
             2,
             E::ONE,
             are_equal(
-                aux_next[2] * (aux_current[1] + random_elements[4]),
-                aux_current[2] * (aux_current[0] + random_elements[4]),
+                aux_next[2] * (aux_current[1] + random_elements[2]),
+                aux_current[2] * (aux_current[0] + random_elements[2]),
             ),
         );
     }
