@@ -10,7 +10,7 @@ use winterfell::math::{fields::f128::BaseElement, FieldElement};
 /// computed using algorithm 7 from https://eprint.iacr.org/2020/1143.pdf
 const NUM_ROUNDS: usize = 14;
 
-const STATE_WIDTH: usize = 4;
+pub const STATE_WIDTH: usize = 4;
 const CYCLE_LENGTH: usize = 16;
 
 // HASH FUNCTION
@@ -43,6 +43,14 @@ pub fn apply_round(state: &mut [BaseElement], step: usize) {
     apply_inv_sbox(state);
     apply_mds(state);
     add_constants(state, &ark, STATE_WIDTH);
+}
+
+pub fn apply_round_parallel(multi_state: &mut [BaseElement], step: usize) {
+    debug_assert_eq!(multi_state.len() % STATE_WIDTH, 0);
+
+    for state in multi_state.chunks_mut(STATE_WIDTH) {
+        apply_round(state, step)
+    }
 }
 
 // CONSTRAINTS

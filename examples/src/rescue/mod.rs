@@ -12,7 +12,7 @@ use winterfell::{
 };
 
 #[allow(clippy::module_inception)]
-mod rescue;
+pub(crate) mod rescue;
 
 mod air;
 use air::{PublicInputs, RescueAir};

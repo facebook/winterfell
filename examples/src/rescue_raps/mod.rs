@@ -14,9 +14,7 @@ use winterfell::{
 mod custom_trace_table;
 use custom_trace_table::RapTraceTable;
 
-#[allow(clippy::module_inception)]
-mod rescue;
-use rescue::STATE_WIDTH;
+use super::rescue::rescue::{self, STATE_WIDTH};
 
 mod air;
 use air::{PublicInputs, RescueRapsAir};
