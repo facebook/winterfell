@@ -234,11 +234,22 @@ where
         aux_trace_rand_elements,
         z,
     );
-    public_coin.reseed(H::hash_elements(ood_main_trace_frame.current()));
-    public_coin.reseed(H::hash_elements(ood_main_trace_frame.next()));
+
     if let Some(ref aux_trace_frame) = ood_aux_trace_frame {
-        public_coin.reseed(H::hash_elements(aux_trace_frame.current()));
-        public_coin.reseed(H::hash_elements(aux_trace_frame.next()));
+        // when the trace contains auxiliary segments, append auxiliary trace elements at the
+        // end of main trace elements for both current and next rows in the frame. this is
+        // needed to be consistent with how the prover writes OOD frame into the channel.
+
+        let mut current = ood_main_trace_frame.current().to_vec();
+        current.extend_from_slice(aux_trace_frame.current());
+        public_coin.reseed(H::hash_elements(&current));
+
+        let mut next = ood_main_trace_frame.next().to_vec();
+        next.extend_from_slice(aux_trace_frame.next());
+        public_coin.reseed(H::hash_elements(&next));
+    } else {
+        public_coin.reseed(H::hash_elements(ood_main_trace_frame.current()));
+        public_coin.reseed(H::hash_elements(ood_main_trace_frame.next()));
     }
 
     // read evaluations of composition polynomial columns sent by the prover, and reduce them into
