@@ -49,10 +49,10 @@ where
         .enumerate()
         .for_each(|(i, chunk)| {
             let idx = super::permute_index(blowup_factor, i) as u64;
-            let offset = E::from(g.exp(idx.into()) * domain_offset);
-            let mut factor = E::ONE;
+            let offset = g.exp(idx.into()) * domain_offset;
+            let mut factor = E::BaseField::ONE;
             for (d, c) in chunk.iter_mut().zip(p.iter()) {
-                *d = *c * factor;
+                *d = (*c).mul_base(factor);
                 factor *= offset;
             }
             fft_in_place(chunk, twiddles, 1, 1, 0);

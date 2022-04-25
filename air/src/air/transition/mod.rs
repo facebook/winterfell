@@ -3,15 +3,179 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use core::cmp;
-use math::FieldElement;
-use utils::collections::Vec;
+use super::{AirContext, BTreeMap, ConstraintDivisor, ExtensionOf, FieldElement, Vec};
+
+mod frame;
+pub use frame::EvaluationFrame;
+
+mod degree;
+pub use degree::TransitionConstraintDegree;
 
 // CONSTANTS
 // ================================================================================================
 
 const MIN_BLOWUP_FACTOR: usize = 2;
 const MIN_CYCLE_LENGTH: usize = 2;
+
+// TRANSITION CONSTRAINT INFO
+// ================================================================================================
+/// Metadata for transition constraints of a computation.
+///
+/// This metadata includes:
+/// - List of transition constraint degrees for the main trace segment, as well as for auxiliary
+///   trace segments (if any).
+/// - Groupings of constraints by their degree, separately for the main trace segment and for
+///   auxiliary tace segment.
+/// - Divisor of transition constraints for a computation.
+pub struct TransitionConstraints<E: FieldElement> {
+    main_constraints: Vec<TransitionConstraintGroup<E>>,
+    main_constraint_degrees: Vec<TransitionConstraintDegree>,
+    aux_constraints: Vec<TransitionConstraintGroup<E>>,
+    aux_constraint_degrees: Vec<TransitionConstraintDegree>,
+    divisor: ConstraintDivisor<E::BaseField>,
+}
+
+impl<E: FieldElement> TransitionConstraints<E> {
+    // CONSTRUCTOR
+    // --------------------------------------------------------------------------------------------
+    /// Returns a new instance of [TransitionConstraints] for a computation described by the
+    /// specified AIR context.
+    ///
+    /// # Panics
+    /// Panics if the number of transition constraints in the context does not match the number of
+    /// provided composition coefficients.
+    pub fn new(context: &AirContext<E::BaseField>, composition_coefficients: &[(E, E)]) -> Self {
+        assert_eq!(
+            context.num_transition_constraints(),
+            composition_coefficients.len(),
+            "number of transition constraints must match the number of composition coefficient tuples"
+        );
+
+        let (main_constraint_coefficients, aux_constraint_coefficients) =
+            composition_coefficients.split_at(context.main_transition_constraint_degrees.len());
+
+        let main_constraint_degrees = context.main_transition_constraint_degrees.clone();
+        let main_constraints = group_constraints(
+            &main_constraint_degrees,
+            context,
+            main_constraint_coefficients,
+        );
+        let aux_constraint_degrees = context.aux_transition_constraint_degrees.clone();
+        let aux_constraints = group_constraints(
+            &aux_constraint_degrees,
+            context,
+            aux_constraint_coefficients,
+        );
+
+        Self {
+            main_constraints,
+            main_constraint_degrees,
+            aux_constraints,
+            aux_constraint_degrees,
+            divisor: ConstraintDivisor::from_transition(context.trace_len()),
+        }
+    }
+
+    // PUBLIC ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns transition constraint info for constraints applied against the main trace segment
+    /// of a computation grouped by constraint degree.
+    pub fn main_constraints(&self) -> &[TransitionConstraintGroup<E>] {
+        &self.main_constraints
+    }
+
+    /// Returns a list of transition constraint degree descriptors for the main trace segment of
+    /// a computation.
+    ///
+    /// This list will be identical to the list passed into the [AirContext::new()] method as
+    /// the `transition_constraint_degrees` parameter, or into [AirContext::new_multi_segment()]
+    /// as the `main_transition_constraint_degrees` parameter.
+    pub fn main_constraint_degrees(&self) -> &[TransitionConstraintDegree] {
+        &self.main_constraint_degrees
+    }
+
+    /// Returns the number of constraints applied against the main trace segment of a computation.
+    pub fn num_main_constraints(&self) -> usize {
+        self.main_constraint_degrees.len()
+    }
+
+    /// Returns transition constraint info for constraints applied against auxiliary trace segments
+    /// of a computation grouped by constraint degree.
+    pub fn aux_constraints(&self) -> &[TransitionConstraintGroup<E>] {
+        &self.aux_constraints
+    }
+
+    /// Returns a list of transition constraint degree descriptors for auxiliary trace segments of
+    /// a computation.
+    ///
+    /// This list will be identical to the list passed into [AirContext::new_multi_segment()]
+    /// as the `aux_transition_constraint_degrees` parameter.
+    pub fn aux_constraint_degrees(&self) -> &[TransitionConstraintDegree] {
+        &self.aux_constraint_degrees
+    }
+
+    /// Returns the number of constraints applied against auxiliary trace segments of a
+    /// computation.
+    pub fn num_aux_constraints(&self) -> usize {
+        self.aux_constraint_degrees.len()
+    }
+
+    /// Returns a divisor for transition constraints.
+    ///
+    /// All transition constraints have the same divisor which has the form:
+    /// $$
+    /// z(x) = \frac{x^n - 1}{x - g^{n - 1}}
+    /// $$
+    /// where: $n$ is the length of the execution trace and $g$ is the generator of the trace
+    /// domain.
+    ///
+    /// This divisor specifies that transition constraints must hold on all steps of the
+    /// execution trace except for the last one.
+    pub fn divisor(&self) -> &ConstraintDivisor<E::BaseField> {
+        &self.divisor
+    }
+
+    // CONSTRAINT COMPOSITION
+    // --------------------------------------------------------------------------------------------
+
+    /// Computes a linear combination of all transition constraint evaluations and divides the
+    /// result by transition constraint divisor.
+    ///
+    /// A transition constraint is described by a rational function of the form $\frac{C(x)}{z(x)}$,
+    /// where:
+    /// * $C(x)$ is the constraint polynomial.
+    /// * $z(x)$ is the constraint divisor polynomial.
+    ///
+    /// Thus, this function computes a linear combination of $C(x)$ evaluations. For more detail on
+    ///  how this linear combination is computed refer to [TransitionConstraintGroup::merge_evaluations].
+    ///
+    /// Since, the divisor polynomial is the same for all transition constraints (see
+    /// [ConstraintDivisor::from_transition]), we can divide the linear combination by the
+    /// divisor rather than dividing each individual $C(x)$ evaluation. This requires executing only
+    /// one division at the end.
+    pub fn combine_evaluations<F>(&self, main_evaluations: &[F], aux_evaluations: &[E], x: F) -> E
+    where
+        F: FieldElement<BaseField = E::BaseField>,
+        E: ExtensionOf<F>,
+    {
+        // merge constraint evaluations for the main trace segment
+        let mut result = self.main_constraints().iter().fold(E::ZERO, |acc, group| {
+            acc + group.merge_evaluations::<F, F>(main_evaluations, x)
+        });
+
+        // merge constraint evaluations for auxiliary trace segments (if any)
+        if self.num_aux_constraints() > 0 {
+            result += self.aux_constraints().iter().fold(E::ZERO, |acc, group| {
+                acc + group.merge_evaluations::<F, E>(aux_evaluations, x)
+            });
+        }
+
+        // divide out the evaluation of divisor at x and return the result
+        let z = E::from(self.divisor.evaluate_at(x));
+        result / z
+    }
+}
 
 // TRANSITION CONSTRAINT GROUP
 // ================================================================================================
@@ -20,17 +184,8 @@ const MIN_CYCLE_LENGTH: usize = 2;
 /// A transition constraint group does not actually store transition constraints - it stores only
 /// their indexes and the info needed to compute their random linear combination. The indexes are
 /// assumed to be consistent with the order in which constraint evaluations are written into the
-/// `evaluation` table by the [Air::evaluate_transition()](crate::Air::evaluate_transition)
-/// function.
-///
-/// A transition constraint is described by a rational function of the form $\frac{C(x)}{z(x)}$,
-/// where:
-/// * $C(x)$ is the constraint polynomial.
-/// * $z(x)$ is the constraint divisor polynomial.
-///
-/// The divisor polynomial is the same for all transition constraints (see
-/// [Air::transition_constraint_divisor()](crate::Air::transition_constraint_divisor())) and for
-/// this reason is not stored in a transition constraint group.
+/// `evaluation` table by the [Air::evaluate_transition()](crate::Air::evaluate_transition) or
+/// [Air::evaluate_aux_transition()](crate::Air::evaluate_aux_transition) function.
 #[derive(Clone, Debug)]
 pub struct TransitionConstraintGroup<E: FieldElement> {
     degree: TransitionConstraintDegree,
@@ -107,209 +262,50 @@ impl<E: FieldElement> TransitionConstraintGroup<E> {
     /// them by the divisor later on. The degree of the divisor for transition constraints is
     /// always $n - 1$. Thus, once we divide out the divisor, the evaluations will represent a
     /// polynomial of degree $D$.
-    pub fn merge_evaluations<B>(&self, evaluations: &[B], x: B) -> E
+    pub fn merge_evaluations<B, F>(&self, evaluations: &[F], x: B) -> E
     where
         B: FieldElement,
-        E: From<B>,
+        F: FieldElement<BaseField = B::BaseField> + ExtensionOf<B>,
+        E: FieldElement<BaseField = B::BaseField> + ExtensionOf<B> + ExtensionOf<F>,
     {
         // compute degree adjustment factor for this group
-        let xp = E::from(x.exp(self.degree_adjustment.into()));
+        let xp = x.exp(self.degree_adjustment.into());
 
         // compute linear combination of evaluations as D(x) * (cc_0 + cc_1 * x^p), where D(x)
         // is an evaluation of a particular constraint, and x^p is the degree adjustment factor
         let mut result = E::ZERO;
         for (&constraint_idx, coefficients) in self.indexes.iter().zip(self.coefficients.iter()) {
-            let evaluation = E::from(evaluations[constraint_idx]);
-            result += evaluation * (coefficients.0 + coefficients.1 * xp);
+            let evaluation = evaluations[constraint_idx];
+            result += (coefficients.0 + coefficients.1.mul_base(xp)).mul_base(evaluation);
         }
         result
     }
 }
 
-// TRANSITION CONSTRAINT DEGREE
+// HELPER FUNCTIONS
 // ================================================================================================
-/// Degree descriptor of a transition constraint.
-///
-/// Describes constraint degree as a combination of multiplications of periodic and trace
-/// registers. For example, degree of a constraint which requires multiplication of two trace
-/// registers can be described as: `base: 2, cycles: []`. A constraint which requires
-/// multiplication of 3 trace registers and a periodic register with a period of 32 steps can be
-/// described as: `base: 3, cycles: [32]`.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TransitionConstraintDegree {
-    base: usize,
-    cycles: Vec<usize>,
-}
 
-impl TransitionConstraintDegree {
-    /// Creates a new transition constraint degree descriptor for constraints which involve
-    /// multiplications of trace registers only.
-    ///
-    /// For example, if a constraint involves multiplication of two trace registers, `degree`
-    /// should be set to 2. If a constraint involves multiplication of three trace registers,
-    /// `degree` should be set to 3 etc.
-    ///
-    /// # Panics
-    /// Panics if the provided `degree` is zero.
-    pub fn new(degree: usize) -> Self {
-        assert!(
-            degree > 0,
-            "transition constraint degree must be at least one, but was zero"
-        );
-        TransitionConstraintDegree {
-            base: degree,
-            cycles: vec![],
-        }
+/// Groups transition constraints by their degree.
+fn group_constraints<E: FieldElement>(
+    degrees: &[TransitionConstraintDegree],
+    context: &AirContext<E::BaseField>,
+    coefficients: &[(E, E)],
+) -> Vec<TransitionConstraintGroup<E>> {
+    // iterate over transition constraint degrees, and assign each constraint to the appropriate
+    // group based on its degree
+    let mut groups = BTreeMap::new();
+    for (i, degree) in degrees.iter().enumerate() {
+        let evaluation_degree = degree.get_evaluation_degree(context.trace_len());
+        let group = groups.entry(evaluation_degree).or_insert_with(|| {
+            TransitionConstraintGroup::new(
+                degree.clone(),
+                context.trace_poly_degree(),
+                context.composition_degree(),
+            )
+        });
+        group.add(i, coefficients[i]);
     }
 
-    /// Creates a new transition degree descriptor for constraints which involve multiplication
-    /// of trace registers and periodic columns.
-    ///
-    /// For example, if a constraint involves multiplication of two trace registers and one
-    /// periodic column with a period length of 32 steps, `base_degree` should be set to 2,
-    /// and `cycles` should be set to `vec![32]`.
-    ///
-    /// # Panics
-    /// Panics if:
-    /// * `base_degree` is zero.
-    /// * Any of the values in the `cycles` vector is smaller than two or is not powers of two.
-    pub fn with_cycles(base_degree: usize, cycles: Vec<usize>) -> Self {
-        assert!(
-            base_degree > 0,
-            "transition constraint degree must be at least one, but was zero"
-        );
-        for (i, &cycle) in cycles.iter().enumerate() {
-            assert!(
-                cycle >= MIN_CYCLE_LENGTH,
-                "cycle length must be at least {}, but was {} for cycle {}",
-                MIN_CYCLE_LENGTH,
-                cycle,
-                i
-            );
-            assert!(
-                cycle.is_power_of_two(),
-                "cycle length must be a power of two, but was {} for cycle {}",
-                cycle,
-                i
-            );
-        }
-        TransitionConstraintDegree {
-            base: base_degree,
-            cycles,
-        }
-    }
-
-    /// Computes a degree to which this degree description expands in the context of execution
-    /// trace of the specified length.
-    ///
-    /// The expanded degree is computed as follows:
-    ///
-    /// $$
-    /// b \cdot (n - 1) + \sum_{i = 0}^{k - 1}{\frac{n \cdot (c_i - 1)}{c_i}}
-    /// $$
-    ///
-    /// where: $b$ is the base degree, $n$ is the `trace_length`, $c_i$ is a cycle length of
-    /// periodic column $i$, and $k$ is the total number of periodic columns for this degree
-    /// descriptor.
-    ///
-    /// Thus, evaluation degree of a transition constraint which involves multiplication of two
-    /// trace registers and one periodic column with a period length of 32 steps when evaluated
-    /// over an execution trace of 64 steps would be:
-    ///
-    /// $$
-    /// 2 \cdot (64 - 1) + \frac{64 \cdot (32 - 1)}{32} = 126 + 62 = 188
-    /// $$
-    pub fn get_evaluation_degree(&self, trace_length: usize) -> usize {
-        let mut result = self.base * (trace_length - 1);
-        for cycle_length in self.cycles.iter() {
-            result += (trace_length / cycle_length) * (cycle_length - 1);
-        }
-        result
-    }
-
-    /// Returns a minimum blowup factor needed to evaluate constraint of this degree.
-    ///
-    /// This is guaranteed to be a power of two, greater than one.
-    pub fn min_blowup_factor(&self) -> usize {
-        cmp::max(
-            (self.base + self.cycles.len()).next_power_of_two(),
-            MIN_BLOWUP_FACTOR,
-        )
-    }
-}
-
-// EVALUATION FRAME
-// ================================================================================================
-/// A set of execution trace rows required for evaluation of transition constraints.
-///
-/// In the current implementation, an evaluation frame always contains two consecutive rows of the
-/// execution trace. It is passed in as one of the parameters into
-/// [Air::evaluate_transition()](crate::Air::evaluate_transition) function.
-#[derive(Debug, Clone)]
-pub struct EvaluationFrame<E: FieldElement> {
-    current: Vec<E>,
-    next: Vec<E>,
-}
-
-impl<E: FieldElement> EvaluationFrame<E> {
-    // CONSTRUCTORS
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns a new evaluation frame instantiated with the specified number of registers.
-    ///
-    /// # Panics
-    /// Panics if `num_registers` is zero.
-    pub fn new(num_registers: usize) -> Self {
-        assert!(
-            num_registers > 0,
-            "number of registers must be greater than zero"
-        );
-        EvaluationFrame {
-            current: E::zeroed_vector(num_registers),
-            next: E::zeroed_vector(num_registers),
-        }
-    }
-
-    /// Returns a new evaluation frame instantiated from the provided rows.
-    ///
-    /// # Panics
-    /// Panics if:
-    /// * Lengths of the provided rows are zero.
-    /// * Lengths of the provided rows are not the same.
-    pub fn from_rows(current: Vec<E>, next: Vec<E>) -> Self {
-        assert!(!current.is_empty(), "a row must contain at least one value");
-        assert_eq!(
-            current.len(),
-            next.len(),
-            "number of values in the rows must be the same"
-        );
-        Self { current, next }
-    }
-
-    // ROW ACCESSORS
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns a reference to the current row.
-    #[inline(always)]
-    pub fn current(&self) -> &[E] {
-        &self.current
-    }
-
-    /// Returns a mutable reference to the current row.
-    #[inline(always)]
-    pub fn current_mut(&mut self) -> &mut [E] {
-        &mut self.current
-    }
-
-    /// Returns a reference to the next row.
-    #[inline(always)]
-    pub fn next(&self) -> &[E] {
-        &self.next
-    }
-
-    /// Returns a mutable reference to the next row.
-    #[inline(always)]
-    pub fn next_mut(&mut self) -> &mut [E] {
-        &mut self.next
-    }
+    // convert from hash map into a vector and return
+    groups.into_iter().map(|e| e.1).collect()
 }

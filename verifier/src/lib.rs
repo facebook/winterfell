@@ -33,10 +33,10 @@
 extern crate alloc;
 
 pub use air::{
-    proof::StarkProof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
-    ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
-    EvaluationFrame, FieldExtension, HashFunction, ProofOptions, TraceInfo,
-    TransitionConstraintDegree, TransitionConstraintGroup,
+    proof::StarkProof, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
+    BoundaryConstraintGroup, ConstraintCompositionCoefficients, ConstraintDivisor,
+    DeepCompositionCoefficients, EvaluationFrame, FieldExtension, HashFunction, ProofOptions,
+    TraceInfo, TransitionConstraintDegree, TransitionConstraintGroup,
 };
 
 pub use math;
@@ -169,7 +169,7 @@ pub fn verify<AIR: Air>(
 /// attests to a correct execution of the computation specified by the provided `air`.
 fn perform_verification<A, E, H>(
     air: A,
-    mut channel: VerifierChannel<A::BaseField, E, H>,
+    mut channel: VerifierChannel<E, H>,
     mut public_coin: RandomCoin<A::BaseField, H>,
 ) -> Result<(), VerifierError>
 where
@@ -178,12 +178,30 @@ where
     H: ElementHasher<BaseField = A::BaseField>,
 {
     // 1 ----- trace commitment -------------------------------------------------------------------
-    // read the commitment to evaluations of the trace polynomials over the LDE domain sent by the
-    // prover, use it to update the public coin, and draw a set of random coefficients from the
-    // coin; in the interactive version of the protocol, the verifier sends these coefficients to
-    // the prover, and prover uses them to compute constraint composition polynomial.
-    let trace_commitment = channel.read_trace_commitment();
-    public_coin.reseed(trace_commitment);
+    // Read the commitments to evaluations of the trace polynomials over the LDE domain sent by the
+    // prover. The commitments are used to update the public coin, and draw sets of random elements
+    // from the coin (in the interactive version of the protocol the verifier sends these random
+    // elements to the prover after each commitment is made). When there are multiple trace
+    // commitments (i.e., the trace consists of more than one segment), each previous commitment is
+    // used to draw random elements needed to construct the next trace segment. The last trace
+    // commitment is used to draw a set of random coefficients which the prover uses to compute
+    // constraint composition polynomial.
+    let trace_commitments = channel.read_trace_commitments();
+
+    // reseed the coin with the commitment to the main trace segment
+    public_coin.reseed(trace_commitments[0]);
+
+    // process auxiliary trace segments (if any), to build a set of random elements for each segment
+    let mut aux_trace_rand_elements = AuxTraceRandElements::<E>::new();
+    for (i, commitment) in trace_commitments.iter().skip(1).enumerate() {
+        let rand_elements = air
+            .get_aux_trace_segment_random_elements(i, &mut public_coin)
+            .map_err(|_| VerifierError::RandomCoinError)?;
+        aux_trace_rand_elements.add_segment_elements(rand_elements);
+        public_coin.reseed(*commitment);
+    }
+
+    // build random coefficients for the composition polynomial
     let constraint_coeffs = air
         .get_constraint_composition_coefficients(&mut public_coin)
         .map_err(|_| VerifierError::RandomCoinError)?;
@@ -193,7 +211,7 @@ where
     // domain sent by the prover, use it to update the public coin, and draw an out-of-domain point
     // z from the coin; in the interactive version of the protocol, the verifier sends this point z
     // to the prover, and the prover evaluates trace and constraint composition polynomials at z,
-    // and send the results back to the verifier.
+    // and sends the results back to the verifier.
     let constraint_commitment = channel.read_constraint_commitment();
     public_coin.reseed(constraint_commitment);
     let z = public_coin
@@ -204,25 +222,48 @@ where
     // make sure that evaluations obtained by evaluating constraints over the out-of-domain frame
     // are consistent with the evaluations of composition polynomial columns sent by the prover
 
-    // read the out-of-domain evaluation frame sent by the prover and evaluate constraints over it;
-    // also, reseed the public coin with the OOD frame received from the prover
-    let ood_frame = channel.read_ood_evaluation_frame();
-    let ood_constraint_evaluation_1 = evaluate_constraints(&air, constraint_coeffs, &ood_frame, z);
-    public_coin.reseed(H::hash_elements(ood_frame.current()));
-    public_coin.reseed(H::hash_elements(ood_frame.next()));
+    // read the out-of-domain trace frames (the main trace frame and auxiliary trace frame, if
+    // provided) sent by the prover and evaluate constraints over them; also, reseed the public
+    // coin with the OOD frames received from the prover.
+    let (ood_main_trace_frame, ood_aux_trace_frame) = channel.read_ood_trace_frame();
+    let ood_constraint_evaluation_1 = evaluate_constraints(
+        &air,
+        constraint_coeffs,
+        &ood_main_trace_frame,
+        &ood_aux_trace_frame,
+        aux_trace_rand_elements,
+        z,
+    );
+
+    if let Some(ref aux_trace_frame) = ood_aux_trace_frame {
+        // when the trace contains auxiliary segments, append auxiliary trace elements at the
+        // end of main trace elements for both current and next rows in the frame. this is
+        // needed to be consistent with how the prover writes OOD frame into the channel.
+
+        let mut current = ood_main_trace_frame.current().to_vec();
+        current.extend_from_slice(aux_trace_frame.current());
+        public_coin.reseed(H::hash_elements(&current));
+
+        let mut next = ood_main_trace_frame.next().to_vec();
+        next.extend_from_slice(aux_trace_frame.next());
+        public_coin.reseed(H::hash_elements(&next));
+    } else {
+        public_coin.reseed(H::hash_elements(ood_main_trace_frame.current()));
+        public_coin.reseed(H::hash_elements(ood_main_trace_frame.next()));
+    }
 
     // read evaluations of composition polynomial columns sent by the prover, and reduce them into
     // a single value by computing sum(z^i * value_i), where value_i is the evaluation of the ith
     // column polynomial at z^m, where m is the total number of column polynomials; also, reseed
     // the public coin with the OOD constraint evaluations received from the prover.
-    let ood_evaluations = channel.read_ood_evaluations();
-    let ood_constraint_evaluation_2 = ood_evaluations
+    let ood_constraint_evaluations = channel.read_ood_constraint_evaluations();
+    let ood_constraint_evaluation_2 = ood_constraint_evaluations
         .iter()
         .enumerate()
         .fold(E::ZERO, |result, (i, &value)| {
             result + z.exp((i as u32).into()) * value
         });
-    public_coin.reseed(H::hash_elements(&ood_evaluations));
+    public_coin.reseed(H::hash_elements(&ood_constraint_evaluations));
 
     // finally, make sure the values are the same
     if ood_constraint_evaluation_1 != ood_constraint_evaluation_2 {
@@ -272,15 +313,21 @@ where
 
     // read evaluations of trace and constraint composition polynomials at the queried positions;
     // this also checks that the read values are valid against trace and constraint commitments
-    let queried_trace_states = channel.read_trace_states(&query_positions, &trace_commitment)?;
-    let queried_evaluations =
-        channel.read_constraint_evaluations(&query_positions, &constraint_commitment)?;
+    let (queried_main_trace_states, queried_aux_trace_states) =
+        channel.read_queried_trace_states(&query_positions)?;
+    let queried_constraint_evaluations = channel.read_constraint_evaluations(&query_positions)?;
 
     // 6 ----- DEEP composition -------------------------------------------------------------------
     // compute evaluations of the DEEP composition polynomial at the queried positions
     let composer = DeepComposer::new(&air, &query_positions, z, deep_coefficients);
-    let t_composition = composer.compose_registers(queried_trace_states, ood_frame);
-    let c_composition = composer.compose_constraints(queried_evaluations, ood_evaluations);
+    let t_composition = composer.compose_trace_columns(
+        queried_main_trace_states,
+        queried_aux_trace_states,
+        ood_main_trace_frame,
+        ood_aux_trace_frame,
+    );
+    let c_composition = composer
+        .compose_constraint_evaluations(queried_constraint_evaluations, ood_constraint_evaluations);
     let deep_evaluations = composer.combine_compositions(t_composition, c_composition);
 
     // 7 ----- Verify low-degree proof -------------------------------------------------------------

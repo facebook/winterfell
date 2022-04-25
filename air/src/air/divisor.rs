@@ -78,7 +78,10 @@ impl<B: StarkField> ConstraintDivisor<B> {
     ///
     /// # Panics
     /// Panics of the specified `trace_length` is inconsistent with the specified `assertion`.
-    pub fn from_assertion(assertion: &Assertion<B>, trace_length: usize) -> Self {
+    pub fn from_assertion<E>(assertion: &Assertion<E>, trace_length: usize) -> Self
+    where
+        E: FieldElement<BaseField = B>,
+    {
         let num_steps = assertion.get_num_steps(trace_length);
         if assertion.first_step == 0 {
             Self::new(vec![(num_steps, B::ONE)], vec![])

@@ -14,7 +14,8 @@ use utils::{
 /// Commitments made by the prover during commit phase of the protocol.
 ///
 /// These commitments include:
-/// * Commitment to the extended execution trace.
+/// * Commitment to the extended execution trace, which may include commitments to one or more
+///   execution trace segments.
 /// * Commitment to the evaluations of constraint composition polynomial over LDE domain.
 /// * Commitments to the evaluations of polynomials at all FRI layers.
 ///
@@ -28,12 +29,12 @@ impl Commitments {
     // --------------------------------------------------------------------------------------------
     /// Returns a new Commitments struct initialized with the provided commitments.
     pub fn new<H: Hasher>(
-        trace_root: H::Digest,
+        trace_roots: Vec<H::Digest>,
         constraint_root: H::Digest,
         fri_roots: Vec<H::Digest>,
     ) -> Self {
         let mut bytes = Vec::new();
-        bytes.write(trace_root);
+        bytes.write(trace_roots);
         bytes.write(constraint_root);
         bytes.write(fri_roots);
         Commitments(bytes)
@@ -53,7 +54,7 @@ impl Commitments {
     /// Parses the serialized commitments into distinct parts.
     ///
     /// The parts are (in the order in which they appear in the tuple):
-    /// 1. Extended execution trace commitment.
+    /// 1. Extended execution trace commitments.
     /// 2. Constraint composition polynomial evaluation commitment.
     /// 3. FRI layer commitments.
     ///
@@ -63,17 +64,25 @@ impl Commitments {
     #[allow(clippy::type_complexity)]
     pub fn parse<H: Hasher>(
         self,
+        num_trace_segments: usize,
         num_fri_layers: usize,
-    ) -> Result<(H::Digest, H::Digest, Vec<H::Digest>), DeserializationError> {
-        // +1 for trace_root, +1 for constraint root, +1 for FRI remainder commitment
-        let num_commitments = num_fri_layers + 3;
+    ) -> Result<(Vec<H::Digest>, H::Digest, Vec<H::Digest>), DeserializationError> {
         let mut reader = SliceReader::new(&self.0);
-        let commitments = H::Digest::read_batch_from(&mut reader, num_commitments)?;
+
+        // parse trace commitments
+        let trace_commitments = H::Digest::read_batch_from(&mut reader, num_trace_segments)?;
+
+        // parse constraint evaluation commitment:
+        let constraint_commitment = H::Digest::read_from(&mut reader)?;
+
+        // read FRI commitments (+1 is for FRI remainder commitment)
+        let fri_commitments = H::Digest::read_batch_from(&mut reader, num_fri_layers + 1)?;
+
         // make sure we consumed all available commitment bytes
         if reader.has_more_bytes() {
             return Err(DeserializationError::UnconsumedBytes);
         }
-        Ok((commitments[0], commitments[1], commitments[2..].to_vec()))
+        Ok((trace_commitments, constraint_commitment, fri_commitments))
     }
 }
 

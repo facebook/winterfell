@@ -5,7 +5,7 @@
 
 use air::{
     proof::{Commitments, Context, OodFrame, Queries, StarkProof},
-    Air, ConstraintCompositionCoefficients, DeepCompositionCoefficients, EvaluationFrame,
+    Air, ConstraintCompositionCoefficients, DeepCompositionCoefficients,
 };
 use core::marker::PhantomData;
 use crypto::{ElementHasher, RandomCoin};
@@ -81,12 +81,13 @@ where
         self.public_coin.reseed(constraint_root);
     }
 
-    /// Saves the out-of-domain evaluation frame. This also reseeds the public coin with the
-    /// hashes of the evaluation frame states.
-    pub fn send_ood_evaluation_frame(&mut self, frame: &EvaluationFrame<E>) {
-        self.ood_frame.set_evaluation_frame(frame);
-        self.public_coin.reseed(H::hash_elements(frame.current()));
-        self.public_coin.reseed(H::hash_elements(frame.next()));
+    /// Saves the evaluations of trace polynomials over the out-of-domain evaluation frame. This
+    /// also reseeds the public coin with the hashes of the evaluation frame states.
+    pub fn send_ood_trace_states(&mut self, trace_states: &[Vec<E>]) {
+        self.ood_frame.set_trace_states(trace_states);
+        for trace_state in trace_states {
+            self.public_coin.reseed(H::hash_elements(trace_state));
+        }
     }
 
     /// Saves the evaluations of constraint composition polynomial columns at the out-of-domain
@@ -99,21 +100,33 @@ where
     // PUBLIC COIN METHODS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a set of coefficients for constructing a constraint composition polynomial drawn
-    /// from the public coin.
+    /// Returns a set of random elements required for constructing an auxiliary trace segment with
+    /// the specified index.
+    ///
+    /// The elements are drawn from the public coin uniformly at random.
+    pub fn get_aux_trace_segment_rand_elements(&mut self, aux_segment_idx: usize) -> Vec<E> {
+        self.air
+            .get_aux_trace_segment_random_elements(aux_segment_idx, &mut self.public_coin)
+            .expect("failed to draw random elements for an auxiliary trace segment")
+    }
+
+    /// Returns a set of coefficients for constructing a constraint composition polynomial.
+    ///
+    /// The coefficients are drawn from the public coin uniformly at random.
     pub fn get_constraint_composition_coeffs(&mut self) -> ConstraintCompositionCoefficients<E> {
         self.air
             .get_constraint_composition_coefficients(&mut self.public_coin)
             .expect("failed to draw composition coefficients")
     }
 
-    /// Returns an out-of-domain point drawn from the public coin.
+    /// Returns an out-of-domain point drawn uniformly at random from the public coin.
     pub fn get_ood_point(&mut self) -> E {
         self.public_coin.draw().expect("failed to draw OOD point")
     }
 
-    /// Returns a set of coefficients for constructing a DEEP composition polynomial drawn from
-    /// the public coin.
+    /// Returns a set of coefficients for constructing a DEEP composition polynomial.
+    ///
+    /// The coefficients are drawn from the public coin uniformly at random.
     pub fn get_deep_composition_coeffs(&mut self) -> DeepCompositionCoefficients<E> {
         self.air
             .get_deep_composition_coefficients(&mut self.public_coin)
@@ -122,6 +135,8 @@ where
 
     /// Returns a set of positions in the LDE domain against which the evaluations of trace and
     /// constraint composition polynomials should be queried.
+    ///
+    /// The positions are drawn from the public coin uniformly at random.
     pub fn get_query_positions(&mut self) -> Vec<usize> {
         let num_queries = self.context.options().num_queries();
         let lde_domain_size = self.context.lde_domain_size();
@@ -157,7 +172,7 @@ where
     /// this method.
     pub fn build_proof(
         self,
-        trace_queries: Queries,
+        trace_queries: Vec<Queries>,
         constraint_queries: Queries,
         fri_proof: FriProof,
     ) -> StarkProof {

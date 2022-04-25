@@ -35,12 +35,12 @@ Available examples are described below.
 ### Fibonacci sequence
 There are several examples illustrating how to generate (and verify) proofs for computing an n-th term of the [Fibonacci sequence](https://en.wikipedia.org/wiki/Fibonacci_number). The examples illustrate different ways of describing this simple computation using AIR. The examples are:
 
-* `fib` - computes the n-th term of a Fibonacci sequence using trace table with 2 registers. Each step in the trace table advances Fibonacci sequence by 2 terms.
-* `fib8` - also computes the n-th term of a Fibonacci sequence and also uses trace table with 2 registers. But unlike the previous example, each step in the trace table advances Fibonacci sequence by 8 terms.
-* `mulfib` - a variation on Fibonacci sequence where addition is replaced with multiplication. The example uses a trace table with 2 registers, and each step in the trace table advances the sequence by 2 terms.
-* `mulfib8` - also computes the n-th term of the multiplicative Fibonacci sequence, but unlike the previous example, each step in the trace table advances the sequence by 8 terms. Unlike `fib8` example, this example uses a trace table with 8 registers.
+* `fib` - computes the n-th term of a Fibonacci sequence using trace table with 2 columns. Each step in the trace table advances Fibonacci sequence by 2 terms.
+* `fib8` - also computes the n-th term of a Fibonacci sequence and also uses trace table with 2 columns. But unlike the previous example, each step in the trace table advances Fibonacci sequence by 8 terms.
+* `mulfib` - a variation on Fibonacci sequence where addition is replaced with multiplication. The example uses a trace table with 2 columns, and each step in the trace table advances the sequence by 2 terms.
+* `mulfib8` - also computes the n-th term of the multiplicative Fibonacci sequence, but unlike the previous example, each step in the trace table advances the sequence by 8 terms. Unlike `fib8` example, this example uses a trace table with 8 columns.
 
-It is interesting to note that `fib`/`fib8` and `mulfib`/`mulfib8` examples encode identical computations but these different encodings have significant impact on performance. Specifically, proving time for `fib8` example is 4x times faster than for `fib` example, while proving time for `mulfib8` example is about 2.4x times faster than for `mulfib` example. The difference stems from the fact that when we deal with additions only, we can omit intermediate states from the execution trace. But when multiplications are involved, we need to introduce additional registers to record intermediate results (another option would be to increase constraint degree, but this is not covered here).
+It is interesting to note that `fib`/`fib8` and `mulfib`/`mulfib8` examples encode identical computations but these different encodings have significant impact on performance. Specifically, proving time for `fib8` example is 4x times faster than for `fib` example, while proving time for `mulfib8` example is about 2.4x times faster than for `mulfib` example. The difference stems from the fact that when we deal with additions only, we can omit intermediate states from the execution trace. But when multiplications are involved, we need to introduce additional columns to record intermediate results (another option would be to increase constraint degree, but this is not covered here).
 
 Additionally, proof sizes for `fib8` and `mulfib8` are about 15% smaller than their "uncompressed" counterparts.
 

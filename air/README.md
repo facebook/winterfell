@@ -39,10 +39,10 @@ Keep in mind is that since transition constraints define algebraic relations, th
 #### Constraint degrees
 One of the main factors impacting proof generation time and proof size is the maximum degree of transition constraints. The higher is this degree, the larger our blowup factor needs to be. Usually, we want to keep this degree as low as possible - e.g. under 4 or 8. To accurately describe degrees of your transition constraints, keep the following in mind:
 
-* All trace registers have degree `1`.
-* When multiplying trace registers together, the degree increases by `1`. For example, if our constraint involves multiplication of two registers, the degree of this constraint will be `2`. We can describe this constraint using `TransitionConstraintDegree` struct as follows: `TransitionConstraintDegree::new(2)`.
+* All trace columns have degree `1`.
+* When multiplying trace columns together, the degree increases by `1`. For example, if our constraint involves multiplication of two columns, the degree of this constraint will be `2`. We can describe this constraint using `TransitionConstraintDegree` struct as follows: `TransitionConstraintDegree::new(2)`.
 * Degrees of periodic columns depend on the length of their cycles, but in most cases, these degrees are very close to `1`.
-* To describe a degree of a constraint involving multiplication of trace registers and periodic columns, use the `with_cycles()` constructor of `TransitionConstraintDegree` struct. For example, if our constraint involves multiplication of one trace register and one periodic column with a cycle of 32 steps, the degree can be described as: `TransitionConstraintDegree::with_cycles(1, vec![32])`.
+* To describe a degree of a constraint involving multiplication of trace columns and periodic columns, use the `with_cycles()` constructor of `TransitionConstraintDegree` struct. For example, if our constraint involves multiplication of one trace column and one periodic column with a cycle of 32 steps, the degree can be described as: `TransitionConstraintDegree::with_cycles(1, vec![32])`.
 
 In general, multiplications should be used judiciously - though, there are ways to ease this restriction a bit (check out [mulfib8](../examples/src/fibonacci/mulfib8/air.rs) example).
 
@@ -51,14 +51,14 @@ Assertions are used to specify that a valid execution trace of a computation mus
 
 To define assertions for your computation, you'll need to implement `get_assertions()` function of the `Air` trait. Every computation must have at least one assertion. Assertions can be of the following types:
 
-* A single assertion - such assertion specifies that a single cell of an execution trace must be equal to a specific value. For example: *value in register 0, step 0, must be equal to 1*.
-* A periodic assertion - such assertion specifies that values in a given register at specified intervals should be equal to some values. For example: *values in register 0, steps 0, 8, 16, 24 etc. must be equal to 2*.
-* A sequence assertion - such assertion specifies that values in a given register at specific intervals must be equal to a sequence of provided values. For example: *values in register 0, step 0 must be equal to 1, step 8 must be equal to 2, step 16 must be equal to 3 etc.*
+* A single assertion - such assertion specifies that a single cell of an execution trace must be equal to a specific value. For example: *value in column 0, step 0, must be equal to 1*.
+* A periodic assertion - such assertion specifies that values in a given column at specified intervals should be equal to some values. For example: *values in column 0, steps 0, 8, 16, 24 etc. must be equal to 2*.
+* A sequence assertion - such assertion specifies that values in a given column at specific intervals must be equal to a sequence of provided values. For example: *values in column 0, step 0 must be equal to 1, step 8 must be equal to 2, step 16 must be equal to 3 etc.*
 
 For more information on how to define assertions see the [assertions](src/air/assertions/mod.rs) module and check out the examples in the [examples crate](../examples).
 
 ### Periodic values
-Sometimes, it may be useful to define a column in an execution trace which contains a set of repeating values. For example, let's say we have a register which contains value 1 on every 4th step, and 0 otherwise. Such a column can be described with a simple periodic sequence of `[1, 0, 0, 0]`.
+Sometimes, it may be useful to define a column in an execution trace which contains a set of repeating values. For example, let's say we have a column which contains value 1 on every 4th step, and 0 otherwise. Such a column can be described with a simple periodic sequence of `[1, 0, 0, 0]`.
 
 To define such columns for your computation, you can override `get_periodic_column_values()` method of the `Air` trait. The values of the periodic columns at a given step of the computation will be supplied to the `evaluate_transition()` method via the `periodic_values` parameter.
 

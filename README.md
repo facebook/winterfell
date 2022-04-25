@@ -176,8 +176,14 @@ impl Air for WorkAir {
         // constraints don't match, an error will be thrown in the debug mode, but in release
         // mode, an invalid proof will be generated which will not be accepted by any verifier.
         let degrees = vec![TransitionConstraintDegree::new(3)];
+
+        // We also need to specify the exact number of assertions we will place against the
+        // execution trace. This number must be the same as the number of items in a vector
+        // returned from the get_assertions() method below.
+        let num_assertions = 2;
+
         WorkAir {
-            context: AirContext::new(trace_info, degrees, options),
+            context: AirContext::new(trace_info, degrees, num_assertions, options),
             start: pub_inputs.start,
             result: pub_inputs.result,
         }
