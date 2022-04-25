@@ -9,9 +9,6 @@ use winterfell::{
     EvaluationFrame, Matrix, Trace, TraceInfo, TraceLayout,
 };
 
-#[cfg(feature = "concurrent")]
-use core_utils::{iterators::*, rayon};
-
 // RAP TRACE TABLE
 // ================================================================================================
 /// A concrete implementation of the [Trace] trait supporting custom RAPs.
@@ -228,22 +225,24 @@ impl<B: StarkField> Trace for RapTraceTable<B> {
         self.read_row_into(0, &mut row);
         let mut aux_columns = vec![vec![E::ZERO; self.length()]; self.aux_trace_width()];
 
-        let copied_values = row
-            .iter()
-            .skip(4)
-            .take(2)
-            .enumerate()
-            .fold(E::ZERO, |acc, (idx, &cell)| {
-                acc + rand_elements[idx] * cell.into()
-            });
-
-        aux_columns[0][self.length() - 2] = copied_values;
-        aux_columns[1][0] = copied_values;
+        aux_columns[0][0] = rand_elements[0] * row[2].into() + rand_elements[1] * row[3].into();
+        aux_columns[1][0] = rand_elements[0] * row[6].into() + rand_elements[1] * row[7].into();
 
         // Permutation argument column
         aux_columns[2][0] = E::ONE;
 
         for index in 1..self.length() {
+            // At every last step before a new hash iteration,
+            // copy the permuted values into the auxiliary columns
+            if (index % super::CYCLE_LENGTH) == super::CYCLE_LENGTH - 1 {
+                self.read_row_into(index, &mut row);
+
+                aux_columns[0][index] =
+                    rand_elements[0] * row[2].into() + rand_elements[1] * row[3].into();
+                aux_columns[1][index] =
+                    rand_elements[0] * row[6].into() + rand_elements[1] * row[7].into();
+            }
+
             let num = aux_columns[0][index - 1] + rand_elements[2];
             let denom = aux_columns[1][index - 1] + rand_elements[2];
             aux_columns[2][index] = aux_columns[2][index - 1] * num * denom.inv();

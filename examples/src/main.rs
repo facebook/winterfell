@@ -9,9 +9,9 @@ use std::time::Instant;
 use structopt::StructOpt;
 use winterfell::StarkProof;
 
-use examples::{fibonacci, rescue, rescue_raps, ExampleOptions, ExampleType};
+use examples::{fibonacci, rescue, ExampleOptions, ExampleType};
 #[cfg(feature = "std")]
-use examples::{lamport, merkle};
+use examples::{lamport, merkle, rescue_raps};
 
 // EXAMPLE RUNNER
 // ================================================================================================
@@ -43,6 +43,7 @@ fn main() {
             fibonacci::mulfib8::get_example(options, sequence_length)
         }
         ExampleType::Rescue { chain_length } => rescue::get_example(options, chain_length),
+        #[cfg(feature = "std")]
         ExampleType::RescueRaps { chain_length } => rescue_raps::get_example(options, chain_length),
         #[cfg(feature = "std")]
         ExampleType::Merkle { tree_depth } => merkle::get_example(options, tree_depth),

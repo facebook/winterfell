@@ -5,6 +5,7 @@
 
 use crate::{Example, ExampleOptions};
 use log::debug;
+use rand_utils::rand_array;
 use std::time::Instant;
 use winterfell::{
     math::{fields::f128::BaseElement, log2, ExtensionOf, FieldElement},
@@ -12,7 +13,7 @@ use winterfell::{
 };
 
 mod custom_trace_table;
-use custom_trace_table::RapTraceTable;
+pub use custom_trace_table::RapTraceTable;
 
 use super::rescue::rescue::{self, STATE_WIDTH};
 
@@ -45,10 +46,9 @@ pub fn get_example(options: ExampleOptions, chain_length: usize) -> Box<dyn Exam
 pub struct RescueRapsExample {
     options: ProofOptions,
     chain_length: usize,
-    seed: [BaseElement; 2],
-    // Store the temporary hash chain in the middle
-    // of the execution and the final hash digest.
-    result: ([BaseElement; 2], [BaseElement; 2]),
+    seeds: Vec<[BaseElement; 2]>,
+    permuted_seeds: Vec<[BaseElement; 2]>,
+    result: [[BaseElement; 2]; 2],
 }
 
 impl RescueRapsExample {
@@ -57,13 +57,20 @@ impl RescueRapsExample {
             chain_length.is_power_of_two(),
             "chain length must a power of 2"
         );
-        let seed = [BaseElement::from(42u8), BaseElement::from(43u8)];
+
+        let mut seeds = vec![[BaseElement::ZERO; 2]; chain_length as usize];
+        for internal_seed in seeds.iter_mut() {
+            *internal_seed = rand_array();
+        }
+        let mut permuted_seeds = seeds[2..].to_vec();
+        permuted_seeds.push(seeds[0]);
+        permuted_seeds.push(seeds[1]);
 
         // compute the sequence of hashes using external implementation of Rescue hash
         let now = Instant::now();
-        let result = compute_split_hash_chain(seed, chain_length / 2);
+        let result = compute_permuted_hash_chains(&seeds, &permuted_seeds);
         debug!(
-            "Computed a chain of {} Rescue hashes in {} ms",
+            "Computed two permuted chains of {} Rescue hashes in {} ms",
             chain_length,
             now.elapsed().as_millis(),
         );
@@ -71,7 +78,8 @@ impl RescueRapsExample {
         RescueRapsExample {
             options,
             chain_length,
-            seed,
+            seeds,
+            permuted_seeds,
             result,
         }
     }
@@ -94,7 +102,7 @@ impl Example for RescueRapsExample {
 
         // generate the execution trace
         let now = Instant::now();
-        let trace = prover.build_trace(self.seed, self.result, self.chain_length / 2);
+        let trace = prover.build_trace(&self.seeds, &self.permuted_seeds, self.result);
         let trace_length = trace.length();
         debug!(
             "Generated execution trace of {} registers and 2^{} steps in {} ms",
@@ -109,16 +117,14 @@ impl Example for RescueRapsExample {
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {
         let pub_inputs = PublicInputs {
-            seed: self.seed,
-            result: self.result.1,
+            result: self.result,
         };
         winterfell::verify::<RescueRapsAir>(proof, pub_inputs)
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
         let pub_inputs = PublicInputs {
-            seed: self.seed,
-            result: [self.result.1[0], self.result.1[1] + BaseElement::ONE],
+            result: [self.result[1], self.result[0]],
         };
         winterfell::verify::<RescueRapsAir>(proof, pub_inputs)
     }
@@ -127,31 +133,34 @@ impl Example for RescueRapsExample {
 // HELPER FUNCTIONS
 // ================================================================================================
 
-fn compute_split_hash_chain(
-    seed: [BaseElement; 2],
-    length: usize,
-) -> ([BaseElement; 2], [BaseElement; 2]) {
-    let mut values = seed;
+fn merge(values: &[[BaseElement; 2]; 2], result: &mut [BaseElement]) {
+    let mut state = BaseElement::zeroed_vector(STATE_WIDTH);
+    state[..2].copy_from_slice(&values[0]);
+    state[2..].copy_from_slice(&values[1]);
+    for i in 0..NUM_HASH_ROUNDS {
+        rescue::apply_round(&mut state, i);
+    }
+    result.copy_from_slice(&state[..2]);
+}
+
+fn compute_permuted_hash_chains(
+    seeds: &[[BaseElement; 2]],
+    permuted_seeds: &[[BaseElement; 2]],
+) -> [[BaseElement; 2]; 2] {
+    let mut values = [BaseElement::ZERO; 2];
+    let mut permuted_values = [BaseElement::ZERO; 2];
     let mut tmp = [BaseElement::ZERO; 2];
-    let mut result = ([BaseElement::ZERO; 2], [BaseElement::ZERO; 2]);
+    let mut permuted_tmp = [BaseElement::ZERO; 2];
 
     // Start the hash chain
-    for _ in 0..length {
-        rescue::hash(values, &mut tmp);
+    for (seed, pseed) in seeds.iter().zip(permuted_seeds) {
+        merge(&[values, *seed], &mut tmp);
+        merge(&[permuted_values, *pseed], &mut permuted_tmp);
         values.copy_from_slice(&tmp);
+        permuted_values.copy_from_slice(&permuted_tmp);
     }
-    // Store the intermediary value
-    result.0 = [tmp[0], tmp[1]];
 
-    // Continue the hash chain
-    for _ in 0..length {
-        rescue::hash(values, &mut tmp);
-        values.copy_from_slice(&tmp);
-    }
-    // Store the final value
-    result.1 = tmp;
-
-    result
+    [values, permuted_values]
 }
 
 fn apply_rescue_round_parallel(multi_state: &mut [BaseElement], step: usize) {

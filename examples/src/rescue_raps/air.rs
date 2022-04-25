@@ -7,7 +7,7 @@ use super::{
     rescue::{self, STATE_WIDTH},
     BaseElement, ExtensionOf, FieldElement, ProofOptions, CYCLE_LENGTH, TRACE_WIDTH,
 };
-use crate::utils::{are_equal, is_zero, not, EvaluationResult};
+use crate::utils::{are_equal, not, EvaluationResult};
 use winterfell::{
     Air, AirContext, Assertion, AuxTraceRandElements, ByteWriter, EvaluationFrame, Serializable,
     TraceInfo, TransitionConstraintDegree,
@@ -40,21 +40,18 @@ const CYCLE_MASK: [BaseElement; CYCLE_LENGTH] = [
 // ================================================================================================
 
 pub struct PublicInputs {
-    pub seed: [BaseElement; 2],
-    pub result: [BaseElement; 2],
+    pub result: [[BaseElement; 2]; 2],
 }
 
 impl Serializable for PublicInputs {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write(&self.seed[..]);
         target.write(&self.result[..]);
     }
 }
 
 pub struct RescueRapsAir {
     context: AirContext<BaseElement>,
-    seed: [BaseElement; 2],
-    result: [BaseElement; 2],
+    result: [[BaseElement; 2]; 2],
 }
 
 impl Air for RescueRapsAir {
@@ -81,7 +78,6 @@ impl Air for RescueRapsAir {
                 2,
                 options,
             ),
-            seed: pub_inputs.seed,
             result: pub_inputs.result,
         }
     }
@@ -159,24 +155,23 @@ impl Air for RescueRapsAir {
 
         let random_elements = aux_rand_elements.get_segment_elements(0);
 
-        let copy_flag_1 = periodic_values[STATE_WIDTH * 2 + 1];
-        let copy_flag_2 = periodic_values[STATE_WIDTH * 2 + 2];
+        let copy_flag = periodic_values[STATE_WIDTH * 2 + 1];
 
-        let copied_value_1 = random_elements[0] * main_current[0].into()
-            + random_elements[1] * main_current[1].into();
+        let copied_value_1 = random_elements[0] * main_current[2].into()
+            + random_elements[1] * main_current[3].into();
 
         result.agg_constraint(
             0,
-            copy_flag_1.into(),
+            copy_flag.into(),
             are_equal(aux_current[0], copied_value_1),
         );
 
-        let copied_value_2 = random_elements[0] * main_current[4].into()
-            + random_elements[1] * main_current[5].into();
+        let copied_value_2 = random_elements[0] * main_current[6].into()
+            + random_elements[1] * main_current[7].into();
 
         result.agg_constraint(
             1,
-            copy_flag_2.into(),
+            copy_flag.into(),
             are_equal(aux_current[1], copied_value_2),
         );
 
@@ -192,15 +187,13 @@ impl Air for RescueRapsAir {
     }
 
     fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>> {
-        // Assert starting and ending values of the hash chain
+        // Assert ending values of the hash chain
         let last_step = self.trace_length() - 1;
         vec![
-            // We start the hash chain on columns 0-3
-            Assertion::single(0, 0, self.seed[0]),
-            Assertion::single(1, 0, self.seed[1]),
-            // We end the hash chain on columns 4-7
-            Assertion::single(4, last_step, self.result[0]),
-            Assertion::single(5, last_step, self.result[1]),
+            Assertion::single(0, last_step, self.result[0][0]),
+            Assertion::single(1, last_step, self.result[0][1]),
+            Assertion::single(4, last_step, self.result[1][0]),
+            Assertion::single(5, last_step, self.result[1][1]),
         ]
     }
 
@@ -219,13 +212,13 @@ impl Air for RescueRapsAir {
         let mut result = vec![CYCLE_MASK.to_vec()];
         result.append(&mut rescue::get_round_constants());
 
-        let mut copy_column1 = vec![Self::BaseField::ZERO; self.trace_length()];
-        let mut copy_column2 = copy_column1.clone();
-        copy_column1[self.trace_length() - 1] = Self::BaseField::ONE;
-        copy_column2[0] = Self::BaseField::ONE;
+        let mut copy_column = vec![Self::BaseField::ZERO; self.trace_length()];
+        copy_column[0] = Self::BaseField::ONE;
+        for i in 0..self.trace_length() / CYCLE_LENGTH {
+            copy_column[15 + i * CYCLE_LENGTH] = Self::BaseField::ONE;
+        }
 
-        result.push(copy_column1);
-        result.push(copy_column2);
+        result.push(copy_column);
 
         result
     }
@@ -236,10 +229,10 @@ impl Air for RescueRapsAir {
 
 /// when flag = 1, enforces that the next state of the computation is defined like so:
 /// - the first two registers are equal to the values from the previous step
-/// - the other two registers are equal to 0
+/// - the other two registers are not restrained, they could be arbitrary elements,
+///   until the RAP columns enforces that they are a permutation of the two final registers
+///   of the other parallel chain
 fn enforce_hash_copy<E: FieldElement>(result: &mut [E], current: &[E], next: &[E], flag: E) {
     result.agg_constraint(0, flag, are_equal(current[0], next[0]));
     result.agg_constraint(1, flag, are_equal(current[1], next[1]));
-    result.agg_constraint(2, flag, is_zero(next[2]));
-    result.agg_constraint(3, flag, is_zero(next[3]));
 }
