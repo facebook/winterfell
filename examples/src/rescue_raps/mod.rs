@@ -126,6 +126,7 @@ impl Example for RescueRapsExample {
 
 // HELPER FUNCTIONS
 // ================================================================================================
+
 fn compute_split_hash_chain(
     seed: [BaseElement; 2],
     length: usize,
@@ -151,4 +152,12 @@ fn compute_split_hash_chain(
     result.1 = tmp;
 
     result
+}
+
+fn apply_rescue_round_parallel(multi_state: &mut [BaseElement], step: usize) {
+    debug_assert_eq!(multi_state.len() % STATE_WIDTH, 0);
+
+    for state in multi_state.chunks_mut(STATE_WIDTH) {
+        rescue::apply_round(state, step)
+    }
 }

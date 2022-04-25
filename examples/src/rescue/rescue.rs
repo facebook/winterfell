@@ -45,14 +45,6 @@ pub fn apply_round(state: &mut [BaseElement], step: usize) {
     add_constants(state, &ark, STATE_WIDTH);
 }
 
-pub fn apply_round_parallel(multi_state: &mut [BaseElement], step: usize) {
-    debug_assert_eq!(multi_state.len() % STATE_WIDTH, 0);
-
-    for state in multi_state.chunks_mut(STATE_WIDTH) {
-        apply_round(state, step)
-    }
-}
-
 // CONSTRAINTS
 // ================================================================================================
 

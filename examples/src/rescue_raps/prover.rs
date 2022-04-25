@@ -4,9 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    rescue::{self, STATE_WIDTH},
-    BaseElement, FieldElement, ProofOptions, Prover, PublicInputs, RapTraceTable, RescueRapsAir,
-    Trace, CYCLE_LENGTH, NUM_HASH_ROUNDS,
+    apply_rescue_round_parallel, rescue::STATE_WIDTH, BaseElement, FieldElement, ProofOptions,
+    Prover, PublicInputs, RapTraceTable, RescueRapsAir, Trace, CYCLE_LENGTH, NUM_HASH_ROUNDS,
 };
 
 // RESCUE PROVER
@@ -52,7 +51,7 @@ impl RescueRapsProver {
                 // Rescue hash; for the remaining 2 rounds, just carry over the values
                 // in the first two registers of the two chains to the next step
                 if (step % CYCLE_LENGTH) < NUM_HASH_ROUNDS {
-                    rescue::apply_round_parallel(state, step);
+                    apply_rescue_round_parallel(state, step);
                 } else {
                     state[2] = BaseElement::ZERO;
                     state[3] = BaseElement::ZERO;
