@@ -4,9 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    rescue::{self, STATE_WIDTH},
-    BaseElement, FieldElement, ProofOptions, Prover, PublicInputs, RapTraceTable, RescueRapsAir,
-    Trace, CYCLE_LENGTH, NUM_HASH_ROUNDS,
+    apply_rescue_round_parallel, rescue::STATE_WIDTH, BaseElement, FieldElement, ProofOptions,
+    Prover, PublicInputs, RapTraceTable, RescueRapsAir, Trace, CYCLE_LENGTH, NUM_HASH_ROUNDS,
 };
 
 // RESCUE PROVER
@@ -23,25 +22,27 @@ impl RescueRapsProver {
 
     pub fn build_trace(
         &self,
-        seed: [BaseElement; 2],
-        result: ([BaseElement; 2], [BaseElement; 2]),
-        iterations: usize,
+        seeds: &[[BaseElement; 2]],
+        permuted_seeds: &[[BaseElement; 2]],
+        result: [[BaseElement; 2]; 2],
     ) -> RapTraceTable<BaseElement> {
+        debug_assert_eq!(seeds.len(), permuted_seeds.len());
         // allocate memory to hold the trace table
-        let trace_length = iterations * CYCLE_LENGTH;
+        let trace_length = seeds.len() * CYCLE_LENGTH;
         let mut trace = RapTraceTable::new(2 * STATE_WIDTH, trace_length);
+        const END_INCLUSIVE_RANGE: usize = NUM_HASH_ROUNDS - 1;
 
         trace.fill(
             |state| {
-                // initialize first state of the computation
-                state[0] = seed[0];
-                state[1] = seed[1];
+                // initialize original chain
+                state[0] = seeds[0][0];
+                state[1] = seeds[0][1];
                 state[2] = BaseElement::ZERO;
                 state[3] = BaseElement::ZERO;
 
-                // initialize intermediary state of the computation
-                state[4] = result.0[0];
-                state[5] = result.0[1];
+                // initialize permuted chain
+                state[4] = permuted_seeds[0][0];
+                state[5] = permuted_seeds[0][1];
                 state[6] = BaseElement::ZERO;
                 state[7] = BaseElement::ZERO;
             },
@@ -49,25 +50,32 @@ impl RescueRapsProver {
                 // execute the transition function for all steps
                 //
                 // for the first 14 steps in every cycle, compute a single round of
-                // Rescue hash; for the remaining 2 rounds, just carry over the values
+                // Rescue hash; for the remaining 2 rounds, carry over the values
                 // in the first two registers of the two chains to the next step
-                if (step % CYCLE_LENGTH) < NUM_HASH_ROUNDS {
-                    rescue::apply_round_parallel(state, step);
-                } else {
-                    state[2] = BaseElement::ZERO;
-                    state[3] = BaseElement::ZERO;
+                // and insert the additional seeds into the capacity registers
+                match step % CYCLE_LENGTH {
+                    0..=END_INCLUSIVE_RANGE => apply_rescue_round_parallel(state, step),
+                    NUM_HASH_ROUNDS => {
+                        let idx = step / CYCLE_LENGTH + 1;
+                        // We don't have seeds for the final step once last hashing is done.
+                        if idx < seeds.len() {
+                            state[0] += seeds[idx][0];
+                            state[1] += seeds[idx][1];
 
-                    state[6] = BaseElement::ZERO;
-                    state[7] = BaseElement::ZERO;
-                }
+                            state[4] += permuted_seeds[idx][0];
+                            state[5] += permuted_seeds[idx][1];
+                        }
+                    }
+                    _ => {}
+                };
             },
         );
 
-        debug_assert_eq!(trace.get(0, trace_length - 1), trace.get(4, 0));
-        debug_assert_eq!(trace.get(1, trace_length - 1), trace.get(5, 0));
+        debug_assert_eq!(trace.get(0, trace_length - 1), result[0][0]);
+        debug_assert_eq!(trace.get(1, trace_length - 1), result[0][1]);
 
-        debug_assert_eq!(trace.get(4, trace_length - 1), result.1[0]);
-        debug_assert_eq!(trace.get(5, trace_length - 1), result.1[1]);
+        debug_assert_eq!(trace.get(4, trace_length - 1), result[1][0]);
+        debug_assert_eq!(trace.get(5, trace_length - 1), result[1][1]);
 
         trace
     }
@@ -81,8 +89,10 @@ impl Prover for RescueRapsProver {
     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
         let last_step = trace.length() - 1;
         PublicInputs {
-            seed: [trace.get(0, 0), trace.get(1, 0)],
-            result: [trace.get(4, last_step), trace.get(5, last_step)],
+            result: [
+                [trace.get(0, last_step), trace.get(1, last_step)],
+                [trace.get(4, last_step), trace.get(5, last_step)],
+            ],
         }
     }
 
