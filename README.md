@@ -89,19 +89,19 @@ First, we need to define an *execution trace* for our computation. This trace sh
 | ...       |
 | 1,048,575 | 247770943907079986105389697876176586605 |
 
-To record the trace, we'll use the `ExecutionTrace` struct provided by the library. The function below, is just a modified version of the `do_work()` function which records every intermediate state of the computation in the `ExecutionTrace` struct:
+To record the trace, we'll use the `TraceTable` struct provided by the library. The function below, is just a modified version of the `do_work()` function which records every intermediate state of the computation in the `TraceTable` struct:
 
 ```Rust
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement},
-    ExecutionTrace,
+    TraceTable,
 };
 
-pub fn build_do_work_trace(start: BaseElement, n: usize) -> ExecutionTrace<BaseElement> {
+pub fn build_do_work_trace(start: BaseElement, n: usize) -> TraceTable<BaseElement> {
     // Instantiate the trace with a given width and length; this will allocate all
     // required memory for the trace
     let trace_width = 1;
-    let mut trace = ExecutionTrace::new(trace_width, n);
+    let mut trace = TraceTable::new(trace_width, n);
 
     // Fill the trace with data; the first closure initializes the first state of the
     // computation; the second closure computes the next state of the computation based

@@ -76,7 +76,7 @@ impl<B: StarkField> RapTraceTable<B> {
         );
         assert!(
             length >= TraceInfo::MIN_TRACE_LENGTH,
-            "execution trace must be at lest {} steps long, but was {}",
+            "execution trace must be at least {} steps long, but was {}",
             TraceInfo::MIN_TRACE_LENGTH,
             length
         );
@@ -99,7 +99,7 @@ impl<B: StarkField> RapTraceTable<B> {
 
         let columns = unsafe { (0..width).map(|_| uninit_vector(length)).collect() };
         Self {
-            layout: TraceLayout::new(width, [3], [5]),
+            layout: TraceLayout::new(width, [3], [3]),
             trace: Matrix::new(columns),
             meta,
         }
