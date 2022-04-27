@@ -74,6 +74,18 @@ where:
 
 * **chain length** is length of the hash chain (the number of times the hash function is invoked). Currently, this must be a power of 2. The default is 1024.
 
+### Rescue RAPs hash chains
+This example generates (and verifies) proofs for computing two parallel hash chains of [Rescue hashes](https://eprint.iacr.org/2019/426) absorbing a
+sequence of inputs. The AIR program enforces that the sequence absorbed by the second hash chain is a permutation of the first one.
+
+You can run the example like so:
+```
+./target/release/winterfell [FLAGS] [OPTIONS] rescue-raps [chain length]
+```
+where:
+
+* **chain length** is length of the hash chains (the number of times the hash function is invoked). Currently, this must be a power of 2 at least 4. The default is 1024.
+
 ### Merkle authentication path
 This example generates (and verifies) proofs for verifying a Merkle authentication path. Specifically, given some Merkle tree known to both the prover and the verifier, the prover can prove that they know some value *v*, such that *hash(v)* is a valid tree leaf. This can be used to anonymously prove membership in a Merkle tree.
 
