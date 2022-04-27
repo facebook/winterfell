@@ -67,6 +67,9 @@ const MIN_CYCLE_LENGTH: usize = 2;
 /// 7. If your computation requires [periodic values](#periodic-values), you can also override
 ///    the default [Air::get_periodic_column_values()] method.
 ///
+/// If your computation uses [Randomized AIR](#randomized-air), you will also need to override
+/// [Air::evaluate_aux_transition()] and [Air::get_aux_assertions()] methods.
+///
 /// ### Transition constraints
 /// Transition constraints define algebraic relations between two consecutive steps of a
 /// computation. In Winterfell, transition constraints are evaluated inside
@@ -146,6 +149,34 @@ const MIN_CYCLE_LENGTH: usize = 2;
 /// [Air::get_periodic_column_values()] method. The values of the periodic columns at a given
 /// step of the computation will be supplied to the [Air::evaluate_transition()] method via the
 /// `periodic_values` parameter.
+///
+/// ### Randomized AIR
+/// Randomized AIR is a powerful extension of AIR which enables, among other things, multiset and
+/// permutation checks similar to the ones available in PLONKish systems. These, in turn, allow
+/// efficient descriptions of "non-local" constraints which can be used to build such components
+/// as efficient range checks, random access memory, and many others.
+///
+/// With Randomized AIR, construction of the execution trace is split into multiple stages. During
+/// the first stage, the *main trace segment* is built in a manner similar to how the trace is
+/// built for regular AIR. In the subsequent stages, *auxiliary trace segments* are built. When
+/// building auxiliary trace segments, the prover has access to extra randomness sent by the
+/// verifier (in the non-interactive version of the protocol, this randomness is derived from the
+/// previous trace segment commitments). Currently, the number of auxiliary trace segments is
+/// limited to one.
+///
+/// To describe Randomized AIR, you will need to do the following when implementing the [Air]
+/// trait:
+/// * The [AirContext] struct returned from [Air::context()] method must be instantiated using
+///   [AirContext::new_multi_segment()] constructor. When building AIR context in this way, you
+///   will need to provide a [TraceLayout] which describes the shape of a multi-segment execution
+///   trace.
+/// * Override [Air::evaluate_aux_transition()] method. This method is similar to the
+///   [Air::evaluate_transition()] method but it also accepts two extra parameters:
+///   `aux_evaluation_frame` and `aux_rand_elements`. These parameters are needed for evaluating
+///   transition constraints over the auxiliary trace segments.
+/// * Override [Air::get_aux_assertions()] method. This method is similar to the
+///   [Air::get_assertions()] method, but it should return assertions against columns of the
+///   auxiliary trace segments.
 pub trait Air: Send + Sync {
     /// Base field for the computation described by this AIR. STARK protocol for this computation
     /// may be executed in the base field, or in an extension of the base fields as specified
@@ -236,14 +267,18 @@ pub trait Air: Send + Sync {
 
     /// Returns a set of assertions placed against auxiliary trace segments.
     ///
+    /// The default implementation of this function returns an empty vector. It should be
+    /// overridden only if the computation relies on auxiliary trace segments. In such a case,
+    /// the vector returned from this function must contain at least one assertion.
+    ///
+    /// The column index for assertions is expected to be zero-based across all auxiliary trace
+    /// segments. That is, assertion against column 0, is an assertion against the first column
+    /// of the auxiliary trace segments.
+    ///
     /// When the protocol is executed using an extension field, auxiliary assertions are defined
     /// over the extension field. This is in contrast with the assertions returned from
     /// [get_assertions()](Air::get_assertions) function, which always returns assertions defined
     /// over the base field of the protocol.
-    ///
-    /// The default implementation of this function returns an empty vector. It should be
-    /// overridden only if the computation relies on auxiliary trace segments. In such a case,
-    /// the vector returned from this function must contain at least one assertion.
     #[allow(unused_variables)]
     fn get_aux_assertions<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
