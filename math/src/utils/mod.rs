@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::field::FieldElement;
+use crate::{field::FieldElement, ExtensionOf};
 use utils::{batch_iter_mut, collections::Vec, iter_mut, uninit_vector};
 
 #[cfg(feature = "concurrent")]
@@ -140,16 +140,16 @@ where
 ///     assert_eq!(a + b * c, d);
 /// }
 /// ```
-pub fn mul_acc<B, E>(a: &mut [E], b: &[B], c: E)
+pub fn mul_acc<F, E>(a: &mut [E], b: &[F], c: E)
 where
-    B: FieldElement,
-    E: FieldElement + From<B>,
+    F: FieldElement,
+    E: FieldElement<BaseField = F::BaseField> + ExtensionOf<F>,
 {
     assert!(
         a.len() == b.len(),
         "number of values must be the same for both slices"
     );
-    iter_mut!(a).zip(b).for_each(|(a, &b)| *a += E::from(b) * c);
+    iter_mut!(a).zip(b).for_each(|(a, &b)| *a += c.mul_base(b));
 }
 
 /// Computes a multiplicative inverse of a sequence of elements using batch inversion method.

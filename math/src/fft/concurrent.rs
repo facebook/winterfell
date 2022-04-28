@@ -38,7 +38,7 @@ pub fn evaluate_poly_with_offset<B: StarkField, E: FieldElement<BaseField = B>>(
         .enumerate()
         .for_each(|(i, chunk)| {
             let idx = super::permute_index(blowup_factor, i) as u64;
-            let offset = E::from(g.exp(idx.into()) * domain_offset);
+            let offset = g.exp(idx.into()) * domain_offset;
             clone_and_shift(p, chunk, offset);
             split_radix_fft(chunk, twiddles);
         });
@@ -126,8 +126,8 @@ pub(super) fn split_radix_fft<B: StarkField, E: FieldElement<BaseField = B>>(
 ) {
     // generator of the domain should be in the middle of twiddles
     let n = values.len();
-    let g = E::from(twiddles[twiddles.len() / 2]);
-    debug_assert_eq!(g.exp((n as u32).into()), E::ONE);
+    let g = twiddles[twiddles.len() / 2];
+    debug_assert_eq!(g.exp((n as u32).into()), E::BaseField::ONE);
 
     let inner_len = 1_usize << (log2(n) / 2);
     let outer_len = n / inner_len;
@@ -156,7 +156,7 @@ pub(super) fn split_radix_fft<B: StarkField, E: FieldElement<BaseField = B>>(
                 let inner_twiddle = g.exp((i as u32).into());
                 let mut outer_twiddle = inner_twiddle;
                 for element in row.iter_mut().skip(1) {
-                    *element = *element * outer_twiddle;
+                    *element = (*element).mul_base(outer_twiddle);
                     outer_twiddle = outer_twiddle * inner_twiddle;
                 }
             }
@@ -214,7 +214,7 @@ fn transpose_square_2<T>(matrix: &mut [T], size: usize) {
 // HELPER FUNCTIONS
 // ================================================================================================
 
-fn clone_and_shift<E: FieldElement>(source: &[E], destination: &mut [E], offset: E) {
+fn clone_and_shift<E: FieldElement>(source: &[E], destination: &mut [E], offset: E::BaseField) {
     let batch_size = source.len() / rayon::current_num_threads().next_power_of_two();
     source
         .par_chunks(batch_size)
@@ -223,7 +223,7 @@ fn clone_and_shift<E: FieldElement>(source: &[E], destination: &mut [E], offset:
         .for_each(|(i, (source, destination))| {
             let mut factor = offset.exp(((i * batch_size) as u64).into());
             for (s, d) in source.iter().zip(destination.iter_mut()) {
-                *d = *s * factor;
+                *d = (*s).mul_base(factor);
                 factor = factor * offset;
             }
         });

@@ -10,7 +10,7 @@ use winterfell::math::{fields::f128::BaseElement, FieldElement};
 /// computed using algorithm 7 from https://eprint.iacr.org/2020/1143.pdf
 const NUM_ROUNDS: usize = 14;
 
-const STATE_WIDTH: usize = 4;
+pub const STATE_WIDTH: usize = 4;
 const CYCLE_LENGTH: usize = 16;
 
 // HASH FUNCTION

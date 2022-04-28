@@ -8,7 +8,7 @@ use core::{
     cmp::{Ord, Ordering, PartialOrd},
     fmt::{Display, Formatter},
 };
-use math::StarkField;
+use math::FieldElement;
 use utils::collections::Vec;
 
 #[cfg(test)]
@@ -25,19 +25,19 @@ const NO_STRIDE: usize = 0;
 
 /// An assertion made against an execution trace.
 ///
-/// An assertion is always placed against a single register of an execution trace, but can cover
+/// An assertion is always placed against a single column of an execution trace, but can cover
 /// multiple steps and multiple values. Specifically, there are three kinds of assertions:
 ///
 /// 1. **Single** assertion - which requires that a value in a single cell of an execution trace
 ///    is equal to the specified value.
-/// 2. **Periodic** assertion - which requires that values in multiple cells of a single register
+/// 2. **Periodic** assertion - which requires that values in multiple cells of a single column
 ///   are equal to the specified value. The cells must be evenly spaced at intervals with lengths
-///   equal to powers of two. For example, we can specify that values in a register must be equal
+///   equal to powers of two. For example, we can specify that values in a column must be equal
 ///   to 0 at steps 0, 8, 16, 24, 32 etc. Steps can also start at some offset - e.g., 1, 9, 17,
 ///   25, 33 is also a valid sequence of steps.
-/// 3. **Sequence** assertion - which requires that multiple cells in a single register are equal
+/// 3. **Sequence** assertion - which requires that multiple cells in a single column are equal
 ///   to the values from the provided list. The cells must be evenly spaced at intervals with
-///   lengths equal to powers of two. For example, we can specify that values in a register must
+///   lengths equal to powers of two. For example, we can specify that values in a column must
 ///   be equal to a sequence 1, 2, 3, 4 at steps 0, 8, 16, 24. That is, value at step 0 should be
 ///   equal to 1, value at step 8 should be equal to 2 etc.
 ///
@@ -46,32 +46,32 @@ const NO_STRIDE: usize = 0;
 /// asserted values. Though, unless many thousands of values are asserted, practical impact of
 /// this linear complexity should be negligible.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Assertion<B: StarkField> {
-    pub(super) register: usize,
+pub struct Assertion<E: FieldElement> {
+    pub(super) column: usize,
     pub(super) first_step: usize,
     pub(super) stride: usize,
-    pub(super) values: Vec<B>,
+    pub(super) values: Vec<E>,
 }
 
-impl<B: StarkField> Assertion<B> {
+impl<E: FieldElement> Assertion<E> {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
     /// Returns an assertion against a single cell of an execution trace.
     ///
-    /// The returned assertion requires that the value in the specified `register` at the specified
+    /// The returned assertion requires that the value in the specified `column` at the specified
     /// `step` is equal to the provided `value`.
-    pub fn single(register: usize, step: usize, value: B) -> Self {
+    pub fn single(column: usize, step: usize, value: E) -> Self {
         Assertion {
-            register,
+            column,
             first_step: step,
             stride: NO_STRIDE,
             values: vec![value],
         }
     }
 
-    /// Returns an single-value assertion against multiple cells of a single register.
+    /// Returns an single-value assertion against multiple cells of a single column.
     ///
-    /// The returned assertion requires that values in the specified `register` must be equal to
+    /// The returned assertion requires that values in the specified `column` must be equal to
     /// the specified `value` at steps which start at `first_step` and repeat in equal intervals
     /// specified by `stride`.
     ///
@@ -79,19 +79,19 @@ impl<B: StarkField> Assertion<B> {
     /// Panics if:
     /// * `stride` is not a power of two, or is smaller than 2.
     /// * `first_step` is greater than `stride`.
-    pub fn periodic(register: usize, first_step: usize, stride: usize, value: B) -> Self {
-        validate_stride(stride, first_step, register);
+    pub fn periodic(column: usize, first_step: usize, stride: usize, value: E) -> Self {
+        validate_stride(stride, first_step, column);
         Assertion {
-            register,
+            column,
             first_step,
             stride,
             values: vec![value],
         }
     }
 
-    /// Returns a multi-value assertion against multiple cells of a single register.
+    /// Returns a multi-value assertion against multiple cells of a single column.
     ///
-    /// The returned assertion requires that values in the specified `register` must be equal to
+    /// The returned assertion requires that values in the specified `column` must be equal to
     /// the provided `values` at steps which start at `first_step` and repeat in equal intervals
     /// specified by `stride` until all values have been consumed.
     ///
@@ -100,21 +100,21 @@ impl<B: StarkField> Assertion<B> {
     /// * `stride` is not a power of two, or is smaller than 2.
     /// * `first_step` is greater than `stride`.
     /// * `values` is empty or number of values in not a power of two.
-    pub fn sequence(register: usize, first_step: usize, stride: usize, values: Vec<B>) -> Self {
-        validate_stride(stride, first_step, register);
+    pub fn sequence(column: usize, first_step: usize, stride: usize, values: Vec<E>) -> Self {
+        validate_stride(stride, first_step, column);
         assert!(
             !values.is_empty(),
-            "invalid assertion for register {}: number of asserted values must be greater than zero",
-            register
+            "invalid assertion for column {}: number of asserted values must be greater than zero",
+            column
         );
         assert!(
             values.len().is_power_of_two(),
-            "invalid assertion for register {}: number of asserted values must be a power of two, but was {}",
-            register,
+            "invalid assertion for column {}: number of asserted values must be a power of two, but was {}",
+            column,
             values.len()
         );
         Assertion {
-            register,
+            column,
             first_step,
             stride: if values.len() == 1 { NO_STRIDE } else { stride },
             values,
@@ -124,9 +124,9 @@ impl<B: StarkField> Assertion<B> {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns index of the register against which this assertion is placed.
-    pub fn register(&self) -> usize {
-        self.register
+    /// Returns index of the column against which this assertion is placed.
+    pub fn column(&self) -> usize {
+        self.column
     }
 
     /// Returns the first step of the execution trace against which this assertion is placed.
@@ -146,7 +146,7 @@ impl<B: StarkField> Assertion<B> {
     /// Returns asserted values.
     ///
     /// For single value and periodic assertions this will be a slice containing one value.
-    pub fn values(&self) -> &[B] {
+    pub fn values(&self) -> &[E] {
         &self.values
     }
 
@@ -170,9 +170,9 @@ impl<B: StarkField> Assertion<B> {
 
     /// Checks if this assertion overlaps with the provided assertion.
     ///
-    /// Overlap is defined as asserting a value for the same step in the same register.
-    pub fn overlaps_with(&self, other: &Assertion<B>) -> bool {
-        if self.register != other.register {
+    /// Overlap is defined as asserting a value for the same step in the same column.
+    pub fn overlaps_with(&self, other: &Assertion<E>) -> bool {
+        if self.column != other.column {
             return false;
         }
         if self.first_step == other.first_step {
@@ -182,7 +182,7 @@ impl<B: StarkField> Assertion<B> {
             return false;
         }
 
-        // at this point we know that assertions are for the same register but they start
+        // at this point we know that assertions are for the same column but they start
         // on different steps and also have different strides
 
         if self.first_step < other.first_step {
@@ -208,11 +208,8 @@ impl<B: StarkField> Assertion<B> {
 
     /// Panics if the assertion cannot be placed against an execution trace of the specified width.
     pub fn validate_trace_width(&self, trace_width: usize) -> Result<(), AssertionError> {
-        if self.register >= trace_width {
-            return Err(AssertionError::TraceWidthTooShort(
-                self.register,
-                trace_width,
-            ));
+        if self.column >= trace_width {
+            return Err(AssertionError::TraceWidthTooShort(self.column, trace_width));
         }
         Ok(())
     }
@@ -262,7 +259,7 @@ impl<B: StarkField> Assertion<B> {
     /// Panics if the specified trace length is not valid for this assertion.
     pub fn apply<F>(&self, trace_length: usize, mut f: F)
     where
-        F: FnMut(usize, B),
+        F: FnMut(usize, E),
     {
         self.validate_trace_length(trace_length)
             .unwrap_or_else(|err| {
@@ -309,12 +306,12 @@ impl<B: StarkField> Assertion<B> {
 // =================================================================================================
 
 /// We define ordering of assertions to be first by stride, then by first_step, and finally by
-/// register in ascending order.
-impl<B: StarkField> Ord for Assertion<B> {
+/// column in ascending order.
+impl<E: FieldElement> Ord for Assertion<E> {
     fn cmp(&self, other: &Self) -> Ordering {
         if self.stride == other.stride {
             if self.first_step == other.first_step {
-                self.register.partial_cmp(&other.register).unwrap()
+                self.column.partial_cmp(&other.column).unwrap()
             } else {
                 self.first_step.partial_cmp(&other.first_step).unwrap()
             }
@@ -324,15 +321,15 @@ impl<B: StarkField> Ord for Assertion<B> {
     }
 }
 
-impl<B: StarkField> PartialOrd for Assertion<B> {
+impl<E: FieldElement> PartialOrd for Assertion<E> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<B: StarkField> Display for Assertion<B> {
+impl<E: FieldElement> Display for Assertion<E> {
     fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
-        write!(f, "(register={}, ", self.register)?;
+        write!(f, "(column={}, ", self.column)?;
         match self.stride {
             0 => write!(f, "step={}, ", self.first_step)?,
             _ => {
@@ -351,24 +348,24 @@ impl<B: StarkField> Display for Assertion<B> {
 // HELPER FUNCTIONS
 // =================================================================================================
 
-fn validate_stride(stride: usize, first_step: usize, register: usize) {
+fn validate_stride(stride: usize, first_step: usize, column: usize) {
     assert!(
         stride.is_power_of_two(),
-        "invalid assertion for register {}: stride must be a power of two, but was {}",
-        register,
+        "invalid assertion for column {}: stride must be a power of two, but was {}",
+        column,
         stride
     );
     assert!(
         stride >= MIN_STRIDE_LENGTH,
-        "invalid assertion for register {}: stride must be at least {}, but was {}",
-        register,
+        "invalid assertion for column {}: stride must be at least {}, but was {}",
+        column,
         MIN_STRIDE_LENGTH,
         stride
     );
     assert!(
         first_step < stride,
-        "invalid assertion for register {}: first step must be smaller than stride ({} steps), but was {}",
-        register,
+        "invalid assertion for column {}: first step must be smaller than stride ({} steps), but was {}",
+        column,
         stride,
         first_step
     );

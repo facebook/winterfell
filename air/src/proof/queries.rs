@@ -3,6 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use super::Table;
 use crypto::{BatchMerkleProof, ElementHasher, Hasher};
 use math::{log2, FieldElement};
 use utils::{
@@ -93,7 +94,7 @@ impl Queries {
         domain_size: usize,
         num_queries: usize,
         values_per_query: usize,
-    ) -> Result<(BatchMerkleProof<H>, Vec<Vec<E>>), DeserializationError>
+    ) -> Result<(BatchMerkleProof<H>, Table<E>), DeserializationError>
     where
         E: FieldElement,
         H: ElementHasher<BaseField = E::BaseField>,
@@ -119,17 +120,13 @@ impl Queries {
             )));
         }
 
-        let mut hashed_queries = vec![H::Digest::default(); num_queries];
-        let mut query_values = Vec::with_capacity(num_queries);
-
         // read bytes corresponding to each query, convert them into field elements,
         // and also hash them to build leaf nodes of the batch Merkle proof
-        let mut reader = SliceReader::new(&self.values);
-        for query_hash in hashed_queries.iter_mut() {
-            let elements = E::read_batch_from(&mut reader, values_per_query)?;
-            *query_hash = H::hash_elements(&elements);
-            query_values.push(elements);
-        }
+        let query_values = Table::<E>::from_bytes(&self.values, num_queries, values_per_query)?;
+        let hashed_queries = query_values
+            .rows()
+            .map(|row| H::hash_elements(row))
+            .collect();
 
         // build batch Merkle proof
         let mut reader = SliceReader::new(&self.paths);

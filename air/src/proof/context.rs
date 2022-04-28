@@ -3,8 +3,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{ProofOptions, TraceInfo};
-use math::{log2, StarkField};
+use crate::{ProofOptions, TraceInfo, TraceLayout};
+use math::StarkField;
 use utils::{
     collections::Vec, string::ToString, ByteReader, ByteWriter, Deserializable,
     DeserializationError, Serializable,
@@ -15,8 +15,8 @@ use utils::{
 /// Basic metadata about a specific execution of a computation.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Context {
-    trace_width: u8,
-    trace_length: u8, // stored as power of two
+    trace_layout: TraceLayout,
+    trace_length: usize,
     trace_meta: Vec<u8>,
     field_modulus_bytes: Vec<u8>,
     options: ProofOptions,
@@ -29,8 +29,8 @@ impl Context {
     /// proof options.
     pub fn new<B: StarkField>(trace_info: &TraceInfo, options: ProofOptions) -> Self {
         Context {
-            trace_width: trace_info.width() as u8,
-            trace_length: log2(trace_info.length()) as u8,
+            trace_layout: trace_info.layout().clone(),
+            trace_length: trace_info.length(),
             trace_meta: trace_info.meta().to_vec(),
             field_modulus_bytes: B::get_modulus_le_bytes(),
             options,
@@ -40,20 +40,21 @@ impl Context {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns execution trace length of the computation described by this context.
-    pub fn trace_length(&self) -> usize {
-        2_usize.pow(self.trace_length as u32)
+    /// Returns a layout describing how columns of the execution trace described by this context
+    /// are arranged into segments.
+    pub fn trace_layout(&self) -> &TraceLayout {
+        &self.trace_layout
     }
 
-    /// Returns execution trace width of the computation described by this context.
-    pub fn trace_width(&self) -> usize {
-        self.trace_width as usize
+    /// Returns execution trace length of the computation described by this context.
+    pub fn trace_length(&self) -> usize {
+        self.trace_length
     }
 
     /// Returns execution trace info for the computation described by this context.
     pub fn get_trace_info(&self) -> TraceInfo {
-        TraceInfo::with_meta(
-            self.trace_width(),
+        TraceInfo::new_multi_segment(
+            self.trace_layout.clone(),
             self.trace_length(),
             self.trace_meta.clone(),
         )
@@ -95,8 +96,8 @@ impl Context {
 impl Serializable for Context {
     /// Serializes `self` and writes the resulting bytes into the `target`.
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write_u8(self.trace_width);
-        target.write_u8(self.trace_length);
+        self.trace_layout.write_into(target);
+        target.write_u8(math::log2(self.trace_length) as u8); // store as power of two
         target.write_u16(self.trace_meta.len() as u16);
         target.write_u8_slice(&self.trace_meta);
         assert!(self.field_modulus_bytes.len() < u8::MAX as usize);
@@ -112,30 +113,19 @@ impl Deserializable for Context {
     /// # Errors
     /// Returns an error of a valid Context struct could not be read from the specified `source`.
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        // read and validate trace width
-        let trace_width = source.read_u8()?;
-        if trace_width == 0 {
-            return Err(DeserializationError::InvalidValue(
-                "trace width must be greater than zero".to_string(),
-            ));
-        }
-        if trace_width as usize >= TraceInfo::MAX_TRACE_WIDTH {
-            return Err(DeserializationError::InvalidValue(format!(
-                "Trace width cannot be greater than {}, but had {}",
-                TraceInfo::MAX_TRACE_WIDTH,
-                trace_width
-            )));
-        }
+        // read and validate trace layout info
+        let trace_layout = TraceLayout::read_from(source)?;
 
-        // read and validate trace length
+        // read and validate trace length (which was stored as a power of two)
         let trace_length = source.read_u8()?;
-        if 2_usize.pow(trace_length as u32) < TraceInfo::MIN_TRACE_LENGTH {
+        if trace_length < math::log2(TraceInfo::MIN_TRACE_LENGTH) as u8 {
             return Err(DeserializationError::InvalidValue(format!(
-                "Trace length cannot be smaller than {}, but had {}",
-                TraceInfo::MIN_TRACE_LENGTH,
-                2_usize.pow(trace_length as u32)
+                "trace length cannot be smaller than 2^{}, but was 2^{}",
+                math::log2(TraceInfo::MIN_TRACE_LENGTH),
+                trace_length
             )));
         }
+        let trace_length = 2_usize.pow(trace_length as u32);
 
         // read trace metadata
         let num_meta_bytes = source.read_u16()? as usize;
@@ -158,7 +148,7 @@ impl Deserializable for Context {
         let options = ProofOptions::read_from(source)?;
 
         Ok(Context {
-            trace_width,
+            trace_layout,
             trace_length,
             trace_meta,
             field_modulus_bytes,

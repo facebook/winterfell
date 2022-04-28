@@ -11,7 +11,7 @@ use core::fmt;
 #[derive(Debug, PartialEq)]
 pub enum AssertionError {
     /// This error occurs when an assertion is evaluated against an execution trace which does not
-    /// contain a register specified by the assertion.
+    /// contain a column specified by the assertion.
     TraceWidthTooShort(usize, usize),
     /// This error occurs when an assertion is evaluated against an execution trace with length
     /// which is not a power of two.

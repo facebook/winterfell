@@ -35,12 +35,12 @@ Available examples are described below.
 ### Fibonacci sequence
 There are several examples illustrating how to generate (and verify) proofs for computing an n-th term of the [Fibonacci sequence](https://en.wikipedia.org/wiki/Fibonacci_number). The examples illustrate different ways of describing this simple computation using AIR. The examples are:
 
-* `fib` - computes the n-th term of a Fibonacci sequence using trace table with 2 registers. Each step in the trace table advances Fibonacci sequence by 2 terms.
-* `fib8` - also computes the n-th term of a Fibonacci sequence and also uses trace table with 2 registers. But unlike the previous example, each step in the trace table advances Fibonacci sequence by 8 terms.
-* `mulfib` - a variation on Fibonacci sequence where addition is replaced with multiplication. The example uses a trace table with 2 registers, and each step in the trace table advances the sequence by 2 terms.
-* `mulfib8` - also computes the n-th term of the multiplicative Fibonacci sequence, but unlike the previous example, each step in the trace table advances the sequence by 8 terms. Unlike `fib8` example, this example uses a trace table with 8 registers.
+* `fib` - computes the n-th term of a Fibonacci sequence using trace table with 2 columns. Each step in the trace table advances Fibonacci sequence by 2 terms.
+* `fib8` - also computes the n-th term of a Fibonacci sequence and also uses trace table with 2 columns. But unlike the previous example, each step in the trace table advances Fibonacci sequence by 8 terms.
+* `mulfib` - a variation on Fibonacci sequence where addition is replaced with multiplication. The example uses a trace table with 2 columns, and each step in the trace table advances the sequence by 2 terms.
+* `mulfib8` - also computes the n-th term of the multiplicative Fibonacci sequence, but unlike the previous example, each step in the trace table advances the sequence by 8 terms. Unlike `fib8` example, this example uses a trace table with 8 columns.
 
-It is interesting to note that `fib`/`fib8` and `mulfib`/`mulfib8` examples encode identical computations but these different encodings have significant impact on performance. Specifically, proving time for `fib8` example is 4x times faster than for `fib` example, while proving time for `mulfib8` example is about 2.4x times faster than for `mulfib` example. The difference stems from the fact that when we deal with additions only, we can omit intermediate states from the execution trace. But when multiplications are involved, we need to introduce additional registers to record intermediate results (another option would be to increase constraint degree, but this is not covered here).
+It is interesting to note that `fib`/`fib8` and `mulfib`/`mulfib8` examples encode identical computations but these different encodings have significant impact on performance. Specifically, proving time for `fib8` example is 4x times faster than for `fib` example, while proving time for `mulfib8` example is about 2.4x times faster than for `mulfib` example. The difference stems from the fact that when we deal with additions only, we can omit intermediate states from the execution trace. But when multiplications are involved, we need to introduce additional columns to record intermediate results (another option would be to increase constraint degree, but this is not covered here).
 
 Additionally, proof sizes for `fib8` and `mulfib8` are about 15% smaller than their "uncompressed" counterparts.
 
@@ -73,6 +73,18 @@ You can run the example like so:
 where:
 
 * **chain length** is length of the hash chain (the number of times the hash function is invoked). Currently, this must be a power of 2. The default is 1024.
+
+### Rescue RAPs hash chains
+This example generates (and verifies) proofs for computing two parallel hash chains of [Rescue hashes](https://eprint.iacr.org/2019/426) absorbing a
+sequence of inputs. The AIR program enforces that the sequence absorbed by the second hash chain is a permutation of the first one.
+
+You can run the example like so:
+```
+./target/release/winterfell [FLAGS] [OPTIONS] rescue-raps [chain length]
+```
+where:
+
+* **chain length** is length of the hash chains (the number of times the hash function is invoked). Currently, this must be a power of 2 at least 4. The default is 1024.
 
 ### Merkle authentication path
 This example generates (and verifies) proofs for verifying a Merkle authentication path. Specifically, given some Merkle tree known to both the prover and the verifier, the prover can prove that they know some value *v*, such that *hash(v)* is a valid tree leaf. This can be used to anonymously prove membership in a Merkle tree.

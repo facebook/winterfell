@@ -7,6 +7,7 @@ use super::{
     AsBytes, BaseElement, ByteReader, Deserializable, DeserializationError, FieldElement,
     StarkField, M,
 };
+use crate::field::{ExtensionOf, QuadExtension};
 use core::convert::TryFrom;
 use num_bigint::BigUint;
 use rand_utils::{rand_value, rand_vector};
@@ -143,6 +144,19 @@ fn get_root_of_unity() {
 fn test_g_is_2_exp_40_root() {
     let g = BaseElement::TWO_ADIC_ROOT_OF_UNITY;
     assert_eq!(g.exp(1u128 << 40), BaseElement::ONE);
+}
+
+// FIELD EXTENSIONS
+// ================================================================================================
+
+#[test]
+fn quad_mul_base() {
+    let a = <QuadExtension<BaseElement>>::new(rand_value(), rand_value());
+    let b0 = rand_value();
+    let b = <QuadExtension<BaseElement>>::new(b0, BaseElement::ZERO);
+
+    let expected = a * b;
+    assert_eq!(expected, a.mul_base(b0));
 }
 
 // SERIALIZATION / DESERIALIZATION

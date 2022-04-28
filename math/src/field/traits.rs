@@ -46,13 +46,13 @@ pub trait FieldElement:
     + MulAssign<Self>
     + DivAssign<Self>
     + Neg<Output = Self>
-    + From<<Self as FieldElement>::BaseField>
     + From<u128>
     + From<u64>
     + From<u32>
     + From<u16>
     + From<u8>
     + for<'a> TryFrom<&'a [u8]>
+    + ExtensionOf<<Self as FieldElement>::BaseField>
     + AsBytes
     + Randomizable
     + Serializable
@@ -254,11 +254,37 @@ pub trait ExtensibleField<const N: usize>: StarkField {
     /// Returns a product of `a` and `b` in the field defined by this extension.
     fn mul(a: [Self; N], b: [Self; N]) -> [Self; N];
 
+    /// Returns a product of `a` and `b` in the field defined by this extension. `b` represents
+    /// an element in the base field.
+    fn mul_base(a: [Self; N], b: Self) -> [Self; N];
+
     /// Returns Frobenius automorphisms for `x` in the field defined by this extension.
     fn frobenius(x: [Self; N]) -> [Self; N];
 
     /// Returns true if this extension is supported for the underlying base field.
     fn is_supported() -> bool {
         true
+    }
+}
+
+// EXTENSION OF
+// ================================================================================================
+
+/// Specifies that a field is an extension of another field.
+///
+/// Currently, this implies the following:
+/// - An element in the base field can be converted into an element in the extension field.
+/// - An element in the extension field can be multiplied by a base field element directly. This
+///   can be used for optimization purposes as such multiplication could be much more efficient
+///   than multiplication of two extension field elements.
+pub trait ExtensionOf<E: FieldElement>: From<E> {
+    fn mul_base(self, other: E) -> Self;
+}
+
+/// A field is always an extension of itself.
+impl<E: FieldElement> ExtensionOf<E> for E {
+    #[inline(always)]
+    fn mul_base(self, other: E) -> Self {
+        self * other
     }
 }

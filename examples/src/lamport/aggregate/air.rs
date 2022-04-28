@@ -82,7 +82,7 @@ impl Air for LamportAggregateAir {
         ];
         assert_eq!(TRACE_WIDTH, trace_info.width());
         LamportAggregateAir {
-            context: AirContext::new(trace_info, degrees, options),
+            context: AirContext::new(trace_info, degrees, 22, options),
             pub_keys: pub_inputs.pub_keys,
             messages: pub_inputs.messages,
         }

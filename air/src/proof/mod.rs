@@ -5,7 +5,7 @@
 
 //! Contains STARK proof struct and associated components.
 
-use crate::{ProofOptions, TraceInfo};
+use crate::{ProofOptions, TraceInfo, TraceLayout};
 use core::cmp;
 use fri::FriProof;
 use math::log2;
@@ -24,6 +24,9 @@ pub use queries::Queries;
 
 mod ood_frame;
 pub use ood_frame::OodFrame;
+
+mod table;
+pub use table::Table;
 
 // CONSTANTS
 // ================================================================================================
@@ -50,8 +53,9 @@ pub struct StarkProof {
     pub context: Context,
     /// Commitments made by the prover during the commit phase of the protocol.
     pub commitments: Commitments,
-    /// Decommitments of extended execution trace values at positions queried by the verifier.
-    pub trace_queries: Queries,
+    /// Decommitments of extended execution trace values (for all trace segments) at position
+    ///  queried by the verifier.
+    pub trace_queries: Vec<Queries>,
     /// Decommitments of constraint composition polynomial evaluations at positions queried by
     /// the verifier.
     pub constraint_queries: Queries,
@@ -69,14 +73,15 @@ impl StarkProof {
         self.context.options()
     }
 
+    /// Returns a layout describing how columns of the execution trace described by this context
+    /// are arranged into segments.
+    pub fn trace_layout(&self) -> &TraceLayout {
+        self.context.trace_layout()
+    }
+
     /// Returns trace length for the computation described by this proof.
     pub fn trace_length(&self) -> usize {
         self.context.trace_length()
-    }
-
-    /// Returns trace width for the computation described by this proof.
-    pub fn trace_width(&self) -> usize {
-        self.context.trace_width()
     }
 
     /// Returns trace info for the computation described by this proof.
@@ -132,10 +137,25 @@ impl StarkProof {
     /// Returns an error of a valid STARK proof could not be read from the specified `source`.
     pub fn from_bytes(source: &[u8]) -> Result<Self, DeserializationError> {
         let mut source = SliceReader::new(source);
+
+        // parse the context
+        let context = Context::read_from(&mut source)?;
+
+        // parse the commitments
+        let commitments = Commitments::read_from(&mut source)?;
+
+        // parse trace queries
+        let num_trace_segments = context.trace_layout().num_segments();
+        let mut trace_queries = Vec::with_capacity(num_trace_segments);
+        for _ in 0..num_trace_segments {
+            trace_queries.push(Queries::read_from(&mut source)?);
+        }
+
+        // parse the rest of the proof
         let proof = StarkProof {
-            context: Context::read_from(&mut source)?,
-            commitments: Commitments::read_from(&mut source)?,
-            trace_queries: Queries::read_from(&mut source)?,
+            context,
+            commitments,
+            trace_queries,
             constraint_queries: Queries::read_from(&mut source)?,
             ood_frame: OodFrame::read_from(&mut source)?,
             fri_proof: FriProof::read_from(&mut source)?,

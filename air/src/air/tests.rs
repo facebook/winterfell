@@ -7,10 +7,9 @@ use super::{
     Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
-use crate::{FieldExtension, HashFunction};
+use crate::{AuxTraceRandElements, FieldExtension, HashFunction};
 use crypto::{hashers::Blake3_256, RandomCoin};
 use math::{fields::f128::BaseElement, get_power_series, log2, polynom, FieldElement, StarkField};
-use rand_utils::shuffle;
 use utils::collections::{BTreeMap, Vec};
 
 // PERIODIC COLUMNS
@@ -75,14 +74,14 @@ fn get_boundary_constraints() {
         BaseElement::new(4),
     ];
     let assertions = vec![
-        Assertion::single(0, 0, BaseElement::new(3)), // register 0, step 0 -> group 0
-        Assertion::single(0, 9, BaseElement::new(5)), // register 0, step 9 -> group 1
-        Assertion::single(1, 9, BaseElement::new(9)), // register 0, step 9 -> group 1
-        Assertion::sequence(0, 2, 4, values.clone()), // register 0, steps 2, 6, 10, 14 -> group 4
-        Assertion::sequence(1, 2, 4, values.clone()), // register 1, steps 2, 6, 10, 14 -> group 4
-        Assertion::sequence(1, 0, 8, values[..2].to_vec()), // register 1, steps 0, 8 -> group 2
-        Assertion::sequence(0, 3, 8, values[..2].to_vec()), // register 0, steps 3, 11 -> group 3
-        Assertion::periodic(1, 3, 8, BaseElement::new(7)), // register 1, steps 3, 11 -> group 3
+        Assertion::single(0, 0, BaseElement::new(3)), // column 0, step 0 -> group 0
+        Assertion::single(0, 9, BaseElement::new(5)), // column 0, step 9 -> group 1
+        Assertion::single(1, 9, BaseElement::new(9)), // column 0, step 9 -> group 1
+        Assertion::sequence(0, 2, 4, values.clone()), // column 0, steps 2, 6, 10, 14 -> group 4
+        Assertion::sequence(1, 2, 4, values.clone()), // column 1, steps 2, 6, 10, 14 -> group 4
+        Assertion::sequence(1, 0, 8, values[..2].to_vec()), // column 1, steps 0, 8 -> group 2
+        Assertion::sequence(0, 3, 8, values[..2].to_vec()), // column 0, steps 3, 11 -> group 3
+        Assertion::periodic(1, 3, 8, BaseElement::new(7)), // column 1, steps 3, 11 -> group 3
     ];
 
     // instantiate mock AIR
@@ -92,7 +91,7 @@ fn get_boundary_constraints() {
     let g = BaseElement::get_root_of_unity(log2(trace_length)); // trace domain generator
 
     // build coefficients for random liner combination; these will be derived for assertions
-    // sorted first by stride, then by first step, and finally by register (similar to the order)
+    // sorted first by stride, then by first step, and finally by column (similar to the order)
     // of assertions above
     let mut prng = build_prng();
     let mut expected_cc = BTreeMap::<usize, (BaseElement, BaseElement)>::new();
@@ -111,7 +110,9 @@ fn get_boundary_constraints() {
     let coefficients = (0..8)
         .map(|_| prng.draw_pair().unwrap())
         .collect::<Vec<(BaseElement, BaseElement)>>();
-    let mut groups = air.get_boundary_constraints(&coefficients);
+    let constraints = air.get_boundary_constraints(&AuxTraceRandElements::new(), &coefficients);
+    let mut groups = constraints.main_constraints().to_vec();
+
     groups.sort_by(|g1, g2| {
         if g1.degree_adjustment() == g2.degree_adjustment() {
             let n1 = &g1.divisor().numerator()[0].1;
@@ -132,7 +133,7 @@ fn get_boundary_constraints() {
     assert_eq!(1, group.constraints().len());
 
     let constraint = &group.constraints()[0];
-    assert_eq!(0, constraint.register());
+    assert_eq!(0, constraint.column());
     assert_eq!(vec![BaseElement::new(3)], constraint.poly());
     assert_eq!(no_poly_offset, constraint.poly_offset());
     assert_eq!(expected_cc[&0], constraint.cc().clone());
@@ -144,13 +145,13 @@ fn get_boundary_constraints() {
     assert_eq!(2, group.constraints().len());
 
     let constraint = &group.constraints()[0];
-    assert_eq!(0, constraint.register());
+    assert_eq!(0, constraint.column());
     assert_eq!(vec![BaseElement::new(5)], constraint.poly());
     assert_eq!(no_poly_offset, constraint.poly_offset());
     assert_eq!(expected_cc[&1], constraint.cc().clone());
 
     let constraint = &group.constraints()[1];
-    assert_eq!(1, constraint.register());
+    assert_eq!(1, constraint.column());
     assert_eq!(vec![BaseElement::new(9)], constraint.poly());
     assert_eq!(no_poly_offset, constraint.poly_offset());
     assert_eq!(expected_cc[&2], constraint.cc().clone());
@@ -162,7 +163,7 @@ fn get_boundary_constraints() {
     assert_eq!(1, group.constraints().len());
 
     let constraint = &group.constraints()[0];
-    assert_eq!(1, constraint.register());
+    assert_eq!(1, constraint.column());
     assert_eq!(
         build_sequence_poly(&values[..2], trace_length),
         constraint.poly()
@@ -177,7 +178,7 @@ fn get_boundary_constraints() {
     assert_eq!(2, group.constraints().len());
 
     let constraint = &group.constraints()[0];
-    assert_eq!(0, constraint.register());
+    assert_eq!(0, constraint.column());
     assert_eq!(
         build_sequence_poly(&values[..2], trace_length),
         constraint.poly()
@@ -186,7 +187,7 @@ fn get_boundary_constraints() {
     assert_eq!(expected_cc[&4], constraint.cc().clone());
 
     let constraint = &group.constraints()[1];
-    assert_eq!(1, constraint.register());
+    assert_eq!(1, constraint.column());
     assert_eq!(vec![BaseElement::new(7)], constraint.poly());
     assert_eq!(no_poly_offset, constraint.poly_offset());
     assert_eq!(expected_cc[&5], constraint.cc().clone());
@@ -198,7 +199,7 @@ fn get_boundary_constraints() {
     assert_eq!(2, group.constraints().len());
 
     let constraint = &group.constraints()[0];
-    assert_eq!(0, constraint.register());
+    assert_eq!(0, constraint.column());
     assert_eq!(
         build_sequence_poly(&values, trace_length),
         constraint.poly()
@@ -207,90 +208,13 @@ fn get_boundary_constraints() {
     assert_eq!(expected_cc[&6], constraint.cc().clone());
 
     let constraint = &group.constraints()[1];
-    assert_eq!(1, constraint.register());
+    assert_eq!(1, constraint.column());
     assert_eq!(
         build_sequence_poly(&values, trace_length),
         constraint.poly()
     );
     assert_eq!((2, g.inv().exp(2)), constraint.poly_offset());
     assert_eq!(expected_cc[&7], constraint.cc().clone());
-}
-
-// PREPARE ASSERTIONS
-// ================================================================================================
-
-#[test]
-fn prepare_assertions() {
-    let values = vec![
-        BaseElement::new(1),
-        BaseElement::new(2),
-        BaseElement::new(3),
-        BaseElement::new(4),
-    ];
-
-    let mut assertions = vec![
-        Assertion::single(0, 9, BaseElement::new(5)), // register 0, step 9
-        Assertion::single(0, 0, BaseElement::new(3)), // register 0, step 0
-        Assertion::sequence(0, 3, 4, values.clone()), // register 1, steps 2, 6, 10, 14
-        Assertion::sequence(0, 2, 4, values.clone()), // register 0, steps 2, 6, 10, 14
-        Assertion::periodic(1, 3, 8, BaseElement::new(7)), //register 1, steps 3, 11
-        Assertion::sequence(1, 0, 8, values[..2].to_vec()), // register 1, steps 0, 8
-    ];
-
-    // assertions should be sorted by stride, first step, and register
-    let expected = vec![
-        Assertion::single(0, 0, BaseElement::new(3)), // register 0, step 0
-        Assertion::single(0, 9, BaseElement::new(5)), // register 0, step 9
-        Assertion::sequence(0, 2, 4, values.clone()), // register 0, steps 2, 6, 10, 14
-        Assertion::sequence(0, 3, 4, values.clone()), // register 1, steps 2, 6, 10, 14
-        Assertion::sequence(1, 0, 8, values[..2].to_vec()), // register 1, steps 0, 8
-        Assertion::periodic(1, 3, 8, BaseElement::new(7)), //register 1, steps 3, 11
-    ];
-
-    let context = build_context(16, 2);
-    let result = super::prepare_assertions(assertions.clone(), &context);
-    assert_eq!(expected, result);
-
-    shuffle(&mut assertions);
-    let result = super::prepare_assertions(assertions.clone(), &context);
-    assert_eq!(expected, result);
-
-    shuffle(&mut assertions);
-    let result = super::prepare_assertions(assertions.clone(), &context);
-    assert_eq!(expected, result);
-}
-
-#[test]
-#[should_panic(
-    expected = "assertion (register=0, steps=[1, 9, ...], value=7) overlaps with assertion (register=0, step=9, value=5)"
-)]
-fn prepare_assertions_with_overlap() {
-    let assertions = vec![
-        Assertion::single(0, 9, BaseElement::new(5)),
-        Assertion::periodic(0, 1, 8, BaseElement::new(7)),
-    ];
-    let context = build_context(16, 2);
-    let _ = super::prepare_assertions(assertions.clone(), &context);
-}
-
-#[test]
-#[should_panic(
-    expected = "assertion (register=0, step=16, value=5) is invalid: expected trace length to be at least 32, but was 16"
-)]
-fn prepare_assertions_with_invalid_trace_length() {
-    let assertions = vec![Assertion::single(0, 16, BaseElement::new(5))];
-    let context = build_context(16, 2);
-    let _ = super::prepare_assertions(assertions.clone(), &context);
-}
-
-#[test]
-#[should_panic(
-    expected = "assertion (register=3, step=17, value=5) is invalid: expected trace width to be at least 3, but was 2"
-)]
-fn prepare_assertions_with_invalid_trace_width() {
-    let assertions = vec![Assertion::single(3, 17, BaseElement::new(5))];
-    let context = build_context(16, 2);
-    let _ = super::prepare_assertions(assertions.clone(), &context);
 }
 
 // MOCK AIR
@@ -308,7 +232,7 @@ impl MockAir {
         trace_length: usize,
     ) -> Self {
         let mut result = Self::new(
-            TraceInfo::new(4, trace_length),
+            TraceInfo::with_meta(4, trace_length, vec![1]),
             (),
             ProofOptions::new(
                 32,
@@ -326,7 +250,7 @@ impl MockAir {
 
     pub fn with_assertions(assertions: Vec<Assertion<BaseElement>>, trace_length: usize) -> Self {
         let mut result = Self::new(
-            TraceInfo::new(4, trace_length),
+            TraceInfo::with_meta(4, trace_length, vec![assertions.len() as u8]),
             (),
             ProofOptions::new(
                 32,
@@ -348,7 +272,8 @@ impl Air for MockAir {
     type PublicInputs = ();
 
     fn new(trace_info: TraceInfo, _pub_inputs: (), _options: ProofOptions) -> Self {
-        let context = build_context(trace_info.length(), trace_info.width());
+        let num_assertions = trace_info.meta()[0] as usize;
+        let context = build_context(trace_info.length(), trace_info.width(), num_assertions);
         MockAir {
             context,
             assertions: Vec::new(),
@@ -380,7 +305,11 @@ impl Air for MockAir {
 // UTILITY FUNCTIONS
 // ================================================================================================
 
-pub fn build_context<B: StarkField>(trace_length: usize, trace_width: usize) -> AirContext<B> {
+pub fn build_context<B: StarkField>(
+    trace_length: usize,
+    trace_width: usize,
+    num_assertions: usize,
+) -> AirContext<B> {
     let options = ProofOptions::new(
         32,
         8,
@@ -392,7 +321,7 @@ pub fn build_context<B: StarkField>(trace_length: usize, trace_width: usize) -> 
     );
     let t_degrees = vec![TransitionConstraintDegree::new(2)];
     let trace_info = TraceInfo::new(trace_width, trace_length);
-    AirContext::new(trace_info, t_degrees, options)
+    AirContext::new(trace_info, t_degrees, num_assertions, options)
 }
 
 pub fn build_prng() -> RandomCoin<BaseElement, Blake3_256<BaseElement>> {

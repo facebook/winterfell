@@ -195,11 +195,16 @@
 //!         // is defined in the evaluate_transition() method below, but here we need to specify
 //!         // the expected degree of the constraint. If the expected and actual degrees of the
 //!         // constraints don't match, an error will be thrown in the debug mode, but in release
-//!         // mode, an invalid proof will be generated which will not be accepted by any
-//!         // verifier.
+//!         // mode, an invalid proof will be generated which will not be accepted by any verifier.
 //!         let degrees = vec![TransitionConstraintDegree::new(3)];
+//!
+//!         // We also need to specify the exact number of assertions we will place against the
+//!         // execution trace. This number must be the same as the number of items in a vector
+//!         // returned from the get_assertions() method below.
+//!         let num_assertions = 2;
+//!
 //!         WorkAir {
-//!             context: AirContext::new(trace_info, degrees, options),
+//!             context: AirContext::new(trace_info, degrees, num_assertions, options),
 //!             start: pub_inputs.start,
 //!             result: pub_inputs.result,
 //!         }
@@ -286,7 +291,7 @@
 //! #         assert_eq!(1, trace_info.width());
 //! #         let degrees = vec![TransitionConstraintDegree::new(3)];
 //! #         WorkAir {
-//! #             context: AirContext::new(trace_info, degrees, options),
+//! #             context: AirContext::new(trace_info, degrees, 2, options),
 //! #             start: pub_inputs.start,
 //! #             result: pub_inputs.result,
 //! #         }
@@ -407,7 +412,7 @@
 //! #         assert_eq!(1, trace_info.width());
 //! #         let degrees = vec![TransitionConstraintDegree::new(3)];
 //! #         WorkAir {
-//! #             context: AirContext::new(trace_info, degrees, options),
+//! #             context: AirContext::new(trace_info, degrees, 2, options),
 //! #             start: pub_inputs.start,
 //! #             result: pub_inputs.result,
 //! #         }
@@ -521,11 +526,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub use prover::{
-    crypto, iterators, math, Air, AirContext, Assertion, BoundaryConstraint,
+    crypto, iterators, math, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
     BoundaryConstraintGroup, ByteReader, ByteWriter, ConstraintCompositionCoefficients,
     ConstraintDivisor, DeepCompositionCoefficients, Deserializable, DeserializationError,
-    EvaluationFrame, FieldExtension, HashFunction, ProofOptions, Prover, ProverError, Serializable,
-    StarkProof, Trace, TraceInfo, TraceTable, TraceTableFragment, TransitionConstraintDegree,
-    TransitionConstraintGroup,
+    EvaluationFrame, FieldExtension, HashFunction, Matrix, ProofOptions, Prover, ProverError,
+    Serializable, StarkProof, Trace, TraceInfo, TraceLayout, TraceTable, TraceTableFragment,
+    TransitionConstraintDegree, TransitionConstraintGroup,
 };
 pub use verifier::{verify, VerifierError};

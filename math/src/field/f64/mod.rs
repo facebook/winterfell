@@ -14,10 +14,7 @@
 //!
 //! Internally, the values are stored in the range $[0, 2^{64})$ using `u64` as the backing type.
 
-use super::{
-    traits::{FieldElement, StarkField},
-    ExtensibleField,
-};
+use super::{ExtensibleField, FieldElement, StarkField};
 use core::{
     convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter},
@@ -353,6 +350,13 @@ impl ExtensibleField<2> for BaseElement {
     }
 
     #[inline(always)]
+    fn mul_base(a: [Self; 2], b: Self) -> [Self; 2] {
+        // multiplying an extension field element by a base field element requires just 2
+        // multiplications in the base field.
+        [a[0] * b, a[1] * b]
+    }
+
+    #[inline(always)]
     fn frobenius(x: [Self; 2]) -> [Self; 2] {
         [x[0] + x[1], -x[1]]
     }
@@ -390,6 +394,13 @@ impl ExtensibleField<3> for BaseElement {
             a0b1_a1b0_a1b2_a2b1_a2b2,
             a0b2_a1b1_a2b0_a2b2,
         ]
+    }
+
+    #[inline(always)]
+    fn mul_base(a: [Self; 3], b: Self) -> [Self; 3] {
+        // multiplying an extension field element by a base field element requires just 3
+        // multiplications in the base field.
+        [a[0] * b, a[1] * b, a[2] * b]
     }
 
     #[inline(always)]

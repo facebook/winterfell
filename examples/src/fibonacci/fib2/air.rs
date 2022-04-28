@@ -30,7 +30,7 @@ impl Air for FibAir {
         ];
         assert_eq!(TRACE_WIDTH, trace_info.width());
         FibAir {
-            context: AirContext::new(trace_info, degrees, options),
+            context: AirContext::new(trace_info, degrees, 3, options),
             result: pub_inputs,
         }
     }

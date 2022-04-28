@@ -23,10 +23,11 @@ doc = false
 [features]
 concurrent = ["winterfell/concurrent", "std"]
 default = ["std"]
-std = ["hex/std", "winterfell/std", "rand-utils"]
+std = ["hex/std", "winterfell/std", "core-utils/std", "rand-utils"]
 
 [dependencies]
 winterfell = { version="0.3", path = "../winterfell", default-features = false }
+core-utils = { version = "0.3", path = "../utils/core", package = "winter-utils", default-features = false }
 rand-utils = { version = "0.3", path = "../utils/rand", package = "winter-rand-utils", optional = true }
 hex = { version = "0.4", optional = true }
 log = { version = "0.4", default-features = false }
