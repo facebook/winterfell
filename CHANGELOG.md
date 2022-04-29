@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0 (2022-04-29)
+* Added support for Randomized AIR (with example).
+* Added support for custom number of transition constraint exemptions.
+* Enabled transition constraints of degree *n + 1* when blowup factor is *n*.
+* Moved trace and constraint commitment construction into separate functions in the `Prover` trait.
+* Introduced `Matrix` struct in the prover which is used as a backing type for trace and constraint evaluations.
+* Added `ExtensionOf` trait and implemented it for all supported fields.
+* Sped up inversion in `f64` field by using inversion method based on Fermat’s little theorem.
+* Implemented `Randomizable` trait for `u32`, `u16`, and `u8` types.
+* [BREAKING] `AirContext::new()` now requires `num_assertions` parameter.
+* [BREAKING] Various interface changes in the `Air` trait to support multi-segment traces.
+* Increased min version of `rustc` to 1.60.
+
 ## 0.3.2 (2022-01-20) - crypto
 * Implemented into byte conversion for Rp64_256 digest.
 * Moved capacity elements to the front of the state for Rp64_256.
