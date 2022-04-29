@@ -166,8 +166,8 @@ impl Air for WorkAir {
     type PublicInputs = PublicInputs;
 
     // Here, we'll construct a new instance of our computation which is defined by 3 parameters:
-    // starting value, number of steps, and the end result. Another way to think about it is that
-    // an instance of our computation is a specific invocation of the do_work() function.
+    // starting value, number of steps, and the end result. Another way to think about it is
+    // that an instance of our computation is a specific invocation of the do_work() function.
     fn new(trace_info: TraceInfo, pub_inputs: PublicInputs, options: ProofOptions) -> Self {
         // our execution trace should have only one column.
         assert_eq!(1, trace_info.width());
