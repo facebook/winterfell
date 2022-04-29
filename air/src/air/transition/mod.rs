@@ -14,7 +14,6 @@ pub use degree::TransitionConstraintDegree;
 // CONSTANTS
 // ================================================================================================
 
-const MIN_BLOWUP_FACTOR: usize = 2;
 const MIN_CYCLE_LENGTH: usize = 2;
 
 // TRANSITION CONSTRAINT INFO
