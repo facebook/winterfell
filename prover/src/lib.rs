@@ -51,6 +51,7 @@ pub use air::{
 };
 pub use utils::{
     iterators, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+    SliceReader,
 };
 
 use fri::FriProver;

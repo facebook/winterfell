@@ -46,7 +46,9 @@ use math::{
 };
 
 use utils::collections::Vec;
-pub use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+pub use utils::{
+    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
+};
 
 pub use crypto;
 use crypto::{
