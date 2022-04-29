@@ -1,16 +1,16 @@
 [package]
 name = "winter-fri"
-version = "0.3.0"
+version = "0.4.0"
 description = "Implementation of FRI protocol for the Winterfell STARK prover/verifier"
 authors = ["winterfell contributors"]
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/novifinancial/winterfell"
-documentation = "https://docs.rs/winter-fri/0.3.0"
+documentation = "https://docs.rs/winter-fri/0.4.0"
 categories = ["cryptography", "no-std"]
 keywords = ["crypto", "polynomial", "commitments"]
 edition = "2021"
-rust-version = "1.57"
+rust-version = "1.60"
 
 [lib]
 bench = false
@@ -29,10 +29,10 @@ default = ["std"]
 std = ["crypto/std", "math/std", "utils/std"]
 
 [dependencies]
-crypto = { version = "0.3", path = "../crypto", package = "winter-crypto", default-features = false }
-math = { version = "0.3", path = "../math", package = "winter-math", default-features = false }
-utils = { version = "0.3", path = "../utils/core", package = "winter-utils", default-features = false }
+crypto = { version = "0.4", path = "../crypto", package = "winter-crypto", default-features = false }
+math = { version = "0.4", path = "../math", package = "winter-math", default-features = false }
+utils = { version = "0.4", path = "../utils/core", package = "winter-utils", default-features = false }
 
 [dev-dependencies]
 criterion = "0.3"
-rand-utils = { version = "0.3", path = "../utils/rand", package = "winter-rand-utils" }
+rand-utils = { version = "0.4", path = "../utils/rand", package = "winter-rand-utils" }

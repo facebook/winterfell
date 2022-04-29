@@ -1,16 +1,16 @@
 [package]
 name = "winter-crypto"
-version = "0.3.2"
+version = "0.4.0"
 description = "Cryptographic library for the Winterfell STARK prover/verifier"
 authors = ["winterfell contributors"]
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/novifinancial/winterfell"
-documentation = "https://docs.rs/winter-crypto/0.3.1"
+documentation = "https://docs.rs/winter-crypto/0.4.0"
 categories = ["cryptography", "no-std"]
 keywords = ["crypto", "merkle-tree", "hash"]
 edition = "2021"
-rust-version = "1.57"
+rust-version = "1.60"
 
 [lib]
 bench = false
@@ -31,11 +31,11 @@ std = ["blake3/std", "math/std", "sha3/std", "utils/std"]
 
 [dependencies]
 blake3 = { version = "1.0", default-features = false }
-math = { version = "0.3", path = "../math", package = "winter-math", default-features = false }
+math = { version = "0.4", path = "../math", package = "winter-math", default-features = false }
 sha3 = { version = "0.10", default-features = false }
-utils = { version = "0.3", path = "../utils/core", package = "winter-utils", default-features = false }
+utils = { version = "0.4", path = "../utils/core", package = "winter-utils", default-features = false }
 
 [dev-dependencies]
 criterion = "0.3"
 proptest = "1.0"
-rand-utils = { version = "0.3", path = "../utils/rand", package = "winter-rand-utils" }
+rand-utils = { version = "0.4", path = "../utils/rand", package = "winter-rand-utils" }
