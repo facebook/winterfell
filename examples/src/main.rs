@@ -42,7 +42,8 @@ fn main() {
         ExampleType::Mulfib8 { sequence_length } => {
             fibonacci::mulfib8::get_example(options, sequence_length)
         }
-        ExampleType::Vdf { num_steps } => vdf::get_example(options, num_steps),
+        ExampleType::Vdf { num_steps } => vdf::regular::get_example(options, num_steps),
+        ExampleType::VdfExempt { num_steps } => vdf::exempt::get_example(options, num_steps),
         ExampleType::Rescue { chain_length } => rescue::get_example(options, chain_length),
         #[cfg(feature = "std")]
         ExampleType::RescueRaps { chain_length } => rescue_raps::get_example(options, chain_length),

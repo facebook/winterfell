@@ -335,10 +335,6 @@ fn acc_column<E: FieldElement>(
 ) {
     let numerator = divisor.numerator();
     assert_eq!(numerator.len(), 1, "complex divisors are not yet supported");
-    assert!(
-        divisor.exclude().len() <= 1,
-        "multiple exclusion points are not yet supported"
-    );
 
     // compute inverse evaluations of the divisor's numerator, which has the form (x^a - b)
     let domain_size = column.len();
@@ -348,7 +344,7 @@ fn acc_column<E: FieldElement>(
     // multiplication of column value by the inverse of divisor numerator; for transition
     // constraints, it is computed similarly, but the result is also multiplied by the divisor's
     // denominator (exclusion point).
-    if divisor.exclude().is_empty() {
+    if divisor.exemptions().is_empty() {
         // the column represents merged evaluations of boundary constraints, and divisor has the
         // form of (x^a - b); thus to divide the column by the divisor, we compute: value * z,
         // where z = 1 / (x^a - 1) and has already been computed above.
@@ -357,18 +353,18 @@ fn acc_column<E: FieldElement>(
             .enumerate()
             .for_each(|(i, (acc_value, value))| {
                 // determine which value of z corresponds to the current domain point
-                let z = E::from(z[i % z.len()]);
+                let z = z[i % z.len()];
                 // compute value * z and add it to the result
-                *acc_value += value * z;
+                *acc_value += value.mul_base(z);
             });
     } else {
         // the column represents merged evaluations of transition constraints, and divisor has the
-        // form of (x^a - 1) / (x - b); thus, to divide the column by the divisor, we compute:
-        // value * (x - b) * z, where z = 1 / (x^a - 1) and has already been computed above.
+        // form of (x^a - 1) / e(x), where e(x) describes the exemption points; thus, to divide
+        // the column by the divisor, we compute: value * e(x) * z, where z = 1 / (x^a - 1) and has
+        // already been computed above.
 
         // set up variables for computing x at every point in the domain
         let g = E::BaseField::get_root_of_unity(domain_size.trailing_zeros());
-        let b = divisor.exclude()[0];
 
         batch_iter_mut!(
             result,
@@ -376,13 +372,13 @@ fn acc_column<E: FieldElement>(
             |batch: &mut [E], batch_offset: usize| {
                 let mut x = domain_offset * g.exp((batch_offset as u64).into());
                 for (i, acc_value) in batch.iter_mut().enumerate() {
-                    // compute value of (x - b) and compute next value of x
-                    let e = x - b;
+                    // compute value of e(x) and compute next value of x
+                    let e = divisor.evaluate_exemptions_at(x);
                     x *= g;
                     // determine which value of z corresponds to the current domain point
                     let z = z[i % z.len()];
-                    // compute value * (x - b) * z and add it to the result
-                    *acc_value += column[batch_offset + i] * E::from(z * e);
+                    // compute value * e(x) * z and add it to the result
+                    *acc_value += column[batch_offset + i].mul_base(z * e);
                 }
             }
         );
