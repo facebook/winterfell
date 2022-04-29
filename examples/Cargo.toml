@@ -1,6 +1,6 @@
 [package]
 name = "examples"
-version = "0.3.0"
+version = "0.4.0"
 description = "Examples of using Winterfell STARK prover/verifier"
 authors = ["winterfell contributors"]
 readme = "README.md"
@@ -8,7 +8,7 @@ license = "MIT"
 repository = "https://github.com/novifinancial/winterfell"
 categories = ["cryptography"]
 edition = "2021"
-rust-version = "1.57"
+rust-version = "1.60"
 
 [lib]
 bench = false
@@ -26,9 +26,9 @@ default = ["std"]
 std = ["hex/std", "winterfell/std", "core-utils/std", "rand-utils"]
 
 [dependencies]
-winterfell = { version="0.3", path = "../winterfell", default-features = false }
-core-utils = { version = "0.3", path = "../utils/core", package = "winter-utils", default-features = false }
-rand-utils = { version = "0.3", path = "../utils/rand", package = "winter-rand-utils", optional = true }
+winterfell = { version="0.4", path = "../winterfell", default-features = false }
+core-utils = { version = "0.4", path = "../utils/core", package = "winter-utils", default-features = false }
+rand-utils = { version = "0.4", path = "../utils/rand", package = "winter-rand-utils", optional = true }
 hex = { version = "0.4", optional = true }
 log = { version = "0.4", default-features = false }
 blake3 = { version = "1.0", default-features = false }
