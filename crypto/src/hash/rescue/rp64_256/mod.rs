@@ -268,6 +268,18 @@ impl Rp64_256 {
     /// The output of the hash function can be read from state elements 4, 5, 6, and 7.
     pub const DIGEST_RANGE: Range<usize> = DIGEST_RANGE;
 
+    /// MDS matrix used for computing the linear layer in a Rescue Prime round.
+    pub const MDS: [[BaseElement; STATE_WIDTH]; STATE_WIDTH] = MDS;
+
+    /// Inverse of the MDS matrix.
+    pub const INV_MDS: [[BaseElement; STATE_WIDTH]; STATE_WIDTH] = INV_MDS;
+
+    /// Round constants added to the hasher state in the first half of the Rescue Prime round.
+    pub const ARK1: [[BaseElement; STATE_WIDTH]; NUM_ROUNDS] = ARK1;
+
+    /// Round constants added to the hasher state in the second half of the Rescue Prime round.
+    pub const ARK2: [[BaseElement; STATE_WIDTH]; NUM_ROUNDS] = ARK2;
+
     // RESCUE PERMUTATION
     // --------------------------------------------------------------------------------------------
 
@@ -531,6 +543,180 @@ const MDS: [[BaseElement; STATE_WIDTH]; STATE_WIDTH] = [
         BaseElement::new(12096331252283646217),
         BaseElement::new(13208137848575217268),
         BaseElement::new(5548519654341606996),
+    ],
+];
+
+/// Rescue Inverse MDS matrix
+/// Computed using algorithm 4 from <https://eprint.iacr.org/2020/1143.pdf> and then
+/// inverting the resulting matrix.
+const INV_MDS: [[BaseElement; STATE_WIDTH]; STATE_WIDTH] = [
+    [
+        BaseElement::new(1025714968950054217),
+        BaseElement::new(2820417286206414279),
+        BaseElement::new(4993698564949207576),
+        BaseElement::new(12970218763715480197),
+        BaseElement::new(15096702659601816313),
+        BaseElement::new(5737881372597660297),
+        BaseElement::new(13327263231927089804),
+        BaseElement::new(4564252978131632277),
+        BaseElement::new(16119054824480892382),
+        BaseElement::new(6613927186172915989),
+        BaseElement::new(6454498710731601655),
+        BaseElement::new(2510089799608156620),
+    ],
+    [
+        BaseElement::new(14311337779007263575),
+        BaseElement::new(10306799626523962951),
+        BaseElement::new(7776331823117795156),
+        BaseElement::new(4922212921326569206),
+        BaseElement::new(8669179866856828412),
+        BaseElement::new(936244772485171410),
+        BaseElement::new(4077406078785759791),
+        BaseElement::new(2938383611938168107),
+        BaseElement::new(16650590241171797614),
+        BaseElement::new(16578411244849432284),
+        BaseElement::new(17600191004694808340),
+        BaseElement::new(5913375445729949081),
+    ],
+    [
+        BaseElement::new(13640353831792923980),
+        BaseElement::new(1583879644687006251),
+        BaseElement::new(17678309436940389401),
+        BaseElement::new(6793918274289159258),
+        BaseElement::new(3594897835134355282),
+        BaseElement::new(2158539885379341689),
+        BaseElement::new(12473871986506720374),
+        BaseElement::new(14874332242561185932),
+        BaseElement::new(16402478875851979683),
+        BaseElement::new(9893468322166516227),
+        BaseElement::new(8142413325661539529),
+        BaseElement::new(3444000755516388321),
+    ],
+    [
+        BaseElement::new(14009777257506018221),
+        BaseElement::new(18218829733847178457),
+        BaseElement::new(11151899210182873569),
+        BaseElement::new(14653120475631972171),
+        BaseElement::new(9591156713922565586),
+        BaseElement::new(16622517275046324812),
+        BaseElement::new(3958136700677573712),
+        BaseElement::new(2193274161734965529),
+        BaseElement::new(15125079516929063010),
+        BaseElement::new(3648852869044193741),
+        BaseElement::new(4405494440143722315),
+        BaseElement::new(15549070131235639125),
+    ],
+    [
+        BaseElement::new(14324333194410783741),
+        BaseElement::new(12565645879378458115),
+        BaseElement::new(4028590290335558535),
+        BaseElement::new(17936155181893467294),
+        BaseElement::new(1833939650657097992),
+        BaseElement::new(14310984655970610026),
+        BaseElement::new(4701042357351086687),
+        BaseElement::new(1226379890265418475),
+        BaseElement::new(2550212856624409740),
+        BaseElement::new(5670703442709406167),
+        BaseElement::new(3281485106506301394),
+        BaseElement::new(9804247840970323440),
+    ],
+    [
+        BaseElement::new(7778523590474814059),
+        BaseElement::new(7154630063229321501),
+        BaseElement::new(17790326505487126055),
+        BaseElement::new(3160574440608126866),
+        BaseElement::new(7292349907185131376),
+        BaseElement::new(1916491575080831825),
+        BaseElement::new(11523142515674812675),
+        BaseElement::new(2162357063341827157),
+        BaseElement::new(6650415936886875699),
+        BaseElement::new(11522955632464608509),
+        BaseElement::new(16740856792338897018),
+        BaseElement::new(16987840393715133187),
+    ],
+    [
+        BaseElement::new(14499296811525152023),
+        BaseElement::new(118549270069446537),
+        BaseElement::new(3041471724857448013),
+        BaseElement::new(3827228106225598612),
+        BaseElement::new(2081369067662751050),
+        BaseElement::new(15406142490454329462),
+        BaseElement::new(8943531526276617760),
+        BaseElement::new(3545513411057560337),
+        BaseElement::new(11433277564645295966),
+        BaseElement::new(9558995950666358829),
+        BaseElement::new(7443251815414752292),
+        BaseElement::new(12335092608217610725),
+    ],
+    [
+        BaseElement::new(184304165023253232),
+        BaseElement::new(11596940249585433199),
+        BaseElement::new(18170668175083122019),
+        BaseElement::new(8318891703682569182),
+        BaseElement::new(4387895409295967519),
+        BaseElement::new(14599228871586336059),
+        BaseElement::new(2861651216488619239),
+        BaseElement::new(567601091253927304),
+        BaseElement::new(10135289435539766316),
+        BaseElement::new(14905738261734377063),
+        BaseElement::new(3345637344934149303),
+        BaseElement::new(3159874422865401171),
+    ],
+    [
+        BaseElement::new(1134458872778032479),
+        BaseElement::new(4102035717681749376),
+        BaseElement::new(14030271225872148070),
+        BaseElement::new(10312336662487337312),
+        BaseElement::new(12938229830489392977),
+        BaseElement::new(17758804398255988457),
+        BaseElement::new(15482323580054918356),
+        BaseElement::new(1010277923244261213),
+        BaseElement::new(12904552397519353856),
+        BaseElement::new(5073478003078459047),
+        BaseElement::new(11514678194579805863),
+        BaseElement::new(4419017610446058921),
+    ],
+    [
+        BaseElement::new(2916054498252226520),
+        BaseElement::new(9880379926449218161),
+        BaseElement::new(15314650755395914465),
+        BaseElement::new(8335514387550394159),
+        BaseElement::new(8955267746483690029),
+        BaseElement::new(16353914237438359160),
+        BaseElement::new(4173425891602463552),
+        BaseElement::new(14892581052359168234),
+        BaseElement::new(17561678290843148035),
+        BaseElement::new(7292975356887551984),
+        BaseElement::new(18039512759118984712),
+        BaseElement::new(5411253583520971237),
+    ],
+    [
+        BaseElement::new(9848042270158364544),
+        BaseElement::new(809689769037458603),
+        BaseElement::new(5884047526712050760),
+        BaseElement::new(12956871945669043745),
+        BaseElement::new(14265127496637532237),
+        BaseElement::new(6211568220597222123),
+        BaseElement::new(678544061771515015),
+        BaseElement::new(16295989318674734123),
+        BaseElement::new(11782767968925152203),
+        BaseElement::new(1359397660819991739),
+        BaseElement::new(16148400912425385689),
+        BaseElement::new(14440017265059055146),
+    ],
+    [
+        BaseElement::new(1634272668217219807),
+        BaseElement::new(16290589064070324125),
+        BaseElement::new(5311838222680798126),
+        BaseElement::new(15044064140936894715),
+        BaseElement::new(15775025788428030421),
+        BaseElement::new(12586374713559327349),
+        BaseElement::new(8118943473454062014),
+        BaseElement::new(13223746794660766349),
+        BaseElement::new(13059674280609257192),
+        BaseElement::new(16605443174349648289),
+        BaseElement::new(13586971219878687822),
+        BaseElement::new(16337009014471658360),
     ],
 ];
 
