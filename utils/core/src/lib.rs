@@ -613,3 +613,35 @@ impl Randomizable for u64 {
         }
     }
 }
+
+impl Randomizable for u32 {
+    const VALUE_SIZE: usize = 4;
+
+    fn from_random_bytes(source: &[u8]) -> Option<Self> {
+        if let Ok(bytes) = source[..Self::VALUE_SIZE].try_into() {
+            Some(u32::from_le_bytes(bytes))
+        } else {
+            None
+        }
+    }
+}
+
+impl Randomizable for u16 {
+    const VALUE_SIZE: usize = 2;
+
+    fn from_random_bytes(source: &[u8]) -> Option<Self> {
+        if let Ok(bytes) = source[..Self::VALUE_SIZE].try_into() {
+            Some(u16::from_le_bytes(bytes))
+        } else {
+            None
+        }
+    }
+}
+
+impl Randomizable for u8 {
+    const VALUE_SIZE: usize = 1;
+
+    fn from_random_bytes(source: &[u8]) -> Option<Self> {
+        Some(source[0])
+    }
+}
