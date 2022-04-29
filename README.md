@@ -21,7 +21,9 @@ The aim of this project is to build a feature-rich, easy to use, and highly perf
 
 Winterfell is a fully-functional, multi-threaded STARK prover and verifier with the following nice properties:
 
-**A simple interface.** This library provides a relatively simple interface for describing general computations. See [usage](#Usage) for a quick tutorial, [air crate](air) for the description of the interface, and [examples crate](examples) for a few real-world examples.
+**A simple interface.** The library provides a relatively simple interface for describing general computations. See [usage](#Usage) for a quick tutorial, [air crate](air) for the description of the interface, and [examples crate](examples) for a few real-world examples.
+
+**Randomized AIR support.** The library supports multi-stage trace commitments, which enables support for [randomized AIR](air/#randomized-air). This greatly increases the expressivity of AIR constraints, and enables, among other things, multiset and permutation checks similar to the ones available in PLONKish systems.
 
 **Multi-threaded proof generation.** When compiled with `concurrent` feature enabled, the proof generation process will run in multiple threads. The library also supports concurrent construction of execution trace tables. The [performance](#Performance) section showcases the benefits of multi-threading.
 

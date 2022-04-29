@@ -142,11 +142,18 @@ impl TraceInfo {
 /// Layout of columns within an execution trace.
 ///
 /// A layout describes how columns of a trace are arranged into segments. All execution traces must
-/// have a non zero main segment, and may have additional auxiliary trace segments. Currently, the
+/// have a non-zero main segment, and may have additional auxiliary trace segments. Currently, the
 /// number of auxiliary trace segments is limited to one.
 ///
 /// Additionally, a layout contains information on how many random elements are required to build a
-/// given auxiliary trace segment.
+/// given auxiliary trace segment. This information is used to construct
+/// [AuxTraceRandElements](crate::AuxTraceRandElements) struct which is passed in as one of the
+/// parameters to [Air::evaluate_aux_transition()](crate::Air::evaluate_aux_transition()) and
+/// [Air::get_aux_assertions()](crate::Air::get_aux_assertions()) methods.
+///
+/// The number of random elements may be different from the number of columns in a given auxiliary
+/// segment. For example, an auxiliary segment may contain just one column, but may require many
+/// random elements.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TraceLayout {
     main_segment_width: usize,

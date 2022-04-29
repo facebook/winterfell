@@ -62,6 +62,16 @@ Sometimes, it may be useful to define a column in an execution trace which conta
 
 To define such columns for your computation, you can override `get_periodic_column_values()` method of the `Air` trait. The values of the periodic columns at a given step of the computation will be supplied to the `evaluate_transition()` method via the `periodic_values` parameter.
 
+### Randomized AIR
+Randomized AIR is a powerful extension of AIR which enables, among other things, multiset and permutation checks similar to the ones available in PLONKish systems. These, in turn, allow efficient descriptions of "non-local" constraints which can be used to build such components as efficient range checks, random access memory, and many others.
+
+With Randomized AIR, construction of the execution trace is split into multiple stages. During the first stage, the *main trace segment* is built in a manner similar to how the trace is built for regular AIR. In the subsequent stages, *auxiliary trace segments* are built. When building auxiliary trace segments, the prover has access to extra randomness sent by the verifier (in the non-interactive version of the protocol, this randomness is derived from the previous trace segment commitments). Currently, the number of auxiliary trace segments is limited to one.
+
+To describe Randomized AIR, you will need to do the following when implementing the `Air` trait:
+* The `AirContext` struct returned from `Air::context()` method must be instantiated using `AirContext::new_multi_segment()` constructor. When building AIR context in this way, you will need to provide a `TraceLayout` which describes the shape of a multi-segment execution trace.
+* Override `Air::evaluate_aux_transition()` method. This method is similar to the `Air::evaluate_transition()` method but it also accepts two extra parameters: `aux_evaluation_frame` and `aux_rand_elements`. These parameters are needed for evaluating transition constraints over the auxiliary trace segments.
+* Override `Air::get_aux_assertions()` method. This method is similar to the `Air::get_assertions()` method, but it should return assertions against columns of the auxiliary trace segments.
+
 ## Protocol parameters
 `ProofOptions` struct defines a set of options which are used during STARK proof generation and verification. These options have a direct impact on the security of the generated proofs as well as the proof generation time. Specifically, security of STARK proofs depends on:
 
