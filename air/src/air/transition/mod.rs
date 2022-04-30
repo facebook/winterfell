@@ -14,7 +14,6 @@ pub use degree::TransitionConstraintDegree;
 // CONSTANTS
 // ================================================================================================
 
-const MIN_BLOWUP_FACTOR: usize = 2;
 const MIN_CYCLE_LENGTH: usize = 2;
 
 // TRANSITION CONSTRAINT INFO
@@ -51,6 +50,15 @@ impl<E: FieldElement> TransitionConstraints<E> {
             "number of transition constraints must match the number of composition coefficient tuples"
         );
 
+        // build constraint divisor; the same divisor applies to all transition constraints
+        let divisor = ConstraintDivisor::from_transition(
+            context.trace_len(),
+            context.num_transition_exemptions(),
+        );
+
+        // group constraints by their degree, separately for constraints against main and auxiliary
+        // trace segments
+
         let (main_constraint_coefficients, aux_constraint_coefficients) =
             composition_coefficients.split_at(context.main_transition_constraint_degrees.len());
 
@@ -59,12 +67,14 @@ impl<E: FieldElement> TransitionConstraints<E> {
             &main_constraint_degrees,
             context,
             main_constraint_coefficients,
+            divisor.degree(),
         );
         let aux_constraint_degrees = context.aux_transition_constraint_degrees.clone();
         let aux_constraints = group_constraints(
             &aux_constraint_degrees,
             context,
             aux_constraint_coefficients,
+            divisor.degree(),
         );
 
         Self {
@@ -72,7 +82,7 @@ impl<E: FieldElement> TransitionConstraints<E> {
             main_constraint_degrees,
             aux_constraints,
             aux_constraint_degrees,
-            divisor: ConstraintDivisor::from_transition(context.trace_len()),
+            divisor,
         }
     }
 
@@ -200,15 +210,14 @@ impl<E: FieldElement> TransitionConstraintGroup<E> {
     /// Returns a new transition constraint group to hold constraints of the specified degree.
     pub(super) fn new(
         degree: TransitionConstraintDegree,
-        trace_poly_degree: usize,
+        trace_length: usize,
         composition_degree: usize,
+        divisor_degree: usize,
     ) -> Self {
         // We want to make sure that once we divide a constraint polynomial by its divisor, the
         // degree of the resulting polynomial will be exactly equal to the composition_degree.
-        // For transition constraints, divisor degree = deg(trace). So, target degree for all
-        // transitions constraints is simply: deg(composition) + deg(trace)
-        let target_degree = composition_degree + trace_poly_degree;
-        let evaluation_degree = degree.get_evaluation_degree(trace_poly_degree + 1);
+        let target_degree = composition_degree + divisor_degree;
+        let evaluation_degree = degree.get_evaluation_degree(trace_length);
         let degree_adjustment = (target_degree - evaluation_degree) as u32;
         TransitionConstraintGroup {
             degree,
@@ -290,6 +299,7 @@ fn group_constraints<E: FieldElement>(
     degrees: &[TransitionConstraintDegree],
     context: &AirContext<E::BaseField>,
     coefficients: &[(E, E)],
+    divisor_degree: usize,
 ) -> Vec<TransitionConstraintGroup<E>> {
     // iterate over transition constraint degrees, and assign each constraint to the appropriate
     // group based on its degree
@@ -299,8 +309,9 @@ fn group_constraints<E: FieldElement>(
         let group = groups.entry(evaluation_degree).or_insert_with(|| {
             TransitionConstraintGroup::new(
                 degree.clone(),
-                context.trace_poly_degree(),
+                context.trace_len(),
                 context.composition_degree(),
+                divisor_degree,
             )
         });
         group.add(i, coefficients[i]);

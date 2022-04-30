@@ -92,6 +92,16 @@ pub struct ProofOptions {
 // PROOF OPTIONS IMPLEMENTATION
 // ================================================================================================
 impl ProofOptions {
+    // CONSTANTS
+    // --------------------------------------------------------------------------------------------
+
+    /// Smallest allowed blowup factor which is currently set to 2.
+    ///
+    /// The smallest allowed blowup factor for a given computation is derived from degrees of
+    /// constraints defined for that computation and may be greater than 2. But no computation may
+    /// have a blowup factor smaller than 2.
+    pub const MIN_BLOWUP_FACTOR: usize = 2;
+
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
     /// Returns a new instance of [ProofOptions] struct constructed from the specified parameters.
@@ -118,7 +128,8 @@ impl ProofOptions {
         assert!(num_queries <= 128, "number of queries cannot be greater than 128");
 
         assert!(blowup_factor.is_power_of_two(), "blowup factor must be a power of 2");
-        assert!(blowup_factor >= 4, "blowup factor cannot be smaller than 4");
+        assert!(blowup_factor >= Self::MIN_BLOWUP_FACTOR,
+            "blowup factor cannot be smaller than {}", Self::MIN_BLOWUP_FACTOR);
         assert!(blowup_factor <= 128, "blowup factor cannot be greater than 128");
 
         assert!(grinding_factor <= 32, "grinding factor cannot be greater than 32");

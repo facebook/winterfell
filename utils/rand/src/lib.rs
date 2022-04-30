@@ -120,3 +120,45 @@ mod internal {
 
 #[cfg(target_family = "wasm")]
 mod internal {}
+
+// TESTS
+// ================================================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::{rand_array, rand_value};
+
+    #[test]
+    fn rand_primitives() {
+        let a = rand_value::<u16>();
+        let b = rand_value::<u16>();
+        assert_ne!(a, b);
+
+        let a = rand_value::<u32>();
+        let b = rand_value::<u32>();
+        assert_ne!(a, b);
+
+        let a = rand_value::<u64>();
+        let b = rand_value::<u64>();
+        assert_ne!(a, b);
+
+        let a = rand_value::<u128>();
+        let b = rand_value::<u128>();
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn rand_byte_array() {
+        let a = rand_array::<u8, 30>();
+        let b = rand_array::<u8, 30>();
+        assert_ne!(a, b);
+
+        let a = rand_array::<u8, 32>();
+        let b = rand_array::<u8, 32>();
+        assert_ne!(a, b);
+
+        let a = rand_array::<u8, 34>();
+        let b = rand_array::<u8, 34>();
+        assert_ne!(a, b);
+    }
+}

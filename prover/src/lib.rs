@@ -51,6 +51,7 @@ pub use air::{
 };
 pub use utils::{
     iterators, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+    SliceReader,
 };
 
 use fri::FriProver;
@@ -516,8 +517,9 @@ pub trait Prover {
         let composed_evaluations = composition_poly.evaluate(domain);
         #[cfg(feature = "std")]
         debug!(
-            "Evaluated composition polynomial columns over LDE domain (2^{} elements) in {} ms",
-            log2(composed_evaluations.num_cols()),
+            "Evaluated {} composition polynomial columns over LDE domain (2^{} elements) in {} ms",
+            composed_evaluations.num_cols(),
+            log2(composed_evaluations.num_rows()),
             now.elapsed().as_millis()
         );
 

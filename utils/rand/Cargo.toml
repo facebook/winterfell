@@ -1,22 +1,22 @@
 [package]
 name = "winter-rand-utils"
-version = "0.3.0"
+version = "0.4.0"
 description = "Random value generation utilities for Winterfell crates"
 authors = ["winterfell contributors"]
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/novifinancial/winterfell"
-documentation = "https://docs.rs/winter-rand-utils/0.3.0"
+documentation = "https://docs.rs/winter-rand-utils/0.4.0"
 categories = ["cryptography"]
 keywords = ["rand"]
 edition = "2021"
-rust-version = "1.57"
+rust-version = "1.60"
 
 [lib]
 bench = false
 
 [dependencies]
-utils = { version = "0.3", path = "../core", package = "winter-utils" }
+utils = { version = "0.4", path = "../core", package = "winter-utils" }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 rand =  { version = "0.8" }

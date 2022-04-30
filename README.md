@@ -3,8 +3,8 @@
 <a href="https://github.com/novifinancial/winterfell/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
 <img src="https://github.com/novifinancial/winterfell/workflows/CI/badge.svg?branch=main">
 <a href="https://deps.rs/repo/github/novifinancial/winterfell"><img src="https://deps.rs/repo/github/novifinancial/winterfell/status.svg"></a>
-<img src="https://img.shields.io/badge/prover-rustc_1.57+-lightgray.svg">
-<img src="https://img.shields.io/badge/verifier-rustc_1.57+-lightgray.svg">
+<img src="https://img.shields.io/badge/prover-rustc_1.60+-lightgray.svg">
+<img src="https://img.shields.io/badge/verifier-rustc_1.60+-lightgray.svg">
 <a href="https://crates.io/crates/winterfell"><img src="https://img.shields.io/crates/v/winterfell"></a>
 
 A STARK prover and verifier for arbitrary computations.
@@ -21,7 +21,9 @@ The aim of this project is to build a feature-rich, easy to use, and highly perf
 
 Winterfell is a fully-functional, multi-threaded STARK prover and verifier with the following nice properties:
 
-**A simple interface.** This library provides a relatively simple interface for describing general computations. See [usage](#Usage) for a quick tutorial, [air crate](air) for the description of the interface, and [examples crate](examples) for a few real-world examples.
+**A simple interface.** The library provides a relatively simple interface for describing general computations. See [usage](#Usage) for a quick tutorial, [air crate](air) for the description of the interface, and [examples crate](examples) for a few real-world examples.
+
+**Randomized AIR support.** The library supports multi-stage trace commitments, which enables support for [randomized AIR](air/#randomized-air). This greatly increases the expressivity of AIR constraints, and enables, among other things, multiset and permutation checks similar to the ones available in PLONKish systems.
 
 **Multi-threaded proof generation.** When compiled with `concurrent` feature enabled, the proof generation process will run in multiple threads. The library also supports concurrent construction of execution trace tables. The [performance](#Performance) section showcases the benefits of multi-threading.
 
@@ -164,8 +166,8 @@ impl Air for WorkAir {
     type PublicInputs = PublicInputs;
 
     // Here, we'll construct a new instance of our computation which is defined by 3 parameters:
-    // starting value, number of steps, and the end result. Another way to think about it is that
-    // an instance of our computation is a specific invocation of the do_work() function.
+    // starting value, number of steps, and the end result. Another way to think about it is
+    // that an instance of our computation is a specific invocation of the do_work() function.
     fn new(trace_info: TraceInfo, pub_inputs: PublicInputs, options: ProofOptions) -> Self {
         // our execution trace should have only one column.
         assert_eq!(1, trace_info.width());

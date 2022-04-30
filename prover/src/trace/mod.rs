@@ -177,7 +177,9 @@ pub trait Trace: Sized {
             vec![Self::BaseField::ZERO; air.context().num_main_transition_constraints()];
         let mut aux_evaluations = vec![E::ZERO; air.context().num_aux_transition_constraints()];
 
-        for step in 0..self.length() - 1 {
+        // we check transition constraints on all steps except the last k steps, where k is the
+        // number of steps exempt from transition constraints (guaranteed to be at least 1)
+        for step in 0..self.length() - air.context().num_transition_exemptions() {
             // build periodic values
             for (p, v) in periodic_values_polys.iter().zip(periodic_values.iter_mut()) {
                 let num_cycles = air.trace_length() / p.len();

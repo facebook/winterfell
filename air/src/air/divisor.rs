@@ -13,19 +13,19 @@ use utils::collections::Vec;
 /// The denominator portion of boundary and transition constraints.
 ///
 /// A divisor is described by a combination of a sparse polynomial, which describes the numerator
-/// of the divisor and a set of exclusion points, which describe the denominator of the divisor.
+/// of the divisor and a set of exemption points, which describe the denominator of the divisor.
 /// The numerator polynomial is described as multiplication of tuples where each tuple encodes
-/// an expression $(x^a - b)$. The exclusion points encode expressions $(x - a)$.
+/// an expression $(x^a - b)$. The exemption points encode expressions $(x - a)$.
 ///
 /// For example divisor $(x^a - 1) \cdot (x^b - 2) / (x - 3)$ can be represented as:
-/// numerator: `[(a, 1), (b, 2)]`, exclude: `[3]`.
+/// numerator: `[(a, 1), (b, 2)]`, exemptions: `[3]`.
 ///
 /// A divisor cannot be instantiated directly, and instead must be created either for an
 /// [Assertion] or for a transition constraint.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ConstraintDivisor<B: StarkField> {
     pub(super) numerator: Vec<(usize, B)>,
-    pub(super) exclude: Vec<B>,
+    pub(super) exemptions: Vec<B>,
 }
 
 impl<B: StarkField> ConstraintDivisor<B> {
@@ -33,8 +33,11 @@ impl<B: StarkField> ConstraintDivisor<B> {
     // --------------------------------------------------------------------------------------------
 
     /// Returns a new divisor instantiated from the provided parameters.
-    fn new(numerator: Vec<(usize, B)>, exclude: Vec<B>) -> Self {
-        ConstraintDivisor { numerator, exclude }
+    fn new(numerator: Vec<(usize, B)>, exemptions: Vec<B>) -> Self {
+        ConstraintDivisor {
+            numerator,
+            exemptions,
+        }
     }
 
     /// Builds a divisor for transition constraints.
@@ -42,17 +45,23 @@ impl<B: StarkField> ConstraintDivisor<B> {
     /// For transition constraints, the divisor polynomial $z(x)$ is always the same:
     ///
     /// $$
-    /// z(x) = \frac{x^n - 1}{x - g^{n-1}}
+    /// z(x) = \frac{x^n - 1}{ \prod_{i=1}^k (x - g^{n-i})}
     /// $$
     ///
-    /// where, $n$ is the length of the execution trace, and $g$ is the generator of the trace
-    /// domain.
+    /// where, $n$ is the length of the execution trace, $g$ is the generator of the trace
+    /// domain, and $k$ is the number of exemption points. The default value for $k$ is $1$.
     ///
     /// The above divisor specifies that transition constraints must hold on all steps of the
-    /// execution trace except for the last one.
-    pub fn from_transition(trace_length: usize) -> Self {
-        let x_at_last_step = get_trace_domain_value_at::<B>(trace_length, trace_length - 1);
-        Self::new(vec![(trace_length, B::ONE)], vec![x_at_last_step])
+    /// execution trace except for the last $k$ steps.
+    pub fn from_transition(trace_length: usize, num_exemptions: usize) -> Self {
+        assert!(
+            num_exemptions > 0,
+            "invalid number of transition exemptions: must be greater than zero"
+        );
+        let exemptions = (trace_length - num_exemptions..trace_length)
+            .map(|step| get_trace_domain_value_at::<B>(trace_length, step))
+            .collect();
+        Self::new(vec![(trace_length, B::ONE)], exemptions)
     }
 
     /// Builds a divisor for a boundary constraint described by the assertion.
@@ -100,9 +109,9 @@ impl<B: StarkField> ConstraintDivisor<B> {
         &self.numerator
     }
 
-    /// Returns exclusion points (the denominator portion) of this constraints divisor.
-    pub fn exclude(&self) -> &[B] {
-        &self.exclude
+    /// Returns exemption points (the denominator portion) of this constraints divisor.
+    pub fn exemptions(&self) -> &[B] {
+        &self.exemptions
     }
 
     /// Returns the degree of the divisor polynomial
@@ -111,11 +120,11 @@ impl<B: StarkField> ConstraintDivisor<B> {
             .numerator
             .iter()
             .fold(0, |degree, term| degree + term.0);
-        let denominator_degree = self.exclude.len();
+        let denominator_degree = self.exemptions.len();
         numerator_degree - denominator_degree
     }
 
-    // EVALUATOR
+    // EVALUATORS
     // --------------------------------------------------------------------------------------------
     /// Evaluates the divisor polynomial at the provided `x` coordinate.
     pub fn evaluate_at<E: FieldElement<BaseField = B>>(&self, x: E) -> E {
@@ -128,13 +137,18 @@ impl<B: StarkField> ConstraintDivisor<B> {
         }
 
         // compute the denominator value
-        let mut denominator = E::ONE;
-        for exception in self.exclude.iter() {
-            let v = x - E::from(*exception);
-            denominator *= v;
-        }
+        let denominator = self.evaluate_exemptions_at(x);
 
         numerator / denominator
+    }
+
+    /// Evaluates the denominator of this divisor (the exemption points) at the provided `x`
+    /// coordinate.
+    #[inline(always)]
+    pub fn evaluate_exemptions_at<E: FieldElement<BaseField = B>>(&self, x: E) -> E {
+        self.exemptions
+            .iter()
+            .fold(E::ONE, |r, &e| r * (x - E::from(e)))
     }
 }
 
@@ -143,9 +157,9 @@ impl<B: StarkField> Display for ConstraintDivisor<B> {
         for (degree, offset) in self.numerator.iter() {
             write!(f, "(x^{} - {})", degree, offset)?;
         }
-        if !self.exclude.is_empty() {
+        if !self.exemptions.is_empty() {
             write!(f, " / ")?;
-            for x in self.exclude.iter() {
+            for x in self.exemptions.iter() {
                 write!(f, "(x - {})", x)?;
             }
         }
@@ -192,7 +206,7 @@ mod tests {
         );
         assert_eq!(9, div.degree());
 
-        // multi-term numerator with exclusion points
+        // multi-term numerator with exemption points
         let div = ConstraintDivisor::new(
             vec![
                 (4, BaseElement::ONE),
@@ -222,7 +236,7 @@ mod tests {
         let expected = BaseElement::new(15) * BaseElement::new(2) * BaseElement::new(5);
         assert_eq!(expected, div.evaluate_at(BaseElement::new(2)));
 
-        // multi-term numerator with exclusion points:
+        // multi-term numerator with exemption points:
         // (x^4 - 1) * (x^2 - 2) * (x^3 - 3) / ((x - 1) * (x - 2))
         let div = ConstraintDivisor::new(
             vec![
