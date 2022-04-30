@@ -99,7 +99,7 @@ impl<E: FieldElement> DeepComposer<E> {
                 // T'''_i(x) = (T_i(x) - T_i(z_conjugate)) / (x - z_conjugate)
                 if let Some((z_conjugate, ref trace_at_z1_conjugates)) = conjugate_values {
                     let t3 = (value - trace_at_z1_conjugates[i]) / (x - z_conjugate);
-                    *result += t3 * self.cc.trace[i][row_count + 1];
+                    *result += t3 * self.cc.trace[i][row_count];
                 }
             }
         }

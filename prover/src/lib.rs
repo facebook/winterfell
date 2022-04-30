@@ -47,8 +47,9 @@ extern crate alloc;
 pub use air::{
     proof::StarkProof, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
     BoundaryConstraintGroup, ConstraintCompositionCoefficients, ConstraintDivisor,
-    DeepCompositionCoefficients, EvaluationFrame, FieldExtension, HashFunction, ProofOptions,
-    TraceInfo, TraceLayout, TransitionConstraintDegree, TransitionConstraintGroup,
+    DeepCompositionCoefficients, DefaultEvaluationFrame, EvaluationFrame, FieldExtension,
+    HashFunction, ProofOptions, TraceInfo, TraceLayout, TransitionConstraintDegree,
+    TransitionConstraintGroup,
 };
 pub use utils::{
     iterators, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
@@ -130,8 +131,6 @@ pub trait Prover {
 
     /// Execution trace of the computation described by this prover.
     type Trace: Trace<BaseField = Self::BaseField>;
-
-    type Frame: EvaluationFrame<Self::BaseField>;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------

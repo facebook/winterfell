@@ -6,8 +6,8 @@
 use super::{rescue, BaseElement, FieldElement, HASH_CYCLE_LEN, HASH_STATE_WIDTH, TRACE_WIDTH};
 use crate::utils::{are_equal, is_binary, is_zero, not, EvaluationResult};
 use winterfell::{
-    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ProofOptions, Serializable, TraceInfo,
-    TransitionConstraintDegree,
+    Air, AirContext, Assertion, ByteWriter, DefaultEvaluationFrame, EvaluationFrame, ProofOptions,
+    Serializable, TraceInfo, TransitionConstraintDegree,
 };
 
 // MERKLE PATH VERIFICATION AIR
@@ -31,6 +31,8 @@ pub struct MerkleAir {
 impl Air for MerkleAir {
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
+    type Frame<E: FieldElement> = DefaultEvaluationFrame<E>;
+    type AuxFrame<E: FieldElement> = DefaultEvaluationFrame<E>;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -57,12 +59,12 @@ impl Air for MerkleAir {
 
     fn evaluate_transition<E: FieldElement + From<Self::BaseField>>(
         &self,
-        frame: &EvaluationFrame<E>,
+        frame: &Self::Frame<E>,
         periodic_values: &[E],
         result: &mut [E],
     ) {
-        let current = frame.current();
-        let next = frame.next();
+        let current = frame.row(0);
+        let next = frame.row(1);
         // expected state width is 4 field elements
         debug_assert_eq!(TRACE_WIDTH, current.len());
         debug_assert_eq!(TRACE_WIDTH, next.len());

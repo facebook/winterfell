@@ -174,8 +174,10 @@ pub trait Trace: Sized {
             vec![Self::BaseField::ZERO; air.context().num_main_transition_constraints()];
         let mut aux_evaluations = vec![E::ZERO; air.context().num_aux_transition_constraints()];
 
+        // we check transition constraints on all steps except the last k steps, where k is the
+        // number of steps exempt from transition constraints (guaranteed to be at least 1)
         let frame_shift = A::Frame::<E>::FRAME_SHIFT;
-        for i in 0..self.length() / frame_shift - 1 {
+        for i in 0..self.length() / frame_shift - air.context().num_transition_exemptions() {
             let step = i * frame_shift;
 
             // build periodic values
@@ -187,7 +189,7 @@ pub trait Trace: Sized {
 
             // evaluate transition constraints for the main trace segment and make sure they all
             // evaluate to zeros
-            main_frame.read_from(self.main_segment(), step, 0);
+            main_frame.read_from(self.main_segment(), step, 1);
             air.evaluate_transition(&main_frame, &periodic_values, &mut main_evaluations);
             for (i, &evaluation) in main_evaluations.iter().enumerate() {
                 assert!(
@@ -202,7 +204,7 @@ pub trait Trace: Sized {
             // sure they all evaluate to zeros
             if let Some(ref mut aux_frame) = aux_frame {
                 for aux_segment in aux_segments {
-                    aux_frame.read_from(aux_segment, step, 0);
+                    aux_frame.read_from(aux_segment, step, 1);
                 }
                 air.evaluate_aux_transition(
                     &main_frame,

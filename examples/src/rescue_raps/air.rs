@@ -9,8 +9,8 @@ use super::{
 };
 use crate::utils::{are_equal, not, EvaluationResult};
 use winterfell::{
-    Air, AirContext, Assertion, AuxTraceRandElements, ByteWriter, EvaluationFrame, Serializable,
-    TraceInfo, TransitionConstraintDegree,
+    Air, AirContext, Assertion, AuxTraceRandElements, ByteWriter, DefaultEvaluationFrame,
+    EvaluationFrame, Serializable, TraceInfo, TransitionConstraintDegree,
 };
 
 // CONSTANTS
@@ -57,6 +57,8 @@ pub struct RescueRapsAir {
 impl Air for RescueRapsAir {
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
+    type Frame<E: FieldElement> = DefaultEvaluationFrame<E>;
+    type AuxFrame<E: FieldElement> = DefaultEvaluationFrame<E>;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -88,12 +90,12 @@ impl Air for RescueRapsAir {
 
     fn evaluate_transition<E: FieldElement + From<Self::BaseField>>(
         &self,
-        frame: &EvaluationFrame<E>,
+        frame: &Self::Frame<E>,
         periodic_values: &[E],
         result: &mut [E],
     ) {
-        let current = frame.current();
-        let next = frame.next();
+        let current = frame.row(0);
+        let next = frame.row(1);
         // expected state width is 2*4 field elements
         debug_assert_eq!(TRACE_WIDTH, current.len());
         debug_assert_eq!(TRACE_WIDTH, next.len());
@@ -152,8 +154,8 @@ impl Air for RescueRapsAir {
 
     fn evaluate_aux_transition<F, E>(
         &self,
-        main_frame: &EvaluationFrame<F>,
-        aux_frame: &EvaluationFrame<E>,
+        main_frame: &Self::Frame<F>,
+        aux_frame: &Self::AuxFrame<E>,
         periodic_values: &[F],
         aux_rand_elements: &AuxTraceRandElements<E>,
         result: &mut [E],
@@ -161,11 +163,11 @@ impl Air for RescueRapsAir {
         F: FieldElement<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
     {
-        let main_current = main_frame.current();
-        let main_next = main_frame.next();
+        let main_current = main_frame.row(0);
+        let main_next = main_frame.row(1);
 
-        let aux_current = aux_frame.current();
-        let aux_next = aux_frame.next();
+        let aux_current = aux_frame.row(0);
+        let aux_next = aux_frame.row(1);
 
         let random_elements = aux_rand_elements.get_segment_elements(0);
 

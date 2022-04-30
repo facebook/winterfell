@@ -61,9 +61,10 @@ impl<E: FieldElement> Table<E> {
     }
 
     pub fn from_rows(rows: Vec<Vec<E>>) -> Self {
+        let row_width = rows[0].len();
         Self {
             data: rows.into_iter().flatten().collect(),
-            row_width: 0,
+            row_width,
         }
     }
 

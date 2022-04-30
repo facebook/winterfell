@@ -236,12 +236,16 @@ where
         aux_trace_rand_elements,
         z,
     );
-    for i in 0..A::Frame::<E>::num_rows() {
-        public_coin.reseed(H::hash_elements(ood_main_trace_frame.row(i)));
-    }
+
     if let Some(ref aux_trace_frame) = ood_aux_trace_frame {
-        for i in 0..A::AuxFrame::<E>::num_rows() {
-            public_coin.reseed(H::hash_elements(aux_trace_frame.row(i)));
+        for i in 0..A::Frame::<E>::num_rows() {
+            let mut row = ood_main_trace_frame.row(i).to_vec();
+            row.extend_from_slice(aux_trace_frame.row(i));
+            public_coin.reseed(H::hash_elements(&row));
+        }
+    } else {
+        for i in 0..A::Frame::<E>::num_rows() {
+            public_coin.reseed(H::hash_elements(ood_main_trace_frame.row(i)));
         }
     }
 

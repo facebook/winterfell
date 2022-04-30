@@ -93,7 +93,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         // single value) so that we can check their degrees later
         #[cfg(not(debug_assertions))]
         let mut evaluation_table =
-            ConstraintEvaluationTable::<E>::new(domain, divisors, A::Frame::FRAME_SHIFT);
+            ConstraintEvaluationTable::<E>::new(domain, divisors, A::Frame::<E>::FRAME_SHIFT);
         #[cfg(debug_assertions)]
         let mut evaluation_table = ConstraintEvaluationTable::<E>::new(
             domain,
@@ -245,8 +245,8 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
 
             // evaluate boundary constraints; the results go into remaining slots of the
             // evaluations buffer
-            let main_state = main_frame.row(step);
-            let aux_state = aux_frame.row(step);
+            let main_state = main_frame.row(0);
+            let aux_state = aux_frame.row(0);
             self.boundary_constraints.evaluate_all(
                 main_state,
                 aux_state,
