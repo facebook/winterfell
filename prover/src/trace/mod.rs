@@ -174,9 +174,10 @@ pub trait Trace: Sized {
             vec![Self::BaseField::ZERO; air.context().num_main_transition_constraints()];
         let mut aux_evaluations = vec![E::ZERO; air.context().num_aux_transition_constraints()];
 
-        // we check transition constraints on all steps except the last k steps, where k is the
-        // number of steps exempt from transition constraints (guaranteed to be at least 1)
-        for step in 0..self.length() - air.context().num_transition_exemptions() {
+        let frame_shift = A::Frame::<E>::FRAME_SHIFT;
+        for i in 0..self.length() / frame_shift - 1 {
+            let step = i * frame_shift;
+
             // build periodic values
             for (p, v) in periodic_values_polys.iter().zip(periodic_values.iter_mut()) {
                 let num_cycles = air.trace_length() / p.len();
@@ -221,7 +222,7 @@ pub trait Trace: Sized {
             }
 
             // update x coordinate of the domain
-            x *= g;
+            x *= g.exp((frame_shift as u64).into());
         }
     }
 }

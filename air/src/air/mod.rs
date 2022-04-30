@@ -479,9 +479,12 @@ pub trait Air: Send + Sync {
         self.context().options.domain_offset()
     }
 
-    fn eval_frame_size(&self) -> usize {
-        // TODO
-        2
+    fn eval_frame_offsets<E: FieldElement>(&self) -> &'static [usize] {
+        Self::Frame::<E>::offsets()
+    }
+
+    fn eval_frame_size<E: FieldElement>(&self) -> usize {
+        self.eval_frame_offsets::<E>().len()
     }
 
     // TRACE SEGMENT RANDOMNESS
@@ -553,7 +556,7 @@ pub trait Air: Send + Sync {
         let mut t_coefficients = Vec::new();
         for _ in 0..self.trace_info().width() {
             let mut values = Vec::new();
-            for _ in 0..self.eval_frame_size() + 1 {
+            for _ in 0..self.eval_frame_offsets::<E>().len() + 1 {
                 values.push(public_coin.draw()?);
             }
             t_coefficients.push(values);

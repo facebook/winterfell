@@ -108,7 +108,7 @@ impl<
             .parse(
                 main_trace_width,
                 aux_trace_width,
-                air.eval_frame_size(),
+                air.eval_frame_size::<E>(),
                 air.ce_blowup_factor(),
             )
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;

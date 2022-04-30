@@ -98,7 +98,7 @@ impl OodFrame {
         let mut rows = vec![];
         let mut aux_rows = vec![];
 
-        // parse current and next trace states for main and auxiliary trace evaluation frames
+        // parse trace states for main and auxiliary trace evaluation frames
         let mut reader = SliceReader::new(&self.trace_states);
         for _ in 0..eval_frame_size {
             let row = E::read_batch_from(&mut reader, main_trace_width)?;

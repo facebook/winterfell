@@ -39,14 +39,16 @@ impl<E: FieldElement> ConstraintEvaluationTable<E> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Returns a new constraint evaluation table with number of columns equal to the number of
-    /// specified divisors, and number of rows equal to the size of constraint evaluation domain.
+    /// specified divisors, and number of rows equal to the size of constraint evaluation domain
+    /// divided by the evaluation frame shift.
     #[cfg(not(debug_assertions))]
     pub fn new(
         domain: &StarkDomain<E::BaseField>,
         divisors: Vec<ConstraintDivisor<E::BaseField>>,
+        frame_shift: usize,
     ) -> Self {
         let num_columns = divisors.len();
-        let num_rows = domain.ce_domain_size();
+        let num_rows = domain.ce_domain_size() / frame_shift;
         ConstraintEvaluationTable {
             evaluations: uninit_matrix(num_columns, num_rows),
             divisors,
@@ -63,9 +65,10 @@ impl<E: FieldElement> ConstraintEvaluationTable<E> {
         domain: &StarkDomain<E::BaseField>,
         divisors: Vec<ConstraintDivisor<E::BaseField>>,
         transition_constraints: &TransitionConstraints<E>,
+        frame_shift: usize,
     ) -> Self {
         let num_columns = divisors.len();
-        let num_rows = domain.ce_domain_size();
+        let num_rows = domain.ce_domain_size() / frame_shift;
         let num_tm_columns = transition_constraints.num_main_constraints();
         let num_ta_columns = transition_constraints.num_aux_constraints();
 

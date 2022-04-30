@@ -39,8 +39,10 @@ impl<E: FieldElement> DeepComposer<E> {
             field_extension: air.options().field_extension(),
             cc,
             x_coordinates,
-            z: (0..air.eval_frame_size())
-                .map(|i| z * g.exp((i as u64).into()))
+            z: air
+                .eval_frame_offsets::<E>()
+                .into_iter()
+                .map(|i| z * g.exp((*i as u64).into()))
                 .collect(),
         }
     }

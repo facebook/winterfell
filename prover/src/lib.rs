@@ -348,7 +348,7 @@ pub trait Prover {
         // evaluate trace and constraint polynomials at the OOD point z, and send the results to
         // the verifier. the trace polynomials are actually evaluated over two points: z and z * g,
         // where g is the generator of the trace domain.
-        let ood_trace_states = trace_polys.get_ood_frame(z, air.eval_frame_size());
+        let ood_trace_states = trace_polys.get_ood_frame(z, air.eval_frame_offsets::<E>());
         channel.send_ood_trace_states(&ood_trace_states);
 
         let ood_evaluations = composition_poly.evaluate_at(z);
