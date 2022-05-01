@@ -48,8 +48,6 @@ pub struct DefaultEvaluationFrame<E: FieldElement> {
 // DEFAULT EVALUATION FRAME
 // ================================================================================================
 
-impl<E: FieldElement> DefaultEvaluationFrame<E> {}
-
 impl<E: FieldElement> EvaluationFrame<E> for DefaultEvaluationFrame<E> {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------

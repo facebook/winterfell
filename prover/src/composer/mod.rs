@@ -72,6 +72,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
         &mut self,
         trace_polys: TracePolyTable<E>,
         ood_trace_states: Vec<Vec<E>>,
+        eval_frame_offsets: Vec<usize>,
     ) {
         assert!(self.coefficients.is_empty());
 
@@ -80,7 +81,8 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
         // compute out-of-domain point offset from z using the trace generator
         let trace_length = trace_polys.poly_size();
         let g = E::from(E::BaseField::get_root_of_unity(log2(trace_length)));
-        let mut z: Vec<E> = (0..frame_size)
+        let mut z: Vec<E> = eval_frame_offsets
+            .into_iter()
             .map(|i| self.z * g.exp((i as u64).into()))
             .collect();
 

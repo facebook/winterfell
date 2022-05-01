@@ -9,7 +9,7 @@ use std::time::Instant;
 use structopt::StructOpt;
 use winterfell::StarkProof;
 
-use examples::{fibonacci, rescue, vdf, ExampleOptions, ExampleType};
+use examples::{custom_frames, fibonacci, rescue, vdf, ExampleOptions, ExampleType};
 #[cfg(feature = "std")]
 use examples::{lamport, merkle, rescue_raps};
 
@@ -56,6 +56,9 @@ fn main() {
         #[cfg(feature = "std")]
         ExampleType::LamportT { num_signers } => {
             lamport::threshold::get_example(options, num_signers)
+        }
+        ExampleType::Fib1 { sequence_length } => {
+            custom_frames::fib1::get_example(options, sequence_length)
         }
     };
 
