@@ -45,10 +45,9 @@ impl<E: FieldElement> ConstraintEvaluationTable<E> {
     pub fn new(
         domain: &StarkDomain<E::BaseField>,
         divisors: Vec<ConstraintDivisor<E::BaseField>>,
-        frame_shift: usize,
     ) -> Self {
         let num_columns = divisors.len();
-        let num_rows = domain.ce_domain_size() / frame_shift;
+        let num_rows = domain.ce_domain_size();
         ConstraintEvaluationTable {
             evaluations: uninit_matrix(num_columns, num_rows),
             divisors,
@@ -65,10 +64,9 @@ impl<E: FieldElement> ConstraintEvaluationTable<E> {
         domain: &StarkDomain<E::BaseField>,
         divisors: Vec<ConstraintDivisor<E::BaseField>>,
         transition_constraints: &TransitionConstraints<E>,
-        frame_shift: usize,
     ) -> Self {
         let num_columns = divisors.len();
-        let num_rows = domain.ce_domain_size() / frame_shift;
+        let num_rows = domain.ce_domain_size();
         let num_tm_columns = transition_constraints.num_main_constraints();
         let num_ta_columns = transition_constraints.num_aux_constraints();
 

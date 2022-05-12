@@ -92,15 +92,10 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         // memory to hold all transition constraint evaluations (before they are merged into a
         // single value) so that we can check their degrees later
         #[cfg(not(debug_assertions))]
-        let mut evaluation_table =
-            ConstraintEvaluationTable::<E>::new(domain, divisors, A::Frame::<E>::FRAME_SHIFT);
+        let mut evaluation_table = ConstraintEvaluationTable::<E>::new(domain, divisors);
         #[cfg(debug_assertions)]
-        let mut evaluation_table = ConstraintEvaluationTable::<E>::new(
-            domain,
-            divisors,
-            &self.transition_constraints,
-            A::Frame::<E>::FRAME_SHIFT,
-        );
+        let mut evaluation_table =
+            ConstraintEvaluationTable::<E>::new(domain, divisors, &self.transition_constraints);
 
         // when `concurrent` feature is enabled, break the evaluation table into multiple fragments
         // to evaluate them into multiple threads; unless the constraint evaluation domain is small,
@@ -155,15 +150,14 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
 
         // pre-compute values needed to determine x coordinates in the constraint evaluation domain
         let g = domain.ce_domain_generator();
-        let frame_shift = A::Frame::<E>::FRAME_SHIFT;
-        let mut x = domain.offset() * g.exp(((fragment.offset() * frame_shift) as u64).into());
+        let mut x = domain.offset() * g.exp(((fragment.offset()) as u64).into());
 
         // this will be used to convert steps in constraint evaluation domain to steps in
         // LDE domain
         let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
 
         for i in 0..fragment.num_rows() {
-            let step = i * frame_shift + fragment.offset();
+            let step = i + fragment.offset();
 
             // update evaluation frame buffer with data from the execution trace; this will
             // read the relevant rows from the trace into the buffer; data in the trace
@@ -190,7 +184,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
             fragment.update_row(i, &evaluations);
 
             // update x to the next value
-            x *= g.exp((frame_shift as u64).into());
+            x *= g;
         }
     }
 
@@ -213,15 +207,14 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
 
         // pre-compute values needed to determine x coordinates in the constraint evaluation domain
         let g = domain.ce_domain_generator();
-        let frame_shift = A::Frame::<E>::FRAME_SHIFT;
-        let mut x = domain.offset() * g.exp(((fragment.offset() * frame_shift) as u64).into());
+        let mut x = domain.offset() * g.exp(((fragment.offset()) as u64).into());
 
         // this will be used to convert steps in constraint evaluation domain to steps in
         // LDE domain
         let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
 
         for i in 0..fragment.num_rows() {
-            let step = i * frame_shift + fragment.offset();
+            let step = i + fragment.offset();
 
             // read both the main and the auxiliary evaluation frames from the trace
             trace.read_main_trace_frame_into(step << lde_shift, &mut main_frame);
@@ -259,7 +252,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
             fragment.update_row(i, &evaluations);
 
             // update x to the next value
-            x *= g.exp((frame_shift as u64).into());
+            x *= g;
         }
     }
 

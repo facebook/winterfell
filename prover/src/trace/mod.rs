@@ -176,9 +176,8 @@ pub trait Trace: Sized {
 
         // we check transition constraints on all steps except the last k steps, where k is the
         // number of steps exempt from transition constraints (guaranteed to be at least 1)
-        let frame_shift = A::Frame::<E>::FRAME_SHIFT;
-        for i in 0..self.length() / frame_shift - air.context().num_transition_exemptions() {
-            let step = i * frame_shift;
+        for i in 0..self.length() - air.context().num_transition_exemptions() {
+            let step = i;
 
             // build periodic values
             for (p, v) in periodic_values_polys.iter().zip(periodic_values.iter_mut()) {
@@ -189,7 +188,7 @@ pub trait Trace: Sized {
 
             // evaluate transition constraints for the main trace segment and make sure they all
             // evaluate to zeros
-            main_frame.read_from(self.main_segment(), step, 1);
+            main_frame.read_from(self.main_segment(), step, 0, 1);
             air.evaluate_transition(&main_frame, &periodic_values, &mut main_evaluations);
             for (i, &evaluation) in main_evaluations.iter().enumerate() {
                 assert!(
@@ -203,8 +202,10 @@ pub trait Trace: Sized {
             // evaluate transition constraints for auxiliary trace segments (if any) and make
             // sure they all evaluate to zeros
             if let Some(ref mut aux_frame) = aux_frame {
+                let mut offset = 0;
                 for aux_segment in aux_segments {
-                    aux_frame.read_from(aux_segment, step, 1);
+                    aux_frame.read_from(aux_segment, step, offset, 1);
+                    offset += aux_segment.num_cols();
                 }
                 air.evaluate_aux_transition(
                     &main_frame,
@@ -224,7 +225,7 @@ pub trait Trace: Sized {
             }
 
             // update x coordinate of the domain
-            x *= g.exp((frame_shift as u64).into());
+            x *= g;
         }
     }
 }

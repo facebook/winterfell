@@ -30,7 +30,13 @@ impl<E: FieldElement> EvaluationFrame<E> for FibEvaluationFrame<E> {
     // ROW MUTATORS
     // --------------------------------------------------------------------------------------------
 
-    fn read_from<R: TableReader<E>>(&mut self, data: R, step: usize, blowup: usize) {
+    fn read_from<R: TableReader<E>>(
+        &mut self,
+        data: R,
+        step: usize,
+        _offset: usize,
+        blowup: usize,
+    ) {
         let trace_len = data.num_rows();
         for (row, row_idx) in self.table.rows_mut().zip(Self::offsets().into_iter()) {
             for col_idx in 0..data.num_cols() {

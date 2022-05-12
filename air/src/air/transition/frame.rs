@@ -11,10 +11,6 @@ use utils::TableReader;
 /// It is passed in as one of the parameters into
 /// [Air::evaluate_transition()](crate::Air::evaluate_transition) function.
 pub trait EvaluationFrame<E: FieldElement> {
-    /// Amount of trace rows that the evaluation frame should shift across
-    /// consecutive constraint evaluation steps
-    const FRAME_SHIFT: usize = 1;
-
     /// Creates an empty frame
     fn new<A: Air>(air: &A) -> Self;
 
@@ -25,7 +21,7 @@ pub trait EvaluationFrame<E: FieldElement> {
     fn to_table(&self) -> Table<E>;
 
     /// Reads selected trace rows from the supplied data into the frame
-    fn read_from<R: TableReader<E>>(&mut self, data: R, step: usize, blowup: usize);
+    fn read_from<R: TableReader<E>>(&mut self, data: R, step: usize, offset: usize, blowup: usize);
 
     /// Returns the specified frame row
     fn row<'a>(&'a self, index: usize) -> &'a [E];
@@ -67,11 +63,11 @@ impl<E: FieldElement> EvaluationFrame<E> for DefaultEvaluationFrame<E> {
     // ROW MUTATORS
     // --------------------------------------------------------------------------------------------
 
-    fn read_from<R: TableReader<E>>(&mut self, data: R, step: usize, blowup: usize) {
+    fn read_from<R: TableReader<E>>(&mut self, data: R, step: usize, offset: usize, blowup: usize) {
         let trace_len = data.num_rows();
         for (row, row_idx) in self.table.rows_mut().zip(Self::offsets().into_iter()) {
             for col_idx in 0..data.num_cols() {
-                row[col_idx] = data.get(col_idx, (step + row_idx * blowup) % trace_len);
+                row[col_idx + offset] = data.get(col_idx, (step + row_idx * blowup) % trace_len);
             }
         }
     }
