@@ -94,8 +94,8 @@ impl Air for RescueRapsAir {
         periodic_values: &[E],
         result: &mut [E],
     ) {
-        let current = frame.row(0);
-        let next = frame.row(1);
+        let current = frame.current();
+        let next = frame.next();
         // expected state width is 2*4 field elements
         debug_assert_eq!(TRACE_WIDTH, current.len());
         debug_assert_eq!(TRACE_WIDTH, next.len());
@@ -163,11 +163,11 @@ impl Air for RescueRapsAir {
         F: FieldElement<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
     {
-        let main_current = main_frame.row(0);
-        let main_next = main_frame.row(1);
+        let main_current = main_frame.current();
+        let main_next = main_frame.next();
 
-        let aux_current = aux_frame.row(0);
-        let aux_next = aux_frame.row(1);
+        let aux_current = aux_frame.current();
+        let aux_next = aux_frame.next();
 
         let random_elements = aux_rand_elements.get_segment_elements(0);
 

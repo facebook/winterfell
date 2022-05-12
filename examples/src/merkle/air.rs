@@ -63,8 +63,8 @@ impl Air for MerkleAir {
         periodic_values: &[E],
         result: &mut [E],
     ) {
-        let current = frame.row(0);
-        let next = frame.row(1);
+        let current = frame.current();
+        let next = frame.next();
         // expected state width is 4 field elements
         debug_assert_eq!(TRACE_WIDTH, current.len());
         debug_assert_eq!(TRACE_WIDTH, next.len());

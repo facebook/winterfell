@@ -87,3 +87,12 @@ impl<E: FieldElement> EvaluationFrame<E> for DefaultEvaluationFrame<E> {
         &[0, 1]
     }
 }
+
+impl<E: FieldElement> DefaultEvaluationFrame<E> {
+    pub fn current<'a>(&'a self) -> &'a [E] {
+        &self.table.get_row(0)
+    }
+    pub fn next<'a>(&'a self) -> &'a [E] {
+        &self.table.get_row(1)
+    }
+}

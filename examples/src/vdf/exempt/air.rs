@@ -59,8 +59,8 @@ impl Air for VdfAir {
         _periodic_values: &[E],
         result: &mut [E],
     ) {
-        let current_state = frame.row(0)[0];
-        let next_state = frame.row(1)[0];
+        let current_state = frame.current()[0];
+        let next_state = frame.next()[0];
 
         result[0] = current_state - (next_state.exp(ALPHA.into()) + FORTY_TWO.into());
     }
