@@ -253,7 +253,16 @@ impl Add for BaseElement {
     #[allow(clippy::suspicious_arithmetic_impl)]
     fn add(self, rhs: Self) -> Self {
         let (result, over) = self.0.overflowing_add(rhs.as_int());
-        Self(result.wrapping_sub(M * (over as u64)))
+        let mut val = result.wrapping_sub(M * (over as u64));
+        // For some reason, this `if` codeblock improves NTT runtime by ~10 % and
+        // Rescue prime calculations with up to 45 % for `hash_pair`. I think it has
+        // something to do with a compiler optimization but I actually don't
+        // understand why this speedup occurs.
+        if val > M - 1 {
+            val -= M;
+        }
+
+        Self(val)
     }
 }
 
