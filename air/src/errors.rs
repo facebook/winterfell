@@ -8,7 +8,7 @@ use core::fmt;
 // ASSERTION ERROR
 // ================================================================================================
 /// Represents an error returned during assertion evaluation.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum AssertionError {
     /// This error occurs when an assertion is evaluated against an execution trace which does not
     /// contain a column specified by the assertion.

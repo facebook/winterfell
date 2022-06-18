@@ -11,7 +11,7 @@ use utils::string::String;
 // VERIFIER ERROR
 // ================================================================================================
 /// Represents an error returned by the verifier during an execution of the protocol.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum VerifierError {
     /// This error occurs when base field read by a verifier from a proof does not match the
     /// base field of AIR with which the verifier was instantiated.
