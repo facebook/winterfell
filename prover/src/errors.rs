@@ -10,7 +10,7 @@ use core::fmt;
 // PROVER ERROR
 // ================================================================================================
 /// Represents an error returned by the prover during an execution of the protocol.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ProverError {
     /// This error occurs when a transition constraint evaluated over a specific execution trace
     /// does not evaluate to zero at any of the steps.
