@@ -65,6 +65,11 @@ impl<B: ExtensibleField<3>> FieldElement for CubeExtension<B> {
     const ONE: Self = Self(B::ONE, B::ZERO, B::ZERO);
 
     #[inline]
+    fn double(self) -> Self {
+        Self(self.0.double(), self.1.double(), self.2.double())
+    }
+
+    #[inline]
     fn inv(self) -> Self {
         if self == Self::ZERO {
             return self;

@@ -65,6 +65,11 @@ impl<B: ExtensibleField<2>> FieldElement for QuadExtension<B> {
     const ONE: Self = Self(B::ONE, B::ZERO);
 
     #[inline]
+    fn double(self) -> Self {
+        Self(self.0.double(), self.1.double())
+    }
+
+    #[inline]
     fn inv(self) -> Self {
         if self == Self::ZERO {
             return self;
