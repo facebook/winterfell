@@ -78,6 +78,13 @@ impl FieldElement for BaseElement {
     const ELEMENT_BYTES: usize = ELEMENT_BYTES;
     const IS_CANONICAL: bool = false;
 
+    #[inline]
+    fn double(self) -> Self {
+        let z = self.0 << 1;
+        let q = (z >> 62) * M;
+        Self(z - q)
+    }
+
     fn exp(self, power: Self::PositiveInteger) -> Self {
         let mut b = self;
 

@@ -73,6 +73,13 @@ impl FieldElement for BaseElement {
     const IS_CANONICAL: bool = false;
 
     #[inline]
+    fn double(self) -> Self {
+        let ret = (self.0 as u128) << 1;
+        let (result, over) = (ret as u64, (ret >> 64) as u64);
+        Self(result.wrapping_sub(M * (over as u64)))
+    }
+
+    #[inline]
     fn exp(self, power: Self::PositiveInteger) -> Self {
         let mut b = self;
 
