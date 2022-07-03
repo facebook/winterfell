@@ -3,8 +3,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{Matrix, StarkDomain};
-use math::{polynom, FieldElement, StarkField};
+use super::{StarkDomain, Table};
+use math::{polynom, FieldElement, Matrix, StarkField};
 use utils::{collections::Vec, uninit_vector};
 
 // COMPOSITION POLYNOMIAL
@@ -13,7 +13,7 @@ use utils::{collections::Vec, uninit_vector};
 /// to trace_length. Thus, for example, if the composition polynomial has degree 2N - 1, where N
 /// is the trace length, it will be stored as two columns of size N (each of degree N - 1).
 pub struct CompositionPoly<E: FieldElement> {
-    data: Matrix<E>,
+    data: Table<E>,
 }
 
 impl<E: FieldElement> CompositionPoly<E> {
@@ -44,7 +44,7 @@ impl<E: FieldElement> CompositionPoly<E> {
         let polys = transpose(coefficients, num_columns);
 
         CompositionPoly {
-            data: Matrix::new(polys),
+            data: Table::new(polys),
         }
     }
 
@@ -72,7 +72,7 @@ impl<E: FieldElement> CompositionPoly<E> {
     // --------------------------------------------------------------------------------------------
     /// Evaluates the columns of the composition polynomial over the specified LDE domain and
     /// returns the result.
-    pub fn evaluate<B>(&self, domain: &StarkDomain<B>) -> Matrix<E>
+    pub fn evaluate<B>(&self, domain: &StarkDomain<B>) -> Table<E>
     where
         B: StarkField,
         E: FieldElement<BaseField = B>,

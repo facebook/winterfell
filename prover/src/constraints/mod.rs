@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{ConstraintDivisor, Matrix, ProverError, StarkDomain};
+use super::{ConstraintDivisor, ProverError, StarkDomain, Table};
 
 mod boundary;
 use boundary::BoundaryConstraints;

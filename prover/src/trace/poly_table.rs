@@ -4,10 +4,10 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{
-    matrix::{ColumnIter, MultiColumnIter},
-    Matrix,
+    table::{ColIterator, MultiColIterator},
+    Table,
 };
-use math::{log2, FieldElement, StarkField};
+use math::{log2, FieldElement, Matrix, StarkField};
 use utils::collections::Vec;
 
 // TRACE POLYNOMIAL TABLE
@@ -19,15 +19,15 @@ use utils::collections::Vec;
 /// However, coefficients of the polynomials for the auxiliary trace segments may be either in the
 /// base field, or in the extension field, depending on whether extension field is being used.
 pub struct TracePolyTable<E: FieldElement> {
-    main_segment_polys: Matrix<E::BaseField>,
-    aux_segment_polys: Vec<Matrix<E>>,
+    main_segment_polys: Table<E::BaseField>,
+    aux_segment_polys: Vec<Table<E>>,
 }
 
 impl<E: FieldElement> TracePolyTable<E> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Creates a new table of trace polynomials from the provided main trace segment polynomials.
-    pub fn new(main_trace_polys: Matrix<E::BaseField>) -> Self {
+    pub fn new(main_trace_polys: Table<E::BaseField>) -> Self {
         Self {
             main_segment_polys: main_trace_polys,
             aux_segment_polys: Vec::new(),
@@ -38,7 +38,7 @@ impl<E: FieldElement> TracePolyTable<E> {
     // --------------------------------------------------------------------------------------------
 
     /// Adds the provided auxiliary segment polynomials to this polynomial table.
-    pub fn add_aux_segment(&mut self, aux_segment_polys: Matrix<E>) {
+    pub fn add_aux_segment(&mut self, aux_segment_polys: Table<E>) {
         assert_eq!(
             self.main_segment_polys.num_rows(),
             aux_segment_polys.num_rows(),
@@ -72,13 +72,13 @@ impl<E: FieldElement> TracePolyTable<E> {
     }
 
     /// Returns an iterator over the polynomials of the main trace segment.
-    pub fn main_trace_polys(&self) -> ColumnIter<E::BaseField> {
-        self.main_segment_polys.columns()
+    pub fn main_trace_polys(&self) -> ColIterator<E::BaseField> {
+        ColIterator::new(&self.main_segment_polys)
     }
 
     /// Returns an iterator over the polynomials of all auxiliary trace segments.
-    pub fn aux_trace_polys(&self) -> MultiColumnIter<E> {
-        MultiColumnIter::new(self.aux_segment_polys.as_slice())
+    pub fn aux_trace_polys(&self) -> MultiColIterator<E> {
+        MultiColIterator::new(self.aux_segment_polys.as_slice())
     }
 
     // TEST HELPERS

@@ -11,7 +11,7 @@ use crate::{
 use crypto::{hashers::Blake3_256, ElementHasher, MerkleTree};
 use math::{
     fields::f128::BaseElement, get_power_series, get_power_series_with_offset, log2, polynom,
-    FieldElement, StarkField,
+    FieldElement, Matrix, StarkField,
 };
 use utils::collections::Vec;
 

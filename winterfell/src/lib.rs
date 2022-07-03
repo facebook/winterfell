@@ -530,7 +530,7 @@ pub use prover::{
     BoundaryConstraintGroup, ByteReader, ByteWriter, ConstraintCompositionCoefficients,
     ConstraintDivisor, DeepCompositionCoefficients, Deserializable, DeserializationError,
     EvaluationFrame, FieldExtension, HashFunction, Matrix, ProofOptions, Prover, ProverError,
-    Serializable, SliceReader, StarkProof, Trace, TraceInfo, TraceLayout, TraceTable,
+    Serializable, SliceReader, StarkProof, Table, Trace, TraceInfo, TraceLayout, TraceTable,
     TraceTableFragment, TransitionConstraintDegree, TransitionConstraintGroup,
 };
 pub use verifier::{verify, VerifierError};

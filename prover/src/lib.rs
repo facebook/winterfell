@@ -58,6 +58,7 @@ use fri::FriProver;
 use utils::collections::Vec;
 
 pub use math;
+pub use math::Matrix;
 use math::{
     fft::infer_degree,
     fields::{CubeExtension, QuadExtension},
@@ -80,8 +81,8 @@ use std::time::Instant;
 mod domain;
 pub use domain::StarkDomain;
 
-mod matrix;
-pub use matrix::Matrix;
+mod table;
+pub use table::Table;
 
 mod constraints;
 use constraints::{CompositionPoly, ConstraintCommitment, ConstraintEvaluator};
@@ -458,9 +459,9 @@ pub trait Prover {
     /// building a Merkle tree from the resulting hashes.
     fn build_trace_commitment<E, H>(
         &self,
-        trace: &Matrix<E>,
+        trace: &Table<E>,
         domain: &StarkDomain<Self::BaseField>,
-    ) -> (Matrix<E>, MerkleTree<H>, Matrix<E>)
+    ) -> (Table<E>, MerkleTree<H>, Table<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
         H: ElementHasher<BaseField = Self::BaseField>,

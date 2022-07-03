@@ -3,9 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{Matrix, Trace};
+use super::{Table, Trace};
 use air::{EvaluationFrame, TraceInfo, TraceLayout};
-use math::{log2, FieldElement, StarkField};
+use math::{log2, FieldElement, Matrix, StarkField};
 use utils::{collections::Vec, uninit_vector};
 
 #[cfg(not(feature = "concurrent"))]
@@ -61,7 +61,7 @@ const MIN_FRAGMENT_LENGTH: usize = 2;
 /// semantics of the [TraceTable::fill()] method.
 pub struct TraceTable<B: StarkField> {
     layout: TraceLayout,
-    trace: Matrix<B>,
+    trace: Table<B>,
     meta: Vec<u8>,
 }
 
@@ -132,7 +132,7 @@ impl<B: StarkField> TraceTable<B> {
         let columns = unsafe { (0..width).map(|_| uninit_vector(length)).collect() };
         Self {
             layout: TraceLayout::new(width, [0], [0]),
-            trace: Matrix::new(columns),
+            trace: Table::new(columns),
             meta,
         }
     }
@@ -183,7 +183,7 @@ impl<B: StarkField> TraceTable<B> {
 
         Self {
             layout: TraceLayout::new(columns.len(), [0], [0]),
-            trace: Matrix::new(columns),
+            trace: Table::new(columns),
             meta: vec![],
         }
     }
@@ -366,15 +366,15 @@ impl<B: StarkField> Trace for TraceTable<B> {
         self.trace.read_row_into(next_row_idx, frame.next_mut());
     }
 
-    fn main_segment(&self) -> &Matrix<B> {
+    fn main_segment(&self) -> &Table<B> {
         &self.trace
     }
 
     fn build_aux_segment<E>(
         &mut self,
-        _aux_segments: &[Matrix<E>],
+        _aux_segments: &[Table<E>],
         _rand_elements: &[E],
-    ) -> Option<Matrix<E>>
+    ) -> Option<Table<E>>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {

@@ -101,7 +101,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
             // and add the result into composition polynomial
             acc_trace_poly::<E::BaseField, E>(
                 &mut t1_composition,
-                poly,
+                poly.as_slice(),
                 ood_trace_states[0][i],
                 self.cc.trace[i].0,
             );
@@ -110,7 +110,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
             // and add the result into composition polynomial
             acc_trace_poly::<E::BaseField, E>(
                 &mut t2_composition,
-                poly,
+                poly.as_slice(),
                 ood_trace_states[1][i],
                 self.cc.trace[i].1,
             );
@@ -120,7 +120,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
             if self.field_extension {
                 acc_trace_poly::<E::BaseField, E>(
                     &mut t3_composition,
-                    poly,
+                    poly.as_slice(),
                     ood_trace_states[0][i].conjugate(),
                     self.cc.trace[i].2,
                 );
@@ -138,7 +138,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
             // and add the result into composition polynomial
             acc_trace_poly::<E, E>(
                 &mut t1_composition,
-                poly,
+                poly.as_slice(),
                 ood_trace_states[0][i],
                 self.cc.trace[i].0,
             );
@@ -147,7 +147,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
             // and add the result into composition polynomial
             acc_trace_poly::<E, E>(
                 &mut t2_composition,
-                poly,
+                poly.as_slice(),
                 ood_trace_states[1][i],
                 self.cc.trace[i].1,
             );

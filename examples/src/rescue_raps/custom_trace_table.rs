@@ -6,7 +6,7 @@
 use core_utils::{collections::Vec, uninit_vector};
 use winterfell::{
     math::{log2, FieldElement, StarkField},
-    EvaluationFrame, Matrix, Trace, TraceInfo, TraceLayout,
+    EvaluationFrame, Matrix, Table, Trace, TraceInfo, TraceLayout,
 };
 
 // RAP TRACE TABLE
@@ -29,7 +29,7 @@ use winterfell::{
 /// parameter which can be an arbitrary sequence of bytes up to 64KB in size.
 pub struct RapTraceTable<B: StarkField> {
     layout: TraceLayout,
-    trace: Matrix<B>,
+    trace: Table<B>,
     meta: Vec<u8>,
 }
 
@@ -100,7 +100,7 @@ impl<B: StarkField> RapTraceTable<B> {
         let columns = unsafe { (0..width).map(|_| uninit_vector(length)).collect() };
         Self {
             layout: TraceLayout::new(width, [3], [3]),
-            trace: Matrix::new(columns),
+            trace: Table::new(columns),
             meta,
         }
     }
@@ -182,15 +182,15 @@ impl<B: StarkField> Trace for RapTraceTable<B> {
         self.trace.read_row_into(next_row_idx, frame.next_mut());
     }
 
-    fn main_segment(&self) -> &Matrix<B> {
+    fn main_segment(&self) -> &Table<B> {
         &self.trace
     }
 
     fn build_aux_segment<E>(
         &mut self,
-        aux_segments: &[Matrix<E>],
+        aux_segments: &[Table<E>],
         rand_elements: &[E],
-    ) -> Option<Matrix<E>>
+    ) -> Option<Table<E>>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
@@ -232,6 +232,6 @@ impl<B: StarkField> Trace for RapTraceTable<B> {
             aux_columns[2][index] = aux_columns[2][index - 1] * num * denom.inv();
         }
 
-        Some(Matrix::new(aux_columns))
+        Some(Table::new(aux_columns))
     }
 }
