@@ -16,6 +16,8 @@ use crate::{
     utils::{get_power_series, log2},
 };
 
+pub mod matrix;
+
 mod serial;
 
 #[cfg(feature = "concurrent")]
