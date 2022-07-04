@@ -37,8 +37,8 @@ One of the core operations performed during STARK proof generation is constructi
 
 | CPU                         | BLAKE3_256 | SHA3_256 | RP64_256 | RP62_248 |
 | --------------------------- | :--------: | :------: | :------: | :------: |
-| Apple M1 Pro                | 76 ns      | 227 ns   | 8.6 us   | 7.1 us   |
-| AMD Ryzen 9 5950X @ 3.4 GHz | 62 ns      | 310 ns   | 8.7 us   | 6.9 us   |
+| Apple M1 Pro                | 76 ns      | 227 ns   | 6.9 us   | 7.1 us   |
+| AMD Ryzen 9 5950X @ 3.4 GHz | 62 ns      | 310 ns   | 7.4 us   | 6.9 us   |
 | Core i9-9980KH @ 2.4 GHz    | 66 ns      | 400 ns   | -        | 6.6 us   |
 | Core i5-7300U @ 2.6 GHz     | 81 ns      | 540 ns   | -        | 9.5 us   |
 | Core i5-4300U @ 1.9 GHz     | 106 ns     | 675 ns   | -        | 13.9 us  |
