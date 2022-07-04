@@ -329,8 +329,8 @@ impl<B: ExtensibleField<2>> Deserializable for QuadExtension<B> {
 
 #[cfg(test)]
 mod tests {
-    use super::{DeserializationError, FieldElement, QuadExtension, Vec};
-    use crate::field::f128::BaseElement;
+    use super::{DeserializationError, FieldElement, QuadExtension};
+    use crate::field::f64::BaseElement;
     use rand_utils::rand_value;
 
     // BASIC ALGEBRA
@@ -386,11 +386,11 @@ mod tests {
             QuadExtension(BaseElement::new(3), BaseElement::new(4)),
         ];
 
-        let expected: Vec<u8> = vec![
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0,
-        ];
+        let mut expected = vec![];
+        expected.extend_from_slice(&source[0].0.inner().to_le_bytes());
+        expected.extend_from_slice(&source[0].1.inner().to_le_bytes());
+        expected.extend_from_slice(&source[1].0.inner().to_le_bytes());
+        expected.extend_from_slice(&source[1].1.inner().to_le_bytes());
 
         assert_eq!(
             expected,
@@ -400,20 +400,20 @@ mod tests {
 
     #[test]
     fn bytes_as_elements() {
-        let bytes: Vec<u8> = vec![
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 5,
-        ];
-
-        let expected = vec![
+        let elements = vec![
             QuadExtension(BaseElement::new(1), BaseElement::new(2)),
             QuadExtension(BaseElement::new(3), BaseElement::new(4)),
         ];
 
-        let result = unsafe { QuadExtension::<BaseElement>::bytes_as_elements(&bytes[..64]) };
+        let mut bytes = vec![];
+        bytes.extend_from_slice(&elements[0].0.inner().to_le_bytes());
+        bytes.extend_from_slice(&elements[0].1.inner().to_le_bytes());
+        bytes.extend_from_slice(&elements[1].0.inner().to_le_bytes());
+        bytes.extend_from_slice(&elements[1].1.inner().to_le_bytes());
+        bytes.extend_from_slice(&BaseElement::new(5).inner().to_le_bytes());
+        let result = unsafe { QuadExtension::<BaseElement>::bytes_as_elements(&bytes[..32]) };
         assert!(result.is_ok());
-        assert_eq!(expected, result.unwrap());
+        assert_eq!(elements, result.unwrap());
 
         let result = unsafe { QuadExtension::<BaseElement>::bytes_as_elements(&bytes) };
         assert!(matches!(result, Err(DeserializationError::InvalidValue(_))));

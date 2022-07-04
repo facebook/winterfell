@@ -340,7 +340,7 @@ impl<B: ExtensibleField<3>> Deserializable for CubeExtension<B> {
 
 #[cfg(test)]
 mod tests {
-    use super::{CubeExtension, DeserializationError, FieldElement, Vec};
+    use super::{CubeExtension, DeserializationError, FieldElement};
     use crate::field::f64::BaseElement;
     use rand_utils::rand_value;
 
@@ -405,10 +405,13 @@ mod tests {
             ),
         ];
 
-        let expected: Vec<u8> = vec![
-            1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0,
-            0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0,
-        ];
+        let mut expected = vec![];
+        expected.extend_from_slice(&source[0].0.inner().to_le_bytes());
+        expected.extend_from_slice(&source[0].1.inner().to_le_bytes());
+        expected.extend_from_slice(&source[0].2.inner().to_le_bytes());
+        expected.extend_from_slice(&source[1].0.inner().to_le_bytes());
+        expected.extend_from_slice(&source[1].1.inner().to_le_bytes());
+        expected.extend_from_slice(&source[1].2.inner().to_le_bytes());
 
         assert_eq!(
             expected,
@@ -418,12 +421,7 @@ mod tests {
 
     #[test]
     fn bytes_as_elements() {
-        let bytes: Vec<u8> = vec![
-            1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0,
-            0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 7,
-        ];
-
-        let expected = vec![
+        let elements = vec![
             CubeExtension(
                 BaseElement::new(1),
                 BaseElement::new(2),
@@ -436,9 +434,18 @@ mod tests {
             ),
         ];
 
+        let mut bytes = vec![];
+        bytes.extend_from_slice(&elements[0].0.inner().to_le_bytes());
+        bytes.extend_from_slice(&elements[0].1.inner().to_le_bytes());
+        bytes.extend_from_slice(&elements[0].2.inner().to_le_bytes());
+        bytes.extend_from_slice(&elements[1].0.inner().to_le_bytes());
+        bytes.extend_from_slice(&elements[1].1.inner().to_le_bytes());
+        bytes.extend_from_slice(&elements[1].2.inner().to_le_bytes());
+        bytes.extend_from_slice(&BaseElement::new(5).inner().to_le_bytes());
+
         let result = unsafe { CubeExtension::<BaseElement>::bytes_as_elements(&bytes[..48]) };
         assert!(result.is_ok());
-        assert_eq!(expected, result.unwrap());
+        assert_eq!(elements, result.unwrap());
 
         let result = unsafe { CubeExtension::<BaseElement>::bytes_as_elements(&bytes) };
         assert!(matches!(result, Err(DeserializationError::InvalidValue(_))));
