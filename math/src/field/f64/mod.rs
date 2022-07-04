@@ -81,7 +81,7 @@ impl FieldElement for BaseElement {
 
     const ELEMENT_BYTES: usize = ELEMENT_BYTES;
     const IS_CANONICAL: bool = false;
-    
+
     #[inline]
     fn double(self) -> Self {
         let ret = (self.0 as u128) << 1;

@@ -106,7 +106,6 @@ fn inv() {
     assert_eq!(BaseElement::ZERO, BaseElement::inv(BaseElement::ZERO));
 }
 
-
 #[test]
 fn element_as_int() {
     let v = u64::MAX;
