@@ -328,9 +328,7 @@ impl Rp64_256 {
     #[inline(always)]
     fn apply_sbox(state: &mut [BaseElement; STATE_WIDTH]) {
         state.iter_mut().for_each(|v| {
-            let t2 = v.square();
-            let t4 = t2.square();
-            *v *= t2 * t4;
+            *v = v.exp7();
         });
     }
 

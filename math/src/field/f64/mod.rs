@@ -70,6 +70,16 @@ impl BaseElement {
     pub const fn inner(&self) -> u64 {
         self.0
     }
+
+    /// Computes an exponentiation to the power 7. This is useful for computing Rescue-Prime
+    /// S-Box over this field.
+    #[inline(always)]
+    pub fn exp7(self) -> Self {
+        let x2 = self.square();
+        let x4 = x2.square();
+        let x3 = x2 * self;
+        x3 * x4
+    }
 }
 
 impl FieldElement for BaseElement {
@@ -91,21 +101,17 @@ impl FieldElement for BaseElement {
 
     #[inline]
     fn exp(self, power: Self::PositiveInteger) -> Self {
-        let mut b = self;
-
-        if power == 0 {
-            return Self::ONE;
-        } else if b == Self::ZERO {
-            return Self::ZERO;
+        let mut b: Self;
+        let mut r = Self::ONE;
+        for i in (0..64).rev() {
+            r = r.square();
+            b = r;
+            b *= self;
+            // Constant-time branching
+            let mask = -(((power >> i) & 1 == 1) as i64) as u64;
+            r.0 ^= mask & (r.0 ^ b.0);
         }
 
-        let mut r = if power & 1 == 1 { b } else { Self::ONE };
-        for i in 1..64 - power.leading_zeros() {
-            b = b.square();
-            if (power >> i) & 1 == 1 {
-                r *= b;
-            }
-        }
         r
     }
 
