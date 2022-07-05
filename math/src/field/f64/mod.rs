@@ -70,6 +70,16 @@ impl BaseElement {
     pub const fn inner(&self) -> u64 {
         self.0
     }
+
+    /// Computes an exponentiation to the power 7. This is useful for computing Rescue-Prime
+    /// S-Box over this field.
+    #[inline(always)]
+    pub fn exp7(self) -> Self {
+        let x2 = self.square();
+        let x4 = x2.square();
+        let x3 = x2 * self;
+        x3 * x4
+    }
 }
 
 impl FieldElement for BaseElement {

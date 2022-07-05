@@ -89,14 +89,17 @@ fn exp() {
     let a = BaseElement::ZERO;
     assert_eq!(a.exp(0), BaseElement::ONE);
     assert_eq!(a.exp(1), BaseElement::ZERO);
+    assert_eq!(a.exp7(), BaseElement::ZERO);
 
     let a = BaseElement::ONE;
     assert_eq!(a.exp(0), BaseElement::ONE);
     assert_eq!(a.exp(1), BaseElement::ONE);
     assert_eq!(a.exp(3), BaseElement::ONE);
+    assert_eq!(a.exp7(), BaseElement::ONE);
 
     let a: BaseElement = rand_value();
     assert_eq!(a.exp(3), a * a * a);
+    assert_eq!(a.exp(7), a.exp7());
 }
 
 #[test]
