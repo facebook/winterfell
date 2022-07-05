@@ -91,21 +91,17 @@ impl FieldElement for BaseElement {
 
     #[inline]
     fn exp(self, power: Self::PositiveInteger) -> Self {
-        let mut b = self;
-
-        if power == 0 {
-            return Self::ONE;
-        } else if b == Self::ZERO {
-            return Self::ZERO;
+        let mut b: Self;
+        let mut r = Self::ONE;
+        for i in (0..64).rev() {
+            r = r.square();
+            b = r;
+            b *= self;
+            // Constant-time branching
+            let mask = -(((power >> i) & 1 == 1) as i64) as u64;
+            r.0 ^= mask & (r.0 ^ b.0);
         }
 
-        let mut r = if power & 1 == 1 { b } else { Self::ONE };
-        for i in 1..64 - power.leading_zeros() {
-            b = b.square();
-            if (power >> i) & 1 == 1 {
-                r *= b;
-            }
-        }
         r
     }
 
