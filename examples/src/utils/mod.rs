@@ -5,7 +5,7 @@
 
 use core::ops::Range;
 use winterfell::{
-    math::{fields::f128::BaseElement, FieldElement, StarkField},
+    math::{FieldElement, StarkField},
     Trace, TraceTable,
 };
 
@@ -58,15 +58,15 @@ impl<E: FieldElement> EvaluationResult<E> for Vec<E> {
 // ================================================================================================
 
 /// Prints out an execution trace.
-pub fn print_trace(
-    trace: &TraceTable<BaseElement>,
+pub fn print_trace<E: StarkField>(
+    trace: &TraceTable<E>,
     multiples_of: usize,
     offset: usize,
     range: Range<usize>,
 ) {
     let trace_width = trace.width();
 
-    let mut state = vec![BaseElement::ZERO; trace_width];
+    let mut state = vec![E::ZERO; trace_width];
     for i in 0..trace.length() {
         if (i.wrapping_sub(offset)) % multiples_of != 0 {
             continue;
@@ -78,20 +78,23 @@ pub fn print_trace(
             state[range.clone()]
                 .iter()
                 .map(|v| v.as_int())
-                .collect::<Vec<u128>>()
+                .collect::<Vec<E::PositiveInteger>>()
         );
     }
 }
 
-pub fn print_trace_step(trace: &[Vec<BaseElement>], step: usize) {
+pub fn print_trace_step<E: StarkField>(trace: &[Vec<E>], step: usize) {
     let trace_width = trace.len();
-    let mut state = vec![BaseElement::ZERO; trace_width];
+    let mut state = vec![E::ZERO; trace_width];
     for i in 0..trace_width {
         state[i] = trace[i][step];
     }
     println!(
         "{}\t{:?}",
         step,
-        state.iter().map(|v| v.as_int()).collect::<Vec<u128>>()
+        state
+            .iter()
+            .map(|v| v.as_int())
+            .collect::<Vec<E::PositiveInteger>>()
     );
 }
