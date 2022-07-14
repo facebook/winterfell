@@ -66,17 +66,23 @@ const INV_ALPHA: u64 = 10540996611094048183;
 ///   margin used in the specifications (a 50% margin rounds up to 8 rounds). The primary
 ///   motivation for this is that having the number of rounds be one less than a power of two
 ///   simplifies AIR design for computations involving the hash function.
-/// * We use the first 4 elements of the state (rather than the last 4 elements of the state) for
-///   capacity and the remaining 8 elements for rate. The output of the hash function comes from
-///   the first four elements of the rate portion of the state (elements 4, 5, 6, and 7). This
-///   effectively applies a fixed bit permutation before and after XLIX permutation. We assert
-///   without proof that this does not affect security of the construction.
 /// * When hashing a sequence of elements, we do not append Fp(1) followed by Fp(0) elements
 ///   to the end of the sequence as padding. Instead, we initialize the first capacity element
 ///   to the number of elements to be hashed, and pad the sequence with Fp(0) elements only. This
 ///   ensures consistency of hash outputs between different hashing methods (see section below).
 ///   However, it also means that our instantiation of Rescue Prime cannot be used in a stream
 ///   mode as the number of elements to be hashed must be known upfront.
+/// * We use the first 4 elements of the state (rather than the last 4 elements of the state) for
+///   capacity and the remaining 8 elements for rate. The output of the hash function comes from
+///   the first four elements of the rate portion of the state (elements 4, 5, 6, and 7). This
+///   effectively applies a fixed bit permutation before and after XLIX permutation. We assert
+///   without proof that this does not affect security of the construction.
+/// * Instead of using Vandermonde matrices as a standard way of generating an MDS matrix as
+///   described in Rescue Prime paper, we use a methodology developed by Polygon Zero to find an
+///   MDS matrix with coefficients which are small powers of two in frequency domain. This allows
+///   us to dramatically reduce MDS matrix multiplication time. Using a different MDS matrix does
+///   not affect security of the hash function as any MDS matrix satisfies Rescue Prime
+///   construction (as described in section 4.2 of the paper).
 ///
 /// The parameters used to instantiate the function are:
 /// * Field: 64-bit prime field with modulus 2^64 - 2^32 + 1.
