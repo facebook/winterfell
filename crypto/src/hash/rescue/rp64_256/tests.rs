@@ -5,12 +5,33 @@
 
 use super::{
     BaseElement, ElementDigest, ElementHasher, FieldElement, Hasher, Rp64_256, StarkField, ALPHA,
-    INV_ALPHA, STATE_WIDTH,
+    INV_ALPHA, INV_MDS, MDS, STATE_WIDTH,
 };
 use core::convert::TryInto;
 
 use rand_utils::{rand_array, rand_value};
 
+#[test]
+fn mds_inv_test() {
+    let mut mul_result = [[BaseElement::new(0); STATE_WIDTH]; STATE_WIDTH];
+    for i in 0..STATE_WIDTH {
+        for j in 0..STATE_WIDTH {
+            let result = {
+                let mut result = BaseElement::new(0);
+                for k in 0..STATE_WIDTH {
+                    result += MDS[i][k] * INV_MDS[k][j]
+                }
+                result
+            };
+            mul_result[i][j] = result;
+            if i == j {
+                assert_eq!(result, BaseElement::new(1));
+            } else {
+                assert_eq!(result, BaseElement::new(0));
+            }
+        }
+    }
+}
 #[test]
 fn test_alphas() {
     let e: BaseElement = rand_value();
@@ -65,18 +86,18 @@ fn apply_permutation() {
 
     // expected values are obtained by executing sage reference implementation code
     let expected = vec![
-        BaseElement::new(10809974140050983728),
-        BaseElement::new(6938491977181280539),
-        BaseElement::new(8834525837561071698),
-        BaseElement::new(6854417192438540779),
-        BaseElement::new(4476630872663101667),
-        BaseElement::new(6292749486700362097),
-        BaseElement::new(18386622366690620454),
-        BaseElement::new(10614098972800193173),
-        BaseElement::new(7543273285584849722),
-        BaseElement::new(9490898458612615694),
-        BaseElement::new(9030271581669113292),
-        BaseElement::new(10101107035874348250),
+        BaseElement::new(11084501481526603421),
+        BaseElement::new(6291559951628160880),
+        BaseElement::new(13626645864671311919),
+        BaseElement::new(18397438323058963117),
+        BaseElement::new(7443014167353970324),
+        BaseElement::new(17930833023906771425),
+        BaseElement::new(4275355080008025761),
+        BaseElement::new(7676681476902901785),
+        BaseElement::new(3460534574143792217),
+        BaseElement::new(11912731278641497187),
+        BaseElement::new(8104899243369883110),
+        BaseElement::new(674509706691634438),
     ];
 
     assert_eq!(expected, state);
