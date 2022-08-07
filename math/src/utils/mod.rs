@@ -160,7 +160,7 @@ where
 /// threads.
 ///
 /// This function is significantly faster than inverting elements one-by-one because it
-/// essentially transforms `n` inversions into `4 * n` multiplications + 1 inversion.
+/// essentially transforms `n` inversions into `3 * n` multiplications + 1 inversion.
 ///
 /// # Examples
 /// ```
