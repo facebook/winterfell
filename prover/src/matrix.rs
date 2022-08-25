@@ -150,10 +150,14 @@ impl<E: FieldElement> Matrix<E> {
     ///   coefficients of a degree `num_rows - 1` polynomial.
     pub fn interpolate_columns(&self) -> Self {
         let inv_twiddles = fft::get_inv_twiddles::<E::BaseField>(self.num_rows());
-        // TODO: get ride of cloning by introducing another version of fft::interpolate_poly()
-        let mut result = self.clone();
-        iter_mut!(result.columns).for_each(|column| fft::interpolate_poly(column, &inv_twiddles));
-        result
+        let columns = iter!(self.columns)
+            .map(|evaluations| {
+                let mut column = evaluations.clone();
+                fft::interpolate_poly(&mut column, &inv_twiddles);
+                column
+            })
+            .collect();
+        Self { columns }
     }
 
     /// Interpolates columns of the matrix into polynomials in coefficient form and returns the
