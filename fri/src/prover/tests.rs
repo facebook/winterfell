@@ -18,45 +18,31 @@ type Blake3 = Blake3_256<BaseElement>;
 // ================================================================================================
 
 #[test]
-fn fri_prove_verify() {
-    let trace_length = 4096;
-    let lde_blowup = 8;
+fn fri_folding_2() {
+    let trace_length_e = 12;
+    let lde_blowup_e = 3;
+    let folding_factor_e = 1;
+    let max_remainder_size_e = 3;
+    fri_prove_verify(
+        trace_length_e,
+        lde_blowup_e,
+        folding_factor_e,
+        max_remainder_size_e,
+    )
+}
 
-    let options = FriOptions::new(lde_blowup, 4, 256);
-    let mut channel = build_prover_channel(trace_length, &options);
-    let evaluations = build_evaluations(trace_length, lde_blowup);
-
-    // instantiate the prover and generate the proof
-    let mut prover = FriProver::new(options.clone());
-    prover.build_layers(&mut channel, evaluations.clone());
-    let positions = channel.draw_query_positions();
-    let proof = prover.build_proof(&positions);
-
-    // make sure the proof can be verified
-    let commitments = channel.layer_commitments().to_vec();
-    let max_degree = trace_length - 1;
-    let result = verify_proof(
-        proof.clone(),
-        commitments.clone(),
-        &evaluations,
-        max_degree,
-        trace_length * lde_blowup,
-        &positions,
-        &options,
-    );
-    assert!(result.is_ok(), "{:}", result.err().unwrap());
-
-    // make sure proof fails for invalid degree
-    let result = verify_proof(
-        proof,
-        commitments,
-        &evaluations,
-        max_degree - 256,
-        trace_length * lde_blowup,
-        &positions,
-        &options,
-    );
-    assert!(result.is_err());
+#[test]
+fn fri_folding_4() {
+    let trace_length_e = 12;
+    let lde_blowup_e = 3;
+    let folding_factor_e = 2;
+    let max_remainder_size_e = 8;
+    fri_prove_verify(
+        trace_length_e,
+        lde_blowup_e,
+        folding_factor_e,
+        max_remainder_size_e,
+    )
 }
 
 // TEST UTILS
@@ -107,10 +93,58 @@ pub fn verify_proof(
     )
     .unwrap();
     let mut coin = RandomCoin::<BaseElement, Blake3>::new(&[]);
-    let verifier = FriVerifier::new(&mut channel, &mut coin, options.clone(), max_degree).unwrap();
+    let verifier = FriVerifier::new(&mut channel, &mut coin, options.clone(), max_degree)?;
     let queried_evaluations = positions
         .iter()
         .map(|&p| evaluations[p])
         .collect::<Vec<_>>();
     verifier.verify(&mut channel, &queried_evaluations, &positions)
+}
+
+fn fri_prove_verify(
+    trace_length_e: usize,
+    lde_blowup_e: usize,
+    folding_factor_e: usize,
+    max_remainder_size_e: usize,
+) {
+    let trace_length = 1 << trace_length_e;
+    let lde_blowup = 1 << lde_blowup_e;
+    let folding_factor = 1 << folding_factor_e;
+    let max_remainder_size = 1 << max_remainder_size_e;
+
+    let options = FriOptions::new(lde_blowup, folding_factor, max_remainder_size);
+    let mut channel = build_prover_channel(trace_length, &options);
+    let evaluations = build_evaluations(trace_length, lde_blowup);
+
+    // instantiate the prover and generate the proof
+    let mut prover = FriProver::new(options.clone());
+    prover.build_layers(&mut channel, evaluations.clone());
+    let positions = channel.draw_query_positions();
+    let proof = prover.build_proof(&positions);
+
+    // make sure the proof can be verified
+    let commitments = channel.layer_commitments().to_vec();
+    let max_degree = trace_length - 1;
+    let result = verify_proof(
+        proof.clone(),
+        commitments.clone(),
+        &evaluations,
+        max_degree,
+        trace_length * lde_blowup,
+        &positions,
+        &options,
+    );
+    assert!(result.is_ok(), "{:}", result.err().unwrap());
+
+    // make sure proof fails for invalid degree
+    let result = verify_proof(
+        proof,
+        commitments,
+        &evaluations,
+        max_degree - 8,
+        trace_length * lde_blowup,
+        &positions,
+        &options,
+    );
+    assert!(result.is_err());
 }

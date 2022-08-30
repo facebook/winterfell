@@ -22,8 +22,8 @@ impl FriOptions {
     /// # Panics
     /// Panics if:
     /// * `blowup_factor` is not a power of two.
-    /// * `folding_factor` is not 4, 8, or 16.
-    /// * `max_remainder_size` is not at least twice the size of the `blowup_factor`.
+    /// * `folding_factor` is not 2, 4, 8, or 16.
+    /// * `max_remainder_size` is not at least twice the size of the `folding_factor`.
     pub fn new(blowup_factor: usize, folding_factor: usize, max_remainder_size: usize) -> Self {
         // TODO: change panics to errors
         assert!(
@@ -32,7 +32,10 @@ impl FriOptions {
             blowup_factor
         );
         assert!(
-            folding_factor == 4 || folding_factor == 8 || folding_factor == 16,
+            folding_factor == 2
+                || folding_factor == 4
+                || folding_factor == 8
+                || folding_factor == 16,
             "folding factor {} is not supported",
             folding_factor
         );
