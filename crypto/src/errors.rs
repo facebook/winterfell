@@ -60,7 +60,7 @@ impl fmt::Display for MerkleTreeError {
             Self::TooManyLeafIndexes(max_indexes, num_indexes) => {
                 write!(
                     f,
-                    "number of leaf indexes cannot exceed {}, but was {} provided",
+                    "number of leaf indexes cannot exceed {}, but {} was provided",
                     max_indexes, num_indexes
                 )
             }
