@@ -84,4 +84,4 @@ pub use proof::FriProof;
 mod errors;
 pub use errors::VerifierError;
 
-mod utils;
+pub mod utils;

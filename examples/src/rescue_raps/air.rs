@@ -104,6 +104,7 @@ impl Air for RescueRapsAir {
         let ark = &periodic_values[2..];
 
         // when hash_flag = 1, constraints for Rescue round are enforced (steps 0 to 14)
+        // Enforcing the round for the first hash chain
         rescue::enforce_round(
             &mut result[..STATE_WIDTH],
             &current[..STATE_WIDTH],
@@ -112,6 +113,7 @@ impl Air for RescueRapsAir {
             hash_flag,
         );
 
+        // Enforcing the round for the second hash chain
         rescue::enforce_round(
             &mut result[STATE_WIDTH..],
             &current[STATE_WIDTH..],
@@ -172,10 +174,17 @@ impl Air for RescueRapsAir {
         let absorption_flag = periodic_values[1];
 
         // We want to enforce that the absorbed values of the first hash chain are a
-        // permutation of the absorbed values of the second one. Because we want to
-        // copy two values per hash chain (namely the two capacity registers), we
-        // group them with random elements into a single cell via
+        // permutation of the absorbed values of the second one. Recall that the type
+        // for both seed and permuted_seed (the arrays being hashed into the chain), was
+        // [[BaseElement; 2]] and we never permute any of the internal arrays, since
+        // each [BaseElement; 2] represents the capacity registers for a single link in the
+        // hash chain. Due to this, we want to copy two values per hash chain at iteration
+        // (namely, the two capacity registers). To reduce the number of auxiliary registers needed
+        // to represent each link, we group them with random elements into a single cell via
         // α_0 * c_0 + α_1 * c_1, where c_i is computed as next_i - current_i.
+
+        // Note that the reason we use next_i - current_i is that we are
+        // absorbing the new seed by adding it to the output of the previous hash.
 
         // Note that storing the copied values into two auxiliary columns. One could
         // instead directly compute the permutation argument, hence require a single

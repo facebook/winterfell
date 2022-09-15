@@ -10,7 +10,10 @@ use super::{
 
 // RESCUE PROVER
 // ================================================================================================
-
+/// This example constructs a proof for correct execution of
+/// 2 hash chains simultaneously.
+/// In order to demonstrate the power of RAPs, the two hash chains have seeds that are
+/// permutations of each other.
 pub struct RescueRapsProver {
     options: ProofOptions,
 }
@@ -19,7 +22,8 @@ impl RescueRapsProver {
     pub fn new(options: ProofOptions) -> Self {
         Self { options }
     }
-
+    /// The parameter `seeds` is the set of seeds for the first hash chain.
+    /// The parameter `permuted_seeds` is the set of seeds for the second hash chain.
     pub fn build_trace(
         &self,
         seeds: &[[BaseElement; 2]],
