@@ -10,8 +10,7 @@ use super::{
 
 // RESCUE PROVER
 // ================================================================================================
-/// This example constructs a proof for correct execution of
-/// 2 hash chains simultaneously.
+/// This example constructs a proof for correct execution of 2 hash chains simultaneously.
 /// In order to demonstrate the power of RAPs, the two hash chains have seeds that are
 /// permutations of each other.
 pub struct RescueRapsProver {
