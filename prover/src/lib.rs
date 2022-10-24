@@ -254,6 +254,9 @@ pub trait Prover {
         let mut aux_trace_segments = Vec::new();
         let mut aux_trace_rand_elements = AuxTraceRandElements::new();
         for i in 0..trace.layout().num_aux_segments() {
+            #[cfg(feature = "std")]
+            let now = Instant::now();
+
             // draw a set of random elements required to build an auxiliary trace segment
             let rand_elements = channel.get_aux_trace_segment_rand_elements(i);
 
@@ -261,6 +264,13 @@ pub trait Prover {
             let aux_segment = trace
                 .build_aux_segment(&aux_trace_segments, &rand_elements)
                 .expect("failed build auxiliary trace segment");
+            #[cfg(feature = "std")]
+            debug!(
+                "Built auxiliary trace segment of {} columns and 2^{} steps in {} ms",
+                aux_segment.num_cols(),
+                log2(aux_segment.num_rows()),
+                now.elapsed().as_millis()
+            );
 
             // extend the auxiliary trace segment and build a Merkle tree from the extended trace
             let (aux_segment_lde, aux_segment_tree, aux_segment_polys) =
