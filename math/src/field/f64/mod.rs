@@ -96,7 +96,7 @@ impl FieldElement for BaseElement {
     fn double(self) -> Self {
         let ret = (self.0 as u128) << 1;
         let (result, over) = (ret as u64, (ret >> 64) as u64);
-        Self(result.wrapping_sub(M * (over as u64)))
+        Self(result.wrapping_sub(M * over))
     }
 
     #[inline]

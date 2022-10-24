@@ -215,7 +215,7 @@ impl TraceLayout {
                 was_zero_width = true;
             }
             assert!(
-                num_rand_elements <= TraceInfo::MAX_RAND_SEGMENT_ELEMENTS as usize,
+                num_rand_elements <= TraceInfo::MAX_RAND_SEGMENT_ELEMENTS,
                 "number of random elements required by a segment cannot exceed {}, but was {}",
                 TraceInfo::MAX_RAND_SEGMENT_ELEMENTS,
                 num_rand_elements
