@@ -183,7 +183,7 @@ impl<B: StarkField, H: Hasher> RandomCoin<B, H> {
         for _ in 0..1000 {
             // get the next pseudo-random value and take the first ELEMENT_BYTES from it
             let value = self.next();
-            let bytes = &value.as_bytes()[..E::ELEMENT_BYTES as usize];
+            let bytes = &value.as_bytes()[..E::ELEMENT_BYTES];
 
             // check if the bytes can be converted into a valid field element; if they can,
             // return; otherwise try again

@@ -301,7 +301,7 @@ impl<'a> ByteReader for SliceReader<'a> {
     }
 
     fn read_u8_vec(&mut self, len: usize) -> Result<Vec<u8>, DeserializationError> {
-        let end_pos = self.pos + len as usize;
+        let end_pos = self.pos + len;
         if end_pos > self.source.len() {
             return Err(DeserializationError::UnexpectedEOF);
         }

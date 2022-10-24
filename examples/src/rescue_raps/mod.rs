@@ -59,7 +59,7 @@ impl RescueRapsExample {
         );
         assert!(chain_length > 2, "chain length must be at least 4");
 
-        let mut seeds = vec![[BaseElement::ZERO; 2]; chain_length as usize];
+        let mut seeds = vec![[BaseElement::ZERO; 2]; chain_length];
         for internal_seed in seeds.iter_mut() {
             *internal_seed = rand_array();
         }

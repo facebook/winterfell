@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.1 (2022-10-24)
+* Increased transition constraint exemption limit by 1.
+* Implemented custom doubling for `f64` and `f62` field.
+* Moved `f64` field arithmetic to Montgomery form (constant time).
+* Updated MDS matrix and related-multiplication routine for `Rp64_256` hash function.
+* Improved performance of `Matrix::interpolate_columns` function.
+* Added ability to "unbatch" a `BatchMerkleProof` (via `BatchMerkleProof::into_paths()` method).
+* Changed visibility of FRI utils (made them public).
+* Added support for FRI folding factor of 2 (in addition to 4, 8, and 16).
+
 ## 0.4.0 (2022-04-29)
 * Added support for Randomized AIR (with example).
 * Added support for custom number of transition constraint exemptions.

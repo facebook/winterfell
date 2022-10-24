@@ -1,12 +1,12 @@
 [package]
 name = "winter-math"
-version = "0.4.0"
+version = "0.4.1"
 description = "Math library for the Winterfell STARK prover/verifier"
 authors = ["winterfell contributors"]
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/novifinancial/winterfell"
-documentation = "https://docs.rs/winter-math/0.4.0"
+documentation = "https://docs.rs/winter-math/0.4.1"
 categories = ["cryptography", "no-std"]
 keywords = ["crypto", "finite-fields", "polynomials", "fft"]
 edition = "2021"
@@ -33,10 +33,10 @@ default = ["std"]
 std = ["utils/std"]
 
 [dependencies]
-utils = { version = "0.4", path = "../utils/core", package = "winter-utils", default-features = false }
+utils = { version = "0.4.1", path = "../utils/core", package = "winter-utils", default-features = false }
 
 [dev-dependencies]
-criterion = "0.3"
+criterion = "0.4"
 num-bigint = "0.4"
 proptest = "1.0"
 rand-utils = { version = "0.4", path = "../utils/rand", package = "winter-rand-utils" }
