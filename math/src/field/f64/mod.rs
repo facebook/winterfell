@@ -560,7 +560,7 @@ fn exp_acc<const N: usize>(base: BaseElement, tail: BaseElement) -> BaseElement 
 /// Montgomery reduction (variable time)
 #[allow(dead_code)]
 #[inline(always)]
-const fn mont_red_var(x: u128) -> u64 {
+const fn mont_red_cst(x: u128) -> u64 {
     const NPRIME: u64 = 4294967297;
     let q = (((x as u64) as u128) * (NPRIME as u128)) as u64;
     let m = (q as u128) * (M as u128);
@@ -574,7 +574,7 @@ const fn mont_red_var(x: u128) -> u64 {
 
 /// Montgomery reduction (constant time)
 #[inline(always)]
-const fn mont_red_cst(x: u128) -> u64 {
+const fn mont_red_var(x: u128) -> u64 {
     // See reference above for a description of the following implementation.
     let xl = x as u64;
     let xh = (x >> 64) as u64;
