@@ -29,9 +29,12 @@ pub(super) const MAX_PATHS: usize = 255;
 /// imposed primarily for serialization purposes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BatchMerkleProof<H: Hasher> {
-    pub(super) leaves: Vec<H::Digest>,
-    pub(super) nodes: Vec<Vec<H::Digest>>,
-    pub(super) depth: u8,
+    /// The leaves being proven
+    pub leaves: Vec<H::Digest>,
+    /// Hashes of Merkle Tree proof values above the leaf layer
+    pub nodes: Vec<Vec<H::Digest>>,
+    /// Depth of the leaves
+    pub depth: u8,
 }
 
 impl<H: Hasher> BatchMerkleProof<H> {
