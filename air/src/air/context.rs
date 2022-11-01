@@ -15,7 +15,7 @@ pub struct AirContext<B: StarkField> {
     pub(super) options: ProofOptions,
     pub(super) trace_info: TraceInfo,
     pub main_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
-    pub(super) aux_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
+    pub aux_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
     pub(super) num_main_assertions: usize,
     pub(super) num_aux_assertions: usize,
     pub(super) ce_blowup_factor: usize,

@@ -168,7 +168,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
             // evaluate transition constraints and save the merged result the first slot of the
             // evaluations buffer
             evaluations[0] =
-                self.evaluate_main_transition(&main_frame, x, step, &mut t_evaluations, &domain);
+                self.evaluate_main_transition(&main_frame,step, &mut t_evaluations, &domain);
 
             // when in debug mode, save transition constraint evaluations
             #[cfg(debug_assertions)]
@@ -224,9 +224,9 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
             // evaluations buffer; we evaluate and compose constraints in the same function, we
             // can just add up the results of evaluating main and auxiliary constraints.
             evaluations[0] =
-                self.evaluate_main_transition(&main_frame, x, step, &mut tm_evaluations, &domain);
+                self.evaluate_main_transition(&main_frame, step, &mut tm_evaluations, &domain);
             evaluations[0] +=
-                self.evaluate_aux_transition(&main_frame, &aux_frame, x, step, &mut ta_evaluations);
+                self.evaluate_aux_transition(&main_frame, &aux_frame, step, &mut ta_evaluations, &domain);
 
             // when in debug mode, save transition constraint evaluations
             #[cfg(debug_assertions)]
@@ -264,7 +264,6 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     fn evaluate_main_transition(
         &self,
         main_frame: &EvaluationFrame<E::BaseField>,
-        _x: E::BaseField,
         step: usize,
         evaluations: &mut [E::BaseField],
         domain: &StarkDomain<A::BaseField>,
@@ -281,9 +280,6 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
 
         // merge transition constraint evaluations into a single value and return it;
         // we can do this here because all transition constraints have the same divisor.
-        //self.transition_constraints.main_constraints().iter().fold(E::ZERO, |result, group| {
-            //result + group.merge_evaluations(evaluations, x)
-        //})
         self.transition_constraints.main_constraints().iter().fold(E::ZERO, |result, group| {
             result + Self::merge_evaluations_optimized(group, evaluations, step, &domain)
         })
@@ -299,9 +295,9 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         &self,
         main_frame: &EvaluationFrame<E::BaseField>,
         aux_frame: &EvaluationFrame<E>,
-        x: E::BaseField,
         step: usize,
         evaluations: &mut [E],
+        domain: &StarkDomain<A::BaseField>,
     ) -> E {
         // TODO: use a more efficient way to zero out memory
         evaluations.fill(E::ZERO);
@@ -322,7 +318,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         // merge transition constraint evaluations into a single value and return it;
         // we can do this here because all transition constraints have the same divisor.
         self.transition_constraints.aux_constraints().iter().fold(E::ZERO, |result, group| {
-            result + group.merge_evaluations::<E::BaseField, E>(evaluations, x)
+            result + Self::merge_evaluations_optimized::<E>(group, evaluations, step, &domain)
         })
     }
 
@@ -343,6 +339,10 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     // HELPERS
     // --------------------------------------------------------------------------------------------
 
+    // This is a modified version of the TransitionConstraintGroup::merge_evaluations method. This
+    // implementation uses pre-computed of powers of generator of the constraint evaluation domain.
+    // This allows up to substitute the exponentiations needed for the degree adjustment factor 
+    // with lookups. 
     pub fn merge_evaluations_optimized<F>(
         group: &TransitionConstraintGroup<E>,
         evaluations: &[F],
