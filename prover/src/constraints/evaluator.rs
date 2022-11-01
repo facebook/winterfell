@@ -9,9 +9,9 @@ use super::{
 };
 use air::{
     Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
-    TransitionConstraints,
+    TransitionConstraints, TransitionConstraintGroup,
 };
-use math::FieldElement;
+use math::{FieldElement, ExtensionOf};
 use utils::iter_mut;
 
 #[cfg(feature = "concurrent")]
@@ -168,7 +168,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
             // evaluate transition constraints and save the merged result the first slot of the
             // evaluations buffer
             evaluations[0] =
-                self.evaluate_main_transition(&main_frame, x, step, &mut t_evaluations);
+                self.evaluate_main_transition(&main_frame, x, step, &mut t_evaluations, &domain);
 
             // when in debug mode, save transition constraint evaluations
             #[cfg(debug_assertions)]
@@ -224,7 +224,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
             // evaluations buffer; we evaluate and compose constraints in the same function, we
             // can just add up the results of evaluating main and auxiliary constraints.
             evaluations[0] =
-                self.evaluate_main_transition(&main_frame, x, step, &mut tm_evaluations);
+                self.evaluate_main_transition(&main_frame, x, step, &mut tm_evaluations, &domain);
             evaluations[0] +=
                 self.evaluate_aux_transition(&main_frame, &aux_frame, x, step, &mut ta_evaluations);
 
@@ -264,9 +264,10 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     fn evaluate_main_transition(
         &self,
         main_frame: &EvaluationFrame<E::BaseField>,
-        x: E::BaseField,
+        _x: E::BaseField,
         step: usize,
         evaluations: &mut [E::BaseField],
+        domain: &StarkDomain<A::BaseField>,
     ) -> E {
         // TODO: use a more efficient way to zero out memory
         evaluations.fill(E::BaseField::ZERO);
@@ -280,8 +281,11 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
 
         // merge transition constraint evaluations into a single value and return it;
         // we can do this here because all transition constraints have the same divisor.
+        //self.transition_constraints.main_constraints().iter().fold(E::ZERO, |result, group| {
+            //result + group.merge_evaluations(evaluations, x)
+        //})
         self.transition_constraints.main_constraints().iter().fold(E::ZERO, |result, group| {
-            result + group.merge_evaluations(evaluations, x)
+            result + Self::merge_evaluations_optimized(group, evaluations, step, &domain)
         })
     }
 
@@ -334,5 +338,34 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     /// Returns the number of transition constraints applied against all auxiliary trace segments.
     fn num_aux_transition_constraints(&self) -> usize {
         self.transition_constraints.num_aux_constraints()
+    }
+
+    // HELPERS
+    // --------------------------------------------------------------------------------------------
+
+    pub fn merge_evaluations_optimized<F>(
+        group: &TransitionConstraintGroup<E>,
+        evaluations: &[F],
+        step: usize,
+        domain: &StarkDomain<A::BaseField>,
+    ) -> E
+    where
+        E: FieldElement<BaseField = A::BaseField>,
+        F: FieldElement<BaseField = A::BaseField> + ExtensionOf<A::BaseField>,
+        E: FieldElement<BaseField = A::BaseField> + ExtensionOf<A::BaseField> + ExtensionOf<F>,
+    {
+
+        let index: usize = step * (group.degree_adjustment as usize);
+        let index = index % (domain.ce_domain_size());
+        let xp = domain.domain_g[index] * *domain.adj_map.get(&group.degree_adjustment).unwrap(); 
+
+        // compute linear combination of evaluations as D(x) * (cc_0 + cc_1 * x^p), where D(x)
+        // is an evaluation of a particular constraint, and x^p is the degree adjustment factor
+        let mut result = E::ZERO;
+        for (&constraint_idx, coefficients) in group.indexes.iter().zip(group.coefficients.iter()) {
+            let evaluation = evaluations[constraint_idx];
+            result += (coefficients.0 + coefficients.1.mul_base(xp)).mul_base(evaluation);
+        }
+        result
     }
 }

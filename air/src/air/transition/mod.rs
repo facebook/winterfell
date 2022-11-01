@@ -199,9 +199,9 @@ impl<E: FieldElement> TransitionConstraints<E> {
 #[derive(Clone, Debug)]
 pub struct TransitionConstraintGroup<E: FieldElement> {
     degree: TransitionConstraintDegree,
-    degree_adjustment: u32,
-    indexes: Vec<usize>,
-    coefficients: Vec<(E, E)>,
+    pub degree_adjustment: u32,
+    pub indexes: Vec<usize>,
+    pub coefficients: Vec<(E, E)>,
 }
 
 impl<E: FieldElement> TransitionConstraintGroup<E> {
