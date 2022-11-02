@@ -14,8 +14,8 @@ use utils::collections::Vec;
 pub struct AirContext<B: StarkField> {
     pub(super) options: ProofOptions,
     pub(super) trace_info: TraceInfo,
-    pub main_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
-    pub aux_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
+    pub(super) main_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
+    pub(super) aux_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
     pub(super) num_main_assertions: usize,
     pub(super) num_aux_assertions: usize,
     pub(super) ce_blowup_factor: usize,
@@ -235,6 +235,16 @@ impl<B: StarkField> AirContext<B> {
     /// degrees and blowup factor specified for the computation.
     pub fn num_transition_exemptions(&self) -> usize {
         self.num_transition_exemptions
+    }
+
+    /// Returns the a tuple containing the main and auxiliary transition constraint degrees.
+    pub fn transition_constraint_degrees(
+        &self,
+    ) -> (&[TransitionConstraintDegree], &[TransitionConstraintDegree]) {
+        (
+            &self.main_transition_constraint_degrees,
+            &self.aux_transition_constraint_degrees,
+        )
     }
 
     // DATA MUTATORS
