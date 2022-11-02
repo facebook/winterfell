@@ -201,9 +201,9 @@ impl<E: FieldElement> TransitionConstraints<E> {
 #[derive(Clone, Debug)]
 pub struct TransitionConstraintGroup<E: FieldElement> {
     degree: TransitionConstraintDegree,
-    pub degree_adjustment: u32,
-    pub indexes: Vec<usize>,
-    pub coefficients: Vec<(E, E)>,
+    degree_adjustment: u32,
+    indexes: Vec<usize>,
+    coefficients: Vec<(E, E)>,
 }
 
 impl<E: FieldElement> TransitionConstraintGroup<E> {
@@ -247,6 +247,11 @@ impl<E: FieldElement> TransitionConstraintGroup<E> {
     pub fn add(&mut self, constraint_idx: usize, coefficients: (E, E)) {
         self.indexes.push(constraint_idx);
         self.coefficients.push(coefficients);
+    }
+
+    /// Returns adjustment degree for this group.
+    pub fn degree_adjustment(&self) -> u32 {
+        self.degree_adjustment
     }
 
     // EVALUATOR
