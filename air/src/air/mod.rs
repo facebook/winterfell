@@ -25,7 +25,8 @@ pub use boundary::{BoundaryConstraint, BoundaryConstraintGroup, BoundaryConstrai
 
 mod transition;
 pub use transition::{
-    EvaluationFrame, TransitionConstraintDegree, TransitionConstraintGroup, TransitionConstraints,
+    DefaultEvaluationFrame, EvaluationFrame, TransitionConstraintDegree, TransitionConstraintGroup,
+    TransitionConstraints,
 };
 
 mod coefficients;
@@ -187,6 +188,9 @@ pub trait Air: Send + Sync {
     /// This could be any type as long as it can be serialized into a sequence of bytes.
     type PublicInputs: Serializable;
 
+    type Frame<E: FieldElement>: EvaluationFrame<E>;
+    type AuxFrame<E: FieldElement>: EvaluationFrame<E>;
+
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
 
@@ -215,7 +219,7 @@ pub trait Air: Send + Sync {
     /// (when extension fields are used).
     fn evaluate_transition<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        frame: &EvaluationFrame<E>,
+        frame: &Self::Frame<E>,
         periodic_values: &[E],
         result: &mut [E],
     );
@@ -253,8 +257,8 @@ pub trait Air: Send + Sync {
     #[allow(unused_variables)]
     fn evaluate_aux_transition<F, E>(
         &self,
-        main_frame: &EvaluationFrame<F>,
-        aux_frame: &EvaluationFrame<E>,
+        main_frame: &Self::Frame<F>,
+        aux_frame: &Self::AuxFrame<E>,
         periodic_values: &[F],
         aux_rand_elements: &AuxTraceRandElements<E>,
         result: &mut [E],
@@ -476,6 +480,14 @@ pub trait Air: Send + Sync {
         self.context().options.domain_offset()
     }
 
+    fn eval_frame_offsets<E: FieldElement>(&self) -> &'static [usize] {
+        Self::Frame::<E>::offsets()
+    }
+
+    fn eval_frame_size<E: FieldElement>(&self) -> usize {
+        self.eval_frame_offsets::<E>().len()
+    }
+
     // TRACE SEGMENT RANDOMNESS
     // --------------------------------------------------------------------------------------------
 
@@ -544,7 +556,11 @@ pub trait Air: Send + Sync {
     {
         let mut t_coefficients = Vec::new();
         for _ in 0..self.trace_info().width() {
-            t_coefficients.push(public_coin.draw_triple()?);
+            let mut values = Vec::new();
+            for _ in 0..self.eval_frame_offsets::<E>().len() + 1 {
+                values.push(public_coin.draw()?);
+            }
+            t_coefficients.push(values);
         }
 
         // self.ce_blowup_factor() is the same as number of composition columns

@@ -37,6 +37,7 @@
 //! also depends on the capabilities of the machine used to generate the proofs (i.e. on number
 //! of CPU cores and memory bandwidth).
 
+#![feature(generic_associated_types)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(not(feature = "std"))]
@@ -46,8 +47,9 @@ extern crate alloc;
 pub use air::{
     proof::StarkProof, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
     BoundaryConstraintGroup, ConstraintCompositionCoefficients, ConstraintDivisor,
-    DeepCompositionCoefficients, EvaluationFrame, FieldExtension, HashFunction, ProofOptions,
-    TraceInfo, TraceLayout, TransitionConstraintDegree, TransitionConstraintGroup,
+    DeepCompositionCoefficients, DefaultEvaluationFrame, EvaluationFrame, FieldExtension,
+    HashFunction, ProofOptions, Table, TraceInfo, TraceLayout, TransitionConstraintDegree,
+    TransitionConstraintGroup,
 };
 pub use utils::{
     iterators, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
@@ -355,7 +357,7 @@ pub trait Prover {
         // evaluate trace and constraint polynomials at the OOD point z, and send the results to
         // the verifier. the trace polynomials are actually evaluated over two points: z and z * g,
         // where g is the generator of the trace domain.
-        let ood_trace_states = trace_polys.get_ood_frame(z);
+        let ood_trace_states = trace_polys.get_ood_frame(z, air.eval_frame_offsets::<E>());
         channel.send_ood_trace_states(&ood_trace_states);
 
         let ood_evaluations = composition_poly.evaluate_at(z);
@@ -368,7 +370,11 @@ pub trait Prover {
 
         // combine all trace polynomials together and merge them into the DEEP composition
         // polynomial
-        deep_composition_poly.add_trace_polys(trace_polys, ood_trace_states);
+        deep_composition_poly.add_trace_polys(
+            trace_polys,
+            ood_trace_states,
+            air.eval_frame_offsets::<E>().into(),
+        );
 
         // merge columns of constraint composition polynomial into the DEEP composition polynomial;
         deep_composition_poly.add_composition_poly(composition_poly, ood_evaluations);

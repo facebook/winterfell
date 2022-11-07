@@ -65,10 +65,14 @@ impl<E: FieldElement> TracePolyTable<E> {
     }
 
     /// Returns an out-of-domain evaluation frame constructed by evaluating trace polynomials
-    /// for all columns at points z and z * g, where g is the generator of the trace domain.
-    pub fn get_ood_frame(&self, z: E) -> Vec<Vec<E>> {
+    /// for all columns at the set of points {z * g^o_i}, where g is the generator of the trace domain,
+    /// and {o_i} are the frame row offsets
+    pub fn get_ood_frame(&self, z: E, frame_offsets: &'static [usize]) -> Vec<Vec<E>> {
         let g = E::from(E::BaseField::get_root_of_unity(log2(self.poly_size())));
-        vec![self.evaluate_at(z), self.evaluate_at(z * g)]
+        frame_offsets
+            .into_iter()
+            .map(|i| self.evaluate_at(z * g.exp((*i as u64).into())))
+            .collect()
     }
 
     /// Returns an iterator over the polynomials of the main trace segment.

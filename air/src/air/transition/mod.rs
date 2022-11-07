@@ -6,7 +6,7 @@
 use super::{AirContext, BTreeMap, ConstraintDivisor, ExtensionOf, FieldElement, Vec};
 
 mod frame;
-pub use frame::EvaluationFrame;
+pub use frame::{DefaultEvaluationFrame, EvaluationFrame};
 
 mod degree;
 pub use degree::TransitionConstraintDegree;

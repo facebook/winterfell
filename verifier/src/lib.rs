@@ -171,7 +171,7 @@ pub fn verify<AIR: Air>(
 /// attests to a correct execution of the computation specified by the provided `air`.
 fn perform_verification<A, E, H>(
     air: A,
-    mut channel: VerifierChannel<E, H>,
+    mut channel: VerifierChannel<E, H, A::Frame<E>, A::AuxFrame<E>>,
     mut public_coin: RandomCoin<A::BaseField, H>,
 ) -> Result<(), VerifierError>
 where
@@ -238,20 +238,15 @@ where
     );
 
     if let Some(ref aux_trace_frame) = ood_aux_trace_frame {
-        // when the trace contains auxiliary segments, append auxiliary trace elements at the
-        // end of main trace elements for both current and next rows in the frame. this is
-        // needed to be consistent with how the prover writes OOD frame into the channel.
-
-        let mut current = ood_main_trace_frame.current().to_vec();
-        current.extend_from_slice(aux_trace_frame.current());
-        public_coin.reseed(H::hash_elements(&current));
-
-        let mut next = ood_main_trace_frame.next().to_vec();
-        next.extend_from_slice(aux_trace_frame.next());
-        public_coin.reseed(H::hash_elements(&next));
+        for i in 0..A::Frame::<E>::num_rows() {
+            let mut row = ood_main_trace_frame.row(i).to_vec();
+            row.extend_from_slice(aux_trace_frame.row(i));
+            public_coin.reseed(H::hash_elements(&row));
+        }
     } else {
-        public_coin.reseed(H::hash_elements(ood_main_trace_frame.current()));
-        public_coin.reseed(H::hash_elements(ood_main_trace_frame.next()));
+        for i in 0..A::Frame::<E>::num_rows() {
+            public_coin.reseed(H::hash_elements(ood_main_trace_frame.row(i)));
+        }
     }
 
     // read evaluations of composition polynomial columns sent by the prover, and reduce them into

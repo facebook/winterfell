@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use air::{proof::Table, Air, DeepCompositionCoefficients, EvaluationFrame, FieldExtension};
+use air::{Air, DeepCompositionCoefficients, EvaluationFrame, FieldExtension, Table};
 use math::FieldElement;
 use utils::collections::Vec;
 
@@ -14,7 +14,7 @@ pub struct DeepComposer<E: FieldElement> {
     field_extension: FieldExtension,
     cc: DeepCompositionCoefficients<E>,
     x_coordinates: Vec<E>,
-    z: [E; 2],
+    z: Vec<E>,
 }
 
 impl<E: FieldElement> DeepComposer<E> {
@@ -25,8 +25,10 @@ impl<E: FieldElement> DeepComposer<E> {
         z: E,
         cc: DeepCompositionCoefficients<E>,
     ) -> Self {
-        // compute LDE domain coordinates for all query positions
+        let g = E::from(air.trace_domain_generator());
         let g_lde = air.lde_domain_generator();
+
+        // compute LDE domain coordinates for all query positions
         let domain_offset = air.domain_offset();
         let x_coordinates: Vec<E> = query_positions
             .iter()
@@ -37,7 +39,11 @@ impl<E: FieldElement> DeepComposer<E> {
             field_extension: air.options().field_extension(),
             cc,
             x_coordinates,
-            z: [z, z * E::from(air.trace_domain_generator())],
+            z: air
+                .eval_frame_offsets::<E>()
+                .into_iter()
+                .map(|i| z * g.exp((*i as u64).into()))
+                .collect(),
         }
     }
 
@@ -58,22 +64,20 @@ impl<E: FieldElement> DeepComposer<E> {
     ///
     /// Note that values of T_i(z) and T_i(z * g) are received from the prover and passed into
     /// this function via the `ood_frame` parameter.
-    pub fn compose_trace_columns(
+    pub fn compose_trace_columns<F1: EvaluationFrame<E>, F2: EvaluationFrame<E>>(
         &self,
         queried_main_trace_states: Table<E::BaseField>,
         queried_aux_trace_states: Option<Table<E>>,
-        ood_main_frame: EvaluationFrame<E>,
-        ood_aux_frame: Option<EvaluationFrame<E>>,
+        ood_main_frame: F1,
+        ood_aux_frame: Option<F2>,
     ) -> Vec<E> {
-        let ood_main_trace_states = [ood_main_frame.current(), ood_main_frame.next()];
-
         // when field extension is enabled, these will be set to conjugates of trace values at
         // z as well as conjugate of z itself. we do this only for the main trace since auxiliary
         // trace columns are in the extension field.
         let conjugate_values =
-            get_conjugate_values(self.field_extension, ood_main_trace_states[0], self.z[0]);
+            get_conjugate_values(self.field_extension, ood_main_frame.row(0), self.z[0]);
 
-        // compose columns of of the main trace segment
+        // compose columns of the main trace segment
         let mut result = E::zeroed_vector(queried_main_trace_states.num_rows());
         for ((result, row), &x) in result
             .iter_mut()
@@ -82,21 +86,20 @@ impl<E: FieldElement> DeepComposer<E> {
         {
             for (i, &value) in row.iter().enumerate() {
                 let value = E::from(value);
-                // compute T'_i(x) = (T_i(x) - T_i(z)) / (x - z), multiply it by a composition
-                // coefficient, and add the result to T(x)
-                let t1 = (value - ood_main_trace_states[0][i]) / (x - self.z[0]);
-                *result += t1 * self.cc.trace[i].0;
 
-                // compute T''_i(x) = (T_i(x) - T_i(z * g)) / (x - z * g), multiply it by a
-                // composition coefficient, and add the result to T(x)
-                let t2 = (value - ood_main_trace_states[1][i]) / (x - self.z[1]);
-                *result += t2 * self.cc.trace[i].1;
+                let row_count = F1::num_rows();
+                for j in 0..row_count {
+                    // compute T^j_i(x) = (T_i(x) - T_i(z * g^j)) / (x - z * g^j), multiply it by a composition
+                    // coefficient, and add the result to T(x)
+                    let t1 = (value - ood_main_frame.row(j)[i]) / (x - self.z[j]);
+                    *result += t1 * self.cc.trace[i][j];
+                }
 
                 // when extension field is enabled compute
                 // T'''_i(x) = (T_i(x) - T_i(z_conjugate)) / (x - z_conjugate)
                 if let Some((z_conjugate, ref trace_at_z1_conjugates)) = conjugate_values {
                     let t3 = (value - trace_at_z1_conjugates[i]) / (x - z_conjugate);
-                    *result += t3 * self.cc.trace[i].2;
+                    *result += t3 * self.cc.trace[i][row_count];
                 }
             }
         }
@@ -104,7 +107,6 @@ impl<E: FieldElement> DeepComposer<E> {
         // if the trace has auxiliary segments, compose columns from these segments as well
         if let Some(queried_aux_trace_states) = queried_aux_trace_states {
             let ood_aux_frame = ood_aux_frame.expect("missing auxiliary OOD frame");
-            let ood_aux_trace_states = [ood_aux_frame.current(), ood_aux_frame.next()];
 
             // we define this offset here because composition of the main trace columns has
             // consumed some number of composition coefficients already.
@@ -116,15 +118,13 @@ impl<E: FieldElement> DeepComposer<E> {
                 .zip(&self.x_coordinates)
             {
                 for (i, &value) in row.iter().enumerate() {
-                    // compute T'_i(x) = (T_i(x) - T_i(z)) / (x - z), multiply it by a composition
-                    // coefficient, and add the result to T(x)
-                    let t1 = (value - ood_aux_trace_states[0][i]) / (x - self.z[0]);
-                    *result += t1 * self.cc.trace[cc_offset + i].0;
-
-                    // compute T''_i(x) = (T_i(x) - T_i(z * g)) / (x - z * g), multiply it by a
-                    // composition coefficient, and add the result to T(x)
-                    let t2 = (value - ood_aux_trace_states[1][i]) / (x - self.z[1]);
-                    *result += t2 * self.cc.trace[cc_offset + i].1;
+                    let row_count = F2::num_rows();
+                    for j in 0..row_count {
+                        // compute T^j_i(x) = (T_i(x) - T_i(z * g^j)) / (x - z * g^j), multiply it by a composition
+                        // coefficient, and add the result to T(x)
+                        let t1 = (value - ood_aux_frame.row(j)[i]) / (x - self.z[j]);
+                        *result += t1 * self.cc.trace[cc_offset + i][j];
+                    }
                 }
             }
         }
@@ -142,7 +142,7 @@ impl<E: FieldElement> DeepComposer<E> {
     ///   all i, where cc_i is the coefficient for the random linear combination drawn from the
     ///   public coin.
     ///
-    /// Note that values of H_i(z^m)are received from teh prover and passed into this function
+    /// Note that values of H_i(z^m)are received from the prover and passed into this function
     /// via the `ood_evaluations` parameter.
     pub fn compose_constraint_evaluations(
         &self,

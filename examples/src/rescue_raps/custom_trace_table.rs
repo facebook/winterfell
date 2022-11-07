@@ -176,12 +176,6 @@ impl<B: StarkField> Trace for RapTraceTable<B> {
         &self.meta
     }
 
-    fn read_main_frame(&self, row_idx: usize, frame: &mut EvaluationFrame<Self::BaseField>) {
-        let next_row_idx = (row_idx + 1) % self.length();
-        self.trace.read_row_into(row_idx, frame.current_mut());
-        self.trace.read_row_into(next_row_idx, frame.next_mut());
-    }
-
     fn main_segment(&self) -> &Matrix<B> {
         &self.trace
     }

@@ -144,13 +144,13 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         fragment: &mut EvaluationTableFragment<E>,
     ) {
         // initialize buffers to hold trace values and evaluation results at each step;
-        let mut main_frame = EvaluationFrame::new(trace.main_trace_width());
+        let mut main_frame = A::Frame::new(self.air);
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
         let mut t_evaluations = vec![E::BaseField::ZERO; self.num_main_transition_constraints()];
 
         // pre-compute values needed to determine x coordinates in the constraint evaluation domain
         let g = domain.ce_domain_generator();
-        let mut x = domain.offset() * g.exp((fragment.offset() as u64).into());
+        let mut x = domain.offset() * g.exp(((fragment.offset()) as u64).into());
 
         // this will be used to convert steps in constraint evaluation domain to steps in
         // LDE domain
@@ -160,23 +160,23 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
             let step = i + fragment.offset();
 
             // update evaluation frame buffer with data from the execution trace; this will
-            // read current and next rows from the trace into the buffer; data in the trace
+            // read the relevant rows from the trace into the buffer; data in the trace
             // table is extended over the LDE domain, so, we need to convert step in constraint
             // evaluation domain, into a step in LDE domain, in case these domains are different
             trace.read_main_trace_frame_into(step << lde_shift, &mut main_frame);
 
-            // evaluate transition constraints and save the merged result the first slot of the
+            // evaluate transition constraints and save the merged result to the first slot of the
             // evaluations buffer
             evaluations[0] =
                 self.evaluate_main_transition(&main_frame, x, step, &mut t_evaluations);
 
             // when in debug mode, save transition constraint evaluations
             #[cfg(debug_assertions)]
-            fragment.update_transition_evaluations(step, &t_evaluations, &[]);
+            fragment.update_transition_evaluations(i + fragment.offset(), &t_evaluations, &[]);
 
             // evaluate boundary constraints; the results go into remaining slots of the
             // evaluations buffer
-            let main_state = main_frame.current();
+            let main_state = main_frame.row(0);
             self.boundary_constraints
                 .evaluate_main(main_state, x, step, &mut evaluations[1..]);
 
@@ -199,15 +199,15 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         fragment: &mut EvaluationTableFragment<E>,
     ) {
         // initialize buffers to hold trace values and evaluation results at each step
-        let mut main_frame = EvaluationFrame::new(trace.main_trace_width());
-        let mut aux_frame = EvaluationFrame::new(trace.aux_trace_width());
+        let mut main_frame = A::Frame::new(self.air);
+        let mut aux_frame = A::AuxFrame::new(self.air);
         let mut tm_evaluations = vec![E::BaseField::ZERO; self.num_main_transition_constraints()];
         let mut ta_evaluations = vec![E::ZERO; self.num_aux_transition_constraints()];
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
 
         // pre-compute values needed to determine x coordinates in the constraint evaluation domain
         let g = domain.ce_domain_generator();
-        let mut x = domain.offset() * g.exp((fragment.offset() as u64).into());
+        let mut x = domain.offset() * g.exp(((fragment.offset()) as u64).into());
 
         // this will be used to convert steps in constraint evaluation domain to steps in
         // LDE domain
@@ -230,12 +230,16 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
 
             // when in debug mode, save transition constraint evaluations
             #[cfg(debug_assertions)]
-            fragment.update_transition_evaluations(step, &tm_evaluations, &ta_evaluations);
+            fragment.update_transition_evaluations(
+                i + fragment.offset(),
+                &tm_evaluations,
+                &ta_evaluations,
+            );
 
             // evaluate boundary constraints; the results go into remaining slots of the
             // evaluations buffer
-            let main_state = main_frame.current();
-            let aux_state = aux_frame.current();
+            let main_state = main_frame.row(0);
+            let aux_state = aux_frame.row(0);
             self.boundary_constraints.evaluate_all(
                 main_state,
                 aux_state,
@@ -263,7 +267,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     #[rustfmt::skip]
     fn evaluate_main_transition(
         &self,
-        main_frame: &EvaluationFrame<E::BaseField>,
+        main_frame: &A::Frame<E::BaseField>,
         x: E::BaseField,
         step: usize,
         evaluations: &mut [E::BaseField],
@@ -293,8 +297,8 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     #[rustfmt::skip]
     fn evaluate_aux_transition(
         &self,
-        main_frame: &EvaluationFrame<E::BaseField>,
-        aux_frame: &EvaluationFrame<E>,
+        main_frame: &A::Frame<E::BaseField>,
+        aux_frame: &A::AuxFrame<E>,
         x: E::BaseField,
         step: usize,
         evaluations: &mut [E],

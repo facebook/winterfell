@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
+    Air, AirContext, Assertion, DefaultEvaluationFrame, EvaluationFrame, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
 use crate::{AuxTraceRandElements, FieldExtension, HashFunction};
@@ -270,6 +270,8 @@ impl MockAir {
 impl Air for MockAir {
     type BaseField = BaseElement;
     type PublicInputs = ();
+    type Frame<E: FieldElement> = DefaultEvaluationFrame<E>;
+    type AuxFrame<E: FieldElement> = DefaultEvaluationFrame<E>;
 
     fn new(trace_info: TraceInfo, _pub_inputs: (), _options: ProofOptions) -> Self {
         let num_assertions = trace_info.meta()[0] as usize;
@@ -295,7 +297,7 @@ impl Air for MockAir {
 
     fn evaluate_transition<E: FieldElement + From<Self::BaseField>>(
         &self,
-        _frame: &EvaluationFrame<E>,
+        _frame: &Self::Frame<E>,
         _periodic_values: &[E],
         _result: &mut [E],
     ) {

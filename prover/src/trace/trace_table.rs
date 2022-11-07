@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{Matrix, Trace};
-use air::{EvaluationFrame, TraceInfo, TraceLayout};
+use air::{TraceInfo, TraceLayout};
 use math::{log2, FieldElement, StarkField};
 use utils::{collections::Vec, uninit_vector};
 
@@ -358,12 +358,6 @@ impl<B: StarkField> Trace for TraceTable<B> {
 
     fn meta(&self) -> &[u8] {
         &self.meta
-    }
-
-    fn read_main_frame(&self, row_idx: usize, frame: &mut EvaluationFrame<Self::BaseField>) {
-        let next_row_idx = (row_idx + 1) % self.length();
-        self.trace.read_row_into(row_idx, frame.current_mut());
-        self.trace.read_row_into(next_row_idx, frame.next_mut());
     }
 
     fn main_segment(&self) -> &Matrix<B> {

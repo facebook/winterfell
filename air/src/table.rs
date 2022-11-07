@@ -1,6 +1,6 @@
-use super::{DeserializationError, SliceReader, Vec};
-use core::iter::FusedIterator;
+use core::{iter::FusedIterator, slice};
 use math::FieldElement;
+use utils::{collections::Vec, DeserializationError, SliceReader};
 
 // CONSTANTS
 // ================================================================================================
@@ -60,6 +60,21 @@ impl<E: FieldElement> Table<E> {
         })
     }
 
+    pub fn from_rows(rows: Vec<Vec<E>>) -> Self {
+        let row_width = rows[0].len();
+        Self {
+            data: rows.into_iter().flatten().collect(),
+            row_width,
+        }
+    }
+
+    pub fn new(num_rows: usize, num_cols: usize) -> Self {
+        Self {
+            data: E::zeroed_vector(num_rows * num_cols),
+            row_width: num_cols,
+        }
+    }
+
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
@@ -79,9 +94,23 @@ impl<E: FieldElement> Table<E> {
         &self.data[row_offset..row_offset + self.row_width]
     }
 
-    /// Returns an iterator over rows of this table.
-    pub fn rows(&self) -> RowIterator<E> {
-        RowIterator::new(self)
+    /// Returns a mutable reference to the row at the specified index.
+    pub fn get_row_mut(&mut self, row_idx: usize) -> &mut [E] {
+        let row_offset = row_idx * self.row_width;
+        &mut self.data[row_offset..row_offset + self.row_width]
+    }
+
+    // ITERATION
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns an iterator over the columns of this matrix.
+    pub fn rows(&self) -> RowIter<E> {
+        RowIter::new(self)
+    }
+
+    /// Returns a mutable iterator over the columns of this matrix.
+    pub fn rows_mut(&mut self) -> RowIterMut<E> {
+        RowIterMut::new(self)
     }
 
     // TABLE PROCESSING
@@ -107,18 +136,18 @@ impl<E: FieldElement> Table<E> {
 // COLUMN ITERATOR
 // ================================================================================================
 
-pub struct RowIterator<'a, E: FieldElement> {
+pub struct RowIter<'a, E: FieldElement> {
     table: &'a Table<E>,
     cursor: usize,
 }
 
-impl<'a, E: FieldElement> RowIterator<'a, E> {
+impl<'a, E: FieldElement> RowIter<'a, E> {
     pub fn new(table: &'a Table<E>) -> Self {
         Self { table, cursor: 0 }
     }
 }
 
-impl<'a, E: FieldElement> Iterator for RowIterator<'a, E> {
+impl<'a, E: FieldElement> Iterator for RowIter<'a, E> {
     type Item = &'a [E];
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -133,10 +162,52 @@ impl<'a, E: FieldElement> Iterator for RowIterator<'a, E> {
     }
 }
 
-impl<'a, E: FieldElement> ExactSizeIterator for RowIterator<'a, E> {
+impl<'a, E: FieldElement> ExactSizeIterator for RowIter<'a, E> {
     fn len(&self) -> usize {
         self.table.num_rows()
     }
 }
 
-impl<'a, E: FieldElement> FusedIterator for RowIterator<'a, E> {}
+impl<'a, E: FieldElement> FusedIterator for RowIter<'a, E> {}
+
+// MUTABLE COLUMN ITERATOR
+// ================================================================================================
+
+pub struct RowIterMut<'a, E: FieldElement> {
+    table: &'a mut Table<E>,
+    cursor: usize,
+}
+
+impl<'a, E: FieldElement> RowIterMut<'a, E> {
+    pub fn new(table: &'a mut Table<E>) -> Self {
+        Self { table, cursor: 0 }
+    }
+}
+
+impl<'a, E: FieldElement> Iterator for RowIterMut<'a, E> {
+    type Item = &'a mut [E];
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.table.num_rows() - self.cursor {
+            0 => None,
+            _ => {
+                let row = self.table.get_row_mut(self.cursor);
+                self.cursor += 1;
+
+                // this is needed to get around mutable iterator lifetime issues; this is safe
+                // because the iterator can never yield a reference to the same column twice
+                let p = row.as_ptr();
+                let len = row.len();
+                Some(unsafe { slice::from_raw_parts_mut(p as *mut E, len) })
+            }
+        }
+    }
+}
+
+impl<'a, E: FieldElement> ExactSizeIterator for RowIterMut<'a, E> {
+    fn len(&self) -> usize {
+        self.table.num_rows()
+    }
+}
+
+impl<'a, E: FieldElement> FusedIterator for RowIterMut<'a, E> {}

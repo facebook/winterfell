@@ -68,31 +68,22 @@ impl<E: FieldElement> TraceLde<E> {
     }
 
     /// Reads current and next rows from the main trace segment into the specified frame.
-    pub fn read_main_trace_frame_into(
+    pub fn read_main_trace_frame_into<F: EvaluationFrame<E::BaseField>>(
         &self,
         lde_step: usize,
-        frame: &mut EvaluationFrame<E::BaseField>,
+        frame: &mut F,
     ) {
-        // at the end of the trace, next state wraps around and we read the first step again
-        let next_lde_step = (lde_step + self.blowup()) % self.trace_len();
-
         // copy main trace segment values into the frame
-        self.main_segment_lde
-            .read_row_into(lde_step, frame.current_mut());
-        self.main_segment_lde
-            .read_row_into(next_lde_step, frame.next_mut());
+        frame.read_from(&self.main_segment_lde, lde_step, 0, self.blowup());
     }
 
     /// Reads current and next rows from the auxiliary trace segment into the specified frame.
-    pub fn read_aux_trace_frame_into(&self, lde_step: usize, frame: &mut EvaluationFrame<E>) {
-        // at the end of the trace, next state wraps around and we read the first step again
-        let next_lde_step = (lde_step + self.blowup()) % self.trace_len();
-
+    #[allow(dead_code)]
+    pub fn read_aux_trace_frame_into<F: EvaluationFrame<E>>(&self, lde_step: usize, frame: &mut F) {
         //copy auxiliary trace segment values into the frame
         let mut offset = 0;
         for segment in self.aux_segment_ldes.iter() {
-            segment.read_row_into(lde_step, &mut frame.current_mut()[offset..]);
-            segment.read_row_into(next_lde_step, &mut frame.next_mut()[offset..]);
+            frame.read_from(segment, lde_step, offset, self.blowup());
             offset += segment.num_cols();
         }
     }

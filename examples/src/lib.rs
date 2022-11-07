@@ -3,9 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+#![feature(generic_associated_types)]
+
 use structopt::StructOpt;
 use winterfell::{FieldExtension, HashFunction, ProofOptions, StarkProof, VerifierError};
 
+pub mod custom_frames;
 pub mod fibonacci;
 #[cfg(feature = "std")]
 pub mod lamport;
@@ -164,5 +167,11 @@ pub enum ExampleType {
         /// Number of signers; must be one less than a power of two
         #[structopt(short = "n", default_value = "3")]
         num_signers: usize,
+    },
+    /// Compute a Fibonacci sequence using trace table with 1 register
+    Fib1 {
+        /// Length of Fibonacci sequence; must be a power of two
+        #[structopt(short = "n", default_value = "1048576")]
+        sequence_length: usize,
     },
 }

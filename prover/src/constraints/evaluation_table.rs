@@ -39,7 +39,8 @@ impl<E: FieldElement> ConstraintEvaluationTable<E> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Returns a new constraint evaluation table with number of columns equal to the number of
-    /// specified divisors, and number of rows equal to the size of constraint evaluation domain.
+    /// specified divisors, and number of rows equal to the size of constraint evaluation domain
+    /// divided by the evaluation frame shift.
     #[cfg(not(debug_assertions))]
     pub fn new(
         domain: &StarkDomain<E::BaseField>,

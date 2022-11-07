@@ -3,80 +3,96 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{FieldElement, Vec};
+use super::{super::Air, FieldElement};
+use crate::Table;
+use utils::TableReader;
 
-// EVALUATION FRAME
-// ================================================================================================
 /// A set of execution trace rows required for evaluation of transition constraints.
-///
-/// In the current implementation, an evaluation frame always contains two consecutive rows of the
-/// execution trace. It is passed in as one of the parameters into
+/// It is passed in as one of the parameters into
 /// [Air::evaluate_transition()](crate::Air::evaluate_transition) function.
-#[derive(Debug, Clone)]
-pub struct EvaluationFrame<E: FieldElement> {
-    current: Vec<E>,
-    next: Vec<E>,
+pub trait EvaluationFrame<E: FieldElement> {
+    /// Creates an empty frame
+    fn new<A: Air>(air: &A) -> Self;
+
+    /// Creates a new frame instantiated from the provided row-major table
+    fn from_table(table: Table<E>) -> Self;
+
+    /// Convert frame to a row-major table
+    fn to_table(&self) -> Table<E>;
+
+    /// Reads selected trace rows from the supplied data into the frame
+    fn read_from<R: TableReader<E>>(&mut self, data: R, step: usize, offset: usize, blowup: usize);
+
+    /// Returns the specified frame row
+    fn row<'a>(&'a self, index: usize) -> &'a [E];
+
+    /// Returns the number of frame rows
+    fn num_rows() -> usize {
+        Self::offsets().len()
+    }
+
+    /// Returns the offsets that make up a frame
+    fn offsets() -> &'static [usize];
 }
 
-impl<E: FieldElement> EvaluationFrame<E> {
+/// Contains rows of the execution trace
+#[derive(Debug, Clone)]
+pub struct DefaultEvaluationFrame<E: FieldElement> {
+    table: Table<E>, // row-major indexing
+}
+
+// DEFAULT EVALUATION FRAME
+// ================================================================================================
+
+impl<E: FieldElement> EvaluationFrame<E> for DefaultEvaluationFrame<E> {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a new evaluation frame instantiated with the specified number of columns.
-    ///
-    /// # Panics
-    /// Panics if `num_columns` is zero.
-    pub fn new(num_columns: usize) -> Self {
-        assert!(
-            num_columns > 0,
-            "number of columns must be greater than zero"
-        );
-        EvaluationFrame {
-            current: E::zeroed_vector(num_columns),
-            next: E::zeroed_vector(num_columns),
+    fn new<A: Air>(air: &A) -> Self {
+        let num_cols = air.trace_layout().main_trace_width();
+        let num_rows = Self::num_rows();
+        DefaultEvaluationFrame {
+            table: Table::new(num_rows, num_cols),
         }
     }
 
-    /// Returns a new evaluation frame instantiated from the provided rows.
-    ///
-    /// # Panics
-    /// Panics if:
-    /// * Lengths of the provided rows are zero.
-    /// * Lengths of the provided rows are not the same.
-    pub fn from_rows(current: Vec<E>, next: Vec<E>) -> Self {
-        assert!(!current.is_empty(), "a row must contain at least one value");
-        assert_eq!(
-            current.len(),
-            next.len(),
-            "number of values in the rows must be the same"
-        );
-        Self { current, next }
+    fn from_table(table: Table<E>) -> Self {
+        Self { table }
+    }
+
+    // ROW MUTATORS
+    // --------------------------------------------------------------------------------------------
+
+    fn read_from<R: TableReader<E>>(&mut self, data: R, step: usize, offset: usize, blowup: usize) {
+        let trace_len = data.num_rows();
+        for (row, row_idx) in self.table.rows_mut().zip(Self::offsets().into_iter()) {
+            for col_idx in 0..data.num_cols() {
+                row[col_idx + offset] = data.get(col_idx, (step + row_idx * blowup) % trace_len);
+            }
+        }
     }
 
     // ROW ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a reference to the current row.
-    #[inline(always)]
-    pub fn current(&self) -> &[E] {
-        &self.current
+    fn row<'a>(&'a self, row_idx: usize) -> &'a [E] {
+        &self.table.get_row(row_idx)
     }
 
-    /// Returns a mutable reference to the current row.
-    #[inline(always)]
-    pub fn current_mut(&mut self) -> &mut [E] {
-        &mut self.current
+    fn to_table(&self) -> Table<E> {
+        self.table.clone()
     }
 
-    /// Returns a reference to the next row.
-    #[inline(always)]
-    pub fn next(&self) -> &[E] {
-        &self.next
+    fn offsets() -> &'static [usize] {
+        &[0, 1]
     }
+}
 
-    /// Returns a mutable reference to the next row.
-    #[inline(always)]
-    pub fn next_mut(&mut self) -> &mut [E] {
-        &mut self.next
+impl<E: FieldElement> DefaultEvaluationFrame<E> {
+    pub fn current<'a>(&'a self) -> &'a [E] {
+        &self.table.get_row(0)
+    }
+    pub fn next<'a>(&'a self) -> &'a [E] {
+        &self.table.get_row(1)
     }
 }

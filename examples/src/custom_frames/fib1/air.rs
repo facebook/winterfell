@@ -3,11 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{BaseElement, FieldElement, ProofOptions, TRACE_WIDTH};
+use super::{BaseElement, FibEvaluationFrame, FieldElement, ProofOptions, TRACE_WIDTH};
 use crate::utils::are_equal;
 use winterfell::{
-    Air, AirContext, Assertion, DefaultEvaluationFrame, EvaluationFrame, TraceInfo,
-    TransitionConstraintDegree,
+    Air, AirContext, Assertion, EvaluationFrame, TraceInfo, TransitionConstraintDegree,
 };
 
 // FIBONACCI AIR
@@ -21,19 +20,18 @@ pub struct FibAir {
 impl Air for FibAir {
     type BaseField = BaseElement;
     type PublicInputs = BaseElement;
-    type Frame<E: FieldElement> = DefaultEvaluationFrame<E>;
-    type AuxFrame<E: FieldElement> = DefaultEvaluationFrame<E>;
+    type Frame<E: FieldElement> = FibEvaluationFrame<E>;
+    type AuxFrame<E: FieldElement> = FibEvaluationFrame<E>;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     fn new(trace_info: TraceInfo, pub_inputs: Self::BaseField, options: ProofOptions) -> Self {
-        let degrees = vec![
-            TransitionConstraintDegree::new(1),
-            TransitionConstraintDegree::new(1),
-        ];
+        let degrees = vec![TransitionConstraintDegree::new(1)];
         assert_eq!(TRACE_WIDTH, trace_info.width());
+        let context =
+            AirContext::new(trace_info, degrees, 3, options).set_num_transition_exemptions(2);
         FibAir {
-            context: AirContext::new(trace_info, degrees, 3, options),
+            context,
             result: pub_inputs,
         }
     }
@@ -48,17 +46,17 @@ impl Air for FibAir {
         _periodic_values: &[E],
         result: &mut [E],
     ) {
-        let current = frame.current();
-        let next = frame.next();
-        // expected state width is 2 field elements
-        debug_assert_eq!(TRACE_WIDTH, current.len());
-        debug_assert_eq!(TRACE_WIDTH, next.len());
+        let row_0 = frame.row(0);
+        let row_1 = frame.row(1);
+        let row_2 = frame.row(2);
 
-        // constraints of Fibonacci sequence (2 terms per step):
-        // s_{0, i+1} = s_{0, i} + s_{1, i}
-        // s_{1, i+1} = s_{1, i} + s_{0, i+1}
-        result[0] = are_equal(next[0], current[0] + current[1]);
-        result[1] = are_equal(next[1], current[1] + next[0]);
+        // expected state width is 1 field elements
+        debug_assert_eq!(TRACE_WIDTH, row_0.len());
+        debug_assert_eq!(TRACE_WIDTH, row_1.len());
+        debug_assert_eq!(TRACE_WIDTH, row_2.len());
+
+        // constraints of Fibonacci sequence
+        result[0] = are_equal(row_2[0], row_0[0] + row_1[0]);
     }
 
     fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>> {
@@ -67,8 +65,8 @@ impl Air for FibAir {
         let last_step = self.trace_length() - 1;
         vec![
             Assertion::single(0, 0, Self::BaseField::ONE),
-            Assertion::single(1, 0, Self::BaseField::ONE),
-            Assertion::single(1, last_step, self.result),
+            Assertion::single(0, 1, Self::BaseField::ONE),
+            Assertion::single(0, last_step, self.result),
         ]
     }
 }

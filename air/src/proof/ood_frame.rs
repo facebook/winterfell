@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::EvaluationFrame;
+use crate::{EvaluationFrame, Table};
 use math::FieldElement;
 use utils::{
     collections::Vec, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
@@ -13,7 +13,7 @@ use utils::{
 // TYPE ALIASES
 // ================================================================================================
 
-type ParsedOodFrame<E> = (EvaluationFrame<E>, Option<EvaluationFrame<E>>, Vec<E>);
+type ParsedOodFrame<E, F1, F2> = (F1, Option<F2>, Vec<E>);
 
 // OUT-OF-DOMAIN FRAME
 // ================================================================================================
@@ -85,29 +85,34 @@ impl OodFrame {
     /// * A vector of evaluations specified by `num_evaluations` could not be parsed from the
     ///   internal bytes.
     /// * Any unconsumed bytes remained after the parsing was complete.
-    pub fn parse<E: FieldElement>(
+    pub fn parse<E: FieldElement, F1: EvaluationFrame<E>, F2: EvaluationFrame<E>>(
         self,
         main_trace_width: usize,
         aux_trace_width: usize,
+        eval_frame_size: usize,
         num_evaluations: usize,
-    ) -> Result<ParsedOodFrame<E>, DeserializationError> {
+    ) -> Result<ParsedOodFrame<E, F1, F2>, DeserializationError> {
         assert!(main_trace_width > 0, "trace width cannot be zero");
         assert!(num_evaluations > 0, "number of evaluations cannot be zero");
 
-        // parse current and next trace states for main and auxiliary trace evaluation frames
+        let mut rows = vec![];
+        let mut aux_rows = vec![];
+
+        // parse trace states for main and auxiliary trace evaluation frames
         let mut reader = SliceReader::new(&self.trace_states);
-        let current = E::read_batch_from(&mut reader, main_trace_width)?;
-        let current_aux = E::read_batch_from(&mut reader, aux_trace_width)?;
-        let next = E::read_batch_from(&mut reader, main_trace_width)?;
-        let next_aux = E::read_batch_from(&mut reader, aux_trace_width)?;
+        for _ in 0..eval_frame_size {
+            let row = E::read_batch_from(&mut reader, main_trace_width)?;
+            let aux_row = E::read_batch_from(&mut reader, aux_trace_width)?;
+            rows.push(row);
+            aux_rows.push(aux_row);
+        }
         if reader.has_more_bytes() {
             return Err(DeserializationError::UnconsumedBytes);
         }
 
-        // instantiate the frames from the parsed rows
-        let main_frame = EvaluationFrame::from_rows(current, next);
+        let main_frame = F1::from_table(Table::from_rows(rows));
         let aux_frame = if aux_trace_width > 0 {
-            Some(EvaluationFrame::from_rows(current_aux, next_aux))
+            Some(F2::from_table(Table::from_rows(aux_rows)))
         } else {
             None
         };
