@@ -158,7 +158,7 @@ impl<E: FieldElement> TransitionConstraints<E> {
     /// * $z(x)$ is the constraint divisor polynomial.
     ///
     /// Thus, this function computes a linear combination of $C(x)$ evaluations. For more detail on
-    ///  how this linear combination is computed refer to [TransitionConstraintGroup::merge_evaluations].
+    /// how this linear combination is computed refer to [TransitionConstraintGroup::merge_evaluations].
     ///
     /// Since, the divisor polynomial is the same for all transition constraints (see
     /// [ConstraintDivisor::from_transition]), we can divide the linear combination by the
@@ -224,7 +224,8 @@ impl<E: FieldElement> TransitionConstraintGroup<E> {
         let evaluation_degree = degree.get_evaluation_degree(trace_length);
         let degree_adjustment = (target_degree - evaluation_degree) as u32;
 
-        // TODO: add comments
+        // pre-compute domain offset exponent; this is used only by the prover and is not relevant
+        // for the verifier
         let domain_offset_exp = domain_offset.exp(degree_adjustment.into());
 
         TransitionConstraintGroup {
@@ -249,12 +250,12 @@ impl<E: FieldElement> TransitionConstraintGroup<E> {
         &self.degree
     }
 
-    /// Returns adjustment degree for this group.
+    /// Returns degree adjustment factor for this constraint group.
     pub fn degree_adjustment(&self) -> u32 {
         self.degree_adjustment
     }
 
-    /// TODO: add comments
+    /// Returns c^degree_adjustment where c is the coset offset.
     pub fn domain_offset_exp(&self) -> E::BaseField {
         self.domain_offset_exp
     }
@@ -272,10 +273,13 @@ impl<E: FieldElement> TransitionConstraintGroup<E> {
     ///
     /// The linear combination is computed as follows:
     /// $$
-    /// \sum_{i=0}^{k-1}{C_i(x) \cdot (\alpha_i + \beta_i \cdot x^d)}
+    /// \sum_{i=0}^{k-1}{C_i(x) \cdot (\alpha_i + \beta_i \cdot xp)}
     /// $$
     /// where:
     /// * $C_i(x)$ is the evaluation of the $i$th constraint at `x` (same as `evaluations[i]`).
+    /// * $xp = x^d$ where $d$ is the degree adjustment factor computed as $D + (n - 1) - deg(C_i(x))$,
+    ///   where $D$ is the degree of the composition polynomial, $n$ is the length of the execution
+    ///   trace, and $deg(C_i(x))$ is the evaluation degree of the $i$th constraint.
     /// * $\alpha$ and $\beta$ are random field elements. In the interactive version of the
     ///   protocol, these are provided by the verifier.
     /// * $d$ is the degree adjustment factor computed as $D + (n - 1) - deg(C_i(x))$, where

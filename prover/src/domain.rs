@@ -15,16 +15,13 @@ pub struct StarkDomain<B: StarkField> {
     /// vector is half the length of the trace domain size.
     trace_twiddles: Vec<B>,
 
-    /// Size of the constraint evaluation domain.
-    ce_domain_size: usize,
-
     /// LDE domain size / constraint evaluation domain size
     ce_to_lde_blowup: usize,
 
     /// Offset of the low-degree extension domain.
     domain_offset: B,
 
-    /// TODO
+    /// [g^i for i in (0..ce_domain_size)] where g is the constraint evaluation domain generator.
     ce_domain: Vec<B>,
 }
 
@@ -36,12 +33,12 @@ impl<B: StarkField> StarkDomain<B> {
     pub fn new<A: Air<BaseField = B>>(air: &A) -> Self {
         let trace_twiddles = fft::get_twiddles(air.trace_length());
 
+        // build constraint evaluation domain
         let domain_gen = B::get_root_of_unity(log2(air.ce_domain_size()));
         let ce_domain = get_power_series(domain_gen, air.ce_domain_size());
 
         StarkDomain {
             trace_twiddles,
-            ce_domain_size: air.ce_domain_size(),
             ce_to_lde_blowup: air.lde_domain_size() / air.ce_domain_size(),
             domain_offset: air.domain_offset(),
             ce_domain,
@@ -75,8 +72,9 @@ impl<B: StarkField> StarkDomain<B> {
     // --------------------------------------------------------------------------------------------
 
     /// Returns the size of the constraint evaluation domain for this computation.
+    #[inline(always)]
     pub fn ce_domain_size(&self) -> usize {
-        self.ce_domain_size
+        self.ce_domain.len()
     }
 
     /// Returns the generator of constraint evaluation domain.
@@ -89,16 +87,23 @@ impl<B: StarkField> StarkDomain<B> {
         self.ce_to_lde_blowup
     }
 
+    /// Returns s * g^step where g is the constraint evaluation domain generator and s is the
+    /// domain offset.
+    #[inline(always)]
     pub fn get_ce_x_at(&self, step: usize) -> B {
-        self.ce_domain[step]
+        self.ce_domain[step] * self.domain_offset
     }
 
-    /// TODO: add comments
+    /// Returns (s * g^step)^power where g is the constraint evaluation domain generator and s is
+    /// the domain offset.
+    ///
+    /// The computation is performed without doing exponentiations. offset_exp is assumed to be
+    /// s^power which is pre-computed elsewhere.
     #[inline(always)]
-    pub fn get_ce_x_power_at(&self, step: usize, power: u32) -> B {
+    pub fn get_ce_x_power_at(&self, step: usize, power: u32, offset_exp: B) -> B {
         let index: usize = step * power as usize;
         let index = index % self.ce_domain_size();
-        self.ce_domain[index]
+        self.ce_domain[index] * offset_exp
     }
 
     // LOW-DEGREE EXTENSION DOMAIN

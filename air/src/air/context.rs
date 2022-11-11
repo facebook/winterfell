@@ -237,13 +237,6 @@ impl<B: StarkField> AirContext<B> {
         self.num_transition_exemptions
     }
 
-    /// TODO
-    pub fn get_transition_constraint_degrees(&self) -> Vec<TransitionConstraintDegree> {
-        let mut result = self.main_transition_constraint_degrees.clone();
-        result.extend_from_slice(&self.aux_transition_constraint_degrees.clone());
-        result
-    }
-
     // DATA MUTATORS
     // --------------------------------------------------------------------------------------------
 
