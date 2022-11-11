@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use air::Air;
-use math::{fft, log2, StarkField};
+use math::{fft, get_power_series, log2, StarkField};
 use utils::collections::Vec;
 
 // TYPES AND INTERFACES
@@ -23,6 +23,9 @@ pub struct StarkDomain<B: StarkField> {
 
     /// Offset of the low-degree extension domain.
     domain_offset: B,
+
+    /// TODO
+    ce_domain: Vec<B>,
 }
 
 // STARK DOMAIN IMPLEMENTATION
@@ -32,11 +35,16 @@ impl<B: StarkField> StarkDomain<B> {
     /// Returns a new STARK domain initialized with the provided `context`.
     pub fn new<A: Air<BaseField = B>>(air: &A) -> Self {
         let trace_twiddles = fft::get_twiddles(air.trace_length());
+
+        let domain_gen = B::get_root_of_unity(log2(air.ce_domain_size()));
+        let ce_domain = get_power_series(domain_gen, air.ce_domain_size());
+
         StarkDomain {
             trace_twiddles,
             ce_domain_size: air.ce_domain_size(),
             ce_to_lde_blowup: air.lde_domain_size() / air.ce_domain_size(),
             domain_offset: air.domain_offset(),
+            ce_domain,
         }
     }
 
@@ -79,6 +87,18 @@ impl<B: StarkField> StarkDomain<B> {
     /// Returns blowup factor from constraint evaluation to LDE domain.
     pub fn ce_to_lde_blowup(&self) -> usize {
         self.ce_to_lde_blowup
+    }
+
+    pub fn get_ce_x_at(&self, step: usize) -> B {
+        self.ce_domain[step]
+    }
+
+    /// TODO: add comments
+    #[inline(always)]
+    pub fn get_ce_x_power_at(&self, step: usize, power: u32) -> B {
+        let index: usize = step * power as usize;
+        let index = index % self.ce_domain_size();
+        self.ce_domain[index]
     }
 
     // LOW-DEGREE EXTENSION DOMAIN
