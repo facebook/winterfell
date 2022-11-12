@@ -31,6 +31,15 @@ pub struct StarkDomain<B: StarkField> {
 impl<B: StarkField> StarkDomain<B> {
     /// Returns a new STARK domain initialized with the provided `context`.
     pub fn new<A: Air<BaseField = B>>(air: &A) -> Self {
+        // this is needed to ensure that step * power does not overflow in get_ce_x_power_at().
+        // in the future, we should revisit this to enable domain sizes greater than 2^32
+        assert!(
+            air.ce_domain_size() <= 2_usize.pow(32),
+            "constraint evaluation domain size cannot exceed {}, but was {}",
+            u32::MAX,
+            2_usize.pow(32)
+        );
+
         let trace_twiddles = fft::get_twiddles(air.trace_length());
 
         // build constraint evaluation domain

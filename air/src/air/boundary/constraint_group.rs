@@ -62,12 +62,18 @@ where
         // Boundary constraint degree is always deg(trace). So, the degree adjustment is simply:
         // deg(composition) + deg(divisor) - deg(trace)
         let target_degree = composition_degree + divisor.degree();
-        let degree_adjustment = (target_degree - trace_poly_degree) as u32;
+        let degree_adjustment = (target_degree - trace_poly_degree) as u64;
+        assert!(
+            degree_adjustment <= u32::MAX as u64,
+            "boundary constraint degree adjustment cannot exceed {}, but was {}",
+            u32::MAX,
+            degree_adjustment
+        );
 
         BoundaryConstraintGroup {
             constraints: Vec::new(),
             divisor,
-            degree_adjustment,
+            degree_adjustment: degree_adjustment as u32,
         }
     }
 

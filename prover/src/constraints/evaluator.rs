@@ -74,8 +74,8 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     pub fn evaluate(
         self,
         trace: &TraceLde<E>,
-        domain: &StarkDomain<E::BaseField>,
-    ) -> ConstraintEvaluationTable<E> {
+        domain: &'a StarkDomain<E::BaseField>,
+    ) -> ConstraintEvaluationTable<'a, E> {
         assert_eq!(
             trace.trace_len(),
             domain.lde_domain_size(),
