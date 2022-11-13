@@ -41,7 +41,7 @@ where
 {
     constraints: Vec<BoundaryConstraint<F, E>>,
     divisor: ConstraintDivisor<F::BaseField>,
-    degree_adjustment: u32,
+    degree_adjustment: u64,
 }
 
 impl<F, E> BoundaryConstraintGroup<F, E>
@@ -63,17 +63,11 @@ where
         // deg(composition) + deg(divisor) - deg(trace)
         let target_degree = composition_degree + divisor.degree();
         let degree_adjustment = (target_degree - trace_poly_degree) as u64;
-        assert!(
-            degree_adjustment <= u32::MAX as u64,
-            "boundary constraint degree adjustment cannot exceed {}, but was {}",
-            u32::MAX,
-            degree_adjustment
-        );
 
         BoundaryConstraintGroup {
             constraints: Vec::new(),
             divisor,
-            degree_adjustment: degree_adjustment as u32,
+            degree_adjustment,
         }
     }
 
@@ -91,7 +85,7 @@ where
     }
 
     /// Returns a degree adjustment factor for all boundary constraints in this group.
-    pub fn degree_adjustment(&self) -> u32 {
+    pub fn degree_adjustment(&self) -> u64 {
         self.degree_adjustment
     }
 

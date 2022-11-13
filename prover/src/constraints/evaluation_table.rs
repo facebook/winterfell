@@ -404,7 +404,7 @@ fn get_inv_evaluation<B: StarkField>(
         128, // min batch size
         |batch: &mut [B], batch_offset: usize| {
             for (i, evaluation) in batch.iter_mut().enumerate() {
-                let x = domain.get_ce_x_power_at(batch_offset + i, a as u32, domain_offset_exp);
+                let x = domain.get_ce_x_power_at(batch_offset + i, a, domain_offset_exp);
                 *evaluation = x - b;
             }
         }

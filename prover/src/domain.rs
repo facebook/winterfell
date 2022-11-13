@@ -15,14 +15,19 @@ pub struct StarkDomain<B: StarkField> {
     /// vector is half the length of the trace domain size.
     trace_twiddles: Vec<B>,
 
+    /// [g^i for i in (0..ce_domain_size)] where g is the constraint evaluation domain generator.
+    ce_domain: Vec<B>,
+
     /// LDE domain size / constraint evaluation domain size
     ce_to_lde_blowup: usize,
 
+    /// A mask which can be used to compute (x % ce_domain_size) via binary AND. This takes
+    /// advantage of the fact that ce_domain_size is a power of two. The mask is then simply
+    /// ce_domain_size - 1.
+    ce_domain_mod_mask: usize,
+
     /// Offset of the low-degree extension domain.
     domain_offset: B,
-
-    /// [g^i for i in (0..ce_domain_size)] where g is the constraint evaluation domain generator.
-    ce_domain: Vec<B>,
 }
 
 // STARK DOMAIN IMPLEMENTATION
@@ -31,15 +36,6 @@ pub struct StarkDomain<B: StarkField> {
 impl<B: StarkField> StarkDomain<B> {
     /// Returns a new STARK domain initialized with the provided `context`.
     pub fn new<A: Air<BaseField = B>>(air: &A) -> Self {
-        // this is needed to ensure that step * power does not overflow in get_ce_x_power_at().
-        // in the future, we should revisit this to enable domain sizes greater than 2^32
-        assert!(
-            air.ce_domain_size() <= 2_usize.pow(32),
-            "constraint evaluation domain size cannot exceed {}, but was {}",
-            u32::MAX,
-            2_usize.pow(32)
-        );
-
         let trace_twiddles = fft::get_twiddles(air.trace_length());
 
         // build constraint evaluation domain
@@ -48,9 +44,10 @@ impl<B: StarkField> StarkDomain<B> {
 
         StarkDomain {
             trace_twiddles,
-            ce_to_lde_blowup: air.lde_domain_size() / air.ce_domain_size(),
-            domain_offset: air.domain_offset(),
             ce_domain,
+            ce_to_lde_blowup: air.lde_domain_size() / air.ce_domain_size(),
+            ce_domain_mod_mask: air.ce_domain_size() - 1,
+            domain_offset: air.domain_offset(),
         }
     }
 
@@ -109,9 +106,13 @@ impl<B: StarkField> StarkDomain<B> {
     /// The computation is performed without doing exponentiations. offset_exp is assumed to be
     /// s^power which is pre-computed elsewhere.
     #[inline(always)]
-    pub fn get_ce_x_power_at(&self, step: usize, power: u32, offset_exp: B) -> B {
-        let index: usize = step * power as usize;
-        let index = index % self.ce_domain_size();
+    pub fn get_ce_x_power_at(&self, step: usize, power: u64, offset_exp: B) -> B {
+        debug_assert_eq!(offset_exp, self.offset().exp(power.into()));
+        // this computes (step * power) % ce_domain_size. even though both step and power could be
+        // 64-bit values, we are not concerned about overflow here because we are modding by a
+        // power of two. this is also the reason why we can do & ce_domain_mod_mask instead of
+        // performing the actual modulus operation.
+        let index = step.wrapping_mul(power as usize) & self.ce_domain_mod_mask;
         self.ce_domain[index] * offset_exp
     }
 

@@ -201,7 +201,7 @@ impl<E: FieldElement> TransitionConstraints<E> {
 #[derive(Clone, Debug)]
 pub struct TransitionConstraintGroup<E: FieldElement> {
     degree: TransitionConstraintDegree,
-    degree_adjustment: u32,
+    degree_adjustment: u64,
     domain_offset_exp: E::BaseField,
     indexes: Vec<usize>,
     coefficients: Vec<(E, E)>,
@@ -223,12 +223,6 @@ impl<E: FieldElement> TransitionConstraintGroup<E> {
         let target_degree = composition_degree + divisor_degree;
         let evaluation_degree = degree.get_evaluation_degree(trace_length);
         let degree_adjustment = (target_degree - evaluation_degree) as u64;
-        assert!(
-            degree_adjustment <= u32::MAX as u64,
-            "transition constraint degree adjustment cannot exceed {}, but was {}",
-            u32::MAX,
-            degree_adjustment
-        );
 
         // pre-compute domain offset exponent; this is used only by the prover and is not relevant
         // for the verifier
@@ -236,7 +230,7 @@ impl<E: FieldElement> TransitionConstraintGroup<E> {
 
         TransitionConstraintGroup {
             degree,
-            degree_adjustment: degree_adjustment as u32,
+            degree_adjustment,
             domain_offset_exp,
             indexes: vec![],
             coefficients: vec![],
@@ -257,7 +251,7 @@ impl<E: FieldElement> TransitionConstraintGroup<E> {
     }
 
     /// Returns degree adjustment factor for this constraint group.
-    pub fn degree_adjustment(&self) -> u32 {
+    pub fn degree_adjustment(&self) -> u64 {
         self.degree_adjustment
     }
 

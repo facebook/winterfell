@@ -136,7 +136,7 @@ impl<E: FieldElement> BoundaryConstraints<E> {
 /// and thus, to help avoid exponentiations.
 pub struct BoundaryConstraintGroup<E: FieldElement> {
     divisor: ConstraintDivisor<E::BaseField>,
-    degree_adjustment: u32,
+    degree_adjustment: u64,
     domain_offset_exp: E::BaseField,
     // main trace constraints
     main_single_value: Vec<SingleValueConstraint<E::BaseField, E>>,
@@ -156,7 +156,7 @@ impl<E: FieldElement> BoundaryConstraintGroup<E> {
     /// degree adjustment factor.
     fn new(
         divisor: ConstraintDivisor<E::BaseField>,
-        degree_adjustment: u32,
+        degree_adjustment: u64,
         domain_offset: E::BaseField,
     ) -> Self {
         Self {

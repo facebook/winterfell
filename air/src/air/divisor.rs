@@ -171,7 +171,7 @@ impl<B: StarkField> Display for ConstraintDivisor<B> {
 // ================================================================================================
 
 /// Returns g^step, where g is the generator of trace domain.
-pub fn get_trace_domain_value_at<B: StarkField>(trace_length: usize, step: usize) -> B {
+fn get_trace_domain_value_at<B: StarkField>(trace_length: usize, step: usize) -> B {
     debug_assert!(
         step < trace_length,
         "step must be in the trace domain [0, {})",
