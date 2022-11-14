@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.2 (2022-11-14)
+* Removed most exponentiations from the constraint evaluation step for the Prover.
+
 ## 0.4.1 (2022-10-24)
 * Increased transition constraint exemption limit by 1.
 * Implemented custom doubling for `f64` and `f62` field.
