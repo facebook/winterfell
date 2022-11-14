@@ -74,8 +74,8 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     pub fn evaluate(
         self,
         trace: &TraceLde<E>,
-        domain: &StarkDomain<E::BaseField>,
-    ) -> ConstraintEvaluationTable<E> {
+        domain: &'a StarkDomain<E::BaseField>,
+    ) -> ConstraintEvaluationTable<'a, E> {
         assert_eq!(
             trace.trace_len(),
             domain.lde_domain_size(),
@@ -148,10 +148,6 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
         let mut t_evaluations = vec![E::BaseField::ZERO; self.num_main_transition_constraints()];
 
-        // pre-compute values needed to determine x coordinates in the constraint evaluation domain
-        let g = domain.ce_domain_generator();
-        let mut x = domain.offset() * g.exp((fragment.offset() as u64).into());
-
         // this will be used to convert steps in constraint evaluation domain to steps in
         // LDE domain
         let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
@@ -168,7 +164,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
             // evaluate transition constraints and save the merged result the first slot of the
             // evaluations buffer
             evaluations[0] =
-                self.evaluate_main_transition(&main_frame, x, step, &mut t_evaluations);
+                self.evaluate_main_transition(&main_frame, domain, step, &mut t_evaluations);
 
             // when in debug mode, save transition constraint evaluations
             #[cfg(debug_assertions)]
@@ -177,14 +173,15 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
             // evaluate boundary constraints; the results go into remaining slots of the
             // evaluations buffer
             let main_state = main_frame.current();
-            self.boundary_constraints
-                .evaluate_main(main_state, x, step, &mut evaluations[1..]);
+            self.boundary_constraints.evaluate_main(
+                main_state,
+                domain,
+                step,
+                &mut evaluations[1..],
+            );
 
             // record the result in the evaluation table
             fragment.update_row(i, &evaluations);
-
-            // update x to the next value
-            x *= g;
         }
     }
 
@@ -205,10 +202,6 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         let mut ta_evaluations = vec![E::ZERO; self.num_aux_transition_constraints()];
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
 
-        // pre-compute values needed to determine x coordinates in the constraint evaluation domain
-        let g = domain.ce_domain_generator();
-        let mut x = domain.offset() * g.exp((fragment.offset() as u64).into());
-
         // this will be used to convert steps in constraint evaluation domain to steps in
         // LDE domain
         let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
@@ -224,9 +217,14 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
             // evaluations buffer; we evaluate and compose constraints in the same function, we
             // can just add up the results of evaluating main and auxiliary constraints.
             evaluations[0] =
-                self.evaluate_main_transition(&main_frame, x, step, &mut tm_evaluations);
-            evaluations[0] +=
-                self.evaluate_aux_transition(&main_frame, &aux_frame, x, step, &mut ta_evaluations);
+                self.evaluate_main_transition(&main_frame, domain, step, &mut tm_evaluations);
+            evaluations[0] += self.evaluate_aux_transition(
+                &main_frame,
+                &aux_frame,
+                domain,
+                step,
+                &mut ta_evaluations,
+            );
 
             // when in debug mode, save transition constraint evaluations
             #[cfg(debug_assertions)]
@@ -239,16 +237,13 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
             self.boundary_constraints.evaluate_all(
                 main_state,
                 aux_state,
-                x,
+                domain,
                 step,
                 &mut evaluations[1..],
             );
 
             // record the result in the evaluation table
             fragment.update_row(i, &evaluations);
-
-            // update x to the next value
-            x *= g;
         }
     }
 
@@ -264,7 +259,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     fn evaluate_main_transition(
         &self,
         main_frame: &EvaluationFrame<E::BaseField>,
-        x: E::BaseField,
+        domain: &StarkDomain<A::BaseField>,
         step: usize,
         evaluations: &mut [E::BaseField],
     ) -> E {
@@ -281,7 +276,9 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         // merge transition constraint evaluations into a single value and return it;
         // we can do this here because all transition constraints have the same divisor.
         self.transition_constraints.main_constraints().iter().fold(E::ZERO, |result, group| {
-            result + group.merge_evaluations(evaluations, x)
+            let (power, offset_exp) = (group.degree_adjustment(), group.domain_offset_exp());
+            let xp = domain.get_ce_x_power_at(step, power, offset_exp);
+            result + group.merge_evaluations(evaluations, xp)
         })
     }
 
@@ -295,7 +292,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         &self,
         main_frame: &EvaluationFrame<E::BaseField>,
         aux_frame: &EvaluationFrame<E>,
-        x: E::BaseField,
+        domain: &StarkDomain<A::BaseField>,
         step: usize,
         evaluations: &mut [E],
     ) -> E {
@@ -318,7 +315,9 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         // merge transition constraint evaluations into a single value and return it;
         // we can do this here because all transition constraints have the same divisor.
         self.transition_constraints.aux_constraints().iter().fold(E::ZERO, |result, group| {
-            result + group.merge_evaluations::<E::BaseField, E>(evaluations, x)
+            let (power, offset_exp) = (group.degree_adjustment(), group.domain_offset_exp());
+            let xp = domain.get_ce_x_power_at(step, power, offset_exp);
+            result + group.merge_evaluations::<E::BaseField, E>(evaluations, xp)
         })
     }
 

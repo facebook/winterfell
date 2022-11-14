@@ -41,7 +41,7 @@ where
 {
     constraints: Vec<BoundaryConstraint<F, E>>,
     divisor: ConstraintDivisor<F::BaseField>,
-    degree_adjustment: u32,
+    degree_adjustment: u64,
 }
 
 impl<F, E> BoundaryConstraintGroup<F, E>
@@ -62,7 +62,7 @@ where
         // Boundary constraint degree is always deg(trace). So, the degree adjustment is simply:
         // deg(composition) + deg(divisor) - deg(trace)
         let target_degree = composition_degree + divisor.degree();
-        let degree_adjustment = (target_degree - trace_poly_degree) as u32;
+        let degree_adjustment = (target_degree - trace_poly_degree) as u64;
 
         BoundaryConstraintGroup {
             constraints: Vec::new(),
@@ -85,7 +85,7 @@ where
     }
 
     /// Returns a degree adjustment factor for all boundary constraints in this group.
-    pub fn degree_adjustment(&self) -> u32 {
+    pub fn degree_adjustment(&self) -> u64 {
         self.degree_adjustment
     }
 

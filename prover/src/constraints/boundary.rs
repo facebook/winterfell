@@ -3,6 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use super::StarkDomain;
 use air::{Air, AuxTraceRandElements, ConstraintDivisor};
 use math::{fft, ExtensionOf, FieldElement};
 use utils::collections::{BTreeMap, Vec};
@@ -86,59 +87,37 @@ impl<E: FieldElement> BoundaryConstraints<E> {
 
     /// Evaluates boundary constraints against the main segment of an execution trace at the
     /// specified step of constraint evaluation domain.
-    ///
-    /// Specifically, `step` is the step in the constraint evaluation domain, and `x` is the
-    /// corresponding domain value. That is, x = s * g^step, where g is the generator of the
-    /// constraint evaluation domain, and s is the domain offset.
     pub fn evaluate_main(
         &self,
         main_state: &[E::BaseField],
-        x: E::BaseField,
+        domain: &StarkDomain<E::BaseField>,
         step: usize,
         result: &mut [E],
     ) {
-        // compute the adjustment degree outside of the group so that we can re-use
-        // it for groups which have the same adjustment degree
-        let mut degree_adjustment = self.0[0].degree_adjustment;
-        let mut xp: E::BaseField = x.exp(degree_adjustment.into());
-
+        let x = domain.get_ce_x_at(step);
         for (group, result) in self.0.iter().zip(result.iter_mut()) {
-            // recompute adjustment degree only when it has changed
-            if group.degree_adjustment != degree_adjustment {
-                degree_adjustment = group.degree_adjustment;
-                xp = x.exp(degree_adjustment.into());
-            }
             // evaluate the group and save the result
+            let (power, offset_exp) = (group.degree_adjustment, group.domain_offset_exp);
+            let xp = domain.get_ce_x_power_at(step, power, offset_exp);
             *result = group.evaluate_main(main_state, step, x, xp);
         }
     }
 
     /// Evaluates boundary constraints against all segments of an execution trace at the
     /// specified step of constraint evaluation domain.
-    ///
-    /// Specifically, `step` is the step in the constraint evaluation domain, and `x` is the
-    /// corresponding domain value. That is, x = s * g^step, where g is the generator of the
-    /// constraint evaluation domain, and s is the domain offset.
     pub fn evaluate_all(
         &self,
         main_state: &[E::BaseField],
         aux_state: &[E],
-        x: E::BaseField,
+        domain: &StarkDomain<E::BaseField>,
         step: usize,
         result: &mut [E],
     ) {
-        // compute the adjustment degree outside of the group so that we can re-use
-        // it for groups which have the same adjustment degree
-        let mut degree_adjustment = self.0[0].degree_adjustment;
-        let mut xp: E::BaseField = x.exp(degree_adjustment.into());
-
+        let x = domain.get_ce_x_at(step);
         for (group, result) in self.0.iter().zip(result.iter_mut()) {
-            // recompute adjustment degree only when it has changed
-            if group.degree_adjustment != degree_adjustment {
-                degree_adjustment = group.degree_adjustment;
-                xp = x.exp(degree_adjustment.into());
-            }
             // evaluate the group and save the result
+            let (power, offset_exp) = (group.degree_adjustment, group.domain_offset_exp);
+            let xp = domain.get_ce_x_power_at(step, power, offset_exp);
             *result = group.evaluate_all(main_state, aux_state, step, x, xp);
         }
     }
@@ -152,9 +131,13 @@ impl<E: FieldElement> BoundaryConstraints<E> {
 ///
 /// The constraints are also separated into constraints against the main segment of the execution
 /// and the constraints against auxiliary segments of the execution trace (if any).
+///
+/// Domain offset exponent is pre-computed to be used later during constraint evaluation process,
+/// and thus, to help avoid exponentiations.
 pub struct BoundaryConstraintGroup<E: FieldElement> {
     divisor: ConstraintDivisor<E::BaseField>,
-    degree_adjustment: u32,
+    degree_adjustment: u64,
+    domain_offset_exp: E::BaseField,
     // main trace constraints
     main_single_value: Vec<SingleValueConstraint<E::BaseField, E>>,
     main_small_poly: Vec<SmallPolyConstraint<E::BaseField, E>>,
@@ -171,10 +154,15 @@ impl<E: FieldElement> BoundaryConstraintGroup<E> {
 
     /// Returns an empty [BoundaryConstraintGroup] instantiated with the specified divisor and
     /// degree adjustment factor.
-    fn new(divisor: ConstraintDivisor<E::BaseField>, degree_adjustment: u32) -> Self {
+    fn new(
+        divisor: ConstraintDivisor<E::BaseField>,
+        degree_adjustment: u64,
+        domain_offset: E::BaseField,
+    ) -> Self {
         Self {
             divisor,
             degree_adjustment,
+            domain_offset_exp: domain_offset.exp(degree_adjustment.into()),
             main_single_value: Vec::new(),
             main_small_poly: Vec::new(),
             main_large_poly: Vec::new(),
@@ -195,7 +183,11 @@ impl<E: FieldElement> BoundaryConstraintGroup<E> {
         air: &A,
         twiddle_map: &mut BTreeMap<usize, Vec<E::BaseField>>,
     ) -> Self {
-        let mut result = Self::new(source.divisor().clone(), source.degree_adjustment());
+        let mut result = Self::new(
+            source.divisor().clone(),
+            source.degree_adjustment(),
+            air.domain_offset(),
+        );
 
         for constraint in source.constraints() {
             if constraint.poly().len() == 1 {
@@ -224,7 +216,11 @@ impl<E: FieldElement> BoundaryConstraintGroup<E> {
         air: &A,
         twiddle_map: &mut BTreeMap<usize, Vec<E::BaseField>>,
     ) -> Self {
-        let mut result = Self::new(group.divisor().clone(), group.degree_adjustment());
+        let mut result = Self::new(
+            group.divisor().clone(),
+            group.degree_adjustment(),
+            air.domain_offset(),
+        );
         result.add_aux_constraints(group, air, twiddle_map);
         result
     }
