@@ -255,7 +255,7 @@ mod tests {
     fn constraint_divisor_equivalence() {
         let n = 8_usize;
         let g = BaseElement::get_root_of_unity(n.trailing_zeros());
-        let k = 4 as u32;
+        let k = 4_u32;
         let j = n as u32 / k;
 
         // ----- periodic assertion divisor, no offset --------------------------------------------
@@ -288,7 +288,7 @@ mod tests {
         // ----- periodic assertion divisor, with offset ------------------------------------------
 
         // create a divisor for assertion which repeats every 2 steps starting at step 1
-        let offset = 1u32;
+        let offset = 1_u32;
         let assertion = Assertion::periodic(0, offset as usize, j as usize, BaseElement::ONE);
         let divisor = ConstraintDivisor::from_assertion(&assertion, n);
         assert_eq!(
@@ -318,8 +318,8 @@ mod tests {
         }
 
         // create a divisor for assertion which repeats every 4 steps starting at step 3
-        let offset = 3u32;
-        let k = 2 as u32;
+        let offset = 3_u32;
+        let k = 2_u32;
         let j = n as u32 / k;
         let assertion = Assertion::periodic(0, offset as usize, j as usize, BaseElement::ONE);
         let divisor = ConstraintDivisor::from_assertion(&assertion, n);

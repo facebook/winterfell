@@ -46,8 +46,8 @@ extern crate alloc;
 pub use air::{
     proof::StarkProof, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
     BoundaryConstraintGroup, ConstraintCompositionCoefficients, ConstraintDivisor,
-    DeepCompositionCoefficients, EvaluationFrame, FieldExtension, HashFunction, ProofOptions,
-    TraceInfo, TraceLayout, TransitionConstraintDegree, TransitionConstraintGroup,
+    DeepCompositionCoefficients, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo,
+    TraceLayout, TransitionConstraintDegree, TransitionConstraintGroup,
 };
 pub use utils::{
     iterators, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
@@ -65,10 +65,7 @@ use math::{
 };
 
 pub use crypto;
-use crypto::{
-    hashers::{Blake3_192, Blake3_256, Sha3_256},
-    ElementHasher, MerkleTree,
-};
+use crypto::{ElementHasher, MerkleTree};
 
 #[cfg(feature = "std")]
 use log::debug;
@@ -108,9 +105,10 @@ pub mod tests;
 /// Defines a STARK prover for a computation.
 ///
 /// A STARK prover can be used to generate STARK proofs. The prover contains definitions of a
-/// computation's AIR (specified via [Air](Prover::Air) associated type) and execution trace
-/// (specified via [Trace](Prover::Trace) associated type), and exposes [prove()](Prover::prove)
-/// method which can be used to build STARK proofs for provided execution traces.
+/// computation's AIR (specified via [Air](Prover::Air) associated type), execution trace
+/// (specified via [Trace](Prover::Trace) associated type) and hash function to be used (specified
+/// via [HashFn](Prover::HashFn) associated type), and exposes [prove()](Prover::prove) method which can
+/// be used to build STARK proofs for provided execution traces.
 ///
 /// Thus, once a prover is defined and instantiated, generating a STARK proof consists of two
 /// steps:
@@ -130,6 +128,9 @@ pub trait Prover {
     /// Execution trace of the computation described by this prover.
     type Trace: Trace<BaseField = Self::BaseField>;
 
+    /// Hash function to be used.
+    type HashFn: ElementHasher<BaseField = Self::BaseField>;
+
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
 
@@ -142,8 +143,8 @@ pub trait Prover {
     /// Returns [ProofOptions] which this prover uses to generate STARK proofs.
     ///
     /// Proof options defines basic protocol parameters such as: number of queries, blowup factor,
-    /// grinding factor, hash function to be used in the protocol etc. These properties directly
-    /// inform such metrics as proof generation time, proof size, and proof security level.
+    /// grinding factor etc. These properties directly inform such metrics as proof generation time,
+    /// proof size, and proof security level.
     fn options(&self) -> &ProofOptions;
 
     // PROVIDED METHODS
@@ -161,30 +162,18 @@ pub trait Prover {
         // figure out which version of the generic proof generation procedure to run. this is a sort
         // of static dispatch for selecting two generic parameter: extension field and hash function.
         match self.options().field_extension() {
-            FieldExtension::None => match self.options().hash_fn() {
-                HashFunction::Blake3_256 => self.generate_proof::<Self::BaseField, Blake3_256<Self::BaseField>>(trace),
-                HashFunction::Blake3_192 => self.generate_proof::<Self::BaseField, Blake3_192<Self::BaseField>>(trace),
-                HashFunction::Sha3_256 => self.generate_proof::<Self::BaseField, Sha3_256<Self::BaseField>>(trace),
-            },
+            FieldExtension::None => self.generate_proof::<Self::BaseField>(trace),
             FieldExtension::Quadratic => {
                 if !<QuadExtension<Self::BaseField>>::is_supported() {
                     return Err(ProverError::UnsupportedFieldExtension(2));
                 }
-                match self.options().hash_fn() {
-                    HashFunction::Blake3_256 => self.generate_proof::<QuadExtension<Self::BaseField>, Blake3_256<Self::BaseField>>(trace),
-                    HashFunction::Blake3_192 => self.generate_proof::<QuadExtension<Self::BaseField>, Blake3_192<Self::BaseField>>(trace),
-                    HashFunction::Sha3_256 => self.generate_proof::<QuadExtension<Self::BaseField>, Sha3_256<Self::BaseField>>(trace),
-                }
+                self.generate_proof::<QuadExtension<Self::BaseField>>(trace)
             }
             FieldExtension::Cubic => {
                 if !<CubeExtension<Self::BaseField>>::is_supported() {
                     return Err(ProverError::UnsupportedFieldExtension(3));
                 }
-                match self.options().hash_fn() {
-                    HashFunction::Blake3_256 => self.generate_proof::<CubeExtension<Self::BaseField>, Blake3_256<Self::BaseField>>(trace),
-                    HashFunction::Blake3_192 => self.generate_proof::<CubeExtension<Self::BaseField>, Blake3_192<Self::BaseField>>(trace),
-                    HashFunction::Sha3_256 => self.generate_proof::<CubeExtension<Self::BaseField>, Sha3_256<Self::BaseField>>(trace),
-                }
+                self.generate_proof::<CubeExtension<Self::BaseField>>(trace)
             }
         }
     }
@@ -196,10 +185,9 @@ pub trait Prover {
     /// execution `trace` is valid against this prover's AIR.
     /// TODO: make this function un-callable externally?
     #[doc(hidden)]
-    fn generate_proof<E, H>(&self, mut trace: Self::Trace) -> Result<StarkProof, ProverError>
+    fn generate_proof<E>(&self, mut trace: Self::Trace) -> Result<StarkProof, ProverError>
     where
         E: FieldElement<BaseField = Self::BaseField>,
-        H: ElementHasher<BaseField = Self::BaseField>,
     {
         // 0 ----- instantiate AIR and prover channel ---------------------------------------------
 
@@ -216,7 +204,7 @@ pub trait Prover {
         // create a channel which is used to simulate interaction between the prover and the
         // verifier; the channel will be used to commit to values and to draw randomness that
         // should come from the verifier.
-        let mut channel = ProverChannel::<Self::Air, E, H>::new(&air, pub_inputs_bytes);
+        let mut channel = ProverChannel::<Self::Air, E, Self::HashFn>::new(&air, pub_inputs_bytes);
 
         // 1 ----- Commit to the execution trace --------------------------------------------------
 
@@ -233,7 +221,7 @@ pub trait Prover {
 
         // extend the main execution trace and build a Merkle tree from the extended trace
         let (main_trace_lde, main_trace_tree, main_trace_polys) =
-            self.build_trace_commitment::<Self::BaseField, H>(trace.main_segment(), &domain);
+            self.build_trace_commitment::<Self::BaseField>(trace.main_segment(), &domain);
 
         // commit to the LDE of the main trace by writing the root of its Merkle tree into
         // the channel
@@ -264,7 +252,7 @@ pub trait Prover {
 
             // extend the auxiliary trace segment and build a Merkle tree from the extended trace
             let (aux_segment_lde, aux_segment_tree, aux_segment_polys) =
-                self.build_trace_commitment::<E, H>(&aux_segment, &domain);
+                self.build_trace_commitment::<E>(&aux_segment, &domain);
 
             // commit to the LDE of the extended auxiliary trace segment  by writing the root of
             // its Merkle tree into the channel
@@ -323,7 +311,7 @@ pub trait Prover {
 
         // then, build a commitment to the evaluations of the composition polynomial columns
         let constraint_commitment =
-            self.build_constraint_commitment::<E, H>(&composition_poly, &domain);
+            self.build_constraint_commitment::<E>(&composition_poly, &domain);
 
         // then, commit to the evaluations of constraints by writing the root of the constraint
         // Merkle tree into the channel
@@ -456,14 +444,13 @@ pub trait Prover {
     ///
     /// Trace commitment is computed by hashing each row of the extended execution trace, and then
     /// building a Merkle tree from the resulting hashes.
-    fn build_trace_commitment<E, H>(
+    fn build_trace_commitment<E>(
         &self,
         trace: &Matrix<E>,
         domain: &StarkDomain<Self::BaseField>,
-    ) -> (Matrix<E>, MerkleTree<H>, Matrix<E>)
+    ) -> (Matrix<E>, MerkleTree<Self::HashFn>, Matrix<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
-        H: ElementHasher<BaseField = Self::BaseField>,
     {
         // extend the execution trace
         #[cfg(feature = "std")]
@@ -502,14 +489,13 @@ pub trait Prover {
     ///
     /// The commitment is computed by hashing each row in the evaluation matrix, and then building
     /// a Merkle tree from the resulting hashes.
-    fn build_constraint_commitment<E, H>(
+    fn build_constraint_commitment<E>(
         &self,
         composition_poly: &CompositionPoly<E>,
         domain: &StarkDomain<Self::BaseField>,
-    ) -> ConstraintCommitment<E, H>
+    ) -> ConstraintCommitment<E, Self::HashFn>
     where
         E: FieldElement<BaseField = Self::BaseField>,
-        H: ElementHasher<BaseField = Self::BaseField>,
     {
         // evaluate composition polynomial columns over the LDE domain
         #[cfg(feature = "std")]
