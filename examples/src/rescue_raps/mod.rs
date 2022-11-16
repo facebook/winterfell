@@ -3,11 +3,16 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{Example, ExampleOptions};
+use crate::{
+    fibonacci::{Blake3_192, Blake3_256, Sha3_256},
+    Example, ExampleOptions, HashFunction,
+};
+use core::marker::PhantomData;
 use log::debug;
 use rand_utils::rand_array;
 use std::time::Instant;
 use winterfell::{
+    crypto::ElementHasher,
     math::{fields::f128::BaseElement, log2, ExtensionOf, FieldElement},
     ProofOptions, Prover, StarkProof, Trace, VerifierError,
 };
@@ -36,23 +41,40 @@ const TRACE_WIDTH: usize = 4 * 2;
 // RESCUE SPLIT HASH CHAIN EXAMPLE
 // ================================================================================================
 
-pub fn get_example(options: ExampleOptions, chain_length: usize) -> Box<dyn Example> {
-    Box::new(RescueRapsExample::new(
-        chain_length,
-        options.to_proof_options(42, 4),
-    ))
+pub fn get_example(
+    options: &ExampleOptions,
+    chain_length: usize,
+) -> Result<Box<dyn Example>, String> {
+    let (options, hash_fn) = options.to_proof_options(42, 4);
+
+    match hash_fn {
+        HashFunction::Blake3_192 => Ok(Box::new(RescueRapsExample::<Blake3_192>::new(
+            chain_length,
+            options,
+        ))),
+        HashFunction::Blake3_256 => Ok(Box::new(RescueRapsExample::<Blake3_256>::new(
+            chain_length,
+            options,
+        ))),
+        HashFunction::Sha3_256 => Ok(Box::new(RescueRapsExample::<Sha3_256>::new(
+            chain_length,
+            options,
+        ))),
+        _ => Err("The specified hash function cannot be used with this example.".to_string()),
+    }
 }
 
-pub struct RescueRapsExample {
+pub struct RescueRapsExample<H: ElementHasher> {
     options: ProofOptions,
     chain_length: usize,
     seeds: Vec<[BaseElement; 2]>,
     permuted_seeds: Vec<[BaseElement; 2]>,
     result: [[BaseElement; 2]; 2],
+    _hasher: PhantomData<H>,
 }
 
-impl RescueRapsExample {
-    pub fn new(chain_length: usize, options: ProofOptions) -> RescueRapsExample {
+impl<H: ElementHasher> RescueRapsExample<H> {
+    pub fn new(chain_length: usize, options: ProofOptions) -> Self {
         assert!(
             chain_length.is_power_of_two(),
             "chain length must a power of 2"
@@ -82,6 +104,7 @@ impl RescueRapsExample {
             seeds,
             permuted_seeds,
             result,
+            _hasher: PhantomData,
         }
     }
 }
@@ -89,7 +112,10 @@ impl RescueRapsExample {
 // EXAMPLE IMPLEMENTATION
 // ================================================================================================
 
-impl Example for RescueRapsExample {
+impl<H: ElementHasher> Example for RescueRapsExample<H>
+where
+    H: ElementHasher<BaseField = BaseElement>,
+{
     fn prove(&self) -> StarkProof {
         // generate the execution trace
         debug!(
@@ -99,7 +125,7 @@ impl Example for RescueRapsExample {
         );
 
         // create a prover
-        let prover = RescueRapsProver::new(self.options.clone());
+        let prover = RescueRapsProver::<H>::new(self.options.clone());
 
         // generate the execution trace
         let now = Instant::now();
@@ -120,14 +146,14 @@ impl Example for RescueRapsExample {
         let pub_inputs = PublicInputs {
             result: self.result,
         };
-        winterfell::verify::<RescueRapsAir>(proof, pub_inputs)
+        winterfell::verify::<RescueRapsAir, H>(proof, pub_inputs)
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
         let pub_inputs = PublicInputs {
             result: [self.result[1], self.result[0]],
         };
-        winterfell::verify::<RescueRapsAir>(proof, pub_inputs)
+        winterfell::verify::<RescueRapsAir, H>(proof, pub_inputs)
     }
 }
 

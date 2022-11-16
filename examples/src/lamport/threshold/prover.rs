@@ -4,9 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    get_power_series, rescue, AggPublicKey, BaseElement, FieldElement, LamportThresholdAir,
-    ProofOptions, Prover, PublicInputs, Signature, StarkField, TraceTable, HASH_CYCLE_LENGTH,
-    NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH, TRACE_WIDTH,
+    get_power_series, rescue, AggPublicKey, BaseElement, ElementHasher, FieldElement,
+    LamportThresholdAir, PhantomData, ProofOptions, Prover, PublicInputs, Signature, StarkField,
+    TraceTable, HASH_CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH, TRACE_WIDTH,
 };
 use std::collections::HashMap;
 
@@ -43,12 +43,13 @@ struct KeySchedule {
 // LAMPORT PROVER
 // ================================================================================================
 
-pub struct LamportThresholdProver {
+pub struct LamportThresholdProver<H: ElementHasher> {
     pub_inputs: PublicInputs,
     options: ProofOptions,
+    _hasher: PhantomData<H>,
 }
 
-impl LamportThresholdProver {
+impl<H: ElementHasher> LamportThresholdProver<H> {
     pub fn new(
         pub_key: &AggPublicKey,
         message: [BaseElement; 2],
@@ -64,6 +65,7 @@ impl LamportThresholdProver {
         Self {
             pub_inputs,
             options,
+            _hasher: PhantomData,
         }
     }
 
@@ -127,10 +129,14 @@ impl LamportThresholdProver {
     }
 }
 
-impl Prover for LamportThresholdProver {
+impl<H: ElementHasher> Prover for LamportThresholdProver<H>
+where
+    H: ElementHasher<BaseField = BaseElement>,
+{
     type BaseField = BaseElement;
     type Air = LamportThresholdAir;
     type Trace = TraceTable<BaseElement>;
+    type HashFn = H;
 
     fn get_pub_inputs(&self, _trace: &Self::Trace) -> PublicInputs {
         self.pub_inputs.clone()

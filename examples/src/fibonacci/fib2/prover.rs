@@ -4,19 +4,24 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    BaseElement, FibAir, FieldElement, ProofOptions, Prover, Trace, TraceTable, TRACE_WIDTH,
+    BaseElement, ElementHasher, FibAir, FieldElement, PhantomData, ProofOptions, Prover, Trace,
+    TraceTable, TRACE_WIDTH,
 };
 
 // FIBONACCI PROVER
 // ================================================================================================
 
-pub struct FibProver {
+pub struct FibProver<H: ElementHasher> {
     options: ProofOptions,
+    _hasher: PhantomData<H>,
 }
 
-impl FibProver {
+impl<H: ElementHasher> FibProver<H> {
     pub fn new(options: ProofOptions) -> Self {
-        Self { options }
+        Self {
+            options,
+            _hasher: PhantomData,
+        }
     }
 
     /// Builds an execution trace for computing a Fibonacci sequence of the specified length such
@@ -43,10 +48,14 @@ impl FibProver {
     }
 }
 
-impl Prover for FibProver {
+impl<H: ElementHasher> Prover for FibProver<H>
+where
+    H: ElementHasher<BaseField = BaseElement>,
+{
     type BaseField = BaseElement;
     type Air = FibAir;
     type Trace = TraceTable<BaseElement>;
+    type HashFn = H;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> BaseElement {
         let last_step = trace.length() - 1;

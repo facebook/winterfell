@@ -3,18 +3,25 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{BaseElement, Fib8Air, FieldElement, ProofOptions, Prover, Trace, TraceTable};
+use super::{
+    BaseElement, ElementHasher, Fib8Air, FieldElement, PhantomData, ProofOptions, Prover, Trace,
+    TraceTable,
+};
 
 // FIBONACCI PROVER
 // ================================================================================================
 
-pub struct Fib8Prover {
+pub struct Fib8Prover<H: ElementHasher> {
     options: ProofOptions,
+    _hasher: PhantomData<H>,
 }
 
-impl Fib8Prover {
+impl<H: ElementHasher> Fib8Prover<H> {
     pub fn new(options: ProofOptions) -> Self {
-        Self { options }
+        Self {
+            options,
+            _hasher: PhantomData,
+        }
     }
 
     /// Builds an execution trace for computing a Fibonacci sequence of the specified length such
@@ -56,10 +63,14 @@ impl Fib8Prover {
     }
 }
 
-impl Prover for Fib8Prover {
+impl<H: ElementHasher> Prover for Fib8Prover<H>
+where
+    H: ElementHasher<BaseField = BaseElement>,
+{
     type BaseField = BaseElement;
     type Air = Fib8Air;
     type Trace = TraceTable<BaseElement>;
+    type HashFn = H;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> BaseElement {
         let last_step = trace.length() - 1;

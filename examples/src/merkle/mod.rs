@@ -3,19 +3,21 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use crate::fibonacci::{Blake3_192, Blake3_256, Sha3_256};
 use crate::utils::rescue::{
     self, CYCLE_LENGTH as HASH_CYCLE_LEN, NUM_ROUNDS as NUM_HASH_ROUNDS,
     STATE_WIDTH as HASH_STATE_WIDTH,
 };
 use crate::{
     utils::rescue::{Hash, Rescue128},
-    Example, ExampleOptions,
+    Example, ExampleOptions, HashFunction,
 };
+use core::marker::PhantomData;
 use log::debug;
 use rand_utils::{rand_value, rand_vector};
 use std::time::Instant;
 use winterfell::{
-    crypto::{Digest, MerkleTree},
+    crypto::{Digest, ElementHasher, MerkleTree},
     math::{fields::f128::BaseElement, log2, FieldElement, StarkField},
     ProofOptions, Prover, StarkProof, Trace, TraceTable, VerifierError,
 };
@@ -36,23 +38,37 @@ const TRACE_WIDTH: usize = 7;
 
 // MERKLE AUTHENTICATION PATH EXAMPLE
 // ================================================================================================
-pub fn get_example(options: ExampleOptions, tree_depth: usize) -> Box<dyn Example> {
-    Box::new(MerkleExample::new(
-        tree_depth,
-        options.to_proof_options(28, 8),
-    ))
+pub fn get_example(
+    options: &ExampleOptions,
+    tree_depth: usize,
+) -> Result<Box<dyn Example>, String> {
+    let (options, hash_fn) = options.to_proof_options(28, 8);
+
+    match hash_fn {
+        HashFunction::Blake3_192 => Ok(Box::new(MerkleExample::<Blake3_192>::new(
+            tree_depth, options,
+        ))),
+        HashFunction::Blake3_256 => Ok(Box::new(MerkleExample::<Blake3_256>::new(
+            tree_depth, options,
+        ))),
+        HashFunction::Sha3_256 => Ok(Box::new(MerkleExample::<Sha3_256>::new(
+            tree_depth, options,
+        ))),
+        _ => Err("The specified hash function cannot be used with this example.".to_string()),
+    }
 }
 
-pub struct MerkleExample {
+pub struct MerkleExample<H: ElementHasher> {
     options: ProofOptions,
     tree_root: Hash,
     value: [BaseElement; 2],
     index: usize,
     path: Vec<Hash>,
+    _hasher: PhantomData<H>,
 }
 
-impl MerkleExample {
-    pub fn new(tree_depth: usize, options: ProofOptions) -> MerkleExample {
+impl<H: ElementHasher> MerkleExample<H> {
+    pub fn new(tree_depth: usize, options: ProofOptions) -> Self {
         assert!(
             (tree_depth + 1).is_power_of_two(),
             "tree depth must be one less than a power of 2"
@@ -86,6 +102,7 @@ impl MerkleExample {
             value,
             index,
             path,
+            _hasher: PhantomData,
         }
     }
 }
@@ -93,7 +110,10 @@ impl MerkleExample {
 // EXAMPLE IMPLEMENTATION
 // ================================================================================================
 
-impl Example for MerkleExample {
+impl<H: ElementHasher> Example for MerkleExample<H>
+where
+    H: ElementHasher<BaseField = BaseElement>,
+{
     fn prove(&self) -> StarkProof {
         // generate the execution trace
         debug!(
@@ -102,7 +122,7 @@ impl Example for MerkleExample {
             self.path.len()
         );
         // create the prover
-        let prover = MerkleProver::new(self.options.clone());
+        let prover = MerkleProver::<H>::new(self.options.clone());
 
         // generate the execution trace
         let now = Instant::now();
@@ -123,7 +143,7 @@ impl Example for MerkleExample {
         let pub_inputs = PublicInputs {
             tree_root: self.tree_root.to_elements(),
         };
-        winterfell::verify::<MerkleAir>(proof, pub_inputs)
+        winterfell::verify::<MerkleAir, H>(proof, pub_inputs)
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
@@ -131,7 +151,7 @@ impl Example for MerkleExample {
         let pub_inputs = PublicInputs {
             tree_root: [tree_root[1], tree_root[0]],
         };
-        winterfell::verify::<MerkleAir>(proof, pub_inputs)
+        winterfell::verify::<MerkleAir, H>(proof, pub_inputs)
     }
 }
 

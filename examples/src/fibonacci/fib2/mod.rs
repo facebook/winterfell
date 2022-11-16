@@ -3,11 +3,13 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::utils::compute_fib_term;
-use crate::{Example, ExampleOptions};
+use super::{utils::compute_fib_term, Blake3_192, Blake3_256, Sha3_256};
+use crate::{Example, ExampleOptions, HashFunction};
+use core::marker::PhantomData;
 use log::debug;
 use std::time::Instant;
 use winterfell::{
+    crypto::ElementHasher,
     math::{fields::f128::BaseElement, log2, FieldElement},
     ProofOptions, Prover, StarkProof, Trace, TraceTable, VerifierError,
 };
@@ -29,21 +31,38 @@ const TRACE_WIDTH: usize = 2;
 // FIBONACCI EXAMPLE
 // ================================================================================================
 
-pub fn get_example(options: ExampleOptions, sequence_length: usize) -> Box<dyn Example> {
-    Box::new(FibExample::new(
-        sequence_length,
-        options.to_proof_options(28, 8),
-    ))
+pub fn get_example(
+    options: &ExampleOptions,
+    sequence_length: usize,
+) -> Result<Box<dyn Example>, String> {
+    let (options, hash_fn) = options.to_proof_options(28, 8);
+
+    match hash_fn {
+        HashFunction::Blake3_192 => Ok(Box::new(FibExample::<Blake3_192>::new(
+            sequence_length,
+            options,
+        ))),
+        HashFunction::Blake3_256 => Ok(Box::new(FibExample::<Blake3_256>::new(
+            sequence_length,
+            options,
+        ))),
+        HashFunction::Sha3_256 => Ok(Box::new(FibExample::<Sha3_256>::new(
+            sequence_length,
+            options,
+        ))),
+        _ => Err("The specified hash function cannot be used with this example.".to_string()),
+    }
 }
 
-pub struct FibExample {
+pub struct FibExample<H: ElementHasher> {
     options: ProofOptions,
     sequence_length: usize,
     result: BaseElement,
+    _hasher: PhantomData<H>,
 }
 
-impl FibExample {
-    pub fn new(sequence_length: usize, options: ProofOptions) -> FibExample {
+impl<H: ElementHasher> FibExample<H> {
+    pub fn new(sequence_length: usize, options: ProofOptions) -> Self {
         assert!(
             sequence_length.is_power_of_two(),
             "sequence length must be a power of 2"
@@ -62,6 +81,7 @@ impl FibExample {
             options,
             sequence_length,
             result,
+            _hasher: PhantomData,
         }
     }
 }
@@ -69,7 +89,10 @@ impl FibExample {
 // EXAMPLE IMPLEMENTATION
 // ================================================================================================
 
-impl Example for FibExample {
+impl<H: ElementHasher> Example for FibExample<H>
+where
+    H: ElementHasher<BaseField = BaseElement>,
+{
     fn prove(&self) -> StarkProof {
         debug!(
             "Generating proof for computing Fibonacci sequence (2 terms per step) up to {}th term\n\
@@ -78,7 +101,7 @@ impl Example for FibExample {
         );
 
         // create a prover
-        let prover = FibProver::new(self.options.clone());
+        let prover = FibProver::<H>::new(self.options.clone());
 
         // generate execution trace
         let now = Instant::now();
@@ -98,10 +121,10 @@ impl Example for FibExample {
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {
-        winterfell::verify::<FibAir>(proof, self.result)
+        winterfell::verify::<FibAir, H>(proof, self.result)
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
-        winterfell::verify::<FibAir>(proof, self.result + BaseElement::ONE)
+        winterfell::verify::<FibAir, H>(proof, self.result + BaseElement::ONE)
     }
 }

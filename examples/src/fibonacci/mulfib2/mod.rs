@@ -3,11 +3,13 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::utils::compute_mulfib_term;
-use crate::{Example, ExampleOptions};
+use super::{utils::compute_mulfib_term, Blake3_192, Blake3_256, Sha3_256};
+use crate::{Example, ExampleOptions, HashFunction};
+use core::marker::PhantomData;
 use log::debug;
 use std::time::Instant;
 use winterfell::{
+    crypto::ElementHasher,
     math::{fields::f128::BaseElement, log2, FieldElement},
     ProofOptions, Prover, StarkProof, Trace, TraceTable, VerifierError,
 };
@@ -24,20 +26,37 @@ mod tests;
 // FIBONACCI EXAMPLE
 // ================================================================================================
 
-pub fn get_example(options: ExampleOptions, sequence_length: usize) -> Box<dyn Example> {
-    Box::new(MulFib2Example::new(
-        sequence_length,
-        options.to_proof_options(28, 8),
-    ))
+pub fn get_example(
+    options: &ExampleOptions,
+    sequence_length: usize,
+) -> Result<Box<dyn Example>, String> {
+    let (options, hash_fn) = options.to_proof_options(28, 8);
+
+    match hash_fn {
+        HashFunction::Blake3_192 => Ok(Box::new(MulFib2Example::<Blake3_192>::new(
+            sequence_length,
+            options,
+        ))),
+        HashFunction::Blake3_256 => Ok(Box::new(MulFib2Example::<Blake3_256>::new(
+            sequence_length,
+            options,
+        ))),
+        HashFunction::Sha3_256 => Ok(Box::new(MulFib2Example::<Sha3_256>::new(
+            sequence_length,
+            options,
+        ))),
+        _ => Err("The specified hash function cannot be used with this example.".to_string()),
+    }
 }
-pub struct MulFib2Example {
+pub struct MulFib2Example<H: ElementHasher> {
     options: ProofOptions,
     sequence_length: usize,
     result: BaseElement,
+    _hasher: PhantomData<H>,
 }
 
-impl MulFib2Example {
-    pub fn new(sequence_length: usize, options: ProofOptions) -> MulFib2Example {
+impl<H: ElementHasher> MulFib2Example<H> {
+    pub fn new(sequence_length: usize, options: ProofOptions) -> Self {
         assert!(
             sequence_length.is_power_of_two(),
             "sequence length must be a power of 2"
@@ -56,6 +75,7 @@ impl MulFib2Example {
             options,
             sequence_length,
             result,
+            _hasher: PhantomData,
         }
     }
 }
@@ -63,7 +83,10 @@ impl MulFib2Example {
 // EXAMPLE IMPLEMENTATION
 // ================================================================================================
 
-impl Example for MulFib2Example {
+impl<H: ElementHasher> Example for MulFib2Example<H>
+where
+    H: ElementHasher<BaseField = BaseElement>,
+{
     fn prove(&self) -> StarkProof {
         let sequence_length = self.sequence_length;
         debug!(
@@ -73,7 +96,7 @@ impl Example for MulFib2Example {
         );
 
         // create a prover
-        let prover = MulFib2Prover::new(self.options.clone());
+        let prover = MulFib2Prover::<H>::new(self.options.clone());
 
         // generate execution trace
         let now = Instant::now();
@@ -92,10 +115,10 @@ impl Example for MulFib2Example {
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {
-        winterfell::verify::<MulFib2Air>(proof, self.result)
+        winterfell::verify::<MulFib2Air, H>(proof, self.result)
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
-        winterfell::verify::<MulFib2Air>(proof, self.result + BaseElement::ONE)
+        winterfell::verify::<MulFib2Air, H>(proof, self.result + BaseElement::ONE)
     }
 }

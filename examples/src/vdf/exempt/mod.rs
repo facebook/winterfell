@@ -3,10 +3,15 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{Example, ExampleOptions};
+use crate::{
+    fibonacci::{Blake3_192, Blake3_256, Sha3_256},
+    Example, ExampleOptions, HashFunction,
+};
+use core::marker::PhantomData;
 use log::debug;
 use std::time::Instant;
 use winterfell::{
+    crypto::ElementHasher,
     math::{fields::f128::BaseElement, log2, FieldElement},
     ProofOptions, Prover, StarkProof, Trace, TraceTable, VerifierError,
 };
@@ -30,18 +35,26 @@ const FORTY_TWO: BaseElement = BaseElement::new(42);
 // VDF EXAMPLE
 // ================================================================================================
 
-pub fn get_example(options: ExampleOptions, num_steps: usize) -> Box<dyn Example> {
-    Box::new(VdfExample::new(num_steps, options.to_proof_options(85, 2)))
+pub fn get_example(options: &ExampleOptions, num_steps: usize) -> Result<Box<dyn Example>, String> {
+    let (options, hash_fn) = options.to_proof_options(85, 2);
+
+    match hash_fn {
+        HashFunction::Blake3_192 => Ok(Box::new(VdfExample::<Blake3_192>::new(num_steps, options))),
+        HashFunction::Blake3_256 => Ok(Box::new(VdfExample::<Blake3_256>::new(num_steps, options))),
+        HashFunction::Sha3_256 => Ok(Box::new(VdfExample::<Sha3_256>::new(num_steps, options))),
+        _ => Err("The specified hash function cannot be used with this example.".to_string()),
+    }
 }
 
-pub struct VdfExample {
+pub struct VdfExample<H: ElementHasher> {
     options: ProofOptions,
     num_steps: usize,
     seed: BaseElement,
     result: BaseElement,
+    _hasher: PhantomData<H>,
 }
 
-impl VdfExample {
+impl<H: ElementHasher> VdfExample<H> {
     pub fn new(num_steps: usize, options: ProofOptions) -> Self {
         assert!(
             (num_steps + 1).is_power_of_two(),
@@ -63,6 +76,7 @@ impl VdfExample {
             num_steps,
             seed,
             result,
+            _hasher: PhantomData,
         }
     }
 }
@@ -70,7 +84,10 @@ impl VdfExample {
 // EXAMPLE IMPLEMENTATION
 // ================================================================================================
 
-impl Example for VdfExample {
+impl<H: ElementHasher> Example for VdfExample<H>
+where
+    H: ElementHasher<BaseField = BaseElement>,
+{
     fn prove(&self) -> StarkProof {
         debug!(
             "Generating proof for executing a VDF function for {} steps\n\
@@ -79,11 +96,11 @@ impl Example for VdfExample {
         );
 
         // create a prover
-        let prover = VdfProver::new(self.options.clone());
+        let prover = VdfProver::<H>::new(self.options.clone());
 
         // generate execution trace
         let now = Instant::now();
-        let trace = VdfProver::build_trace(self.seed, self.num_steps + 1);
+        let trace = VdfProver::<H>::build_trace(self.seed, self.num_steps + 1);
 
         let trace_width = trace.width();
         let trace_length = trace.length();
@@ -103,7 +120,7 @@ impl Example for VdfExample {
             seed: self.seed,
             result: self.result,
         };
-        winterfell::verify::<VdfAir>(proof, pub_inputs)
+        winterfell::verify::<VdfAir, H>(proof, pub_inputs)
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
@@ -111,7 +128,7 @@ impl Example for VdfExample {
             seed: self.seed,
             result: self.result + BaseElement::ONE,
         };
-        winterfell::verify::<VdfAir>(proof, pub_inputs)
+        winterfell::verify::<VdfAir, H>(proof, pub_inputs)
     }
 }
 

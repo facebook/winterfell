@@ -4,20 +4,25 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    rescue, BaseElement, FieldElement, MerkleAir, ProofOptions, Prover, PublicInputs, Trace,
-    TraceTable, HASH_CYCLE_LEN, HASH_STATE_WIDTH, NUM_HASH_ROUNDS, TRACE_WIDTH,
+    rescue, BaseElement, ElementHasher, FieldElement, MerkleAir, PhantomData, ProofOptions, Prover,
+    PublicInputs, Trace, TraceTable, HASH_CYCLE_LEN, HASH_STATE_WIDTH, NUM_HASH_ROUNDS,
+    TRACE_WIDTH,
 };
 
 // MERKLE PROVER
 // ================================================================================================
 
-pub struct MerkleProver {
+pub struct MerkleProver<H: ElementHasher> {
     options: ProofOptions,
+    _hasher: PhantomData<H>,
 }
 
-impl MerkleProver {
+impl<H: ElementHasher> MerkleProver<H> {
     pub fn new(options: ProofOptions) -> Self {
-        Self { options }
+        Self {
+            options,
+            _hasher: PhantomData,
+        }
     }
 
     pub fn build_trace(
@@ -89,10 +94,14 @@ impl MerkleProver {
     }
 }
 
-impl Prover for MerkleProver {
+impl<H: ElementHasher> Prover for MerkleProver<H>
+where
+    H: ElementHasher<BaseField = BaseElement>,
+{
     type BaseField = BaseElement;
     type Air = MerkleAir;
     type Trace = TraceTable<BaseElement>;
+    type HashFn = H;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
         let last_step = trace.length() - 1;

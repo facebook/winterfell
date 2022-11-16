@@ -103,6 +103,8 @@ impl Rescue128 {
 impl Hasher for Rescue128 {
     type Digest = Hash;
 
+    const COLLISION_RESISTANCE: u32 = 64;
+
     fn hash(_bytes: &[u8]) -> Self::Digest {
         unimplemented!("not implemented")
     }

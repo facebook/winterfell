@@ -4,20 +4,24 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    BaseElement, FieldElement, ProofOptions, Prover, Trace, TraceTable, VdfAir, VdfInputs,
-    FORTY_TWO, INV_ALPHA,
+    BaseElement, ElementHasher, FieldElement, PhantomData, ProofOptions, Prover, Trace, TraceTable,
+    VdfAir, VdfInputs, FORTY_TWO, INV_ALPHA,
 };
 
 // VDF PROVER
 // ================================================================================================
 
-pub struct VdfProver {
+pub struct VdfProver<H: ElementHasher> {
     options: ProofOptions,
+    _hasher: PhantomData<H>,
 }
 
-impl VdfProver {
+impl<H: ElementHasher> VdfProver<H> {
     pub fn new(options: ProofOptions) -> Self {
-        Self { options }
+        Self {
+            options,
+            _hasher: PhantomData,
+        }
     }
 
     pub fn build_trace(seed: BaseElement, n: usize) -> TraceTable<BaseElement> {
@@ -34,10 +38,14 @@ impl VdfProver {
     }
 }
 
-impl Prover for VdfProver {
+impl<H: ElementHasher> Prover for VdfProver<H>
+where
+    H: ElementHasher<BaseField = BaseElement>,
+{
     type BaseField = BaseElement;
     type Air = VdfAir;
     type Trace = TraceTable<BaseElement>;
+    type HashFn = H;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> VdfInputs {
         let last_step = trace.length() - 1;

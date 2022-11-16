@@ -3,8 +3,11 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use fibonacci::{Blake3_192, Blake3_256, Sha3_256};
 use structopt::StructOpt;
-use winterfell::{FieldExtension, HashFunction, ProofOptions, StarkProof, VerifierError};
+use winterfell::{
+    crypto::hashers::Rp64_256, FieldExtension, ProofOptions, StarkProof, VerifierError,
+};
 
 pub mod fibonacci;
 #[cfg(feature = "std")]
@@ -64,7 +67,7 @@ pub struct ExampleOptions {
 }
 
 impl ExampleOptions {
-    pub fn to_proof_options(&self, q: usize, b: usize) -> ProofOptions {
+    pub fn to_proof_options(&self, q: usize, b: usize) -> (ProofOptions, HashFunction) {
         let num_queries = self.num_queries.unwrap_or(q);
         let blowup_factor = self.blowup_factor.unwrap_or(b);
         let field_extension = match self.field_extension {
@@ -73,22 +76,39 @@ impl ExampleOptions {
             3 => FieldExtension::Cubic,
             val => panic!("'{}' is not a valid field extension option", val),
         };
+
         let hash_fn = match self.hash_fn.as_str() {
             "blake3_192" => HashFunction::Blake3_192,
             "blake3_256" => HashFunction::Blake3_256,
             "sha3_256" => HashFunction::Sha3_256,
+            "rp64_256" => HashFunction::Rp64_256,
             val => panic!("'{}' is not a valid hash function option", val),
         };
 
-        ProofOptions::new(
-            num_queries,
-            blowup_factor,
-            self.grinding_factor,
+        (
+            ProofOptions::new(
+                num_queries,
+                blowup_factor,
+                self.grinding_factor,
+                field_extension,
+                self.folding_factor,
+                256,
+            ),
             hash_fn,
-            field_extension,
-            self.folding_factor,
-            256,
         )
+    }
+
+    /// Returns security level of the input proof in bits.
+    pub fn get_proof_security_level(&self, proof: &StarkProof) -> usize {
+        let security_level = match self.hash_fn.as_str() {
+            "blake3_192" => proof.security_level::<Blake3_192>(true),
+            "blake3_256" => proof.security_level::<Blake3_256>(true),
+            "sha3_256" => proof.security_level::<Sha3_256>(true),
+            "rp64_256" => proof.security_level::<Rp64_256>(true),
+            val => panic!("'{}' is not a valid hash function option", val),
+        };
+
+        security_level as usize
     }
 }
 
@@ -117,6 +137,12 @@ pub enum ExampleType {
     Mulfib8 {
         /// Length of Fibonacci sequence; must be a power of two
         #[structopt(short = "n", default_value = "1048576")]
+        sequence_length: usize,
+    },
+    /// Compute a Fibonacci sequence using trace table with 2 registers in `f64` field.
+    FibSmall {
+        /// Length of Fibonacci sequence; must be a power of two
+        #[structopt(short = "n", default_value = "67072")]
         sequence_length: usize,
     },
     /// Execute a simple VDF function
@@ -165,4 +191,34 @@ pub enum ExampleType {
         #[structopt(short = "n", default_value = "3")]
         num_signers: usize,
     },
+}
+
+/// Defines a set of hash functions available for the provided examples. Some examples may not
+/// support all listed hash functions.
+///
+/// Choice of a hash function has a direct impact on proof generation time, proof size, and proof
+/// soundness. In general, sounds of the proof is bounded by the collision resistance of the hash
+/// function used by the protocol.
+#[repr(u8)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum HashFunction {
+    /// BLAKE3 hash function with 192 bit output.
+    ///
+    /// When this function is used in the STARK protocol, proof security cannot exceed 96 bits.
+    Blake3_192,
+
+    /// BLAKE3 hash function with 256 bit output.
+    ///
+    /// When this function is used in the STARK protocol, proof security cannot exceed 128 bits.
+    Blake3_256,
+
+    /// SHA3 hash function with 256 bit output.
+    ///
+    /// When this function is used in the STARK protocol, proof security cannot exceed 128 bits.
+    Sha3_256,
+
+    /// Rescue Prime hash function with 256 bit output. It only works in `f64` field.
+    ///
+    /// When this function is used in the STARK protocol, proof security cannot exceed 128 bits.
+    Rp64_256,
 }
