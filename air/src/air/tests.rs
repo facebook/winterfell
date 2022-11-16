@@ -7,7 +7,7 @@ use super::{
     Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
-use crate::{AuxTraceRandElements, FieldExtension, HashFunction};
+use crate::{AuxTraceRandElements, FieldExtension};
 use crypto::{hashers::Blake3_256, RandomCoin};
 use math::{fields::f128::BaseElement, get_power_series, log2, polynom, FieldElement, StarkField};
 use utils::collections::{BTreeMap, Vec};
@@ -234,15 +234,7 @@ impl MockAir {
         let mut result = Self::new(
             TraceInfo::with_meta(4, trace_length, vec![1]),
             (),
-            ProofOptions::new(
-                32,
-                8,
-                0,
-                HashFunction::Blake3_256,
-                FieldExtension::None,
-                4,
-                256,
-            ),
+            ProofOptions::new(32, 8, 0, FieldExtension::None, 4, 256),
         );
         result.periodic_columns = column_values;
         result
@@ -252,15 +244,7 @@ impl MockAir {
         let mut result = Self::new(
             TraceInfo::with_meta(4, trace_length, vec![assertions.len() as u8]),
             (),
-            ProofOptions::new(
-                32,
-                8,
-                0,
-                HashFunction::Blake3_256,
-                FieldExtension::None,
-                4,
-                256,
-            ),
+            ProofOptions::new(32, 8, 0, FieldExtension::None, 4, 256),
         );
         result.assertions = assertions;
         result
@@ -310,15 +294,7 @@ pub fn build_context<B: StarkField>(
     trace_width: usize,
     num_assertions: usize,
 ) -> AirContext<B> {
-    let options = ProofOptions::new(
-        32,
-        8,
-        0,
-        HashFunction::Blake3_256,
-        FieldExtension::None,
-        4,
-        256,
-    );
+    let options = ProofOptions::new(32, 8, 0, FieldExtension::None, 4, 256);
     let t_degrees = vec![TransitionConstraintDegree::new(2)];
     let trace_info = TraceInfo::new(trace_width, trace_length);
     AirContext::new(trace_info, t_degrees, num_assertions, options)

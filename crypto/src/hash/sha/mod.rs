@@ -19,6 +19,8 @@ pub struct Sha3_256<B: StarkField>(PhantomData<B>);
 impl<B: StarkField> Hasher for Sha3_256<B> {
     type Digest = ByteDigest<32>;
 
+    const COLLISION_RESISTANCE: u32 = 128;
+
     fn hash(bytes: &[u8]) -> Self::Digest {
         ByteDigest(sha3::Sha3_256::digest(bytes).into())
     }
