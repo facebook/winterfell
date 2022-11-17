@@ -5,9 +5,9 @@
 
 use winterfell::math::{fields::f128::BaseElement, FieldElement};
 
-pub fn compute_fib_term<T: FieldElement>(n: usize) -> T {
-    let mut t0 = T::ONE;
-    let mut t1 = T::ONE;
+pub fn compute_fib_term<E: FieldElement>(n: usize) -> E {
+    let mut t0 = E::ONE;
+    let mut t1 = E::ONE;
 
     for _ in 0..(n - 1) {
         t1 = t0 + t1;

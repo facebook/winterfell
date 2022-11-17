@@ -90,7 +90,7 @@ where
     fn prove(&self) -> StarkProof {
         let sequence_length = self.sequence_length;
         debug!(
-            "Generating proof for computing multiplicative Fibonacci sequence (2 terms per step) up to {}th term\n\
+            "Generating proof for computing multiplicative Fibonacci sequence (8 terms per step) up to {}th term\n\
             ---------------------",
             sequence_length
         );
