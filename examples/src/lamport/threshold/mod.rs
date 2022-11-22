@@ -7,10 +7,7 @@ use super::{
     message_to_elements, rescue, Example, PrivateKey, Signature, CYCLE_LENGTH as HASH_CYCLE_LENGTH,
     NUM_HASH_ROUNDS,
 };
-use crate::{
-    fibonacci::{Blake3_192, Blake3_256, Sha3_256},
-    ExampleOptions, HashFunction,
-};
+use crate::{Blake3_192, Blake3_256, ExampleOptions, HashFunction, Sha3_256};
 use core::marker::PhantomData;
 use log::debug;
 use std::time::Instant;

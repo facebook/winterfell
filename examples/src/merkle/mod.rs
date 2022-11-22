@@ -3,14 +3,13 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::fibonacci::{Blake3_192, Blake3_256, Sha3_256};
 use crate::utils::rescue::{
     self, CYCLE_LENGTH as HASH_CYCLE_LEN, NUM_ROUNDS as NUM_HASH_ROUNDS,
     STATE_WIDTH as HASH_STATE_WIDTH,
 };
 use crate::{
     utils::rescue::{Hash, Rescue128},
-    Example, ExampleOptions, HashFunction,
+    Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256,
 };
 use core::marker::PhantomData;
 use log::debug;

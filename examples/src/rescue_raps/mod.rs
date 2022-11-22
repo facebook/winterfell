@@ -3,10 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{
-    fibonacci::{Blake3_192, Blake3_256, Sha3_256},
-    Example, ExampleOptions, HashFunction,
-};
+use crate::{Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256};
 use core::marker::PhantomData;
 use log::debug;
 use rand_utils::rand_array;

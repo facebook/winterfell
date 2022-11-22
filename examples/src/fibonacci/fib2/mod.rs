@@ -3,8 +3,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{utils::compute_fib_term, Blake3_192, Blake3_256, Sha3_256};
-use crate::{Example, ExampleOptions, HashFunction};
+use super::utils::compute_fib_term;
+use crate::{Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256};
 use core::marker::PhantomData;
 use log::debug;
 use std::time::Instant;

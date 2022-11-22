@@ -53,7 +53,7 @@ pub enum FieldExtension {
 ///    `num_queries * log2(blowup_factor) + grinding_factor`.
 ///
 /// Another important parameter in defining STARK security level, which is not a part of [ProofOptions]
-/// is a hash function used in the protocol. The proof soundness of a STARK proof is limited by the
+/// is the hash function used in the protocol. The soundness of a STARK proof is limited by the
 /// collision resistance of the hash function used by the protocol. For example, if a hash function
 /// with 128-bit collision resistance is used, soundness of a STARK proof cannot exceed 128 bits.
 #[derive(Debug, Clone, Eq, PartialEq)]

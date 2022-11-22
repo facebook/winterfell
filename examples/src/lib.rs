@@ -3,10 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use fibonacci::{Blake3_192, Blake3_256, Sha3_256};
 use structopt::StructOpt;
 use winterfell::{
-    crypto::hashers::Rp64_256, FieldExtension, ProofOptions, StarkProof, VerifierError,
+    crypto::hashers::Rp64_256, math::fields::f128::BaseElement, FieldExtension, ProofOptions,
+    StarkProof, VerifierError,
 };
 
 pub mod fibonacci;
@@ -25,6 +25,10 @@ mod tests;
 
 // TYPES AND INTERFACES
 // ================================================================================================
+
+pub type Blake3_192 = winterfell::crypto::hashers::Blake3_192<BaseElement>;
+pub type Blake3_256 = winterfell::crypto::hashers::Blake3_256<BaseElement>;
+pub type Sha3_256 = winterfell::crypto::hashers::Sha3_256<BaseElement>;
 
 pub trait Example {
     fn prove(&self) -> StarkProof;
@@ -142,7 +146,7 @@ pub enum ExampleType {
     /// Compute a Fibonacci sequence using trace table with 2 registers in `f64` field.
     FibSmall {
         /// Length of Fibonacci sequence; must be a power of two
-        #[structopt(short = "n", default_value = "67072")]
+        #[structopt(short = "n", default_value = "65536")]
         sequence_length: usize,
     },
     /// Execute a simple VDF function
