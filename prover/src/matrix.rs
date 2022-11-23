@@ -2,7 +2,7 @@ use super::StarkDomain;
 use core::{iter::FusedIterator, slice};
 use crypto::{ElementHasher, MerkleTree};
 use math::{fft, polynom, FieldElement};
-use utils::{batch_iter_mut, collections::Vec, iter, iter_mut, uninit_vector};
+use utils::{batch_iter_mut, collections::Vec, iter, iter_mut, uninit_vector, TableReader};
 
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
@@ -24,7 +24,7 @@ use utils::iterators::*;
 /// - Number of rows must be a power of two.
 #[derive(Debug, Clone)]
 pub struct Matrix<E: FieldElement> {
-    columns: Vec<Vec<E>>,
+    pub columns: Vec<Vec<E>>,
 }
 
 impl<E: FieldElement> Matrix<E> {
@@ -97,7 +97,7 @@ impl<E: FieldElement> Matrix<E> {
         &self.columns[col_idx]
     }
 
-    /// Returns a reference to the column at the specified index.
+    /// Returns a mutable reference to the column at the specified index.
     pub fn get_column_mut(&mut self, col_idx: usize) -> &mut [E] {
         &mut self.columns[col_idx]
     }
@@ -253,6 +253,19 @@ impl<E: FieldElement> Matrix<E> {
     /// TODO: replace this with an iterator.
     pub fn into_columns(self) -> Vec<Vec<E>> {
         self.columns
+    }
+}
+
+impl<E: FieldElement> TableReader<E> for &Matrix<E> {
+    fn num_cols(&self) -> usize {
+        Matrix::num_cols(self)
+    }
+    fn num_rows(&self) -> usize {
+        Matrix::num_rows(self)
+    }
+
+    fn get(&self, col_idx: usize, row_idx: usize) -> E {
+        self.columns[col_idx][row_idx]
     }
 }
 

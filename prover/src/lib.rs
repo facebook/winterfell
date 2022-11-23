@@ -46,8 +46,8 @@ extern crate alloc;
 pub use air::{
     proof::StarkProof, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
     BoundaryConstraintGroup, ConstraintCompositionCoefficients, ConstraintDivisor,
-    DeepCompositionCoefficients, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo,
-    TraceLayout, TransitionConstraintDegree, TransitionConstraintGroup,
+    DeepCompositionCoefficients, DefaultEvaluationFrame, EvaluationFrame, FieldExtension,
+    ProofOptions, TraceInfo, TraceLayout, TransitionConstraintDegree, TransitionConstraintGroup,
 };
 pub use utils::{
     iterators, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,

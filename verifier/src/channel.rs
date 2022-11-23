@@ -8,6 +8,7 @@ use air::{
     proof::{Queries, StarkProof, Table},
     Air, EvaluationFrame,
 };
+use core::marker::PhantomData;
 use crypto::{BatchMerkleProof, ElementHasher, MerkleTree};
 use fri::VerifierChannel as FriVerifierChannel;
 use math::{FieldElement, StarkField};
@@ -21,7 +22,12 @@ use utils::{collections::Vec, string::ToString};
 /// A channel is instantiated for a specific proof, which is parsed into structs over the
 /// appropriate field (specified by type parameter `E`). This also validates that the proof is
 /// well-formed in the context of the computation for the specified [Air].
-pub struct VerifierChannel<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> {
+pub struct VerifierChannel<
+    E: FieldElement,
+    H: ElementHasher<BaseField = E::BaseField>,
+    F1: EvaluationFrame<E>,
+    F2: EvaluationFrame<E>,
+> {
     // trace queries
     trace_roots: Vec<H::Digest>,
     trace_queries: Option<TraceQueries<E, H>>,
@@ -35,13 +41,19 @@ pub struct VerifierChannel<E: FieldElement, H: ElementHasher<BaseField = E::Base
     fri_remainder: Option<Vec<E>>,
     fri_num_partitions: usize,
     // out-of-domain frame
-    ood_trace_frame: Option<TraceOodFrame<E>>,
+    ood_trace_frame: Option<TraceOodFrame<E, F1, F2>>,
     ood_constraint_evaluations: Option<Vec<E>>,
     // query proof-of-work
     pow_nonce: u64,
 }
 
-impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChannel<E, H> {
+impl<
+        E: FieldElement,
+        H: ElementHasher<BaseField = E::BaseField>,
+        F1: EvaluationFrame<E>,
+        F2: EvaluationFrame<E>,
+    > VerifierChannel<E, H, F1, F2>
+{
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Creates and returns a new [VerifierChannel] initialized from the specified `proof`.
@@ -140,7 +152,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
     /// For computations requiring multiple trace segments, evaluations of auxiliary trace
     /// polynomials are also included as the second value of the returned tuple. Otherwise, the
     /// second value is None.
-    pub fn read_ood_trace_frame(&mut self) -> (EvaluationFrame<E>, Option<EvaluationFrame<E>>) {
+    pub fn read_ood_trace_frame(&mut self) -> (F1, Option<F2>) {
         let frame = self.ood_trace_frame.take().expect("already read");
         (frame.main_frame, frame.aux_frame)
     }
@@ -199,10 +211,12 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
 // FRI VERIFIER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-impl<E, H> FriVerifierChannel<E> for VerifierChannel<E, H>
+impl<E, H, F1, F2> FriVerifierChannel<E> for VerifierChannel<E, H, F1, F2>
 where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
+    F1: EvaluationFrame<E>,
+    F2: EvaluationFrame<E>,
 {
     type Hasher = H;
 
@@ -346,14 +360,16 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> ConstraintQuer
 // TRACE OUT-OF-DOMAIN FRAME
 // ================================================================================================
 
-struct TraceOodFrame<E: FieldElement> {
-    main_frame: EvaluationFrame<E>,
-    aux_frame: Option<EvaluationFrame<E>>,
+struct TraceOodFrame<E: FieldElement, F1: EvaluationFrame<E>, F2: EvaluationFrame<E>> {
+    marker: PhantomData<E>,
+    main_frame: F1,
+    aux_frame: Option<F2>,
 }
 
-impl<E: FieldElement> TraceOodFrame<E> {
-    pub fn new(main_frame: EvaluationFrame<E>, aux_frame: Option<EvaluationFrame<E>>) -> Self {
+impl<E: FieldElement, F1: EvaluationFrame<E>, F2: EvaluationFrame<E>> TraceOodFrame<E, F1, F2> {
+    pub fn new(main_frame: F1, aux_frame: Option<F2>) -> Self {
         Self {
+            marker: PhantomData,
             main_frame,
             aux_frame,
         }

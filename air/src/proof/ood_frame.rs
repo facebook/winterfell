@@ -13,7 +13,7 @@ use utils::{
 // TYPE ALIASES
 // ================================================================================================
 
-type ParsedOodFrame<E> = (EvaluationFrame<E>, Option<EvaluationFrame<E>>, Vec<E>);
+type ParsedOodFrame<E, F1, F2> = (F1, Option<F2>, Vec<E>);
 
 // OUT-OF-DOMAIN FRAME
 // ================================================================================================
@@ -85,12 +85,12 @@ impl OodFrame {
     /// * A vector of evaluations specified by `num_evaluations` could not be parsed from the
     ///   internal bytes.
     /// * Any unconsumed bytes remained after the parsing was complete.
-    pub fn parse<E: FieldElement>(
+    pub fn parse<E: FieldElement, F1: EvaluationFrame<E>, F2: EvaluationFrame<E>>(
         self,
         main_trace_width: usize,
         aux_trace_width: usize,
         num_evaluations: usize,
-    ) -> Result<ParsedOodFrame<E>, DeserializationError> {
+    ) -> Result<ParsedOodFrame<E, F1, F2>, DeserializationError> {
         assert!(main_trace_width > 0, "trace width cannot be zero");
         assert!(num_evaluations > 0, "number of evaluations cannot be zero");
 
@@ -105,9 +105,9 @@ impl OodFrame {
         }
 
         // instantiate the frames from the parsed rows
-        let main_frame = EvaluationFrame::from_rows(current, next);
+        let main_frame = F1::from_table(&[current, next]);
         let aux_frame = if aux_trace_width > 0 {
-            Some(EvaluationFrame::from_rows(current_aux, next_aux))
+            Some(F2::from_table(&[current_aux, next_aux]))
         } else {
             None
         };

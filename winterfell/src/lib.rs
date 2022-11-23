@@ -151,7 +151,7 @@
 //! use winterfell::{
 //!     math::{fields::f128::BaseElement, FieldElement},
 //!     Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ProofOptions, Serializable,
-//!     TraceInfo, TransitionConstraintDegree, crypto::hashers::Blake3_256,
+//!     TraceInfo, TransitionConstraintDegree, crypto::hashers::Blake3_256, DefaultEvaluationFrame,
 //! };
 //!
 //! // Public inputs for our computation will consist of the starting value and the end result.
@@ -182,6 +182,8 @@
 //!     // the public inputs must look like.
 //!     type BaseField = BaseElement;
 //!     type PublicInputs = PublicInputs;
+//!     type Frame<E: FieldElement> = DefaultEvaluationFrame<E>;
+//!     type AuxFrame<E: FieldElement> = DefaultEvaluationFrame<E>;
 //!
 //!     // Here, we'll construct a new instance of our computation which is defined by 3
 //!     // parameters: starting value, number of steps, and the end result. Another way to
@@ -216,7 +218,7 @@
 //!     // value. The `frame` parameter will contain current and next states of the computation.
 //!     fn evaluate_transition<E: FieldElement + From<Self::BaseField>>(
 //!         &self,
-//!         frame: &EvaluationFrame<E>,
+//!         frame: &Self::Frame<E>,
 //!         _periodic_values: &[E],
 //!         result: &mut [E],
 //!     ) {
@@ -262,7 +264,7 @@
 //!
 //! # use winterfell::{
 //! #   Air, AirContext, Assertion, ByteWriter, EvaluationFrame, Serializable,
-//! #   TraceInfo, TransitionConstraintDegree,
+//! #   TraceInfo, TransitionConstraintDegree, DefaultEvaluationFrame,
 //! # };
 //! #
 //! # pub struct PublicInputs {
@@ -286,6 +288,8 @@
 //! # impl Air for WorkAir {
 //! #     type BaseField = BaseElement;
 //! #     type PublicInputs = PublicInputs;
+//! #     type Frame<E: FieldElement> = DefaultEvaluationFrame<E>;
+//! #     type AuxFrame<E: FieldElement> = DefaultEvaluationFrame<E>;
 //! #
 //! #     fn new(trace_info: TraceInfo, pub_inputs: PublicInputs, options: ProofOptions) -> Self {
 //! #         assert_eq!(1, trace_info.width());
@@ -299,7 +303,7 @@
 //! #
 //! #     fn evaluate_transition<E: FieldElement + From<Self::BaseField>>(
 //! #         &self,
-//! #         frame: &EvaluationFrame<E>,
+//! #         frame: &Self::Frame<E>,
 //! #         _periodic_values: &[E],
 //! #         result: &mut [E],
 //! #     ) {
@@ -370,6 +374,7 @@
 //! #    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, Serializable,
 //! #    TraceInfo, TransitionConstraintDegree, TraceTable, FieldExtension,
 //! #    Prover, ProofOptions, StarkProof, Trace, crypto::hashers::Blake3_256,
+//! #    DefaultEvaluationFrame,
 //! # };
 //! #
 //! # pub fn build_do_work_trace(start: BaseElement, n: usize) -> TraceTable<BaseElement> {
@@ -408,6 +413,8 @@
 //! # impl Air for WorkAir {
 //! #     type BaseField = BaseElement;
 //! #     type PublicInputs = PublicInputs;
+//! #     type Frame<E: FieldElement> = DefaultEvaluationFrame<E>;
+//! #     type AuxFrame<E: FieldElement> = DefaultEvaluationFrame<E>;
 //! #
 //! #     fn new(trace_info: TraceInfo, pub_inputs: PublicInputs, options: ProofOptions) -> Self {
 //! #         assert_eq!(1, trace_info.width());
@@ -421,7 +428,7 @@
 //! #
 //! #     fn evaluate_transition<E: FieldElement + From<Self::BaseField>>(
 //! #         &self,
-//! #         frame: &EvaluationFrame<E>,
+//! #         frame: &Self::Frame<E>,
 //! #         _periodic_values: &[E],
 //! #         result: &mut [E],
 //! #     ) {
@@ -529,9 +536,9 @@
 pub use prover::{
     crypto, iterators, math, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
     BoundaryConstraintGroup, ByteReader, ByteWriter, ConstraintCompositionCoefficients,
-    ConstraintDivisor, DeepCompositionCoefficients, Deserializable, DeserializationError,
-    EvaluationFrame, FieldExtension, Matrix, ProofOptions, Prover, ProverError, Serializable,
-    SliceReader, StarkProof, Trace, TraceInfo, TraceLayout, TraceTable, TraceTableFragment,
-    TransitionConstraintDegree, TransitionConstraintGroup,
+    ConstraintDivisor, DeepCompositionCoefficients, DefaultEvaluationFrame, Deserializable,
+    DeserializationError, EvaluationFrame, FieldExtension, Matrix, ProofOptions, Prover,
+    ProverError, Serializable, SliceReader, StarkProof, Trace, TraceInfo, TraceLayout, TraceTable,
+    TraceTableFragment, TransitionConstraintDegree, TransitionConstraintGroup,
 };
 pub use verifier::{verify, VerifierError};

@@ -58,12 +58,12 @@ impl<E: FieldElement> DeepComposer<E> {
     ///
     /// Note that values of T_i(z) and T_i(z * g) are received from the prover and passed into
     /// this function via the `ood_frame` parameter.
-    pub fn compose_trace_columns(
+    pub fn compose_trace_columns<F1: EvaluationFrame<E>, F2: EvaluationFrame<E>>(
         &self,
         queried_main_trace_states: Table<E::BaseField>,
         queried_aux_trace_states: Option<Table<E>>,
-        ood_main_frame: EvaluationFrame<E>,
-        ood_aux_frame: Option<EvaluationFrame<E>>,
+        ood_main_frame: F1,
+        ood_aux_frame: Option<F2>,
     ) -> Vec<E> {
         let ood_main_trace_states = [ood_main_frame.current(), ood_main_frame.next()];
 
@@ -73,7 +73,7 @@ impl<E: FieldElement> DeepComposer<E> {
         let conjugate_values =
             get_conjugate_values(self.field_extension, ood_main_trace_states[0], self.z[0]);
 
-        // compose columns of of the main trace segment
+        // compose columns of the main trace segment
         let mut result = E::zeroed_vector(queried_main_trace_states.num_rows());
         for ((result, row), &x) in result
             .iter_mut()
@@ -142,7 +142,7 @@ impl<E: FieldElement> DeepComposer<E> {
     ///   all i, where cc_i is the coefficient for the random linear combination drawn from the
     ///   public coin.
     ///
-    /// Note that values of H_i(z^m)are received from teh prover and passed into this function
+    /// Note that values of H_i(z^m)are received from the prover and passed into this function
     /// via the `ood_evaluations` parameter.
     pub fn compose_constraint_evaluations(
         &self,
