@@ -10,30 +10,6 @@ use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serial
 // TYPES AND INTERFACES
 // ================================================================================================
 
-/// Defines a set of available hash function for STARK protocol.
-///
-/// Choice of a hash function has a direct impact on proof generation time, proof size, and proof
-/// soundness. In general, sounds of the proof is bounded by the collision resistance of the hash
-/// function used by the protocol.
-#[repr(u8)]
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum HashFunction {
-    /// BLAKE3 hash function with 192 bit output.
-    ///
-    /// When this function is used in the STARK protocol, proof security cannot exceed 96 bits.
-    Blake3_192 = 1,
-
-    /// BLAKE3 hash function with 256 bit output.
-    ///
-    /// When this function is used in the STARK protocol, proof security cannot exceed 128 bits.
-    Blake3_256 = 2,
-
-    /// SHA3 hash function with 256 bit output.
-    ///
-    /// When this function is used in the STARK protocol, proof security cannot exceed 128 bits.
-    Sha3_256 = 3,
-}
-
 /// Defines an extension field for the composition polynomial.
 ///
 /// Choice of a field for a composition polynomial may impact proof soundness, and can also have
@@ -63,27 +39,28 @@ pub enum FieldExtension {
 /// These parameters have a direct impact on proof soundness, proof generation time, and proof
 /// size. Specifically:
 ///
-/// 1. Hash function - proof soundness is limited by the collision resistance of the hash function
-///    used by the protocol. For example, if a hash function with 128-bit collision resistance is
-///    used, soundness of a STARK proof cannot exceed 128 bits.
-/// 2. Finite field - proof soundness depends on the size of finite field used by the protocol.
+/// 1. Finite field - proof soundness depends on the size of finite field used by the protocol.
 ///    This means, that for small fields (e.g. smaller than ~128 bits), field extensions must be
 ///    used to achieve adequate security. And even for ~128 bit fields, to achieve security over
 ///    100 bits, a field extension may be required.
-/// 3. Number of queries - higher values increase proof soundness, but also increase proof size.
-/// 4. Blowup factor - higher values increase proof soundness, but also increase proof generation
+/// 2. Number of queries - higher values increase proof soundness, but also increase proof size.
+/// 3. Blowup factor - higher values increase proof soundness, but also increase proof generation
 ///    time and proof size. However, higher blowup factors require fewer queries for the same
 ///    security level. Thus, it is frequently possible to increase blowup factor and at the same
 ///    time decrease the number of queries in such a way that the proofs become smaller.
-/// 5. Grinding factor - higher values increase proof soundness, but also may increase proof
+/// 4. Grinding factor - higher values increase proof soundness, but also may increase proof
 ///    generation time. More precisely, proof soundness is bounded by
 ///    `num_queries * log2(blowup_factor) + grinding_factor`.
+///
+/// Another important parameter in defining STARK security level, which is not a part of [ProofOptions]
+/// is the hash function used in the protocol. The soundness of a STARK proof is limited by the
+/// collision resistance of the hash function used by the protocol. For example, if a hash function
+/// with 128-bit collision resistance is used, soundness of a STARK proof cannot exceed 128 bits.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ProofOptions {
     num_queries: u8,
     blowup_factor: u8,
     grinding_factor: u8,
-    hash_fn: HashFunction,
     field_extension: FieldExtension,
     fri_folding_factor: u8,
     fri_max_remainder_size: u8, // stored as power of 2
@@ -118,7 +95,6 @@ impl ProofOptions {
         num_queries: usize,
         blowup_factor: usize,
         grinding_factor: u32,
-        hash_fn: HashFunction,
         field_extension: FieldExtension,
         fri_folding_factor: usize,
         fri_max_remainder_size: usize,
@@ -146,7 +122,6 @@ impl ProofOptions {
             num_queries: num_queries as u8,
             blowup_factor: blowup_factor as u8,
             grinding_factor: grinding_factor as u8,
-            hash_fn,
             field_extension,
             fri_folding_factor: fri_folding_factor as u8,
             fri_max_remainder_size: fri_max_remainder_size.trailing_zeros() as u8,
@@ -186,16 +161,6 @@ impl ProofOptions {
         self.grinding_factor as u32
     }
 
-    /// Returns a hash functions to be used during STARK proof construction.
-    ///
-    /// Security of a STARK proof is bounded by collision resistance of the hash function used
-    /// during proof construction. For example, if collision resistance of a hash function is
-    /// 128 bits, then soundness of a proof generated using this hash function cannot exceed
-    /// 128 bits.
-    pub fn hash_fn(&self) -> HashFunction {
-        self.hash_fn
-    }
-
     /// Specifies whether composition polynomial should be constructed in an extension field
     /// of STARK protocol.
     ///
@@ -227,7 +192,6 @@ impl Serializable for ProofOptions {
         target.write_u8(self.num_queries);
         target.write_u8(self.blowup_factor);
         target.write_u8(self.grinding_factor);
-        target.write(self.hash_fn);
         target.write(self.field_extension);
         target.write_u8(self.fri_folding_factor);
         target.write_u8(self.fri_max_remainder_size);
@@ -244,7 +208,6 @@ impl Deserializable for ProofOptions {
             source.read_u8()? as usize,
             source.read_u8()? as usize,
             source.read_u8()? as u32,
-            HashFunction::read_from(source)?,
             FieldExtension::read_from(source)?,
             source.read_u8()? as usize,
             2usize.pow(source.read_u8()? as u32),
@@ -287,42 +250,6 @@ impl Deserializable for FieldExtension {
             3 => Ok(FieldExtension::Cubic),
             value => Err(DeserializationError::InvalidValue(format!(
                 "value {} cannot be deserialized as FieldExtension enum",
-                value
-            ))),
-        }
-    }
-}
-
-// HASH FUNCTION IMPLEMENTATION
-// ================================================================================================
-
-impl HashFunction {
-    /// Returns collision resistance of this hash function in bits.
-    pub fn collision_resistance(&self) -> u32 {
-        match self {
-            Self::Blake3_192 => 96,
-            Self::Blake3_256 => 128,
-            Self::Sha3_256 => 128,
-        }
-    }
-}
-
-impl Serializable for HashFunction {
-    /// Serializes `self` and writes the resulting bytes into the `target`.
-    fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write_u8(*self as u8);
-    }
-}
-
-impl Deserializable for HashFunction {
-    /// Reads a hash function enum from the specified `source`.
-    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        match source.read_u8()? {
-            1 => Ok(HashFunction::Blake3_192),
-            2 => Ok(HashFunction::Blake3_256),
-            3 => Ok(HashFunction::Sha3_256),
-            value => Err(DeserializationError::InvalidValue(format!(
-                "value {} cannot be deserialized as HashFunction enum",
                 value
             ))),
         }

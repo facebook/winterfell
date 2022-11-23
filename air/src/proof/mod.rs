@@ -7,6 +7,7 @@
 
 use crate::{ProofOptions, TraceInfo, TraceLayout};
 use core::cmp;
+use crypto::Hasher;
 use fri::FriProof;
 use math::log2;
 use utils::{
@@ -102,12 +103,13 @@ impl StarkProof {
     /// security level is returned. Usually, the number of queries needed for provable security is
     /// 2x - 3x higher than the number of queries needed for conjectured security at the same
     /// security level.
-    pub fn security_level(&self, conjectured: bool) -> u32 {
+    pub fn security_level<H: Hasher>(&self, conjectured: bool) -> u32 {
         if conjectured {
             get_conjectured_security(
                 self.context.options(),
                 self.context.num_modulus_bits(),
                 self.lde_domain_size() as u64,
+                H::COLLISION_RESISTANCE,
             )
         } else {
             // TODO: implement provable security estimation
@@ -176,13 +178,11 @@ fn get_conjectured_security(
     options: &ProofOptions,
     base_field_bits: u32,
     lde_domain_size: u64,
+    collision_resistance: u32,
 ) -> u32 {
     // compute max security we can get for a given field size
     let field_size = base_field_bits * options.field_extension().degree();
     let field_security = field_size - lde_domain_size.trailing_zeros();
-
-    // compute max security we can get for a given hash function
-    let hash_fn_security = options.hash_fn().collision_resistance();
 
     // compute security we get by executing multiple query rounds
     let security_per_query = log2(options.blowup_factor());
@@ -195,6 +195,6 @@ fn get_conjectured_security(
 
     cmp::min(
         cmp::min(field_security, query_security) - 1,
-        hash_fn_security,
+        collision_resistance,
     )
 }

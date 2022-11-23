@@ -92,6 +92,8 @@ pub struct Rp62_248();
 impl Hasher for Rp62_248 {
     type Digest = ElementDigest;
 
+    const COLLISION_RESISTANCE: u32 = 124;
+
     fn hash(bytes: &[u8]) -> Self::Digest {
         // compute the number of elements required to represent the string; we will be processing
         // the string in 7-byte chunks, thus the number of elements will be equal to the number

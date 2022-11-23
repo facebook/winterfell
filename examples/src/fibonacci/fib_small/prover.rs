@@ -4,19 +4,19 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    BaseElement, ElementHasher, FibAir, FieldElement, PhantomData, ProofOptions, Prover, Trace,
-    TraceTable, TRACE_WIDTH,
+    air::FibSmall, BaseElement, ElementHasher, FieldElement, PhantomData, ProofOptions, Prover,
+    Trace, TraceTable, TRACE_WIDTH,
 };
 
 // FIBONACCI PROVER
 // ================================================================================================
 
-pub struct FibProver<H: ElementHasher> {
+pub struct FibSmallProver<H: ElementHasher> {
     options: ProofOptions,
     _hasher: PhantomData<H>,
 }
 
-impl<H: ElementHasher> FibProver<H> {
+impl<H: ElementHasher> FibSmallProver<H> {
     pub fn new(options: ProofOptions) -> Self {
         Self {
             options,
@@ -48,12 +48,12 @@ impl<H: ElementHasher> FibProver<H> {
     }
 }
 
-impl<H: ElementHasher> Prover for FibProver<H>
+impl<H: ElementHasher> Prover for FibSmallProver<H>
 where
     H: ElementHasher<BaseField = BaseElement>,
 {
     type BaseField = BaseElement;
-    type Air = FibAir;
+    type Air = FibSmall;
     type Trace = TraceTable<BaseElement>;
     type HashFn = H;
 

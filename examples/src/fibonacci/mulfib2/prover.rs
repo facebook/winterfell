@@ -3,18 +3,24 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{BaseElement, MulFib2Air, ProofOptions, Prover, Trace, TraceTable};
+use super::{
+    BaseElement, ElementHasher, MulFib2Air, PhantomData, ProofOptions, Prover, Trace, TraceTable,
+};
 
 // FIBONACCI PROVER
 // ================================================================================================
 
-pub struct MulFib2Prover {
+pub struct MulFib2Prover<H: ElementHasher> {
     options: ProofOptions,
+    _hasher: PhantomData<H>,
 }
 
-impl MulFib2Prover {
+impl<H: ElementHasher> MulFib2Prover<H> {
     pub fn new(options: ProofOptions) -> Self {
-        Self { options }
+        Self {
+            options,
+            _hasher: PhantomData,
+        }
     }
 
     /// Builds an execution trace for computing a multiplicative version of a Fibonacci sequence of
@@ -37,10 +43,14 @@ impl MulFib2Prover {
     }
 }
 
-impl Prover for MulFib2Prover {
+impl<H: ElementHasher> Prover for MulFib2Prover<H>
+where
+    H: ElementHasher<BaseField = BaseElement>,
+{
     type BaseField = BaseElement;
     type Air = MulFib2Air;
     type Trace = TraceTable<BaseElement>;
+    type HashFn = H;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> BaseElement {
         let last_step = trace.length() - 1;

@@ -7,10 +7,12 @@ use super::{
     message_to_elements, rescue, Example, PrivateKey, Signature, CYCLE_LENGTH as HASH_CYCLE_LENGTH,
     NUM_HASH_ROUNDS,
 };
-use crate::ExampleOptions;
+use crate::{Blake3_192, Blake3_256, ExampleOptions, HashFunction, Sha3_256};
+use core::marker::PhantomData;
 use log::debug;
 use std::time::Instant;
 use winterfell::{
+    crypto::ElementHasher,
     math::{fields::f128::BaseElement, get_power_series, log2, FieldElement, StarkField},
     ProofOptions, Prover, StarkProof, Trace, TraceTable, VerifierError,
 };
@@ -33,19 +35,39 @@ const SIG_CYCLE_LENGTH: usize = 128 * HASH_CYCLE_LENGTH; // 1024 steps
 // LAMPORT THRESHOLD SIGNATURE EXAMPLE
 // ================================================================================================
 
-pub fn get_example(options: ExampleOptions, num_signers: usize) -> Box<dyn Example> {
-    Box::new(LamportThresholdExample::new(num_signers, options))
+pub fn get_example(
+    options: &ExampleOptions,
+    num_signers: usize,
+) -> Result<Box<dyn Example>, String> {
+    let (_, hash_fn) = options.to_proof_options(28, 8);
+
+    match hash_fn {
+        HashFunction::Blake3_192 => Ok(Box::new(LamportThresholdExample::<Blake3_192>::new(
+            num_signers,
+            options,
+        ))),
+        HashFunction::Blake3_256 => Ok(Box::new(LamportThresholdExample::<Blake3_256>::new(
+            num_signers,
+            options,
+        ))),
+        HashFunction::Sha3_256 => Ok(Box::new(LamportThresholdExample::<Sha3_256>::new(
+            num_signers,
+            options,
+        ))),
+        _ => Err("The specified hash function cannot be used with this example.".to_string()),
+    }
 }
 
-pub struct LamportThresholdExample {
+pub struct LamportThresholdExample<H: ElementHasher> {
     options: ProofOptions,
     pub_key: AggPublicKey,
     signatures: Vec<(usize, Signature)>,
     message: [BaseElement; 2],
+    _hasher: PhantomData<H>,
 }
 
-impl LamportThresholdExample {
-    pub fn new(num_signers: usize, options: ExampleOptions) -> Self {
+impl<H: ElementHasher> LamportThresholdExample<H> {
+    pub fn new(num_signers: usize, options: &ExampleOptions) -> Self {
         assert!(
             (num_signers + 1).is_power_of_two(),
             "number of signers must be one less than a power of 2"
@@ -77,11 +99,14 @@ impl LamportThresholdExample {
             now.elapsed().as_millis()
         );
 
+        let (options, _) = options.to_proof_options(28, 8);
+
         LamportThresholdExample {
-            options: options.to_proof_options(28, 8),
+            options,
             pub_key,
             signatures,
             message: message_to_elements(message.as_bytes()),
+            _hasher: PhantomData,
         }
     }
 }
@@ -89,7 +114,10 @@ impl LamportThresholdExample {
 // EXAMPLE IMPLEMENTATION
 // ================================================================================================
 
-impl Example for LamportThresholdExample {
+impl<H: ElementHasher> Example for LamportThresholdExample<H>
+where
+    H: ElementHasher<BaseField = BaseElement>,
+{
     fn prove(&self) -> StarkProof {
         // generate the execution trace
         debug!(
@@ -100,7 +128,7 @@ impl Example for LamportThresholdExample {
         );
 
         // create a prover
-        let prover = LamportThresholdProver::new(
+        let prover = LamportThresholdProver::<H>::new(
             &self.pub_key,
             self.message,
             &self.signatures,
@@ -129,7 +157,7 @@ impl Example for LamportThresholdExample {
             num_signatures: self.signatures.len(),
             message: self.message,
         };
-        winterfell::verify::<LamportThresholdAir>(proof, pub_inputs)
+        winterfell::verify::<LamportThresholdAir, H>(proof, pub_inputs)
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
@@ -139,7 +167,7 @@ impl Example for LamportThresholdExample {
             num_signatures: self.signatures.len() + 1,
             message: self.message,
         };
-        winterfell::verify::<LamportThresholdAir>(proof, pub_inputs)
+        winterfell::verify::<LamportThresholdAir, H>(proof, pub_inputs)
     }
 }
 

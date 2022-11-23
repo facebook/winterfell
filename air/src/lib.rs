@@ -39,7 +39,7 @@ mod errors;
 pub use errors::AssertionError;
 
 mod options;
-pub use options::{FieldExtension, HashFunction, ProofOptions};
+pub use options::{FieldExtension, ProofOptions};
 
 mod air;
 pub use air::{

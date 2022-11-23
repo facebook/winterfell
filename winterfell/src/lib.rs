@@ -151,7 +151,7 @@
 //! use winterfell::{
 //!     math::{fields::f128::BaseElement, FieldElement},
 //!     Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ProofOptions, Serializable,
-//!     TraceInfo, TransitionConstraintDegree,
+//!     TraceInfo, TransitionConstraintDegree, crypto::hashers::Blake3_256,
 //! };
 //!
 //! // Public inputs for our computation will consist of the starting value and the end result.
@@ -257,7 +257,7 @@
 //! ```no_run
 //! use winterfell::{
 //!     math::{fields::f128::BaseElement, FieldElement},
-//!     ProofOptions, Prover, Trace, TraceTable
+//!     ProofOptions, Prover, Trace, TraceTable, crypto::hashers::Blake3_256
 //! };
 //!
 //! # use winterfell::{
@@ -340,6 +340,7 @@
 //!     type BaseField = BaseElement;
 //!     type Air = WorkAir;
 //!     type Trace = TraceTable<Self::BaseField>;
+//!     type HashFn = Blake3_256<Self::BaseField>;
 //!
 //!     // Our public inputs consist of the first and last value in the execution trace.
 //!     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
@@ -368,7 +369,7 @@
 //! #    math::{fields::f128::BaseElement, FieldElement},
 //! #    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, Serializable,
 //! #    TraceInfo, TransitionConstraintDegree, TraceTable, FieldExtension,
-//! #    HashFunction, Prover, ProofOptions, StarkProof, Trace,
+//! #    Prover, ProofOptions, StarkProof, Trace, crypto::hashers::Blake3_256,
 //! # };
 //! #
 //! # pub fn build_do_work_trace(start: BaseElement, n: usize) -> TraceTable<BaseElement> {
@@ -456,6 +457,7 @@
 //! #    type BaseField = BaseElement;
 //! #    type Air = WorkAir;
 //! #    type Trace = TraceTable<Self::BaseField>;
+//! #    type HashFn = Blake3_256<Self::BaseField>;
 //! #
 //! #    fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
 //! #        let last_step = trace.length() - 1;
@@ -484,7 +486,6 @@
 //!     32, // number of queries
 //!     8,  // blowup factor
 //!     0,  // grinding factor
-//!     HashFunction::Blake3_256,
 //!     FieldExtension::None,
 //!     8,   // FRI folding factor
 //!     128, // FRI max remainder length
@@ -497,7 +498,7 @@
 //! // Verify the proof. The number of steps and options are encoded in the proof itself,
 //! // so we don't need to pass them explicitly to the verifier.
 //! let pub_inputs = PublicInputs { start, result };
-//! assert!(winterfell::verify::<WorkAir>(proof, pub_inputs).is_ok());
+//! assert!(winterfell::verify::<WorkAir, Blake3_256<BaseElement>>(proof, pub_inputs).is_ok());
 //! ```
 //!
 //! That's all there is to it!
@@ -529,8 +530,8 @@ pub use prover::{
     crypto, iterators, math, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
     BoundaryConstraintGroup, ByteReader, ByteWriter, ConstraintCompositionCoefficients,
     ConstraintDivisor, DeepCompositionCoefficients, Deserializable, DeserializationError,
-    EvaluationFrame, FieldExtension, HashFunction, Matrix, ProofOptions, Prover, ProverError,
-    Serializable, SliceReader, StarkProof, Trace, TraceInfo, TraceLayout, TraceTable,
-    TraceTableFragment, TransitionConstraintDegree, TransitionConstraintGroup,
+    EvaluationFrame, FieldExtension, Matrix, ProofOptions, Prover, ProverError, Serializable,
+    SliceReader, StarkProof, Trace, TraceInfo, TraceLayout, TraceTable, TraceTableFragment,
+    TransitionConstraintDegree, TransitionConstraintGroup,
 };
 pub use verifier::{verify, VerifierError};

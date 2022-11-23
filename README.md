@@ -259,6 +259,7 @@ impl Prover for WorkProver {
     type BaseField = BaseElement;
     type Air = WorkAir;
     type Trace = TraceTable<Self::BaseField>;
+    type HashFn = Blake3_256<Self::BaseField>;
 
     // Our public inputs consist of the first and last value in the execution trace.
     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
@@ -297,7 +298,6 @@ pub fn prove_work() -> (BaseElement, StarkProof) {
         32, // number of queries
         8,  // blowup factor
         0,  // grinding factor
-        HashFunction::Blake3_256,
         FieldExtension::None,
         8,   // FRI folding factor
         128, // FRI max remainder length
@@ -318,7 +318,7 @@ pub fn verify_work(start: BaseElement, result: BaseElement, proof: StarkProof) {
     // The number of steps and options are encoded in the proof itself, so we
     // don't need to pass them explicitly to the verifier.
     let pub_inputs = PublicInputs { start, result };
-    match winterfell::verify::<WorkAir>(proof, pub_inputs) {
+    match winterfell::verify::<WorkAir, Blake3_256<Self::BaseField>>(proof, pub_inputs) {
         Ok(_) => println!("yay! all good!"),
         Err(_) => panic!("something went terribly wrong!"),
     }

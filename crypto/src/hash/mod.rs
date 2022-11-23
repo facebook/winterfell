@@ -21,13 +21,16 @@ pub use rescue::{Rp62_248, Rp64_256};
 
 /// Defines a cryptographic hash function.
 ///
-/// This trait defined hash procedures for the following inputs:
+/// This trait defines hash procedures for the following inputs:
 /// * A sequence of bytes.
 /// * Two digests - this is intended for use in Merkle tree constructions.
 /// * A digests and a u64 value - this intended for use in PRNG or PoW contexts.
 pub trait Hasher {
     /// Specifies a digest type returned by this hasher.
     type Digest: Digest;
+
+    /// Collision resistance of the hash function measured in bits.
+    const COLLISION_RESISTANCE: u32;
 
     /// Returns a hash of the provided sequence of bytes.
     fn hash(bytes: &[u8]) -> Self::Digest;
