@@ -6,7 +6,8 @@
 use super::{BaseElement, FieldElement, ProofOptions, TRACE_WIDTH};
 use crate::utils::are_equal;
 use winterfell::{
-    Air, AirContext, Assertion, EvaluationFrame, TraceInfo, TransitionConstraintDegree,
+    Air, AirContext, Assertion, DefaultEvaluationFrame, EvaluationFrame, TraceInfo,
+    TransitionConstraintDegree,
 };
 
 // FIBONACCI AIR
@@ -20,6 +21,8 @@ pub struct FibSmall {
 impl Air for FibSmall {
     type BaseField = BaseElement;
     type PublicInputs = BaseElement;
+    type Frame<E: FieldElement> = DefaultEvaluationFrame<E>;
+    type AuxFrame<E: FieldElement> = DefaultEvaluationFrame<E>;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -41,7 +44,7 @@ impl Air for FibSmall {
 
     fn evaluate_transition<E: FieldElement + From<Self::BaseField>>(
         &self,
-        frame: &EvaluationFrame<E>,
+        frame: &Self::Frame<E>,
         _periodic_values: &[E],
         result: &mut [E],
     ) {

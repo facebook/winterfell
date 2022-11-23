@@ -6,7 +6,7 @@
 use crate::utils::are_equal;
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement},
-    Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
+    Air, AirContext, Assertion, DefaultEvaluationFrame, EvaluationFrame, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
 
@@ -23,6 +23,8 @@ pub struct MulFib8Air {
 impl Air for MulFib8Air {
     type BaseField = BaseElement;
     type PublicInputs = BaseElement;
+    type Frame<E: FieldElement> = DefaultEvaluationFrame<E>;
+    type AuxFrame<E: FieldElement> = DefaultEvaluationFrame<E>;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -50,7 +52,7 @@ impl Air for MulFib8Air {
 
     fn evaluate_transition<E: FieldElement + From<Self::BaseField>>(
         &self,
-        frame: &EvaluationFrame<E>,
+        frame: &Self::Frame<E>,
         _periodic_values: &[E],
         result: &mut [E],
     ) {

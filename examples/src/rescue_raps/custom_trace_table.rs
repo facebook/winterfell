@@ -6,7 +6,7 @@
 use core_utils::{collections::Vec, uninit_vector};
 use winterfell::{
     math::{log2, FieldElement, StarkField},
-    EvaluationFrame, Matrix, Trace, TraceInfo, TraceLayout,
+    Matrix, Trace, TraceInfo, TraceLayout,
 };
 
 // RAP TRACE TABLE
@@ -174,12 +174,6 @@ impl<B: StarkField> Trace for RapTraceTable<B> {
 
     fn meta(&self) -> &[u8] {
         &self.meta
-    }
-
-    fn read_main_frame(&self, row_idx: usize, frame: &mut EvaluationFrame<Self::BaseField>) {
-        let next_row_idx = (row_idx + 1) % self.length();
-        self.trace.read_row_into(row_idx, frame.current_mut());
-        self.trace.read_row_into(next_row_idx, frame.next_mut());
     }
 
     fn main_segment(&self) -> &Matrix<B> {

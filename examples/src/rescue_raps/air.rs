@@ -9,8 +9,8 @@ use super::{
 };
 use crate::utils::{are_equal, not, EvaluationResult};
 use winterfell::{
-    Air, AirContext, Assertion, AuxTraceRandElements, ByteWriter, EvaluationFrame, Serializable,
-    TraceInfo, TransitionConstraintDegree,
+    Air, AirContext, Assertion, AuxTraceRandElements, ByteWriter, DefaultEvaluationFrame,
+    EvaluationFrame, Serializable, TraceInfo, TransitionConstraintDegree,
 };
 
 // CONSTANTS
@@ -57,6 +57,8 @@ pub struct RescueRapsAir {
 impl Air for RescueRapsAir {
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
+    type Frame<E: FieldElement> = DefaultEvaluationFrame<E>;
+    type AuxFrame<E: FieldElement> = DefaultEvaluationFrame<E>;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -88,7 +90,7 @@ impl Air for RescueRapsAir {
 
     fn evaluate_transition<E: FieldElement + From<Self::BaseField>>(
         &self,
-        frame: &EvaluationFrame<E>,
+        frame: &Self::Frame<E>,
         periodic_values: &[E],
         result: &mut [E],
     ) {
@@ -154,8 +156,8 @@ impl Air for RescueRapsAir {
 
     fn evaluate_aux_transition<F, E>(
         &self,
-        main_frame: &EvaluationFrame<F>,
-        aux_frame: &EvaluationFrame<E>,
+        main_frame: &Self::Frame<F>,
+        aux_frame: &Self::AuxFrame<E>,
         periodic_values: &[F],
         aux_rand_elements: &AuxTraceRandElements<E>,
         result: &mut [E],

@@ -5,8 +5,8 @@
 
 use super::{BaseElement, FieldElement, ProofOptions, ALPHA, FORTY_TWO};
 use winterfell::{
-    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, Serializable, TraceInfo,
-    TransitionConstraintDegree,
+    Air, AirContext, Assertion, ByteWriter, DefaultEvaluationFrame, EvaluationFrame, Serializable,
+    TraceInfo, TransitionConstraintDegree,
 };
 
 // PUBLIC INPUTS
@@ -37,6 +37,8 @@ pub struct VdfAir {
 impl Air for VdfAir {
     type BaseField = BaseElement;
     type PublicInputs = VdfInputs;
+    type Frame<E: FieldElement> = DefaultEvaluationFrame<E>;
+    type AuxFrame<E: FieldElement> = DefaultEvaluationFrame<E>;
 
     fn new(trace_info: TraceInfo, pub_inputs: VdfInputs, options: ProofOptions) -> Self {
         let degrees = vec![TransitionConstraintDegree::new(3)];
@@ -53,7 +55,7 @@ impl Air for VdfAir {
 
     fn evaluate_transition<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        frame: &EvaluationFrame<E>,
+        frame: &Self::Frame<E>,
         _periodic_values: &[E],
         result: &mut [E],
     ) {

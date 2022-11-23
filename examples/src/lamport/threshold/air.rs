@@ -10,8 +10,8 @@ use super::{
 use crate::utils::{are_equal, is_binary, is_zero, not, EvaluationResult};
 use winterfell::{
     math::{fields::f128::BaseElement, log2, FieldElement, StarkField},
-    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ProofOptions, Serializable, TraceInfo,
-    TransitionConstraintDegree,
+    Air, AirContext, Assertion, ByteWriter, DefaultEvaluationFrame, EvaluationFrame, ProofOptions,
+    Serializable, TraceInfo, TransitionConstraintDegree,
 };
 
 // CONSTANTS
@@ -49,6 +49,8 @@ pub struct LamportThresholdAir {
 impl Air for LamportThresholdAir {
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
+    type Frame<E: FieldElement> = DefaultEvaluationFrame<E>;
+    type AuxFrame<E: FieldElement> = DefaultEvaluationFrame<E>;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -105,7 +107,7 @@ impl Air for LamportThresholdAir {
 
     fn evaluate_transition<E: FieldElement + From<Self::BaseField>>(
         &self,
-        frame: &EvaluationFrame<E>,
+        frame: &Self::Frame<E>,
         periodic_values: &[E],
         result: &mut [E],
     ) {
