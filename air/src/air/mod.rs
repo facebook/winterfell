@@ -25,7 +25,8 @@ pub use boundary::{BoundaryConstraint, BoundaryConstraintGroup, BoundaryConstrai
 
 mod transition;
 pub use transition::{
-    EvaluationFrame, TransitionConstraintDegree, TransitionConstraintGroup, TransitionConstraints,
+    DefaultEvaluationFrame, EvaluationFrame, TransitionConstraintDegree, TransitionConstraintGroup,
+    TransitionConstraints,
 };
 
 mod coefficients;
@@ -55,6 +56,10 @@ const MIN_CYCLE_LENGTH: usize = 2;
 ///    [math::fields] for available field options).
 /// 2. Define a set of public inputs which are required for your computation via the
 ///    [Air::PublicInputs] associated type.
+/// 3. Define an evaluation frame via the [Air::Frame] generic associated type which fetches
+///    the respective row values from the execution trace.
+/// 4. Define an evaluation frame via the [Air::AuxFrame] generic associated type which
+///    fetches the respective row values from the auxiliary execution trace.
 /// 3. Implement [Air::new()] function. As a part of this function you should create a
 ///    [AirContext] struct which takes degrees for all transition constraints as one of
 ///    the constructor parameters.
@@ -75,6 +80,7 @@ const MIN_CYCLE_LENGTH: usize = 2;
 /// computation. In Winterfell, transition constraints are evaluated inside
 /// [Air::evaluate_transition()] function which takes the following parameters:
 ///
+/// TODO: Need to update it in subsequent iteration
 /// - [EvaluationFrame] which contains vectors with current and next states of the
 ///   computation.
 /// - A list of periodic values. When periodic columns are defined for a computation,
@@ -187,6 +193,9 @@ pub trait Air: Send + Sync {
     /// This could be any type as long as it can be serialized into a sequence of bytes.
     type PublicInputs: Serializable;
 
+    type Frame<E: FieldElement>: EvaluationFrame<E>;
+    type AuxFrame<E: FieldElement>: EvaluationFrame<E>;
+
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
 
@@ -215,7 +224,7 @@ pub trait Air: Send + Sync {
     /// (when extension fields are used).
     fn evaluate_transition<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        frame: &EvaluationFrame<E>,
+        frame: &Self::Frame<E>,
         periodic_values: &[E],
         result: &mut [E],
     );
@@ -253,8 +262,8 @@ pub trait Air: Send + Sync {
     #[allow(unused_variables)]
     fn evaluate_aux_transition<F, E>(
         &self,
-        main_frame: &EvaluationFrame<F>,
-        aux_frame: &EvaluationFrame<E>,
+        main_frame: &Self::Frame<F>,
+        aux_frame: &Self::AuxFrame<E>,
         periodic_values: &[F],
         aux_rand_elements: &AuxTraceRandElements<E>,
         result: &mut [E],
