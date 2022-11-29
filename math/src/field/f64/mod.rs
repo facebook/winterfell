@@ -48,9 +48,10 @@ const ELEMENT_BYTES: usize = core::mem::size_of::<u64>();
 // FIELD ELEMENT
 // ================================================================================================
 
-/// Represents base field element in the field.
+/// Represents base field element in the field using Montgomery repesentation.
 ///
-/// Internal values are stored in the range [0, 2^64). The backing type is `u64`.
+/// Internal values represent x * R mod M where R = 2^64 mod M and x in [0, M).
+/// The backing type is `u64` but the internal values are always in the range [0, M).
 #[derive(Copy, Clone, Debug, Default)]
 pub struct BaseElement(u64);
 impl BaseElement {
