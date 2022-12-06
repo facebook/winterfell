@@ -62,7 +62,7 @@ fn periodic_assertion() {
             assert_eq!(value, val);
             return;
         }
-        assert!(false);
+        unreachable!();
     });
 
     assert_eq!(Ok(()), a.validate_trace_width(5));
@@ -129,7 +129,7 @@ fn sequence_assertion() {
             assert_eq!(values[1], val);
             return;
         }
-        assert!(false);
+        unreachable!();
     });
 
     assert_eq!(Ok(()), a.validate_trace_length(8));
@@ -327,7 +327,7 @@ fn assertion_overlap() {
     assert!(!b.overlaps_with(&a));
 
     // different first step and bigger stride: no overlap
-    let b = Assertion::sequence(0, 0, 16, values.clone());
+    let b = Assertion::sequence(0, 0, 16, values);
     assert!(!a.overlaps_with(&b));
     assert!(!b.overlaps_with(&a));
 
@@ -335,7 +335,7 @@ fn assertion_overlap() {
 
     let values = vec![BaseElement::ONE, BaseElement::ZERO];
 
-    let a = Assertion::sequence(3, 4, 8, values.clone());
+    let a = Assertion::sequence(3, 4, 8, values);
     let b = Assertion::periodic(3, 4, 8, BaseElement::ONE);
     assert!(a.overlaps_with(&b));
     assert!(b.overlaps_with(&a));

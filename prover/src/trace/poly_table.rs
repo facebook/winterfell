@@ -93,6 +93,6 @@ impl<E: FieldElement> TracePolyTable<E> {
     /// Returns a polynomial from the main segment of the trace at the specified index.
     #[cfg(test)]
     pub fn get_main_trace_poly(&self, idx: usize) -> &[E::BaseField] {
-        &self.main_segment_polys.get_column(idx)
+        self.main_segment_polys.get_column(idx)
     }
 }

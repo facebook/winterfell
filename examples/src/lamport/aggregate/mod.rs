@@ -86,7 +86,7 @@ impl<H: ElementHasher> LamportAggregateExample<H> {
         let mut signatures = Vec::new();
         let mut messages = Vec::new();
         for (i, private_key) in private_keys.iter().enumerate() {
-            let msg = format!("test message {}", i);
+            let msg = format!("test message {i}");
             signatures.push(private_key.sign(msg.as_bytes()));
             messages.push(message_to_elements(msg.as_bytes()));
         }
@@ -102,7 +102,7 @@ impl<H: ElementHasher> LamportAggregateExample<H> {
         for (i, signature) in signatures.iter().enumerate() {
             let pk = private_keys[i].pub_key();
             pub_keys.push(pk.to_elements());
-            let msg = format!("test message {}", i);
+            let msg = format!("test message {i}");
             assert!(pk.verify(msg.as_bytes(), signature));
         }
         debug!(

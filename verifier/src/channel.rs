@@ -266,8 +266,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> TraceQueries<E
             .parse::<H, E::BaseField>(air.lde_domain_size(), num_queries, main_segment_width)
             .map_err(|err| {
                 VerifierError::ProofDeserializationError(format!(
-                    "main trace segment query deserialization failed: {}",
-                    err
+                    "main trace segment query deserialization failed: {err}"
                 ))
             })?;
 
@@ -285,8 +284,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> TraceQueries<E
                     .parse::<H, E>(air.lde_domain_size(), num_queries, segment_width)
                     .map_err(|err| {
                         VerifierError::ProofDeserializationError(format!(
-                            "auxiliary trace segment query deserialization failed: {}",
-                            err
+                            "auxiliary trace segment query deserialization failed: {err}"
                         ))
                     })?;
 
@@ -331,8 +329,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> ConstraintQuer
             .parse::<H, E>(air.lde_domain_size(), num_queries, air.ce_blowup_factor())
             .map_err(|err| {
                 VerifierError::ProofDeserializationError(format!(
-                    "constraint evaluation query deserialization failed: {}",
-                    err
+                    "constraint evaluation query deserialization failed: {err}"
                 ))
             })?;
 

@@ -26,8 +26,7 @@ impl<E: FieldElement> CompositionPoly<E> {
         );
         assert!(
             trace_length.is_power_of_two(),
-            "trace length must be a power of 2, but was {}",
-            trace_length
+            "trace length must be a power of 2, but was {trace_length}"
         );
         assert!(
             trace_length < coefficients.len(),

@@ -201,19 +201,17 @@ fn prepare_assertions<E: FieldElement>(
         assertion
             .validate_trace_width(trace_width)
             .unwrap_or_else(|err| {
-                panic!("assertion {} is invalid: {}", assertion, err);
+                panic!("assertion {assertion} is invalid: {err}");
             });
         assertion
             .validate_trace_length(trace_length)
             .unwrap_or_else(|err| {
-                panic!("assertion {} is invalid: {}", assertion, err);
+                panic!("assertion {assertion} is invalid: {err}");
             });
         for a in result.iter().filter(|a| a.column == assertion.column) {
             assert!(
                 !a.overlaps_with(&assertion),
-                "assertion {} overlaps with assertion {}",
-                assertion,
-                a
+                "assertion {assertion} overlaps with assertion {a}"
             );
         }
 

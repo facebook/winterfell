@@ -85,8 +85,7 @@ impl TraceInfo {
         );
         assert!(
             length.is_power_of_two(),
-            "trace length must be a power of two, but was {}",
-            length
+            "trace length must be a power of two, but was {length}"
         );
         assert!(
             meta.len() <= Self::MAX_META_LENGTH,

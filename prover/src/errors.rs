@@ -28,13 +28,13 @@ impl fmt::Display for ProverError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::UnsatisfiedTransitionConstraintError(step) => {
-                write!(f, "a transition constraint was not satisfied at step {}", step)
+                write!(f, "a transition constraint was not satisfied at step {step}")
             }
             Self::MismatchedConstraintPolynomialDegree(expected, actual) => {
-                write!(f, "the constraint polynomial's components do not all have the same degree; expected {}, but was {}", expected, actual)
+                write!(f, "the constraint polynomial's components do not all have the same degree; expected {expected}, but was {actual}")
             }
             Self::UnsupportedFieldExtension(degree) => {
-                write!(f, "field extension of degree {} is not supported for the specified base field", degree)
+                write!(f, "field extension of degree {degree} is not supported for the specified base field")
             }
         }
     }

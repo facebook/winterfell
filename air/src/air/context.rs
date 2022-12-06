@@ -272,9 +272,7 @@ impl<B: StarkField> AirContext<B> {
             let max_exemptions = self.composition_degree() + self.trace_len() - eval_degree;
             assert!(
                 n <= max_exemptions,
-                "number of transition exemptions cannot exceed: {}, but was {}",
-                max_exemptions,
-                n
+                "number of transition exemptions cannot exceed: {max_exemptions}, but was {n}"
             )
         }
 

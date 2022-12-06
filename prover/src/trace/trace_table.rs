@@ -284,9 +284,7 @@ impl<B: StarkField> TraceTable<B> {
     fn build_fragments(&mut self, fragment_length: usize) -> Vec<TraceTableFragment<B>> {
         assert!(
             fragment_length >= MIN_FRAGMENT_LENGTH,
-            "fragment length must be at least {}, but was {}",
-            MIN_FRAGMENT_LENGTH,
-            fragment_length
+            "fragment length must be at least {MIN_FRAGMENT_LENGTH}, but was {fragment_length}"
         );
         assert!(
             fragment_length <= self.length(),

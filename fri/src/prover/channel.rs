@@ -72,13 +72,11 @@ impl<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> DefaultProverChan
     pub fn new(domain_size: usize, num_queries: usize) -> Self {
         assert!(
             domain_size >= 8,
-            "domain size must be at least 8, but was {}",
-            domain_size
+            "domain size must be at least 8, but was {domain_size}"
         );
         assert!(
             domain_size.is_power_of_two(),
-            "domain size must be a power of two, but was {}",
-            domain_size
+            "domain size must be a power of two, but was {domain_size}"
         );
         assert!(
             num_queries > 0,
