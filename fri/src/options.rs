@@ -28,16 +28,14 @@ impl FriOptions {
         // TODO: change panics to errors
         assert!(
             blowup_factor.is_power_of_two(),
-            "blowup factor must be a power of two, but was {}",
-            blowup_factor
+            "blowup factor must be a power of two, but was {blowup_factor}"
         );
         assert!(
             folding_factor == 2
                 || folding_factor == 4
                 || folding_factor == 8
                 || folding_factor == 16,
-            "folding factor {} is not supported",
-            folding_factor
+            "folding factor {folding_factor} is not supported"
         );
         assert!(
             max_remainder_size >= folding_factor * 2,

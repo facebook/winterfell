@@ -318,14 +318,11 @@ pub trait Air: Send + Sync {
                 let cycle_length = column.len();
                 assert!(
                     cycle_length >= MIN_CYCLE_LENGTH,
-                    "number of values in a periodic column must be at least {}, but was {}",
-                    MIN_CYCLE_LENGTH,
-                    cycle_length
+                    "number of values in a periodic column must be at least {MIN_CYCLE_LENGTH}, but was {cycle_length}"
                 );
                 assert!(
                     cycle_length.is_power_of_two(),
-                    "number of values in a periodic column must be a power of two, but was {}",
-                    cycle_length
+                    "number of values in a periodic column must be a power of two, but was {cycle_length}"
                 );
                 assert!(cycle_length <= self.trace_length(),
                     "number of values in a periodic column cannot exceed trace length {}, but was {}",

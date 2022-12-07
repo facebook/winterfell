@@ -249,8 +249,7 @@ impl Deserializable for FieldExtension {
             2 => Ok(FieldExtension::Quadratic),
             3 => Ok(FieldExtension::Cubic),
             value => Err(DeserializationError::InvalidValue(format!(
-                "value {} cannot be deserialized as FieldExtension enum",
-                value
+                "value {value} cannot be deserialized as FieldExtension enum"
             ))),
         }
     }

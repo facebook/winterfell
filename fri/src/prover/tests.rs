@@ -98,7 +98,7 @@ pub fn verify_proof(
         .iter()
         .map(|&p| evaluations[p])
         .collect::<Vec<_>>();
-    verifier.verify(&mut channel, &queried_evaluations, &positions)
+    verifier.verify(&mut channel, &queried_evaluations, positions)
 }
 
 fn fri_prove_verify(

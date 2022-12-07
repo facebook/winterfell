@@ -27,7 +27,7 @@ impl fmt::Display for DeserializationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidValue(err_msg) => {
-                write!(f, "{}", err_msg)
+                write!(f, "{err_msg}")
             }
             Self::UnexpectedEOF => {
                 write!(f, "unexpected EOF")
@@ -36,7 +36,7 @@ impl fmt::Display for DeserializationError {
                 write!(f, "not all bytes were consumed")
             }
             Self::UnknownError(err_msg) => {
-                write!(f, "unknown error: {}", err_msg)
+                write!(f, "unknown error: {err_msg}")
             }
         }
     }

@@ -19,7 +19,7 @@ where
     B: StarkField,
     E: FieldElement<BaseField = B>,
 {
-    let mut group = c.benchmark_group(format!("{}/fft_evaluate_poly", field_name));
+    let mut group = c.benchmark_group(format!("{field_name}/fft_evaluate_poly"));
     group.sample_size(10);
     group.measurement_time(Duration::from_secs(10));
 
@@ -43,9 +43,7 @@ where
         let twiddles: Vec<B> = fft::get_twiddles(size / blowup_factor);
         group.bench_function(BenchmarkId::new("with_offset", size), |bench| {
             bench.iter_with_large_drop(|| {
-                let result =
-                    fft::evaluate_poly_with_offset(&p, &twiddles, B::GENERATOR, blowup_factor);
-                result
+                fft::evaluate_poly_with_offset(&p, &twiddles, B::GENERATOR, blowup_factor)
             });
         });
     }
@@ -58,7 +56,7 @@ where
     B: StarkField,
     E: FieldElement<BaseField = B>,
 {
-    let mut group = c.benchmark_group(format!("{}/fft_interpolate_poly", field_name));
+    let mut group = c.benchmark_group(format!("{field_name}/fft_interpolate_poly"));
     group.sample_size(10);
     group.measurement_time(Duration::from_secs(10));
 
@@ -68,7 +66,7 @@ where
         group.bench_function(BenchmarkId::new("simple", size), |bench| {
             bench.iter_batched_ref(
                 || p.clone(),
-                |mut p| fft::interpolate_poly(&mut p, &inv_twiddles),
+                |p| fft::interpolate_poly(p, &inv_twiddles),
                 BatchSize::LargeInput,
             );
         });
@@ -80,7 +78,7 @@ where
         group.bench_function(BenchmarkId::new("with_offset", size), |bench| {
             bench.iter_batched_ref(
                 || p.clone(),
-                |mut p| fft::interpolate_poly_with_offset(&mut p, &inv_twiddles, B::GENERATOR),
+                |p| fft::interpolate_poly_with_offset(p, &inv_twiddles, B::GENERATOR),
                 BatchSize::LargeInput,
             );
         });

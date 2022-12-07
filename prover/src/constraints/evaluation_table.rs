@@ -108,9 +108,7 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
         let fragment_size = self.num_rows() / num_fragments;
         assert!(
             fragment_size >= MIN_FRAGMENT_SIZE,
-            "fragment size must be at least {}, but was {}",
-            MIN_FRAGMENT_SIZE,
-            fragment_size
+            "fragment size must be at least {MIN_FRAGMENT_SIZE}, but was {fragment_size}"
         );
 
         // break evaluations into fragments

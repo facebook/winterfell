@@ -96,7 +96,7 @@ fn mul() {
         let expected = BaseElement::from_big_uint(expected);
 
         if expected != r1 * r2 {
-            assert_eq!(expected, r1 * r2, "failed for: {} * {}", r1, r2);
+            assert_eq!(expected, r1 * r2, "failed for: {r1} * {r2}");
         }
     }
 }
@@ -109,9 +109,9 @@ fn inv() {
 
     // test random values
     let x: Vec<BaseElement> = rand_vector(1000);
-    for i in 0..x.len() {
-        let y = BaseElement::inv(x[i]);
-        assert_eq!(BaseElement::ONE, x[i] * y);
+    for i in x {
+        let y = BaseElement::inv(i);
+        assert_eq!(BaseElement::ONE, i * y);
     }
 }
 
@@ -225,24 +225,21 @@ fn read_elements_from() {
     let result = BaseElement::read_batch_from(&mut reader, 4);
     assert!(result.is_ok());
     assert_eq!(expected, result.unwrap());
-    assert_eq!(false, reader.has_more_bytes());
+    assert!(!reader.has_more_bytes());
 
     // partial number of elements
     let mut reader = SliceReader::new(&bytes[..65]);
     let result = BaseElement::read_batch_from(&mut reader, 4);
     assert!(result.is_ok());
     assert_eq!(expected, result.unwrap());
-    assert_eq!(true, reader.has_more_bytes());
+    assert!(reader.has_more_bytes());
 
     // invalid element
     let mut reader = SliceReader::new(&bytes[16..]);
     let result = BaseElement::read_batch_from(&mut reader, 4);
     assert!(result.is_err());
-    match result {
-        Err(err) => {
-            assert!(matches!(err, DeserializationError::InvalidValue(_)));
-        }
-        _ => (),
+    if let Err(err) = result {
+        assert!(matches!(err, DeserializationError::InvalidValue(_)));
     }
 }
 

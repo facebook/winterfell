@@ -456,11 +456,10 @@ impl<'a> TryFrom<&'a [u8]> for BaseElement {
         let value = bytes
             .try_into()
             .map(u64::from_le_bytes)
-            .map_err(|error| DeserializationError::UnknownError(format!("{}", error)))?;
+            .map_err(|error| DeserializationError::UnknownError(format!("{error}")))?;
         if value >= M {
             return Err(DeserializationError::InvalidValue(format!(
-                "invalid field element: value {} is greater than or equal to the field modulus",
-                value
+                "invalid field element: value {value} is greater than or equal to the field modulus"
             )));
         }
         Ok(BaseElement::new(value))
@@ -490,8 +489,7 @@ impl Deserializable for BaseElement {
         let value = source.read_u64()?;
         if value >= M {
             return Err(DeserializationError::InvalidValue(format!(
-                "invalid field element: value {} is greater than or equal to the field modulus",
-                value
+                "invalid field element: value {value} is greater than or equal to the field modulus"
             )));
         }
         Ok(BaseElement::new(value))

@@ -29,7 +29,7 @@ fn syn_div(c: &mut Criterion) {
         group.bench_function(BenchmarkId::new("high_degree", size), |bench| {
             bench.iter_batched_ref(
                 || p.clone(),
-                |mut p| polynom::syn_div(&mut p, z_power, BaseElement::ONE),
+                |p| polynom::syn_div(p, z_power, BaseElement::ONE),
                 BatchSize::LargeInput,
             );
         });

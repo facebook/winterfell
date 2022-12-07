@@ -165,7 +165,7 @@ fn boundary_constraint_from_sequence_assertion() {
     // constraint should be built correctly for column 0, first step 3, stride 8
     let values = rand_vector::<BaseElement>(2);
     let constraint_poly = build_sequence_poly(&values, 16);
-    let assertion = Assertion::sequence(0, 3, 8, values.clone());
+    let assertion = Assertion::sequence(0, 3, 8, values);
     let constraint = BoundaryConstraint::<BaseElement, BaseElement>::new(
         assertion,
         inv_g,
@@ -245,7 +245,7 @@ fn prepare_assertions_with_overlap() {
         Assertion::single(0, 9, BaseElement::new(5)),
         Assertion::periodic(0, 1, 8, BaseElement::new(7)),
     ];
-    let _ = super::prepare_assertions(assertions.clone(), 2, 16);
+    let _ = super::prepare_assertions(assertions, 2, 16);
 }
 
 #[test]
@@ -254,7 +254,7 @@ fn prepare_assertions_with_overlap() {
 )]
 fn prepare_assertions_with_invalid_trace_length() {
     let assertions = vec![Assertion::single(0, 16, BaseElement::new(5))];
-    let _ = super::prepare_assertions(assertions.clone(), 2, 16);
+    let _ = super::prepare_assertions(assertions, 2, 16);
 }
 
 #[test]
@@ -263,11 +263,13 @@ fn prepare_assertions_with_invalid_trace_length() {
 )]
 fn prepare_assertions_with_invalid_trace_width() {
     let assertions = vec![Assertion::single(3, 17, BaseElement::new(5))];
-    let _ = super::prepare_assertions(assertions.clone(), 2, 16);
+    let _ = super::prepare_assertions(assertions, 2, 16);
 }
 
 // HELPER FUNCTIONS
 // ================================================================================================
+
+#[allow(clippy::type_complexity)]
 fn build_constraint_params(
     trace_length: usize,
 ) -> (

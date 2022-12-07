@@ -51,8 +51,7 @@ impl<H: Hasher> BatchMerkleProof<H> {
         assert!(!paths.is_empty(), "at least one path must be provided");
         assert!(
             paths.len() <= MAX_PATHS,
-            "number of paths cannot exceed {}",
-            MAX_PATHS
+            "number of paths cannot exceed {MAX_PATHS}"
         );
         assert_eq!(
             paths.len(),

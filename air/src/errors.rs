@@ -29,16 +29,16 @@ impl fmt::Display for AssertionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::TraceWidthTooShort(expected, actual) => {
-                write!(f, "expected trace width to be at least {}, but was {}", expected, actual)
+                write!(f, "expected trace width to be at least {expected}, but was {actual}")
             }
             Self::TraceLengthNotPowerOfTwo(actual) => {
-                write!(f, "expected trace length to be a power of two, but was {}", actual)
+                write!(f, "expected trace length to be a power of two, but was {actual}")
             }
             Self::TraceLengthTooShort(expected, actual) => {
-                write!(f, "expected trace length to be at least {}, but was {}", expected, actual)
+                write!(f, "expected trace length to be at least {expected}, but was {actual}")
             }
             Self::TraceLengthNotExact(expected, actual) => {
-                write!(f, "expected trace length to be exactly {}, but was {}", expected, actual)
+                write!(f, "expected trace length to be exactly {expected}, but was {actual}")
             }
         }
     }

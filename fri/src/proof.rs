@@ -64,8 +64,7 @@ impl FriProof {
         );
         assert!(
             num_partitions.is_power_of_two(),
-            "number of partitions must be a power of two, but was {}",
-            num_partitions
+            "number of partitions must be a power of two, but was {num_partitions}"
         );
         FriProof {
             layers,
@@ -146,10 +145,7 @@ impl FriProof {
         for (i, layer) in self.layers.into_iter().enumerate() {
             domain_size /= folding_factor;
             let (qv, mp) = layer.parse(domain_size, folding_factor).map_err(|err| {
-                DeserializationError::InvalidValue(format!(
-                    "failed to parse FRI layer {}: {}",
-                    i, err
-                ))
+                DeserializationError::InvalidValue(format!("failed to parse FRI layer {i}: {err}"))
             })?;
             layer_proofs.push(mp);
             layer_queries.push(qv);
@@ -158,8 +154,7 @@ impl FriProof {
         // make sure the remaining domain size matches remainder length
         if domain_size != num_remainder_elements {
             return Err(DeserializationError::InvalidValue(format!(
-                "FRI remainder domain size must be {}, but was {}",
-                num_remainder_elements, domain_size,
+                "FRI remainder domain size must be {num_remainder_elements}, but was {domain_size}",
             )));
         }
 
@@ -178,13 +173,12 @@ impl FriProof {
         let num_elements = self.num_remainder_elements::<E>();
         if !num_elements.is_power_of_two() {
             return Err(DeserializationError::InvalidValue(format!(
-                "number of remainder values must be a power of two, but {} was implied",
-                num_elements
+                "number of remainder values must be a power of two, but {num_elements} was implied"
             )));
         }
         let mut reader = SliceReader::new(&self.remainder);
         let remainder = E::read_batch_from(&mut reader, num_elements).map_err(|err| {
-            DeserializationError::InvalidValue(format!("failed to parse FRI remainder: {}", err))
+            DeserializationError::InvalidValue(format!("failed to parse FRI remainder: {err}"))
         })?;
         if reader.has_more_bytes() {
             return Err(DeserializationError::UnconsumedBytes);

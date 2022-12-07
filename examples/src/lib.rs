@@ -78,7 +78,7 @@ impl ExampleOptions {
             1 => FieldExtension::None,
             2 => FieldExtension::Quadratic,
             3 => FieldExtension::Cubic,
-            val => panic!("'{}' is not a valid field extension option", val),
+            val => panic!("'{val}' is not a valid field extension option"),
         };
 
         let hash_fn = match self.hash_fn.as_str() {
@@ -86,7 +86,7 @@ impl ExampleOptions {
             "blake3_256" => HashFunction::Blake3_256,
             "sha3_256" => HashFunction::Sha3_256,
             "rp64_256" => HashFunction::Rp64_256,
-            val => panic!("'{}' is not a valid hash function option", val),
+            val => panic!("'{val}' is not a valid hash function option"),
         };
 
         (
@@ -109,7 +109,7 @@ impl ExampleOptions {
             "blake3_256" => proof.security_level::<Blake3_256>(true),
             "sha3_256" => proof.security_level::<Sha3_256>(true),
             "rp64_256" => proof.security_level::<Rp64_256>(true),
-            val => panic!("'{}' is not a valid hash function option", val),
+            val => panic!("'{val}' is not a valid hash function option"),
         };
 
         security_level as usize

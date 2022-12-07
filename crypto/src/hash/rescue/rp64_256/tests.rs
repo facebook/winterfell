@@ -18,6 +18,7 @@ fn mds_inv_test() {
         for j in 0..STATE_WIDTH {
             let result = {
                 let mut result = BaseElement::new(0);
+                #[allow(clippy::needless_range_loop)]
                 for k in 0..STATE_WIDTH {
                     result += MDS[i][k] * INV_MDS[k][j]
                 }
@@ -35,7 +36,7 @@ fn mds_inv_test() {
 #[test]
 fn test_alphas() {
     let e: BaseElement = rand_value();
-    let e_exp = e.exp(ALPHA.into());
+    let e_exp = e.exp(ALPHA);
     assert_eq!(e, e_exp.exp(INV_ALPHA));
 }
 

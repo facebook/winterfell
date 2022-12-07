@@ -44,23 +44,22 @@ impl fmt::Display for VerifierError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::PublicCoinError(err) => {
-                write!(f, "failed to draw a random value from the public coin: {}", err)
+                write!(f, "failed to draw a random value from the public coin: {err}")
             }
             Self::UnsupportedFoldingFactor(value) => {
-                write!(f, "folding factor {} is not currently supported", value)
+                write!(f, "folding factor {value} is not currently supported")
             }
             Self::NumPositionEvaluationMismatch(num_positions, num_evaluations) => write!(f,
-                "the number of query positions must be the same as the number of polynomial evaluations, but {} and {} were provided",
-                num_positions, num_evaluations
+                "the number of query positions must be the same as the number of polynomial evaluations, but {num_positions} and {num_evaluations} were provided"
             ),
             Self::LayerCommitmentMismatch => {
                 write!(f, "FRI queries did not match layer commitment made by the prover")
             }
             Self::InvalidLayerFolding(layer) => {
-                write!(f, "degree-respecting projection is not consistent at layer {}", layer)
+                write!(f, "degree-respecting projection is not consistent at layer {layer}")
             }
             Self::RemainderTreeConstructionFailed(err_msg) => {
-                write!(f, "FRI remainder Merkle tree could not be constructed: {}", err_msg)
+                write!(f, "FRI remainder Merkle tree could not be constructed: {err_msg}")
             }
             Self::RemainderCommitmentMismatch => {
                 write!(f, "FRI remainder did not match the commitment")
@@ -72,10 +71,10 @@ impl fmt::Display for VerifierError {
                 write!(f, "FRI remainder expected degree is greater than number of remainder values")
             }
             Self::RemainderDegreeMismatch(degree) => {
-                write!(f, "FRI remainder is not a valid degree {} polynomial", degree)
+                write!(f, "FRI remainder is not a valid degree {degree} polynomial")
             }
             Self::DegreeTruncation(degree, folding, layer) => {
-                write!(f, "degree reduction from {} by {} at layer {} results in degree truncation", degree, folding, layer)
+                write!(f, "degree reduction from {degree} by {folding} at layer {layer} results in degree truncation")
             }
         }
     }

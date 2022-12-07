@@ -104,8 +104,7 @@ impl<E: FieldElement> Assertion<E> {
         validate_stride(stride, first_step, column);
         assert!(
             !values.is_empty(),
-            "invalid assertion for column {}: number of asserted values must be greater than zero",
-            column
+            "invalid assertion for column {column}: number of asserted values must be greater than zero"
         );
         assert!(
             values.len().is_power_of_two(),
@@ -263,7 +262,7 @@ impl<E: FieldElement> Assertion<E> {
     {
         self.validate_trace_length(trace_length)
             .unwrap_or_else(|err| {
-                panic!("invalid trace length: {}", err);
+                panic!("invalid trace length: {err}");
             });
         if self.is_single() {
             f(self.first_step, self.values[0]);
@@ -290,7 +289,7 @@ impl<E: FieldElement> Assertion<E> {
     pub fn get_num_steps(&self, trace_length: usize) -> usize {
         self.validate_trace_length(trace_length)
             .unwrap_or_else(|err| {
-                panic!("invalid trace length: {}", err);
+                panic!("invalid trace length: {err}");
             });
         if self.is_single() {
             1
@@ -351,22 +350,14 @@ impl<E: FieldElement> Display for Assertion<E> {
 fn validate_stride(stride: usize, first_step: usize, column: usize) {
     assert!(
         stride.is_power_of_two(),
-        "invalid assertion for column {}: stride must be a power of two, but was {}",
-        column,
-        stride
+        "invalid assertion for column {column}: stride must be a power of two, but was {stride}"
     );
     assert!(
         stride >= MIN_STRIDE_LENGTH,
-        "invalid assertion for column {}: stride must be at least {}, but was {}",
-        column,
-        MIN_STRIDE_LENGTH,
-        stride
+        "invalid assertion for column {column}: stride must be at least {MIN_STRIDE_LENGTH}, but was {stride}"
     );
     assert!(
         first_step < stride,
-        "invalid assertion for column {}: first step must be smaller than stride ({} steps), but was {}",
-        column,
-        stride,
-        first_step
+        "invalid assertion for column {column}: first step must be smaller than stride ({stride} steps), but was {first_step}"
     );
 }

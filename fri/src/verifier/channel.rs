@@ -110,7 +110,7 @@ pub trait VerifierChannel<E: FieldElement> {
         let remainder_values = transpose_slice(&remainder);
         let hashed_values = hash_values::<Self::Hasher, E, N>(&remainder_values);
         let remainder_tree = MerkleTree::<Self::Hasher>::new(hashed_values)
-            .map_err(|err| VerifierError::RemainderTreeConstructionFailed(format!("{}", err)))?;
+            .map_err(|err| VerifierError::RemainderTreeConstructionFailed(format!("{err}")))?;
 
         // make sure the root of the tree matches the committed root of the last layer
         if commitment != remainder_tree.root() {
