@@ -227,7 +227,10 @@ impl StarkField for BaseElement {
 
     #[inline]
     fn as_int(&self) -> Self::PositiveInteger {
-        mont_red_cst(self.0 as u128)
+        let x = self.0;
+        let (r, c) = x.overflowing_add(x << 32);
+        let res = r.wrapping_sub(r >> 32).wrapping_sub(c as u64);
+        M - res
     }
 }
 
