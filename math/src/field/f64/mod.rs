@@ -48,7 +48,7 @@ const ELEMENT_BYTES: usize = core::mem::size_of::<u64>();
 // FIELD ELEMENT
 // ================================================================================================
 
-/// Represents base field element in the field using Montgomery repesentation.
+/// Represents base field element in the field using Montgomery representation.
 ///
 /// Internal values represent x * R mod M where R = 2^64 mod M and x in [0, M).
 /// The backing type is `u64` but the internal values are always in the range [0, M).
@@ -225,9 +225,16 @@ impl StarkField for BaseElement {
         M.to_le_bytes().to_vec()
     }
 
+    // Converts a field element in Montgomery form to canonical form. That is, given x, it computes
+    // x/2^64 modulo M. This is exactly what mont_red_cst does only that it does it more efficiently
+    // using the fact that a field element in Montgomery form is stored as a u64 and thus one can
+    // use this to simplify mont_red_cst in this case.
     #[inline]
     fn as_int(&self) -> Self::PositiveInteger {
-        mont_red_cst(self.0 as u128)
+        let x = self.0;
+        let (r, c) = x.overflowing_add(x << 32);
+        let res = r.wrapping_sub(r >> 32).wrapping_sub(c as u64);
+        M - res
     }
 }
 
