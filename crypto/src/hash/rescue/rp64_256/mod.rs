@@ -20,7 +20,7 @@ use mds_freq::mds_multiply_freq;
 // CONSTANTS
 // ================================================================================================
 
-/// Sponge state is set to 12 field elements or 768 bytes; 8 elements are reserved for rate and
+/// Sponge state is set to 12 field elements or 96bytes; 8 elements are reserved for rate and
 /// the remaining 4 elements are reserved for capacity.
 const STATE_WIDTH: usize = 12;
 
@@ -266,7 +266,7 @@ impl Rp64_256 {
     /// The number of rounds is set to 7 to target 128-bit security level with 40% security margin.
     pub const NUM_ROUNDS: usize = NUM_ROUNDS;
 
-    /// Sponge state is set to 12 field elements or 768 bytes; 8 elements are reserved for rate and
+    /// Sponge state is set to 12 field elements or 96bytes; 8 elements are reserved for rate and
     /// the remaining 4 elements are reserved for capacity.
     pub const STATE_WIDTH: usize = STATE_WIDTH;
 
