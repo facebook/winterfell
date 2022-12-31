@@ -182,9 +182,7 @@ impl Hasher for RpJive64_256 {
     // We do not rely on the sponge construction to build our compression function. Instead, we use
     // the Jive compression mode designed in https://eprint.iacr.org/2022/840.pdf.
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest {
-        // initialize the state by copying the digest elements into the rate portion of the state
-        // (8 total elements), and set the first capacity element to 8 (the number of elements to
-        // be hashed).
+        // initialize the state by copying the digest elements into the state
         let initial_state: [BaseElement; STATE_WIDTH] = Self::Digest::digests_as_elements(values)
             .try_into()
             .unwrap();
@@ -207,20 +205,20 @@ impl Hasher for RpJive64_256 {
     // the Jive compression mode designed in https://eprint.iacr.org/2022/840.pdf.
     fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest {
         // initialize the state as follows:
-        // - seed is copied into the first 4 elements of the rate portion of the state.
+        // - seed is copied into the first 4 elements of the state.
         // - if the value fits into a single field element, copy it into the fifth rate element
-        //   and set the first capacity element to 5 (the number of elements to be hashed).
+        //   and set the last state element to 5 (the number of elements to be hashed).
         // - if the value doesn't fit into a single field element, split it into two field
-        //   elements, copy them into rate elements 5 and 6, and set the first capacity element
+        //   elements, copy them into state elements 5 and 6, and set the last state element
         //   to 6.
         let mut state = [BaseElement::ZERO; STATE_WIDTH];
         state[INPUT1_RANGE].copy_from_slice(seed.as_elements());
         state[INPUT2_RANGE.start] = BaseElement::new(value);
         if value < BaseElement::MODULUS {
-            state[CAPACITY_RANGE.start] = BaseElement::new(DIGEST_SIZE as u64 + 1);
+            state[INPUT2_RANGE.end - 1] = BaseElement::new(DIGEST_SIZE as u64 + 1);
         } else {
             state[INPUT2_RANGE.start + 1] = BaseElement::new(value / BaseElement::MODULUS);
-            state[CAPACITY_RANGE.start] = BaseElement::new(DIGEST_SIZE as u64 + 2);
+            state[INPUT2_RANGE.end - 1] = BaseElement::new(DIGEST_SIZE as u64 + 2);
         }
 
         let initial_state = state;
