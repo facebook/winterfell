@@ -32,6 +32,7 @@ type Blake3_192 = winterfell::crypto::hashers::Blake3_192<BaseElement>;
 type Blake3_256 = winterfell::crypto::hashers::Blake3_256<BaseElement>;
 type Sha3_256 = winterfell::crypto::hashers::Sha3_256<BaseElement>;
 type Rp64_256 = winterfell::crypto::hashers::Rp64_256;
+type RpJive64_256 = winterfell::crypto::hashers::RpJive64_256;
 
 // FIBONACCI EXAMPLE
 // ================================================================================================
@@ -56,6 +57,10 @@ pub fn get_example(
             options,
         ))),
         HashFunction::Rp64_256 => Ok(Box::new(FibExample::<Rp64_256>::new(
+            sequence_length,
+            options,
+        ))),
+        HashFunction::RpJive64_256 => Ok(Box::new(FibExample::<RpJive64_256>::new(
             sequence_length,
             options,
         ))),
