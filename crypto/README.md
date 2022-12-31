@@ -7,6 +7,7 @@ This crate contains modules with cryptographic operations needed in STARK proof 
 * SHA3 with 256-bit output.
 * BLAKE3 with either 256-bit or 192-bit output. The smaller output version can be used to reduce STARK proof size, however, it also limits proof security level to at most 96 bits.
 * Rescue Prime over a 64-bit field with 256-bit output and over a 62-bit field with 248-bit output. Rescue is an arithmetization-friendly hash function and can be used in the STARK protocol when recursive proof composition is desired. However, using this function is not yet supported by the Winterfell STARK prover and verifier.
+* Rescue Prime over the same 64-bit field as above, with 256-bit output, but using the novel [Jive compression mode](https://eprint.iacr.org/2022/840.pdf) to obtain a smaller state and faster 2-to-1 compression.
 
 ### Rescue hash function implementation
 Rescue hash function is implemented according to the Rescue Prime [specifications](https://eprint.iacr.org/2020/1143.pdf) with the following exception:
@@ -15,11 +16,20 @@ Rescue hash function is implemented according to the Rescue Prime [specification
 * For instantiation `RP64_256`, we also make the following modifications:
   - We use the first 4 elements of the state (rather than the last 4 elements of the state) for capacity and the remaining 8 elements for rate. The output of the hash function comes from the first four elements of the rate portion of the state (elements 4, 5, 6, and 7). This effectively applies a fixed bit permutation before and after XLIX permutation. We assert without proof that this does not affect the security of the construction.
   - Instead of using Vandermonde matrices as a standard way of generating an MDS matrix as described in Rescue Prime paper, we use a methodology developed by Polygon Zero to find an MDS matrix with coefficients which are small powers of two in frequency domain. This allows us to dramatically reduce MDS matrix multiplication time. Using a different MDS matrix does not affect security of the hash function as any MDS matrix satisfies Rescue Prime construction (as described in section 4.2 of the paper).
+* The `RPJive64_256` instantiation of Rescue Prime using Jive as compression mode implements the same modifications as `Rp64_256`.
 
 The parameters used to instantiate the functions are:
 * For `RP64_256`:
   - Field: 64-bit prime field with modulus 2<sup>64</sup> - 2<sup>32</sup> + 1.
   - State width: 12 field elements.
+  - Capacity size: 4 field elements.
+  - Digest size: 4 field elements (can be serialized into 32 bytes).
+  - Number of founds: 7.
+  - S-Box degree: 7.
+  - Target security level: 128-bits.
+* For `RPJive64_256`:
+  - Field: 64-bit prime field with modulus 2<sup>64</sup> - 2<sup>32</sup> + 1.
+  - State width: 8 field elements.
   - Capacity size: 4 field elements.
   - Digest size: 4 field elements (can be serialized into 32 bytes).
   - Number of founds: 7.
@@ -37,13 +47,13 @@ The parameters used to instantiate the functions are:
 ### Hash function performance
 One of the core operations performed during STARK proof generation is construction of Merkle trees. We care greatly about building these trees as quickly as possible, and thus, for the purposes of STARK protocol, 2-to-1 hash operation (e.g., computing a hash of two 32-byte values) is especially important. The table below contains rough benchmarks for computing a 2-to-1 hash for all currently implemented hash functions.
 
-| CPU                         | BLAKE3_256 | SHA3_256 | RP64_256 | RP62_248 |
-| --------------------------- | :--------: | :------: | :------: | :------: |
-| Apple M1 Pro                | 76 ns      | 227 ns   | 5.1 us   | 7.1 us   |
-| AMD Ryzen 9 5950X @ 3.4 GHz | 62 ns      | 310 ns   | 5.2 us   | 6.9 us   |
-| Core i9-9980KH @ 2.4 GHz    | 66 ns      | 400 ns   | -        | 6.6 us   |
-| Core i5-7300U @ 2.6 GHz     | 81 ns      | 540 ns   | -        | 9.5 us   |
-| Core i5-4300U @ 1.9 GHz     | 106 ns     | 675 ns   | -        | 13.9 us  |
+| CPU                         | BLAKE3_256 | SHA3_256 | RP64_256 | RP64_256 | RP62_248 |
+| --------------------------- | :--------: | :------: | :------: | :------: | :------: |
+| Apple M1 Pro                | 76 ns      | 227 ns   | 5.1 us   | TODO us  | 7.1 us   |
+| AMD Ryzen 9 5950X @ 3.4 GHz | 62 ns      | 310 ns   | 5.2 us   | TODO us  | 6.9 us   |
+| Core i9-9980KH @ 2.4 GHz    | 66 ns      | 400 ns   | -        | -        | 6.6 us   |
+| Core i5-7300U @ 2.6 GHz     | 81 ns      | 540 ns   | -        | -        | 9.5 us   |
+| Core i5-4300U @ 1.9 GHz     | 106 ns     | 675 ns   | -        | -        | 13.9 us  |
 
 As can be seen from the table, BLAKE3 is by far the fastest hash function, while our implementation of Rescue Prime is roughly 100x slower than BLAKE3 and about 20x slower than SHA3.
 
