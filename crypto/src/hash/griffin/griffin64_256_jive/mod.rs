@@ -202,7 +202,7 @@ impl Hasher for GriffinJive64_256 {
             state[INPUT2_RANGE.end - 1] = BaseElement::new(DIGEST_SIZE as u64 + 2);
         }
 
-        let initial_state = state.clone();
+        let initial_state = state;
         // apply the Griffin permutation and apply the final Jive summation
         Self::apply_permutation(&mut state);
 
