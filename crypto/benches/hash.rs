@@ -20,7 +20,6 @@ type Sha3Digest = <Sha3 as Hasher>::Digest;
 type Rp62_248Digest = <Rp62_248 as Hasher>::Digest;
 type Rp64_256Digest = <Rp64_256 as Hasher>::Digest;
 type RpJive64_256Digest = <RpJive64_256 as Hasher>::Digest;
-
 type GriffinJive64_256Digest = <GriffinJive64_256 as Hasher>::Digest;
 
 fn blake3(c: &mut Criterion) {

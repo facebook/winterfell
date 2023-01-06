@@ -16,7 +16,7 @@ Rescue hash function is implemented according to the Rescue Prime [specification
 * For instantiation `RP64_256`, we also make the following modifications:
   - We use the first 4 elements of the state (rather than the last 4 elements of the state) for capacity and the remaining 8 elements for rate. The output of the hash function comes from the first four elements of the rate portion of the state (elements 4, 5, 6, and 7). This effectively applies a fixed bit permutation before and after XLIX permutation. We assert without proof that this does not affect the security of the construction.
   - Instead of using Vandermonde matrices as a standard way of generating an MDS matrix as described in Rescue Prime paper, we use a methodology developed by Polygon Zero to find an MDS matrix with coefficients which are small powers of two in frequency domain. This allows us to dramatically reduce MDS matrix multiplication time. Using a different MDS matrix does not affect security of the hash function as any MDS matrix satisfies Rescue Prime construction (as described in section 4.2 of the paper).
-* The `RPJive64_256` instantiation of Rescue Prime using Jive as compression mode implements similar modifications than `Rp64_256`. However, because of the use of Jive, the output of the hash function is not the same when we hash 8 field elements as a sequence of elements using `hash_elements()` function and when we compress 8 field elements into 4 (e.g., for building a Merkle tree) using the 2-to-1 Jive compression mode.
+* The `RPJive64_256` instantiation of Rescue Prime using Jive as compression mode implements similar modifications as `Rp64_256`. However, because of the use of Jive, the output of the hash function is not the same when we hash 8 field elements as a sequence of elements using `hash_elements()` function and when we compress 8 field elements into 4 (e.g., for building a Merkle tree) using the 2-to-1 Jive compression mode.
 
 The parameters used to instantiate the functions are:
 * For `RP64_256`:
@@ -67,8 +67,8 @@ One of the core operations performed during STARK proof generation is constructi
 
 | CPU                         | BLAKE3_256 | SHA3_256 | RP64_256 | RPJ64_256 | RP62_248 | GriffinJ64_256 |
 | --------------------------- | :--------: | :------: | :------: | :-------: | :------: | :------------: |
-| Apple M1 Pro                | 76 ns      | 227 ns   | 5.1 us   | TODO us   | 7.1 us   | TODO us        |
-| AMD Ryzen 9 5950X @ 3.4 GHz | 62 ns      | 310 ns   | 5.2 us   | TODO us   | 6.9 us   | TODO us        |
+| Apple M1 Pro                | 76 ns      | 227 ns   | 5.1 us   | 3.8 us    | 7.1 us   | 2.2 us         |
+| AMD Ryzen 9 5950X @ 3.4 GHz | 62 ns      | 310 ns   | 5.2 us   | 3.9 us    | 6.9 us   | 1.5 us         |
 | Core i9-9980KH @ 2.4 GHz    | 66 ns      | 400 ns   | -        | -         | 6.6 us   | -              |
 | Core i5-7300U @ 2.6 GHz     | 81 ns      | 540 ns   | -        | -         | 9.5 us   | -              |
 | Core i5-4300U @ 1.9 GHz     | 106 ns     | 675 ns   | -        | -         | 13.9 us  | -              |

@@ -49,7 +49,7 @@ const NUM_ROUNDS: usize = 7;
 /// Implementation of [Hasher] trait for Griffin hash function with 256-bit output.
 ///
 /// The hash function is implemented according to the Griffin
-/// [specifications](https://eprint.iacr.org/2020/1143.pdf) with the following exception:
+/// [specifications](https://eprint.iacr.org/2020/1143.pdf) with the following caveats:
 /// * We set the number of rounds to 7, which implies a 15% security margin instead of the 20%
 ///   margin used in the specifications (a 20% margin rounds up to 8 rounds). The primary
 ///   motivation for this is that having the number of rounds be one less than a power of two
@@ -68,7 +68,7 @@ const NUM_ROUNDS: usize = 7;
 ///
 /// The parameters used to instantiate the function are:
 /// * Field: 64-bit prime field with modulus 2^64 - 2^32 + 1.
-/// * State width: 12 field elements.
+/// * State width: 8 field elements.
 /// * Capacity size: 4 field elements.
 /// * Number of founds: 7.
 /// * S-Box degree: 7.
@@ -172,14 +172,7 @@ impl Hasher for GriffinJive64_256 {
         // apply the Griffin permutation and apply the final Jive summation
         Self::apply_permutation(&mut state);
 
-        let mut result = [BaseElement::ZERO; DIGEST_SIZE];
-        for (i, r) in result.iter_mut().enumerate() {
-            *r = initial_state[i]
-                + initial_state[DIGEST_SIZE + i]
-                + state[i]
-                + state[i + DIGEST_SIZE];
-        }
-        ElementDigest::new(result)
+        apply_jive_summation(&initial_state, &state)
     }
 
     // We do not rely on the sponge construction to build our compression function. Instead, we use
@@ -206,14 +199,7 @@ impl Hasher for GriffinJive64_256 {
         // apply the Griffin permutation and apply the final Jive summation
         Self::apply_permutation(&mut state);
 
-        let mut result = [BaseElement::ZERO; DIGEST_SIZE];
-        for (i, r) in result.iter_mut().enumerate() {
-            *r = initial_state[i]
-                + initial_state[DIGEST_SIZE + i]
-                + state[i]
-                + state[i + DIGEST_SIZE];
-        }
-        ElementDigest::new(result)
+        apply_jive_summation(&initial_state, &state)
     }
 }
 
@@ -254,6 +240,22 @@ impl ElementHasher for GriffinJive64_256 {
         // return the first 4 elements of the state as hash result
         ElementDigest::new(state[DIGEST_RANGE].try_into().unwrap())
     }
+}
+
+#[inline(always)]
+fn apply_jive_summation(
+    initial_state: &[BaseElement; STATE_WIDTH],
+    final_state: &[BaseElement; STATE_WIDTH],
+) -> ElementDigest {
+    let mut result = [BaseElement::ZERO; DIGEST_SIZE];
+    for (i, r) in result.iter_mut().enumerate() {
+        *r = initial_state[i]
+            + initial_state[DIGEST_SIZE + i]
+            + final_state[i]
+            + final_state[DIGEST_SIZE + i];
+    }
+
+    ElementDigest::new(result)
 }
 
 // HASH FUNCTION IMPLEMENTATION
