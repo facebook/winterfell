@@ -94,6 +94,7 @@ where
 {
     options: FriOptions,
     layers: Vec<FriLayer<B, E, H>>,
+    remainder: FriRemainder<E>,
     _channel: PhantomData<C>,
 }
 
@@ -102,6 +103,8 @@ struct FriLayer<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> {
     evaluations: Vec<E>,
     _base_field: PhantomData<B>,
 }
+
+struct FriRemainder<E: FieldElement>(Vec<E>);
 
 // PROVER IMPLEMENTATION
 // ================================================================================================
@@ -120,6 +123,7 @@ where
         FriProver {
             options,
             layers: Vec::new(),
+            remainder: FriRemainder(vec![]),
             _channel: PhantomData,
         }
     }
@@ -146,6 +150,7 @@ where
     /// Clears a vector of internally stored layers.
     pub fn reset(&mut self) {
         self.layers.clear();
+        self.remainder.0.clear();
     }
 
     // COMMIT PHASE
@@ -170,8 +175,8 @@ where
         );
 
         // reduce the degree by folding_factor at each iteration until the remaining polynomial
-        // is small enough; + 1 is for the remainder
-        for _ in 0..self.options.num_fri_layers(evaluations.len()) + 1 {
+        // is small enough
+        for _ in 0..self.options.num_fri_layers(evaluations.len()) {
             match self.folding_factor() {
                 2 => self.build_layer::<2>(channel, &mut evaluations),
                 4 => self.build_layer::<4>(channel, &mut evaluations),
@@ -181,9 +186,10 @@ where
             }
         }
 
+        self.set_remainder(channel, &mut evaluations);
+
         // make sure remainder length does not exceed max allowed value
-        let last_layer = &self.layers[self.layers.len() - 1];
-        let remainder_size = last_layer.evaluations.len();
+        let remainder_size = self.remainder.0.len();
         debug_assert!(
             remainder_size <= self.options.max_remainder_size(),
             "last FRI layer cannot exceed {} elements, but was {} elements",
@@ -209,12 +215,19 @@ where
         // projection to reduce the degree of evaluations by N
         let alpha = channel.draw_fri_alpha();
         *evaluations = apply_drp(&transposed_evaluations, self.domain_offset(), alpha);
-
         self.layers.push(FriLayer {
             tree: evaluation_tree,
             evaluations: flatten_vector_elements(transposed_evaluations),
             _base_field: PhantomData,
         });
+    }
+
+    /// Creates a FriRemainder from a vector of `evaluations` representing the remainder and
+    /// commits to the latter by hashing sequentially `evaluations`.
+    fn set_remainder(&mut self, channel: &mut C, evaluations: &mut [E]) {
+        let commitment = <H as ElementHasher>::hash_elements(evaluations);
+        channel.commit_fri_layer(commitment);
+        self.remainder = FriRemainder(evaluations.to_vec());
     }
 
     // QUERY PHASE
@@ -230,42 +243,38 @@ where
     /// Panics is the prover state is clean (no FRI layers have been build yet).
     pub fn build_proof(&mut self, positions: &[usize]) -> FriProof {
         assert!(
-            !self.layers.is_empty(),
+            !self.remainder.0.is_empty(),
             "FRI layers have not been built yet"
         );
-        let mut positions = positions.to_vec();
-        let mut domain_size = self.layers[0].evaluations.len();
-        let folding_factor = self.options.folding_factor();
 
-        // for all FRI layers, except the last one, record tree root, determine a set of query
-        // positions, and query the layer at these positions.
         let mut layers = Vec::with_capacity(self.layers.len());
-        for i in 0..self.layers.len() - 1 {
-            positions = fold_positions(&positions, domain_size, folding_factor);
 
-            // sort of a static dispatch for folding_factor parameter
-            let proof_layer = match folding_factor {
-                2 => query_layer::<B, E, H, 2>(&self.layers[i], &positions),
-                4 => query_layer::<B, E, H, 4>(&self.layers[i], &positions),
-                8 => query_layer::<B, E, H, 8>(&self.layers[i], &positions),
-                16 => query_layer::<B, E, H, 16>(&self.layers[i], &positions),
-                _ => unimplemented!("folding factor {} is not supported", folding_factor),
-            };
+        if !self.layers.is_empty() {
+            let mut positions = positions.to_vec();
+            let mut domain_size = self.layers[0].evaluations.len();
+            let folding_factor = self.options.folding_factor();
 
-            layers.push(proof_layer);
-            domain_size /= folding_factor;
-        }
+            // for all FRI layers, except the last one, record tree root, determine a set of query
+            // positions, and query the layer at these positions.
+            for i in 0..self.layers.len() {
+                positions = fold_positions(&positions, domain_size, folding_factor);
 
-        // use the remaining polynomial values directly as proof; last layer values contain
-        // remainder in transposed form - so, we un-transpose it first
-        let last_values = &self.layers[self.layers.len() - 1].evaluations;
-        let mut remainder = E::zeroed_vector(last_values.len());
-        let n = last_values.len() / folding_factor;
-        for i in 0..n {
-            for j in 0..folding_factor {
-                remainder[i + n * j] = last_values[i * folding_factor + j];
+                // sort of a static dispatch for folding_factor parameter
+                let proof_layer = match folding_factor {
+                    2 => query_layer::<B, E, H, 2>(&self.layers[i], &positions),
+                    4 => query_layer::<B, E, H, 4>(&self.layers[i], &positions),
+                    8 => query_layer::<B, E, H, 8>(&self.layers[i], &positions),
+                    16 => query_layer::<B, E, H, 16>(&self.layers[i], &positions),
+                    _ => unimplemented!("folding factor {} is not supported", folding_factor),
+                };
+
+                layers.push(proof_layer);
+                domain_size /= folding_factor;
             }
         }
+
+        // use the remaining polynomial values directly as proof
+        let remainder = self.remainder.0.clone();
 
         // clear layers so that another proof can be generated
         self.reset();

@@ -4,7 +4,6 @@
 // LICENSE file in the root directory of this source tree.
 
 use core::fmt;
-use utils::string::String;
 
 use crypto::RandomCoinError;
 
@@ -25,8 +24,6 @@ pub enum VerifierError {
     LayerCommitmentMismatch,
     /// Degree-respecting projection was not performed correctly at one of the layers.
     InvalidLayerFolding(usize),
-    /// Failed to construct a Merkle tree out of FRI remainder values.
-    RemainderTreeConstructionFailed(String),
     /// FRI remainder did not match the commitment.
     RemainderCommitmentMismatch,
     /// Degree-respecting projection was not performed correctly at the last layer.
@@ -57,9 +54,6 @@ impl fmt::Display for VerifierError {
             }
             Self::InvalidLayerFolding(layer) => {
                 write!(f, "degree-respecting projection is not consistent at layer {layer}")
-            }
-            Self::RemainderTreeConstructionFailed(err_msg) => {
-                write!(f, "FRI remainder Merkle tree could not be constructed: {err_msg}")
             }
             Self::RemainderCommitmentMismatch => {
                 write!(f, "FRI remainder did not match the commitment")

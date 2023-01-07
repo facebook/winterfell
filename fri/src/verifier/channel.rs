@@ -3,10 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{utils::hash_values, FriProof, VerifierError};
+use crate::{FriProof, VerifierError};
 use crypto::{BatchMerkleProof, ElementHasher, Hasher, MerkleTree};
 use math::FieldElement;
-use utils::{collections::Vec, group_vector_elements, transpose_slice, DeserializationError};
+use utils::{collections::Vec, group_vector_elements, DeserializationError};
 
 // VERIFIER CHANNEL TRAIT
 // ================================================================================================
@@ -96,24 +96,19 @@ pub trait VerifierChannel<E: FieldElement> {
     ///
     /// # Errors
     /// Returns an error if:
-    /// - Remainder values read from the channel cannot be used to construct a fully-balanced
-    ///   Merkle tree.
-    /// - If the root of the Merkle tree constructed from the remainder values does not match
-    ///   the specified `commitment`.
+    /// - If the sequrntial hash constructed from the remainder values does not match the specified
+    ///   `commitment`.
     fn read_remainder<const N: usize>(
         &mut self,
         commitment: &<<Self as VerifierChannel<E>>::Hasher as Hasher>::Digest,
     ) -> Result<Vec<E>, VerifierError> {
         let remainder = self.take_fri_remainder();
 
-        // build remainder Merkle tree
-        let remainder_values = transpose_slice(&remainder);
-        let hashed_values = hash_values::<Self::Hasher, E, N>(&remainder_values);
-        let remainder_tree = MerkleTree::<Self::Hasher>::new(hashed_values)
-            .map_err(|err| VerifierError::RemainderTreeConstructionFailed(format!("{err}")))?;
+        // sequential hash of the remainder
+        let set_commitment =
+            <<Self as VerifierChannel<E>>::Hasher as ElementHasher>::hash_elements(&remainder);
 
-        // make sure the root of the tree matches the committed root of the last layer
-        if commitment != remainder_tree.root() {
+        if *commitment != set_commitment {
             return Err(VerifierError::RemainderCommitmentMismatch);
         }
 
