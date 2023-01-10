@@ -16,6 +16,7 @@ use crate::{
     utils::{get_power_series, log2},
 };
 
+mod fft_inputs;
 mod serial;
 
 #[cfg(feature = "concurrent")]
