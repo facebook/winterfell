@@ -15,6 +15,10 @@ rust-version = "1.60"
 [lib]
 bench = false
 
+[[bench]]
+name = "matrix"
+harness = false
+
 [features]
 concurrent = ["crypto/concurrent", "math/concurrent", "fri/concurrent", "utils/concurrent", "std"]
 default = ["std"]
@@ -27,6 +31,10 @@ fri = { version = "0.4.2", path = '../fri', package = "winter-fri", default-feat
 log = { version = "0.4", default-features = false }
 math = { version = "0.4.2", path = "../math", package = "winter-math", default-features = false }
 utils = { version = "0.4.2", path = "../utils/core", package = "winter-utils", default-features = false }
+
+[dev-dependencies]
+criterion = "0.4"
+rand-utils = { version = "0.4.2", path = "../utils/rand", package = "winter-rand-utils" }
 
 # Allow math in docs
 [package.metadata.docs.rs]
