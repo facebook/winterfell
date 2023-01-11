@@ -12,8 +12,12 @@ const MAX_LOOP: usize = 256;
 // FFTINPUTS TRAIT
 // ================================================================================================
 
+#[allow(clippy::len_without_is_empty)]
 /// Defines the interface that must be implemented by the input to fft_in_place method.
 pub trait FftInputs<B: StarkField> {
+    // REQUIRED METHODS
+    // --------------------------------------------------------------------------------------------
+
     /// Returns the number of elements in this input.
     fn len(&self) -> usize;
 
@@ -41,6 +45,9 @@ pub trait FftInputs<B: StarkField> {
     ///
     /// elem_i = elem_i * offset
     fn shift_by(&mut self, offset: B);
+
+    // PROVIDED METHODS
+    // --------------------------------------------------------------------------------------------
 
     /// Permutes the elements in this input using the permutation defined by the given
     /// permutation index.
