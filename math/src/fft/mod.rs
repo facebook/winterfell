@@ -17,10 +17,8 @@ use crate::{
     utils::{get_power_series, log2},
 };
 
-mod fft_inputs;
-
+pub mod fft_inputs;
 pub mod real_u64;
-
 mod serial;
 
 #[cfg(feature = "concurrent")]
@@ -34,7 +32,7 @@ mod tests;
 // CONSTANTS
 // ================================================================================================
 const USIZE_BITS: usize = 0_usize.count_zeros() as usize;
-const MIN_CONCURRENT_SIZE: usize = 1024;
+pub const MIN_CONCURRENT_SIZE: usize = 1024;
 
 // POLYNOMIAL EVALUATION
 // ================================================================================================
@@ -598,7 +596,7 @@ fn permute<E: FieldElement>(v: &mut [E]) {
     }
 }
 
-fn permute_index(size: usize, index: usize) -> usize {
+pub fn permute_index(size: usize, index: usize) -> usize {
     debug_assert!(index < size);
     if size == 1 {
         return 0;
