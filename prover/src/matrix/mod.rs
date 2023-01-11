@@ -7,18 +7,16 @@ use super::StarkDomain;
 use core::{iter::FusedIterator, slice};
 use crypto::{ElementHasher, MerkleTree};
 use math::{
-    fft::{
-        self,
-        fft_inputs::FftInputs,
-        serial::{fft_in_place, permute},
-        MIN_CONCURRENT_SIZE,
-    },
+    fft::{self, fft_inputs::FftInputs, MIN_CONCURRENT_SIZE},
     log2, polynom, FieldElement, StarkField,
 };
 use utils::{batch_iter_mut, collections::Vec, iter, iter_mut, uninit_vector};
 
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
+
+#[cfg(test)]
+mod test;
 
 // MATRIX
 // ================================================================================================
@@ -423,7 +421,7 @@ where
 
 impl<'a, E> RowMatrix<'a, E>
 where
-    E: FieldElement,
+    E: FieldElement + 'a,
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -435,7 +433,7 @@ where
     /// * The remainder of the length of the data and the row width is not zero.
     /// * Number of rows is smaller than or equal to 1.
     /// * Number of rows is not a power of two.
-    pub fn new(data: &mut [E], row_width: usize) -> Self {
+    pub fn new(data: &'a mut [E], row_width: usize) -> Self {
         assert!(
             !data.is_empty(),
             "a matrix must contain at least one column"
@@ -469,6 +467,16 @@ where
         self.data.len() / self.row_width
     }
 
+    /// Returns the data in this matrix as a mutable slice.
+    pub fn as_data_mut(&mut self) -> &mut [E] {
+        self.data
+    }
+
+    /// Returns the data in this matrix as a slice.
+    pub fn as_data(&self) -> &[E] {
+        self.data
+    }
+
     /// Returns the element located at the specified column and row indexes in this matrix.
     ///
     /// # Panics
@@ -486,12 +494,12 @@ where
     }
 
     /// Returns a reference to the column at the specified index.
-    pub fn get_column(&self, col_idx: usize) -> &[E] {
+    pub fn get_column(&self, _col_idx: usize) -> &[E] {
         unimplemented!("not implemented yet")
     }
 
     /// Returns a reference to the column at the specified index.
-    pub fn get_column_mut(&mut self, col_idx: usize) -> &mut [E] {
+    pub fn get_column_mut(&mut self, _col_idx: usize) -> &mut [E] {
         unimplemented!("not implemented yet")
     }
 
@@ -514,6 +522,16 @@ where
     /// Returns the columns of this matrix as a list of vectors.
     pub fn into_columns(&self) -> Vec<Vec<E>> {
         (0..self.num_cols()).map(|n| self.into_column(n)).collect()
+    }
+
+    /// Returns the column at the specified index.
+    pub fn into_column(&self, index: usize) -> Vec<E> {
+        self.data
+            .iter()
+            .copied()
+            .skip(index)
+            .step_by(self.num_cols())
+            .collect()
     }
 
     // ITERATION
@@ -625,9 +643,8 @@ where
             "domain offset cannot be zero"
         );
 
-        // assign a dummy value here to make the compiler happy
-        #[allow(unused_assignments)]
-        let mut result = Vec::new();
+        let mut result = unsafe { uninit_vector(self.len() * self.num_rows() * blowup_factor) };
+        let mut result_matrix = RowMatrix::new(result.as_mut_slice(), self.row_width);
 
         // when `concurrent` feature is enabled, run the concurrent version of the function; unless
         // the polynomial is small, then don't bother with the concurrent version
@@ -642,7 +659,13 @@ where
                 );
             }
         } else {
-            result = Self::evaluate_poly_with_offset(&self, twiddles, domain_offset, blowup_factor);
+            result = evaluate_poly_with_offset(
+                &self,
+                twiddles,
+                domain_offset,
+                blowup_factor,
+                &mut result_matrix,
+            );
         }
 
         // Cant return RowMatrix because result was created in this function. So we are returning a
@@ -676,26 +699,27 @@ where
     where
         H: ElementHasher<BaseField = E::BaseField>,
     {
-        // allocate vector to store row hashes
-        let mut row_hashes = unsafe { uninit_vector::<H::Digest>(self.num_rows()) };
+        // // allocate vector to store row hashes
+        // let mut row_hashes = unsafe { uninit_vector::<H::Digest>(self.num_rows()) };
 
-        // iterate though matrix rows, hashing each row; the hashing is done by first copying a
-        // row into row_buf to avoid heap allocations, and then by applying the hash function to
-        // the buffer.
-        batch_iter_mut!(
-            &mut row_hashes,
-            128, // min batch size
-            |batch: &mut [H::Digest], batch_offset: usize| {
-                let mut row_buf = vec![E::ZERO; self.num_cols()];
-                for (i, row_hash) in batch.iter_mut().enumerate() {
-                    self.read_row_into(i + batch_offset, &mut row_buf);
-                    *row_hash = H::hash_elements(&row_buf);
-                }
-            }
-        );
+        // // iterate though matrix rows, hashing each row; the hashing is done by first copying a
+        // // row into row_buf to avoid heap allocations, and then by applying the hash function to
+        // // the buffer.
+        // batch_iter_mut!(
+        //     &mut row_hashes,
+        //     128, // min batch size
+        //     |batch: &mut [H::Digest], batch_offset: usize| {
+        //         let mut row_buf = vec![E::ZERO; self.num_cols()];
+        //         for (i, row_hash) in batch.iter_mut().enumerate() {
+        //             self.read_row_into(i + batch_offset, &mut row_buf);
+        //             *row_hash = H::hash_elements(&row_buf);
+        //         }
+        //     }
+        // );
 
-        // build Merkle tree out of hashed rows
-        MerkleTree::new(row_hashes).expect("failed to construct trace Merkle tree")
+        // // build Merkle tree out of hashed rows
+        // MerkleTree::new(row_hashes).expect("failed to construct trace Merkle tree")
+        unimplemented!("TODO")
     }
 
     // POLYNOMIAL EVALUATION
@@ -704,47 +728,8 @@ where
     /// Evaluates polynomial `p` in-place over the domain of length `p.len()` in the field specified
     /// by `B` using the FFT algorithm.
     pub fn evaluate_poly(p: &mut RowMatrix<E>, twiddles: &[E::BaseField]) {
-        fft_in_place(p, twiddles, 1, 1, 0);
-        permute(p);
-    }
-
-    /// Evaluates polynomial `p` over the domain of length `p.len()` * `blowup_factor` shifted by
-    /// `domain_offset` in the field specified `B` using the FFT algorithm and returns the result.
-    fn evaluate_poly_with_offset(
-        p: &RowMatrix<E>,
-        twiddles: &[E::BaseField],
-        domain_offset: E::BaseField,
-        blowup_factor: usize,
-    ) -> Vec<E> {
-        let domain_size = p.len() * blowup_factor;
-        let g = E::BaseField::get_root_of_unity(log2(domain_size * p.row_width));
-        let mut result = unsafe { uninit_vector(domain_size * p.row_width) };
-
-        result
-            .as_mut_slice()
-            .chunks_mut(p.len() * p.row_width)
-            .enumerate()
-            .for_each(|(i, chunk)| {
-                let idx = fft::permute_index(blowup_factor, i) as u64;
-                let offset = g.exp(idx.into()) * domain_offset;
-                let mut factor = E::BaseField::ONE;
-
-                let chunk_len = chunk.len() / p.row_width;
-                for d in 0..chunk_len {
-                    for i in 0..p.row_width {
-                        chunk[d * p.row_width + i] = p.data[d * p.row_width + i].mul_base(factor)
-                    }
-                    factor *= offset;
-                }
-                let mut matrix_chunk = Self {
-                    data: chunk,
-                    row_width: p.row_width,
-                };
-                fft_in_place(&mut matrix_chunk, twiddles, 1, 1, 0);
-            });
-
-        permute(result.as_mut_slice());
-        result
+        FftInputs::fft_in_place(p, twiddles);
+        FftInputs::permute(p);
     }
 
     // POLYNOMIAL INTERPOLATION
@@ -753,12 +738,12 @@ where
     /// Interpolates `evaluations` over a domain of length `evaluations.len()` in the field specified
     /// `B` into a polynomial in coefficient form using the FFT algorithm.
     pub fn interpolate_poly(evaluations: &mut RowMatrix<E>, inv_twiddles: &[E::BaseField]) {
-        fft_in_place(evaluations, inv_twiddles, 1, 1, 0);
+        FftInputs::fft_in_place(evaluations, inv_twiddles);
         let inv_length = E::BaseField::inv((evaluations.len() as u64).into());
 
         // Use fftinputs shift_by on evaluations.
         FftInputs::shift_by(evaluations, inv_length);
-        permute(evaluations);
+        FftInputs::permute(evaluations);
     }
 
     /// Interpolates `evaluations` over a domain of length `evaluations.len()` and shifted by
@@ -769,8 +754,8 @@ where
         inv_twiddles: &[E::BaseField],
         domain_offset: E::BaseField,
     ) {
-        fft_in_place(evaluations, inv_twiddles, 1, 1, 0);
-        permute(evaluations);
+        FftInputs::fft_in_place(evaluations, inv_twiddles);
+        FftInputs::permute(evaluations);
 
         let domain_offset = E::BaseField::inv(domain_offset);
         let offset = E::BaseField::inv((evaluations.len() as u64).into());
@@ -778,6 +763,53 @@ where
         // Use fftinputs's shift_by_series on evaluations.
         FftInputs::shift_by_series(evaluations, offset, domain_offset);
     }
+}
+
+/// Evaluates polynomial `p` over the domain of length `p.len()` * `blowup_factor` shifted by
+/// `domain_offset` in the field specified `B` using the FFT algorithm and returns the result.
+pub fn evaluate_poly_with_offset<'a, E>(
+    p: &RowMatrix<E>,
+    twiddles: &[E::BaseField],
+    domain_offset: E::BaseField,
+    blowup_factor: usize,
+    result: &mut RowMatrix<'a, E>,
+) -> Vec<E>
+where
+    E: FieldElement,
+{
+    let domain_size = p.len() * blowup_factor;
+    let g = E::BaseField::get_root_of_unity(log2(domain_size));
+
+    let data = result.as_data_mut();
+
+    data.chunks_mut(p.len() * p.row_width)
+        .enumerate()
+        .for_each(|(i, chunk)| {
+            let idx = fft::permute_index(blowup_factor, i) as u64;
+            let offset = g.exp(idx.into()) * domain_offset;
+            let mut factor = E::BaseField::ONE;
+
+            let chunk_len = chunk.len() / p.row_width;
+            for d in 0..chunk_len {
+                for i in 0..p.row_width {
+                    chunk[d * p.row_width + i] = p.data[d * p.row_width + i].mul_base(factor)
+                }
+                factor *= offset;
+            }
+            let mut matrix_chunk = RowMatrix {
+                data: chunk,
+                row_width: p.row_width,
+            };
+            FftInputs::fft_in_place(&mut matrix_chunk, twiddles);
+        });
+
+    let mut matrix_result = RowMatrix {
+        data,
+        row_width: p.row_width,
+    };
+
+    FftInputs::permute(&mut matrix_result);
+    matrix_result.data.to_vec()
 }
 
 /// Implementation of `FftInputs` for `RowMajor`.
