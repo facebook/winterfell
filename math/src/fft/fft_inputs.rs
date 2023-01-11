@@ -1,5 +1,8 @@
-use super::StarkField;
-use crate::FieldElement;
+use super::{permute_index, FieldElement, StarkField};
+
+// CONSTANTS
+// ================================================================================================
+const MAX_LOOP: usize = 256;
 
 // FFTINPUTS TRAIT
 // ================================================================================================
@@ -28,6 +31,29 @@ pub trait FftInputs<B: StarkField> {
     ///
     /// elem_i = elem_i * offset
     fn shift_by(&mut self, offset: B);
+
+    /// Permutes the elements in this input using the permutation defined by the given
+    /// permutation index. The permutation index is a number between 0 and `self.len() - 1`
+    /// that specifies the permutation to apply to the input. The permutation is applied
+    /// in place, so the input is replaced with the result of the permutation. The permutation
+    /// is applied by swapping elements in the input.
+    fn permute(&mut self) {
+        let n = self.len();
+        for i in 0..n {
+            let j = permute_index(n, i);
+            if j > i {
+                self.swap(i, j);
+            }
+        }
+    }
+
+    /// Applies the FFT to this input. The FFT is applied in place, so the input is
+    /// replaced with the result of the FFT. The `twiddles` parameter specifies the
+    /// twiddle factors to use for the FFT. The `twiddles` parameter must be a slice
+    /// of length `self.len() / 2`.
+    fn fft_in_place(&mut self, twiddles: &[B]) {
+        fft_in_place(self, twiddles, 1, 1, 0);
+    }
 }
 
 /// Implements FftInputs for a slice of field elements.
@@ -76,6 +102,53 @@ where
         let offset = E::from(offset);
         for d in self.iter_mut() {
             *d *= offset;
+        }
+    }
+}
+
+// CORE FFT ALGORITHM
+// ================================================================================================
+
+/// In-place recursive FFT with permuted output.
+///
+/// Adapted from: https://github.com/0xProject/OpenZKP/tree/master/algebra/primefield/src/fft
+pub(super) fn fft_in_place<B, I>(
+    values: &mut I,
+    twiddles: &[B],
+    count: usize,
+    stride: usize,
+    offset: usize,
+) where
+    B: StarkField,
+    I: FftInputs<B> + ?Sized,
+{
+    let size = values.len() / stride;
+    debug_assert!(size.is_power_of_two());
+    debug_assert!(offset < stride);
+    debug_assert_eq!(values.len() % size, 0);
+
+    // Keep recursing until size is 2
+    if size > 2 {
+        if stride == count && count < MAX_LOOP {
+            fft_in_place(values, twiddles, 2 * count, 2 * stride, offset);
+        } else {
+            fft_in_place(values, twiddles, count, 2 * stride, offset);
+            fft_in_place(values, twiddles, count, 2 * stride, offset + stride);
+        }
+    }
+
+    for offset in offset..(offset + count) {
+        I::butterfly(values, offset, stride);
+    }
+
+    let last_offset = offset + size * stride;
+    for (i, offset) in (offset..last_offset)
+        .step_by(2 * stride)
+        .enumerate()
+        .skip(1)
+    {
+        for j in offset..(offset + count) {
+            I::butterfly_twiddle(values, twiddles[i], j, stride);
         }
     }
 }
