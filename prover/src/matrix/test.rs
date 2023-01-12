@@ -15,7 +15,7 @@ use crate::{
 use super::RowMatrix;
 use math::FieldElement;
 use rand_utils::rand_vector;
-use utils::{collections::Vec, uninit_vector};
+use utils::collections::Vec;
 
 #[test]
 fn test_fft_in_place_matrix() {
@@ -115,9 +115,6 @@ fn test_eval_poly_with_offset_matrix() {
     let mut flatten_rows = rows.into_iter().flatten().collect::<Vec<_>>();
     let matrix = RowMatrix::new(&mut flatten_rows, row_width);
 
-    let mut result = unsafe { uninit_vector(n * num_polys * blowup_factor) };
-    let mut result_matrix = RowMatrix::new(&mut result, row_width);
-
     let offset = BaseElement::GENERATOR;
     let domain = build_domain(n * blowup_factor);
     let shifted_domain = domain.iter().map(|&x| x * offset).collect::<Vec<_>>();
@@ -129,14 +126,8 @@ fn test_eval_poly_with_offset_matrix() {
     let eval_cols_faltten = eval_col.into_iter().flatten().collect::<Vec<_>>();
 
     let twiddles = get_twiddles::<BaseElement>(matrix.len());
-    let _ = evaluate_poly_with_offset(
-        &matrix,
-        &twiddles,
-        offset,
-        blowup_factor,
-        &mut result_matrix,
-    );
-    assert_eq!(eval_cols_faltten, result_matrix.as_data());
+    let eval_vector = evaluate_poly_with_offset(&matrix, &twiddles, offset, blowup_factor);
+    assert_eq!(eval_cols_faltten, eval_vector);
 }
 
 #[test]

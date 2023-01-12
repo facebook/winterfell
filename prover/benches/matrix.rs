@@ -6,7 +6,6 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use rand_utils::rand_vector;
 use std::time::Duration;
-use utils::uninit_vector;
 
 use math::{
     fft::{self},
@@ -159,17 +158,9 @@ fn evaluate_matrix(c: &mut Criterion) {
         let table = RowMatrix::new(&mut flatten_table, row_width);
 
         let twiddles = fft::get_twiddles::<BaseElement>(SIZE);
-        let mut result = unsafe { uninit_vector(SIZE * num_poly * blowup_factor) };
-        let mut result_table = RowMatrix::new(&mut result, row_width);
         group.bench_function(BenchmarkId::new("with_offset", num_poly), |bench| {
             bench.iter_with_large_drop(|| {
-                evaluate_poly_with_offset(
-                    &table,
-                    &twiddles,
-                    BaseElement::GENERATOR,
-                    blowup_factor,
-                    &mut result_table,
-                )
+                evaluate_poly_with_offset(&table, &twiddles, BaseElement::GENERATOR, blowup_factor)
             });
         });
     }
