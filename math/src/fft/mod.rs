@@ -12,10 +12,12 @@
 //! `n` is the domain size.
 
 use crate::{
+    fft::fft_inputs::FftInputs,
     field::{FieldElement, StarkField},
     utils::{get_power_series, log2},
 };
 
+mod fft_inputs;
 mod serial;
 
 #[cfg(feature = "concurrent")]
@@ -433,8 +435,8 @@ where
         "multiplicative subgroup of size {} does not exist in the specified base field",
         values.len()
     );
-    serial::fft_in_place(values, twiddles, 1, 1, 0);
-    serial::permute(values);
+    values.fft_in_place(twiddles);
+    values.permute();
 }
 
 // TWIDDLES
@@ -589,7 +591,7 @@ fn permute<E: FieldElement>(v: &mut [E]) {
         #[cfg(feature = "concurrent")]
         concurrent::permute(v);
     } else {
-        serial::permute(v);
+        FftInputs::permute(v);
     }
 }
 

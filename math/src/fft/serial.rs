@@ -3,15 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{
-    field::{FieldElement, StarkField},
-    utils::log2,
-};
+use super::fft_inputs::FftInputs;
+use crate::{field::StarkField, utils::log2, FieldElement};
 use utils::{collections::Vec, uninit_vector};
-
-// CONSTANTS
-// ================================================================================================
-const MAX_LOOP: usize = 256;
 
 // POLYNOMIAL EVALUATION
 // ================================================================================================
@@ -23,8 +17,8 @@ where
     B: StarkField,
     E: FieldElement<BaseField = B>,
 {
-    fft_in_place(p, twiddles, 1, 1, 0);
-    permute(p);
+    p.fft_in_place(twiddles);
+    p.permute();
 }
 
 /// Evaluates polynomial `p` over the domain of length `p.len()` * `blowup_factor` shifted by
@@ -55,10 +49,10 @@ where
                 *d = (*c).mul_base(factor);
                 factor *= offset;
             }
-            fft_in_place(chunk, twiddles, 1, 1, 0);
+            chunk.fft_in_place(twiddles);
         });
 
-    permute(&mut result);
+    result.permute();
     result
 }
 
@@ -72,12 +66,10 @@ where
     B: StarkField,
     E: FieldElement<BaseField = B>,
 {
-    fft_in_place(evaluations, inv_twiddles, 1, 1, 0);
-    let inv_length = E::inv((evaluations.len() as u64).into());
-    for e in evaluations.iter_mut() {
-        *e *= inv_length;
-    }
-    permute(evaluations);
+    let inv_length = B::inv((evaluations.len() as u64).into());
+    evaluations.fft_in_place(inv_twiddles);
+    evaluations.shift_by(inv_length);
+    evaluations.permute();
 }
 
 /// Interpolates `evaluations` over a domain of length `evaluations.len()` and shifted by
@@ -91,102 +83,11 @@ pub fn interpolate_poly_with_offset<B, E>(
     B: StarkField,
     E: FieldElement<BaseField = B>,
 {
-    fft_in_place(evaluations, inv_twiddles, 1, 1, 0);
-    permute(evaluations);
+    evaluations.fft_in_place(inv_twiddles);
+    evaluations.permute();
 
-    let domain_offset = E::inv(domain_offset.into());
-    let mut offset = E::inv((evaluations.len() as u64).into());
-    for coeff in evaluations.iter_mut() {
-        *coeff *= offset;
-        offset *= domain_offset;
-    }
-}
+    let domain_offset = B::inv(domain_offset);
+    let offset = B::inv((evaluations.len() as u64).into());
 
-// PERMUTATIONS
-// ================================================================================================
-
-pub fn permute<T>(values: &mut [T]) {
-    let n = values.len();
-    for i in 0..n {
-        let j = super::permute_index(n, i);
-        if j > i {
-            values.swap(i, j);
-        }
-    }
-}
-
-// CORE FFT ALGORITHM
-// ================================================================================================
-
-/// In-place recursive FFT with permuted output.
-///
-/// Adapted from: https://github.com/0xProject/OpenZKP/tree/master/algebra/primefield/src/fft
-pub(super) fn fft_in_place<B, E>(
-    values: &mut [E],
-    twiddles: &[B],
-    count: usize,
-    stride: usize,
-    offset: usize,
-) where
-    B: StarkField,
-    E: FieldElement<BaseField = B>,
-{
-    let size = values.len() / stride;
-    debug_assert!(size.is_power_of_two());
-    debug_assert!(offset < stride);
-    debug_assert_eq!(values.len() % size, 0);
-
-    // Keep recursing until size is 2
-    if size > 2 {
-        if stride == count && count < MAX_LOOP {
-            fft_in_place(values, twiddles, 2 * count, 2 * stride, offset);
-        } else {
-            fft_in_place(values, twiddles, count, 2 * stride, offset);
-            fft_in_place(values, twiddles, count, 2 * stride, offset + stride);
-        }
-    }
-
-    for offset in offset..(offset + count) {
-        butterfly(values, offset, stride);
-    }
-
-    let last_offset = offset + size * stride;
-    for (i, offset) in (offset..last_offset)
-        .step_by(2 * stride)
-        .enumerate()
-        .skip(1)
-    {
-        for j in offset..(offset + count) {
-            butterfly_twiddle(values, twiddles[i], j, stride);
-        }
-    }
-}
-
-// HELPER FUNCTIONS
-// ================================================================================================
-
-#[inline(always)]
-fn butterfly<E>(values: &mut [E], offset: usize, stride: usize)
-where
-    E: FieldElement,
-{
-    let i = offset;
-    let j = offset + stride;
-    let temp = values[i];
-    values[i] = temp + values[j];
-    values[j] = temp - values[j];
-}
-
-#[inline(always)]
-fn butterfly_twiddle<B, E>(values: &mut [E], twiddle: B, offset: usize, stride: usize)
-where
-    B: StarkField,
-    E: FieldElement<BaseField = B>,
-{
-    let i = offset;
-    let j = offset + stride;
-    let temp = values[i];
-    values[j] = values[j].mul_base(twiddle);
-    values[i] = temp + values[j];
-    values[j] = temp - values[j];
+    evaluations.shift_by_series(offset, domain_offset);
 }
