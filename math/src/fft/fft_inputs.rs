@@ -19,7 +19,12 @@ pub trait FftInputs<B: StarkField> {
     /// twiddle factor into a larger NTT.
     fn butterfly_twiddle(&mut self, twiddle: B, offset: usize, stride: usize);
 
-    /// Swaps the element at index i with the element at index j.
+    /// Swaps the element at index i with the element at index j. Specifically:
+    ///
+    /// elem_i <-> elem_j
+    ///
+    /// # Panics
+    /// Panics if i or j are out of bounds.
     fn swap(&mut self, i: usize, j: usize);
 
     /// Multiplies every element in this input by a series of increment. Specifically:
@@ -33,10 +38,15 @@ pub trait FftInputs<B: StarkField> {
     fn shift_by(&mut self, offset: B);
 
     /// Permutes the elements in this input using the permutation defined by the given
-    /// permutation index. The permutation index is a number between 0 and `self.len() - 1`
-    /// that specifies the permutation to apply to the input. The permutation is applied
-    /// in place, so the input is replaced with the result of the permutation. The permutation
-    /// is applied by swapping elements in the input.
+    /// permutation index.
+    ///
+    /// The permutation index is a number between 0 and `self.len() - 1` that specifies the
+    /// permutation to apply to the input. The permutation is applied in place, so the input
+    /// is replaced with the result of the permutation. The permutation is applied by swapping
+    /// elements in the input.
+    ///
+    /// # Panics
+    /// Panics if the permutation index is out of bounds.
     fn permute(&mut self) {
         let n = self.len();
         for i in 0..n {
@@ -47,10 +57,13 @@ pub trait FftInputs<B: StarkField> {
         }
     }
 
-    /// Applies the FFT to this input. The FFT is applied in place, so the input is
-    /// replaced with the result of the FFT. The `twiddles` parameter specifies the
-    /// twiddle factors to use for the FFT. The `twiddles` parameter must be a slice
-    /// of length `self.len() / 2`.
+    /// Applies the FFT to this input.
+    ///
+    /// The FFT is applied in place, so the input is replaced with the result of the FFT. The
+    /// `twiddles` parameter specifies the twiddle factors to use for the FFT.
+    ///
+    /// # Panics
+    /// Panics if length of the `twiddles` parameter is not self.len() / 2.
     fn fft_in_place(&mut self, twiddles: &[B]) {
         fft_in_place(self, twiddles, 1, 1, 0);
     }
@@ -112,13 +125,8 @@ where
 /// In-place recursive FFT with permuted output.
 ///
 /// Adapted from: https://github.com/0xProject/OpenZKP/tree/master/algebra/primefield/src/fft
-pub(super) fn fft_in_place<B, I>(
-    values: &mut I,
-    twiddles: &[B],
-    count: usize,
-    stride: usize,
-    offset: usize,
-) where
+fn fft_in_place<B, I>(values: &mut I, twiddles: &[B], count: usize, stride: usize, offset: usize)
+where
     B: StarkField,
     I: FftInputs<B> + ?Sized,
 {
@@ -137,10 +145,12 @@ pub(super) fn fft_in_place<B, I>(
         }
     }
 
+    // Apply butterfly operations.
     for offset in offset..(offset + count) {
         I::butterfly(values, offset, stride);
     }
 
+    // Apply butterfly operations with twiddle factors.
     let last_offset = offset + size * stride;
     for (i, offset) in (offset..last_offset)
         .step_by(2 * stride)

@@ -17,8 +17,8 @@ where
     B: StarkField,
     E: FieldElement<BaseField = B>,
 {
-    FftInputs::fft_in_place(p, twiddles);
-    FftInputs::permute(p);
+    p.fft_in_place(twiddles);
+    p.permute();
 }
 
 /// Evaluates polynomial `p` over the domain of length `p.len()` * `blowup_factor` shifted by
@@ -49,10 +49,10 @@ where
                 *d = (*c).mul_base(factor);
                 factor *= offset;
             }
-            FftInputs::fft_in_place(chunk, twiddles);
+            chunk.fft_in_place(twiddles);
         });
 
-    FftInputs::permute(result.as_mut_slice());
+    result.permute();
     result
 }
 
@@ -67,9 +67,9 @@ where
     E: FieldElement<BaseField = B>,
 {
     let inv_length = B::inv((evaluations.len() as u64).into());
-    FftInputs::fft_in_place(evaluations, inv_twiddles);
-    FftInputs::shift_by(evaluations, inv_length);
-    FftInputs::permute(evaluations);
+    evaluations.fft_in_place(inv_twiddles);
+    evaluations.shift_by(inv_length);
+    evaluations.permute();
 }
 
 /// Interpolates `evaluations` over a domain of length `evaluations.len()` and shifted by
@@ -83,11 +83,11 @@ pub fn interpolate_poly_with_offset<B, E>(
     B: StarkField,
     E: FieldElement<BaseField = B>,
 {
-    FftInputs::fft_in_place(evaluations, inv_twiddles);
-    FftInputs::permute(evaluations);
+    evaluations.fft_in_place(inv_twiddles);
+    evaluations.permute();
 
     let domain_offset = B::inv(domain_offset);
     let offset = B::inv((evaluations.len() as u64).into());
 
-    FftInputs::shift_by_series(evaluations, offset, domain_offset);
+    evaluations.shift_by_series(offset, domain_offset);
 }
