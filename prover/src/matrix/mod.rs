@@ -7,8 +7,8 @@ use super::StarkDomain;
 use core::{iter::FusedIterator, slice};
 use crypto::{ElementHasher, MerkleTree};
 use math::{
-    fft::{self, fft_inputs::FftInputs, MIN_CONCURRENT_SIZE},
-    log2, polynom, FieldElement, StarkField,
+    fft::{self, fft_inputs::FftInputs},
+    polynom, FieldElement,
 };
 use utils::{batch_iter_mut, collections::Vec, iter, iter_mut, uninit_vector};
 
@@ -16,8 +16,7 @@ mod row_matrix;
 pub use row_matrix::*;
 
 #[cfg(feature = "concurrent")]
-use utils::iterators::*;
-
+// use utils::iterators::*;
 #[cfg(test)]
 mod test;
 
@@ -38,7 +37,7 @@ mod test;
 /// - Number of rows must be a power of two.
 #[derive(Debug, Clone)]
 pub struct Matrix<E: FieldElement> {
-    columns: Vec<Vec<E>>,
+    pub columns: Vec<Vec<E>>,
 }
 
 impl<E: FieldElement> Matrix<E> {

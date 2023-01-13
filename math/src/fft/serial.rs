@@ -89,5 +89,5 @@ pub fn interpolate_poly_with_offset<B, E>(
     let domain_offset = B::inv(domain_offset);
     let offset = B::inv((evaluations.len() as u64).into());
 
-    evaluations.shift_by_series(offset, domain_offset);
+    evaluations.shift_by_series(offset, domain_offset, 0);
 }

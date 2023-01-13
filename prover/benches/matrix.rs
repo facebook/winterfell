@@ -5,6 +5,7 @@
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use rand_utils::rand_vector;
+use rayon::prelude::{IntoParallelRefMutIterator, ParallelIterator};
 use std::time::Duration;
 
 use math::{
@@ -13,7 +14,9 @@ use math::{
     StarkField,
 };
 
-use winter_prover::{evaluate_poly_with_offset, RowMatrix};
+use winter_prover::{
+    evaluate_poly_with_offset, evaluate_poly_with_offset_concurrent, Matrix, RowMatrix,
+};
 
 const SIZE: usize = 524_288;
 const NUM_POLYS: [usize; 4] = [16, 32, 72, 96];
@@ -25,28 +28,30 @@ fn interpolate_columns(c: &mut Criterion) {
 
     for &num_poly in NUM_POLYS.iter() {
         let mut columns: Vec<Vec<BaseElement>> = (0..num_poly).map(|_| rand_vector(SIZE)).collect();
+        let mut column_matrix = Matrix::new(columns);
         let inv_twiddles = fft::get_inv_twiddles::<BaseElement>(SIZE);
         group.bench_function(BenchmarkId::new("simple", num_poly), |bench| {
             bench.iter_with_large_drop(|| {
-                for column in columns.iter_mut() {
-                    fft::interpolate_poly(column.as_mut_slice(), &inv_twiddles);
-                }
+                iter_mut!(column_matrix.columns).for_each(|column| {
+                    fft::concurrent::interpolate_poly(column.as_mut_slice(), &inv_twiddles)
+                });
             });
         });
     }
 
     for &num_poly in NUM_POLYS.iter() {
-        let mut columns: Vec<Vec<BaseElement>> = (0..num_poly).map(|_| rand_vector(SIZE)).collect();
+        let columns: Vec<Vec<BaseElement>> = (0..num_poly).map(|_| rand_vector(SIZE)).collect();
+        let mut column_matrix = Matrix::new(columns);
         let inv_twiddles = fft::get_inv_twiddles::<BaseElement>(SIZE);
         group.bench_function(BenchmarkId::new("with_offset", num_poly), |bench| {
             bench.iter_with_large_drop(|| {
-                for column in columns.iter_mut() {
-                    fft::interpolate_poly_with_offset(
+                iter_mut!(column_matrix.columns).for_each(|column| {
+                    fft::concurrent::interpolate_poly_with_offset(
                         column.as_mut_slice(),
                         &inv_twiddles,
                         BaseElement::GENERATOR,
-                    );
-                }
+                    )
+                });
             });
         });
     }
@@ -62,29 +67,31 @@ fn evaluate_columns(c: &mut Criterion) {
 
     for &num_poly in NUM_POLYS.iter() {
         let mut columns: Vec<Vec<BaseElement>> = (0..num_poly).map(|_| rand_vector(SIZE)).collect();
+        let mut column_matrix = Matrix::new(columns);
         let twiddles = fft::get_twiddles::<BaseElement>(SIZE);
         group.bench_function(BenchmarkId::new("simple", num_poly), |bench| {
             bench.iter_with_large_drop(|| {
-                for column in columns.iter_mut() {
-                    fft::evaluate_poly(column.as_mut_slice(), &twiddles);
-                }
+                iter_mut!(column_matrix.columns).for_each(|column| {
+                    fft::concurrent::evaluate_poly(column.as_mut_slice(), &twiddles);
+                });
             });
         });
     }
 
     for &num_poly in NUM_POLYS.iter() {
         let mut columns: Vec<Vec<BaseElement>> = (0..num_poly).map(|_| rand_vector(SIZE)).collect();
+        let mut column_matrix = Matrix::new(columns);
         let twiddles = fft::get_twiddles::<BaseElement>(SIZE);
         group.bench_function(BenchmarkId::new("with_offset", num_poly), |bench| {
             bench.iter_with_large_drop(|| {
-                for column in columns.iter_mut() {
-                    fft::evaluate_poly_with_offset(
+                iter_mut!(column_matrix.columns).for_each(|column| {
+                    fft::concurrent::evaluate_poly_with_offset(
                         column.as_mut_slice(),
                         &twiddles,
                         BaseElement::GENERATOR,
                         blowup_factor,
                     );
-                }
+                });
             });
         });
     }
@@ -105,7 +112,9 @@ fn interpolate_matrix(c: &mut Criterion) {
 
         let inv_twiddles = fft::get_inv_twiddles::<BaseElement>(SIZE);
         group.bench_function(BenchmarkId::new("simple", num_poly), |bench| {
-            bench.iter_with_large_drop(|| RowMatrix::interpolate_poly(&mut table, &inv_twiddles));
+            bench.iter_with_large_drop(|| {
+                RowMatrix::interpolate_poly_concurrent(&mut table, &inv_twiddles)
+            });
         });
     }
 
@@ -119,7 +128,7 @@ fn interpolate_matrix(c: &mut Criterion) {
         let inv_twiddles = fft::get_inv_twiddles::<BaseElement>(SIZE);
         group.bench_function(BenchmarkId::new("with_offset", num_poly), |bench| {
             bench.iter_with_large_drop(|| {
-                RowMatrix::interpolate_poly_with_offset(
+                RowMatrix::interpolate_poly_with_offset_concurrent(
                     &mut table,
                     &inv_twiddles,
                     BaseElement::GENERATOR,
@@ -146,7 +155,9 @@ fn evaluate_matrix(c: &mut Criterion) {
 
         let twiddles = fft::get_twiddles::<BaseElement>(SIZE);
         group.bench_function(BenchmarkId::new("simple", num_poly), |bench| {
-            bench.iter_with_large_drop(|| RowMatrix::evaluate_poly(&mut table, &twiddles));
+            bench.iter_with_large_drop(|| {
+                RowMatrix::evaluate_poly_concurrent(&mut table, &twiddles)
+            });
         });
     }
 
@@ -160,7 +171,12 @@ fn evaluate_matrix(c: &mut Criterion) {
         let twiddles = fft::get_twiddles::<BaseElement>(SIZE);
         group.bench_function(BenchmarkId::new("with_offset", num_poly), |bench| {
             bench.iter_with_large_drop(|| {
-                evaluate_poly_with_offset(&table, &twiddles, BaseElement::GENERATOR, blowup_factor)
+                evaluate_poly_with_offset_concurrent(
+                    &table,
+                    &twiddles,
+                    BaseElement::GENERATOR,
+                    blowup_factor,
+                )
             });
         });
     }
@@ -175,3 +191,25 @@ criterion_group!(
     evaluate_matrix
 );
 criterion_main!(matrix_group);
+
+#[macro_export]
+macro_rules! iter_mut {
+    ($e: expr) => {{
+        // #[cfg(feature = "concurrent")]
+        let result = $e.par_iter_mut();
+
+        // #[cfg(not(feature = "concurrent"))]
+        // let result = $e.iter();
+
+        result
+    }};
+    ($e: expr, $min_len: expr) => {{
+        // #[cfg(feature = "concurrent")]
+        // let result = $e.par_iter().with_min_len($min_len);
+
+        // #[cfg(not(feature = "concurrent"))]
+        // let result = $e.iter();
+
+        // result
+    }};
+}

@@ -21,8 +21,8 @@ pub mod fft_inputs;
 pub mod real_u64;
 mod serial;
 
-#[cfg(feature = "concurrent")]
-mod concurrent;
+// #[cfg(feature = "concurrent")]
+pub mod concurrent;
 
 use utils::collections::Vec;
 

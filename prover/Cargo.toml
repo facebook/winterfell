@@ -31,6 +31,7 @@ fri = { version = "0.4.2", path = '../fri', package = "winter-fri", default-feat
 log = { version = "0.4", default-features = false }
 math = { version = "0.4.2", path = "../math", package = "winter-math", default-features = false }
 utils = { version = "0.4.2", path = "../utils/core", package = "winter-utils", default-features = false }
+rayon = { version = "1.5"}
 
 [dev-dependencies]
 criterion = "0.4"

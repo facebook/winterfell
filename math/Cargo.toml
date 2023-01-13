@@ -34,6 +34,7 @@ std = ["utils/std"]
 
 [dependencies]
 utils = { version = "0.4.2", path = "../utils/core", package = "winter-utils", default-features = false }
+rayon = { version = "1.5"}
 
 [dev-dependencies]
 criterion = "0.4"
