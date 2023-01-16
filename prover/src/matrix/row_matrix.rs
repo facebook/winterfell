@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use core::cmp;
+use core::{cmp, ptr};
 use std::time::Instant;
 
 use super::{ColumnIter, ColumnIterMut, StarkDomain};
@@ -437,13 +437,10 @@ where
         let batch_size = evaluations.len() / rayon::current_num_threads().next_power_of_two();
 
         rayon::iter::IndexedParallelIterator::enumerate(evaluations.par_mut_chunks(batch_size))
-            .for_each(|(_i, mut batch)| {
-                let now = Instant::now();
+            .for_each(|(_i, batch)| {
                 batch.data.par_iter_mut().for_each(|el| {
                     *el *= inv_length;
                 });
-                // batch.shift_by(inv_length);
-                println! {"Compilation Time (cold): {} ms", now.elapsed().as_millis()}
             });
         evaluations.permute_concurrent();
     }
@@ -639,10 +636,14 @@ where
     }
 
     fn swap(&mut self, i: usize, j: usize) {
-        for col_idx in 0..self.row_width {
-            self.data
-                .swap(self.row_width * i + col_idx, self.row_width * j + col_idx);
-        }
+        let (first_row, second_row) = self.data.split_at_mut(self.row_width * j);
+        let (first_row, second_row) = (
+            &mut first_row[self.row_width * i..self.row_width * i + self.row_width],
+            &mut second_row[0..self.row_width],
+        );
+
+        // Swap the two rows.
+        first_row.swap_with_slice(second_row);
     }
 
     fn shift_by_series(&mut self, offset: E::BaseField, increment: E::BaseField, num_skip: usize) {

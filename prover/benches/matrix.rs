@@ -9,7 +9,7 @@ use rayon::prelude::{IntoParallelRefMutIterator, ParallelIterator};
 use std::time::Duration;
 
 use math::{
-    fft::{self},
+    fft::{self, fft_inputs::FftInputs},
     fields::f64::BaseElement,
     StarkField,
 };
@@ -183,10 +183,49 @@ fn interpolate_matrix(c: &mut Criterion) {
 //     group.finish();
 // }
 
+fn matrix_swap_bench(c: &mut Criterion) {
+    let mut group = c.benchmark_group("matrix_swap_bench");
+    group.sample_size(10);
+    group.measurement_time(Duration::from_secs(10));
+
+    for &num_poly in NUM_POLYS.iter() {
+        let rows: Vec<Vec<BaseElement>> = (0..SIZE).map(|_| rand_vector(num_poly)).collect();
+
+        let row_width = rows[0].len();
+        let mut flatten_table = rows.into_iter().flatten().collect::<Vec<_>>();
+        let mut table = RowMatrix::new(&mut flatten_table, row_width);
+
+        group.bench_function(BenchmarkId::new("mut_split", num_poly), |bench| {
+            bench.iter_with_large_drop(|| {
+                table.swap(5, 89);
+            });
+        });
+    }
+
+    for &num_poly in NUM_POLYS.iter() {
+        let rows: Vec<Vec<BaseElement>> = (0..SIZE).map(|_| rand_vector(num_poly)).collect();
+
+        let row_width = rows[0].len();
+        let mut flatten_table = rows.into_iter().flatten().collect::<Vec<_>>();
+        let mut table = RowMatrix::new(&mut flatten_table, row_width);
+
+        group.bench_function(BenchmarkId::new("simple_copy", num_poly), |bench| {
+            bench.iter_with_large_drop(|| {
+                let data = table.as_data_mut();
+                for col_idx in 0..row_width {
+                    data.swap(row_width * 5 + col_idx, row_width * 89 + col_idx);
+                }
+            });
+        });
+    }
+    group.finish();
+}
+
 criterion_group!(
     matrix_group,
+    matrix_swap_bench,
     // interpolate_columns,
-    interpolate_matrix,
+    // interpolate_matrix,
     // evaluate_columns,
     // evaluate_matrix
 );
