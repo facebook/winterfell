@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use core::cmp;
+use std::time::Instant;
 
 use super::{ColumnIter, ColumnIterMut, StarkDomain};
 use crypto::{ElementHasher, MerkleTree};
@@ -431,30 +432,18 @@ where
         inv_twiddles: &[E::BaseField],
     ) {
         evaluations.split_radix_fft(inv_twiddles);
-        let inv_length = E::BaseField::inv((evaluations.len() as u64).into());
-
+        let inv_length = E::inv((evaluations.len() as u64).into());
+        let row_width = evaluations.num_cols();
         let batch_size = evaluations.len() / rayon::current_num_threads().next_power_of_two();
 
         rayon::iter::IndexedParallelIterator::enumerate(evaluations.par_mut_chunks(batch_size))
             .for_each(|(_i, mut batch)| {
-                // let n = batch.len();
-                // let num_batches = rayon::current_num_threads().next_power_of_two();
-                // let batch_size = n / num_batches;
-                // rayon::scope(|s| {
-                //     for batch_idx in 0..num_batches {
-                //         // create another mutable reference to the slice of values to use in a new thread; this
-                //         // is OK because we never write the same positions in the slice from different threads
-                //         let values = unsafe { &mut *(&mut batch as *mut RowMatrix<E>) };
-                //         s.spawn(move |_| {
-                //             let batch_start = batch_idx * batch_size;
-                //             let batch_end = batch_start + batch_size;
-                //             for i in batch_start..batch_end {
-                //                 values.shift_by(inv_length);
-                //             }
-                //         });
-                //     }
-                // });
-                batch.shift_by(inv_length);
+                let now = Instant::now();
+                batch.data.par_iter_mut().for_each(|el| {
+                    *el *= inv_length;
+                });
+                // batch.shift_by(inv_length);
+                println! {"Compilation Time (cold): {} ms", now.elapsed().as_millis()}
             });
         evaluations.permute_concurrent();
     }
@@ -487,6 +476,16 @@ where
                 batch.shift_by_series(offset, domain_offset, 0);
             });
     }
+
+    // fn par_column_iter_mut(&'a mut self) -> impl ParallelIterator<Item = &'a mut E> {
+    //     (0..self.row_width)
+    //         .into_par_iter()
+    //         .map(move |col_idx| {
+    //             (0..self.row_width)
+    //                 .map(move |row_idx| &mut self.data[row_idx * self.row_width + col_idx])
+    //         })
+    //         .flatten_mut()
+    // }
 }
 
 /// Evaluates polynomial `p` over the domain of length `p.len()` * `blowup_factor` shifted by

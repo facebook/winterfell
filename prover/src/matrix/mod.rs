@@ -15,8 +15,9 @@ use utils::{batch_iter_mut, collections::Vec, iter, iter_mut, uninit_vector};
 mod row_matrix;
 pub use row_matrix::*;
 
-#[cfg(feature = "concurrent")]
+// #[cfg(feature = "concurrent")]
 // use utils::iterators::*;
+
 #[cfg(test)]
 mod test;
 
