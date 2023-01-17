@@ -6,6 +6,8 @@
 // FFT-BASED MDS MULTIPLICATION HELPER FUNCTIONS
 // ================================================================================================
 
+use math::fft::real_u64::{fft4_real, ifft4_real_unreduced};
+
 /// This module contains helper functions as well as constants used to perform the vector-matrix
 /// multiplication step of the Rescue prime permutation. The special form of our MDS matrix
 /// i.e. being circular, allows us to reduce the vector-matrix multiplication to a Hadamard product
@@ -41,47 +43,10 @@ pub(crate) fn mds_multiply_freq(state: [u64; 8]) -> [u64; 8] {
     // The 4th block is not computed as it is similar to the 2nd one, up to complex conjugation,
     // and is, due to the use of the real FFT and iFFT, redundant.
 
-    let [s0, s2, s4, s6] = ifft4_real((v0, v1, v2));
-    let [s1, s3, s5, s7] = ifft4_real((v4, v5, v6));
+    let [s0, s2, s4, s6] = ifft4_real_unreduced((v0, v1, v2));
+    let [s1, s3, s5, s7] = ifft4_real_unreduced((v4, v5, v6));
 
     [s0, s1, s2, s3, s4, s5, s6, s7]
-}
-
-// We use the real FFT to avoid redundant computations. See https://www.mdpi.com/2076-3417/12/9/4700
-#[inline(always)]
-fn fft2_real(x: [u64; 2]) -> [i64; 2] {
-    [(x[0] as i64 + x[1] as i64), (x[0] as i64 - x[1] as i64)]
-}
-
-#[inline(always)]
-fn ifft2_real(y: [i64; 2]) -> [u64; 2] {
-    // We avoid divisions by 2 by appropriately scaling the MDS matrix constants.
-    [(y[0] + y[1]) as u64, (y[0] - y[1]) as u64]
-}
-
-#[inline(always)]
-fn fft4_real(x: [u64; 4]) -> (i64, (i64, i64), i64) {
-    let [z0, z2] = fft2_real([x[0], x[2]]);
-    let [z1, z3] = fft2_real([x[1], x[3]]);
-    let y0 = z0 + z1;
-    let y1 = (z2, -z3);
-    let y2 = z0 - z1;
-    (y0, y1, y2)
-}
-
-#[inline(always)]
-fn ifft4_real(y: (i64, (i64, i64), i64)) -> [u64; 4] {
-    // In calculating 'z0' and 'z1', division by 2 is avoided by appropriately scaling
-    // the MDS matrix constants.
-    let z0 = y.0 + y.2;
-    let z1 = y.0 - y.2;
-    let z2 = y.1 .0;
-    let z3 = -y.1 .1;
-
-    let [x0, x2] = ifft2_real([z0, z2]);
-    let [x1, x3] = ifft2_real([z1, z3]);
-
-    [x0, x1, x2, x3]
 }
 
 #[inline(always)]
