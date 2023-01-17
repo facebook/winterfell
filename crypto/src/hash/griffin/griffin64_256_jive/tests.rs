@@ -94,10 +94,10 @@ fn hash() {
     // expected values are obtained by executing sage implementation code
     // available at https://github.com/Nashtare/griffin-hash
     let expected = vec![
-        BaseElement::new(152506353987306784),
-        BaseElement::new(4308336261414731937),
-        BaseElement::new(11109860392571610148),
-        BaseElement::new(11228152914700714622),
+        BaseElement::new(16887612651479285699),
+        BaseElement::new(16469590207124000227),
+        BaseElement::new(11134472952466778260),
+        BaseElement::new(15455301814830509354),
     ];
 
     assert_eq!(expected, result.as_elements());

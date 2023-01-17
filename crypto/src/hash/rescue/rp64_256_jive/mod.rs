@@ -65,12 +65,9 @@ const INV_ALPHA: u64 = 10540996611094048183;
 ///   margin used in the specifications (a 50% margin rounds up to 8 rounds). The primary
 ///   motivation for this is that having the number of rounds be one less than a power of two
 ///   simplifies AIR design for computations involving the hash function.
-/// * When hashing a sequence of elements, we do not append BaseElement(1) followed by BaseElement(0) elements
-///   to the end of the sequence as padding. Instead, we initialize the first capacity element
-///   to the number of elements to be hashed, and pad the sequence with BaseElement(0) elements only. This
-///   ensures consistency of hash outputs between different hashing methods (see section below).
-///   However, it also means that our instantiation of Rescue Prime cannot be used in a stream
-///   mode as the number of elements to be hashed must be known upfront.
+/// * When hashing a sequence of elements, implement the Hirose padding rule. However, it also
+///   means that our instantiation of Rescue Prime cannot be used in a stream mode as the number
+///   of elements to be hashed must be known upfront.
 /// * We use the first 4 elements of the state (rather than the last 4 elements of the state) for
 ///   capacity and the remaining 8 elements for rate. The output of the hash function comes from
 ///   the first four elements of the rate portion of the state (elements 4, 5, 6, and 7). This
@@ -130,10 +127,11 @@ impl Hasher for RpJive64_256 {
         };
 
         // initialize state to all zeros, except for the first element of the capacity part, which
-        // is set to the number of elements to be hashed. this is done so that adding zero elements
-        // at the end of the list always results in a different hash.
+        // is set to 1 if the number of elements is not a multiple of RATE_WIDTH.
         let mut state = [BaseElement::ZERO; STATE_WIDTH];
-        state[CAPACITY_RANGE.start] = BaseElement::new(num_elements as u64);
+        if num_elements % RATE_WIDTH != 0 {
+            state[CAPACITY_RANGE.start] = BaseElement::ONE;
+        }
 
         // break the string into 7-byte chunks, convert each chunk into a field element, and
         // absorb the element into the rate portion of the state. we use 7-byte chunks because
@@ -155,7 +153,7 @@ impl Hasher for RpJive64_256 {
             }
 
             // convert the bytes into a field element and absorb it into the rate portion of the
-            // state; if the rate is filled up, apply the Rescue permutation and start absorbing
+            // state; if the rate is filled up, apply the Griffin permutation and start absorbing
             // again from zero index.
             state[RATE_RANGE.start + i] += BaseElement::new(u64::from_le_bytes(buf));
             i += 1;
@@ -166,10 +164,16 @@ impl Hasher for RpJive64_256 {
         }
 
         // if we absorbed some elements but didn't apply a permutation to them (would happen when
-        // the number of elements is not a multiple of RATE_WIDTH), apply the Rescue permutation.
-        // we don't need to apply any extra padding because we injected total number of elements
-        // in the input list into the capacity portion of the state during initialization.
+        // the number of elements is not a multiple of RATE_WIDTH), apply a final permutation after
+        // padding by appending a 1 followed by as many 0 as necessary to make the input length a
+        // multiple of the RATE_WIDTH.
         if i > 0 {
+            state[RATE_RANGE.start + i] = BaseElement::ONE;
+            i += 1;
+            while i != RATE_WIDTH {
+                state[RATE_RANGE.start + i] = BaseElement::ZERO;
+                i += 1;
+            }
             Self::apply_permutation(&mut state);
         }
 
@@ -227,14 +231,15 @@ impl ElementHasher for RpJive64_256 {
         // convert the elements into a list of base field elements
         let elements = E::as_base_elements(elements);
 
-        // initialize state to all zeros, except for the last element of the capacity part, which
-        // is set to the number of elements to be hashed. this is done so that adding zero elements
-        // at the end of the list always results in a different hash.
+        // initialize state to all zeros, except for the first element of the capacity part, which
+        // is set to 1 if the number of elements is not a multiple of RATE_WIDTH.
         let mut state = [BaseElement::ZERO; STATE_WIDTH];
-        state[CAPACITY_RANGE.start] = BaseElement::new(elements.len() as u64);
+        if elements.len() % RATE_WIDTH != 0 {
+            state[CAPACITY_RANGE.start] = BaseElement::ONE;
+        }
 
         // absorb elements into the state one by one until the rate portion of the state is filled
-        // up; then apply the Rescue permutation and start absorbing again; repeat until all
+        // up; then apply the Griffin permutation and start absorbing again; repeat until all
         // elements have been absorbed
         let mut i = 0;
         for &element in elements.iter() {
@@ -247,10 +252,16 @@ impl ElementHasher for RpJive64_256 {
         }
 
         // if we absorbed some elements but didn't apply a permutation to them (would happen when
-        // the number of elements is not a multiple of RATE_WIDTH), apply the Rescue permutation.
-        // we don't need to apply any extra padding because we injected total number of elements
-        // in the input list into the capacity portion of the state during initialization.
+        // the number of elements is not a multiple of RATE_WIDTH), apply a final permutation after
+        // padding by appending a 1 followed by as many 0 as necessary to make the input length a
+        // multiple of the RATE_WIDTH.
         if i > 0 {
+            state[RATE_RANGE.start + i] = BaseElement::ONE;
+            i += 1;
+            while i != RATE_WIDTH {
+                state[RATE_RANGE.start + i] = BaseElement::ZERO;
+                i += 1;
+            }
             Self::apply_permutation(&mut state);
         }
 
