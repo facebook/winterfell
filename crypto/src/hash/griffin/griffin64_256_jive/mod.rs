@@ -3,6 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use super::super::mds::mds_f64_8x8::mds_multiply;
 use super::{Digest, ElementHasher, Hasher};
 use core::convert::TryInto;
 use core::ops::Range;
@@ -11,8 +12,6 @@ use math::{fields::f64::BaseElement, FieldElement, StarkField};
 mod digest;
 pub use digest::ElementDigest;
 
-mod mds_freq;
-use mds_freq::mds_multiply_freq;
 #[cfg(test)]
 mod tests;
 
@@ -355,33 +354,7 @@ impl GriffinJive64_256 {
 
     #[inline(always)]
     fn apply_linear(state: &mut [BaseElement; STATE_WIDTH]) {
-        let mut result = [BaseElement::ZERO; STATE_WIDTH];
-
-        // Using the linearity of the operations we can split the state into a low||high decomposition
-        // and operate on each with no overflow and then combine/reduce the result to a field element.
-        let mut state_l = [0u64; STATE_WIDTH];
-        let mut state_h = [0u64; STATE_WIDTH];
-
-        for r in 0..STATE_WIDTH {
-            let s = state[r].inner();
-            state_h[r] = s >> 32;
-            state_l[r] = (s as u32) as u64;
-        }
-
-        let state_h = mds_multiply_freq(state_h);
-        let state_l = mds_multiply_freq(state_l);
-
-        for r in 0..STATE_WIDTH {
-            let s = state_l[r] as u128 + ((state_h[r] as u128) << 32);
-            let s_hi = (s >> 64) as u64;
-            let s_lo = s as u64;
-            let z = (s_hi << 32) - s_hi;
-            let (res, over) = s_lo.overflowing_add(z);
-
-            result[r] =
-                BaseElement::from_mont(res.wrapping_add(0u32.wrapping_sub(over as u32) as u64));
-        }
-        *state = result;
+        mds_multiply(state)
     }
 
     #[inline(always)]

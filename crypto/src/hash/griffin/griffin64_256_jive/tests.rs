@@ -8,6 +8,7 @@ use super::{
     INV_MDS, MDS, STATE_WIDTH,
 };
 use core::convert::TryInto;
+use proptest::prelude::*;
 
 use rand_utils::{rand_array, rand_value};
 
@@ -180,4 +181,34 @@ fn hash_elements_padding() {
     let r1 = GriffinJive64_256::hash_elements(&e1);
     let r2 = GriffinJive64_256::hash_elements(&e2);
     assert_ne!(r1, r2);
+}
+
+#[inline(always)]
+fn apply_mds_naive(state: &mut [BaseElement; STATE_WIDTH]) {
+    let mut result = [BaseElement::ZERO; STATE_WIDTH];
+    result.iter_mut().zip(MDS).for_each(|(r, mds_row)| {
+        state.iter().zip(mds_row).for_each(|(&s, m)| {
+            *r += m * s;
+        });
+    });
+    *state = result;
+}
+
+proptest! {
+    #[test]
+    fn mds_freq_proptest(a in any::<[u64;STATE_WIDTH]>()) {
+
+        let mut v1 = [BaseElement::ZERO;STATE_WIDTH];
+        let mut v2;
+
+        for i in 0..STATE_WIDTH {
+            v1[i] = BaseElement::new(a[i]);
+        }
+        v2 = v1.clone();
+
+        apply_mds_naive(&mut v1);
+        GriffinJive64_256::apply_linear(&mut v2);
+
+        prop_assert_eq!(v1, v2);
+    }
 }
