@@ -8,6 +8,7 @@ This crate contains modules with cryptographic operations needed in STARK proof 
 * BLAKE3 with either 256-bit or 192-bit output. The smaller output version can be used to reduce STARK proof size, however, it also limits proof security level to at most 96 bits.
 * Rescue Prime over a 64-bit field with 256-bit output and over a 62-bit field with 248-bit output. Rescue is an arithmetization-friendly hash function and can be used in the STARK protocol when recursive proof composition is desired. However, using this function is not yet supported by the Winterfell STARK prover and verifier.
 * Rescue Prime over the same 64-bit field as above, with 256-bit output, but using the novel [Jive compression mode](https://eprint.iacr.org/2022/840.pdf) to obtain a smaller state and faster 2-to-1 compression.
+* Griffin over the same 64-bit field as above, with 256-bit output, also using the novel [Jive compression mode](https://eprint.iacr.org/2022/840.pdf) to obtain a smaller state and faster 2-to-1 compression.
 
 ### Rescue hash function implementation
 Rescue hash function is implemented according to the Rescue Prime [specifications](https://eprint.iacr.org/2020/1143.pdf) with the following exception:
@@ -73,7 +74,7 @@ One of the core operations performed during STARK proof generation is constructi
 | Core i5-7300U @ 2.6 GHz     | 81 ns      | 540 ns   | -        | -         | 9.5 us   | -              |
 | Core i5-4300U @ 1.9 GHz     | 106 ns     | 675 ns   | -        | -         | 13.9 us  | -              |
 
-As can be seen from the table, BLAKE3 is by far the fastest hash function, while our implementation of Rescue Prime is roughly 100x slower than BLAKE3 and about 20x slower than SHA3.
+As can be seen from the table, BLAKE3 is by far the fastest hash function, while our implementations of algebraic hashes are between 30x (Griffin) and 70x (Rescue-Prime) slower than BLAKE3 and between 10x (Griffin) and 20x (Rescue-Prime) slower than SHA3.
 
 ## Merkle
 [Merkle](src/merkle) module contains an implementation of a Merkle tree which supports batch proof generation and verification. Batch proofs are based on the Octopus algorithm described [here](https://eprint.iacr.org/2017/933).
