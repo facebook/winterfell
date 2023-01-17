@@ -610,13 +610,29 @@ where
         let i = offset;
         let j = offset + stride;
 
-        for col_idx in 0..self.row_width {
-            let temp = self.data[self.row_width * i + col_idx];
-            self.data[self.row_width * i + col_idx] =
-                temp + self.data[self.row_width * j + col_idx];
-            self.data[self.row_width * j + col_idx] =
-                temp - self.data[self.row_width * j + col_idx];
-        }
+        // for col_idx in 0..self.row_width {
+        //     let temp = self.data[self.row_width * i + col_idx];
+        //     self.data[self.row_width * i + col_idx] =
+        //         temp + self.data[self.row_width * j + col_idx];
+        //     self.data[self.row_width * j + col_idx] =
+        //         temp - self.data[self.row_width * j + col_idx];
+        // }
+
+        let (first_row, second_row) = self.data.split_at_mut(self.row_width * j);
+        let (first_row, second_row) = (
+            &mut first_row[self.row_width * i..self.row_width * i + self.row_width],
+            &mut second_row[0..self.row_width],
+        );
+
+        rayon::scope(|s| {
+            s.spawn(|_| {
+                for (a, b) in first_row.iter_mut().zip(second_row.iter_mut()) {
+                    let temp = *a;
+                    *a = temp + *b;
+                    *b = temp - *b;
+                }
+            });
+        });
     }
 
     #[inline(always)]
@@ -624,18 +640,39 @@ where
         let i = offset;
         let j = offset + stride;
 
-        for col_idx in 0..self.row_width {
-            let temp = self.data[self.row_width * i + col_idx];
-            self.data[self.row_width * j + col_idx] =
-                self.data[self.row_width * j + col_idx].mul_base(twiddle);
-            self.data[self.row_width * i + col_idx] =
-                temp + self.data[self.row_width * j + col_idx];
-            self.data[self.row_width * j + col_idx] =
-                temp - self.data[self.row_width * j + col_idx];
-        }
+        let (first_row, second_row) = self.data.split_at_mut(self.row_width * j);
+        let (first_row, second_row) = (
+            &mut first_row[self.row_width * i..self.row_width * i + self.row_width],
+            &mut second_row[0..self.row_width],
+        );
+
+        rayon::scope(|s| {
+            s.spawn(|_| {
+                for (a, b) in first_row.iter_mut().zip(second_row.iter_mut()) {
+                    let temp = *a;
+                    *a = temp + b.mul_base(twiddle);
+                    *b = temp - b.mul_base(twiddle);
+                }
+            });
+        });
+
+        // for col_idx in 0..self.row_width {
+        //     let temp = self.data[self.row_width * i + col_idx];
+        //     self.data[self.row_width * j + col_idx] =
+        //         self.data[self.row_width * j + col_idx].mul_base(twiddle);
+        //     self.data[self.row_width * i + col_idx] =
+        //         temp + self.data[self.row_width * j + col_idx];
+        //     self.data[self.row_width * j + col_idx] =
+        //         temp - self.data[self.row_width * j + col_idx];
+        // }
     }
 
     fn swap(&mut self, i: usize, j: usize) {
+        // for col_idx in 0..self.row_width {
+        //     self.data
+        //         .swap(self.row_width * i + col_idx, self.row_width * j + col_idx);
+        // }
+
         let (first_row, second_row) = self.data.split_at_mut(self.row_width * j);
         let (first_row, second_row) = (
             &mut first_row[self.row_width * i..self.row_width * i + self.row_width],
