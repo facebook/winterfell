@@ -171,7 +171,7 @@ impl Hasher for GriffinJive64_256 {
         // apply the Griffin permutation and apply the final Jive summation
         Self::apply_permutation(&mut state);
 
-        apply_jive_summation(&initial_state, &state)
+        Self::apply_jive_summation(&initial_state, &state)
     }
 
     // We do not rely on the sponge construction to build our compression function. Instead, we use
@@ -198,7 +198,7 @@ impl Hasher for GriffinJive64_256 {
         // apply the Griffin permutation and apply the final Jive summation
         Self::apply_permutation(&mut state);
 
-        apply_jive_summation(&initial_state, &state)
+        Self::apply_jive_summation(&initial_state, &state)
     }
 }
 
@@ -239,22 +239,6 @@ impl ElementHasher for GriffinJive64_256 {
         // return the first 4 elements of the state as hash result
         ElementDigest::new(state[DIGEST_RANGE].try_into().unwrap())
     }
-}
-
-#[inline(always)]
-fn apply_jive_summation(
-    initial_state: &[BaseElement; STATE_WIDTH],
-    final_state: &[BaseElement; STATE_WIDTH],
-) -> ElementDigest {
-    let mut result = [BaseElement::ZERO; DIGEST_SIZE];
-    for (i, r) in result.iter_mut().enumerate() {
-        *r = initial_state[i]
-            + initial_state[DIGEST_SIZE + i]
-            + final_state[i]
-            + final_state[DIGEST_SIZE + i];
-    }
-
-    ElementDigest::new(result)
 }
 
 // HASH FUNCTION IMPLEMENTATION
@@ -327,9 +311,28 @@ impl GriffinJive64_256 {
     }
 
     #[inline(always)]
+    pub fn apply_jive_summation(
+        initial_state: &[BaseElement; STATE_WIDTH],
+        final_state: &[BaseElement; STATE_WIDTH],
+    ) -> ElementDigest {
+        let mut result = [BaseElement::ZERO; DIGEST_SIZE];
+        for (i, r) in result.iter_mut().enumerate() {
+            *r = initial_state[i]
+                + initial_state[DIGEST_SIZE + i]
+                + final_state[i]
+                + final_state[DIGEST_SIZE + i];
+        }
+
+        ElementDigest::new(result)
+    }
+
+    // HELPER FUNCTIONS
+    // --------------------------------------------------------------------------------------------
+
+    #[inline(always)]
     /// Applies the Griffin non-linear layer
     /// to the current hash state.
-    pub(crate) fn apply_non_linear(state: &mut [BaseElement; STATE_WIDTH]) {
+    fn apply_non_linear(state: &mut [BaseElement; STATE_WIDTH]) {
         pow_inv_d(&mut state[0]);
         pow_d(&mut state[1]);
 
@@ -361,9 +364,6 @@ impl GriffinJive64_256 {
     fn add_constants(state: &mut [BaseElement; STATE_WIDTH], ark: &[BaseElement; STATE_WIDTH]) {
         state.iter_mut().zip(ark).for_each(|(s, &k)| *s += k);
     }
-
-    // HELPER FUNCTIONS
-    // --------------------------------------------------------------------------------------------
 
     #[inline(always)]
     fn linear_function(

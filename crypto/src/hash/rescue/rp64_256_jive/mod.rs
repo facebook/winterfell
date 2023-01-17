@@ -189,7 +189,7 @@ impl Hasher for RpJive64_256 {
         // apply the Rescue permutation and apply the final Jive summation
         Self::apply_permutation(&mut state);
 
-        apply_jive_summation(&initial_state, &state)
+        Self::apply_jive_summation(&initial_state, &state)
     }
 
     // We do not rely on the sponge construction to build our compression function. Instead, we use
@@ -216,7 +216,7 @@ impl Hasher for RpJive64_256 {
         // apply the Rescue permutation and apply the final Jive summation
         Self::apply_permutation(&mut state);
 
-        apply_jive_summation(&initial_state, &state)
+        Self::apply_jive_summation(&initial_state, &state)
     }
 }
 
@@ -257,22 +257,6 @@ impl ElementHasher for RpJive64_256 {
         // return the first 4 elements of the state as hash result
         ElementDigest::new(state[DIGEST_RANGE].try_into().unwrap())
     }
-}
-
-#[inline(always)]
-fn apply_jive_summation(
-    initial_state: &[BaseElement; STATE_WIDTH],
-    final_state: &[BaseElement; STATE_WIDTH],
-) -> ElementDigest {
-    let mut result = [BaseElement::ZERO; DIGEST_SIZE];
-    for (i, r) in result.iter_mut().enumerate() {
-        *r = initial_state[i]
-            + initial_state[DIGEST_SIZE + i]
-            + final_state[i]
-            + final_state[DIGEST_SIZE + i];
-    }
-
-    ElementDigest::new(result)
 }
 
 // HASH FUNCTION IMPLEMENTATION
@@ -334,6 +318,22 @@ impl RpJive64_256 {
         Self::apply_inv_sbox(state);
         Self::apply_mds(state);
         Self::add_constants(state, &ARK2[round]);
+    }
+
+    #[inline(always)]
+    pub fn apply_jive_summation(
+        initial_state: &[BaseElement; STATE_WIDTH],
+        final_state: &[BaseElement; STATE_WIDTH],
+    ) -> ElementDigest {
+        let mut result = [BaseElement::ZERO; DIGEST_SIZE];
+        for (i, r) in result.iter_mut().enumerate() {
+            *r = initial_state[i]
+                + initial_state[DIGEST_SIZE + i]
+                + final_state[i]
+                + final_state[DIGEST_SIZE + i];
+        }
+
+        ElementDigest::new(result)
     }
 
     // HELPER FUNCTIONS
