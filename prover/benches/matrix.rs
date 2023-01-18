@@ -3,6 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use core::num;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use rand_utils::rand_vector;
 use rayon::prelude::{IntoParallelRefMutIterator, ParallelIterator};
@@ -11,7 +12,7 @@ use std::time::Duration;
 use math::{
     fft::{self, fft_inputs::FftInputs},
     fields::f64::BaseElement,
-    StarkField,
+    FieldElement, StarkField,
 };
 
 use winter_prover::{
@@ -66,7 +67,7 @@ fn evaluate_columns(c: &mut Criterion) {
     let blowup_factor = 8;
 
     for &num_poly in NUM_POLYS.iter() {
-        let mut columns: Vec<Vec<BaseElement>> = (0..num_poly).map(|_| rand_vector(SIZE)).collect();
+        let columns: Vec<Vec<BaseElement>> = (0..num_poly).map(|_| rand_vector(SIZE)).collect();
         let mut column_matrix = Matrix::new(columns);
         let twiddles = fft::get_twiddles::<BaseElement>(SIZE);
         group.bench_function(BenchmarkId::new("simple", num_poly), |bench| {
@@ -79,7 +80,7 @@ fn evaluate_columns(c: &mut Criterion) {
     }
 
     for &num_poly in NUM_POLYS.iter() {
-        let mut columns: Vec<Vec<BaseElement>> = (0..num_poly).map(|_| rand_vector(SIZE)).collect();
+        let columns: Vec<Vec<BaseElement>> = (0..num_poly).map(|_| rand_vector(SIZE)).collect();
         let mut column_matrix = Matrix::new(columns);
         let twiddles = fft::get_twiddles::<BaseElement>(SIZE);
         group.bench_function(BenchmarkId::new("with_offset", num_poly), |bench| {
@@ -104,41 +105,42 @@ fn interpolate_matrix(c: &mut Criterion) {
     group.measurement_time(Duration::from_secs(10));
 
     for &num_poly in NUM_POLYS.iter() {
-        let rows: Vec<Vec<BaseElement>> = (0..SIZE).map(|_| rand_vector(num_poly)).collect();
-
-        let row_width = rows[0].len();
-        let mut flatten_table = rows.into_iter().flatten().collect::<Vec<_>>();
-        let vec = flatten_table
-            .chunks(ARR_SIZE)
-            .map(|x| x.try_into().unwrap())
-            .collect::<Vec<_>>();
-        let mut table = RowMatrix::new(vec, row_width);
+        let num_segments = num_poly / ARR_SIZE;
+        let mut matrix_vec: Vec<RowMatrix<BaseElement>> = Vec::new();
+        for _ in 0..num_segments {
+            let segment: Vec<[BaseElement; ARR_SIZE]> =
+                (0..ARR_SIZE).map(|_| to_array(rand_vector(SIZE))).collect();
+            matrix_vec.push(RowMatrix::new(segment, num_poly));
+        }
 
         let inv_twiddles = fft::get_inv_twiddles::<BaseElement>(SIZE);
         group.bench_function(BenchmarkId::new("simple", num_poly), |bench| {
-            bench.iter_with_large_drop(|| RowMatrix::interpolate_poly(&mut table, &inv_twiddles));
+            bench.iter_with_large_drop(|| {
+                iter_mut!(matrix_vec)
+                    .for_each(|matrix| RowMatrix::interpolate_poly(matrix, &inv_twiddles))
+            });
         });
     }
 
     for &num_poly in NUM_POLYS.iter() {
-        let rows: Vec<Vec<BaseElement>> = (0..SIZE).map(|_| rand_vector(num_poly)).collect();
-
-        let row_width = rows[0].len();
-        let mut flatten_table = rows.into_iter().flatten().collect::<Vec<_>>();
-        let vec = flatten_table
-            .chunks(ARR_SIZE)
-            .map(|x| x.try_into().unwrap())
-            .collect::<Vec<_>>();
-        let mut table = RowMatrix::new(vec, row_width);
+        let num_segments = num_poly / ARR_SIZE;
+        let mut matrix_vec: Vec<RowMatrix<BaseElement>> = Vec::new();
+        for _ in 0..num_segments {
+            let segment: Vec<[BaseElement; ARR_SIZE]> =
+                (0..ARR_SIZE).map(|_| to_array(rand_vector(SIZE))).collect();
+            matrix_vec.push(RowMatrix::new(segment, num_poly));
+        }
 
         let inv_twiddles = fft::get_inv_twiddles::<BaseElement>(SIZE);
         group.bench_function(BenchmarkId::new("with_offset", num_poly), |bench| {
             bench.iter_with_large_drop(|| {
-                RowMatrix::interpolate_poly_with_offset(
-                    &mut table,
-                    &inv_twiddles,
-                    BaseElement::GENERATOR,
-                )
+                iter_mut!(matrix_vec).for_each(|matrix| {
+                    RowMatrix::interpolate_poly_with_offset(
+                        matrix,
+                        &inv_twiddles,
+                        BaseElement::GENERATOR,
+                    )
+                });
             });
         });
     }
@@ -153,37 +155,44 @@ fn evaluate_matrix(c: &mut Criterion) {
     let blowup_factor = 8;
 
     for &num_poly in NUM_POLYS.iter() {
-        let rows: Vec<Vec<BaseElement>> = (0..SIZE).map(|_| rand_vector(num_poly)).collect();
-
-        let row_width = rows[0].len();
-        let mut flatten_table = rows.into_iter().flatten().collect::<Vec<_>>();
-        let vec = flatten_table
-            .chunks(ARR_SIZE)
-            .map(|x| x.try_into().unwrap())
-            .collect::<Vec<_>>();
-        let mut table = RowMatrix::new(vec, row_width);
+        let num_segments = num_poly / ARR_SIZE;
+        let mut matrix_vec: Vec<RowMatrix<BaseElement>> = Vec::new();
+        for _ in 0..num_segments {
+            let segment: Vec<[BaseElement; ARR_SIZE]> =
+                (0..ARR_SIZE).map(|_| to_array(rand_vector(SIZE))).collect();
+            matrix_vec.push(RowMatrix::new(segment, num_poly));
+        }
 
         let twiddles = fft::get_twiddles::<BaseElement>(SIZE);
         group.bench_function(BenchmarkId::new("simple", num_poly), |bench| {
-            bench.iter_with_large_drop(|| RowMatrix::evaluate_poly(&mut table, &twiddles));
+            bench.iter_with_large_drop(|| {
+                iter_mut!(matrix_vec).for_each(|matrix| {
+                    RowMatrix::evaluate_poly(matrix, &twiddles);
+                });
+            });
         });
     }
 
     for &num_poly in NUM_POLYS.iter() {
-        let rows: Vec<Vec<BaseElement>> = (0..SIZE).map(|_| rand_vector(num_poly)).collect();
-
-        let row_width = rows[0].len();
-        let mut flatten_table = rows.into_iter().flatten().collect::<Vec<_>>();
-        let vec = flatten_table
-            .chunks(ARR_SIZE)
-            .map(|x| x.try_into().unwrap())
-            .collect::<Vec<_>>();
-        let mut table = RowMatrix::new(vec, row_width);
+        let num_segments = num_poly / ARR_SIZE;
+        let mut matrix_vec: Vec<RowMatrix<BaseElement>> = Vec::new();
+        for _ in 0..num_segments {
+            let segment: Vec<[BaseElement; ARR_SIZE]> =
+                (0..ARR_SIZE).map(|_| to_array(rand_vector(SIZE))).collect();
+            matrix_vec.push(RowMatrix::new(segment, num_poly));
+        }
 
         let twiddles = fft::get_twiddles::<BaseElement>(SIZE);
         group.bench_function(BenchmarkId::new("with_offset", num_poly), |bench| {
             bench.iter_with_large_drop(|| {
-                evaluate_poly_with_offset(&table, &twiddles, BaseElement::GENERATOR, blowup_factor)
+                iter_mut!(matrix_vec).for_each(|matrix| {
+                    evaluate_poly_with_offset(
+                        matrix,
+                        &twiddles,
+                        BaseElement::GENERATOR,
+                        blowup_factor,
+                    );
+                });
             });
         });
     }
@@ -219,4 +228,15 @@ macro_rules! iter_mut {
 
         // result
     }};
+}
+
+/// Convert a vector of field elements to a arrays of field elements. The size of the array is
+/// determined by the `ARR_SIZE` constant.
+fn to_array<E: FieldElement>(v: Vec<E>) -> [E; ARR_SIZE] {
+    debug_assert_eq!(v.len(), ARR_SIZE);
+    let mut result = [E::ZERO; ARR_SIZE];
+    for (i, e) in v.into_iter().enumerate() {
+        result[i] = e;
+    }
+    result
 }
