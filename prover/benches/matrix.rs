@@ -108,8 +108,9 @@ fn interpolate_matrix(c: &mut Criterion) {
         let num_segments = num_poly / ARR_SIZE;
         let mut matrix_vec: Vec<RowMatrix<BaseElement>> = Vec::new();
         for _ in 0..num_segments {
+            // create a vector of arrays of size ARR_SIZE.
             let segment: Vec<[BaseElement; ARR_SIZE]> =
-                (0..ARR_SIZE).map(|_| to_array(rand_vector(SIZE))).collect();
+                (0..SIZE).map(|_| to_array(rand_vector(ARR_SIZE))).collect();
             matrix_vec.push(RowMatrix::new(segment, num_poly));
         }
 
@@ -127,7 +128,7 @@ fn interpolate_matrix(c: &mut Criterion) {
         let mut matrix_vec: Vec<RowMatrix<BaseElement>> = Vec::new();
         for _ in 0..num_segments {
             let segment: Vec<[BaseElement; ARR_SIZE]> =
-                (0..ARR_SIZE).map(|_| to_array(rand_vector(SIZE))).collect();
+                (0..SIZE).map(|_| to_array(rand_vector(ARR_SIZE))).collect();
             matrix_vec.push(RowMatrix::new(segment, num_poly));
         }
 
@@ -159,7 +160,7 @@ fn evaluate_matrix(c: &mut Criterion) {
         let mut matrix_vec: Vec<RowMatrix<BaseElement>> = Vec::new();
         for _ in 0..num_segments {
             let segment: Vec<[BaseElement; ARR_SIZE]> =
-                (0..ARR_SIZE).map(|_| to_array(rand_vector(SIZE))).collect();
+                (0..SIZE).map(|_| to_array(rand_vector(ARR_SIZE))).collect();
             matrix_vec.push(RowMatrix::new(segment, num_poly));
         }
 
@@ -178,7 +179,7 @@ fn evaluate_matrix(c: &mut Criterion) {
         let mut matrix_vec: Vec<RowMatrix<BaseElement>> = Vec::new();
         for _ in 0..num_segments {
             let segment: Vec<[BaseElement; ARR_SIZE]> =
-                (0..ARR_SIZE).map(|_| to_array(rand_vector(SIZE))).collect();
+                (0..SIZE).map(|_| to_array(rand_vector(ARR_SIZE))).collect();
             matrix_vec.push(RowMatrix::new(segment, num_poly));
         }
 
@@ -201,10 +202,10 @@ fn evaluate_matrix(c: &mut Criterion) {
 
 criterion_group!(
     matrix_group,
-    interpolate_columns,
     interpolate_matrix,
+    evaluate_matrix,
+    interpolate_columns,
     evaluate_columns,
-    evaluate_matrix
 );
 criterion_main!(matrix_group);
 

@@ -190,31 +190,32 @@ fn test_interpolate_poly_matrix() {
     assert_eq!(matrix_data_flatten, result_data);
 }
 
-// // CONCURRENT TESTS
-// // ================================================================================================
+// CONCURRENT TESTS
+// ================================================================================================
 
-// #[test]
-// fn test_eval_poly_matrix_concurrent() {
-//     let n = 1024;
-//     let num_polys = 16;
-//     let mut columns: Vec<Vec<BaseElement>> = (0..num_polys).map(|_| rand_vector(n)).collect();
-//     let rows = transpose_concurrent(columns.clone());
-//     let row_width = rows[0].len();
-//     let mut flatten_rows = rows.into_iter().flatten().collect::<Vec<_>>();
-//     let mut matrix = RowMatrix::new(&mut flatten_rows, row_width);
+#[test]
+fn test_eval_poly_matrix_concurrent() {
+    let n = 1024;
+    let num_polys = 16;
+    let mut columns: Vec<Vec<BaseElement>> = (0..num_polys).map(|_| rand_vector(n)).collect();
 
-//     let domain = build_domain(n);
-//     for p in columns.iter_mut() {
-//         *p = polynom::eval_many(p, &domain);
-//     }
-//     let eval_col = transpose_concurrent(columns);
-//     let eval_cols_faltten = eval_col.into_iter().flatten().collect::<Vec<_>>();
+    let mut matrix_vec = build_row_matrix(columns.clone());
+    let twiddles = get_twiddles::<BaseElement>(n);
+    let domain = build_domain(n);
+    for p in columns.iter_mut() {
+        *p = polynom::eval_many(p, &domain);
+    }
+    let eval_col = transpose(columns);
+    let eval_cols_faltten = eval_col.into_iter().flatten().collect::<Vec<_>>();
 
-//     let twiddles = get_twiddles::<BaseElement>(n);
-//     FftInputs::split_radix_fft(&mut matrix, &twiddles);
-//     FftInputs::permute_concurrent(&mut matrix);
-//     assert_eq!(eval_cols_faltten, matrix.as_data());
-// }
+    for row_matrix in matrix_vec.iter_mut() {
+        row_matrix.split_radix_fft(&twiddles);
+        row_matrix.permute_concurrent();
+    }
+
+    let matrix_data = flatten_row_matrix(matrix_vec);
+    assert_eq!(eval_cols_faltten, matrix_data);
+}
 
 // #[test]
 // fn test_eval_poly_with_offset_matrix_concurrent() {

@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use core::cmp;
+use core::{cmp, iter::FusedIterator, slice};
 
 use super::{ColumnIter, ColumnIterMut, StarkDomain};
 use crypto::{ElementHasher, MerkleTree};
@@ -831,7 +831,7 @@ where
     type ParChunksMut<'c> = MatrixChunksMut<'c, E> where Self: 'c;
 
     fn len(&self) -> usize {
-        self.data.len() * self.data[0].len() / self.row_width
+        self.data.len()
     }
 
     #[inline(always)]
@@ -1131,3 +1131,182 @@ where
         )
     }
 }
+
+// COLUMN ITERATOR
+// ================================================================================================
+
+pub struct SegmentIter<'a, E: FieldElement> {
+    matrix: &'a Vec<RowMatrix<E>>,
+    cursor: usize,
+}
+
+impl<'a, E: FieldElement> SegmentIter<'a, E> {
+    pub fn new(matrix: &'a Vec<RowMatrix<E>>) -> Self {
+        Self { matrix, cursor: 0 }
+    }
+}
+
+impl<'a, E: FieldElement> Iterator for SegmentIter<'a, E> {
+    type Item = &'a RowMatrix<E>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.matrix.len() - self.cursor {
+            0 => None,
+            _ => {
+                let column = &self.matrix[self.cursor];
+                self.cursor += 1;
+                Some(&column)
+            }
+        }
+    }
+}
+
+impl<'a, E: FieldElement> ExactSizeIterator for SegmentIter<'a, E> {
+    fn len(&self) -> usize {
+        self.matrix.len()
+    }
+}
+
+impl<'a, E: FieldElement> FusedIterator for SegmentIter<'a, E> {}
+
+// MUTABLE COLUMN ITERATOR
+// ================================================================================================
+
+pub struct SegmentIterMut<'a, E: FieldElement> {
+    matrix: &'a mut Vec<RowMatrix<E>>,
+    cursor: usize,
+}
+
+impl<'a, E: FieldElement> SegmentIterMut<'a, E> {
+    pub fn new(matrix: &'a mut Vec<RowMatrix<E>>) -> Self {
+        Self { matrix, cursor: 0 }
+    }
+}
+
+impl<'a, E: FieldElement> Iterator for SegmentIterMut<'a, E> {
+    type Item = &'a mut RowMatrix<E>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.matrix.len() - self.cursor {
+            0 => None,
+            _ => {
+                let segment = &self.matrix[self.cursor];
+                self.cursor += 1;
+
+                // unsafe code to get a mutable reference to the segment.
+                // this is safe because we are the only one with a mutable reference to the matrix
+                // and we are not moving the segment out of the matrix.
+                let segment_ptr = segment as *const RowMatrix<E> as *mut RowMatrix<E>;
+                Some(unsafe { &mut *segment_ptr })
+            }
+        }
+    }
+}
+
+impl<'a, E: FieldElement> ExactSizeIterator for SegmentIterMut<'a, E> {
+    fn len(&self) -> usize {
+        self.matrix.len()
+    }
+}
+
+impl<'a, E> DoubleEndedIterator for SegmentIterMut<'a, E>
+where
+    E: FieldElement,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        match self.cursor {
+            0 => None,
+            _ => {
+                self.cursor -= 1;
+                let segment = &self.matrix[self.cursor];
+
+                // unsafe code to get a mutable reference to the segment.
+                // this is safe because we are the only one with a mutable reference to the matrix
+                // and we are not moving the segment out of the matrix.
+                let segment_ptr = segment as *const RowMatrix<E> as *mut RowMatrix<E>;
+                Some(unsafe { &mut *segment_ptr })
+            }
+        }
+    }
+}
+
+impl<'a, E: FieldElement> FusedIterator for SegmentIterMut<'a, E> {}
+
+// impl<'a, E> ParallelIterator for SegmentIterMut<'a, E>
+// where
+//     E: FieldElement + Send,
+// {
+//     type Item = RowMatrix<E>;
+
+//     fn drive_unindexed<C>(self, consumer: C) -> C::Result
+//     where
+//         C: UnindexedConsumer<Self::Item>,
+//     {
+//         bridge(self, consumer)
+//     }
+
+//     fn opt_len(&self) -> Option<usize> {
+//         Some(rayon::iter::IndexedParallelIterator::len(self))
+//     }
+// }
+
+// // #[cfg(feature = "concurrent")]
+// impl<'a, E> IndexedParallelIterator for SegmentIterMut<'a, E>
+// where
+//     E: FieldElement + Send,
+// {
+//     fn with_producer<CB: ProducerCallback<Self::Item>>(self, callback: CB) -> CB::Output {
+//         let producer = SegmentMutProducer {
+//             matrix: self.matrix,
+//             cursor: self.cursor,
+//         };
+//         callback.callback(producer)
+//     }
+
+//     fn drive<C: Consumer<Self::Item>>(self, consumer: C) -> C::Result {
+//         bridge(self, consumer)
+//     }
+
+//     fn len(&self) -> usize {
+//         self.matrix.len()
+//     }
+// }
+
+// // #[cfg(feature = "concurrent")]
+// struct SegmentMutProducer<'a, E>
+// where
+//     E: FieldElement,
+// {
+//     matrix: &'a mut Vec<RowMatrix<E>>,
+//     cursor: usize,
+// }
+
+// // #[cfg(feature = "concurrent")]
+// impl<'a, E> Producer for SegmentMutProducer<'a, E>
+// where
+//     E: FieldElement,
+// {
+//     type Item = &'a mut RowMatrix<E>;
+//     type IntoIter = SegmentIterMut<'a, E>;
+
+//     fn into_iter(self) -> Self::IntoIter {
+//         SegmentIterMut {
+//             matrix: self.matrix,
+//             cursor: self.cursor,
+//         }
+//     }
+
+//     fn split_at(self, index: usize) -> (Self, Self) {
+//         let (left, right) = self.matrix.split_at_mut(index);
+//         (
+//             SegmentMutProducer {
+//                 matrix: left,
+//                 cursor: self.cursor,
+//             },
+//             SegmentMutProducer {
+//                 matrix: right,
+//                 cursor: self.cursor,
+//             },
+//         )
+//     }
+// }
