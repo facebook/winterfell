@@ -19,7 +19,7 @@ pub use row_matrix::*;
 // use utils::iterators::*;
 
 #[cfg(test)]
-mod test;
+mod tests;
 
 // MATRIX
 // ================================================================================================

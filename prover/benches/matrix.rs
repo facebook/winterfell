@@ -15,7 +15,7 @@ use math::{
 };
 
 use winter_prover::{
-    evaluate_poly_with_offset, evaluate_poly_with_offset_concurrent, Matrix, RowMatrix,
+    evaluate_poly_with_offset, evaluate_poly_with_offset_concurrent, Matrix, RowMatrix, ARR_SIZE,
 };
 
 const SIZE: usize = 524_288;
@@ -33,7 +33,7 @@ fn interpolate_columns(c: &mut Criterion) {
         group.bench_function(BenchmarkId::new("simple", num_poly), |bench| {
             bench.iter_with_large_drop(|| {
                 iter_mut!(column_matrix.columns).for_each(|column| {
-                    fft::concurrent::interpolate_poly(column.as_mut_slice(), &inv_twiddles)
+                    fft::serial::interpolate_poly(column.as_mut_slice(), &inv_twiddles)
                 });
             });
         });
@@ -46,7 +46,7 @@ fn interpolate_columns(c: &mut Criterion) {
         group.bench_function(BenchmarkId::new("with_offset", num_poly), |bench| {
             bench.iter_with_large_drop(|| {
                 iter_mut!(column_matrix.columns).for_each(|column| {
-                    fft::concurrent::interpolate_poly_with_offset(
+                    fft::serial::interpolate_poly_with_offset(
                         column.as_mut_slice(),
                         &inv_twiddles,
                         BaseElement::GENERATOR,
@@ -72,7 +72,7 @@ fn evaluate_columns(c: &mut Criterion) {
         group.bench_function(BenchmarkId::new("simple", num_poly), |bench| {
             bench.iter_with_large_drop(|| {
                 iter_mut!(column_matrix.columns).for_each(|column| {
-                    fft::concurrent::evaluate_poly(column.as_mut_slice(), &twiddles);
+                    fft::serial::evaluate_poly(column.as_mut_slice(), &twiddles);
                 });
             });
         });
@@ -85,7 +85,7 @@ fn evaluate_columns(c: &mut Criterion) {
         group.bench_function(BenchmarkId::new("with_offset", num_poly), |bench| {
             bench.iter_with_large_drop(|| {
                 iter_mut!(column_matrix.columns).for_each(|column| {
-                    fft::concurrent::evaluate_poly_with_offset(
+                    fft::serial::evaluate_poly_with_offset(
                         column.as_mut_slice(),
                         &twiddles,
                         BaseElement::GENERATOR,
@@ -108,13 +108,15 @@ fn interpolate_matrix(c: &mut Criterion) {
 
         let row_width = rows[0].len();
         let mut flatten_table = rows.into_iter().flatten().collect::<Vec<_>>();
-        let mut table = RowMatrix::new(&mut flatten_table, row_width);
+        let vec = flatten_table
+            .chunks(ARR_SIZE)
+            .map(|x| x.try_into().unwrap())
+            .collect::<Vec<_>>();
+        let mut table = RowMatrix::new(vec, row_width);
 
         let inv_twiddles = fft::get_inv_twiddles::<BaseElement>(SIZE);
         group.bench_function(BenchmarkId::new("simple", num_poly), |bench| {
-            bench.iter_with_large_drop(|| {
-                RowMatrix::interpolate_poly_concurrent(&mut table, &inv_twiddles)
-            });
+            bench.iter_with_large_drop(|| RowMatrix::interpolate_poly(&mut table, &inv_twiddles));
         });
     }
 
@@ -123,12 +125,16 @@ fn interpolate_matrix(c: &mut Criterion) {
 
         let row_width = rows[0].len();
         let mut flatten_table = rows.into_iter().flatten().collect::<Vec<_>>();
-        let mut table = RowMatrix::new(&mut flatten_table, row_width);
+        let vec = flatten_table
+            .chunks(ARR_SIZE)
+            .map(|x| x.try_into().unwrap())
+            .collect::<Vec<_>>();
+        let mut table = RowMatrix::new(vec, row_width);
 
         let inv_twiddles = fft::get_inv_twiddles::<BaseElement>(SIZE);
         group.bench_function(BenchmarkId::new("with_offset", num_poly), |bench| {
             bench.iter_with_large_drop(|| {
-                RowMatrix::interpolate_poly_with_offset_concurrent(
+                RowMatrix::interpolate_poly_with_offset(
                     &mut table,
                     &inv_twiddles,
                     BaseElement::GENERATOR,
@@ -151,13 +157,15 @@ fn evaluate_matrix(c: &mut Criterion) {
 
         let row_width = rows[0].len();
         let mut flatten_table = rows.into_iter().flatten().collect::<Vec<_>>();
-        let mut table = RowMatrix::new(&mut flatten_table, row_width);
+        let vec = flatten_table
+            .chunks(ARR_SIZE)
+            .map(|x| x.try_into().unwrap())
+            .collect::<Vec<_>>();
+        let mut table = RowMatrix::new(vec, row_width);
 
         let twiddles = fft::get_twiddles::<BaseElement>(SIZE);
         group.bench_function(BenchmarkId::new("simple", num_poly), |bench| {
-            bench.iter_with_large_drop(|| {
-                RowMatrix::evaluate_poly_concurrent(&mut table, &twiddles)
-            });
+            bench.iter_with_large_drop(|| RowMatrix::evaluate_poly(&mut table, &twiddles));
         });
     }
 
@@ -166,54 +174,16 @@ fn evaluate_matrix(c: &mut Criterion) {
 
         let row_width = rows[0].len();
         let mut flatten_table = rows.into_iter().flatten().collect::<Vec<_>>();
-        let table = RowMatrix::new(&mut flatten_table, row_width);
+        let vec = flatten_table
+            .chunks(ARR_SIZE)
+            .map(|x| x.try_into().unwrap())
+            .collect::<Vec<_>>();
+        let mut table = RowMatrix::new(vec, row_width);
 
         let twiddles = fft::get_twiddles::<BaseElement>(SIZE);
         group.bench_function(BenchmarkId::new("with_offset", num_poly), |bench| {
             bench.iter_with_large_drop(|| {
-                evaluate_poly_with_offset_concurrent(
-                    &table,
-                    &twiddles,
-                    BaseElement::GENERATOR,
-                    blowup_factor,
-                )
-            });
-        });
-    }
-    group.finish();
-}
-
-fn matrix_swap_bench(c: &mut Criterion) {
-    let mut group = c.benchmark_group("matrix_swap_bench");
-    group.sample_size(10);
-    group.measurement_time(Duration::from_secs(10));
-
-    for &num_poly in NUM_POLYS.iter() {
-        let rows: Vec<Vec<BaseElement>> = (0..SIZE).map(|_| rand_vector(num_poly)).collect();
-
-        let row_width = rows[0].len();
-        let mut flatten_table = rows.into_iter().flatten().collect::<Vec<_>>();
-        let mut table = RowMatrix::new(&mut flatten_table, row_width);
-
-        group.bench_function(BenchmarkId::new("mut_split", num_poly), |bench| {
-            bench.iter_with_large_drop(|| {
-                table.swap(5, 89);
-            });
-        });
-    }
-
-    for &num_poly in NUM_POLYS.iter() {
-        let rows: Vec<Vec<BaseElement>> = (0..SIZE).map(|_| rand_vector(num_poly)).collect();
-
-        let row_width = rows[0].len();
-        let mut flatten_table = rows.into_iter().flatten().collect::<Vec<_>>();
-        let mut table = RowMatrix::new(&mut flatten_table, row_width);
-        let data = table.as_data_mut();
-        group.bench_function(BenchmarkId::new("simple_copy", num_poly), |bench| {
-            bench.iter_with_large_drop(|| {
-                for col_idx in 0..row_width {
-                    data.swap(row_width * 5 + col_idx, row_width * 89 + col_idx);
-                }
+                evaluate_poly_with_offset(&table, &twiddles, BaseElement::GENERATOR, blowup_factor)
             });
         });
     }
@@ -222,7 +192,6 @@ fn matrix_swap_bench(c: &mut Criterion) {
 
 criterion_group!(
     matrix_group,
-    matrix_swap_bench,
     interpolate_columns,
     interpolate_matrix,
     evaluate_columns,
@@ -234,10 +203,10 @@ criterion_main!(matrix_group);
 macro_rules! iter_mut {
     ($e: expr) => {{
         // #[cfg(feature = "concurrent")]
-        let result = $e.par_iter_mut();
+        // let result = $e.par_iter_mut();
 
         // #[cfg(not(feature = "concurrent"))]
-        // let result = $e.iter();
+        let result = $e.iter_mut();
 
         result
     }};
