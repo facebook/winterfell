@@ -442,7 +442,10 @@ where
     ) {
         evaluations.split_radix_fft(inv_twiddles);
         let inv_length = E::BaseField::inv((evaluations.len() as u64).into());
-        let batch_size = evaluations.len() / rayon::current_num_threads().next_power_of_two();
+        let batch_size = evaluations.len()
+            / rayon::current_num_threads()
+                .next_power_of_two()
+                .min(evaluations.len());
 
         rayon::iter::IndexedParallelIterator::enumerate(evaluations.par_mut_chunks(batch_size))
             .for_each(|(_i, mut batch)| batch.shift_by(inv_length));

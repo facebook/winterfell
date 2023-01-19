@@ -77,7 +77,10 @@ where
 
     let domain_offset = E::BaseField::inv(domain_offset.into());
     let inv_len = E::BaseField::inv((values.len() as u64).into());
-    let batch_size = values.len() / rayon::current_num_threads().next_power_of_two();
+    let batch_size = values.len()
+        / rayon::current_num_threads()
+            .next_power_of_two()
+            .min(values.len());
 
     values
         .par_chunks_mut(batch_size)
@@ -92,7 +95,10 @@ where
 // ================================================================================================
 
 fn clone_and_shift<E: FieldElement>(source: &[E], destination: &mut [E], offset: E::BaseField) {
-    let batch_size = source.len() / rayon::current_num_threads().next_power_of_two();
+    let batch_size = source.len()
+        / rayon::current_num_threads()
+            .next_power_of_two()
+            .min(source.len());
     source
         .par_chunks(batch_size)
         .zip(destination.par_chunks_mut(batch_size))

@@ -122,7 +122,7 @@ pub trait FftInputs<E: FieldElement> {
     {
         let n = self.len();
         let num_batches = rayon::current_num_threads().next_power_of_two();
-        let batch_size = n / num_batches;
+        let batch_size = n / num_batches.min(n);
         rayon::scope(|s| {
             for batch_idx in 0..num_batches {
                 // create another mutable reference to the slice of values to use in a new thread; this

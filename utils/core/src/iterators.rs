@@ -83,7 +83,7 @@ macro_rules! batch_iter_mut {
     ($e: expr, $c: expr) => {
         #[cfg(feature = "concurrent")]
         {
-            let batch_size = $e.len() / rayon_num_threads().next_power_of_two();
+            let batch_size = $e.len() / rayon_num_threads().next_power_of_two().min($e.len());
             if batch_size < 1 {
                 $c($e, 0);
             }
@@ -100,7 +100,7 @@ macro_rules! batch_iter_mut {
     ($e: expr, $min_batch_size: expr, $c: expr) => {
         #[cfg(feature = "concurrent")]
         {
-            let batch_size = $e.len() / rayon_num_threads().next_power_of_two();
+            let batch_size = $e.len() / rayon_num_threads().next_power_of_two().min($e.len());
             if batch_size < $min_batch_size {
                 $c($e, 0);
             }
