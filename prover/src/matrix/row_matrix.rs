@@ -37,7 +37,6 @@ where
     E: FieldElement,
 {
     data: Vec<[E; ARR_SIZE]>,
-    row_width: usize,
 }
 
 impl<'a, E> RowMatrix<E>
@@ -54,7 +53,7 @@ where
     /// * The remainder of the length of the data and the row width is not zero.
     /// * Number of rows is smaller than or equal to 1.
     /// * Number of rows is not a power of two.
-    pub fn new(data: Vec<[E; 8]>, row_width: usize) -> Self {
+    pub fn new(data: Vec<[E; 8]>) -> Self {
         // assert!(
         //     !data.is_empty(),
         //     "a matrix must contain at least one column"
@@ -72,20 +71,15 @@ where
         //     "number of rows should be a power of 2"
         // );
 
-        Self { data, row_width }
+        Self { data }
     }
 
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Ruturns the chunks size of the data.
-    pub fn arr_size(&self) -> usize {
-        ARR_SIZE
-    }
-
     /// Returns the number of columns in this matrix.
     pub fn num_cols(&self) -> usize {
-        self.row_width
+        ARR_SIZE
     }
 
     /// Returns the number of rows in this matrix.
@@ -109,7 +103,7 @@ where
     /// Panics if either `col_idx` or `row_idx` are out of bounds for this matrix.
     pub fn get(&self, col_idx: usize, row_idx: usize) -> E {
         assert_eq!(col_idx < ARR_SIZE, true);
-        assert_eq!(row_idx < self.data.len(), true);
+        assert_eq!(row_idx < self.num_rows(), true);
         self.data[row_idx][col_idx]
     }
 
@@ -119,7 +113,7 @@ where
     /// Panics if either `col_idx` or `row_idx` are out of bounds for this matrix.
     pub fn set(&mut self, col_idx: usize, row_idx: usize, value: E) {
         assert_eq!(col_idx < ARR_SIZE, true);
-        assert_eq!(row_idx < self.data.len(), true);
+        assert_eq!(row_idx < self.num_rows(), true);
         self.data[row_idx][col_idx] = value;
     }
 
@@ -135,13 +129,13 @@ where
 
     /// Returns a reference to the row at the specified index.
     pub fn get_row(&self, row_idx: usize) -> &[E] {
-        assert_eq!(row_idx < self.data.len(), true);
+        assert_eq!(row_idx < self.num_rows(), true);
         &self.data[row_idx]
     }
 
     /// Returns a mutable reference to the row at the specified index.
     pub fn get_row_mut(&mut self, row_idx: usize) -> &mut [E] {
-        assert_eq!(row_idx < self.data.len(), true);
+        assert_eq!(row_idx < self.num_rows(), true);
         &mut self.data[row_idx]
     }
 
@@ -150,7 +144,7 @@ where
     /// # Panics
     /// Panics if `row_idx` is out of bounds for this matrix.
     pub fn read_row_into(&self, row_idx: usize, row: &mut [E; 8]) {
-        assert_eq!(row_idx < self.data.len(), true);
+        assert_eq!(row_idx < self.num_rows(), true);
         row.copy_from_slice(&self.data[row_idx]);
     }
 
@@ -159,7 +153,7 @@ where
     /// # Panics
     /// Panics if `row_idx` is out of bounds for this matrix.
     pub fn update_row(&mut self, row_idx: usize, row: &[E; 8]) {
-        assert_eq!(row_idx < self.data.len(), true);
+        assert_eq!(row_idx < self.num_rows(), true);
         self.data[row_idx].copy_from_slice(row);
     }
 
@@ -167,7 +161,7 @@ where
     pub fn into_columns(&self) -> Vec<Vec<E>> {
         let mut columns = vec![Vec::new(); ARR_SIZE];
 
-        for i in 0..self.data.len() {
+        for i in 0..self.num_rows() {
             for j in 0..ARR_SIZE {
                 columns[j].push(self.data[i][j]);
             }
@@ -179,7 +173,7 @@ where
     pub fn into_column(&self, index: usize) -> Vec<E> {
         assert!(index < ARR_SIZE);
         let mut column = Vec::new();
-        for i in 0..self.data.len() {
+        for i in 0..self.num_rows() {
             column.push(self.data[i][index]);
         }
         column
@@ -521,16 +515,12 @@ where
                 chunk[d][7] = p.get_row(d)[7] * factor;
                 factor *= offset;
             }
-            let mut matrix_chunk = RowMatrixRef {
-                data: chunk,
-                row_width: p.row_width,
-            };
+            let mut matrix_chunk = RowMatrixRef { data: chunk };
             matrix_chunk.fft_in_place(twiddles);
         });
 
     let mut matrix_result = RowMatrixRef {
         data: result_vec_of_arrays.as_mut_slice(),
-        row_width: p.row_width,
     };
 
     FftInputs::permute(&mut matrix_result);
@@ -554,8 +544,7 @@ where
     let domain_size = p.len() * blowup_factor;
     let g = E::BaseField::get_root_of_unity(log2(domain_size));
 
-    let mut result_vec_of_arrays =
-        unsafe { uninit_vector::<[E; 8]>(domain_size * p.row_width / ARR_SIZE) };
+    let mut result_vec_of_arrays = unsafe { uninit_vector::<[E; 8]>(domain_size) };
 
     let batch_size = p.len()
         / rayon::current_num_threads()
@@ -565,49 +554,42 @@ where
     let p_data = p.get_data();
 
     result_vec_of_arrays
-        .par_chunks_mut(p.len() * p.row_width / ARR_SIZE)
+        .par_chunks_mut(p.len())
         .enumerate()
         .for_each(|(i, chunk)| {
             let idx = permute_index(blowup_factor, i) as u64;
             let offset = E::from(g.exp(idx.into()) * domain_offset);
 
             p_data
-                .par_chunks(batch_size * p.row_width)
-                .zip(chunk.par_chunks_mut(batch_size * p.row_width))
+                .par_chunks(batch_size)
+                .zip(chunk.par_chunks_mut(batch_size))
                 .enumerate()
                 .for_each(|(i, (src, dest))| {
                     let mut factor = offset.exp(((i * batch_size) as u64).into());
 
-                    let chunk_len = src.len() * ARR_SIZE / p.row_width;
-                    let arr_in_each_row = p.row_width / ARR_SIZE;
-
+                    let chunk_len = src.len();
                     for d in 0..chunk_len {
-                        let row_start = d * arr_in_each_row;
-                        for idx in 0..arr_in_each_row {
-                            dest[row_start + idx]
-                                .iter_mut()
-                                .zip(p.data[row_start + idx].iter())
-                                .for_each(|(dest, src)| {
-                                    *dest = *src * factor;
-                                });
-                        }
+                        dest[d][0] = src[d][0] * factor;
+                        dest[d][1] = src[d][1] * factor;
+                        dest[d][2] = src[d][2] * factor;
+                        dest[d][3] = src[d][3] * factor;
+                        dest[d][4] = src[d][4] * factor;
+                        dest[d][5] = src[d][5] * factor;
+                        dest[d][6] = src[d][6] * factor;
+                        dest[d][7] = src[d][7] * factor;
                         factor *= offset;
                     }
                 });
 
-            let mut matrix_chunk = RowMatrixRef {
-                data: chunk,
-                row_width: p.row_width,
-            };
+            let mut matrix_chunk = RowMatrixRef { data: chunk };
             matrix_chunk.fft_in_place(twiddles);
         });
 
     let mut matrix_result = RowMatrixRef {
         data: result_vec_of_arrays.as_mut_slice(),
-        row_width: p.row_width,
     };
 
-    FftInputs::permute(&mut matrix_result);
+    matrix_result.permute_concurrent();
     result_vec_of_arrays
 }
 
@@ -780,7 +762,7 @@ where
     // #[cfg(feature = "concurrent")]
     fn par_mut_chunks(&mut self, chunk_size: usize) -> MatrixChunksMut<'_, E> {
         MatrixChunksMut {
-            data: RowMatrixRef::new(&mut self.data, self.row_width),
+            data: RowMatrixRef::new(&mut self.data),
             chunk_size,
         }
     }
@@ -791,7 +773,6 @@ where
     E: FieldElement,
 {
     data: &'a mut [[E; 8]],
-    row_width: usize,
 }
 
 impl<'a, E> RowMatrixRef<'a, E>
@@ -799,8 +780,8 @@ where
     E: FieldElement,
 {
     /// Creates a new RowMatrixRef from a mutable reference to a slice of arrays.
-    pub fn new(data: &'a mut [[E; 8]], row_width: usize) -> Self {
-        Self { data, row_width }
+    pub fn new(data: &'a mut [[E; 8]]) -> Self {
+        Self { data }
     }
 
     /// Safe mutable slice cast to avoid unnecessary lifetime complexity.
@@ -816,8 +797,8 @@ where
     /// will contain elements at indices [split_point, size).
     fn split_at_mut(&mut self, split_point: usize) -> (Self, Self) {
         let (left, right) = self.as_mut_slice().split_at_mut(split_point);
-        let left = Self::new(left, self.row_width);
-        let right = Self::new(right, self.row_width);
+        let left = Self::new(left);
+        let right = Self::new(right);
         (left, right)
     }
 }
@@ -994,7 +975,6 @@ where
         MatrixChunksMut {
             data: RowMatrixRef {
                 data: self.as_mut_slice(),
-                row_width: self.row_width,
             },
             chunk_size,
         }
@@ -1132,6 +1112,101 @@ where
     }
 }
 
+pub struct Segment<E>
+where
+    E: FieldElement,
+{
+    matrix: Vec<RowMatrix<E>>,
+}
+
+impl<E> Segment<E>
+where
+    E: FieldElement,
+{
+    pub fn new(matrix: Vec<RowMatrix<E>>) -> Self {
+        Self { matrix }
+    }
+
+    pub fn iter(&self) -> SegmentIter<E> {
+        SegmentIter::new(&self.matrix)
+    }
+
+    pub fn iter_mut(&mut self) -> SegmentIterMut<E> {
+        SegmentIterMut::new(&mut self.matrix)
+    }
+
+    pub fn par_iter_mut(&mut self) -> SegmentIterMut<E> {
+        SegmentIterMut::new(&mut self.matrix)
+    }
+
+    pub fn len(&self) -> usize {
+        self.matrix.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.matrix.is_empty()
+    }
+
+    pub fn get(&self, index: usize) -> Option<&RowMatrix<E>> {
+        self.matrix.get(index)
+    }
+
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut RowMatrix<E>> {
+        self.matrix.get_mut(index)
+    }
+
+    pub fn push(&mut self, matrix: RowMatrix<E>) {
+        self.matrix.push(matrix);
+    }
+
+    pub fn pop(&mut self) -> Option<RowMatrix<E>> {
+        self.matrix.pop()
+    }
+
+    pub fn remove(&mut self, index: usize) -> Option<RowMatrix<E>> {
+        Some(self.matrix.remove(index))
+    }
+
+    pub fn insert(&mut self, index: usize, matrix: RowMatrix<E>) {
+        self.matrix.insert(index, matrix);
+    }
+
+    pub fn clear(&mut self) {
+        self.matrix.clear();
+    }
+
+    pub fn as_slice(&self) -> &[RowMatrix<E>] {
+        self.matrix.as_slice()
+    }
+
+    pub fn as_mut_slice(&mut self) -> &mut [RowMatrix<E>] {
+        self.matrix.as_mut_slice()
+    }
+
+    pub fn as_ptr(&self) -> *const RowMatrix<E> {
+        self.matrix.as_ptr()
+    }
+
+    pub fn as_mut_ptr(&mut self) -> *mut RowMatrix<E> {
+        self.matrix.as_mut_ptr()
+    }
+
+    pub fn into_vec(self) -> Vec<RowMatrix<E>> {
+        self.matrix
+    }
+
+    pub fn into_boxed_slice(self) -> Box<[RowMatrix<E>]> {
+        self.matrix.into_boxed_slice()
+    }
+
+    pub fn into_boxed_slice_mut(self) -> Box<[RowMatrix<E>]> {
+        self.matrix.into_boxed_slice()
+    }
+}
+
+// SECTION: ITERATORS
+// ================================================================================================
+
 // COLUMN ITERATOR
 // ================================================================================================
 
@@ -1173,7 +1248,7 @@ impl<'a, E: FieldElement> FusedIterator for SegmentIter<'a, E> {}
 // ================================================================================================
 
 pub struct SegmentIterMut<'a, E: FieldElement> {
-    matrix: &'a mut Vec<RowMatrix<E>>,
+    matrix: &'a mut [RowMatrix<E>],
     cursor: usize,
 }
 
@@ -1232,81 +1307,85 @@ where
 
 impl<'a, E: FieldElement> FusedIterator for SegmentIterMut<'a, E> {}
 
-// impl<'a, E> ParallelIterator for SegmentIterMut<'a, E>
-// where
-//     E: FieldElement + Send,
-// {
-//     type Item = RowMatrix<E>;
+// PARALLEL ITERATORS
+// ================================================================================================
 
-//     fn drive_unindexed<C>(self, consumer: C) -> C::Result
-//     where
-//         C: UnindexedConsumer<Self::Item>,
-//     {
-//         bridge(self, consumer)
-//     }
+impl<'a, E> ParallelIterator for SegmentIterMut<'a, E>
+where
+    E: FieldElement + Send,
+{
+    type Item = &'a mut RowMatrix<E>;
 
-//     fn opt_len(&self) -> Option<usize> {
-//         Some(rayon::iter::IndexedParallelIterator::len(self))
-//     }
-// }
+    fn drive_unindexed<C>(self, consumer: C) -> C::Result
+    where
+        C: UnindexedConsumer<Self::Item>,
+    {
+        bridge(self, consumer)
+    }
 
-// // #[cfg(feature = "concurrent")]
-// impl<'a, E> IndexedParallelIterator for SegmentIterMut<'a, E>
-// where
-//     E: FieldElement + Send,
-// {
-//     fn with_producer<CB: ProducerCallback<Self::Item>>(self, callback: CB) -> CB::Output {
-//         let producer = SegmentMutProducer {
-//             matrix: self.matrix,
-//             cursor: self.cursor,
-//         };
-//         callback.callback(producer)
-//     }
+    fn opt_len(&self) -> Option<usize> {
+        Some(rayon::iter::IndexedParallelIterator::len(self))
+    }
+}
 
-//     fn drive<C: Consumer<Self::Item>>(self, consumer: C) -> C::Result {
-//         bridge(self, consumer)
-//     }
+// #[cfg(feature = "concurrent")]
+impl<'a, E> IndexedParallelIterator for SegmentIterMut<'a, E>
+where
+    E: FieldElement + Send,
+{
+    fn with_producer<CB: ProducerCallback<Self::Item>>(self, callback: CB) -> CB::Output {
+        let producer = SegmentMutProducer {
+            matrix: self.matrix,
+            cursor: self.cursor,
+        };
+        callback.callback(producer)
+    }
 
-//     fn len(&self) -> usize {
-//         self.matrix.len()
-//     }
-// }
+    fn drive<C: Consumer<Self::Item>>(self, consumer: C) -> C::Result {
+        bridge(self, consumer)
+    }
 
-// // #[cfg(feature = "concurrent")]
-// struct SegmentMutProducer<'a, E>
-// where
-//     E: FieldElement,
-// {
-//     matrix: &'a mut Vec<RowMatrix<E>>,
-//     cursor: usize,
-// }
+    fn len(&self) -> usize {
+        self.matrix.len()
+    }
+}
 
-// // #[cfg(feature = "concurrent")]
-// impl<'a, E> Producer for SegmentMutProducer<'a, E>
-// where
-//     E: FieldElement,
-// {
-//     type Item = &'a mut RowMatrix<E>;
-//     type IntoIter = SegmentIterMut<'a, E>;
+// #[cfg(feature = "concurrent")]
+struct SegmentMutProducer<'a, E>
+where
+    E: FieldElement,
+{
+    matrix: &'a mut [RowMatrix<E>],
+    cursor: usize,
+}
 
-//     fn into_iter(self) -> Self::IntoIter {
-//         SegmentIterMut {
-//             matrix: self.matrix,
-//             cursor: self.cursor,
-//         }
-//     }
+// #[cfg(feature = "concurrent")]
+impl<'a, E> Producer for SegmentMutProducer<'a, E>
+where
+    E: FieldElement,
+{
+    type Item = &'a mut RowMatrix<E>;
+    type IntoIter = SegmentIterMut<'a, E>;
 
-//     fn split_at(self, index: usize) -> (Self, Self) {
-//         let (left, right) = self.matrix.split_at_mut(index);
-//         (
-//             SegmentMutProducer {
-//                 matrix: left,
-//                 cursor: self.cursor,
-//             },
-//             SegmentMutProducer {
-//                 matrix: right,
-//                 cursor: self.cursor,
-//             },
-//         )
-//     }
-// }
+    fn into_iter(self) -> Self::IntoIter {
+        SegmentIterMut {
+            matrix: self.matrix,
+            cursor: self.cursor,
+        }
+    }
+
+    fn split_at(self, index: usize) -> (Self, Self) {
+        let (left, right) = self.matrix.split_at_mut(index);
+
+        (
+            SegmentMutProducer {
+                matrix: left,
+                cursor: self.cursor,
+            },
+            SegmentMutProducer {
+                matrix: right,
+                cursor: self.cursor,
+            },
+        )
+    }
+}

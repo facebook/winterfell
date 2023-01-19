@@ -18,6 +18,7 @@ use rand_utils::rand_vector;
 use rayon::prelude::{
     IndexedParallelIterator, IntoParallelIterator, IntoParallelRefMutIterator, ParallelIterator,
 };
+use row_matrix::Segment;
 use utils::collections::Vec;
 
 #[test]
@@ -135,9 +136,9 @@ fn test_eval_poly_with_offset_matrix() {
     let twiddles = get_twiddles::<BaseElement>(n);
     for row_matrix in matrix_vec.iter_mut() {
         let res = evaluate_poly_with_offset(&row_matrix, &twiddles, offset, blowup_factor);
-        result_vec.push(RowMatrix::new(res, num_polys));
+        result_vec.push(RowMatrix::new(res));
     }
-    let result_data = flatten_row_matrix(result_vec);
+    let result_data = flatten_row_matrix(Segment::new(result_vec));
     assert_eq!(eval_cols_flatten, result_data);
 }
 
@@ -199,7 +200,7 @@ fn test_eval_poly_matrix_concurrent() {
     let num_polys = 16;
     let mut columns: Vec<Vec<BaseElement>> = (0..num_polys).map(|_| rand_vector(n)).collect();
 
-    let mut matrix_vec = build_row_matrix(columns.clone());
+    let mut matrix_vec: Segment<BaseElement> = build_row_matrix(columns.clone());
     let twiddles = get_twiddles::<BaseElement>(n);
     let domain = build_domain(n);
     for p in columns.iter_mut() {
@@ -208,7 +209,7 @@ fn test_eval_poly_matrix_concurrent() {
     let eval_col = transpose(columns);
     let eval_cols_faltten = eval_col.into_iter().flatten().collect::<Vec<_>>();
 
-    for row_matrix in matrix_vec.iter_mut() {
+    for row_matrix in matrix_vec.par_iter_mut() {
         row_matrix.split_radix_fft(&twiddles);
         row_matrix.permute_concurrent();
     }
@@ -217,96 +218,85 @@ fn test_eval_poly_matrix_concurrent() {
     assert_eq!(eval_cols_faltten, matrix_data);
 }
 
-// #[test]
-// fn test_eval_poly_with_offset_matrix_concurrent() {
-//     let n = 1024;
-//     let num_polys = 32;
-//     let blowup_factor = 8;
-//     let mut columns: Vec<Vec<BaseElement>> = (0..num_polys).map(|_| rand_vector(n)).collect();
-//     let rows = transpose_concurrent(columns.clone());
-//     let row_width = rows[0].len();
-//     let mut flatten_rows = rows.into_iter().flatten().collect::<Vec<_>>();
-//     let matrix = RowMatrix::new(&mut flatten_rows, row_width);
+#[test]
+fn test_eval_poly_with_offset_matrix_concurrent() {
+    let n = 1024;
+    let num_polys = 32;
+    let blowup_factor = 8;
+    let mut columns: Vec<Vec<BaseElement>> = (0..num_polys).map(|_| rand_vector(n)).collect();
 
-//     let offset = BaseElement::GENERATOR;
-//     let domain = build_domain(n * blowup_factor);
-//     let shifted_domain = domain.iter().map(|&x| x * offset).collect::<Vec<_>>();
+    let mut matrix_vec = build_row_matrix(columns.clone());
 
-//     for p in columns.iter_mut() {
-//         *p = polynom::eval_many(p, &shifted_domain);
-//     }
-//     let eval_col = transpose_concurrent(columns);
-//     let eval_cols_faltten = eval_col.into_iter().flatten().collect::<Vec<_>>();
+    let offset = BaseElement::GENERATOR;
+    let domain = build_domain(n * blowup_factor);
+    let shifted_domain = domain.iter().map(|&x| x * offset).collect::<Vec<_>>();
 
-//     let twiddles = get_twiddles::<BaseElement>(matrix.len());
-//     let eval_vector =
-//         evaluate_poly_with_offset_concurrent(&matrix, &twiddles, offset, blowup_factor);
-//     assert_eq!(eval_cols_faltten, eval_vector);
-// }
+    for p in columns.iter_mut() {
+        *p = polynom::eval_many(p, &shifted_domain);
+    }
+    let eval_col = transpose(columns);
+    let eval_cols_flatten = eval_col.into_iter().flatten().collect::<Vec<_>>();
 
-// #[test]
-// fn test_interpolate_poly_matrix_concurrent() {
-//     let n = 1024 * 16;
-//     let num_polys = 72;
+    let mut result_vec: Vec<RowMatrix<BaseElement>> = Vec::new();
 
-//     let rows: Vec<Vec<BaseElement>> = (0..n).map(|_| rand_vector(num_polys)).collect();
+    let twiddles = get_twiddles::<BaseElement>(n);
+    for row_matrix in matrix_vec.par_iter_mut() {
+        let res =
+            evaluate_poly_with_offset_concurrent(&row_matrix, &twiddles, offset, blowup_factor);
+        result_vec.push(RowMatrix::new(res));
+    }
+    let result_data = flatten_row_matrix(Segment::new(result_vec));
+    assert_eq!(eval_cols_flatten, result_data);
+}
 
-//     let row_width = rows[0].len();
-//     let mut flatten_table = rows.into_iter().flatten().collect::<Vec<_>>();
-//     let mut table = RowMatrix::new(&mut flatten_table, row_width);
+#[test]
+fn test_interpolate_poly_matrix_concurrent() {
+    // degree 127
+    let n = 128;
+    let num_polys = 72;
 
-//     // let twiddles = fft::get_twiddles::<BaseElement>(SIZE);
+    let mut columns: Vec<Vec<BaseElement>> = (0..num_polys).map(|_| rand_vector(n)).collect();
+    let matrix_vec = build_row_matrix(columns.clone());
+    let matrix_data_flatten = flatten_row_matrix(matrix_vec);
 
-//     // let mut columns: Vec<Vec<BaseElement>> = (0..num_polys).map(|_| rand_vector(n)).collect();
-//     // let rows = transpose_concurrent(columns.clone());
-//     // let row_width = rows[0].len();
-//     // let mut flatten_rows = rows.into_iter().flatten().collect::<Vec<_>>();
-//     // let matrix = RowMatrix::new(&mut flatten_rows, row_width);
+    let domain = build_domain(n);
+    for p in columns.iter_mut() {
+        *p = polynom::eval_many(p, &domain);
+    }
+    let mut interpolate_matrix_vec = build_row_matrix(columns.clone());
+    let inv_twiddles = get_inv_twiddles::<BaseElement>(n);
+    for row_matrix in interpolate_matrix_vec.par_iter_mut() {
+        RowMatrix::interpolate_poly_concurrent(row_matrix, &inv_twiddles);
+    }
+    let result_data = flatten_row_matrix(interpolate_matrix_vec);
+    assert_eq!(matrix_data_flatten, result_data);
+}
 
-//     // let offset = BaseElement::GENERATOR;
-//     // let domain = build_domain(n);
-//     // for p in columns.iter_mut() {
-//     //     *p = polynom::eval_many(p, &domain);
-//     // }
-//     // let eval_col = transpose_concurrent(columns);
-//     // let mut eval_cols_faltten = eval_col.into_iter().flatten().collect::<Vec<_>>();
-//     // let mut interpolate_matrix = RowMatrix::new(&mut eval_cols_faltten, row_width);
+#[test]
+fn test_interpolate_poly_with_offset_matrix_concurrent() {
+    // degree 127
+    let n = 128;
+    let num_polys = 72;
 
-//     let inv_twiddles = get_inv_twiddles::<BaseElement>(table.len());
-//     RowMatrix::interpolate_poly_concurrent(&mut table, &inv_twiddles);
-//     // assert_eq!(interpolate_matrix.as_data(), matrix.as_data());
-// }
+    let mut columns: Vec<Vec<BaseElement>> = (0..num_polys).map(|_| rand_vector(n)).collect();
+    let matrix_vec = build_row_matrix(columns.clone());
+    let matrix_data_flatten = flatten_row_matrix(matrix_vec);
 
-// #[test]
-// fn test_interpolate_poly_with_offset_matrix_concurrent() {
-//     // degree 15
-//     let n = 1024;
-//     let num_polys = 16;
+    let offset = BaseElement::GENERATOR;
+    let domain = build_domain(n);
+    let shifted_domain = domain.iter().map(|&x| x * offset).collect::<Vec<_>>();
+    for p in columns.iter_mut() {
+        *p = polynom::eval_many(p, &shifted_domain);
+    }
 
-//     let mut columns: Vec<Vec<BaseElement>> = (0..num_polys).map(|_| rand_vector(n)).collect();
-//     let rows = transpose_concurrent(columns.clone());
-//     let row_width = rows[0].len();
-//     let mut flatten_rows = rows.into_iter().flatten().collect::<Vec<_>>();
-//     let matrix = RowMatrix::new(&mut flatten_rows, row_width);
-
-//     let offset = BaseElement::GENERATOR;
-//     let domain = build_domain(n);
-//     let shifted_domain = domain.iter().map(|&x| x * offset).collect::<Vec<_>>();
-//     for p in columns.iter_mut() {
-//         *p = polynom::eval_many(p, &shifted_domain);
-//     }
-//     let eval_col = transpose_concurrent(columns);
-//     let mut eval_cols_faltten = eval_col.into_iter().flatten().collect::<Vec<_>>();
-//     let mut interpolate_matrix = RowMatrix::new(&mut eval_cols_faltten, row_width);
-
-//     let inv_twiddles = get_inv_twiddles::<BaseElement>(matrix.len());
-//     RowMatrix::interpolate_poly_with_offset_concurrent(
-//         &mut interpolate_matrix,
-//         &inv_twiddles,
-//         offset,
-//     );
-//     assert_eq!(interpolate_matrix.as_data(), matrix.as_data());
-// }
+    let mut interpolate_matrix_vec = build_row_matrix(columns.clone());
+    let inv_twiddles = get_inv_twiddles::<BaseElement>(n);
+    for row_matrix in interpolate_matrix_vec.par_iter_mut() {
+        RowMatrix::interpolate_poly_with_offset_concurrent(row_matrix, &inv_twiddles, offset);
+    }
+    let result_data = flatten_row_matrix(interpolate_matrix_vec);
+    assert_eq!(matrix_data_flatten, result_data);
+}
 
 // HELPER FUNCTIONS
 // ================================================================================================
@@ -345,7 +335,7 @@ fn transpose_concurrent<E: FieldElement>(matrix: Vec<Vec<E>>) -> Vec<Vec<E>> {
 }
 
 /// Build a vector of RowMatrix objects from a column major matrix.
-fn build_row_matrix<E>(matrix: Vec<Vec<E>>) -> Vec<RowMatrix<E>>
+fn build_row_matrix<E>(matrix: Vec<Vec<E>>) -> Segment<E>
 where
     E: FieldElement,
 {
@@ -361,10 +351,10 @@ where
             .map(|vec| to_array(vec))
             .collect();
 
-        let mut row_matrix = RowMatrix::new(row_matrix_data, ARR_SIZE);
+        let mut row_matrix = RowMatrix::new(row_matrix_data);
         row_matrices.push(row_matrix);
     }
-    row_matrices
+    Segment::new(row_matrices)
 }
 
 /// Convert a vector of field elements to a arrays of field elements. The size of the array is
@@ -380,15 +370,17 @@ fn to_array<E: FieldElement>(v: Vec<E>) -> [E; ARR_SIZE] {
 
 /// Flattens a vector of RowMatrix objects into a slice. The slice is a row major representation of
 /// the matrix.
-fn flatten_row_matrix<E>(row_matrices: Vec<RowMatrix<E>>) -> Vec<E>
+fn flatten_row_matrix<E>(row_matrices: Segment<E>) -> Vec<E>
 where
     E: FieldElement,
 {
-    let mut result = Vec::with_capacity(row_matrices.len() * row_matrices[0].len() * ARR_SIZE);
-    let each_row_matrix_len = row_matrices[0].len();
+    let mut result = Vec::with_capacity(
+        row_matrices.len() * row_matrices.get(0).expect("Error").len() * ARR_SIZE,
+    );
+    let each_row_matrix_len = row_matrices.get(0).expect("Error").len();
 
     for i in 0..each_row_matrix_len {
-        for row_matrix in &row_matrices {
+        for row_matrix in row_matrices.iter() {
             let row = row_matrix.get_row(i);
             result.extend_from_slice(row);
         }
