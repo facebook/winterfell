@@ -141,7 +141,7 @@ pub(super) fn split_radix_fft<B: StarkField, E: FieldElement<BaseField = B>>(
     // apply inner FFTs
     values
         .par_chunks_mut(outer_len)
-        .for_each(|row| super::serial::fft_in_place(row, &twiddles, stretch, stretch, 0));
+        .for_each(|row| super::fft_inputs::fft_in_place(row, &twiddles, stretch, stretch, 0));
 
     // transpose inner x inner x stretch square matrix
     transpose_square_stretch(values, inner_len, stretch);
@@ -160,7 +160,7 @@ pub(super) fn split_radix_fft<B: StarkField, E: FieldElement<BaseField = B>>(
                     outer_twiddle = outer_twiddle * inner_twiddle;
                 }
             }
-            super::serial::fft_in_place(row, &twiddles, 1, 1, 0)
+            super::fft_inputs::fft_in_place(row, &twiddles, 1, 1, 0)
         });
 }
 

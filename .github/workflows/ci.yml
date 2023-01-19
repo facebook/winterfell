@@ -7,6 +7,27 @@ on:
     types: [opened, repoened, synchronize]
 
 jobs:
+  check:
+    name: Check with all features
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [stable]
+        os: [ubuntu]
+    steps:
+      - uses: actions/checkout@main
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{matrix.toolchain}}
+          override: true
+      - name: Check
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --all-features
+
   test:
     name: Test Rust ${{matrix.toolchain}} on ${{matrix.os}}
     runs-on: ${{matrix.os}}-latest

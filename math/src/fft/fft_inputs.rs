@@ -125,8 +125,13 @@ where
 /// In-place recursive FFT with permuted output.
 ///
 /// Adapted from: https://github.com/0xProject/OpenZKP/tree/master/algebra/primefield/src/fft
-fn fft_in_place<B, I>(values: &mut I, twiddles: &[B], count: usize, stride: usize, offset: usize)
-where
+pub(super) fn fft_in_place<B, I>(
+    values: &mut I,
+    twiddles: &[B],
+    count: usize,
+    stride: usize,
+    offset: usize,
+) where
     B: StarkField,
     I: FftInputs<B> + ?Sized,
 {
