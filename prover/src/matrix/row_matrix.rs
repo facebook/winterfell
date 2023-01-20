@@ -32,6 +32,7 @@ pub const ARR_SIZE: usize = 8;
 // RowMatrix MATRIX
 // ================================================================================================
 
+#[derive(Clone, Debug)]
 pub struct RowMatrix<E>
 where
     E: FieldElement,
@@ -1115,6 +1116,7 @@ where
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Segment<E>
 where
     E: FieldElement,
@@ -1131,6 +1133,10 @@ where
     }
 
     pub fn iter(&self) -> SegmentIter<E> {
+        SegmentIter::new(&self.matrix)
+    }
+
+    pub fn par_iter(&self) -> SegmentIter<E> {
         SegmentIter::new(&self.matrix)
     }
 
@@ -1214,7 +1220,7 @@ where
 // ================================================================================================
 
 pub struct SegmentIter<'a, E: FieldElement> {
-    matrix: &'a Vec<RowMatrix<E>>,
+    matrix: &'a [RowMatrix<E>],
     cursor: usize,
 }
 
@@ -1234,6 +1240,21 @@ impl<'a, E: FieldElement> Iterator for SegmentIter<'a, E> {
                 let column = &self.matrix[self.cursor];
                 self.cursor += 1;
                 Some(&column)
+            }
+        }
+    }
+}
+
+impl<'a, E> DoubleEndedIterator for SegmentIter<'a, E>
+where
+    E: FieldElement,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        match self.cursor {
+            0 => None,
+            _ => {
+                self.cursor -= 1;
+                Some(&self.matrix[self.cursor])
             }
         }
     }
@@ -1386,6 +1407,86 @@ where
                 cursor: self.cursor,
             },
             SegmentMutProducer {
+                matrix: right,
+                cursor: self.cursor,
+            },
+        )
+    }
+}
+
+impl<'a, E> ParallelIterator for SegmentIter<'a, E>
+where
+    E: FieldElement + Send,
+{
+    type Item = &'a RowMatrix<E>;
+
+    fn drive_unindexed<C>(self, consumer: C) -> C::Result
+    where
+        C: UnindexedConsumer<Self::Item>,
+    {
+        bridge(self, consumer)
+    }
+
+    fn opt_len(&self) -> Option<usize> {
+        Some(rayon::iter::IndexedParallelIterator::len(self))
+    }
+}
+
+// #[cfg(feature = "concurrent")]
+impl<'a, E> IndexedParallelIterator for SegmentIter<'a, E>
+where
+    E: FieldElement + Send,
+{
+    fn with_producer<CB: ProducerCallback<Self::Item>>(self, callback: CB) -> CB::Output {
+        let producer = SegmentProducer {
+            matrix: self.matrix,
+            cursor: self.cursor,
+        };
+        callback.callback(producer)
+    }
+
+    fn drive<C: Consumer<Self::Item>>(self, consumer: C) -> C::Result {
+        bridge(self, consumer)
+    }
+
+    fn len(&self) -> usize {
+        self.matrix.len()
+    }
+}
+
+// #[cfg(feature = "concurrent")]
+struct SegmentProducer<'a, E>
+where
+    E: FieldElement,
+{
+    matrix: &'a [RowMatrix<E>],
+    cursor: usize,
+}
+
+// #[cfg(feature = "concurrent")]
+impl<'a, E> Producer for SegmentProducer<'a, E>
+where
+    E: FieldElement,
+{
+    type Item = &'a RowMatrix<E>;
+    type IntoIter = SegmentIter<'a, E>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        SegmentIter {
+            matrix: self.matrix,
+            cursor: self.cursor,
+        }
+    }
+
+    fn split_at(self, index: usize) -> (Self, Self) {
+        let (left, right) = self.matrix.split_at(index);
+
+        (
+            SegmentProducer {
+                matrix: left,
+                cursor: self.cursor,
+            },
+            SegmentProducer {
                 matrix: right,
                 cursor: self.cursor,
             },
