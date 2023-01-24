@@ -27,7 +27,7 @@ use rayon::{
 // CONSTANTS
 // ================================================================================================
 
-pub const ARR_SIZE: usize = 8;
+pub const ARR_SIZE: usize = 4;
 
 // RowMatrix MATRIX
 // ================================================================================================
@@ -40,7 +40,7 @@ where
     data: Vec<[E; ARR_SIZE]>,
 }
 
-impl<'a, E> RowMatrix<E>
+impl<E> RowMatrix<E>
 where
     E: FieldElement,
 {
@@ -54,7 +54,7 @@ where
     /// * The remainder of the length of the data and the row width is not zero.
     /// * Number of rows is smaller than or equal to 1.
     /// * Number of rows is not a power of two.
-    pub fn new(data: Vec<[E; 8]>) -> Self {
+    pub fn new(data: Vec<[E; ARR_SIZE]>) -> Self {
         // assert!(
         //     !data.is_empty(),
         //     "a matrix must contain at least one column"
@@ -89,12 +89,12 @@ where
     }
 
     /// Returns the data in this matrix as a mutable slice of arrays.
-    pub fn as_data_mut(&mut self) -> &mut [[E; 8]] {
+    pub fn as_data_mut(&mut self) -> &mut [[E; ARR_SIZE]] {
         &mut self.data
     }
 
     /// Returns the data in this matrix as a slice of arrays.
-    pub fn as_data(&self) -> &[[E; 8]] {
+    pub fn as_data(&self) -> &[[E; ARR_SIZE]] {
         &self.data
     }
 
@@ -103,8 +103,8 @@ where
     /// # Panics
     /// Panics if either `col_idx` or `row_idx` are out of bounds for this matrix.
     pub fn get(&self, col_idx: usize, row_idx: usize) -> E {
-        assert_eq!(col_idx < ARR_SIZE, true);
-        assert_eq!(row_idx < self.num_rows(), true);
+        assert!(col_idx < ARR_SIZE);
+        assert!(row_idx < self.num_rows());
         self.data[row_idx][col_idx]
     }
 
@@ -113,8 +113,8 @@ where
     /// # Panics
     /// Panics if either `col_idx` or `row_idx` are out of bounds for this matrix.
     pub fn set(&mut self, col_idx: usize, row_idx: usize, value: E) {
-        assert_eq!(col_idx < ARR_SIZE, true);
-        assert_eq!(row_idx < self.num_rows(), true);
+        assert!(col_idx < ARR_SIZE);
+        assert!(row_idx < self.num_rows());
         self.data[row_idx][col_idx] = value;
     }
 
@@ -130,13 +130,13 @@ where
 
     /// Returns a reference to the row at the specified index.
     pub fn get_row(&self, row_idx: usize) -> &[E] {
-        assert_eq!(row_idx < self.num_rows(), true);
+        assert!(row_idx < self.num_rows());
         &self.data[row_idx]
     }
 
     /// Returns a mutable reference to the row at the specified index.
     pub fn get_row_mut(&mut self, row_idx: usize) -> &mut [E] {
-        assert_eq!(row_idx < self.num_rows(), true);
+        assert!(row_idx < self.num_rows());
         &mut self.data[row_idx]
     }
 
@@ -144,8 +144,8 @@ where
     ///
     /// # Panics
     /// Panics if `row_idx` is out of bounds for this matrix.
-    pub fn read_row_into(&self, row_idx: usize, row: &mut [E; 8]) {
-        assert_eq!(row_idx < self.num_rows(), true);
+    pub fn read_row_into(&self, row_idx: usize, row: &mut [E; ARR_SIZE]) {
+        assert!(row_idx < self.num_rows());
         row.copy_from_slice(&self.data[row_idx]);
     }
 
@@ -153,8 +153,8 @@ where
     ///
     /// # Panics
     /// Panics if `row_idx` is out of bounds for this matrix.
-    pub fn update_row(&mut self, row_idx: usize, row: &[E; 8]) {
-        assert_eq!(row_idx < self.num_rows(), true);
+    pub fn update_row(&mut self, row_idx: usize, row: &[E; ARR_SIZE]) {
+        assert!(row_idx < self.num_rows());
         self.data[row_idx].copy_from_slice(row);
     }
 
@@ -184,7 +184,7 @@ where
     // ================================================================================================
 
     /// Returns the underlying slice of data.
-    pub fn get_data(&self) -> &Vec<[E; 8]> {
+    pub fn get_data(&self) -> &Vec<[E; ARR_SIZE]> {
         &self.data
     }
 
@@ -275,7 +275,7 @@ where
     ///   [StarkDomain] using FFT algorithm. The domain specification includes the size of the
     ///   subgroup as well as the domain offset (to define a coset).
     /// * The resulting evaluations are returned in a new Matrix.
-    pub fn evaluate_columns_over(&self, domain: &StarkDomain<E::BaseField>) -> Vec<[E; 8]> {
+    pub fn evaluate_columns_over(&self, domain: &StarkDomain<E::BaseField>) -> Vec<[E; ARR_SIZE]> {
         let blowup_factor = domain.trace_to_lde_blowup();
         let domain_offset = domain.offset();
         let twiddles = domain.trace_twiddles();
@@ -490,14 +490,14 @@ pub fn evaluate_poly_with_offset<E>(
     twiddles: &[E::BaseField],
     domain_offset: E::BaseField,
     blowup_factor: usize,
-) -> Vec<[E; 8]>
+) -> Vec<[E; ARR_SIZE]>
 where
     E: FieldElement,
 {
     let domain_size = p.len() * blowup_factor;
     let g = E::BaseField::get_root_of_unity(log2(domain_size));
 
-    let mut result_vec_of_arrays = unsafe { uninit_vector::<[E; 8]>(domain_size) };
+    let mut result_vec_of_arrays = unsafe { uninit_vector::<[E; ARR_SIZE]>(domain_size) };
 
     result_vec_of_arrays
         .chunks_mut(p.len())
@@ -513,10 +513,10 @@ where
                 chunk[d][1] = p.get_row(d)[1] * factor;
                 chunk[d][2] = p.get_row(d)[2] * factor;
                 chunk[d][3] = p.get_row(d)[3] * factor;
-                chunk[d][4] = p.get_row(d)[4] * factor;
-                chunk[d][5] = p.get_row(d)[5] * factor;
-                chunk[d][6] = p.get_row(d)[6] * factor;
-                chunk[d][7] = p.get_row(d)[7] * factor;
+                // chunk[d][4] = p.get_row(d)[4] * factor;
+                // chunk[d][5] = p.get_row(d)[5] * factor;
+                // chunk[d][6] = p.get_row(d)[6] * factor;
+                // chunk[d][7] = p.get_row(d)[7] * factor;
                 factor *= offset;
             }
             let mut matrix_chunk = RowMatrixRef { data: chunk };
@@ -541,14 +541,14 @@ pub fn evaluate_poly_with_offset_concurrent<E>(
     twiddles: &[E::BaseField],
     domain_offset: E::BaseField,
     blowup_factor: usize,
-) -> Vec<[E; 8]>
+) -> Vec<[E; ARR_SIZE]>
 where
     E: FieldElement,
 {
     let domain_size = p.len() * blowup_factor;
     let g = E::BaseField::get_root_of_unity(log2(domain_size));
 
-    let mut result_vec_of_arrays = unsafe { uninit_vector::<[E; 8]>(domain_size) };
+    let mut result_vec_of_arrays = unsafe { uninit_vector::<[E; ARR_SIZE]>(domain_size) };
 
     let batch_size = p.len()
         / rayon::current_num_threads()
@@ -577,10 +577,10 @@ where
                         dest[d][1] = src[d][1] * factor;
                         dest[d][2] = src[d][2] * factor;
                         dest[d][3] = src[d][3] * factor;
-                        dest[d][4] = src[d][4] * factor;
-                        dest[d][5] = src[d][5] * factor;
-                        dest[d][6] = src[d][6] * factor;
-                        dest[d][7] = src[d][7] * factor;
+                        // dest[d][4] = src[d][4] * factor;
+                        // dest[d][5] = src[d][5] * factor;
+                        // dest[d][6] = src[d][6] * factor;
+                        // dest[d][7] = src[d][7] * factor;
                         factor *= offset;
                     }
                 });
@@ -632,21 +632,21 @@ where
         self.data[i][3] = temp[3] + self.data[j][3];
         self.data[j][3] = temp[3] - self.data[j][3];
 
-        // apply on 5th element of the array.
-        self.data[i][4] = temp[4] + self.data[j][4];
-        self.data[j][4] = temp[4] - self.data[j][4];
+        // // apply on 5th element of the array.
+        // self.data[i][4] = temp[4] + self.data[j][4];
+        // self.data[j][4] = temp[4] - self.data[j][4];
 
-        // apply on 6th element of the array.
-        self.data[i][5] = temp[5] + self.data[j][5];
-        self.data[j][5] = temp[5] - self.data[j][5];
+        // // apply on 6th element of the array.
+        // self.data[i][5] = temp[5] + self.data[j][5];
+        // self.data[j][5] = temp[5] - self.data[j][5];
 
-        // apply on 7th element of the array.
-        self.data[i][6] = temp[6] + self.data[j][6];
-        self.data[j][6] = temp[6] - self.data[j][6];
+        // // apply on 7th element of the array.
+        // self.data[i][6] = temp[6] + self.data[j][6];
+        // self.data[j][6] = temp[6] - self.data[j][6];
 
-        // apply on 8th element of the array.
-        self.data[i][7] = temp[7] + self.data[j][7];
-        self.data[j][7] = temp[7] - self.data[j][7];
+        // // apply on 8th element of the array.
+        // self.data[i][7] = temp[7] + self.data[j][7];
+        // self.data[j][7] = temp[7] - self.data[j][7];
     }
 
     #[inline(always)]
@@ -677,25 +677,25 @@ where
         self.data[i][3] = temp[3] + self.data[j][3];
         self.data[j][3] = temp[3] - self.data[j][3];
 
-        // apply of index 4 of twiddle.
-        self.data[j][4] = self.data[j][4] * twiddle;
-        self.data[i][4] = temp[4] + self.data[j][4];
-        self.data[j][4] = temp[4] - self.data[j][4];
+        // // apply of index 4 of twiddle.
+        // self.data[j][4] = self.data[j][4] * twiddle;
+        // self.data[i][4] = temp[4] + self.data[j][4];
+        // self.data[j][4] = temp[4] - self.data[j][4];
 
-        // apply of index 5 of twiddle.
-        self.data[j][5] = self.data[j][5] * twiddle;
-        self.data[i][5] = temp[5] + self.data[j][5];
-        self.data[j][5] = temp[5] - self.data[j][5];
+        // // apply of index 5 of twiddle.
+        // self.data[j][5] = self.data[j][5] * twiddle;
+        // self.data[i][5] = temp[5] + self.data[j][5];
+        // self.data[j][5] = temp[5] - self.data[j][5];
 
-        // apply of index 6 of twiddle.
-        self.data[j][6] = self.data[j][6] * twiddle;
-        self.data[i][6] = temp[6] + self.data[j][6];
-        self.data[j][6] = temp[6] - self.data[j][6];
+        // // apply of index 6 of twiddle.
+        // self.data[j][6] = self.data[j][6] * twiddle;
+        // self.data[i][6] = temp[6] + self.data[j][6];
+        // self.data[j][6] = temp[6] - self.data[j][6];
 
-        // apply of index 7 of twiddle.
-        self.data[j][7] = self.data[j][7] * twiddle;
-        self.data[i][7] = temp[7] + self.data[j][7];
-        self.data[j][7] = temp[7] - self.data[j][7];
+        // // apply of index 7 of twiddle.
+        // self.data[j][7] = self.data[j][7] * twiddle;
+        // self.data[i][7] = temp[7] + self.data[j][7];
+        // self.data[j][7] = temp[7] - self.data[j][7];
     }
 
     fn swap(&mut self, i: usize, j: usize) {
@@ -718,17 +718,17 @@ where
             // apply on index 3.
             self.data[row_idx][3] *= offset;
 
-            // apply on index 4.
-            self.data[row_idx][4] *= offset;
+            // // apply on index 4.
+            // self.data[row_idx][4] *= offset;
 
-            // apply on index 5.
-            self.data[row_idx][5] *= offset;
+            // // apply on index 5.
+            // self.data[row_idx][5] *= offset;
 
-            // apply on index 6.
-            self.data[row_idx][6] *= offset;
+            // // apply on index 6.
+            // self.data[row_idx][6] *= offset;
 
-            // apply on index 7.
-            self.data[row_idx][7] *= offset;
+            // // apply on index 7.
+            // self.data[row_idx][7] *= offset;
 
             offset *= increment;
         }
@@ -750,17 +750,17 @@ where
             // apply on index 3.
             self.data[row_idx][3] *= offset;
 
-            // apply on index 4.
-            self.data[row_idx][4] *= offset;
+            // // apply on index 4.
+            // self.data[row_idx][4] *= offset;
 
-            // apply on index 5.
-            self.data[row_idx][5] *= offset;
+            // // apply on index 5.
+            // self.data[row_idx][5] *= offset;
 
-            // apply on index 6.
-            self.data[row_idx][6] *= offset;
+            // // apply on index 6.
+            // self.data[row_idx][6] *= offset;
 
-            // apply on index 7.
-            self.data[row_idx][7] *= offset;
+            // // apply on index 7.
+            // self.data[row_idx][7] *= offset;
         }
     }
     // #[cfg(feature = "concurrent")]
@@ -776,7 +776,7 @@ pub struct RowMatrixRef<'a, E>
 where
     E: FieldElement,
 {
-    data: &'a mut [[E; 8]],
+    data: &'a mut [[E; ARR_SIZE]],
 }
 
 impl<'a, E> RowMatrixRef<'a, E>
@@ -784,13 +784,13 @@ where
     E: FieldElement,
 {
     /// Creates a new RowMatrixRef from a mutable reference to a slice of arrays.
-    pub fn new(data: &'a mut [[E; 8]]) -> Self {
+    pub fn new(data: &'a mut [[E; ARR_SIZE]]) -> Self {
         Self { data }
     }
 
     /// Safe mutable slice cast to avoid unnecessary lifetime complexity.
-    fn as_mut_slice(&mut self) -> &'a mut [[E; 8]] {
-        let ptr = self.data as *mut [[E; 8]];
+    fn as_mut_slice(&mut self) -> &'a mut [[E; ARR_SIZE]] {
+        let ptr = self.data as *mut [[E; ARR_SIZE]];
         // Safety: we still hold the mutable reference to the slice so no ownership rule is
         // violated.
         unsafe { ptr.as_mut().expect("the initial reference was not valid.") }
@@ -842,21 +842,21 @@ where
         self.data[i][3] = temp[3] + self.data[j][3];
         self.data[j][3] = temp[3] - self.data[j][3];
 
-        // apply on 5th element of the array.
-        self.data[i][4] = temp[4] + self.data[j][4];
-        self.data[j][4] = temp[4] - self.data[j][4];
+        // // apply on 5th element of the array.
+        // self.data[i][4] = temp[4] + self.data[j][4];
+        // self.data[j][4] = temp[4] - self.data[j][4];
 
-        // apply on 6th element of the array.
-        self.data[i][5] = temp[5] + self.data[j][5];
-        self.data[j][5] = temp[5] - self.data[j][5];
+        // // apply on 6th element of the array.
+        // self.data[i][5] = temp[5] + self.data[j][5];
+        // self.data[j][5] = temp[5] - self.data[j][5];
 
-        // apply on 7th element of the array.
-        self.data[i][6] = temp[6] + self.data[j][6];
-        self.data[j][6] = temp[6] - self.data[j][6];
+        // // apply on 7th element of the array.
+        // self.data[i][6] = temp[6] + self.data[j][6];
+        // self.data[j][6] = temp[6] - self.data[j][6];
 
-        // apply on 8th element of the array.
-        self.data[i][7] = temp[7] + self.data[j][7];
-        self.data[j][7] = temp[7] - self.data[j][7];
+        // // apply on 8th element of the array.
+        // self.data[i][7] = temp[7] + self.data[j][7];
+        // self.data[j][7] = temp[7] - self.data[j][7];
     }
 
     #[inline(always)]
@@ -887,25 +887,25 @@ where
         self.data[i][3] = temp[3] + self.data[j][3];
         self.data[j][3] = temp[3] - self.data[j][3];
 
-        // apply of index 4 of twiddle.
-        self.data[j][4] = self.data[j][4] * twiddle;
-        self.data[i][4] = temp[4] + self.data[j][4];
-        self.data[j][4] = temp[4] - self.data[j][4];
+        // // apply of index 4 of twiddle.
+        // self.data[j][4] = self.data[j][4] * twiddle;
+        // self.data[i][4] = temp[4] + self.data[j][4];
+        // self.data[j][4] = temp[4] - self.data[j][4];
 
-        // apply of index 5 of twiddle.
-        self.data[j][5] = self.data[j][5] * twiddle;
-        self.data[i][5] = temp[5] + self.data[j][5];
-        self.data[j][5] = temp[5] - self.data[j][5];
+        // // apply of index 5 of twiddle.
+        // self.data[j][5] = self.data[j][5] * twiddle;
+        // self.data[i][5] = temp[5] + self.data[j][5];
+        // self.data[j][5] = temp[5] - self.data[j][5];
 
-        // apply of index 6 of twiddle.
-        self.data[j][6] = self.data[j][6] * twiddle;
-        self.data[i][6] = temp[6] + self.data[j][6];
-        self.data[j][6] = temp[6] - self.data[j][6];
+        // // apply of index 6 of twiddle.
+        // self.data[j][6] = self.data[j][6] * twiddle;
+        // self.data[i][6] = temp[6] + self.data[j][6];
+        // self.data[j][6] = temp[6] - self.data[j][6];
 
-        // apply of index 7 of twiddle.
-        self.data[j][7] = self.data[j][7] * twiddle;
-        self.data[i][7] = temp[7] + self.data[j][7];
-        self.data[j][7] = temp[7] - self.data[j][7];
+        // // apply of index 7 of twiddle.
+        // self.data[j][7] = self.data[j][7] * twiddle;
+        // self.data[i][7] = temp[7] + self.data[j][7];
+        // self.data[j][7] = temp[7] - self.data[j][7];
     }
 
     fn swap(&mut self, i: usize, j: usize) {
@@ -928,17 +928,17 @@ where
             // apply on index 3.
             self.data[row_idx][3] *= offset;
 
-            // apply on index 4.
-            self.data[row_idx][4] *= offset;
+            // // apply on index 4.
+            // self.data[row_idx][4] *= offset;
 
-            // apply on index 5.
-            self.data[row_idx][5] *= offset;
+            // // apply on index 5.
+            // self.data[row_idx][5] *= offset;
 
-            // apply on index 6.
-            self.data[row_idx][6] *= offset;
+            // // apply on index 6.
+            // self.data[row_idx][6] *= offset;
 
-            // apply on index 7.
-            self.data[row_idx][7] *= offset;
+            // // apply on index 7.
+            // self.data[row_idx][7] *= offset;
 
             offset *= increment;
         }
@@ -960,17 +960,17 @@ where
             // apply on index 3.
             self.data[row_idx][3] *= offset;
 
-            // apply on index 4.
-            self.data[row_idx][4] *= offset;
+            // // apply on index 4.
+            // self.data[row_idx][4] *= offset;
 
-            // apply on index 5.
-            self.data[row_idx][5] *= offset;
+            // // apply on index 5.
+            // self.data[row_idx][5] *= offset;
 
-            // apply on index 6.
-            self.data[row_idx][6] *= offset;
+            // // apply on index 6.
+            // self.data[row_idx][6] *= offset;
 
-            // apply on index 7.
-            self.data[row_idx][7] *= offset;
+            // // apply on index 7.
+            // self.data[row_idx][7] *= offset;
         }
     }
 

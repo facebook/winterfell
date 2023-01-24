@@ -20,7 +20,7 @@ use winter_prover::{
 };
 
 const SIZE: usize = 524_288;
-const NUM_POLYS: [usize; 4] = [16, 32, 72, 96];
+const NUM_POLYS: [usize; 4] = [16, 32, 64, 96];
 
 fn bench_lde(c: &mut Criterion) {
     let mut group = c.benchmark_group("matrix_lde");
