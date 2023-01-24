@@ -27,7 +27,7 @@ use rayon::{
 // CONSTANTS
 // ================================================================================================
 
-pub const ARR_SIZE: usize = 4;
+pub const ARR_SIZE: usize = 16;
 
 // RowMatrix MATRIX
 // ================================================================================================
@@ -513,10 +513,18 @@ where
                 chunk[d][1] = p.get_row(d)[1] * factor;
                 chunk[d][2] = p.get_row(d)[2] * factor;
                 chunk[d][3] = p.get_row(d)[3] * factor;
-                // chunk[d][4] = p.get_row(d)[4] * factor;
-                // chunk[d][5] = p.get_row(d)[5] * factor;
-                // chunk[d][6] = p.get_row(d)[6] * factor;
-                // chunk[d][7] = p.get_row(d)[7] * factor;
+                chunk[d][4] = p.get_row(d)[4] * factor;
+                chunk[d][5] = p.get_row(d)[5] * factor;
+                chunk[d][6] = p.get_row(d)[6] * factor;
+                chunk[d][7] = p.get_row(d)[7] * factor;
+                chunk[d][8] = p.get_row(d)[8] * factor;
+                chunk[d][9] = p.get_row(d)[9] * factor;
+                chunk[d][10] = p.get_row(d)[10] * factor;
+                chunk[d][11] = p.get_row(d)[11] * factor;
+                chunk[d][12] = p.get_row(d)[12] * factor;
+                chunk[d][13] = p.get_row(d)[13] * factor;
+                chunk[d][14] = p.get_row(d)[14] * factor;
+                chunk[d][15] = p.get_row(d)[15] * factor;
                 factor *= offset;
             }
             let mut matrix_chunk = RowMatrixRef { data: chunk };
@@ -577,10 +585,18 @@ where
                         dest[d][1] = src[d][1] * factor;
                         dest[d][2] = src[d][2] * factor;
                         dest[d][3] = src[d][3] * factor;
-                        // dest[d][4] = src[d][4] * factor;
-                        // dest[d][5] = src[d][5] * factor;
-                        // dest[d][6] = src[d][6] * factor;
-                        // dest[d][7] = src[d][7] * factor;
+                        dest[d][4] = src[d][4] * factor;
+                        dest[d][5] = src[d][5] * factor;
+                        dest[d][6] = src[d][6] * factor;
+                        dest[d][7] = src[d][7] * factor;
+                        dest[d][8] = src[d][8] * factor;
+                        dest[d][9] = src[d][9] * factor;
+                        dest[d][10] = src[d][10] * factor;
+                        dest[d][11] = src[d][11] * factor;
+                        dest[d][12] = src[d][12] * factor;
+                        dest[d][13] = src[d][13] * factor;
+                        dest[d][14] = src[d][14] * factor;
+                        dest[d][15] = src[d][15] * factor;
                         factor *= offset;
                     }
                 });
@@ -632,21 +648,53 @@ where
         self.data[i][3] = temp[3] + self.data[j][3];
         self.data[j][3] = temp[3] - self.data[j][3];
 
-        // // apply on 5th element of the array.
-        // self.data[i][4] = temp[4] + self.data[j][4];
-        // self.data[j][4] = temp[4] - self.data[j][4];
+        // apply on 5th element of the array.
+        self.data[i][4] = temp[4] + self.data[j][4];
+        self.data[j][4] = temp[4] - self.data[j][4];
 
-        // // apply on 6th element of the array.
-        // self.data[i][5] = temp[5] + self.data[j][5];
-        // self.data[j][5] = temp[5] - self.data[j][5];
+        // apply on 6th element of the array.
+        self.data[i][5] = temp[5] + self.data[j][5];
+        self.data[j][5] = temp[5] - self.data[j][5];
 
-        // // apply on 7th element of the array.
-        // self.data[i][6] = temp[6] + self.data[j][6];
-        // self.data[j][6] = temp[6] - self.data[j][6];
+        // apply on 7th element of the array.
+        self.data[i][6] = temp[6] + self.data[j][6];
+        self.data[j][6] = temp[6] - self.data[j][6];
 
-        // // apply on 8th element of the array.
-        // self.data[i][7] = temp[7] + self.data[j][7];
-        // self.data[j][7] = temp[7] - self.data[j][7];
+        // apply on 8th element of the array.
+        self.data[i][7] = temp[7] + self.data[j][7];
+        self.data[j][7] = temp[7] - self.data[j][7];
+
+        // apply on 9th element of the array.
+        self.data[i][8] = temp[8] + self.data[j][8];
+        self.data[j][8] = temp[8] - self.data[j][8];
+
+        // apply on 10th element of the array.
+        self.data[i][9] = temp[9] + self.data[j][9];
+        self.data[j][9] = temp[9] - self.data[j][9];
+
+        // apply on 11th element of the array.
+        self.data[i][10] = temp[10] + self.data[j][10];
+        self.data[j][10] = temp[10] - self.data[j][10];
+
+        // apply on 12th element of the array.
+        self.data[i][11] = temp[11] + self.data[j][11];
+        self.data[j][11] = temp[11] - self.data[j][11];
+
+        // apply on 13th element of the array.
+        self.data[i][12] = temp[12] + self.data[j][12];
+        self.data[j][12] = temp[12] - self.data[j][12];
+
+        // apply on 14th element of the array.
+        self.data[i][13] = temp[13] + self.data[j][13];
+        self.data[j][13] = temp[13] - self.data[j][13];
+
+        // apply on 15th element of the array.
+        self.data[i][14] = temp[14] + self.data[j][14];
+        self.data[j][14] = temp[14] - self.data[j][14];
+
+        // apply on 16th element of the array.
+        self.data[i][15] = temp[15] + self.data[j][15];
+        self.data[j][15] = temp[15] - self.data[j][15];
     }
 
     #[inline(always)]
@@ -677,25 +725,65 @@ where
         self.data[i][3] = temp[3] + self.data[j][3];
         self.data[j][3] = temp[3] - self.data[j][3];
 
-        // // apply of index 4 of twiddle.
-        // self.data[j][4] = self.data[j][4] * twiddle;
-        // self.data[i][4] = temp[4] + self.data[j][4];
-        // self.data[j][4] = temp[4] - self.data[j][4];
+        // apply of index 4 of twiddle.
+        self.data[j][4] = self.data[j][4] * twiddle;
+        self.data[i][4] = temp[4] + self.data[j][4];
+        self.data[j][4] = temp[4] - self.data[j][4];
 
-        // // apply of index 5 of twiddle.
-        // self.data[j][5] = self.data[j][5] * twiddle;
-        // self.data[i][5] = temp[5] + self.data[j][5];
-        // self.data[j][5] = temp[5] - self.data[j][5];
+        // apply of index 5 of twiddle.
+        self.data[j][5] = self.data[j][5] * twiddle;
+        self.data[i][5] = temp[5] + self.data[j][5];
+        self.data[j][5] = temp[5] - self.data[j][5];
 
-        // // apply of index 6 of twiddle.
-        // self.data[j][6] = self.data[j][6] * twiddle;
-        // self.data[i][6] = temp[6] + self.data[j][6];
-        // self.data[j][6] = temp[6] - self.data[j][6];
+        // apply of index 6 of twiddle.
+        self.data[j][6] = self.data[j][6] * twiddle;
+        self.data[i][6] = temp[6] + self.data[j][6];
+        self.data[j][6] = temp[6] - self.data[j][6];
 
-        // // apply of index 7 of twiddle.
-        // self.data[j][7] = self.data[j][7] * twiddle;
-        // self.data[i][7] = temp[7] + self.data[j][7];
-        // self.data[j][7] = temp[7] - self.data[j][7];
+        // apply of index 7 of twiddle.
+        self.data[j][7] = self.data[j][7] * twiddle;
+        self.data[i][7] = temp[7] + self.data[j][7];
+        self.data[j][7] = temp[7] - self.data[j][7];
+
+        // apply of index 8 of twiddle.
+        self.data[j][8] = self.data[j][8] * twiddle;
+        self.data[i][8] = temp[8] + self.data[j][8];
+        self.data[j][8] = temp[8] - self.data[j][8];
+
+        // apply of index 9 of twiddle.
+        self.data[j][9] = self.data[j][9] * twiddle;
+        self.data[i][9] = temp[9] + self.data[j][9];
+        self.data[j][9] = temp[9] - self.data[j][9];
+
+        // apply of index 10 of twiddle.
+        self.data[j][10] = self.data[j][10] * twiddle;
+        self.data[i][10] = temp[10] + self.data[j][10];
+        self.data[j][10] = temp[10] - self.data[j][10];
+
+        // apply of index 11 of twiddle.
+        self.data[j][11] = self.data[j][11] * twiddle;
+        self.data[i][11] = temp[11] + self.data[j][11];
+        self.data[j][11] = temp[11] - self.data[j][11];
+
+        // apply of index 12 of twiddle.
+        self.data[j][12] = self.data[j][12] * twiddle;
+        self.data[i][12] = temp[12] + self.data[j][12];
+        self.data[j][12] = temp[12] - self.data[j][12];
+
+        // apply of index 13 of twiddle.
+        self.data[j][13] = self.data[j][13] * twiddle;
+        self.data[i][13] = temp[13] + self.data[j][13];
+        self.data[j][13] = temp[13] - self.data[j][13];
+
+        // apply of index 14 of twiddle.
+        self.data[j][14] = self.data[j][14] * twiddle;
+        self.data[i][14] = temp[14] + self.data[j][14];
+        self.data[j][14] = temp[14] - self.data[j][14];
+
+        // apply of index 15 of twiddle.
+        self.data[j][15] = self.data[j][15] * twiddle;
+        self.data[i][15] = temp[15] + self.data[j][15];
+        self.data[j][15] = temp[15] - self.data[j][15];
     }
 
     fn swap(&mut self, i: usize, j: usize) {
@@ -718,17 +806,41 @@ where
             // apply on index 3.
             self.data[row_idx][3] *= offset;
 
-            // // apply on index 4.
-            // self.data[row_idx][4] *= offset;
+            // apply on index 4.
+            self.data[row_idx][4] *= offset;
 
-            // // apply on index 5.
-            // self.data[row_idx][5] *= offset;
+            // apply on index 5.
+            self.data[row_idx][5] *= offset;
 
-            // // apply on index 6.
-            // self.data[row_idx][6] *= offset;
+            // apply on index 6.
+            self.data[row_idx][6] *= offset;
 
-            // // apply on index 7.
-            // self.data[row_idx][7] *= offset;
+            // apply on index 7.
+            self.data[row_idx][7] *= offset;
+
+            // apply on index 8.
+            self.data[row_idx][8] *= offset;
+
+            // apply on index 9.
+            self.data[row_idx][9] *= offset;
+
+            // apply on index 10.
+            self.data[row_idx][10] *= offset;
+
+            // apply on index 11.
+            self.data[row_idx][11] *= offset;
+
+            // apply on index 12.
+            self.data[row_idx][12] *= offset;
+
+            // apply on index 13.
+            self.data[row_idx][13] *= offset;
+
+            // apply on index 14.
+            self.data[row_idx][14] *= offset;
+
+            // apply on index 15.
+            self.data[row_idx][15] *= offset;
 
             offset *= increment;
         }
@@ -750,17 +862,41 @@ where
             // apply on index 3.
             self.data[row_idx][3] *= offset;
 
-            // // apply on index 4.
-            // self.data[row_idx][4] *= offset;
+            // apply on index 4.
+            self.data[row_idx][4] *= offset;
 
-            // // apply on index 5.
-            // self.data[row_idx][5] *= offset;
+            // apply on index 5.
+            self.data[row_idx][5] *= offset;
 
-            // // apply on index 6.
-            // self.data[row_idx][6] *= offset;
+            // apply on index 6.
+            self.data[row_idx][6] *= offset;
 
-            // // apply on index 7.
-            // self.data[row_idx][7] *= offset;
+            // apply on index 7.
+            self.data[row_idx][7] *= offset;
+
+            // apply on index 8.
+            self.data[row_idx][8] *= offset;
+
+            // apply on index 9.
+            self.data[row_idx][9] *= offset;
+
+            // apply on index 10.
+            self.data[row_idx][10] *= offset;
+
+            // apply on index 11.
+            self.data[row_idx][11] *= offset;
+
+            // apply on index 12.
+            self.data[row_idx][12] *= offset;
+
+            // apply on index 13.
+            self.data[row_idx][13] *= offset;
+
+            // apply on index 14.
+            self.data[row_idx][14] *= offset;
+
+            // apply on index 15.
+            self.data[row_idx][15] *= offset;
         }
     }
     // #[cfg(feature = "concurrent")]
@@ -842,21 +978,53 @@ where
         self.data[i][3] = temp[3] + self.data[j][3];
         self.data[j][3] = temp[3] - self.data[j][3];
 
-        // // apply on 5th element of the array.
-        // self.data[i][4] = temp[4] + self.data[j][4];
-        // self.data[j][4] = temp[4] - self.data[j][4];
+        // apply on 5th element of the array.
+        self.data[i][4] = temp[4] + self.data[j][4];
+        self.data[j][4] = temp[4] - self.data[j][4];
 
-        // // apply on 6th element of the array.
-        // self.data[i][5] = temp[5] + self.data[j][5];
-        // self.data[j][5] = temp[5] - self.data[j][5];
+        // apply on 6th element of the array.
+        self.data[i][5] = temp[5] + self.data[j][5];
+        self.data[j][5] = temp[5] - self.data[j][5];
 
-        // // apply on 7th element of the array.
-        // self.data[i][6] = temp[6] + self.data[j][6];
-        // self.data[j][6] = temp[6] - self.data[j][6];
+        // apply on 7th element of the array.
+        self.data[i][6] = temp[6] + self.data[j][6];
+        self.data[j][6] = temp[6] - self.data[j][6];
 
-        // // apply on 8th element of the array.
-        // self.data[i][7] = temp[7] + self.data[j][7];
-        // self.data[j][7] = temp[7] - self.data[j][7];
+        // apply on 8th element of the array.
+        self.data[i][7] = temp[7] + self.data[j][7];
+        self.data[j][7] = temp[7] - self.data[j][7];
+
+        // apply on 9th element of the array.
+        self.data[i][8] = temp[8] + self.data[j][8];
+        self.data[j][8] = temp[8] - self.data[j][8];
+
+        // apply on 10th element of the array.
+        self.data[i][9] = temp[9] + self.data[j][9];
+        self.data[j][9] = temp[9] - self.data[j][9];
+
+        // apply on 11th element of the array.
+        self.data[i][10] = temp[10] + self.data[j][10];
+        self.data[j][10] = temp[10] - self.data[j][10];
+
+        // apply on 12th element of the array.
+        self.data[i][11] = temp[11] + self.data[j][11];
+        self.data[j][11] = temp[11] - self.data[j][11];
+
+        // apply on 13th element of the array.
+        self.data[i][12] = temp[12] + self.data[j][12];
+        self.data[j][12] = temp[12] - self.data[j][12];
+
+        // apply on 14th element of the array.
+        self.data[i][13] = temp[13] + self.data[j][13];
+        self.data[j][13] = temp[13] - self.data[j][13];
+
+        // apply on 15th element of the array.
+        self.data[i][14] = temp[14] + self.data[j][14];
+        self.data[j][14] = temp[14] - self.data[j][14];
+
+        // apply on 16th element of the array.
+        self.data[i][15] = temp[15] + self.data[j][15];
+        self.data[j][15] = temp[15] - self.data[j][15];
     }
 
     #[inline(always)]
@@ -887,25 +1055,65 @@ where
         self.data[i][3] = temp[3] + self.data[j][3];
         self.data[j][3] = temp[3] - self.data[j][3];
 
-        // // apply of index 4 of twiddle.
-        // self.data[j][4] = self.data[j][4] * twiddle;
-        // self.data[i][4] = temp[4] + self.data[j][4];
-        // self.data[j][4] = temp[4] - self.data[j][4];
+        // apply of index 4 of twiddle.
+        self.data[j][4] = self.data[j][4] * twiddle;
+        self.data[i][4] = temp[4] + self.data[j][4];
+        self.data[j][4] = temp[4] - self.data[j][4];
 
-        // // apply of index 5 of twiddle.
-        // self.data[j][5] = self.data[j][5] * twiddle;
-        // self.data[i][5] = temp[5] + self.data[j][5];
-        // self.data[j][5] = temp[5] - self.data[j][5];
+        // apply of index 5 of twiddle.
+        self.data[j][5] = self.data[j][5] * twiddle;
+        self.data[i][5] = temp[5] + self.data[j][5];
+        self.data[j][5] = temp[5] - self.data[j][5];
 
-        // // apply of index 6 of twiddle.
-        // self.data[j][6] = self.data[j][6] * twiddle;
-        // self.data[i][6] = temp[6] + self.data[j][6];
-        // self.data[j][6] = temp[6] - self.data[j][6];
+        // apply of index 6 of twiddle.
+        self.data[j][6] = self.data[j][6] * twiddle;
+        self.data[i][6] = temp[6] + self.data[j][6];
+        self.data[j][6] = temp[6] - self.data[j][6];
 
-        // // apply of index 7 of twiddle.
-        // self.data[j][7] = self.data[j][7] * twiddle;
-        // self.data[i][7] = temp[7] + self.data[j][7];
-        // self.data[j][7] = temp[7] - self.data[j][7];
+        // apply of index 7 of twiddle.
+        self.data[j][7] = self.data[j][7] * twiddle;
+        self.data[i][7] = temp[7] + self.data[j][7];
+        self.data[j][7] = temp[7] - self.data[j][7];
+
+        // apply of index 8 of twiddle.
+        self.data[j][8] = self.data[j][8] * twiddle;
+        self.data[i][8] = temp[8] + self.data[j][8];
+        self.data[j][8] = temp[8] - self.data[j][8];
+
+        // apply of index 9 of twiddle.
+        self.data[j][9] = self.data[j][9] * twiddle;
+        self.data[i][9] = temp[9] + self.data[j][9];
+        self.data[j][9] = temp[9] - self.data[j][9];
+
+        // apply of index 10 of twiddle.
+        self.data[j][10] = self.data[j][10] * twiddle;
+        self.data[i][10] = temp[10] + self.data[j][10];
+        self.data[j][10] = temp[10] - self.data[j][10];
+
+        // apply of index 11 of twiddle.
+        self.data[j][11] = self.data[j][11] * twiddle;
+        self.data[i][11] = temp[11] + self.data[j][11];
+        self.data[j][11] = temp[11] - self.data[j][11];
+
+        // apply of index 12 of twiddle.
+        self.data[j][12] = self.data[j][12] * twiddle;
+        self.data[i][12] = temp[12] + self.data[j][12];
+        self.data[j][12] = temp[12] - self.data[j][12];
+
+        // apply of index 13 of twiddle.
+        self.data[j][13] = self.data[j][13] * twiddle;
+        self.data[i][13] = temp[13] + self.data[j][13];
+        self.data[j][13] = temp[13] - self.data[j][13];
+
+        // apply of index 14 of twiddle.
+        self.data[j][14] = self.data[j][14] * twiddle;
+        self.data[i][14] = temp[14] + self.data[j][14];
+        self.data[j][14] = temp[14] - self.data[j][14];
+
+        // apply of index 15 of twiddle.
+        self.data[j][15] = self.data[j][15] * twiddle;
+        self.data[i][15] = temp[15] + self.data[j][15];
+        self.data[j][15] = temp[15] - self.data[j][15];
     }
 
     fn swap(&mut self, i: usize, j: usize) {
@@ -928,17 +1136,41 @@ where
             // apply on index 3.
             self.data[row_idx][3] *= offset;
 
-            // // apply on index 4.
-            // self.data[row_idx][4] *= offset;
+            // apply on index 4.
+            self.data[row_idx][4] *= offset;
 
-            // // apply on index 5.
-            // self.data[row_idx][5] *= offset;
+            // apply on index 5.
+            self.data[row_idx][5] *= offset;
 
-            // // apply on index 6.
-            // self.data[row_idx][6] *= offset;
+            // apply on index 6.
+            self.data[row_idx][6] *= offset;
 
-            // // apply on index 7.
-            // self.data[row_idx][7] *= offset;
+            // apply on index 7.
+            self.data[row_idx][7] *= offset;
+
+            // apply on index 8.
+            self.data[row_idx][8] *= offset;
+
+            // apply on index 9.
+            self.data[row_idx][9] *= offset;
+
+            // apply on index 10.
+            self.data[row_idx][10] *= offset;
+
+            // apply on index 11.
+            self.data[row_idx][11] *= offset;
+
+            // apply on index 12.
+            self.data[row_idx][12] *= offset;
+
+            // apply on index 13.
+            self.data[row_idx][13] *= offset;
+
+            // apply on index 14.
+            self.data[row_idx][14] *= offset;
+
+            // apply on index 15.
+            self.data[row_idx][15] *= offset;
 
             offset *= increment;
         }
@@ -960,17 +1192,41 @@ where
             // apply on index 3.
             self.data[row_idx][3] *= offset;
 
-            // // apply on index 4.
-            // self.data[row_idx][4] *= offset;
+            // apply on index 4.
+            self.data[row_idx][4] *= offset;
 
-            // // apply on index 5.
-            // self.data[row_idx][5] *= offset;
+            // apply on index 5.
+            self.data[row_idx][5] *= offset;
 
-            // // apply on index 6.
-            // self.data[row_idx][6] *= offset;
+            // apply on index 6.
+            self.data[row_idx][6] *= offset;
 
-            // // apply on index 7.
-            // self.data[row_idx][7] *= offset;
+            // apply on index 7.
+            self.data[row_idx][7] *= offset;
+
+            // apply on index 8.
+            self.data[row_idx][8] *= offset;
+
+            // apply on index 9.
+            self.data[row_idx][9] *= offset;
+
+            // apply on index 10.
+            self.data[row_idx][10] *= offset;
+
+            // apply on index 11.
+            self.data[row_idx][11] *= offset;
+
+            // apply on index 12.
+            self.data[row_idx][12] *= offset;
+
+            // apply on index 13.
+            self.data[row_idx][13] *= offset;
+
+            // apply on index 14.
+            self.data[row_idx][14] *= offset;
+
+            // apply on index 15.
+            self.data[row_idx][15] *= offset;
         }
     }
 

@@ -97,194 +97,194 @@ fn bench_lde(c: &mut Criterion) {
     group.finish();
 }
 
-fn interpolate_columns(c: &mut Criterion) {
-    let mut group = c.benchmark_group("matrix_interpolate_columns");
-    group.sample_size(10);
-    group.measurement_time(Duration::from_secs(10));
+// fn interpolate_columns(c: &mut Criterion) {
+//     let mut group = c.benchmark_group("matrix_interpolate_columns");
+//     group.sample_size(10);
+//     group.measurement_time(Duration::from_secs(10));
 
-    for &num_poly in NUM_POLYS.iter() {
-        let columns: Vec<Vec<BaseElement>> = (0..num_poly).map(|_| rand_vector(SIZE)).collect();
-        let mut column_matrix = Matrix::new(columns);
-        let inv_twiddles = fft::get_inv_twiddles::<BaseElement>(SIZE);
-        group.bench_function(BenchmarkId::new("simple", num_poly), |bench| {
-            bench.iter_with_large_drop(|| {
-                iter_mut!(column_matrix.columns).for_each(|column| {
-                    fft::concurrent::interpolate_poly(column.as_mut_slice(), &inv_twiddles)
-                });
-            });
-        });
-    }
+//     for &num_poly in NUM_POLYS.iter() {
+//         let columns: Vec<Vec<BaseElement>> = (0..num_poly).map(|_| rand_vector(SIZE)).collect();
+//         let mut column_matrix = Matrix::new(columns);
+//         let inv_twiddles = fft::get_inv_twiddles::<BaseElement>(SIZE);
+//         group.bench_function(BenchmarkId::new("simple", num_poly), |bench| {
+//             bench.iter_with_large_drop(|| {
+//                 iter_mut!(column_matrix.columns).for_each(|column| {
+//                     fft::concurrent::interpolate_poly(column.as_mut_slice(), &inv_twiddles)
+//                 });
+//             });
+//         });
+//     }
 
-    for &num_poly in NUM_POLYS.iter() {
-        let columns: Vec<Vec<BaseElement>> = (0..num_poly).map(|_| rand_vector(SIZE)).collect();
-        let mut column_matrix = Matrix::new(columns);
-        let inv_twiddles = fft::get_inv_twiddles::<BaseElement>(SIZE);
-        group.bench_function(BenchmarkId::new("with_offset", num_poly), |bench| {
-            bench.iter_with_large_drop(|| {
-                iter_mut!(column_matrix.columns).for_each(|column| {
-                    fft::concurrent::interpolate_poly_with_offset(
-                        column.as_mut_slice(),
-                        &inv_twiddles,
-                        BaseElement::GENERATOR,
-                    )
-                });
-            });
-        });
-    }
-    group.finish();
-}
+//     for &num_poly in NUM_POLYS.iter() {
+//         let columns: Vec<Vec<BaseElement>> = (0..num_poly).map(|_| rand_vector(SIZE)).collect();
+//         let mut column_matrix = Matrix::new(columns);
+//         let inv_twiddles = fft::get_inv_twiddles::<BaseElement>(SIZE);
+//         group.bench_function(BenchmarkId::new("with_offset", num_poly), |bench| {
+//             bench.iter_with_large_drop(|| {
+//                 iter_mut!(column_matrix.columns).for_each(|column| {
+//                     fft::concurrent::interpolate_poly_with_offset(
+//                         column.as_mut_slice(),
+//                         &inv_twiddles,
+//                         BaseElement::GENERATOR,
+//                     )
+//                 });
+//             });
+//         });
+//     }
+//     group.finish();
+// }
 
-fn evaluate_columns(c: &mut Criterion) {
-    let mut group = c.benchmark_group("matrix_evaluate_columns");
-    group.sample_size(10);
-    group.measurement_time(Duration::from_secs(10));
+// fn evaluate_columns(c: &mut Criterion) {
+//     let mut group = c.benchmark_group("matrix_evaluate_columns");
+//     group.sample_size(10);
+//     group.measurement_time(Duration::from_secs(10));
 
-    let blowup_factor = 8;
+//     let blowup_factor = 8;
 
-    for &num_poly in NUM_POLYS.iter() {
-        let columns: Vec<Vec<BaseElement>> = (0..num_poly).map(|_| rand_vector(SIZE)).collect();
-        let mut column_matrix = Matrix::new(columns);
-        let twiddles = fft::get_twiddles::<BaseElement>(SIZE);
-        group.bench_function(BenchmarkId::new("simple", num_poly), |bench| {
-            bench.iter_with_large_drop(|| {
-                iter_mut!(column_matrix.columns).for_each(|column| {
-                    fft::concurrent::evaluate_poly(column.as_mut_slice(), &twiddles);
-                });
-            });
-        });
-    }
+//     for &num_poly in NUM_POLYS.iter() {
+//         let columns: Vec<Vec<BaseElement>> = (0..num_poly).map(|_| rand_vector(SIZE)).collect();
+//         let mut column_matrix = Matrix::new(columns);
+//         let twiddles = fft::get_twiddles::<BaseElement>(SIZE);
+//         group.bench_function(BenchmarkId::new("simple", num_poly), |bench| {
+//             bench.iter_with_large_drop(|| {
+//                 iter_mut!(column_matrix.columns).for_each(|column| {
+//                     fft::concurrent::evaluate_poly(column.as_mut_slice(), &twiddles);
+//                 });
+//             });
+//         });
+//     }
 
-    for &num_poly in NUM_POLYS.iter() {
-        let columns: Vec<Vec<BaseElement>> = (0..num_poly).map(|_| rand_vector(SIZE)).collect();
-        let mut column_matrix = Matrix::new(columns);
-        let twiddles = fft::get_twiddles::<BaseElement>(SIZE);
-        group.bench_function(BenchmarkId::new("with_offset", num_poly), |bench| {
-            bench.iter_with_large_drop(|| {
-                iter_mut!(column_matrix.columns).for_each(|column| {
-                    fft::concurrent::evaluate_poly_with_offset(
-                        column.as_mut_slice(),
-                        &twiddles,
-                        BaseElement::GENERATOR,
-                        blowup_factor,
-                    );
-                });
-            });
-        });
-    }
-    group.finish();
-}
+//     for &num_poly in NUM_POLYS.iter() {
+//         let columns: Vec<Vec<BaseElement>> = (0..num_poly).map(|_| rand_vector(SIZE)).collect();
+//         let mut column_matrix = Matrix::new(columns);
+//         let twiddles = fft::get_twiddles::<BaseElement>(SIZE);
+//         group.bench_function(BenchmarkId::new("with_offset", num_poly), |bench| {
+//             bench.iter_with_large_drop(|| {
+//                 iter_mut!(column_matrix.columns).for_each(|column| {
+//                     fft::concurrent::evaluate_poly_with_offset(
+//                         column.as_mut_slice(),
+//                         &twiddles,
+//                         BaseElement::GENERATOR,
+//                         blowup_factor,
+//                     );
+//                 });
+//             });
+//         });
+//     }
+//     group.finish();
+// }
 
-fn interpolate_matrix(c: &mut Criterion) {
-    let mut group = c.benchmark_group("matrix_interpolate_matrix");
-    group.sample_size(10);
-    group.measurement_time(Duration::from_secs(10));
+// fn interpolate_matrix(c: &mut Criterion) {
+//     let mut group = c.benchmark_group("matrix_interpolate_matrix");
+//     group.sample_size(10);
+//     group.measurement_time(Duration::from_secs(10));
 
-    for &num_poly in NUM_POLYS.iter() {
-        let num_segments = num_poly / ARR_SIZE;
-        let mut matrix_vec: Vec<RowMatrix<BaseElement>> = Vec::new();
-        for _ in 0..num_segments {
-            // create a vector of arrays of size ARR_SIZE.
-            let segment: Vec<[BaseElement; ARR_SIZE]> =
-                (0..SIZE).map(|_| to_array(rand_vector(ARR_SIZE))).collect();
-            matrix_vec.push(RowMatrix::new(segment));
-        }
-        let mut segment = Segment::new(matrix_vec);
+//     for &num_poly in NUM_POLYS.iter() {
+//         let num_segments = num_poly / ARR_SIZE;
+//         let mut matrix_vec: Vec<RowMatrix<BaseElement>> = Vec::new();
+//         for _ in 0..num_segments {
+//             // create a vector of arrays of size ARR_SIZE.
+//             let segment: Vec<[BaseElement; ARR_SIZE]> =
+//                 (0..SIZE).map(|_| to_array(rand_vector(ARR_SIZE))).collect();
+//             matrix_vec.push(RowMatrix::new(segment));
+//         }
+//         let mut segment = Segment::new(matrix_vec);
 
-        let inv_twiddles = fft::get_inv_twiddles::<BaseElement>(SIZE);
-        group.bench_function(BenchmarkId::new("simple", num_poly), |bench| {
-            bench.iter_with_large_drop(|| {
-                for matrix in segment.par_iter_mut() {
-                    RowMatrix::interpolate_poly_concurrent(matrix, &inv_twiddles);
-                }
-            });
-        });
-    }
+//         let inv_twiddles = fft::get_inv_twiddles::<BaseElement>(SIZE);
+//         group.bench_function(BenchmarkId::new("simple", num_poly), |bench| {
+//             bench.iter_with_large_drop(|| {
+//                 for matrix in segment.par_iter_mut() {
+//                     RowMatrix::interpolate_poly_concurrent(matrix, &inv_twiddles);
+//                 }
+//             });
+//         });
+//     }
 
-    for &num_poly in NUM_POLYS.iter() {
-        let num_segments = num_poly / ARR_SIZE;
-        let mut matrix_vec: Vec<RowMatrix<BaseElement>> = Vec::new();
-        for _ in 0..num_segments {
-            let segment: Vec<[BaseElement; ARR_SIZE]> =
-                (0..SIZE).map(|_| to_array(rand_vector(ARR_SIZE))).collect();
-            matrix_vec.push(RowMatrix::new(segment));
-        }
+//     for &num_poly in NUM_POLYS.iter() {
+//         let num_segments = num_poly / ARR_SIZE;
+//         let mut matrix_vec: Vec<RowMatrix<BaseElement>> = Vec::new();
+//         for _ in 0..num_segments {
+//             let segment: Vec<[BaseElement; ARR_SIZE]> =
+//                 (0..SIZE).map(|_| to_array(rand_vector(ARR_SIZE))).collect();
+//             matrix_vec.push(RowMatrix::new(segment));
+//         }
 
-        let mut segment = Segment::new(matrix_vec);
-        let inv_twiddles = fft::get_inv_twiddles::<BaseElement>(SIZE);
-        group.bench_function(BenchmarkId::new("with_offset", num_poly), |bench| {
-            bench.iter_with_large_drop(|| {
-                for matrix in segment.par_iter_mut() {
-                    RowMatrix::interpolate_poly_with_offset_concurrent(
-                        matrix,
-                        &inv_twiddles,
-                        BaseElement::GENERATOR,
-                    )
-                }
-            });
-        });
-    }
-    group.finish();
-}
+//         let mut segment = Segment::new(matrix_vec);
+//         let inv_twiddles = fft::get_inv_twiddles::<BaseElement>(SIZE);
+//         group.bench_function(BenchmarkId::new("with_offset", num_poly), |bench| {
+//             bench.iter_with_large_drop(|| {
+//                 for matrix in segment.par_iter_mut() {
+//                     RowMatrix::interpolate_poly_with_offset_concurrent(
+//                         matrix,
+//                         &inv_twiddles,
+//                         BaseElement::GENERATOR,
+//                     )
+//                 }
+//             });
+//         });
+//     }
+//     group.finish();
+// }
 
-fn evaluate_matrix(c: &mut Criterion) {
-    let mut group = c.benchmark_group("matrix_evaluate_matrix");
-    group.sample_size(10);
-    group.measurement_time(Duration::from_secs(10));
+// fn evaluate_matrix(c: &mut Criterion) {
+//     let mut group = c.benchmark_group("matrix_evaluate_matrix");
+//     group.sample_size(10);
+//     group.measurement_time(Duration::from_secs(10));
 
-    let blowup_factor = 8;
+//     let blowup_factor = 8;
 
-    for &num_poly in NUM_POLYS.iter() {
-        let num_segments = num_poly / ARR_SIZE;
-        let mut matrix_vec: Vec<RowMatrix<BaseElement>> = Vec::new();
-        for _ in 0..num_segments {
-            let segment: Vec<[BaseElement; ARR_SIZE]> =
-                (0..SIZE).map(|_| to_array(rand_vector(ARR_SIZE))).collect();
-            matrix_vec.push(RowMatrix::new(segment));
-        }
-        let mut segment = Segment::new(matrix_vec);
-        let twiddles = fft::get_twiddles::<BaseElement>(SIZE);
-        group.bench_function(BenchmarkId::new("simple", num_poly), |bench| {
-            bench.iter_with_large_drop(|| {
-                for matrix in segment.par_iter_mut() {
-                    RowMatrix::evaluate_poly_concurrent(matrix, &twiddles);
-                }
-            });
-        });
-    }
+//     for &num_poly in NUM_POLYS.iter() {
+//         let num_segments = num_poly / ARR_SIZE;
+//         let mut matrix_vec: Vec<RowMatrix<BaseElement>> = Vec::new();
+//         for _ in 0..num_segments {
+//             let segment: Vec<[BaseElement; ARR_SIZE]> =
+//                 (0..SIZE).map(|_| to_array(rand_vector(ARR_SIZE))).collect();
+//             matrix_vec.push(RowMatrix::new(segment));
+//         }
+//         let mut segment = Segment::new(matrix_vec);
+//         let twiddles = fft::get_twiddles::<BaseElement>(SIZE);
+//         group.bench_function(BenchmarkId::new("simple", num_poly), |bench| {
+//             bench.iter_with_large_drop(|| {
+//                 for matrix in segment.par_iter_mut() {
+//                     RowMatrix::evaluate_poly_concurrent(matrix, &twiddles);
+//                 }
+//             });
+//         });
+//     }
 
-    for &num_poly in NUM_POLYS.iter() {
-        let num_segments = num_poly / ARR_SIZE;
-        let mut matrix_vec: Vec<RowMatrix<BaseElement>> = Vec::new();
-        for _ in 0..num_segments {
-            let segment: Vec<[BaseElement; ARR_SIZE]> =
-                (0..SIZE).map(|_| to_array(rand_vector(ARR_SIZE))).collect();
-            matrix_vec.push(RowMatrix::new(segment));
-        }
-        let mut segment = Segment::new(matrix_vec);
-        let twiddles = fft::get_twiddles::<BaseElement>(SIZE);
-        group.bench_function(BenchmarkId::new("with_offset", num_poly), |bench| {
-            bench.iter_with_large_drop(|| {
-                for matrix in segment.par_iter_mut() {
-                    evaluate_poly_with_offset_concurrent(
-                        matrix,
-                        &twiddles,
-                        BaseElement::GENERATOR,
-                        blowup_factor,
-                    );
-                }
-            });
-        });
-    }
-    group.finish();
-}
+//     for &num_poly in NUM_POLYS.iter() {
+//         let num_segments = num_poly / ARR_SIZE;
+//         let mut matrix_vec: Vec<RowMatrix<BaseElement>> = Vec::new();
+//         for _ in 0..num_segments {
+//             let segment: Vec<[BaseElement; ARR_SIZE]> =
+//                 (0..SIZE).map(|_| to_array(rand_vector(ARR_SIZE))).collect();
+//             matrix_vec.push(RowMatrix::new(segment));
+//         }
+//         let mut segment = Segment::new(matrix_vec);
+//         let twiddles = fft::get_twiddles::<BaseElement>(SIZE);
+//         group.bench_function(BenchmarkId::new("with_offset", num_poly), |bench| {
+//             bench.iter_with_large_drop(|| {
+//                 for matrix in segment.par_iter_mut() {
+//                     evaluate_poly_with_offset_concurrent(
+//                         matrix,
+//                         &twiddles,
+//                         BaseElement::GENERATOR,
+//                         blowup_factor,
+//                     );
+//                 }
+//             });
+//         });
+//     }
+//     group.finish();
+// }
 
 criterion_group!(
     matrix_group,
     bench_lde,
-    interpolate_matrix,
-    evaluate_matrix,
-    interpolate_columns,
-    evaluate_columns,
+    // interpolate_matrix,
+    // evaluate_matrix,
+    // interpolate_columns,
+    // evaluate_columns,
 );
 criterion_main!(matrix_group);
 
