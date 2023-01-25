@@ -30,7 +30,7 @@ impl<E: FieldElement> DeepComposer<E> {
         let domain_offset = air.domain_offset();
         let x_coordinates: Vec<E> = query_positions
             .iter()
-            .map(|&p| E::from(g_lde.exp((p as u64).into()) * domain_offset))
+            .map(|&p| E::from(g_lde.exp_vartime((p as u64).into()) * domain_offset))
             .collect();
 
         DeepComposer {
@@ -155,7 +155,7 @@ impl<E: FieldElement> DeepComposer<E> {
 
         // compute z^m
         let num_evaluation_columns = ood_evaluations.len() as u32;
-        let z_m = self.z[0].exp(num_evaluation_columns.into());
+        let z_m = self.z[0].exp_vartime(num_evaluation_columns.into());
 
         for (query_values, &x) in queried_evaluations.rows().zip(&self.x_coordinates) {
             let mut composition = E::ZERO;
