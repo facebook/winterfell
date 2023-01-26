@@ -5,7 +5,9 @@
 
 use fri::FriOptions;
 use math::StarkField;
-use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+use utils::{
+    ByteReader, ByteWriter, Deserializable, DeserializationError, ProofOptionError, Serializable,
+};
 
 // TYPES AND INTERFACES
 // ================================================================================================
@@ -32,6 +34,157 @@ pub enum FieldExtension {
     Quadratic = 2,
     /// Composition polynomial is constructed in the cubic extension of the base field.
     Cubic = 3,
+}
+
+/// Represents the FRI folding factor option, a power of two
+#[repr(u8)]
+pub enum FriFoldingFactor {
+    First = 4,
+    Second = 8,
+    Third = 16,
+}
+
+impl From<FriFoldingFactor> for u8 {
+    fn from(factor: FriFoldingFactor) -> Self {
+        match factor {
+            FriFoldingFactor::First => 4,
+            FriFoldingFactor::Second => 8,
+            FriFoldingFactor::Third => 16,
+        }
+    }
+}
+
+impl TryFrom<u8> for FriFoldingFactor {
+    type Error = DeserializationError;
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            4 => Ok(FriFoldingFactor::First),
+            8 => Ok(FriFoldingFactor::Second),
+            16 => Ok(FriFoldingFactor::Third),
+            x => Err(DeserializationError::UnknownError(format!(
+                "Unexpected folding factor of {x}"
+            ))),
+        }
+    }
+}
+
+/// Represents the blowup factor option, a power of two
+#[repr(u8)]
+pub enum BlowupFactor {
+    First = 2,
+    Second = 4,
+    Third = 8,
+    Fourth = 16,
+    Fifth = 32,
+    Sixth = 64,
+    Seventh = 128,
+}
+
+impl From<BlowupFactor> for u8 {
+    fn from(factor: BlowupFactor) -> Self {
+        use BlowupFactor::{Fifth, First, Fourth, Second, Seventh, Sixth, Third};
+        match factor {
+            First => 2,
+            Second => 4,
+            Third => 8,
+            Fourth => 16,
+            Fifth => 32,
+            Sixth => 64,
+            Seventh => 128,
+        }
+    }
+}
+
+impl From<BlowupFactor> for usize {
+    fn from(factor: BlowupFactor) -> Self {
+        u8::from(factor).into()
+    }
+}
+
+impl TryFrom<u8> for BlowupFactor {
+    type Error = DeserializationError;
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        use BlowupFactor::{Fifth, First, Fourth, Second, Seventh, Sixth, Third};
+        match value {
+            2 => Ok(First),
+            4 => Ok(Second),
+            8 => Ok(Third),
+            16 => Ok(Fourth),
+            32 => Ok(Fifth),
+            64 => Ok(Sixth),
+            128 => Ok(Seventh),
+            x => Err(DeserializationError::UnknownError(format!(
+                "Unexpected blowup factor of {x}"
+            ))),
+        }
+    }
+}
+
+impl TryFrom<usize> for BlowupFactor {
+    type Error = DeserializationError;
+    fn try_from(value: usize) -> Result<Self, Self::Error> {
+        u8::try_from(value)
+            .map_err(|_| {
+                DeserializationError::UnknownError(format!("Unexpected blowup factor of {value}"))
+            })
+            .and_then(TryInto::try_into)
+    }
+}
+
+/// Represents the max remainder size proof option, as a power of 2
+#[repr(u16)]
+pub enum FriMaximumRemainderSize {
+    First = 32,
+    Second = 64,
+    Third = 128,
+    Fourth = 256,
+    Fifth = 512,
+    Sixth = 1024,
+}
+
+impl From<FriMaximumRemainderSize> for u16 {
+    fn from(size: FriMaximumRemainderSize) -> Self {
+        use FriMaximumRemainderSize::{Fifth, First, Fourth, Second, Sixth, Third};
+        match size {
+            First => 32,
+            Second => 64,
+            Third => 128,
+            Fourth => 256,
+            Fifth => 512,
+            Sixth => 1024,
+        }
+    }
+}
+
+impl TryFrom<u16> for FriMaximumRemainderSize {
+    type Error = DeserializationError;
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
+        use FriMaximumRemainderSize::{Fifth, First, Fourth, Second, Sixth, Third};
+        match value {
+            32 => Ok(First),
+            64 => Ok(Second),
+            128 => Ok(Third),
+            256 => Ok(Fourth),
+            512 => Ok(Fifth),
+            1024 => Ok(Sixth),
+            x => Err(DeserializationError::UnknownError(format!(
+                "Unexpected FRI maximum remainder size of {x}"
+            ))),
+        }
+    }
+}
+
+impl TryFrom<usize> for FriMaximumRemainderSize {
+    type Error = DeserializationError;
+    fn try_from(value: usize) -> Result<Self, Self::Error> {
+        u16::try_from(value)
+            .map_err(|_| {
+                DeserializationError::UnknownError(format!(
+                    "Unexpected FRI maximum remainder size of {value}"
+                ))
+            })
+            .and_then(TryInto::try_into)
+    }
 }
 
 /// STARK protocol parameters.
@@ -63,7 +216,7 @@ pub struct ProofOptions {
     grinding_factor: u8,
     field_extension: FieldExtension,
     fri_folding_factor: u8,
-    fri_max_remainder_size: u8, // stored as power of 2
+    fri_max_remainder_size: u32,
 }
 
 // PROOF OPTIONS IMPLEMENTATION
@@ -77,54 +230,36 @@ impl ProofOptions {
     /// The smallest allowed blowup factor for a given computation is derived from degrees of
     /// constraints defined for that computation and may be greater than 2. But no computation may
     /// have a blowup factor smaller than 2.
-    pub const MIN_BLOWUP_FACTOR: usize = 2;
+    pub const MIN_BLOWUP_FACTOR: BlowupFactor = BlowupFactor::First;
 
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
     /// Returns a new instance of [ProofOptions] struct constructed from the specified parameters.
     ///
-    /// # Panics
-    /// Panics if:
+    /// # Errors
+    /// Errors if:
     /// * `num_queries` is zero or greater than 128.
-    /// * `blowup_factor` is smaller than 4, greater than 256, or is not a power of two.
     /// * `grinding_factor` is greater than 32.
-    /// * `fri_folding_factor` is not 4, 8, or 16.
-    /// * `fri_max_remainder_size` is smaller than 32, greater than 1024, or is not a power of two.
     #[rustfmt::skip]
     pub fn new(
-        num_queries: usize,
-        blowup_factor: usize,
-        grinding_factor: u32,
+        num_queries: u8,
+        blowup_factor: BlowupFactor,
+        grinding_factor: u8,
         field_extension: FieldExtension,
-        fri_folding_factor: usize,
-        fri_max_remainder_size: usize,
-    ) -> ProofOptions {
-        // TODO: return errors instead of panicking
-        assert!(num_queries > 0, "number of queries must be greater than 0");
-        assert!(num_queries <= 128, "number of queries cannot be greater than 128");
-
-        assert!(blowup_factor.is_power_of_two(), "blowup factor must be a power of 2");
-        assert!(blowup_factor >= Self::MIN_BLOWUP_FACTOR,
-            "blowup factor cannot be smaller than {}", Self::MIN_BLOWUP_FACTOR);
-        assert!(blowup_factor <= 128, "blowup factor cannot be greater than 128");
-
-        assert!(grinding_factor <= 32, "grinding factor cannot be greater than 32");
-
-        assert!(fri_folding_factor.is_power_of_two(), "FRI folding factor must be a power of 2");
-        assert!(fri_folding_factor >= 4, "FRI folding factor cannot be smaller than 4");
-        assert!(fri_folding_factor <= 16, "FRI folding factor cannot be greater than 16");
-
-        assert!(fri_max_remainder_size.is_power_of_two(), "FRI max remainder size must be a power of 2");
-        assert!(fri_max_remainder_size >= 32, "FRI max remainder size cannot be smaller than 32");
-        assert!(fri_max_remainder_size <= 1024, "FRI max remainder size cannot be greater than 1024");
-
-        ProofOptions {
-            num_queries: num_queries as u8,
-            blowup_factor: blowup_factor as u8,
-            grinding_factor: grinding_factor as u8,
-            field_extension,
-            fri_folding_factor: fri_folding_factor as u8,
-            fri_max_remainder_size: fri_max_remainder_size.trailing_zeros() as u8,
+        fri_folding_factor: FriFoldingFactor,
+        fri_max_remainder_size: FriMaximumRemainderSize,
+    ) -> Result<ProofOptions, ProofOptionError> {
+        match (num_queries, grinding_factor) {
+            (queries, _) if queries > 128 => Err(ProofOptionError::NumberOfQueries),
+            (_, factor) if factor > 32 => Err(ProofOptionError::GrindingFactor),
+            (_, _) => Ok(ProofOptions {
+                num_queries,
+                blowup_factor: blowup_factor.into(),
+                grinding_factor,
+                field_extension,
+                fri_folding_factor: fri_folding_factor.into(),
+                fri_max_remainder_size: u16::from(fri_max_remainder_size).trailing_zeros(),
+            })
         }
     }
 
@@ -180,8 +315,8 @@ impl ProofOptions {
 
     /// Returns options for FRI protocol instantiated with parameters from this proof options.
     pub fn to_fri_options(&self) -> FriOptions {
-        let folding_factor = self.fri_folding_factor as usize;
-        let max_remainder_size = 2usize.pow(self.fri_max_remainder_size as u32);
+        let folding_factor = usize::from(self.fri_folding_factor);
+        let max_remainder_size = 2usize.pow(self.fri_max_remainder_size);
         FriOptions::new(self.blowup_factor(), folding_factor, max_remainder_size)
     }
 }
@@ -194,7 +329,7 @@ impl Serializable for ProofOptions {
         target.write_u8(self.grinding_factor);
         target.write(self.field_extension);
         target.write_u8(self.fri_folding_factor);
-        target.write_u8(self.fri_max_remainder_size);
+        target.write_u32(self.fri_max_remainder_size);
     }
 }
 
@@ -204,14 +339,15 @@ impl Deserializable for ProofOptions {
     /// # Errors
     /// Returns an error of a valid proof options could not be read from the specified `source`.
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        Ok(ProofOptions::new(
-            source.read_u8()? as usize,
-            source.read_u8()? as usize,
-            source.read_u8()? as u32,
+        ProofOptions::new(
+            source.read_u8()?,
+            source.read_u8()?.try_into()?,
+            source.read_u8()?,
             FieldExtension::read_from(source)?,
-            source.read_u8()? as usize,
-            2usize.pow(source.read_u8()? as u32),
-        ))
+            source.read_u8()?.try_into()?,
+            2usize.pow(source.read_u16()?.into()).try_into()?,
+        )
+        .map_err(Into::into)
     }
 }
 

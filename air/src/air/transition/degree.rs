@@ -120,7 +120,7 @@ impl TransitionConstraintDegree {
         let degree_bound = self.base + self.cycles.len() - 1;
         cmp::max(
             degree_bound.next_power_of_two(),
-            ProofOptions::MIN_BLOWUP_FACTOR,
+            ProofOptions::MIN_BLOWUP_FACTOR.into(),
         )
     }
 }

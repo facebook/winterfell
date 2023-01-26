@@ -23,7 +23,7 @@ use string::ToString;
 pub mod iterators;
 
 mod errors;
-pub use errors::DeserializationError;
+pub use errors::{DeserializationError, ProofOptionError};
 
 #[cfg(test)]
 mod tests;

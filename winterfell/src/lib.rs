@@ -367,7 +367,7 @@
 //! ```
 //! # use winterfell::{
 //! #    math::{fields::f128::BaseElement, FieldElement},
-//! #    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, Serializable,
+//! #    Air, AirContext, Assertion, BlowupFactor, ByteWriter, EvaluationFrame, FriFoldingFactor, FriMaximumRemainderSize, Serializable,
 //! #    TraceInfo, TransitionConstraintDegree, TraceTable, FieldExtension,
 //! #    Prover, ProofOptions, StarkProof, Trace, crypto::hashers::Blake3_256,
 //! # };
@@ -484,11 +484,11 @@
 //! // Define proof options; these will be enough for ~96-bit security level.
 //! let options = ProofOptions::new(
 //!     32, // number of queries
-//!     8,  // blowup factor
+//!     BlowupFactor::Third,  // blowup factor
 //!     0,  // grinding factor
 //!     FieldExtension::None,
-//!     8,   // FRI folding factor
-//!     128, // FRI max remainder length
+//!     FriFoldingFactor::Third,   // FRI folding factor
+//!     FriMaximumRemainderSize::Fourth, // FRI max remainder length
 //! );
 //!
 //! // Instantiate the prover and generate the proof.
@@ -527,11 +527,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub use prover::{
-    crypto, iterators, math, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
-    BoundaryConstraintGroup, ByteReader, ByteWriter, ConstraintCompositionCoefficients,
-    ConstraintDivisor, DeepCompositionCoefficients, Deserializable, DeserializationError,
-    EvaluationFrame, FieldExtension, Matrix, ProofOptions, Prover, ProverError, Serializable,
-    SliceReader, StarkProof, Trace, TraceInfo, TraceLayout, TraceTable, TraceTableFragment,
+    crypto, iterators, math, Air, AirContext, Assertion, AuxTraceRandElements, BlowupFactor,
+    BoundaryConstraint, BoundaryConstraintGroup, ByteReader, ByteWriter,
+    ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
+    Deserializable, DeserializationError, EvaluationFrame, FieldExtension, FriFoldingFactor,
+    FriMaximumRemainderSize, Matrix, ProofOptions, Prover, ProverError, Serializable, SliceReader,
+    StarkProof, Trace, TraceInfo, TraceLayout, TraceTable, TraceTableFragment,
     TransitionConstraintDegree, TransitionConstraintGroup,
 };
 pub use verifier::{verify, VerifierError};

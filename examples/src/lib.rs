@@ -5,8 +5,8 @@
 
 use structopt::StructOpt;
 use winterfell::{
-    crypto::hashers::Rp64_256, math::fields::f128::BaseElement, FieldExtension, ProofOptions,
-    StarkProof, VerifierError,
+    crypto::hashers::Rp64_256, math::fields::f128::BaseElement, BlowupFactor, FieldExtension,
+    FriFoldingFactor, FriMaximumRemainderSize, ProofOptions, StarkProof, VerifierError,
 };
 
 pub mod fibonacci;
@@ -51,7 +51,7 @@ pub struct ExampleOptions {
 
     /// Number of queries to include in a proof
     #[structopt(short = "q", long = "queries")]
-    num_queries: Option<usize>,
+    num_queries: Option<u8>,
 
     /// Blowup factor for low degree extension
     #[structopt(short = "b", long = "blowup")]
@@ -59,7 +59,7 @@ pub struct ExampleOptions {
 
     /// Grinding factor for query seed
     #[structopt(short = "g", long = "grinding", default_value = "16")]
-    grinding_factor: u32,
+    grinding_factor: u8,
 
     /// Field extension degree for composition polynomial
     #[structopt(short = "e", long = "field_extension", default_value = "1")]
@@ -71,7 +71,7 @@ pub struct ExampleOptions {
 }
 
 impl ExampleOptions {
-    pub fn to_proof_options(&self, q: usize, b: usize) -> (ProofOptions, HashFunction) {
+    pub fn to_proof_options(&self, q: u8, b: usize) -> (ProofOptions, HashFunction) {
         let num_queries = self.num_queries.unwrap_or(q);
         let blowup_factor = self.blowup_factor.unwrap_or(b);
         let field_extension = match self.field_extension {
@@ -89,15 +89,26 @@ impl ExampleOptions {
             val => panic!("'{val}' is not a valid hash function option"),
         };
 
+        let folding_factor = match self.folding_factor {
+            4 => FriFoldingFactor::First,
+            8 => FriFoldingFactor::Second,
+            16 => FriFoldingFactor::Third,
+            val => panic!("'{val}' is not a valid folding factor"),
+        };
+
+        let blowup_factor = BlowupFactor::try_from(blowup_factor)
+            .unwrap_or_else(|_| panic!("'{blowup_factor}' is not a valid blowup factor"));
+
         (
             ProofOptions::new(
                 num_queries,
                 blowup_factor,
                 self.grinding_factor,
                 field_extension,
-                self.folding_factor,
-                256,
-            ),
+                folding_factor,
+                FriMaximumRemainderSize::Fourth,
+            )
+            .expect("Proof options should be valid"),
             hash_fn,
         )
     }
