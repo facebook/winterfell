@@ -281,10 +281,10 @@ Now, we are finally ready to generate a STARK proof. The function below, will ex
 ```Rust
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement},
-    FieldExtension, HashFunction, ProofOptions, StarkProof,
+    BlowupFactor, FieldExtension, FriFoldingFactor, FriMaximumRemainderSize, HashFunction, ProofOptions, ProofOptionError, StarkProof,
 };
 
-pub fn prove_work() -> (BaseElement, StarkProof) {
+pub fn prove_work() -> Result<(BaseElement, StarkProof), ProofOptionError> {
     // We'll just hard-code the parameters here for this example.
     let start = BaseElement::new(3);
     let n = 1_048_576;
@@ -296,18 +296,18 @@ pub fn prove_work() -> (BaseElement, StarkProof) {
     // Define proof options; these will be enough for ~96-bit security level.
     let options = ProofOptions::new(
         32, // number of queries
-        8,  // blowup factor
+        BlowupFactor::Third,  // blowup factor
         0,  // grinding factor
         FieldExtension::None,
-        8,   // FRI folding factor
-        128, // FRI max remainder length
-    );
+        FriFoldingFactor::Third,   // FRI folding factor
+        FriMaximumRemainderSize::Fourth, // FRI max remainder length
+    )?;
 
     // Instantiate the prover and generate the proof.
     let prover = WorkProver::new(options);
     let proof = prover.prove(trace).unwrap();
 
-    (result, proof)
+    Ok((result, proof))
 }
 ```
 

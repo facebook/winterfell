@@ -8,7 +8,8 @@ use examples::{rescue, Example};
 
 use std::time::Duration;
 use winterfell::{
-    crypto::hashers::Blake3_256, math::fields::f128::BaseElement, FieldExtension, ProofOptions,
+    crypto::hashers::Blake3_256, math::fields::f128::BaseElement, BlowupFactor, FieldExtension,
+    FriFoldingFactor, FriMaximumRemainderSize, ProofOptions,
 };
 
 const SIZES: [usize; 2] = [256, 512];
@@ -18,7 +19,15 @@ fn rescue(c: &mut Criterion) {
     group.sample_size(10);
     group.measurement_time(Duration::from_secs(25));
 
-    let options = ProofOptions::new(32, 32, 0, FieldExtension::None, 4, 256);
+    let options = ProofOptions::new(
+        32,
+        BlowupFactor::Fifth,
+        0,
+        FieldExtension::None,
+        FriFoldingFactor::First,
+        FriMaximumRemainderSize::Fourth,
+    )
+    .expect("Proof options should be valid");
 
     for &size in SIZES.iter() {
         let resc = rescue::RescueExample::<Blake3_256<BaseElement>>::new(size, options.clone());
