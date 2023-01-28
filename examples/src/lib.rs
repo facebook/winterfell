@@ -106,14 +106,14 @@ impl ExampleOptions {
     }
 
     /// Returns security level of the input proof in bits.
-    pub fn get_proof_security_level(&self, proof: &StarkProof) -> usize {
+    pub fn get_proof_security_level(&self, proof: &StarkProof, conjectured: bool) -> usize {
         let security_level = match self.hash_fn.as_str() {
-            "blake3_192" => proof.security_level::<Blake3_192>(true),
-            "blake3_256" => proof.security_level::<Blake3_256>(true),
-            "sha3_256" => proof.security_level::<Sha3_256>(true),
-            "rp64_256" => proof.security_level::<Rp64_256>(true),
-            "rp_jive64_256" => proof.security_level::<RpJive64_256>(true),
-            "griffin_jive64_256" => proof.security_level::<GriffinJive64_256>(true),
+            "blake3_192" => proof.security_level::<Blake3_192>(conjectured),
+            "blake3_256" => proof.security_level::<Blake3_256>(conjectured),
+            "sha3_256" => proof.security_level::<Sha3_256>(conjectured),
+            "rp64_256" => proof.security_level::<Rp64_256>(conjectured),
+            "rp_jive64_256" => proof.security_level::<RpJive64_256>(conjectured),
+            "griffin_jive64_256" => proof.security_level::<GriffinJive64_256>(conjectured),
             val => panic!("'{val}' is not a valid hash function option"),
         };
 
