@@ -114,6 +114,13 @@ pub trait FieldElement:
     /// Exponentiates this field element by `power` parameter.
     #[must_use]
     fn exp(self, power: Self::PositiveInteger) -> Self {
+        self.exp_vartime(power)
+    }
+
+    /// Exponentiates this field element by `power` parameter.
+    /// This function is expressly variable time, to speed-up verifier computations.
+    #[must_use]
+    fn exp_vartime(self, power: Self::PositiveInteger) -> Self {
         let mut r = Self::ONE;
         let mut b = self;
         let mut p = power;

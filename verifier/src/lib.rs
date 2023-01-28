@@ -220,7 +220,7 @@ where
         .iter()
         .enumerate()
         .fold(E::ZERO, |result, (i, &value)| {
-            result + z.exp((i as u32).into()) * value
+            result + z.exp_vartime((i as u32).into()) * value
         });
     public_coin.reseed(H::hash_elements(&ood_constraint_evaluations));
 

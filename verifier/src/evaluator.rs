@@ -30,7 +30,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
         .iter()
         .map(|poly| {
             let num_cycles = air.trace_length() / poly.len();
-            let x = x.exp((num_cycles as u32).into());
+            let x = x.exp_vartime((num_cycles as u32).into());
             polynom::eval(poly, x)
         })
         .collect::<Vec<_>>();
@@ -64,7 +64,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
 
     // cache power of x here so that we only re-compute it when degree_adjustment changes
     let mut degree_adjustment = b_constraints.main_constraints()[0].degree_adjustment();
-    let mut xp = x.exp(degree_adjustment.into());
+    let mut xp = x.exp_vartime(degree_adjustment.into());
 
     // iterate over boundary constraint groups for the main trace segment (each group has a
     // distinct divisor), evaluate constraints in each group and add their combination to the
@@ -74,7 +74,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
         // previous value; otherwise, compute new `xp`
         if group.degree_adjustment() != degree_adjustment {
             degree_adjustment = group.degree_adjustment();
-            xp = x.exp(degree_adjustment.into());
+            xp = x.exp_vartime(degree_adjustment.into());
         }
         // evaluate all constraints in the group, and add the evaluation to the result
         result += group.evaluate_at(main_trace_frame.current(), x, xp);
@@ -89,7 +89,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
             // previous value; otherwise, compute new `xp`
             if group.degree_adjustment() != degree_adjustment {
                 degree_adjustment = group.degree_adjustment();
-                xp = x.exp(degree_adjustment.into());
+                xp = x.exp_vartime(degree_adjustment.into());
             }
             // evaluate all constraints in the group, and add the evaluation to the result
             result += group.evaluate_at(aux_trace_frame.current(), x, xp);
