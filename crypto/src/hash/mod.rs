@@ -13,8 +13,13 @@ pub use blake::{Blake3_192, Blake3_256};
 mod sha;
 pub use sha::Sha3_256;
 
+mod mds;
+
 mod rescue;
-pub use rescue::{Rp62_248, Rp64_256};
+pub use rescue::{Rp62_248, Rp64_256, RpJive64_256};
+
+mod griffin;
+pub use griffin::GriffinJive64_256;
 
 // HASHER TRAITS
 // ================================================================================================

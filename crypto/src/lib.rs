@@ -29,8 +29,10 @@ pub mod hashers {
 
     pub use super::hash::Blake3_192;
     pub use super::hash::Blake3_256;
+    pub use super::hash::GriffinJive64_256;
     pub use super::hash::Rp62_248;
     pub use super::hash::Rp64_256;
+    pub use super::hash::RpJive64_256;
     pub use super::hash::Sha3_256;
 }
 

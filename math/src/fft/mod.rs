@@ -18,6 +18,9 @@ use crate::{
 };
 
 mod fft_inputs;
+
+pub mod real_u64;
+
 mod serial;
 
 #[cfg(feature = "concurrent")]

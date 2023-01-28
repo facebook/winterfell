@@ -7,7 +7,7 @@ use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion
 use math::fields::f128;
 use rand_utils::rand_value;
 use winter_crypto::{
-    hashers::{Blake3_256, Rp62_248, Rp64_256, Sha3_256},
+    hashers::{Blake3_256, GriffinJive64_256, Rp62_248, Rp64_256, RpJive64_256, Sha3_256},
     Hasher,
 };
 
@@ -19,6 +19,8 @@ type Sha3Digest = <Sha3 as Hasher>::Digest;
 
 type Rp62_248Digest = <Rp62_248 as Hasher>::Digest;
 type Rp64_256Digest = <Rp64_256 as Hasher>::Digest;
+type RpJive64_256Digest = <RpJive64_256 as Hasher>::Digest;
+type GriffinJive64_256Digest = <GriffinJive64_256 as Hasher>::Digest;
 
 fn blake3(c: &mut Criterion) {
     let v: [Blake3Digest; 2] = [Blake3::hash(&[1u8]), Blake3::hash(&[2u8])];
@@ -100,5 +102,56 @@ fn rescue256(c: &mut Criterion) {
     });
 }
 
-criterion_group!(hash_group, blake3, sha3, rescue248, rescue256);
+fn rescue_jive256(c: &mut Criterion) {
+    let v: [RpJive64_256Digest; 2] = [RpJive64_256::hash(&[1u8]), RpJive64_256::hash(&[2u8])];
+    c.bench_function("hash_rp_jive64_256 (cached)", |bench| {
+        bench.iter(|| RpJive64_256::merge(black_box(&v)))
+    });
+
+    c.bench_function("hash_rp_jive64_256 (random)", |b| {
+        b.iter_batched(
+            || {
+                [
+                    RpJive64_256::hash(&rand_value::<u64>().to_le_bytes()),
+                    RpJive64_256::hash(&rand_value::<u64>().to_le_bytes()),
+                ]
+            },
+            |state| RpJive64_256::merge(&state),
+            BatchSize::SmallInput,
+        )
+    });
+}
+
+fn griffin_jive256(c: &mut Criterion) {
+    let v: [GriffinJive64_256Digest; 2] = [
+        GriffinJive64_256::hash(&[1u8]),
+        GriffinJive64_256::hash(&[2u8]),
+    ];
+    c.bench_function("hash_griffin_jive64_256 (cached)", |bench| {
+        bench.iter(|| GriffinJive64_256::merge(black_box(&v)))
+    });
+
+    c.bench_function("hash_griffin_jive64_256 (random)", |b| {
+        b.iter_batched(
+            || {
+                [
+                    GriffinJive64_256::hash(&rand_value::<u64>().to_le_bytes()),
+                    GriffinJive64_256::hash(&rand_value::<u64>().to_le_bytes()),
+                ]
+            },
+            |state| GriffinJive64_256::merge(&state),
+            BatchSize::SmallInput,
+        )
+    });
+}
+
+criterion_group!(
+    hash_group,
+    blake3,
+    sha3,
+    rescue248,
+    rescue256,
+    rescue_jive256,
+    griffin_jive256,
+);
 criterion_main!(hash_group);

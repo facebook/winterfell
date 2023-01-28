@@ -6,11 +6,14 @@
 // FFT-BASED MDS MULTIPLICATION HELPER FUNCTIONS
 // ================================================================================================
 
-/// This module contains helper functions as well as constants used to perform the vector-matrix
-/// multiplication step of the Rescue prime permutation. The special form of our MDS matrix
-/// i.e. being circular, allows us to reduce the vector-matrix multiplication to a Hadamard product
-/// of two vectors in "frequency domain". This follows from the simple fact that every circulant
-/// matrix has the columns of the discrete Fourier transform matrix as orthogonal eigenvectors.
+use math::fft::real_u64::{fft4_real, ifft4_real_unreduced};
+use math::{fields::f64::BaseElement, FieldElement};
+
+/// This module contains helper functions as well as constants used to perform a 12x12 vector-matrix
+/// multiplication. The special form of our MDS matrix i.e. being circular, allows us to reduce
+/// the vector-matrix multiplication to a Hadamard product of two vectors in "frequency domain".
+/// This follows from the simple fact that every circulant matrix has the columns of the discrete
+/// Fourier transform matrix as orthogonal eigenvectors.
 /// The implementation also avoids the use of 3-point FFTs, and 3-point iFFTs, and substitutes that
 /// with explicit expressions. It also avoids, due to the form of our matrix in the frequency domain,
 /// divisions by 2 and repeated modular reductions. This is because of our explicit choice of
@@ -18,7 +21,7 @@
 /// The following implementation has benefited greatly from the discussions and insights of
 /// Hamish Ivey-Law and Jacqueline Nabaglo of Polygon Zero.
 
-// Rescue MDS matrix in frequency domain.
+// MDS matrix in frequency domain.
 // More precisely, this is the output of the three 4-point (real) FFTs of the first column of
 // the MDS matrix i.e. just before the multiplication with the appropriate twiddle factors
 // and application of the final four 3-point FFT in order to get the full 12-point FFT.
@@ -28,6 +31,35 @@
 const MDS_FREQ_BLOCK_ONE: [i64; 3] = [16, 8, 16];
 const MDS_FREQ_BLOCK_TWO: [(i64, i64); 3] = [(-1, 2), (-1, 1), (4, 8)];
 const MDS_FREQ_BLOCK_THREE: [i64; 3] = [-8, 1, 1];
+
+pub(crate) fn mds_multiply(state: &mut [BaseElement; 12]) {
+    let mut result = [BaseElement::ZERO; 12];
+
+    // Using the linearity of the operations we can split the state into a low||high decomposition
+    // and operate on each with no overflow and then combine/reduce the result to a field element.
+    let mut state_l = [0u64; 12];
+    let mut state_h = [0u64; 12];
+
+    for r in 0..12 {
+        let s = state[r].inner();
+        state_h[r] = s >> 32;
+        state_l[r] = (s as u32) as u64;
+    }
+
+    let state_h = mds_multiply_freq(state_h);
+    let state_l = mds_multiply_freq(state_l);
+
+    for r in 0..12 {
+        let s = state_l[r] as u128 + ((state_h[r] as u128) << 32);
+        let s_hi = (s >> 64) as u64;
+        let s_lo = s as u64;
+        let z = (s_hi << 32) - s_hi;
+        let (res, over) = s_lo.overflowing_add(z);
+
+        result[r] = BaseElement::from_mont(res.wrapping_add(0u32.wrapping_sub(over as u32) as u64));
+    }
+    *state = result;
+}
 
 // We use split 3 x 4 FFT transform in order to transform our vectors into the frequency domain.
 #[inline(always)]
@@ -52,48 +84,11 @@ pub(crate) fn mds_multiply_freq(state: [u64; 12]) -> [u64; 12] {
     // The 4th block is not computed as it is similar to the 2nd one, up to complex conjugation,
     // and is, due to the use of the real FFT and iFFT, redundant.
 
-    let [s0, s3, s6, s9] = ifft4_real((v0, v1, v2));
-    let [s1, s4, s7, s10] = ifft4_real((v4, v5, v6));
-    let [s2, s5, s8, s11] = ifft4_real((v8, v9, v10));
+    let [s0, s3, s6, s9] = ifft4_real_unreduced((v0, v1, v2));
+    let [s1, s4, s7, s10] = ifft4_real_unreduced((v4, v5, v6));
+    let [s2, s5, s8, s11] = ifft4_real_unreduced((v8, v9, v10));
 
     [s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11]
-}
-
-// We use the real FFT to avoid redundant computations. See https://www.mdpi.com/2076-3417/12/9/4700
-#[inline(always)]
-fn fft2_real(x: [u64; 2]) -> [i64; 2] {
-    [(x[0] as i64 + x[1] as i64), (x[0] as i64 - x[1] as i64)]
-}
-
-#[inline(always)]
-fn ifft2_real(y: [i64; 2]) -> [u64; 2] {
-    // We avoid divisions by 2 by appropriately scaling the MDS matrix constants.
-    [(y[0] + y[1]) as u64, (y[0] - y[1]) as u64]
-}
-
-#[inline(always)]
-fn fft4_real(x: [u64; 4]) -> (i64, (i64, i64), i64) {
-    let [z0, z2] = fft2_real([x[0], x[2]]);
-    let [z1, z3] = fft2_real([x[1], x[3]]);
-    let y0 = z0 + z1;
-    let y1 = (z2, -z3);
-    let y2 = z0 - z1;
-    (y0, y1, y2)
-}
-
-#[inline(always)]
-fn ifft4_real(y: (i64, (i64, i64), i64)) -> [u64; 4] {
-    // In calculating 'z0' and 'z1', division by 2 is avoided by appropriately scaling
-    // the MDS matrix constants.
-    let z0 = y.0 + y.2;
-    let z1 = y.0 - y.2;
-    let z2 = y.1 .0;
-    let z3 = -y.1 .1;
-
-    let [x0, x2] = ifft2_real([z0, z2]);
-    let [x1, x3] = ifft2_real([z1, z3]);
-
-    [x0, x1, x2, x3]
 }
 
 #[inline(always)]
@@ -154,47 +149,4 @@ fn block3(x: [i64; 3], y: [i64; 3]) -> [i64; 3] {
     let z2 = x0 * y2 + x1 * y1 + x2 * y0;
 
     [z0, z1, z2]
-}
-
-// TESTS
-// ================================================================================================
-
-#[cfg(test)]
-mod tests {
-    use super::super::Rp64_256;
-    use crate::hash::rescue::rp64_256::MDS;
-    use math::{fields::f64::BaseElement, FieldElement};
-    use proptest::prelude::*;
-
-    const STATE_WIDTH: usize = 12;
-
-    #[inline(always)]
-    fn apply_mds_naive(state: &mut [BaseElement; STATE_WIDTH]) {
-        let mut result = [BaseElement::ZERO; STATE_WIDTH];
-        result.iter_mut().zip(MDS).for_each(|(r, mds_row)| {
-            state.iter().zip(mds_row).for_each(|(&s, m)| {
-                *r += m * s;
-            });
-        });
-        *state = result;
-    }
-
-    proptest! {
-        #[test]
-        fn mds_freq_proptest(a in any::<[u64;STATE_WIDTH]>()) {
-
-            let mut v1 = [BaseElement::ZERO;STATE_WIDTH];
-            let mut v2;
-
-            for i in 0..STATE_WIDTH {
-                v1[i] = BaseElement::new(a[i]);
-            }
-            v2 = v1;
-
-            apply_mds_naive(&mut v1);
-            Rp64_256::apply_mds(&mut v2);
-
-            prop_assert_eq!(v1, v2);
-        }
-    }
 }
