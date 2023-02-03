@@ -254,6 +254,11 @@ pub trait ExtensibleField<const N: usize>: StarkField {
     /// Returns a product of `a` and `b` in the field defined by this extension.
     fn mul(a: [Self; N], b: [Self; N]) -> [Self; N];
 
+    /// Returns the square of `a` in the field defined by this extension.
+    fn square(a: [Self; N]) -> [Self; N] {
+        <Self as ExtensibleField<N>>::mul(a, a)
+    }
+
     /// Returns a product of `a` and `b` in the field defined by this extension. `b` represents
     /// an element in the base field.
     fn mul_base(a: [Self; N], b: Self) -> [Self; N];

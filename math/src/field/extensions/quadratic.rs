@@ -70,6 +70,12 @@ impl<B: ExtensibleField<2>> FieldElement for QuadExtension<B> {
     }
 
     #[inline]
+    fn square(self) -> Self {
+        let a = <B as ExtensibleField<2>>::square([self.0, self.1]);
+        Self(a[0], a[1])
+    }
+
+    #[inline]
     fn inv(self) -> Self {
         if self == Self::ZERO {
             return self;

@@ -81,6 +81,19 @@ impl BaseElement {
         let x3 = x2 * self;
         x3 * x4
     }
+
+    /// Multiplies an element that is less than 2^32 by a field element. This implementation
+    /// is faster as it avoids the use of Montgomery reduction.
+    #[inline(always)]
+    pub fn mul_small(self, rhs: u32) -> Self {
+        let s = (self.inner() as u128) * (rhs as u128);
+        let s_hi = (s >> 64) as u64;
+        let s_lo = s as u64;
+        let z = (s_hi << 32) - s_hi;
+        let (res, over) = s_lo.overflowing_add(z);
+
+        BaseElement::from_mont(res.wrapping_add(0u32.wrapping_sub(over as u32) as u64))
+    }
 }
 
 impl FieldElement for BaseElement {
@@ -368,6 +381,19 @@ impl ExtensibleField<2> for BaseElement {
     }
 
     #[inline(always)]
+    fn square(a: [Self; 2]) -> [Self; 2] {
+        let a0 = a[0];
+        let a1 = a[1];
+
+        let a1_sq = a1.square();
+
+        let out0 = a0.square() - a1_sq.double();
+        let out1 = (a0 * a1).double() + a1_sq;
+
+        [out0, out1]
+    }
+
+    #[inline(always)]
     fn mul_base(a: [Self; 2], b: Self) -> [Self; 2] {
         // multiplying an extension field element by a base field element requires just 2
         // multiplications in the base field.
@@ -412,6 +438,22 @@ impl ExtensibleField<3> for BaseElement {
             a0b1_a1b0_a1b2_a2b1_a2b2,
             a0b2_a1b1_a2b0_a2b2,
         ]
+    }
+
+    #[inline(always)]
+    fn square(a: [Self; 3]) -> [Self; 3] {
+        let a0 = a[0];
+        let a1 = a[1];
+        let a2 = a[2];
+
+        let a2_sq = a2.square();
+        let a1_a2 = a1 * a2;
+
+        let out0 = a0.square() + a1_a2.double();
+        let out1 = (a0 * a1 + a1_a2).double() + a2_sq;
+        let out2 = (a0 * a2).double() + a1.square() + a2_sq;
+
+        [out0, out1, out2]
     }
 
     #[inline(always)]
