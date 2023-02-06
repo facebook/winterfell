@@ -8,7 +8,7 @@
 use crate::{folding::fold_positions, utils::map_positions_to_indexes, FriOptions, VerifierError};
 use core::{convert::TryInto, marker::PhantomData, mem};
 use crypto::{ElementHasher, RandomCoin};
-use math::{fft, log2, polynom, FieldElement, StarkField};
+use math::{log2, polynom, FieldElement, StarkField};
 use utils::collections::Vec;
 
 mod channel;
@@ -124,6 +124,7 @@ where
             if depth != layer_commitments.len() - 1
                 && max_degree_plus_1 % options.folding_factor() != 0
             {
+                println!("here");
                 return Err(VerifierError::DegreeTruncation(
                     max_degree_plus_1 - 1,
                     options.folding_factor(),
@@ -303,56 +304,24 @@ where
             mem::swap(&mut positions, &mut folded_positions);
         }
 
-        // 2 ----- verify the remainder of the FRI proof ----------------------------------------------
+        // 2 ----- verify the remainder polynomial of the FRI proof -------------------------------
 
-        // read the remainder from the channel and make sure it matches with the columns
-        // of the previous layer
-        let remainder_commitment = self.layer_commitments.last().unwrap();
-        let remainder = channel.read_remainder::<N>(remainder_commitment)?;
+        // read the remainder polynomial from the channel and make sure it agrees with the evaluations
+        // from the previous layer.
+        let remainder = channel.read_remainder(max_degree_plus_1 - 1)?;
+        let offset: B = self.options().domain_offset();
+
         for (&position, evaluation) in positions.iter().zip(evaluations) {
-            if remainder[position] != evaluation {
+            let comp_eval = eval_horner::<E>(
+                &remainder,
+                E::from(offset * domain_generator.exp((position as u64).into())),
+            );
+            if comp_eval != evaluation {
                 return Err(VerifierError::InvalidRemainderFolding);
             }
         }
 
-        // make sure the remainder values satisfy the degree
-        verify_remainder(remainder, max_degree_plus_1 - 1)
-    }
-}
-
-// REMAINDER DEGREE VERIFICATION
-// ================================================================================================
-/// Returns Ok(true) if values in the `remainder` slice represent evaluations of a polynomial
-/// with degree <= `max_degree` against a domain of the same size as `remainder`.
-fn verify_remainder<B: StarkField, E: FieldElement<BaseField = B>>(
-    mut remainder: Vec<E>,
-    max_degree: usize,
-) -> Result<(), VerifierError> {
-    if max_degree >= remainder.len() - 1 {
-        return Err(VerifierError::RemainderDegreeNotValid);
-    }
-    // in case `remainder` represents a polynomial of degree `0` then the final check simplifies
-    // to checking that the codeword values are identical.
-    if max_degree == 0 {
-        if !remainder.windows(2).all(|a| a[0] == a[1]) {
-            Err(VerifierError::RemainderDegreeMismatch(max_degree))
-        } else {
-            Ok(())
-        }
-    } else {
-        // interpolate remainder polynomial from its evaluations; we don't shift the domain here
-        // because the degree of the polynomial will not change as long as we interpolate over a
-        // coset of the original domain.
-        let inv_twiddles = fft::get_inv_twiddles(remainder.len());
-        fft::interpolate_poly(&mut remainder, &inv_twiddles);
-        let poly = remainder;
-
-        // make sure the degree is valid
-        if max_degree < polynom::degree_of(&poly) {
-            Err(VerifierError::RemainderDegreeMismatch(max_degree))
-        } else {
-            Ok(())
-        }
+        Ok(())
     }
 }
 
@@ -377,4 +346,12 @@ fn get_query_values<E: FieldElement, const N: usize>(
     }
 
     result
+}
+
+// Evaluates a polynomial with coefficients in an extension field at a point in the base field.
+pub fn eval_horner<E>(p: &[E], x: E) -> E
+where
+    E: FieldElement,
+{
+    p.iter().rev().fold(E::ZERO, |acc, &coeff| acc * x + coeff)
 }

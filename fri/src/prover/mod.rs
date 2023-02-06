@@ -11,7 +11,7 @@ use crate::{
 };
 use core::marker::PhantomData;
 use crypto::{ElementHasher, Hasher, MerkleTree};
-use math::{FieldElement, StarkField};
+use math::{fft, FieldElement, StarkField};
 use utils::{collections::Vec, flatten_vector_elements, group_slice_elements, transpose_slice};
 
 mod channel;
@@ -70,8 +70,8 @@ mod tests;
 /// In the query phase, which is executed via [build_proof()](FriProver::build_proof()) function,
 /// the prover receives a set of positions in the domain *D* from the verifier. The prover then
 /// decommits evaluations corresponding to these positions across all FRI layers (except for the
-/// remainder layer) and builds a [FriProof] from these evaluations. The remainder is included in
-/// the proof in its entirety.
+/// remainder layer) and builds a [FriProof] from these evaluations. The remainder polynomial
+/// is included in the proof in its entirety.
 ///
 /// In the interactive version of the protocol, the verifier draws the position uniformly at
 /// random from domain *D*. In the non-interactive version, the positions are pseudo-randomly
@@ -186,16 +186,7 @@ where
             }
         }
 
-        self.set_remainder(channel, &mut evaluations);
-
-        // make sure remainder length does not exceed max allowed value
-        let remainder_size = self.remainder.0.len();
-        debug_assert!(
-            remainder_size <= self.options.max_remainder_size(),
-            "last FRI layer cannot exceed {} elements, but was {} elements",
-            self.options.max_remainder_size(),
-            remainder_size
-        );
+        self.set_remainder(&mut evaluations);
     }
 
     /// Builds a single FRI layer by first committing to the `evaluations`, then drawing a random
@@ -222,11 +213,12 @@ where
         });
     }
 
-    /// Creates a FriRemainder from a vector of `evaluations` representing the remainder and
-    /// commits to the latter by hashing sequentially `evaluations`.
-    fn set_remainder(&mut self, channel: &mut C, evaluations: &mut [E]) {
-        let commitment = <H as ElementHasher>::hash_elements(evaluations);
-        channel.commit_fri_layer(commitment);
+    /// Creates remainder polynomial from a vector of `evaluations` representing the remainder
+    /// using interpolation.
+    fn set_remainder(&mut self, evaluations: &mut [E]) {
+        let inv_twiddles = fft::get_inv_twiddles(evaluations.len());
+        fft::interpolate_poly_with_offset(evaluations, &inv_twiddles, E::BaseField::GENERATOR);
+
         self.remainder = FriRemainder(evaluations.to_vec());
     }
 
@@ -236,8 +228,8 @@ where
     ///
     /// For each of the provided `positions`, corresponding evaluations from each of the layers
     /// (excluding the remainder layer) are recorded into the proof together with Merkle
-    /// authentication paths from the root of layer commitment trees. For the remainder, we include
-    /// the whole set of evaluations into the proof.
+    /// authentication paths from the root of layer commitment trees. For the remainder, we send
+    /// the whole remainder polynomial resulting from interpolating the remainder layer.
     ///
     /// # Panics
     /// Panics is the prover state is clean (no FRI layers have been build yet).
