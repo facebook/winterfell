@@ -70,6 +70,12 @@ impl<B: ExtensibleField<3>> FieldElement for CubeExtension<B> {
     }
 
     #[inline]
+    fn square(self) -> Self {
+        let a = <B as ExtensibleField<3>>::square([self.0, self.1, self.2]);
+        Self(a[0], a[1], a[2])
+    }
+
+    #[inline]
     fn inv(self) -> Self {
         if self == Self::ZERO {
             return self;
