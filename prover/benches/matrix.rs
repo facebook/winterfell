@@ -5,21 +5,18 @@
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use rand_utils::rand_vector;
-use rayon::prelude::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
+use rayon::prelude::{IntoParallelRefMutIterator, ParallelIterator};
 use std::time::Duration;
 
 use math::{
-    fft::{self, fft_inputs::FftInputs},
+    fft::{self},
     fields::f64::BaseElement,
-    FieldElement, StarkField,
+    StarkField,
 };
 
-use winter_prover::{
-    evaluate_poly_with_offset, evaluate_poly_with_offset_concurrent, Matrix, RowMatrix, Segment,
-    ARR_SIZE,
-};
+use winter_prover::{Matrix, Segment};
 
-const SIZE: usize = 524_288;
+const SIZE: usize = 524288;
 const NUM_POLYS: [usize; 1] = [64];
 
 fn evaluate_columns(c: &mut Criterion) {
@@ -61,7 +58,8 @@ fn evaluate_matrix(c: &mut Criterion) {
         let column_matrix = Matrix::new(columns);
         group.bench_function(BenchmarkId::new("with_offset", num_poly), |bench| {
             bench.iter_with_large_drop(|| {
-                Segment::from_polys(&column_matrix, blowup_factor);
+                let segment = Segment::from_polys(&column_matrix, blowup_factor);
+                segment.transpose_to_gpu_friendly_matrix();
             });
         });
     }
@@ -75,35 +73,11 @@ criterion_main!(matrix_group);
 macro_rules! iter_mut {
     ($e: expr) => {{
         // #[cfg(feature = "concurrent")]
-        let result = $e.par_iter_mut();
+        // let result = $e.par_iter_mut();
 
         // #[cfg(not(feature = "concurrent"))]
-        // let result = $e.iter_mut();
+        let result = $e.iter_mut();
 
         result
     }};
-}
-
-#[macro_export]
-macro_rules! iter {
-    ($e: expr) => {{
-        // #[cfg(feature = "concurrent")]
-        let result = $e.par_iter();
-
-        // #[cfg(not(feature = "concurrent"))]
-        // let result = $e.iter_mut();
-
-        result
-    }};
-}
-
-/// Convert a vector of field elements to a arrays of field elements. The size of the array is
-/// determined by the `ARR_SIZE` constant.
-fn to_array<E: FieldElement>(v: Vec<E>) -> [E; ARR_SIZE] {
-    debug_assert_eq!(v.len(), ARR_SIZE);
-    let mut result = [E::ZERO; ARR_SIZE];
-    for (i, e) in v.into_iter().enumerate() {
-        result[i] = e;
-    }
-    result
 }

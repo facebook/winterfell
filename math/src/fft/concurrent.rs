@@ -75,7 +75,7 @@ where
     values.split_radix_fft(inv_twiddles);
     values.permute();
 
-    let domain_offset = E::BaseField::inv(domain_offset.into());
+    let domain_offset = E::BaseField::inv(domain_offset);
     let inv_len = E::BaseField::inv((values.len() as u64).into());
     let batch_size = values.len()
         / rayon::current_num_threads()
@@ -107,7 +107,7 @@ fn clone_and_shift<E: FieldElement>(source: &[E], destination: &mut [E], offset:
             let mut factor = offset.exp(((i * batch_size) as u64).into());
             for (s, d) in source.iter().zip(destination.iter_mut()) {
                 *d = (*s).mul_base(factor);
-                factor = factor * offset;
+                factor *= offset;
             }
         });
 }

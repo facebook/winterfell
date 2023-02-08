@@ -4,14 +4,13 @@
 // LICENSE file in the root directory of this source tree.
 
 use core::{cmp, iter::FusedIterator};
+use std::time::Instant;
 
 use crate::Matrix;
 
-use super::{ColumnIter, ColumnIterMut, StarkDomain};
-use crypto::{ElementHasher, MerkleTree};
 use math::{
-    fft::{self, fft_inputs::FftInputs, permute_index, MIN_CONCURRENT_SIZE},
-    log2, polynom, FieldElement, StarkField,
+    fft::{self, fft_inputs::FftInputs, MIN_CONCURRENT_SIZE},
+    FieldElement, StarkField,
 };
 use utils::{collections::Vec, uninit_vector};
 
@@ -27,13 +26,13 @@ use rayon::{
 };
 
 #[macro_export]
-macro_rules! iter {
+macro_rules! iter_mut {
     ($e: expr) => {{
         // #[cfg(feature = "concurrent")]
-        // let result = $e.par_iter();
+        // let result = $e.par_iter_mut();
 
         // #[cfg(not(feature = "concurrent"))]
-        let result = $e.iter();
+        let result = $e.iter_mut();
 
         result
     }};
@@ -116,64 +115,12 @@ where
 /// `domain_offset` in the field specified `B` using the FFT algorithm and returns the result.
 ///
 /// This function is only available when the `concurrent` feature is enabled.
-pub fn evaluate_poly_with_offset_concurrent<E>(
-    p: &RowMatrix<E>,
-    twiddles: &[E::BaseField],
-    domain_offset: E::BaseField,
-    blowup_factor: usize,
-) where
+pub fn evaluate_poly_with_offset_concurrent<E>(p: &mut RowMatrix<E>, twiddles: &[E::BaseField])
+where
     E: FieldElement,
 {
-    // let domain_size = p.len() * blowup_factor;
-    // let g = E::BaseField::get_root_of_unity(log2(domain_size));
-
-    // let mut result_vec_of_arrays = unsafe { uninit_vector::<[E; ARR_SIZE]>(domain_size) };
-
-    // let batch_size = p.len()
-    //     / rayon::current_num_threads()
-    //         .next_power_of_two()
-    //         .min(p.len());
-
-    // let p_data = p.get_data();
-
-    // result_vec_of_arrays
-    //     .par_chunks_mut(p.len())
-    //     .enumerate()
-    //     .for_each(|(i, chunk)| {
-    //         let idx = permute_index(blowup_factor, i) as u64;
-    //         let offset = E::from(g.exp(idx.into()) * domain_offset);
-
-    //         p_data
-    //             .par_chunks(batch_size)
-    //             .zip(chunk.par_chunks_mut(batch_size))
-    //             .enumerate()
-    //             .for_each(|(i, (src, dest))| {
-    //                 let mut factor = offset.exp(((i * batch_size) as u64).into());
-
-    //                 let chunk_len = src.len();
-    //                 for d in 0..chunk_len {
-    //                     dest[d][0] = src[d][0] * factor;
-    //                     dest[d][1] = src[d][1] * factor;
-    //                     dest[d][2] = src[d][2] * factor;
-    //                     dest[d][3] = src[d][3] * factor;
-    //                     dest[d][4] = src[d][4] * factor;
-    //                     dest[d][5] = src[d][5] * factor;
-    //                     dest[d][6] = src[d][6] * factor;
-    //                     dest[d][7] = src[d][7] * factor;
-    //                     factor *= offset;
-    //                 }
-    //             });
-
-    //         let mut matrix_chunk = RowMatrixRef { data: chunk };
-    //         matrix_chunk.fft_in_place(twiddles);
-    //     });
-
-    // let mut matrix_result = RowMatrixRef {
-    //     data: result_vec_of_arrays.as_mut_slice(),
-    // };
-
-    // matrix_result.permute_concurrent();
-    // result_vec_of_arrays
+    p.split_radix_fft(twiddles);
+    p.permute_concurrent()
 }
 
 /// Implementation of `FftInputs` for `RowMatrix`.
@@ -237,42 +184,42 @@ where
         let temp = self.data[i];
 
         // apply of index 0 of twiddle.
-        self.data[j][0] = self.data[j][0] * twiddle;
+        self.data[j][0] *= twiddle;
         self.data[i][0] = temp[0] + self.data[j][0];
         self.data[j][0] = temp[0] - self.data[j][0];
 
         // apply of index 1 of twiddle.
-        self.data[j][1] = self.data[j][1] * twiddle;
+        self.data[j][1] *= twiddle;
         self.data[i][1] = temp[1] + self.data[j][1];
         self.data[j][1] = temp[1] - self.data[j][1];
 
         // apply of index 2 of twiddle.
-        self.data[j][2] = self.data[j][2] * twiddle;
+        self.data[j][2] *= twiddle;
         self.data[i][2] = temp[2] + self.data[j][2];
         self.data[j][2] = temp[2] - self.data[j][2];
 
         // apply of index 3 of twiddle.
-        self.data[j][3] = self.data[j][3] * twiddle;
+        self.data[j][3] *= twiddle;
         self.data[i][3] = temp[3] + self.data[j][3];
         self.data[j][3] = temp[3] - self.data[j][3];
 
         // apply of index 4 of twiddle.
-        self.data[j][4] = self.data[j][4] * twiddle;
+        self.data[j][4] *= twiddle;
         self.data[i][4] = temp[4] + self.data[j][4];
         self.data[j][4] = temp[4] - self.data[j][4];
 
         // apply of index 5 of twiddle.
-        self.data[j][5] = self.data[j][5] * twiddle;
+        self.data[j][5] *= twiddle;
         self.data[i][5] = temp[5] + self.data[j][5];
         self.data[j][5] = temp[5] - self.data[j][5];
 
         // apply of index 6 of twiddle.
-        self.data[j][6] = self.data[j][6] * twiddle;
+        self.data[j][6] *= twiddle;
         self.data[i][6] = temp[6] + self.data[j][6];
         self.data[j][6] = temp[6] - self.data[j][6];
 
         // apply of index 7 of twiddle.
-        self.data[j][7] = self.data[j][7] * twiddle;
+        self.data[j][7] *= twiddle;
         self.data[i][7] = temp[7] + self.data[j][7];
         self.data[j][7] = temp[7] - self.data[j][7];
     }
@@ -447,42 +394,42 @@ where
         let temp = self.data[i];
 
         // apply of index 0 of twiddle.
-        self.data[j][0] = self.data[j][0] * twiddle;
+        self.data[j][0] *= twiddle;
         self.data[i][0] = temp[0] + self.data[j][0];
         self.data[j][0] = temp[0] - self.data[j][0];
 
         // apply of index 1 of twiddle.
-        self.data[j][1] = self.data[j][1] * twiddle;
+        self.data[j][1] *= twiddle;
         self.data[i][1] = temp[1] + self.data[j][1];
         self.data[j][1] = temp[1] - self.data[j][1];
 
         // apply of index 2 of twiddle.
-        self.data[j][2] = self.data[j][2] * twiddle;
+        self.data[j][2] *= twiddle;
         self.data[i][2] = temp[2] + self.data[j][2];
         self.data[j][2] = temp[2] - self.data[j][2];
 
         // apply of index 3 of twiddle.
-        self.data[j][3] = self.data[j][3] * twiddle;
+        self.data[j][3] *= twiddle;
         self.data[i][3] = temp[3] + self.data[j][3];
         self.data[j][3] = temp[3] - self.data[j][3];
 
         // apply of index 4 of twiddle.
-        self.data[j][4] = self.data[j][4] * twiddle;
+        self.data[j][4] *= twiddle;
         self.data[i][4] = temp[4] + self.data[j][4];
         self.data[j][4] = temp[4] - self.data[j][4];
 
         // apply of index 5 of twiddle.
-        self.data[j][5] = self.data[j][5] * twiddle;
+        self.data[j][5] *= twiddle;
         self.data[i][5] = temp[5] + self.data[j][5];
         self.data[j][5] = temp[5] - self.data[j][5];
 
         // apply of index 6 of twiddle.
-        self.data[j][6] = self.data[j][6] * twiddle;
+        self.data[j][6] *= twiddle;
         self.data[i][6] = temp[6] + self.data[j][6];
         self.data[j][6] = temp[6] - self.data[j][6];
 
         // apply of index 7 of twiddle.
-        self.data[j][7] = self.data[j][7] * twiddle;
+        self.data[j][7] *= twiddle;
         self.data[i][7] = temp[7] + self.data[j][7];
         self.data[j][7] = temp[7] - self.data[j][7];
     }
@@ -716,30 +663,24 @@ where
         let num_rows = polys.num_rows();
 
         let twiddles = fft::get_twiddles::<E::BaseField>(polys.num_rows() * blowup_factor);
-        let domain_size = num_rows * blowup_factor;
-        let g = E::BaseField::get_root_of_unity(log2(domain_size));
         let domain_offset = E::BaseField::GENERATOR;
 
         let num_of_segments = row_width / ARR_SIZE;
         let mut row_matrices = Vec::with_capacity(num_of_segments);
 
-        let offsets = (0..num_rows)
-            .map(|_i| {
-                let idx = permute_index(blowup_factor, 0) as u64;
-                g.exp(idx.into()) * domain_offset
-            })
-            .collect::<Vec<_>>();
-
+        let mut offsets = Vec::with_capacity(num_rows);
+        offsets.push(E::BaseField::ONE);
+        for i in 1..num_rows {
+            offsets.push(offsets[i - 1] * domain_offset);
+        }
         for i in 0..num_of_segments {
             let segment = &polys.columns[i * ARR_SIZE..(i + 1) * ARR_SIZE];
             let mut result_vec_of_arrays =
                 unsafe { uninit_vector::<[E; ARR_SIZE]>(num_rows * blowup_factor) };
 
-            iter!(segment).enumerate().for_each(|(i, row)| {
-                let mut factor = E::BaseField::ONE;
-                iter!(row).enumerate().for_each(|(j, elem)| {
-                    result_vec_of_arrays[(j)][i] = elem.mul_base(factor);
-                    factor *= offsets[j];
+            segment.iter().enumerate().for_each(|(i, row)| {
+                row.iter().enumerate().for_each(|(j, elem)| {
+                    result_vec_of_arrays[(j)][i] = elem.mul_base(offsets[j]);
                 })
             });
 
@@ -749,21 +690,35 @@ where
 
         if cfg!(feature = "concurrent") && polys.num_rows() >= MIN_CONCURRENT_SIZE {
             {
-                // #[cfg(feature = "concurrent")]
-                // evaluate_poly_with_offset_concurrent(
-                //     &row_matrix,
-                //     &twiddles,
-                //     E::BaseField::GENERATOR,
-                //     blowup_factor,
-                // );
+                iter_mut!(row_matrices).for_each(|segment| {
+                    evaluate_poly_with_offset_concurrent(segment, &twiddles);
+                });
             }
         } else {
             for segment in row_matrices.iter_mut() {
                 evaluate_poly_with_offset(segment, &twiddles);
             }
+            // iter_mut!(row_matrices).for_each(|segment| {
+            //     evaluate_poly_with_offset_concurrent(segment, &twiddles);
+            // });
         }
-
+        // println!(
+        //     "Time to evaluate row matrices: {:?}",
+        //     time.elapsed().as_millis()
+        // );
         Segment::new(row_matrices)
+    }
+
+    pub fn transpose_to_gpu_friendly_matrix(&self) -> RowMatrix<E> {
+        let num_rows = self.matrix[0].num_rows();
+        let num_cols = self.matrix[0].num_cols() * self.matrix.len();
+        let mut result = unsafe { uninit_vector::<[E; ARR_SIZE]>(num_rows * num_cols / ARR_SIZE) };
+        self.matrix.iter().enumerate().for_each(|(i, segment)| {
+            (segment.as_data()).iter().enumerate().for_each(|(j, row)| {
+                result[i * num_rows + j] = *row;
+            })
+        });
+        RowMatrix { data: result }
     }
 
     pub fn iter(&self) -> SegmentIter<E> {
@@ -841,7 +796,7 @@ impl<'a, E: FieldElement> Iterator for SegmentIter<'a, E> {
             _ => {
                 let column = &self.matrix[self.cursor];
                 self.cursor += 1;
-                Some(&column)
+                Some(column)
             }
         }
     }
