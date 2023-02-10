@@ -3,13 +3,16 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::fft_inputs::FftInputs;
+use crate::fft::fft_inputs::FftInputs;
 use crate::{
     field::{FieldElement, StarkField},
     utils::log2,
 };
-use rayon::prelude::*;
-use utils::{collections::Vec, uninit_vector};
+use utils::{
+    collections::Vec,
+    rayon::{self, prelude::*},
+    uninit_vector,
+};
 
 // POLYNOMIAL EVALUATION
 // ================================================================================================
@@ -18,7 +21,7 @@ use utils::{collections::Vec, uninit_vector};
 /// `p` is updated with results of the evaluation.
 pub fn evaluate_poly<B: StarkField, E: FieldElement<BaseField = B>>(p: &mut [E], twiddles: &[B]) {
     p.split_radix_fft(twiddles);
-    p.permute();
+    p.permute_concurrent();
 }
 
 /// Evaluates polynomial `p` using FFT algorithm and returns the result. The polynomial is
@@ -45,7 +48,7 @@ pub fn evaluate_poly_with_offset<B: StarkField, E: FieldElement<BaseField = B>>(
             chunk.split_radix_fft(twiddles);
         });
 
-    result.permute();
+    result.permute_concurrent();
     result
 }
 
@@ -62,7 +65,7 @@ where
     v.split_radix_fft(inv_twiddles);
     let inv_length = E::inv((v.len() as u64).into());
     v.par_iter_mut().for_each(|e| *e *= inv_length);
-    v.permute();
+    v.permute_concurrent();
 }
 
 /// Uses FFT algorithm to interpolate a polynomial from provided `values` over the domain defined
@@ -73,7 +76,7 @@ where
     E: FieldElement<BaseField = B>,
 {
     values.split_radix_fft(inv_twiddles);
-    values.permute();
+    values.permute_concurrent();
 
     let domain_offset = E::BaseField::inv(domain_offset);
     let inv_len = E::BaseField::inv((values.len() as u64).into());

@@ -3,11 +3,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use core::{cmp, iter::FusedIterator};
-use std::time::Instant;
-
 use crate::Matrix;
-
+use core::iter::FusedIterator;
 use math::{
     fft::{self, fft_inputs::FftInputs, MIN_CONCURRENT_SIZE},
     FieldElement, StarkField,
@@ -20,23 +17,8 @@ use utils::rayon::{
     prelude::*,
 };
 
-use rayon::{
-    iter::plumbing::{bridge, Consumer, Producer, ProducerCallback, UnindexedConsumer},
-    prelude::*,
-};
-
-#[macro_export]
-macro_rules! iter_mut {
-    ($e: expr) => {{
-        // #[cfg(feature = "concurrent")]
-        // let result = $e.par_iter_mut();
-
-        // #[cfg(not(feature = "concurrent"))]
-        let result = $e.iter_mut();
-
-        result
-    }};
-}
+#[cfg(feature = "concurrent")]
+use core::cmp;
 
 // CONSTANTS
 // ================================================================================================
@@ -88,20 +70,21 @@ where
     }
 
     /// Returns a reference to the row at the specified index.
-    pub fn get_row(&self, row_idx: usize) -> &[E] {
+    pub fn get_row(&self, row_idx: usize) -> &[E; ARR_SIZE] {
         assert!(row_idx < self.num_rows());
         &self.data[row_idx]
     }
 
     /// Returns a mutable reference to the row at the specified index.
-    pub fn get_row_mut(&mut self, row_idx: usize) -> &mut [E] {
+    pub fn get_row_mut(&mut self, row_idx: usize) -> &mut [E; ARR_SIZE] {
         assert!(row_idx < self.num_rows());
         &mut self.data[row_idx]
     }
 }
 
-/// Evaluates polynomial `p` over the domain of length `p.len()` * `blowup_factor` shifted by
-/// `domain_offset` in the field specified `B` using the FFT algorithm and returns the result.
+/// Evaluates the segment `p` over the domain of length `p.len()` shifted by `domain_offset` in
+/// the field specified `B` using the FFT algorithm and returns the result. The computation is
+/// performed in place.
 pub fn evaluate_poly_with_offset<E>(p: &mut RowMatrix<E>, twiddles: &[E::BaseField])
 where
     E: FieldElement,
@@ -110,9 +93,10 @@ where
     p.permute()
 }
 
-// #[cfg(feature = "concurrent")]
-/// Evaluates polynomial `p` over the domain of length `p.len()` * `blowup_factor` shifted by
-/// `domain_offset` in the field specified `B` using the FFT algorithm and returns the result.
+#[cfg(feature = "concurrent")]
+/// Evaluates the segment `p` over the domain of length `p.len()` shifted by `domain_offset` in
+/// the field specified `B` using the FFT algorithm and returns the result. The computation is
+/// performed in place.
 ///
 /// This function is only available when the `concurrent` feature is enabled.
 pub fn evaluate_poly_with_offset_concurrent<E>(p: &mut RowMatrix<E>, twiddles: &[E::BaseField])
@@ -129,6 +113,8 @@ where
     E: FieldElement,
 {
     type ChunkItem<'b> = RowMatrixRef<'b, E> where Self: 'b;
+
+    #[cfg(feature = "concurrent")]
     type ParChunksMut<'c> = MatrixChunksMut<'c, E> where Self: 'c;
 
     fn len(&self) -> usize {
@@ -289,7 +275,8 @@ where
             self.data[row_idx][7] *= offset;
         }
     }
-    // #[cfg(feature = "concurrent")]
+
+    #[cfg(feature = "concurrent")]
     fn par_mut_chunks(&mut self, chunk_size: usize) -> MatrixChunksMut<'_, E> {
         MatrixChunksMut {
             data: RowMatrixRef::new(&mut self.data),
@@ -298,6 +285,7 @@ where
     }
 }
 
+/// A mutable reference to a slice of arrays.
 pub struct RowMatrixRef<'a, E>
 where
     E: FieldElement,
@@ -339,6 +327,8 @@ where
     E: FieldElement,
 {
     type ChunkItem<'b> = RowMatrixRef<'b, E> where Self: 'b;
+
+    #[cfg(feature = "concurrent")]
     type ParChunksMut<'c> = MatrixChunksMut<'c, E> where Self: 'c;
 
     fn len(&self) -> usize {
@@ -500,7 +490,7 @@ where
         }
     }
 
-    // #[cfg(feature = "concurrent")]
+    #[cfg(feature = "concurrent")]
     fn par_mut_chunks(&mut self, chunk_size: usize) -> MatrixChunksMut<'_, E> {
         MatrixChunksMut {
             data: RowMatrixRef {
@@ -521,6 +511,7 @@ where
     chunk_size: usize,
 }
 
+/// Implement an exact size iterator for MatrixChunksMut.
 impl<'a, E> ExactSizeIterator for MatrixChunksMut<'a, E>
 where
     E: FieldElement,
@@ -530,6 +521,7 @@ where
     }
 }
 
+/// Implement a double ended iterator for MatrixChunksMut.
 impl<'a, E> DoubleEndedIterator for MatrixChunksMut<'a, E>
 where
     E: FieldElement,
@@ -545,6 +537,7 @@ where
     }
 }
 
+/// Implement a standard iterator for MatrixChunksMut.
 impl<'a, E: FieldElement> Iterator for MatrixChunksMut<'a, E> {
     type Item = RowMatrixRef<'a, E>;
 
@@ -559,7 +552,7 @@ impl<'a, E: FieldElement> Iterator for MatrixChunksMut<'a, E> {
     }
 }
 
-// #[cfg(feature = "concurrent")]
+#[cfg(feature = "concurrent")]
 /// Implement a parallel iterator for MatrixChunksMut. This is a parallel version
 /// of the MatrixChunksMut iterator.
 impl<'a, E> ParallelIterator for MatrixChunksMut<'a, E>
@@ -580,7 +573,8 @@ where
     }
 }
 
-// #[cfg(feature = "concurrent")]
+#[cfg(feature = "concurrent")]
+/// Implement an indexed parallel iterator for MatrixChunksMut.
 impl<'a, E> IndexedParallelIterator for MatrixChunksMut<'a, E>
 where
     E: FieldElement + Send,
@@ -602,7 +596,8 @@ where
     }
 }
 
-// #[cfg(feature = "concurrent")]
+#[cfg(feature = "concurrent")]
+/// A producer for the MatrixChunksMut iterator.
 struct ChunksMutProducer<'a, E>
 where
     E: FieldElement,
@@ -611,7 +606,7 @@ where
     data: RowMatrixRef<'a, E>,
 }
 
-// #[cfg(feature = "concurrent")]
+#[cfg(feature = "concurrent")]
 impl<'a, E> Producer for ChunksMutProducer<'a, E>
 where
     E: FieldElement,
@@ -619,6 +614,7 @@ where
     type Item = RowMatrixRef<'a, E>;
     type IntoIter = MatrixChunksMut<'a, E>;
 
+    /// Return an iterator over the data in this producer.
     fn into_iter(self) -> Self::IntoIter {
         MatrixChunksMut {
             data: self.data,
@@ -626,6 +622,8 @@ where
         }
     }
 
+    /// Split the producer into two producers, one with the first half of the
+    /// data, and one with the second half of the data.
     fn split_at(mut self, index: usize) -> (Self, Self) {
         let elem_index = cmp::min(index * self.chunk_size, self.data.len());
         let (left, right) = self.data.split_at_mut(elem_index);
@@ -643,17 +641,18 @@ where
 }
 
 #[derive(Debug, Clone)]
-pub struct Segment<E>
+pub struct Segments<E>
 where
     E: FieldElement,
 {
     matrix: Vec<RowMatrix<E>>,
 }
 
-impl<E> Segment<E>
+impl<E> Segments<E>
 where
     E: FieldElement,
 {
+    /// Create a new segment from a matrix of polynomials.
     pub fn new(matrix: Vec<RowMatrix<E>>) -> Self {
         Self { matrix }
     }
@@ -673,98 +672,197 @@ where
         for i in 1..num_rows {
             offsets.push(offsets[i - 1] * domain_offset);
         }
-        for i in 0..num_of_segments {
-            let segment = &polys.columns[i * ARR_SIZE..(i + 1) * ARR_SIZE];
-            let mut result_vec_of_arrays =
-                unsafe { uninit_vector::<[E; ARR_SIZE]>(num_rows * blowup_factor) };
-
-            segment.iter().enumerate().for_each(|(i, row)| {
-                row.iter().enumerate().for_each(|(j, elem)| {
-                    result_vec_of_arrays[(j)][i] = elem.mul_base(offsets[j]);
-                })
-            });
-
-            let row_matrix = RowMatrix::new(result_vec_of_arrays);
-            row_matrices.push(row_matrix);
-        }
 
         if cfg!(feature = "concurrent") && polys.num_rows() >= MIN_CONCURRENT_SIZE {
+            #[cfg(feature = "concurrent")]
             {
+                let num_batches = rayon::current_num_threads()
+                    .next_power_of_two()
+                    .min(ARR_SIZE);
+                let batch_size = ARR_SIZE / num_batches.min(ARR_SIZE);
+                (0..num_of_segments).into_iter().for_each(|i| {
+                    let segment = &polys.columns[i * ARR_SIZE..(i + 1) * ARR_SIZE];
+                    let mut result_vec_of_arrays =
+                        unsafe { uninit_vector::<[E; ARR_SIZE]>(num_rows * blowup_factor) };
+
+                    rayon::scope(|s| {
+                        for batch_idx in 0..num_batches {
+                            let result_vec_of_arrays = unsafe {
+                                &mut *(&mut result_vec_of_arrays as *mut Vec<[E; ARR_SIZE]>)
+                            };
+                            let offsets = &offsets;
+                            s.spawn(move |_| {
+                                let batch_start = batch_idx * batch_size;
+                                let batch_end = batch_start + batch_size;
+                                for i in batch_start..batch_end {
+                                    let row = &segment[i];
+                                    let num_sub_batches =
+                                        rayon::current_num_threads().next_power_of_two();
+                                    let sub_batch_size = row.len() / num_sub_batches.min(row.len());
+                                    rayon::scope(|sub_s| {
+                                        for sub_batch_idx in 0..num_sub_batches {
+                                            // get a mutable reference clone of the result_vec_of_arrays.
+                                            let result_vec = unsafe {
+                                                &mut *(result_vec_of_arrays
+                                                    as *mut Vec<[E; ARR_SIZE]>)
+                                            };
+                                            sub_s.spawn(move |_| {
+                                                let sub_batch_start =
+                                                    sub_batch_idx * sub_batch_size;
+                                                let sub_batch_end =
+                                                    sub_batch_start + sub_batch_size;
+                                                for j in sub_batch_start..sub_batch_end {
+                                                    result_vec[j][i] = row[j].mul_base(offsets[j]);
+                                                }
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    });
+
+                    let row_matrix = RowMatrix::new(result_vec_of_arrays);
+                    row_matrices.push(row_matrix);
+                });
                 iter_mut!(row_matrices).for_each(|segment| {
                     evaluate_poly_with_offset_concurrent(segment, &twiddles);
                 });
             }
         } else {
+            (0..num_of_segments).into_iter().for_each(|i| {
+                let segment = &polys.columns[i * ARR_SIZE..(i + 1) * ARR_SIZE];
+                let mut result_vec_of_arrays =
+                    unsafe { uninit_vector::<[E; ARR_SIZE]>(num_rows * blowup_factor) };
+
+                segment.iter().enumerate().for_each(|(i, row)| {
+                    row.iter().enumerate().for_each(|(j, elem)| {
+                        result_vec_of_arrays[(j)][i] = elem.mul_base(offsets[j]);
+                    });
+                });
+
+                let row_matrix = RowMatrix::new(result_vec_of_arrays);
+                row_matrices.push(row_matrix);
+            });
             for segment in row_matrices.iter_mut() {
                 evaluate_poly_with_offset(segment, &twiddles);
             }
-            // iter_mut!(row_matrices).for_each(|segment| {
-            //     evaluate_poly_with_offset_concurrent(segment, &twiddles);
-            // });
         }
-        // println!(
-        //     "Time to evaluate row matrices: {:?}",
-        //     time.elapsed().as_millis()
-        // );
-        Segment::new(row_matrices)
+        Segments::new(row_matrices)
     }
 
     pub fn transpose_to_gpu_friendly_matrix(&self) -> RowMatrix<E> {
         let num_rows = self.matrix[0].num_rows();
         let num_cols = self.matrix[0].num_cols() * self.matrix.len();
         let mut result = unsafe { uninit_vector::<[E; ARR_SIZE]>(num_rows * num_cols / ARR_SIZE) };
-        self.matrix.iter().enumerate().for_each(|(i, segment)| {
-            (segment.as_data()).iter().enumerate().for_each(|(j, row)| {
-                result[i * num_rows + j] = *row;
-            })
-        });
+
+        if cfg!(feature = "concurrent") && num_rows >= MIN_CONCURRENT_SIZE {
+            #[cfg(feature = "concurrent")]
+            {
+                let num_batches = rayon::current_num_threads()
+                    .next_power_of_two()
+                    .min(self.len());
+                let batch_size = self.len() / num_batches.min(self.len());
+                rayon::scope(|s| {
+                    for batch_idx in 0..num_batches {
+                        let result = unsafe { &mut *(&mut result as *mut Vec<[E; ARR_SIZE]>) };
+                        s.spawn(move |_| {
+                            let batch_start = batch_idx * batch_size;
+                            let batch_end = batch_start + batch_size;
+                            for i in batch_start..batch_end {
+                                let segment = &self.matrix[i];
+                                let num_sub_batches =
+                                    rayon::current_num_threads().next_power_of_two();
+
+                                let sub_batch_size =
+                                    segment.num_rows() / num_sub_batches.min(segment.num_rows());
+                                rayon::scope(|sub_s| {
+                                    for sub_batch_idx in 0..num_sub_batches {
+                                        // SAFETY: We are creating a mutable reference to the result
+                                        // vector.
+                                        let result =
+                                            unsafe { &mut *(result as *mut Vec<[E; ARR_SIZE]>) };
+                                        sub_s.spawn(move |_| {
+                                            let sub_batch_start = sub_batch_idx * sub_batch_size;
+                                            let sub_batch_end = sub_batch_start + sub_batch_size;
+                                            for j in sub_batch_start..sub_batch_end {
+                                                result[i * num_rows + j] = *segment.get_row(j);
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+        } else {
+            self.matrix.iter().enumerate().for_each(|(i, segment)| {
+                (segment.as_data()).iter().enumerate().for_each(|(j, row)| {
+                    result[i * num_rows + j] = *row;
+                })
+            });
+        }
+
         RowMatrix { data: result }
     }
 
+    /// Returns a iterator over the segments.
     pub fn iter(&self) -> SegmentIter<E> {
         SegmentIter::new(&self.matrix)
     }
 
+    /// Returns a parallel iterator over the segments.
     pub fn par_iter(&self) -> SegmentIter<E> {
         SegmentIter::new(&self.matrix)
     }
 
+    /// Returns a mutable iterator over the segments.
     pub fn iter_mut(&mut self) -> SegmentIterMut<E> {
         SegmentIterMut::new(&mut self.matrix)
     }
 
+    /// Returns a mutable parallel iterator over the segments.
     pub fn par_iter_mut(&mut self) -> SegmentIterMut<E> {
         SegmentIterMut::new(&mut self.matrix)
     }
 
+    /// Returns a iterator over the segments.
     pub fn len(&self) -> usize {
         self.matrix.len()
     }
 
+    /// Returns a iterator over the segments.
     pub fn is_empty(&self) -> bool {
         self.matrix.is_empty()
     }
 
+    /// Returns row matrix segment at the given index.
     pub fn get(&self, index: usize) -> Option<&RowMatrix<E>> {
         self.matrix.get(index)
     }
 
+    /// Returns mutable row matrix segment at the given index.
     pub fn get_mut(&mut self, index: usize) -> Option<&mut RowMatrix<E>> {
         self.matrix.get_mut(index)
     }
 
+    /// Push a new segment to the end of the segment vector.
     pub fn push(&mut self, matrix: RowMatrix<E>) {
         self.matrix.push(matrix);
     }
 
+    /// Removes the last segment from the segment vector and returns it, or None if it is empty.
     pub fn pop(&mut self) -> Option<RowMatrix<E>> {
         self.matrix.pop()
     }
 
+    /// Removes a segment from the segment vector and returns it, or None if it is empty.
     pub fn remove(&mut self, index: usize) -> Option<RowMatrix<E>> {
         Some(self.matrix.remove(index))
     }
 
+    /// Inserts a segment into the segment vector at the given index.
     pub fn insert(&mut self, index: usize, matrix: RowMatrix<E>) {
         self.matrix.insert(index, matrix);
     }
@@ -891,6 +989,7 @@ impl<'a, E: FieldElement> FusedIterator for SegmentIterMut<'a, E> {}
 // PARALLEL ITERATORS
 // ================================================================================================
 
+#[cfg(feature = "concurrent")]
 impl<'a, E> ParallelIterator for SegmentIterMut<'a, E>
 where
     E: FieldElement + Send,
@@ -909,7 +1008,7 @@ where
     }
 }
 
-// #[cfg(feature = "concurrent")]
+#[cfg(feature = "concurrent")]
 impl<'a, E> IndexedParallelIterator for SegmentIterMut<'a, E>
 where
     E: FieldElement + Send,
@@ -931,7 +1030,7 @@ where
     }
 }
 
-// #[cfg(feature = "concurrent")]
+#[cfg(feature = "concurrent")]
 struct SegmentMutProducer<'a, E>
 where
     E: FieldElement,
@@ -940,7 +1039,7 @@ where
     cursor: usize,
 }
 
-// #[cfg(feature = "concurrent")]
+#[cfg(feature = "concurrent")]
 impl<'a, E> Producer for SegmentMutProducer<'a, E>
 where
     E: FieldElement,
@@ -971,6 +1070,7 @@ where
     }
 }
 
+#[cfg(feature = "concurrent")]
 impl<'a, E> ParallelIterator for SegmentIter<'a, E>
 where
     E: FieldElement + Send,
@@ -989,7 +1089,7 @@ where
     }
 }
 
-// #[cfg(feature = "concurrent")]
+#[cfg(feature = "concurrent")]
 impl<'a, E> IndexedParallelIterator for SegmentIter<'a, E>
 where
     E: FieldElement + Send,
@@ -1011,7 +1111,7 @@ where
     }
 }
 
-// #[cfg(feature = "concurrent")]
+#[cfg(feature = "concurrent")]
 struct SegmentProducer<'a, E>
 where
     E: FieldElement,
@@ -1020,7 +1120,7 @@ where
     cursor: usize,
 }
 
-// #[cfg(feature = "concurrent")]
+#[cfg(feature = "concurrent")]
 impl<'a, E> Producer for SegmentProducer<'a, E>
 where
     E: FieldElement,

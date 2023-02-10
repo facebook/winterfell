@@ -8,17 +8,13 @@ use crate::{
         fft::fft_inputs::FftInputs, fields::f64::BaseElement, get_power_series, log2, polynom,
         StarkField,
     },
-    matrix::row_matrix,
-    Matrix,
+    Matrix, Segments,
 };
 
-use super::{RowMatrix, ARR_SIZE};
+use super::ARR_SIZE;
 use math::FieldElement;
 use rand_utils::rand_vector;
-use rayon::prelude::{
-    IndexedParallelIterator, IntoParallelIterator, IntoParallelRefMutIterator, ParallelIterator,
-};
-use row_matrix::Segment;
+
 use utils::collections::Vec;
 
 #[test]
@@ -28,53 +24,19 @@ fn test_eval_poly_with_offset_matrix() {
     let blowup_factor = 8;
     let mut columns: Vec<Vec<BaseElement>> = (0..num_polys).map(|_| rand_vector(n)).collect();
 
-    let segment = Segment::from_polys(&Matrix::new(columns.clone()), blowup_factor);
-    segment.transpose_to_gpu_friendly_matrix();
+    let segment = Segments::from_polys(&Matrix::new(columns.clone()), blowup_factor);
+    // segment.transpose_to_gpu_friendly_matrix();
     let result_data = flatten_row_matrix(segment);
 
-    // let offset = BaseElement::GENERATOR;
-    // let domain = build_domain(n * blowup_factor);
-    // let shifted_domain = domain.iter().map(|&x| x * offset).collect::<Vec<_>>();
-    // for p in columns.iter_mut() {
-    //     *p = polynom::eval_many(p, &shifted_domain);
-    // }
-    // let eval_col = transpose(columns);
-    // let eval_cols_flatten = eval_col.into_iter().flatten().collect::<Vec<_>>();
-    // assert_eq!(eval_cols_flatten, result_data);
-}
-
-// CONCURRENT TESTS
-// ================================================================================================
-
-#[test]
-fn test_eval_poly_with_offset_matrix_concurrent() {
-    // let n = 1024;
-    // let num_polys = 32;
-    // let blowup_factor = 8;
-    // let mut columns: Vec<Vec<BaseElement>> = (0..num_polys).map(|_| rand_vector(n)).collect();
-
-    // let mut matrix_vec = build_row_matrix(columns.clone());
-
-    // let offset = BaseElement::GENERATOR;
-    // let domain = build_domain(n * blowup_factor);
-    // let shifted_domain = domain.iter().map(|&x| x * offset).collect::<Vec<_>>();
-
-    // for p in columns.iter_mut() {
-    //     *p = polynom::eval_many(p, &shifted_domain);
-    // }
-    // let eval_col = transpose(columns);
-    // let eval_cols_flatten = eval_col.into_iter().flatten().collect::<Vec<_>>();
-
-    // let mut result_vec: Vec<RowMatrix<BaseElement>> = Vec::new();
-
-    // let twiddles = get_twiddles::<BaseElement>(n);
-    // for row_matrix in matrix_vec.par_iter_mut() {
-    //     let res =
-    //         evaluate_poly_with_offset_concurrent(&row_matrix, &twiddles, offset, blowup_factor);
-    //     result_vec.push(RowMatrix::new(res));
-    // }
-    // let result_data = flatten_row_matrix(Segment::new(result_vec));
-    // assert_eq!(eval_cols_flatten, result_data);
+    let offset = BaseElement::GENERATOR;
+    let domain = build_domain(n * blowup_factor);
+    let shifted_domain = domain.iter().map(|&x| x * offset).collect::<Vec<_>>();
+    for p in columns.iter_mut() {
+        *p = polynom::eval_many(p, &shifted_domain);
+    }
+    let eval_col = transpose(columns);
+    let eval_cols_flatten = eval_col.into_iter().flatten().collect::<Vec<_>>();
+    assert_eq!(eval_cols_flatten, result_data);
 }
 
 // HELPER FUNCTIONS
@@ -100,56 +62,9 @@ fn transpose<E: FieldElement>(matrix: Vec<Vec<E>>) -> Vec<Vec<E>> {
     result
 }
 
-/// Transposes a matrix stored in a column major format to a row major format concurrently.
-fn transpose_concurrent<E: FieldElement>(matrix: Vec<Vec<E>>) -> Vec<Vec<E>> {
-    let num_rows = matrix.len();
-    let num_cols = matrix[0].len();
-    let mut result = vec![vec![E::ZERO; num_rows]; num_cols];
-    result.par_iter_mut().enumerate().for_each(|(i, row)| {
-        row.par_iter_mut().enumerate().for_each(|(j, col)| {
-            *col = matrix[j][i];
-        })
-    });
-    result
-}
-
-/// Build a vector of RowMatrix objects from a column major matrix.
-fn build_row_matrix<E>(matrix: Vec<Vec<E>>) -> Segment<E>
-where
-    E: FieldElement,
-{
-    let num_of_segments = matrix.len() / ARR_SIZE;
-    let mut row_matrices = Vec::with_capacity(num_of_segments);
-    for i in 0..num_of_segments {
-        let mut segment = matrix[i * ARR_SIZE..(i + 1) * ARR_SIZE].to_vec();
-        let mut transpose_segment = transpose(segment);
-
-        // convert transpose segment to a vector of arrays of elements.
-        let row_matrix_data: Vec<[E; ARR_SIZE]> = transpose_segment
-            .into_iter()
-            .map(|vec| to_array(vec))
-            .collect();
-
-        let mut row_matrix = RowMatrix::new(row_matrix_data);
-        row_matrices.push(row_matrix);
-    }
-    Segment::new(row_matrices)
-}
-
-/// Convert a vector of field elements to a arrays of field elements. The size of the array is
-/// determined by the `ARR_SIZE` constant.
-fn to_array<E: FieldElement>(v: Vec<E>) -> [E; ARR_SIZE] {
-    debug_assert_eq!(v.len(), ARR_SIZE);
-    let mut result = [E::ZERO; ARR_SIZE];
-    for (i, e) in v.into_iter().enumerate() {
-        result[i] = e;
-    }
-    result
-}
-
 /// Flattens a vector of RowMatrix objects into a slice. The slice is a row major representation of
 /// the matrix.
-fn flatten_row_matrix<E>(row_matrices: Segment<E>) -> Vec<E>
+fn flatten_row_matrix<E>(row_matrices: Segments<E>) -> Vec<E>
 where
     E: FieldElement,
 {

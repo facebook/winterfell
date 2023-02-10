@@ -4,20 +4,17 @@
 // LICENSE file in the root directory of this source tree.
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use math::{fft, fields::f64::BaseElement, StarkField};
 use rand_utils::rand_vector;
-use rayon::prelude::{IntoParallelRefMutIterator, ParallelIterator};
+
+#[cfg(feature = "concurrent")]
+use utils::rayon::prelude::{IntoParallelRefMutIterator, ParallelIterator};
+
 use std::time::Duration;
-
-use math::{
-    fft::{self},
-    fields::f64::BaseElement,
-    StarkField,
-};
-
-use winter_prover::{Matrix, Segment};
-
+use utils::iter_mut;
+use winter_prover::{Matrix, Segments};
 const SIZE: usize = 524288;
-const NUM_POLYS: [usize; 1] = [64];
+const NUM_POLYS: [usize; 4] = [16, 32, 64, 96];
 
 fn evaluate_columns(c: &mut Criterion) {
     let mut group = c.benchmark_group("matrix_evaluate_columns");
@@ -33,7 +30,7 @@ fn evaluate_columns(c: &mut Criterion) {
             bench.iter_with_large_drop(|| {
                 let twiddles = fft::get_twiddles::<BaseElement>(SIZE);
                 iter_mut!(column_matrix.columns).for_each(|column| {
-                    fft::serial::evaluate_poly_with_offset(
+                    fft::evaluate_poly_with_offset(
                         column.as_mut_slice(),
                         &twiddles,
                         BaseElement::GENERATOR,
@@ -58,8 +55,8 @@ fn evaluate_matrix(c: &mut Criterion) {
         let column_matrix = Matrix::new(columns);
         group.bench_function(BenchmarkId::new("with_offset", num_poly), |bench| {
             bench.iter_with_large_drop(|| {
-                let segment = Segment::from_polys(&column_matrix, blowup_factor);
-                segment.transpose_to_gpu_friendly_matrix();
+                let segments = Segments::from_polys(&column_matrix, blowup_factor);
+                segments.transpose_to_gpu_friendly_matrix();
             });
         });
     }
@@ -68,16 +65,3 @@ fn evaluate_matrix(c: &mut Criterion) {
 
 criterion_group!(matrix_group, evaluate_matrix, evaluate_columns,);
 criterion_main!(matrix_group);
-
-#[macro_export]
-macro_rules! iter_mut {
-    ($e: expr) => {{
-        // #[cfg(feature = "concurrent")]
-        // let result = $e.par_iter_mut();
-
-        // #[cfg(not(feature = "concurrent"))]
-        let result = $e.iter_mut();
-
-        result
-    }};
-}

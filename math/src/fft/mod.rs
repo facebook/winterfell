@@ -21,7 +21,7 @@ pub mod fft_inputs;
 pub mod real_u64;
 mod serial;
 
-// #[cfg(feature = "concurrent")]
+#[cfg(feature = "concurrent")]
 pub mod concurrent;
 
 use utils::collections::Vec;
@@ -590,9 +590,9 @@ where
 fn permute<E: FieldElement>(v: &mut [E]) {
     if cfg!(feature = "concurrent") && v.len() >= MIN_CONCURRENT_SIZE {
         #[cfg(feature = "concurrent")]
-        concurrent::permute(v);
+        v.permute_concurrent()
     } else {
-        FftInputs::permute(v);
+        v.permute()
     }
 }
 

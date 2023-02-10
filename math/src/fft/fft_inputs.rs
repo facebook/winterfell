@@ -3,16 +3,17 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::log2;
-
 use super::{permute_index, FieldElement};
 
-// #[cfg(feature = "concurrent")]
-use rayon::{
+#[cfg(feature = "concurrent")]
+use utils::rayon::{
     self,
     prelude::{IndexedParallelIterator, ParallelIterator},
     slice::ParallelSliceMut,
 };
+
+#[cfg(feature = "concurrent")]
+use crate::log2;
 
 // CONSTANTS
 // ================================================================================================
@@ -30,7 +31,7 @@ pub trait FftInputs<E: FieldElement> {
         Self: 'b,
         E: 'b;
 
-    // #[cfg(feature = "concurrent")]
+    #[cfg(feature = "concurrent")]
     /// A parallel iterator over mutable chunks of this fftinputs.
     type ParChunksMut<'c>: IndexedParallelIterator<Item = Self::ChunkItem<'c>>
     where
@@ -68,7 +69,7 @@ pub trait FftInputs<E: FieldElement> {
     /// elem_i = elem_i * offset
     fn shift_by(&mut self, offset: E::BaseField);
 
-    // #[cfg(feature = "concurrent")]
+    #[cfg(feature = "concurrent")]
     /// Returns a slice of elements in this input concurrently. The returned slice is
     /// guaranteed to be a subset of the elements in this input.
     fn par_mut_chunks(&mut self, chunk_size: usize) -> Self::ParChunksMut<'_>;
@@ -103,7 +104,7 @@ pub trait FftInputs<E: FieldElement> {
     ///
     /// # Panics
     /// Panics if length of the `twiddles` parameter is not self.len() / 2.
-    fn fft_in_place(&mut self, twiddles: &[B]) {
+    fn fft_in_place(&mut self, twiddles: &[E::BaseField]) {
         fft_in_place(self, twiddles, 1, 1, 0);
     }
 
@@ -113,7 +114,7 @@ pub trait FftInputs<E: FieldElement> {
     // PERMUTATIONS
     // ================================================================================================
 
-    // #[cfg(feature = "concurrent")]
+    #[cfg(feature = "concurrent")]
     /// Permutes the elements in this input using the permutation defined by the given
     /// permutation index in a concurrent manner.
     fn permute_concurrent(&mut self)
@@ -145,7 +146,7 @@ pub trait FftInputs<E: FieldElement> {
     // SPLIT-RADIX FFT
     // ================================================================================================
 
-    // #[cfg(feature = "concurrent")]
+    #[cfg(feature = "concurrent")]
     /// In-place recursive FFT with permuted output.
     /// Adapted from: https://github.com/0xProject/OpenZKP/tree/master/algebra/primefield/src/fft
     fn split_radix_fft(&mut self, twiddles: &[E::BaseField]) {
@@ -191,6 +192,8 @@ where
     E: FieldElement,
 {
     type ChunkItem<'b> = &'b mut [E] where E: 'b;
+
+    #[cfg(feature = "concurrent")]
     type ParChunksMut<'c> = rayon::slice::ChunksMut<'c, E> where Self: 'c;
 
     fn len(&self) -> usize {
@@ -236,7 +239,7 @@ where
         }
     }
 
-    // #[cfg(feature = "concurrent")]
+    #[cfg(feature = "concurrent")]
     fn par_mut_chunks(&mut self, size: usize) -> Self::ParChunksMut<'_> {
         self.par_chunks_mut(size)
     }
@@ -248,6 +251,8 @@ where
     E: FieldElement,
 {
     type ChunkItem<'b> = &'b mut [E] where Self: 'b, E: 'b;
+
+    #[cfg(feature = "concurrent")]
     type ParChunksMut<'c> = rayon::slice::ChunksMut<'c, E> where Self: 'c;
 
     fn len(&self) -> usize {
@@ -276,7 +281,7 @@ where
         <[E] as FftInputs<E>>::shift_by(self, offset)
     }
 
-    // #[cfg(feature = "concurrent")]
+    #[cfg(feature = "concurrent")]
     fn par_mut_chunks(&mut self, size: usize) -> Self::ParChunksMut<'_> {
         <[E] as FftInputs<E>>::par_mut_chunks(self, size)
     }
@@ -334,7 +339,7 @@ pub(super) fn fft_in_place<E, I>(
 // TRANSPOSING
 // ================================================================================================
 
-// #[cfg(feature = "conc/urrent")]
+#[cfg(feature = "concurrent")]
 fn transpose_square_stretch<E, I>(matrix: &mut I, size: usize, stretch: usize)
 where
     E: FieldElement,
@@ -348,7 +353,7 @@ where
     }
 }
 
-// #[cfg(feature = "concurrent")]
+#[cfg(feature = "concurrent")]
 fn transpose_square_1<E, I>(matrix: &mut I, size: usize)
 where
     E: FieldElement,
@@ -374,7 +379,7 @@ where
     }
 }
 
-// #[cfg(feature = "concurrent")]
+#[cfg(feature = "concurrent")]
 fn transpose_square_2<E, I>(matrix: &mut I, size: usize)
 where
     E: FieldElement,

@@ -1,8 +1,3 @@
-// Copyright (c) Facebook, Inc. and its affiliates.
-//
-// This source code is licensed under the MIT license found in the
-// LICENSE file in the root directory of this source tree.
-
 use super::fft_inputs::FftInputs;
 use crate::{field::StarkField, utils::log2, FieldElement};
 use utils::{collections::Vec, uninit_vector};
