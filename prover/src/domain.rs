@@ -51,6 +51,25 @@ impl<B: StarkField> StarkDomain<B> {
         }
     }
 
+    /// Returns a new STARK domain initialized with the provided custom inputs.
+    pub fn from_custom_inputs(
+        trace_twiddles: Vec<B>,
+        blowup_factor: usize,
+        domain_offset: B,
+    ) -> Self {
+        let ce_domain_size = trace_twiddles.len() * 2;
+        let domain_gen = B::get_root_of_unity(log2(ce_domain_size));
+        let ce_domain = get_power_series(domain_gen, ce_domain_size);
+
+        StarkDomain {
+            trace_twiddles,
+            ce_domain,
+            ce_to_lde_blowup: blowup_factor,
+            ce_domain_mod_mask: ce_domain_size - 1,
+            domain_offset,
+        }
+    }
+
     // EXECUTION TRACE
     // --------------------------------------------------------------------------------------------
 
