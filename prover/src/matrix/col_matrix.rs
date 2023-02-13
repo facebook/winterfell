@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::StarkDomain;
+use crate::StarkDomain;
 use core::{iter::FusedIterator, slice};
 use crypto::{ElementHasher, MerkleTree};
 use math::{fft, polynom, FieldElement};

@@ -78,7 +78,7 @@ mod domain;
 pub use domain::StarkDomain;
 
 mod matrix;
-pub use matrix::Matrix;
+pub use matrix::{Matrix, RowMatrix};
 
 mod constraints;
 use constraints::{CompositionPoly, ConstraintCommitment, ConstraintEvaluator};
