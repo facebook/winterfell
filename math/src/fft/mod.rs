@@ -17,7 +17,7 @@ use crate::{
     utils::{get_power_series, log2},
 };
 
-mod fft_inputs;
+pub mod fft_inputs;
 
 pub mod real_u64;
 
