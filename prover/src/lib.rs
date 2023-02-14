@@ -535,7 +535,7 @@ pub trait Prover {
 }
 
 #[allow(dead_code)]
-fn trace_commitment<E, S, H>(
+pub fn trace_commitment<E, S, H>(
     trace: &Matrix<E>,
     domain: &StarkDomain<S>,
 ) -> (Matrix<E>, MerkleTree<H>, Matrix<E>)
