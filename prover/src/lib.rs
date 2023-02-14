@@ -533,3 +533,22 @@ pub trait Prover {
         constraint_commitment
     }
 }
+
+#[allow(dead_code)]
+fn trace_commitment<E, S, H>(
+    trace: &Matrix<E>,
+    domain: &StarkDomain<S>,
+) -> (Matrix<E>, MerkleTree<H>, Matrix<E>)
+where
+    E: FieldElement<BaseField = S>,
+    S: StarkField,
+    H: ElementHasher<BaseField = S>,
+{
+    // extend the execution trace
+    let trace_polys = trace.interpolate_columns();
+    let trace_lde = trace_polys.evaluate_columns_over(domain);
+    // build trace commitment
+    let trace_tree = trace_lde.commit_to_rows();
+
+    (trace_lde, trace_tree, trace_polys)
+}
