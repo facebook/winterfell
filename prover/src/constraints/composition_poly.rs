@@ -14,7 +14,7 @@ use utils::{collections::Vec, uninit_vector};
 /// is the trace length, it will be stored as two columns of size N (each of degree N - 1).
 #[derive(Debug)]
 pub struct CompositionPoly<E: FieldElement> {
-    data: Matrix<E>,
+    pub data: Matrix<E>,
 }
 
 impl<E: FieldElement> CompositionPoly<E> {
