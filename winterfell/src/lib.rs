@@ -535,3 +535,5 @@ pub use prover::{
     TransitionConstraintDegree, TransitionConstraintGroup,
 };
 pub use verifier::{verify, VerifierError};
+
+pub use prover;

@@ -12,6 +12,7 @@ use utils::{collections::Vec, uninit_vector};
 /// Represents a composition polynomial split into columns with each column being of length equal
 /// to trace_length. Thus, for example, if the composition polynomial has degree 2N - 1, where N
 /// is the trace length, it will be stored as two columns of size N (each of degree N - 1).
+#[derive(Debug)]
 pub struct CompositionPoly<E: FieldElement> {
     data: Matrix<E>,
 }

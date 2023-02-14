@@ -74,23 +74,23 @@ use math::log2;
 #[cfg(feature = "std")]
 use std::time::Instant;
 
-mod domain;
+pub mod domain;
 pub use domain::StarkDomain;
 
 mod matrix;
 pub use matrix::Matrix;
 
-mod constraints;
+pub mod constraints;
 use constraints::{CompositionPoly, ConstraintCommitment, ConstraintEvaluator};
 
 mod composer;
 use composer::DeepCompositionPoly;
 
-mod trace;
+pub mod trace;
 pub use trace::{Trace, TraceTable, TraceTableFragment};
 use trace::{TraceCommitment, TraceLde, TracePolyTable};
 
-mod channel;
+pub mod channel;
 use channel::ProverChannel;
 
 mod errors;
