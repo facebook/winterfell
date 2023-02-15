@@ -48,7 +48,7 @@ const ELEMENT_BYTES: usize = core::mem::size_of::<u128>();
 /// Internal values are stored in their canonical form in the range [0, M). The backing type is
 /// `u128`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
-pub struct BaseElement(u128);
+pub struct BaseElement(pub u128);
 
 impl BaseElement {
     /// Creates a new field element from a u128 value. If the value is greater than or equal to
