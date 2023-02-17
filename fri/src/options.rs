@@ -12,7 +12,7 @@ use math::StarkField;
 #[derive(Clone, PartialEq, Eq)]
 pub struct FriOptions {
     folding_factor: usize,
-    max_remainder_size: usize,
+    remainder_max_degree_plus_1: usize,
     blowup_factor: usize,
 }
 
@@ -23,8 +23,11 @@ impl FriOptions {
     /// Panics if:
     /// * `blowup_factor` is not a power of two.
     /// * `folding_factor` is not 2, 4, 8, or 16.
-    /// * `max_remainder_size` is not at least twice the size of the `folding_factor`.
-    pub fn new(blowup_factor: usize, folding_factor: usize, max_remainder_size: usize) -> Self {
+    pub fn new(
+        blowup_factor: usize,
+        folding_factor: usize,
+        remainder_max_degree_plus_1: usize,
+    ) -> Self {
         // TODO: change panics to errors
         assert!(
             blowup_factor.is_power_of_two(),
@@ -37,15 +40,9 @@ impl FriOptions {
                 || folding_factor == 16,
             "folding factor {folding_factor} is not supported"
         );
-        assert!(
-            max_remainder_size >= folding_factor * 2,
-            "expected max remainder size to be at least {}, but was {}",
-            folding_factor * 2,
-            max_remainder_size
-        );
         FriOptions {
             folding_factor,
-            max_remainder_size,
+            remainder_max_degree_plus_1,
             blowup_factor,
         }
     }
@@ -62,18 +59,18 @@ impl FriOptions {
 
     /// Returns the factor by which the degree of a polynomial is reduced with each FRI layer.
     ///
-    /// In combination with `max_remainder_size` this property defines how many FRI layers are
+    /// In combination with `remainder_max_degree_plus_1` this property defines how many FRI layers are
     /// needed for an evaluation domain of a given size.
     pub fn folding_factor(&self) -> usize {
         self.folding_factor
     }
 
-    /// Returns maximum allowed remainder (last FRI layer) size.
+    /// Returns maximum allowed number of non-zero remainder polynomial coefficients i.e degree + 1.
     ///
     /// In combination with `folding_factor` this property defines how many FRI layers are needed
     /// for an evaluation domain of a given size.
-    pub fn max_remainder_size(&self) -> usize {
-        self.max_remainder_size
+    pub fn remainder_max_degree_plus_1(&self) -> usize {
+        self.remainder_max_degree_plus_1
     }
 
     /// Returns a blowup factor of the evaluation domain.
@@ -87,28 +84,15 @@ impl FriOptions {
 
     /// Computes and return the number of FRI layers required for a domain of the specified size.
     ///
-    /// The remainder layer (the last FRI layer) is not included in the returned value.
-    ///
     /// The number of layers for a given domain size is defined by the `folding_factor` and
-    /// `max_remainder_size` settings.
+    /// `remainder_max_degree_plus_1` settings.
     pub fn num_fri_layers(&self, mut domain_size: usize) -> usize {
         let mut result = 0;
-        while domain_size > self.max_remainder_size {
+        let max_remainder_size = self.remainder_max_degree_plus_1 * self.blowup_factor;
+        while domain_size > max_remainder_size {
             domain_size /= self.folding_factor;
             result += 1;
         }
         result
-    }
-
-    /// Computes and returns the size of the remainder layer (the last FRI layer) for a domain of
-    /// the specified size.
-    ///
-    /// The size of the remainder layer for a given domain size is defined by the `folding_factor`
-    /// and `max_remainder_size` settings.
-    pub fn fri_remainder_size(&self, mut domain_size: usize) -> usize {
-        while domain_size > self.max_remainder_size {
-            domain_size /= self.folding_factor;
-        }
-        domain_size
     }
 }

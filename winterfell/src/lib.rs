@@ -488,7 +488,7 @@
 //!     0,  // grinding factor
 //!     FieldExtension::None,
 //!     8,   // FRI folding factor
-//!     128, // FRI max remainder length
+//!     32, // FRI max remainder polynomial length
 //! );
 //!
 //! // Instantiate the prover and generate the proof.

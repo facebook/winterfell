@@ -5,7 +5,7 @@
 
 use crate::{FriProof, VerifierError};
 use crypto::{BatchMerkleProof, ElementHasher, Hasher, MerkleTree};
-use math::{polynom, FieldElement};
+use math::FieldElement;
 use utils::{collections::Vec, group_vector_elements, DeserializationError};
 
 // VERIFIER CHANNEL TRAIT
@@ -91,17 +91,8 @@ pub trait VerifierChannel<E: FieldElement> {
     }
 
     /// Returns FRI remainder polynomial read from this channel.
-    ///
-    /// This also checks whether the remainder is valid against the provided maximum expected degree.
-    ///
-    /// # Errors
-    /// Returns an error if:
-    /// - If the degree of the polynomial is greater than the maximum expected degree.
-    fn read_remainder(&mut self, max_degree: usize) -> Result<Vec<E>, VerifierError> {
+    fn read_remainder(&mut self) -> Result<Vec<E>, VerifierError> {
         let remainder = self.take_fri_remainder();
-        if polynom::degree_of(&remainder) > max_degree {
-            return Err(VerifierError::RemainderDegreeMismatch(max_degree));
-        }
 
         Ok(remainder)
     }

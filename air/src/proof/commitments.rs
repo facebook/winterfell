@@ -75,7 +75,7 @@ impl Commitments {
         // parse constraint evaluation commitment:
         let constraint_commitment = H::Digest::read_from(&mut reader)?;
 
-        // read FRI commitments (+1 is for FRI remainder commitment)
+        // read FRI commitments (+ 1 for remainder polynomial commitment)
         let fri_commitments = H::Digest::read_batch_from(&mut reader, num_fri_layers + 1)?;
 
         // make sure we consumed all available commitment bytes

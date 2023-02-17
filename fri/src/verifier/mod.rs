@@ -124,7 +124,6 @@ where
             if depth != layer_commitments.len() - 1
                 && max_degree_plus_1 % options.folding_factor() != 0
             {
-                println!("here");
                 return Err(VerifierError::DegreeTruncation(
                     max_degree_plus_1 - 1,
                     options.folding_factor(),
@@ -308,13 +307,18 @@ where
 
         // read the remainder polynomial from the channel and make sure it agrees with the evaluations
         // from the previous layer.
-        let remainder = channel.read_remainder(max_degree_plus_1 - 1)?;
+        let remainder_poly = channel.read_remainder()?;
+        if remainder_poly.len() > max_degree_plus_1 {
+            return Err(VerifierError::RemainderDegreeMismatch(
+                max_degree_plus_1 - 1,
+            ));
+        }
         let offset: B = self.options().domain_offset();
 
         for (&position, evaluation) in positions.iter().zip(evaluations) {
             let comp_eval = eval_horner::<E>(
-                &remainder,
-                E::from(offset * domain_generator.exp((position as u64).into())),
+                &remainder_poly,
+                offset * domain_generator.exp_vartime((position as u64).into()),
             );
             if comp_eval != evaluation {
                 return Err(VerifierError::InvalidRemainderFolding);
@@ -349,9 +353,11 @@ fn get_query_values<E: FieldElement, const N: usize>(
 }
 
 // Evaluates a polynomial with coefficients in an extension field at a point in the base field.
-pub fn eval_horner<E>(p: &[E], x: E) -> E
+pub fn eval_horner<E>(p: &[E], x: E::BaseField) -> E
 where
     E: FieldElement,
 {
-    p.iter().rev().fold(E::ZERO, |acc, &coeff| acc * x + coeff)
+    p.iter()
+        .rev()
+        .fold(E::ZERO, |acc, &coeff| acc * E::from(x) + coeff)
 }
