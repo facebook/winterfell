@@ -245,9 +245,11 @@ impl StarkField for BaseElement {
     #[inline]
     fn as_int(&self) -> Self::PositiveInteger {
         let x = self.0;
-        let (r, c) = x.overflowing_add(x << 32);
-        let res = r.wrapping_sub(r >> 32).wrapping_sub(c as u64);
-        M - res
+        let (a, e) = x.overflowing_add(x << 32);
+        let b = a.wrapping_sub(a >> 32).wrapping_sub(e as u64);
+
+        let (r, c) = 0u64.overflowing_sub(b);
+        r.wrapping_sub(0u32.wrapping_sub(c as u32) as u64)
     }
 }
 
