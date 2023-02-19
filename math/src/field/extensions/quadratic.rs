@@ -29,7 +29,7 @@ pub struct QuadExtension<B: ExtensibleField<2>>(B, B);
 
 impl<B: ExtensibleField<2>> QuadExtension<B> {
     /// Returns a new extension element instantiated from the provided base elements.
-    pub fn new(a: B, b: B) -> Self {
+    pub const fn new(a: B, b: B) -> Self {
         Self(a, b)
     }
 
@@ -52,6 +52,14 @@ impl<B: ExtensibleField<2>> QuadExtension<B> {
         let len = v.len() / 2;
         let cap = v.capacity() / 2;
         unsafe { Vec::from_raw_parts(p as *mut Self, len, cap) }
+    }
+
+    /// Returns an array of base field elements comprising this extension field element.
+    ///
+    /// The order of abase elements in the returned array is the same as the order in which
+    /// the elements are provided to the [QuadExtension::new()] constructor.
+    pub const fn to_base_elements(self) -> [B; 2] {
+        [self.0, self.1]
     }
 }
 
