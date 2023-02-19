@@ -29,7 +29,7 @@ pub struct CubeExtension<B: ExtensibleField<3>>(B, B, B);
 
 impl<B: ExtensibleField<3>> CubeExtension<B> {
     /// Returns a new extension element instantiated from the provided base elements.
-    pub fn new(a: B, b: B, c: B) -> Self {
+    pub const fn new(a: B, b: B, c: B) -> Self {
         Self(a, b, c)
     }
 
@@ -39,8 +39,8 @@ impl<B: ExtensibleField<3>> CubeExtension<B> {
     }
 
     /// Converts a vector of base elements into a vector of elements in a cubic extension field
-    /// by fusing three adjacent base elements together. The output vector is half the length of
-    /// the source vector.
+    /// by fusing three adjacent base elements together. The output vector is one-third the length
+    /// of the source vector.
     fn base_to_cubic_vector(source: Vec<B>) -> Vec<Self> {
         debug_assert!(
             source.len() % 3 == 0,
@@ -52,6 +52,14 @@ impl<B: ExtensibleField<3>> CubeExtension<B> {
         let len = v.len() / 3;
         let cap = v.capacity() / 3;
         unsafe { Vec::from_raw_parts(p as *mut Self, len, cap) }
+    }
+
+    /// Returns an array of base field elements comprising this extension field element.
+    ///
+    /// The order of abase elements in the returned array is the same as the order in which
+    /// the elements are provided to the [CubeExtension::new()] constructor.
+    pub const fn to_base_elements(self) -> [B; 3] {
+        [self.0, self.1, self.2]
     }
 }
 
