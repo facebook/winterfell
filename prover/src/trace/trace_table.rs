@@ -227,10 +227,10 @@ impl<B: StarkField> TraceTable<B> {
     ///   - index of the last updated row (starting with 0).
     ///   - a mutable reference to the last updated state; the contents of the state are copied
     ///     into the next row of the trace after the closure returns.
-    pub fn fill<I, U>(&mut self, init: I, update: U)
+    pub fn fill<I, U>(&mut self, init: I, mut update: U)
     where
-        I: Fn(&mut [B]),
-        U: Fn(usize, &mut [B]),
+        I: FnOnce(&mut [B]),
+        U: FnMut(usize, &mut [B]),
     {
         let mut state = vec![B::ZERO; self.main_trace_width()];
         init(&mut state);
@@ -437,10 +437,10 @@ impl<'a, B: StarkField> TraceTableFragment<'a, B> {
     ///   - index of the last updated row (starting with 0).
     ///   - a mutable reference to the last updated state; the contents of the state are copied
     ///     into the next row of the fragment after the closure returns.
-    pub fn fill<I, T>(&mut self, init_state: I, update_state: T)
+    pub fn fill<I, T>(&mut self, init_state: I, mut update_state: T)
     where
-        I: Fn(&mut [B]),
-        T: Fn(usize, &mut [B]),
+        I: FnOnce(&mut [B]),
+        T: FnMut(usize, &mut [B]),
     {
         let mut state = vec![B::ZERO; self.width()];
         init_state(&mut state);
