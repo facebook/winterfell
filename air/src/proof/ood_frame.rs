@@ -128,11 +128,11 @@ impl Serializable for OodFrame {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         // write trace rows
         target.write_u16(self.trace_states.len() as u16);
-        target.write_u8_slice(&self.trace_states);
+        target.write_bytes(&self.trace_states);
 
         // write constraint evaluations row
         target.write_u16(self.evaluations.len() as u16);
-        target.write_u8_slice(&self.evaluations)
+        target.write_bytes(&self.evaluations)
     }
 }
 
@@ -144,11 +144,11 @@ impl Deserializable for OodFrame {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         // read trace rows
         let num_trace_state_bytes = source.read_u16()? as usize;
-        let trace_states = source.read_u8_vec(num_trace_state_bytes)?;
+        let trace_states = source.read_vec(num_trace_state_bytes)?;
 
         // read constraint evaluations row
         let num_constraint_evaluation_bytes = source.read_u16()? as usize;
-        let evaluations = source.read_u8_vec(num_constraint_evaluation_bytes)?;
+        let evaluations = source.read_vec(num_constraint_evaluation_bytes)?;
 
         Ok(OodFrame {
             trace_states,

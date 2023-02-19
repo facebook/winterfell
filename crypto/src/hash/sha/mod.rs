@@ -77,7 +77,7 @@ impl ByteWriter for ShaHasher {
         self.0.update([value]);
     }
 
-    fn write_u8_slice(&mut self, values: &[u8]) {
+    fn write_bytes(&mut self, values: &[u8]) {
         self.0.update(values);
     }
 }

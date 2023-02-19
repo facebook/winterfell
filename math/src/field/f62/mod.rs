@@ -480,7 +480,7 @@ impl AsBytes for BaseElement {
 impl Serializable for BaseElement {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         // convert from Montgomery representation into canonical representation
-        target.write_u8_slice(&self.as_int().to_le_bytes());
+        target.write_bytes(&self.as_int().to_le_bytes());
     }
 }
 

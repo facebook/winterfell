@@ -1,4 +1,4 @@
-use super::{flatten_slice_elements, string::ToString, DeserializationError, Vec};
+use super::{flatten_slice_elements, DeserializationError, Vec};
 
 mod byte_reader;
 pub use byte_reader::{ByteReader, SliceReader};
@@ -107,6 +107,19 @@ pub trait Deserializable: Sized {
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
 
+    /// Attempts to deserialize the provided `bytes` into `Self` and returns the result.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// * The `bytes` do not contain enough information to deserialize `Self`.
+    /// * The `bytes` do not represent a valid value for `Self`.
+    ///
+    /// Note: if `bytes` contains more data than needed to deserialize `self`, no error is
+    /// returned.
+    fn read_from_bytes(bytes: &[u8]) -> Result<Self, DeserializationError> {
+        Self::read_from(&mut SliceReader::new(bytes))
+    }
+
     /// Reads a sequence of bytes from the provided `source`, attempts to deserialize these bytes
     /// into a vector with the specified number of `Self` elements, and returns the result.
     ///
@@ -123,7 +136,7 @@ pub trait Deserializable: Sized {
         source: &mut R,
         num_elements: usize,
     ) -> Result<Vec<Self>, DeserializationError> {
-        let mut result = Vec::new();
+        let mut result = Vec::with_capacity(num_elements);
         for _ in 0..num_elements {
             let element = Self::read_from(source)?;
             result.push(element)

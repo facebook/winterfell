@@ -99,10 +99,10 @@ impl Serializable for Context {
         self.trace_layout.write_into(target);
         target.write_u8(math::log2(self.trace_length) as u8); // store as power of two
         target.write_u16(self.trace_meta.len() as u16);
-        target.write_u8_slice(&self.trace_meta);
+        target.write_bytes(&self.trace_meta);
         assert!(self.field_modulus_bytes.len() < u8::MAX as usize);
         target.write_u8(self.field_modulus_bytes.len() as u8);
-        target.write_u8_slice(&self.field_modulus_bytes);
+        target.write_bytes(&self.field_modulus_bytes);
         self.options.write_into(target);
     }
 }
@@ -130,7 +130,7 @@ impl Deserializable for Context {
         // read trace metadata
         let num_meta_bytes = source.read_u16()? as usize;
         let trace_meta = if num_meta_bytes != 0 {
-            source.read_u8_vec(num_meta_bytes)?
+            source.read_vec(num_meta_bytes)?
         } else {
             vec![]
         };
@@ -142,7 +142,7 @@ impl Deserializable for Context {
                 "field modulus cannot be an empty value".to_string(),
             ));
         }
-        let field_modulus_bytes = source.read_u8_vec(num_modulus_bytes)?;
+        let field_modulus_bytes = source.read_vec(num_modulus_bytes)?;
 
         // read options
         let options = ProofOptions::read_from(source)?;
