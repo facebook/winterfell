@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.0 (2023-02-20)
+* [BREAKING]: Refactored prover/verifier to take hash function as a generic parameter (#111).
+* Introduced `FftInputs` trait (#124).
+* Optimized `as_int()` method for `f64` field (#127, #146).
+* Improved FRI remainder commitment methodology (#128).
+* Added new arithmetization-friendly hash functions: Griffin and Rescue Prime Jive (#129).
+* Fixed panic in prover when debugging with concurrent feature enabled (#130, #132).
+* Added variable-time exponentiation option to `f64` field (#134).
+* Optimized squaring for degree 2 and 3 extension fields of `f64` field (#138).
+* Simplified conversion to base elements for degree 2 and 3 extension field elements (#147).
+* Made closure types less restrictive for `TraceTable::fill()` (#149).
+* [BREAKING] Refactored serialization/deserialization traits (#150).
+
 ## 0.4.2 (2022-11-14)
 * Removed most exponentiations from the constraint evaluation step for the Prover.
 
