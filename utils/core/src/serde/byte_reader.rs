@@ -1,4 +1,4 @@
-use super::DeserializationError;
+use super::{Deserializable, DeserializationError};
 
 // BYTE READER TRAIT
 // ================================================================================================
@@ -27,7 +27,7 @@ pub trait ByteReader {
     /// from `self`.
     fn read_vec(&mut self, len: usize) -> Result<Vec<u8>, DeserializationError>;
 
-    /// Returns a byte array of length `N` reade from `self`.
+    /// Returns a byte array of length `N` read from `self`.
     ///
     /// # Errors
     /// Returns a [DeserializationError] if an array of the specified length could not be read
@@ -97,6 +97,18 @@ pub trait ByteReader {
         let bytes = self.read_array::<16>()?;
         Ok(u128::from_le_bytes(bytes))
     }
+
+    /// Reads a deserializable value from `self`.
+    ///
+    /// # Panics
+    /// Panics if the value could not be read from `self`.
+    fn read<D>(&mut self) -> Result<D, DeserializationError>
+    where
+        Self: Sized,
+        D: Deserializable,
+    {
+        D::read_from(self)
+    }
 }
 
 // SLICE READER
@@ -137,9 +149,10 @@ impl<'a> ByteReader for SliceReader<'a> {
 
     fn read_array<const N: usize>(&mut self) -> Result<[u8; N], DeserializationError> {
         self.check_eor(N)?;
-        let bytes = &self.source[self.pos..self.pos + N];
+        let mut result = [0_u8; N];
+        result.copy_from_slice(&self.source[self.pos..self.pos + N]);
         self.pos += N;
-        Ok(bytes.try_into().expect("slice to array conversion failed"))
+        Ok(result)
     }
 
     fn check_eor(&self, num_bytes: usize) -> Result<(), DeserializationError> {
