@@ -1,12 +1,12 @@
 [package]
 name = "winter-math"
-version = "0.5.0"
+version = "0.5.1"
 description = "Math library for the Winterfell STARK prover/verifier"
 authors = ["winterfell contributors"]
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/novifinancial/winterfell"
-documentation = "https://docs.rs/winter-math/0.5.0"
+documentation = "https://docs.rs/winter-math/0.5.1"
 categories = ["cryptography", "no-std"]
 keywords = ["crypto", "finite-fields", "polynomials", "fft"]
 edition = "2021"

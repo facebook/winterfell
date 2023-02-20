@@ -1,4 +1,4 @@
-use super::{Deserializable, DeserializationError};
+use super::{Deserializable, DeserializationError, Vec};
 
 // BYTE READER TRAIT
 // ================================================================================================

@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.1 (2023-02-20)
+* Fix no-std build for winter-utils (#153)
+
 ## 0.5.0 (2023-02-20)
 * [BREAKING]: Refactored prover/verifier to take hash function as a generic parameter (#111).
 * Introduced `FftInputs` trait (#124).
