@@ -1,6 +1,6 @@
 // Copyright (c) Facebook, Inc. and its affiliates.
 //
-// This source &code is licensed under the MIT license found in the
+// This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
 // FFT-BASED MDS MULTIPLICATION HELPER FUNCTIONS
@@ -10,7 +10,7 @@ use math::fft::real_u64::{fft4_real, ifft4_real_unreduced};
 use math::{fields::f64::BaseElement, FieldElement};
 
 /// This module contains helper functions as well as constants used to perform a 12x12 vector-matrix
-/// multiplication. The special form of our MDS matrix i.e. being circular, allows us to reduce
+/// multiplication. The special form of our MDS matrix i.e. being circulant, allows us to reduce
 /// the vector-matrix multiplication to a Hadamard product of two vectors in "frequency domain".
 /// This follows from the simple fact that every circulant matrix has the columns of the discrete
 /// Fourier transform matrix as orthogonal eigenvectors.
@@ -20,6 +20,7 @@ use math::{fields::f64::BaseElement, FieldElement};
 /// an MDS matrix that has small powers of 2 entries in frequency domain.
 /// The following implementation has benefited greatly from the discussions and insights of
 /// Hamish Ivey-Law and Jacqueline Nabaglo of Polygon Zero.
+/// The circulant matrix is identified by its first row: [7, 23, 8, 26, 13, 10, 9, 7, 6, 22, 21, 8].
 
 // MDS matrix in frequency domain.
 // More precisely, this is the output of the three 4-point (real) FFTs of the first column of
@@ -75,7 +76,7 @@ pub(crate) fn mds_multiply_freq(state: [u64; 12]) -> [u64; 12] {
     // 3-point FFTs --> multiplication by twiddle factors --> Hadamard multiplication -->
     // 3 point iFFTs --> multiplication by (inverse) twiddle factors
     // is "squashed" into one step composed of the functions "block1", "block2" and "block3".
-    // The expressions in the aformentioned functions are the result of explicit computations
+    // The expressions in the aforementioned functions are the result of explicit computations
     // combined with the Karatsuba trick for the multiplication of Complex numbers.
 
     let [v0, v4, v8] = block1([u0, u4, u8], MDS_FREQ_BLOCK_ONE);

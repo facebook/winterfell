@@ -1,6 +1,6 @@
 // Copyright (c) Facebook, Inc. and its affiliates.
 //
-// This source &code is licensed under the MIT license found in the
+// This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
 // FFT-BASED MDS MULTIPLICATION HELPER FUNCTIONS
@@ -10,7 +10,7 @@ use math::fft::real_u64::{fft4_real, ifft4_real_unreduced};
 use math::{fields::f64::BaseElement, FieldElement};
 
 /// This module contains helper functions as well as constants used to perform a 8x8 vector-matrix
-/// multiplication. The special form of our MDS matrix i.e. being circular, allows us to reduce
+/// multiplication. The special form of our MDS matrix i.e. being circulant, allows us to reduce
 /// the vector-matrix multiplication to a Hadamard product of two vectors in "frequency domain".
 /// This follows from the simple fact that every circulant matrix has the columns of the discrete
 /// Fourier transform matrix as orthogonal eigenvectors.
@@ -20,6 +20,7 @@ use math::{fields::f64::BaseElement, FieldElement};
 /// an MDS matrix that has small powers of 2 entries in frequency domain.
 /// The following implementation has benefited greatly from the discussions and insights of
 /// Hamish Ivey-Law and Jacqueline Nabaglo of Polygon Zero.
+/// The circulant matrix is identified by its first row: [23, 8, 13, 10, 7, 6, 21, 8].
 
 // MDS matrix in frequency domain.
 // More precisely, this is the output of the two 4-point (real) FFTs of the first column of
