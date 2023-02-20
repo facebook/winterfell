@@ -125,6 +125,11 @@ fn element_as_int() {
     let v = u64::MAX;
     let e = BaseElement::new(v);
     assert_eq!(v % super::M, e.as_int());
+
+    let e1 = BaseElement::new(0);
+    let e2 = BaseElement::new(M);
+    assert_eq!(e1.as_int(), e2.as_int());
+    assert_eq!(e1.as_int(), 0);
 }
 
 #[test]
