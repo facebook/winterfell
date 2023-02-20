@@ -145,11 +145,11 @@ impl Serializable for Queries {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         // write value bytes
         target.write_u32(self.values.len() as u32);
-        target.write_u8_slice(&self.values);
+        target.write_bytes(&self.values);
 
         // write path bytes
         target.write_u32(self.paths.len() as u32);
-        target.write_u8_slice(&self.paths);
+        target.write_bytes(&self.paths);
     }
 }
 
@@ -161,11 +161,11 @@ impl Deserializable for Queries {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         // read values
         let num_value_bytes = source.read_u32()?;
-        let values = source.read_u8_vec(num_value_bytes as usize)?;
+        let values = source.read_vec(num_value_bytes as usize)?;
 
         // read paths
         let num_paths_bytes = source.read_u32()?;
-        let paths = source.read_u8_vec(num_paths_bytes as usize)?;
+        let paths = source.read_vec(num_paths_bytes as usize)?;
 
         Ok(Queries { paths, values })
     }

@@ -55,7 +55,7 @@ impl Default for ElementDigest {
 
 impl Serializable for ElementDigest {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write_u8_slice(&self.as_bytes()[..31]);
+        target.write_bytes(&self.as_bytes()[..31]);
     }
 }
 

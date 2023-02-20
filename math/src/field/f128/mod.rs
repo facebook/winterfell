@@ -370,7 +370,7 @@ impl AsBytes for BaseElement {
 
 impl Serializable for BaseElement {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write_u8_slice(&self.0.to_le_bytes());
+        target.write_bytes(&self.0.to_le_bytes());
     }
 }
 

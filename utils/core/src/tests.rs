@@ -81,11 +81,11 @@ fn read_u8_vec() {
     let source = [1u8, 2, 3, 4, 5, 6, 7, 8];
     let mut a = SliceReader::new(&source);
 
-    assert_eq!(vec![1, 2], a.read_u8_vec(2).unwrap());
-    assert_eq!(vec![3, 4, 5], a.read_u8_vec(3).unwrap());
-    assert_eq!(vec![6, 7], a.read_u8_vec(2).unwrap());
-    assert_eq!(vec![8], a.read_u8_vec(1).unwrap());
-    assert!(a.read_u8_vec(2).is_err());
+    assert_eq!(vec![1, 2], a.read_vec(2).unwrap());
+    assert_eq!(vec![3, 4, 5], a.read_vec(3).unwrap());
+    assert_eq!(vec![6, 7], a.read_vec(2).unwrap());
+    assert_eq!(vec![8], a.read_vec(1).unwrap());
+    assert!(a.read_vec(2).is_err());
 }
 
 // SERIALIZATION TESTS
@@ -93,7 +93,7 @@ fn read_u8_vec() {
 
 impl Serializable for u128 {
     fn write_into<W: crate::ByteWriter>(&self, target: &mut W) {
-        target.write_u8_slice(&self.to_le_bytes());
+        target.write_bytes(&self.to_le_bytes());
     }
 }
 

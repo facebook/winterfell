@@ -201,7 +201,7 @@ impl Serializable for FriProof {
 
         // write remainder
         target.write_u16(self.remainder.len() as u16);
-        target.write_u8_slice(&self.remainder);
+        target.write_bytes(&self.remainder);
 
         // write number of partitions
         target.write_u8(self.num_partitions);
@@ -220,7 +220,7 @@ impl Deserializable for FriProof {
 
         // read remainder
         let num_remainder_bytes = source.read_u16()? as usize;
-        let remainder = source.read_u8_vec(num_remainder_bytes)?;
+        let remainder = source.read_vec(num_remainder_bytes)?;
 
         // read number of partitions
         let num_partitions = source.read_u8()?;
@@ -345,11 +345,11 @@ impl Serializable for FriProofLayer {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         // write value bytes
         target.write_u32(self.values.len() as u32);
-        target.write_u8_slice(&self.values);
+        target.write_bytes(&self.values);
 
         // write path bytes
         target.write_u32(self.paths.len() as u32);
-        target.write_u8_slice(&self.paths);
+        target.write_bytes(&self.paths);
     }
 }
 
@@ -366,11 +366,11 @@ impl Deserializable for FriProofLayer {
                 "a FRI proof layer must contain at least one queried evaluation".to_string(),
             ));
         }
-        let values = source.read_u8_vec(num_value_bytes as usize)?;
+        let values = source.read_vec(num_value_bytes as usize)?;
 
         // read paths
         let num_paths_bytes = source.read_u32()?;
-        let paths = source.read_u8_vec(num_paths_bytes as usize)?;
+        let paths = source.read_vec(num_paths_bytes as usize)?;
 
         Ok(FriProofLayer { values, paths })
     }
