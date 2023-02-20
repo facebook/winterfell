@@ -16,7 +16,7 @@ mod tests;
 // CONSTANTS
 // ================================================================================================
 
-/// Sponge state is set to 12 field elements or 744 bytes; 8 elements are reserved for rate and
+/// Sponge state is set to 12 field elements or 93 bytes; 8 elements are reserved for rate and
 /// the remaining 4 elements are reserved for capacity.
 const STATE_WIDTH: usize = 12;
 const RATE_WIDTH: usize = 8;
