@@ -1,12 +1,12 @@
 [package]
 name = "winter-prover"
-version = "0.5.0"
+version = "0.5.1"
 description = "Winterfell STARK prover"
 authors = ["winterfell contributors"]
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/novifinancial/winterfell"
-documentation = "https://docs.rs/winter-prover/0.5.0"
+documentation = "https://docs.rs/winter-prover/0.5.1"
 categories = ["cryptography", "no-std"]
 keywords = ["crypto", "zkp", "stark", "prover"]
 edition = "2021"

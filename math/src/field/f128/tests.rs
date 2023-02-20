@@ -5,7 +5,7 @@
 
 use super::{
     AsBytes, BaseElement, ByteReader, Deserializable, DeserializationError, FieldElement,
-    StarkField, M,
+    StarkField, Vec, M,
 };
 use crate::field::{ExtensionOf, QuadExtension};
 use core::convert::TryFrom;
