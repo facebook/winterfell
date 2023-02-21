@@ -13,8 +13,8 @@ use winter_prover::{Matrix, RowMatrix, StarkDomain};
 // ================================================================================================
 
 const SIZE: usize = 524_288;
-const BLOWUP_FACTOR: usize = 8;
-const NUM_POLYS: [usize; 4] = [16, 32, 64, 96];
+const BLOWUP_FACTOR: [usize; 3] = [2, 4, 8];
+const NUM_POLYS: [usize; 3] = [32, 64, 96];
 
 fn evaluate_columns(c: &mut Criterion) {
     let mut group = c.benchmark_group("matrix_evaluate_columns");
@@ -24,17 +24,20 @@ fn evaluate_columns(c: &mut Criterion) {
     for &num_poly in NUM_POLYS.iter() {
         let columns: Vec<Vec<BaseElement>> = (0..num_poly).map(|_| rand_vector(SIZE)).collect();
         let column_matrix = Matrix::new(columns);
-        group.bench_function(BenchmarkId::new("with_offset", num_poly), |bench| {
-            bench.iter_with_large_drop(|| {
-                let twiddles = fft::get_twiddles::<BaseElement>(SIZE);
-                let stark_domain = StarkDomain::from_custom_inputs(
-                    twiddles,
-                    BLOWUP_FACTOR,
-                    BaseElement::GENERATOR,
-                );
-                column_matrix.evaluate_columns_over(&stark_domain)
+        for &blowup_factor in BLOWUP_FACTOR.iter() {
+            let params = BenchmarkParams {
+                num_poly,
+                blowup_factor,
+            };
+            group.bench_function(BenchmarkId::new(SIZE.to_string(), params), |bench| {
+                bench.iter_with_large_drop(|| {
+                    let twiddles = fft::get_twiddles::<BaseElement>(SIZE);
+                    let stark_domain =
+                        StarkDomain::from_twiddles(twiddles, blowup_factor, BaseElement::GENERATOR);
+                    column_matrix.evaluate_columns_over(&stark_domain)
+                });
             });
-        });
+        }
     }
     group.finish();
 }
@@ -47,14 +50,36 @@ fn evaluate_matrix(c: &mut Criterion) {
     for &num_poly in NUM_POLYS.iter() {
         let columns: Vec<Vec<BaseElement>> = (0..num_poly).map(|_| rand_vector(SIZE)).collect();
         let column_matrix = Matrix::new(columns);
-        group.bench_function(BenchmarkId::new("with_offset", num_poly), |bench| {
-            bench.iter_with_large_drop(|| {
-                RowMatrix::from_polys(&column_matrix, BLOWUP_FACTOR);
+        for &blowup_factor in BLOWUP_FACTOR.iter() {
+            let params = BenchmarkParams {
+                num_poly,
+                blowup_factor,
+            };
+            group.bench_function(BenchmarkId::new(SIZE.to_string(), params), |bench| {
+                bench.iter_with_large_drop(|| {
+                    RowMatrix::transpose_and_extend(&column_matrix, blowup_factor);
+                });
             });
-        });
+        }
     }
     group.finish();
 }
 
-criterion_group!(matrix_group, evaluate_matrix, evaluate_columns,);
+/// Benchmark parameters.
+struct BenchmarkParams {
+    num_poly: usize,
+    blowup_factor: usize,
+}
+
+impl std::fmt::Display for BenchmarkParams {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "num_poly: {}, blowup_factor: {}",
+            self.num_poly, self.blowup_factor
+        )
+    }
+}
+
+criterion_group!(matrix_group, evaluate_columns, evaluate_matrix);
 criterion_main!(matrix_group);

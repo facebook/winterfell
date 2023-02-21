@@ -3,7 +3,6 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use core::iter::FusedIterator;
 use math::{fft::fft_inputs::FftInputs, FieldElement};
 use utils::collections::Vec;
 
@@ -46,7 +45,6 @@ where
     data: Vec<[E; ARR_SIZE]>,
 }
 
-#[allow(dead_code)]
 impl<E> Segment<E>
 where
     E: FieldElement,
@@ -62,19 +60,9 @@ where
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the number of columns in this matrix.
-    pub fn num_cols(&self) -> usize {
-        ARR_SIZE
-    }
-
     /// Returns the number of rows in this matrix.
     pub fn num_rows(&self) -> usize {
         self.data.len()
-    }
-
-    /// Returns the data in this matrix as a mutable slice of arrays.
-    pub fn as_data_mut(&mut self) -> &mut [[E; ARR_SIZE]] {
-        &mut self.data
     }
 
     /// Returns the data in this matrix as a slice of arrays.
@@ -82,22 +70,9 @@ where
         &self.data
     }
 
-    /// Returns a reference to the row at the specified index.
-    ///
-    /// # Panics
-    /// Panics if the specified row index is out of bounds.
-    pub fn get_row(&self, row_idx: usize) -> &[E; ARR_SIZE] {
-        assert!(row_idx < self.num_rows());
-        &self.data[row_idx]
-    }
-
-    /// Returns a mutable reference to the row at the specified index.
-    ///
-    /// # Panics
-    /// Panics if the specified row index is out of bounds.
-    pub fn get_row_mut(&mut self, row_idx: usize) -> &mut [E; ARR_SIZE] {
-        assert!(row_idx < self.num_rows());
-        &mut self.data[row_idx]
+    /// Returns the data in this matrix as a mutable slice of arrays.
+    pub fn as_mut_data(&mut self) -> &mut [[E; ARR_SIZE]] {
+        &mut self.data
     }
 
     /// Evaluates the segment `p` over the domain of length `p.len()` using the FFT algorithm
@@ -216,29 +191,15 @@ where
     fn shift_by_series(&mut self, offset: E::BaseField, increment: E::BaseField) {
         let increment = E::from(increment);
         let mut offset = E::from(offset);
+
         for row_idx in 0..self.len() {
-            // apply on index 0.
             self.data[row_idx][0] *= offset;
-
-            // apply on index 1.
             self.data[row_idx][1] *= offset;
-
-            // apply on index 2.
             self.data[row_idx][2] *= offset;
-
-            // apply on index 3.
             self.data[row_idx][3] *= offset;
-
-            // apply on index 4.
             self.data[row_idx][4] *= offset;
-
-            // apply on index 5.
             self.data[row_idx][5] *= offset;
-
-            // apply on index 6.
             self.data[row_idx][6] *= offset;
-
-            // apply on index 7.
             self.data[row_idx][7] *= offset;
 
             offset *= increment;
@@ -249,247 +210,14 @@ where
         let offset = E::from(offset);
 
         for row_idx in 0..self.len() {
-            // apply on index 0.
             self.data[row_idx][0] *= offset;
-
-            // apply on index 1.
             self.data[row_idx][1] *= offset;
-
-            // apply on index 2.
             self.data[row_idx][2] *= offset;
-
-            // apply on index 3.
             self.data[row_idx][3] *= offset;
-
-            // apply on index 4.
             self.data[row_idx][4] *= offset;
-
-            // apply on index 5.
             self.data[row_idx][5] *= offset;
-
-            // apply on index 6.
             self.data[row_idx][6] *= offset;
-
-            // apply on index 7.
             self.data[row_idx][7] *= offset;
         }
     }
 }
-
-// SEGMENTS
-// ================================================================================================
-
-/// Represents a collection of Segment objects.
-#[derive(Debug, Clone)]
-pub struct Segments<E>
-where
-    E: FieldElement,
-{
-    matrix: Vec<Segment<E>>,
-}
-
-#[allow(dead_code)]
-impl<E> Segments<E>
-where
-    E: FieldElement,
-{
-    /// Create a new segment from a matrix of polynomials.
-    pub fn new(matrix: Vec<Segment<E>>) -> Self {
-        Self { matrix }
-    }
-
-    // PUBLIC ACCESSORS
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns a iterator over the segments.
-    pub fn iter(&self) -> SegmentIter<E> {
-        SegmentIter::new(&self.matrix)
-    }
-
-    /// Returns a mutable iterator over the segments.
-    pub fn iter_mut(&mut self) -> SegmentIterMut<E> {
-        SegmentIterMut::new(&mut self.matrix)
-    }
-
-    /// Returns a iterator over the segments.
-    pub fn len(&self) -> usize {
-        self.matrix.len()
-    }
-
-    /// Returns a iterator over the segments.
-    pub fn is_empty(&self) -> bool {
-        self.matrix.is_empty()
-    }
-
-    /// Returns row matrix segment at the given index.
-    ///
-    /// # Panics
-    /// Panics if the index is out of bounds.
-    pub fn get(&self, index: usize) -> Option<&Segment<E>> {
-        self.matrix.get(index)
-    }
-
-    /// Returns mutable row matrix segment at the given index.
-    ///
-    /// # Panics
-    /// Panics if the index is out of bounds.
-    pub fn get_mut(&mut self, index: usize) -> Option<&mut Segment<E>> {
-        self.matrix.get_mut(index)
-    }
-
-    /// Push a new segment to the end of the segment vector.
-    ///
-    /// # Panics
-    /// Panics if the segment length does not match the length of the other segments.
-    pub fn push(&mut self, segment: Segment<E>) {
-        self.matrix.push(segment);
-    }
-
-    /// Removes the last segment from the segment vector and returns it, or None if it is empty.
-    ///
-    /// # Panics
-    /// Panics if the segment length does not match the length of the other segments.
-    pub fn pop(&mut self) -> Option<Segment<E>> {
-        self.matrix.pop()
-    }
-}
-
-// SECTION: ITERATORS
-// ================================================================================================
-
-// COLUMN ITERATOR
-// ================================================================================================
-
-pub struct SegmentIter<'a, E>
-where
-    E: FieldElement,
-{
-    matrix: &'a [Segment<E>],
-    cursor: usize,
-}
-
-impl<'a, E> SegmentIter<'a, E>
-where
-    E: FieldElement,
-{
-    pub fn new(matrix: &'a Vec<Segment<E>>) -> Self {
-        Self { matrix, cursor: 0 }
-    }
-}
-
-impl<'a, E> Iterator for SegmentIter<'a, E>
-where
-    E: FieldElement,
-{
-    type Item = &'a Segment<E>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.matrix.len() - self.cursor {
-            0 => None,
-            _ => {
-                let column = &self.matrix[self.cursor];
-                self.cursor += 1;
-                Some(column)
-            }
-        }
-    }
-}
-
-impl<'a, E> DoubleEndedIterator for SegmentIter<'a, E>
-where
-    E: FieldElement,
-{
-    fn next_back(&mut self) -> Option<Self::Item> {
-        match self.cursor {
-            0 => None,
-            _ => {
-                self.cursor -= 1;
-                Some(&self.matrix[self.cursor])
-            }
-        }
-    }
-}
-
-impl<'a, E> ExactSizeIterator for SegmentIter<'a, E>
-where
-    E: FieldElement,
-{
-    fn len(&self) -> usize {
-        self.matrix.len()
-    }
-}
-
-impl<'a, E> FusedIterator for SegmentIter<'a, E> where E: FieldElement {}
-
-// MUTABLE COLUMN ITERATOR
-// ================================================================================================
-
-pub struct SegmentIterMut<'a, E>
-where
-    E: FieldElement,
-{
-    matrix: &'a mut [Segment<E>],
-    cursor: usize,
-}
-
-impl<'a, E> SegmentIterMut<'a, E>
-where
-    E: FieldElement,
-{
-    pub fn new(matrix: &'a mut Vec<Segment<E>>) -> Self {
-        Self { matrix, cursor: 0 }
-    }
-}
-
-impl<'a, E> Iterator for SegmentIterMut<'a, E>
-where
-    E: FieldElement,
-{
-    type Item = &'a mut Segment<E>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.matrix.len() - self.cursor {
-            0 => None,
-            _ => {
-                let segment = &self.matrix[self.cursor];
-                self.cursor += 1;
-
-                // SAFETY: This is safe because the iterator can never yield a reference to the same
-                // segment twice. This is needed to get around mutable iterator lifetime issues.
-                let segment_ptr = segment as *const Segment<E> as *mut Segment<E>;
-                Some(unsafe { &mut *segment_ptr })
-            }
-        }
-    }
-}
-
-impl<'a, E> ExactSizeIterator for SegmentIterMut<'a, E>
-where
-    E: FieldElement,
-{
-    fn len(&self) -> usize {
-        self.matrix.len()
-    }
-}
-
-impl<'a, E> DoubleEndedIterator for SegmentIterMut<'a, E>
-where
-    E: FieldElement,
-{
-    fn next_back(&mut self) -> Option<Self::Item> {
-        match self.cursor {
-            0 => None,
-            _ => {
-                self.cursor -= 1;
-                let segment = &self.matrix[self.cursor];
-
-                // SAFETY: This is safe because the iterator can never yield a reference to the same
-                // segment twice. This is needed to get around mutable iterator lifetime issues.
-                let segment_ptr = segment as *const Segment<E> as *mut Segment<E>;
-                Some(unsafe { &mut *segment_ptr })
-            }
-        }
-    }
-}
-
-impl<'a, E> FusedIterator for SegmentIterMut<'a, E> where E: FieldElement {}

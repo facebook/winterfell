@@ -7,7 +7,6 @@ use crate::{
     math::{fields::f64::BaseElement, get_power_series, log2, polynom, StarkField},
     Matrix, RowMatrix,
 };
-use math::FieldElement;
 use rand_utils::rand_vector;
 use utils::collections::Vec;
 
@@ -21,7 +20,7 @@ fn test_eval_poly_with_offset_matrix() {
     let mut columns: Vec<Vec<BaseElement>> = (0..num_polys).map(|_| rand_vector(n)).collect();
 
     // evaluate columns using the row matrix implementation.
-    let row_matrix = RowMatrix::from_polys(&Matrix::new(columns.clone()), blowup_factor);
+    let row_matrix = RowMatrix::transpose_and_extend(&Matrix::new(columns.clone()), blowup_factor);
 
     // evaluate columns using the using the polynomial evaluation implementation.
     let offset = BaseElement::GENERATOR;
@@ -31,11 +30,12 @@ fn test_eval_poly_with_offset_matrix() {
         *p = polynom::eval_many(p, &shifted_domain);
     }
 
-    // transpose the columns back to a row major format.
-    let eval_col = transpose(columns);
-
-    // compare the results
-    assert_eq!(row_matrix.as_data(), eval_col);
+    // compare the results of the two implementations row by row.
+    for row in 0..n * blowup_factor {
+        let row_matrix_row = row_matrix.get_row(row);
+        let eval_col_row = get_row(&columns, row);
+        assert_eq!(row_matrix_row, eval_col_row);
+    }
 }
 
 // HELPER FUNCTIONS
@@ -47,21 +47,7 @@ fn build_domain(size: usize) -> Vec<BaseElement> {
     get_power_series(g, size)
 }
 
-/// Transposes a matrix stored in a column major format to a row major format.
-fn transpose<E: FieldElement>(matrix: Vec<Vec<E>>) -> Vec<E> {
-    // fetch the number of rows and columns in the column-major matrix.
-    let row_len = matrix.len();
-    let num_rows = matrix[0].len();
-
-    // allocate a vector to store the transposed matrix.
-    let mut result = vec![E::ZERO; num_rows * row_len];
-
-    // transpose the matrix.
-    matrix.iter().enumerate().for_each(|(i, row)| {
-        row.iter().enumerate().for_each(|(j, col)| {
-            result[j * row_len + i] = *col;
-        })
-    });
-
-    result
+/// Returns a row of the column major matrix.
+fn get_row(columns: &[Vec<BaseElement>], row_id: usize) -> Vec<BaseElement> {
+    columns.iter().map(|col| col[row_id]).collect()
 }
