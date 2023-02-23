@@ -51,6 +51,31 @@ impl<B: StarkField> StarkDomain<B> {
         }
     }
 
+    /// Returns a new STARK domain initialized with the provided custom inputs.
+    pub fn from_twiddles(trace_twiddles: Vec<B>, blowup_factor: usize, domain_offset: B) -> Self {
+        // both `trace_twiddles` length and `blowup_factor` must be a power of two.
+        assert!(
+            trace_twiddles.len().is_power_of_two(),
+            "the length of trace twiddles must be a power of 2"
+        );
+        assert!(
+            blowup_factor.is_power_of_two(),
+            "blowup factor must be a power of 2"
+        );
+
+        let ce_domain_size = trace_twiddles.len() * blowup_factor * 2;
+        let domain_gen = B::get_root_of_unity(log2(ce_domain_size));
+        let ce_domain = get_power_series(domain_gen, ce_domain_size);
+
+        StarkDomain {
+            trace_twiddles,
+            ce_domain,
+            ce_to_lde_blowup: 1,
+            ce_domain_mod_mask: ce_domain_size - 1,
+            domain_offset,
+        }
+    }
+
     // EXECUTION TRACE
     // --------------------------------------------------------------------------------------------
 
