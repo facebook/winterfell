@@ -100,6 +100,9 @@ pub struct ConstraintCompositionCoefficients<E: FieldElement> {
 ///   to the highest constraint degree rounded to the next power of two. For example, if the
 ///   highest constraint degree is 6, $m$ will be equal to 8.
 /// * $\alpha_i, \beta_i, \gamma_i$ are composition coefficients for the $i$th trace polynomial.
+/// Note that $\gamma_i$ may not be necessary if constraints are verified over the original prime
+/// field of the execution trace. However, it becomes necessary if we evaluate constraints over an
+/// extension field, to ensure the trace is actually defined over the underlying prime field.
 /// * $\delta_j$ is a composition coefficient for $j$th constraint column polynomial.
 ///
 /// $T(x)$ and $H(x)$ are polynomials of degree $n - 1$, where $n$ is the length of the execution
