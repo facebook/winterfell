@@ -91,11 +91,12 @@ where
         let mut result = unsafe { uninit_vector::<[E; ARR_SIZE]>(num_rows * num_segs) };
 
         // transpose the segments into a row matrix.
-        segments.iter().enumerate().for_each(|(i, segment)| {
-            (segment.as_data()).iter().enumerate().for_each(|(j, row)| {
-                result[j * num_segs + i] = *row;
-            })
-        });
+        for i in 0..num_rows {
+            for j in 0..num_segs {
+                let v = &segments[j].as_data()[i];
+                result[i * num_segs + j].copy_from_slice(v);
+            }
+        }
 
         // create a `RowMatrix` object from the result.
         RowMatrix {
