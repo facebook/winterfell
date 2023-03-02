@@ -171,15 +171,11 @@ fn get_offsets<E>(num_rows: usize, domain_offset: E::BaseField) -> Vec<E::BaseFi
 where
     E: FieldElement,
 {
-    // create a vector to hold the offsets.
-    let mut offsets = Vec::with_capacity(num_rows);
+    let mut offsets = unsafe { uninit_vector::<E::BaseField>(num_rows) };
+    offsets[0] = E::BaseField::ONE;
 
-    // the first offset is always 1.
-    offsets.push(E::BaseField::ONE);
-
-    // compute the remaining offsets.
     for i in 1..num_rows {
-        offsets.push(offsets[i - 1] * domain_offset);
+        offsets[i] = offsets[i - 1] * domain_offset;
     }
 
     offsets
@@ -215,6 +211,7 @@ where
 
 /// Prepares a segment for evaluation by multiplying each element in the segment by the
 /// corresponding offset.
+#[cfg(not(feature = "concurrent"))]
 fn prepare_segment<E>(
     segment: &mut Segment<E>,
     polys: &Matrix<E>,
@@ -231,4 +228,29 @@ fn prepare_segment<E>(
                 elem.mul_base(offsets[row_idx]);
         });
     });
+}
+
+/// Prepares a segment for evaluation by multiplying each element in the segment by the
+/// corresponding offset, using Rayon based parallelism.
+#[cfg(feature = "concurrent")]
+fn prepare_segment<E>(
+    segment: &mut Segment<E>,
+    polys: &Matrix<E>,
+    seg_idx: usize,
+    offsets: &[E::BaseField],
+) where
+    E: FieldElement,
+{
+    let col_off = seg_idx * ARR_SIZE;
+    let rows = polys.num_rows();
+
+    segment.as_mut_data()[..rows]
+        .par_iter_mut()
+        .enumerate()
+        .for_each(|(ridx, row)| {
+            for i in 0..ARR_SIZE {
+                let v = polys.get_column(col_off + i)[ridx];
+                row[i] = v.mul_base(offsets[ridx]);
+            }
+        });
 }
