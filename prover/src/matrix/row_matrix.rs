@@ -9,6 +9,9 @@ use math::{fft, FieldElement, StarkField};
 use utils::collections::Vec;
 use utils::{flatten_vector_elements, uninit_vector};
 
+#[cfg(feature = "concurrent")]
+use utils::iterators::*;
+
 // ROWMAJOR MATRIX
 // ================================================================================================
 
@@ -81,6 +84,7 @@ where
     }
 
     /// Converts a collection of segments into a row-major matrix.
+    #[cfg(not(feature = "concurrent"))]
     fn from_segments(segments: Vec<Segment<E>>) -> Self {
         // get the number of rows and segments.
         let num_rows = segments[0].num_rows();
@@ -101,6 +105,35 @@ where
         // create a `RowMatrix` object from the result.
         RowMatrix {
             data: flatten_vector_elements(result),
+            row_len: num_segs * ARR_SIZE,
+        }
+    }
+
+    /// Converts a collection of segments into a row-major matrix, using Rayon based parallelism.
+    #[cfg(feature = "concurrent")]
+    fn from_segments(segments: Vec<Segment<E>>) -> Self {
+        // get the number of rows and segments.
+        let num_rows = segments[0].num_rows();
+        let num_segs = segments.len();
+
+        let mut result = unsafe { uninit_vector::<E>(num_rows * num_segs * ARR_SIZE) };
+
+        // transpose the segments into a row matrix.
+        result
+            .par_chunks_exact_mut(num_segs * ARR_SIZE)
+            .enumerate()
+            .for_each(|(ridx, row)| {
+                row.chunks_exact_mut(ARR_SIZE)
+                    .enumerate()
+                    .for_each(|(sidx, chunk)| {
+                        let v = &segments[sidx].as_data()[ridx];
+                        chunk.copy_from_slice(v);
+                    });
+            });
+
+        // create a `RowMatrix` object from the result.
+        RowMatrix {
+            data: result,
             row_len: num_segs * ARR_SIZE,
         }
     }
