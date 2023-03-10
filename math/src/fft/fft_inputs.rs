@@ -9,7 +9,7 @@ use super::{permute_index, FieldElement};
 // ================================================================================================
 const MAX_LOOP: usize = 256;
 
-// FFTINPUTS TRAIT
+// FFT INPUTS TRAIT
 // ================================================================================================
 
 /// Defines the interface that must be implemented by the input to fft_in_place method.
@@ -75,11 +75,11 @@ pub trait FftInputs<E: FieldElement> {
     }
 }
 
+// SLICE IMPLEMENTATION
+// ================================================================================================
+
 /// Implements FftInputs for a slice of field elements.
-impl<E> FftInputs<E> for [E]
-where
-    E: FieldElement,
-{
+impl<E: FieldElement> FftInputs<E> for [E] {
     fn len(&self) -> usize {
         self.len()
     }
@@ -120,6 +120,66 @@ where
         let offset = E::from(offset);
         for d in self.iter_mut() {
             *d *= offset;
+        }
+    }
+}
+
+// SLICE OF ARRAYS IMPLEMENTATION
+// ================================================================================================
+
+/// Implements FftInputs for a slice of field element arrays.
+impl<E: FieldElement, const N: usize> FftInputs<E> for [[E; N]] {
+    fn len(&self) -> usize {
+        self.len()
+    }
+
+    fn butterfly(&mut self, offset: usize, stride: usize) {
+        let i = offset;
+        let j = offset + stride;
+
+        let temp = self[i];
+        for col_idx in 0..N {
+            self[i][col_idx] = temp[col_idx] + self[j][col_idx];
+            self[j][col_idx] = temp[col_idx] - self[j][col_idx];
+        }
+    }
+
+    fn butterfly_twiddle(&mut self, twiddle: E::BaseField, offset: usize, stride: usize) {
+        let i = offset;
+        let j = offset + stride;
+
+        let twiddle = E::from(twiddle);
+        let temp = self[i];
+
+        for col_idx in 0..N {
+            self[j][col_idx] *= twiddle;
+            self[i][col_idx] = temp[col_idx] + self[j][col_idx];
+            self[j][col_idx] = temp[col_idx] - self[j][col_idx];
+        }
+    }
+
+    fn swap(&mut self, i: usize, j: usize) {
+        self.swap(i, j)
+    }
+
+    fn shift_by(&mut self, offset: E::BaseField) {
+        let offset = E::from(offset);
+        for row_idx in 0..self.len() {
+            for col_idx in 0..N {
+                self[row_idx][col_idx] *= offset;
+            }
+        }
+    }
+
+    fn shift_by_series(&mut self, offset: E::BaseField, increment: E::BaseField) {
+        let increment = E::from(increment);
+        let mut offset = E::from(offset);
+
+        for row_idx in 0..self.len() {
+            for col_idx in 0..N {
+                self[row_idx][col_idx] *= offset;
+            }
+            offset *= increment;
         }
     }
 }

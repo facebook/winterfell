@@ -9,7 +9,7 @@ use math::{fft, FieldElement, StarkField};
 use utils::collections::Vec;
 use utils::{flatten_vector_elements, uninit_vector};
 
-// ROWMAJOR MATRIX
+// ROW-MAJOR MATRIX
 // ================================================================================================
 
 /// A row-major matrix of field elements. The matrix is represented as a single vector of field
@@ -58,10 +58,10 @@ where
         // get the twiddles for the segment.
         let twiddles = fft::get_twiddles::<E::BaseField>(polys.num_rows() * blowup_factor);
 
-        // precompute offsets for each row.
+        // pre-compute offsets for each row.
         let offsets = get_offsets::<E>(num_rows, E::BaseField::GENERATOR);
 
-        // create a vector of uninitialised segments to hold the result.
+        // create a vector of uninitialized segments to hold the result.
         let mut segments = allocate_segments::<E>(num_rows, row_width, blowup_factor);
 
         // create segments.
@@ -152,9 +152,9 @@ where
     offsets
 }
 
-/// Creates a vector of uninitialised segments to hold the result. The number of segments is
+/// Creates a vector of uninitialized segments to hold the result. The number of segments is
 /// equal to the number of columns in the matrix divided by the ARR_SIZE. Each segment is
-/// initialised with a vector of uninitialised arrays of length `num_rows * blowup_factor`.
+/// initialized with a vector of uninitialized arrays of length `num_rows * blowup_factor`.
 ///
 /// # Panics
 /// Panics if the number of columns in the matrix is not a multiple of ARR_SIZE.
@@ -168,10 +168,10 @@ where
     );
     let outer_vec_len = row_width / ARR_SIZE;
 
-    // create a vector of uninitialised segments to hold the result.
-    // SAFETY: we are creating a vector of uninitialised segments, and each segment is
-    // initialised with a vector of uninitialised arrays of length `num_rows * blowup_factor`.
-    // This is safe because we are not reading from the vectors, and we will initialise
+    // create a vector of uninitialized segments to hold the result.
+    // SAFETY: we are creating a vector of uninitialized segments, and each segment is
+    // initialized with a vector of uninitialized arrays of length `num_rows * blowup_factor`.
+    // This is safe because we are not reading from the vectors, and we will initialize
     // the vectors before reading from them.
     let outer_vec: Vec<Segment<E>> = (0..outer_vec_len)
         .map(|_| Segment::new(unsafe { uninit_vector::<[E; ARR_SIZE]>(num_rows * blowup_factor) }))
