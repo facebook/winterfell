@@ -128,11 +128,13 @@ impl<E: FieldElement> FftInputs<E> for [E] {
 // ================================================================================================
 
 /// Implements FftInputs for a slice of field element arrays.
+#[allow(clippy::needless_range_loop)]
 impl<E: FieldElement, const N: usize> FftInputs<E> for [[E; N]] {
     fn len(&self) -> usize {
         self.len()
     }
 
+    #[inline(always)]
     fn butterfly(&mut self, offset: usize, stride: usize) {
         let i = offset;
         let j = offset + stride;
@@ -144,6 +146,7 @@ impl<E: FieldElement, const N: usize> FftInputs<E> for [[E; N]] {
         }
     }
 
+    #[inline(always)]
     fn butterfly_twiddle(&mut self, twiddle: E::BaseField, offset: usize, stride: usize) {
         let i = offset;
         let j = offset + stride;

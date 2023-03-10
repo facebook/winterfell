@@ -3,8 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use super::Matrix;
 use math::{fft::fft_inputs::FftInputs, FieldElement};
-use utils::collections::Vec;
+use utils::{collections::Vec, uninit_vector};
 
 // CONSTANTS
 // ================================================================================================
@@ -45,9 +46,51 @@ pub struct Segment<E: FieldElement> {
 impl<E: FieldElement> Segment<E> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
+    /// Instantiates a new [Segment] by evaluating polynomials from the provided matrix starting
+    /// at the specified offset.
+    ///
+    /// Evaluation is performed over the domain specified by the provided twiddles and offsets.
+    ///
+    /// # Panics
+    /// Panics if:
+    /// - Number of offsets is not a power of two.
+    /// - Number of offsets is smaller than or equal to the polynomial size.
+    /// - The number of twiddles is not half the size of the polynomial size.
+    pub fn new(
+        polys: &Matrix<E>,
+        poly_offset: usize,
+        offsets: &[E::BaseField],
+        twiddles: &[E::BaseField],
+    ) -> Self {
+        let poly_size = polys.num_rows();
+        let domain_size = offsets.len();
 
-    /// Creates a new segment of a row-major matrix from the specified data.
-    pub fn new(data: Vec<[E; ARR_SIZE]>) -> Self {
+        debug_assert!(domain_size.is_power_of_two());
+        debug_assert!(domain_size > poly_size);
+        debug_assert_eq!(poly_size, twiddles.len() * 2);
+
+        // allocate uninitialized memory for the segment
+        let mut data = unsafe { uninit_vector::<[E; ARR_SIZE]>(domain_size) };
+
+        // prepare the segment for FFT algorithm; this involves copying the polynomial coefficients
+        // into the segment and applying the specified offsets.
+        for i in 0..ARR_SIZE {
+            let p = polys.get_column(poly_offset + i);
+            data.chunks_mut(poly_size)
+                .zip(offsets.chunks(poly_size))
+                .for_each(|(d_chunk, o_chunk)| {
+                    for row_idx in 0..poly_size {
+                        d_chunk[row_idx][i] = p[row_idx].mul_base(o_chunk[row_idx])
+                    }
+                });
+        }
+
+        // run FFT algorithm and then permute the result
+        data.chunks_mut(poly_size).for_each(|chunk| {
+            chunk.fft_in_place(twiddles);
+        });
+        data.permute();
+
         Self { data }
     }
 
@@ -62,20 +105,5 @@ impl<E: FieldElement> Segment<E> {
     /// Returns the data in this matrix as a slice of arrays.
     pub fn as_data(&self) -> &[[E; ARR_SIZE]] {
         &self.data
-    }
-
-    /// Returns the data in this matrix as a mutable slice of arrays.
-    pub fn as_mut_data(&mut self) -> &mut [[E; ARR_SIZE]] {
-        &mut self.data
-    }
-
-    /// Evaluates the segment `p` over the domain of length `p.len()` using the FFT algorithm
-    /// and returns the result. The computation is performed in place.
-    pub fn evaluate_poly(&mut self, twiddles: &[E::BaseField])
-    where
-        E: FieldElement,
-    {
-        self.data.fft_in_place(twiddles);
-        self.data.permute()
     }
 }
