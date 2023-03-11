@@ -18,9 +18,7 @@ use crate::{
 };
 
 pub mod fft_inputs;
-
 pub mod real_u64;
-
 mod serial;
 
 #[cfg(feature = "concurrent")]
@@ -33,7 +31,6 @@ mod tests;
 
 // CONSTANTS
 // ================================================================================================
-const USIZE_BITS: usize = 0_usize.count_zeros() as usize;
 const MIN_CONCURRENT_SIZE: usize = 1024;
 
 // POLYNOMIAL EVALUATION
@@ -586,8 +583,21 @@ where
     super::polynom::degree_of(&poly)
 }
 
-// HELPER FUNCTIONS
+// PERMUTATIONS
 // ================================================================================================
+
+/// Computes bit reverse of the specified index in the domain of the specified size.
+///
+/// Domain size is assumed to be a power of two and index must be smaller than domain size.
+pub fn permute_index(size: usize, index: usize) -> usize {
+    const USIZE_BITS: u32 = 0_usize.count_zeros();
+
+    debug_assert!(index < size);
+    debug_assert!(size.is_power_of_two());
+
+    let bits = size.trailing_zeros();
+    index.reverse_bits().wrapping_shr(USIZE_BITS - bits)
+}
 
 fn permute<E: FieldElement>(v: &mut [E]) {
     if cfg!(feature = "concurrent") && v.len() >= MIN_CONCURRENT_SIZE {
@@ -596,14 +606,4 @@ fn permute<E: FieldElement>(v: &mut [E]) {
     } else {
         FftInputs::permute(v);
     }
-}
-
-fn permute_index(size: usize, index: usize) -> usize {
-    debug_assert!(index < size);
-    if size == 1 {
-        return 0;
-    }
-    debug_assert!(size.is_power_of_two());
-    let bits = size.trailing_zeros() as usize;
-    index.reverse_bits() >> (USIZE_BITS - bits)
 }

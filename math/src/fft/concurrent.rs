@@ -3,6 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use super::fft_inputs::FftInputs;
 use crate::{
     field::{FieldElement, StarkField},
     utils::log2,
@@ -141,7 +142,7 @@ pub(super) fn split_radix_fft<B: StarkField, E: FieldElement<BaseField = B>>(
     // apply inner FFTs
     values
         .par_chunks_mut(outer_len)
-        .for_each(|row| super::fft_inputs::fft_in_place(row, &twiddles, stretch, stretch, 0));
+        .for_each(|row| row.fft_in_place_raw(&twiddles, stretch, stretch, 0));
 
     // transpose inner x inner x stretch square matrix
     transpose_square_stretch(values, inner_len, stretch);
@@ -160,7 +161,7 @@ pub(super) fn split_radix_fft<B: StarkField, E: FieldElement<BaseField = B>>(
                     outer_twiddle = outer_twiddle * inner_twiddle;
                 }
             }
-            super::fft_inputs::fft_in_place(row, &twiddles, 1, 1, 0)
+            row.fft_in_place(&twiddles);
         });
 }
 

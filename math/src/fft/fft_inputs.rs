@@ -68,10 +68,29 @@ pub trait FftInputs<E: FieldElement> {
     /// The FFT is applied in place, so the input is replaced with the result of the FFT. The
     /// `twiddles` parameter specifies the twiddle factors to use for the FFT.
     ///
+    /// This is convenience methods equivalent to calling fft_in_place_raw(twiddles, 1, 1, 0).
+    ///
     /// # Panics
     /// Panics if length of the `twiddles` parameter is not self.len() / 2.
     fn fft_in_place(&mut self, twiddles: &[E::BaseField]) {
         fft_in_place(self, twiddles, 1, 1, 0);
+    }
+
+    /// Applies the FFT to this input.
+    ///
+    /// The FFT is applied in place, so the input is replaced with the result of the FFT. The
+    /// `twiddles` parameter specifies the twiddle factors to use for the FFT.
+    ///
+    /// # Panics
+    /// Panics if length of the `twiddles` parameter is not self.len() / 2.
+    fn fft_in_place_raw(
+        &mut self,
+        twiddles: &[E::BaseField],
+        count: usize,
+        stride: usize,
+        offset: usize,
+    ) {
+        fft_in_place(self, twiddles, count, stride, offset)
     }
 }
 
@@ -193,7 +212,7 @@ impl<E: FieldElement, const N: usize> FftInputs<E> for [[E; N]] {
 /// In-place recursive FFT with permuted output.
 ///
 /// Adapted from: https://github.com/0xProject/OpenZKP/tree/master/algebra/primefield/src/fft
-pub(super) fn fft_in_place<E, I>(
+fn fft_in_place<E, I>(
     values: &mut I,
     twiddles: &[E::BaseField],
     count: usize,
