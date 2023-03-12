@@ -21,7 +21,6 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
 ) -> E {
     // 1 ----- evaluate transition constraints ----------------------------------------------------
 
-    println!("Eval frame {:?}", main_trace_frame);
     // initialize a buffer to hold transition constraint evaluations
     let t_constraints = air.get_transition_constraints(&composition_coefficients.transition);
 
@@ -39,7 +38,6 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     // evaluate transition constraints for the main trace segment
     let mut t_evaluations1 = E::zeroed_vector(t_constraints.num_main_constraints());
     air.evaluate_transition(main_trace_frame, &periodic_values, &mut t_evaluations1);
-    println!("transition evaluations {:?}", t_evaluations1);
 
     // evaluate transition constraints for auxiliary trace segments (if any)
     let mut t_evaluations2 = E::zeroed_vector(t_constraints.num_aux_constraints());
