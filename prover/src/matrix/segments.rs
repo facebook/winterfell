@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::Matrix;
-use math::{fft::fft_inputs::FftInputs, FieldElement};
+use math::{fft::fft_inputs::FftInputs, FieldElement, StarkField};
 use utils::{collections::Vec, uninit_vector};
 
 #[cfg(feature = "concurrent")]
@@ -13,49 +13,33 @@ use utils::iterators::*;
 // CONSTANTS
 // ================================================================================================
 
-/// Number of elements in row of a segment.
-pub const SEGMENT_WIDTH: usize = 8;
-
 /// Segments with domain sizes under this number will be evaluated in a single thread.
 const MIN_CONCURRENT_SIZE: usize = 1024;
 
 // SEGMENT OF ROW-MAJOR MATRIX
 // ================================================================================================
 
-/// A segment of a row-major matrix of field elements. The segment is represented as a single vector
-/// of field elements, where the first element represent the first row of the segment, the element at
-/// index `i` represents the `i`-th row of the segment, and so on.
-///
-/// Each segment contains only `ARR_SIZE` columns of the matrix. For example, if we have the following
-/// matrix with 8 columns and 2 rows (the matrix is represented as a single vector of field elements
-/// in row-major order) and a ARR_SIZE of 2:
-///
-/// ```text
-/// [ 1  2  3  4  5  6  7  8 ]
-/// [ 9 10 11 12 13 14 15 16 ]
-/// ```
-/// then the first segment of this matrix is represented as a single vector of field elements:
-/// ```text
-/// [[1 2] [9 10]]
-/// ```
-/// and the second segment is represented as:
-/// ```text
-/// [[3 4] [11 12]]
-/// ```
-/// and so on.
-///
-/// It is arranged in a way that allows for efficient FFT operations.
+/// A set of columns of a matrix stored in row-major form.
+/// 
+/// The rows are stored in a single vector where each element is an array of size `N`. A segment
+/// can store [StarkField] elements only, but can be instantiated from a [Matrix] of any extension
+/// of the specified [StarkField]. In such a case, extension field elements are decomposed into
+/// base field elements and then added to the segment.
 #[derive(Clone, Debug)]
-pub struct Segment<E: FieldElement> {
-    data: Vec<[E; SEGMENT_WIDTH]>,
+pub struct Segment<B: StarkField, const N: usize> {
+    data: Vec<[B; N]>,
 }
 
-impl<E: FieldElement> Segment<E> {
+impl<B: StarkField, const N: usize> Segment<B, N> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
-    /// Instantiates a new [Segment] by evaluating polynomials from the provided matrix starting
+    /// Instantiates a new [Segment] by evaluating polynomials from the provided [Matrix] starting
     /// at the specified offset.
     ///
+    /// The offset is assumed to be an offset into the view of the matrix where extension field
+    /// elements are decomposed into base field elements. This offset must be compatible with the
+    /// values supplied into [Matrix::get_base_element()] method.
+    /// 
     /// Evaluation is performed over the domain specified by the provided twiddles and offsets.
     ///
     /// # Panics
@@ -63,12 +47,10 @@ impl<E: FieldElement> Segment<E> {
     /// - Number of offsets is not a power of two.
     /// - Number of offsets is smaller than or equal to the polynomial size.
     /// - The number of twiddles is not half the size of the polynomial size.
-    pub fn new(
-        polys: &Matrix<E>,
-        poly_offset: usize,
-        offsets: &[E::BaseField],
-        twiddles: &[E::BaseField],
-    ) -> Self {
+    pub fn new<E>(polys: &Matrix<E>, poly_offset: usize, offsets: &[B], twiddles: &[B]) -> Self
+    where
+        E: FieldElement<BaseField = B>,
+    {
         let poly_size = polys.num_rows();
         let domain_size = offsets.len();
 
@@ -77,7 +59,7 @@ impl<E: FieldElement> Segment<E> {
         debug_assert_eq!(poly_size, twiddles.len() * 2);
 
         // allocate uninitialized memory for the segment
-        let mut data = unsafe { uninit_vector::<[E; SEGMENT_WIDTH]>(domain_size) };
+        let mut data = unsafe { uninit_vector::<[B; N]>(domain_size) };
 
         // evaluate the polynomials either in a single thread or multiple threads, depending
         // on whether `concurrent` feature is enabled and domain size is greater than 1024;
@@ -88,9 +70,9 @@ impl<E: FieldElement> Segment<E> {
                 .zip(offsets.par_chunks(poly_size))
                 .for_each(|(d_chunk, o_chunk)| {
                     for row_idx in 0..poly_size {
-                        for i in 0..SEGMENT_WIDTH {
-                            let coeff = polys.get(poly_offset + i, row_idx);
-                            d_chunk[row_idx][i] = coeff.mul_base(o_chunk[row_idx]);
+                        for i in 0..N {
+                            let coeff = polys.get_base_element(poly_offset + i, row_idx);
+                            d_chunk[row_idx][i] = coeff * o_chunk[row_idx];
                         }
                     }
                     concurrent::split_radix_fft(d_chunk, twiddles);
@@ -102,9 +84,9 @@ impl<E: FieldElement> Segment<E> {
                 .zip(offsets.chunks(poly_size))
                 .for_each(|(d_chunk, o_chunk)| {
                     for row_idx in 0..poly_size {
-                        for i in 0..SEGMENT_WIDTH {
-                            let coeff = polys.get(poly_offset + i, row_idx);
-                            d_chunk[row_idx][i] = coeff.mul_base(o_chunk[row_idx]);
+                        for i in 0..N {
+                            let coeff = polys.get_base_element(poly_offset + i, row_idx);
+                            d_chunk[row_idx][i] = coeff * o_chunk[row_idx];
                         }
                     }
                     d_chunk.fft_in_place(twiddles);
@@ -124,7 +106,7 @@ impl<E: FieldElement> Segment<E> {
     }
 
     /// Returns the data in this segment as a slice of arrays.
-    pub fn data(&self) -> &[[E; SEGMENT_WIDTH]] {
+    pub fn data(&self) -> &[[B; N]] {
         &self.data
     }
 }
@@ -137,20 +119,17 @@ impl<E: FieldElement> Segment<E> {
 /// with slices of element arrays.
 #[cfg(feature = "concurrent")]
 mod concurrent {
-    use super::{FftInputs, FieldElement, SEGMENT_WIDTH};
+    use super::{FftInputs, StarkField};
     use math::fft::permute_index;
     use utils::{iterators::*, rayon};
 
     /// In-place recursive FFT with permuted output.
     /// Adapted from: https://github.com/0xProject/OpenZKP/tree/master/algebra/primefield/src/fft
-    pub fn split_radix_fft<E: FieldElement>(
-        data: &mut [[E; SEGMENT_WIDTH]],
-        twiddles: &[E::BaseField],
-    ) {
+    pub fn split_radix_fft<B: StarkField, const N: usize>(data: &mut [[B; N]], twiddles: &[B]) {
         // generator of the domain should be in the middle of twiddles
         let n = data.len();
         let g = twiddles[twiddles.len() / 2];
-        debug_assert_eq!(g.exp((n as u32).into()), E::BaseField::ONE);
+        debug_assert_eq!(g.exp((n as u32).into()), B::ONE);
 
         let inner_len = 1_usize << (n.ilog2() / 2);
         let outer_len = n / inner_len;
@@ -177,8 +156,8 @@ mod concurrent {
                     let inner_twiddle = g.exp_vartime((i as u32).into());
                     let mut outer_twiddle = inner_twiddle;
                     for element in row.iter_mut().skip(1) {
-                        for col_idx in 0..SEGMENT_WIDTH {
-                            element[col_idx] = element[col_idx].mul_base(outer_twiddle);
+                        for col_idx in 0..N {
+                            element[col_idx] = element[col_idx] * outer_twiddle;
                         }
                         outer_twiddle = outer_twiddle * inner_twiddle;
                     }
@@ -190,7 +169,7 @@ mod concurrent {
     // PERMUTATIONS
     // --------------------------------------------------------------------------------------------
 
-    pub fn permute<E: FieldElement>(v: &mut [[E; SEGMENT_WIDTH]]) {
+    pub fn permute<T: Send>(v: &mut [T]) {
         let n = v.len();
         let num_batches = rayon::current_num_threads().next_power_of_two() * 2;
         let batch_size = n / num_batches;
@@ -199,7 +178,7 @@ mod concurrent {
                 // create another mutable reference to the slice of values to use in a new thread;
                 // this is OK because we never write the same positions in the slice from different
                 // threads
-                let values = unsafe { &mut *(&mut v[..] as *mut [[E; SEGMENT_WIDTH]]) };
+                let values = unsafe { &mut *(&mut v[..] as *mut [T]) };
                 s.spawn(move |_| {
                     let batch_start = batch_idx * batch_size;
                     let batch_end = batch_start + batch_size;
@@ -217,11 +196,7 @@ mod concurrent {
     // TRANSPOSING
     // --------------------------------------------------------------------------------------------
 
-    fn transpose_square_stretch<E: FieldElement>(
-        data: &mut [[E; SEGMENT_WIDTH]],
-        size: usize,
-        stretch: usize,
-    ) {
+    fn transpose_square_stretch<T>(data: &mut [T], size: usize, stretch: usize) {
         assert_eq!(data.len(), size * size * stretch);
         match stretch {
             1 => transpose_square_1(data, size),
@@ -230,7 +205,7 @@ mod concurrent {
         }
     }
 
-    fn transpose_square_1<E: FieldElement>(data: &mut [[E; SEGMENT_WIDTH]], size: usize) {
+    fn transpose_square_1<T>(data: &mut [T], size: usize) {
         debug_assert_eq!(data.len(), size * size);
         debug_assert_eq!(size % 2, 0, "odd sizes are not supported");
 
@@ -250,7 +225,7 @@ mod concurrent {
         }
     }
 
-    fn transpose_square_2<E: FieldElement>(data: &mut [[E; SEGMENT_WIDTH]], size: usize) {
+    fn transpose_square_2<T>(data: &mut [T], size: usize) {
         debug_assert_eq!(data.len(), 2 * size * size);
 
         // iterate over upper-left triangle, working in 1x2 blocks

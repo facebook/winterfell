@@ -10,7 +10,7 @@ mod col_matrix;
 pub use col_matrix::{ColumnIter, Matrix, MultiColumnIter};
 
 mod segments;
-use segments::{Segment, SEGMENT_WIDTH};
+use segments::Segment;
 
 #[cfg(test)]
 mod tests;

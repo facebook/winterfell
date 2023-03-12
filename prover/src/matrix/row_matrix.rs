@@ -3,13 +3,19 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{Matrix, Segment, SEGMENT_WIDTH};
+use super::{Matrix, Segment};
 use math::{fft, log2, FieldElement, StarkField};
 use utils::collections::Vec;
 use utils::{flatten_vector_elements, uninit_vector};
 
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
+
+// CONSTANTS
+// ================================================================================================
+
+/// Number of elements in row of a segment.
+pub const SEGMENT_WIDTH: usize = 8;
 
 // ROW-MAJOR MATRIX
 // ================================================================================================
@@ -23,14 +29,11 @@ use utils::iterators::*;
 /// - The number of columns in the matrix is always a multiple of ARR_SIZE.
 #[derive(Clone, Debug)]
 pub struct RowMatrix<E: FieldElement> {
-    data: Vec<E>,
+    data: Vec<E::BaseField>,
     row_len: usize,
 }
 
-impl<E> RowMatrix<E>
-where
-    E: FieldElement,
-{
+impl<E: FieldElement> RowMatrix<E> {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
@@ -42,7 +45,7 @@ where
     /// - if the number of elements in the data is not a multiple of the specified row length;
     /// - if the specified row length is not a multiple of ARR_SIZE;
     /// - if the specified data is empty.
-    pub fn new(data: Vec<E>, row_len: usize) -> Self {
+    pub fn new(data: Vec<E::BaseField>, row_len: usize) -> Self {
         assert!(data.len() % row_len == 0);
         assert!(row_len % SEGMENT_WIDTH == 0);
         assert!(!data.is_empty());
@@ -54,7 +57,7 @@ where
     /// a shifted domain offset.
     pub fn transpose_and_extend(polys: &Matrix<E>, blowup_factor: usize) -> Self {
         let poly_size = polys.num_rows();
-        let num_segments = polys.num_cols() / SEGMENT_WIDTH;
+        let num_segments = (polys.num_cols() * E::EXTENSION_DEGREE) / SEGMENT_WIDTH;
 
         // compute twiddles for polynomial evaluation
         let twiddles = fft::get_twiddles::<E::BaseField>(polys.num_rows());
@@ -63,7 +66,7 @@ where
         let offsets = get_offsets::<E>(poly_size, blowup_factor, E::BaseField::GENERATOR);
 
         // build matrix segments by evaluating all polynomials
-        let segments = (0..num_segments)
+        let segments: Vec<Segment<E::BaseField, SEGMENT_WIDTH>> = (0..num_segments)
             .map(|i| Segment::new(polys, i * SEGMENT_WIDTH, &offsets, &twiddles))
             .collect::<Vec<_>>();
 
@@ -72,9 +75,9 @@ where
     }
 
     /// Converts a collection of segments into a row-major matrix.
-    pub fn from_segments(segments: Vec<Segment<E>>) -> Self {
+    pub fn from_segments<const N: usize>(segments: Vec<Segment<E::BaseField, N>>) -> Self {
         // compute the size of each row
-        let row_len = segments.len() * SEGMENT_WIDTH;
+        let row_len = segments.len() * N;
 
         // transpose the segments into a single vector of arrays
         let result = transpose(segments);
@@ -101,11 +104,11 @@ where
     pub fn get_row(&self, row_idx: usize) -> &[E] {
         assert!(row_idx < self.num_rows());
         let start = row_idx * self.row_len;
-        &self.data[start..start + self.row_len]
+        E::slice_from_base_elements(&self.data[start..start + self.row_len])
     }
 
     /// Returns the data in this matrix as a slice of field elements.
-    pub fn as_data(&self) -> &[E] {
+    pub fn data(&self) -> &[E::BaseField] {
         &self.data
     }
 }
@@ -161,14 +164,14 @@ fn get_offsets<E: FieldElement>(
 /// Transposes a vector of segments into a single vector of fixed-size arrays.
 ///
 /// When `concurrent` feature is enabled, transposition is performed in multiple threads.
-fn transpose<E: FieldElement>(segments: Vec<Segment<E>>) -> Vec<[E; SEGMENT_WIDTH]> {
+fn transpose<B: StarkField, const N: usize>(segments: Vec<Segment<B, N>>) -> Vec<[B; N]> {
     let num_rows = segments[0].num_rows();
     let num_segs = segments.len();
     let result_len = num_rows * num_segs;
 
     // allocate memory to hold the transposed result;
     // TODO: investigate transposing in-place
-    let mut result = unsafe { uninit_vector::<[E; SEGMENT_WIDTH]>(result_len) };
+    let mut result = unsafe { uninit_vector::<[B; N]>(result_len) };
 
     // determine number of batches in which transposition will be preformed; if `concurrent`
     // feature is not enabled, the number of batches will always be 1
@@ -176,7 +179,7 @@ fn transpose<E: FieldElement>(segments: Vec<Segment<E>>) -> Vec<[E; SEGMENT_WIDT
     let rows_per_batch = num_rows / num_batches;
 
     // define a closure for transposing a given batch
-    let transpose_batch = |(batch_idx, batch): (usize, &mut [[E; SEGMENT_WIDTH]])| {
+    let transpose_batch = |(batch_idx, batch): (usize, &mut [[B; N]])| {
         let row_offset = batch_idx * rows_per_batch;
         for i in 0..rows_per_batch {
             let row_idx = i + row_offset;
