@@ -194,7 +194,7 @@ impl ElementHasher for Rp62_248 {
 
     fn hash_elements<E: FieldElement<BaseField = Self::BaseField>>(elements: &[E]) -> Self::Digest {
         // convert the elements into a list of base field elements
-        let elements = E::as_base_elements(elements);
+        let elements = E::slice_as_base_elements(elements);
 
         // initialize state to all zeros, except for the last element of the capacity part, which
         // is set to the number of elements to be hashed. this is done so that adding zero elements

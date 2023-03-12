@@ -75,6 +75,10 @@ pub trait FieldElement:
     /// to `Self`.
     type BaseField: StarkField;
 
+    /// Extension degree of this field with respect to `Self::BaseField`. For prime fields,
+    /// extension degree should be set to 1.
+    const EXTENSION_DEGREE: usize;
+
     /// Number of bytes needed to encode an element
     const ELEMENT_BYTES: usize;
 
@@ -154,6 +158,32 @@ pub trait FieldElement:
     #[must_use]
     fn conjugate(&self) -> Self;
 
+    // BASE ELEMENT CONVERSIONS
+    // --------------------------------------------------------------------------------------------
+
+    /// Return base filed element component of this field element at the specified index `i`.
+    ///
+    /// # Panics
+    /// Panics if the specified index is greater than or equal to `Self::EXTENSION_DEGREE`.
+    fn base_element(&self, i: usize) -> Self::BaseField;
+
+    /// Converts a slice of field elements into a slice of elements in the underlying base field.
+    ///
+    /// For base STARK fields, the input and output slices are the same. For extension fields, the
+    /// output slice will contain decompositions of each extension element into underlying base
+    /// field elements.
+    fn slice_as_base_elements(elements: &[Self]) -> &[Self::BaseField];
+
+    /// Convert a slice of base field elements into a slice of field elements.
+    ///
+    /// For base STARK fields, the input and output slices are the same. For extension fields, the
+    /// output slice will contain a composition of base field elements into extension field
+    /// elements.
+    ///
+    /// # Panics
+    /// Panics if the the length of the provided slice is not divisible by `Self::EXTENSION_DEGREE`.
+    fn slice_from_base_elements(elements: &[Self::BaseField]) -> &[Self];
+
     // SERIALIZATION / DESERIALIZATION
     // --------------------------------------------------------------------------------------------
 
@@ -189,13 +219,6 @@ pub trait FieldElement:
     fn zeroed_vector(n: usize) -> Vec<Self> {
         vec![Self::ZERO; n]
     }
-
-    /// Converts a list of field elements into a list of elements in the underlying base field.
-    ///
-    /// For base STARK fields, the input and output lists are the same. For extension field, the
-    /// output list will contain decompositions of each extension element into underlying base
-    /// elements.
-    fn as_base_elements(elements: &[Self]) -> &[Self::BaseField];
 }
 
 // STARK FIELD
@@ -249,7 +272,7 @@ pub trait StarkField: FieldElement<BaseField = Self> {
 // EXTENSIBLE FIELD
 // ================================================================================================
 
-/// Defines basic arithmetic in an extension of a StarkField of a given degree.
+/// Defines basic arithmetic in an extension of a [StarkField] of a given degree.
 ///
 /// This trait defines how to perform multiplication and compute a Frobenius automorphisms of an
 /// element in an extension of degree N for a given [StarkField]. It as assumed that an element in
