@@ -352,7 +352,7 @@ pub trait Prover {
         // draw random coefficients to use during DEEP polynomial composition, and use them to
         // initialize the DEEP composition polynomial
         let deep_coefficients = channel.get_deep_composition_coeffs();
-        let mut deep_composition_poly = DeepCompositionPoly::new(&air, z, deep_coefficients);
+        let mut deep_composition_poly = DeepCompositionPoly::new(z, deep_coefficients);
 
         // combine all trace polynomials together and merge them into the DEEP composition
         // polynomial

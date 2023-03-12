@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{constraints::CompositionPoly, StarkDomain, TracePolyTable};
-use air::{Air, DeepCompositionCoefficients};
+use air::DeepCompositionCoefficients;
 use math::{add_in_place, fft, log2, mul_acc, polynom, ExtensionOf, FieldElement, StarkField};
 use utils::{collections::Vec, iter_mut};
 
@@ -17,7 +17,6 @@ pub struct DeepCompositionPoly<E: FieldElement> {
     coefficients: Vec<E>,
     cc: DeepCompositionCoefficients<E>,
     z: E,
-    field_extension: bool,
 }
 
 impl<E: FieldElement> DeepCompositionPoly<E> {
@@ -26,15 +25,11 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
     /// Returns a new DEEP composition polynomial. Initially, this polynomial will be empty, and
     /// the intent is to populate the coefficients via add_trace_polys() and add_constraint_polys()
     /// methods.
-    pub fn new<A>(air: &A, z: E, cc: DeepCompositionCoefficients<E>) -> Self
-    where
-        A: Air<BaseField = E::BaseField>,
-    {
+    pub fn new(z: E, cc: DeepCompositionCoefficients<E>) -> Self {
         DeepCompositionPoly {
             coefficients: vec![],
             cc,
             z,
-            field_extension: !air.options().field_extension().is_none(),
         }
     }
 
@@ -62,10 +57,6 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
     /// - Then, combine together all T'_i(x) polynomials using random liner combination as
     ///   T(x) = sum(T'_i(x) * cc'_i + T''_i(x) * cc''_i) for all i, where cc'_i and cc''_i are
     ///   the coefficients for the random linear combination drawn from the public coin.
-    /// - In cases when we generate the proof using an extension field, we also compute
-    ///   T'''_i(x) = (T_i(x) - T_i(z_conjugate)) / (x - z_conjugate), and add it to T(x) similarly
-    ///   to the way described above. This is needed in order to verify that the trace is defined
-    ///   over the base field, rather than the extension field.
     ///
     /// Note that evaluations of T_i(z) and T_i(z * g) are passed in via the `ood_frame` parameter.
     pub fn add_trace_polys(
@@ -81,15 +72,9 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
         let g = E::from(E::BaseField::get_root_of_unity(log2(trace_length)));
         let next_z = self.z * g;
 
-        // combine trace polynomials into 2 composition polynomials T'(x) and T''(x), and if
-        // we are using a field extension, also T'''(x)
+        // combine trace polynomials into 2 composition polynomials T'(x) and T''(x)
         let mut t1_composition = E::zeroed_vector(trace_length);
         let mut t2_composition = E::zeroed_vector(trace_length);
-        let mut t3_composition = if self.field_extension {
-            E::zeroed_vector(trace_length)
-        } else {
-            Vec::new()
-        };
 
         // index of a trace polynomial; we declare it here so that we can maintain index continuity
         // across all trace segments
@@ -114,17 +99,6 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
                 ood_trace_states[1][i],
                 self.cc.trace[i].1,
             );
-
-            // when extension field is enabled, compute T'''(x) = T(x) - T(z_conjugate), multiply
-            // it by a pseudo-random coefficient, and add the result into composition polynomial
-            if self.field_extension {
-                acc_trace_poly::<E::BaseField, E>(
-                    &mut t3_composition,
-                    poly,
-                    ood_trace_states[0][i].conjugate(),
-                    self.cc.trace[i].2,
-                );
-            }
 
             i += 1;
         }
@@ -155,13 +129,11 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
             i += 1;
         }
 
-        // divide the composition polynomials by (x - z), (x - z * g), and (x - z_conjugate)
-        // respectively, and add the resulting polynomials together; the output of this step
+        // divide the composition polynomials by (x - z) and (x - z * g), respectively,
+        // and add the resulting polynomials together; the output of this step
         // is a single trace polynomial T(x) and deg(T(x)) = trace_length - 2.
-        let trace_poly = merge_trace_compositions(
-            vec![t1_composition, t2_composition, t3_composition],
-            vec![self.z, next_z, self.z.conjugate()],
-        );
+        let trace_poly =
+            merge_trace_compositions(vec![t1_composition, t2_composition], vec![self.z, next_z]);
 
         // set the coefficients of the DEEP composition polynomial
         self.coefficients = trace_poly;
@@ -215,7 +187,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
     /// Increase the degree of the DEEP composition polynomial by one. After add_trace_polys() and
     /// add_composition_poly() are executed, the degree of the DEEP composition polynomial is
     /// trace_length - 2 because in these functions we divide the polynomials of degree
-    /// trace_length - 1 by (x - z), (x - z * g) etc. which decreases the degree by one. We want to
+    /// trace_length - 1 by (x - z) and (x - z * g) which decreases the degree by one. We want to
     /// ensure that degree of the DEEP composition polynomial is trace_length - 1, so we make the
     /// adjustment here by computing C'(x) = C(x) * (cc_0 + x * cc_1), where cc_0 and cc_1 are the
     /// coefficients for the random linear combination drawn from the public coin.
@@ -258,19 +230,13 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
 fn merge_trace_compositions<E: FieldElement>(mut polys: Vec<Vec<E>>, divisors: Vec<E>) -> Vec<E> {
     // divide all polynomials by their corresponding divisor
     iter_mut!(polys).zip(divisors).for_each(|(poly, divisor)| {
-        // skip empty polynomials; this could happen for conjugate composition polynomial (T3)
-        // when extension field is not enabled.
-        if !poly.is_empty() {
-            polynom::syn_div_in_place(poly, 1, divisor);
-        }
+        polynom::syn_div_in_place(poly, 1, divisor);
     });
 
     // add all polynomials together into a single polynomial
     let mut result = polys.remove(0);
     for poly in polys.iter() {
-        if !poly.is_empty() {
-            add_in_place(&mut result, poly);
-        }
+        add_in_place(&mut result, poly);
     }
 
     result

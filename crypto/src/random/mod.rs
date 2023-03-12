@@ -207,18 +207,6 @@ impl<B: StarkField, H: Hasher> RandomCoin<B, H> {
         Ok((self.draw()?, self.draw()?))
     }
 
-    /// Returns the next triplet of pseudo-random field elements.
-    ///
-    /// # Errors
-    /// Returns an error if any of the field elements could not be generated after 100 calls to
-    /// the PRNG;
-    pub fn draw_triple<E>(&mut self) -> Result<(E, E, E), RandomCoinError>
-    where
-        E: FieldElement<BaseField = B>,
-    {
-        Ok((self.draw()?, self.draw()?, self.draw()?))
-    }
-
     /// Returns a vector of unique integers selected from the range [0, domain_size).
     ///
     /// # Errors

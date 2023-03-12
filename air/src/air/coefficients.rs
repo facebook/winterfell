@@ -83,14 +83,12 @@ pub struct ConstraintCompositionCoefficients<E: FieldElement> {
 /// $$
 /// Y(x) = \sum_{i=0}^k{(
 ///     \alpha_i \cdot \frac{T_i(x) - T_i(z)}{x - z} +
-///     \beta_i \cdot \frac{T_i(x) - T_i(z \cdot g)}{x - z \cdot g} +
-///     \gamma_i \cdot \frac{T_i(x) - T_i(\overline{z})}{x - \overline{z}}
+///     \beta_i \cdot \frac{T_i(x) - T_i(z \cdot g)}{x - z \cdot g}
 /// )} + \sum_{j=0}^m{\delta \cdot \frac{H_j(x) - H_j(z^m)}{x - z^m}}
 /// $$
 /// where:
 /// * $z$ is an out-of-domain point drawn randomly from the entire field. In the interactive
-///   version of the protocol, $z$ is provided by the verifier. $\overline{z}$ is the conjugate
-///   of $z$.
+///   version of the protocol, $z$ is provided by the verifier. 
 /// * $g$ is the generator of the trace domain. This is the same as $n$th root of unity where
 ///   $n$ is the length of the execution trace.
 /// * $T_i(x)$ is an evaluation of the $i$th trace polynomial at $x$, and $k$ is the total
@@ -99,10 +97,7 @@ pub struct ConstraintCompositionCoefficients<E: FieldElement> {
 ///   and $m$ is the total number of column polynomials. The number of column polynomials is equal
 ///   to the highest constraint degree rounded to the next power of two. For example, if the
 ///   highest constraint degree is 6, $m$ will be equal to 8.
-/// * $\alpha_i, \beta_i, \gamma_i$ are composition coefficients for the $i$th trace polynomial.
-/// Note that $\gamma_i$ may not be necessary if constraints are verified over the original prime
-/// field of the execution trace. However, it becomes necessary if we evaluate constraints over an
-/// extension field, to ensure the trace is actually defined over the underlying prime field.
+/// * $\alpha_i, \beta_i$ are composition coefficients for the $i$th trace polynomial.
 /// * $\delta_j$ is a composition coefficient for $j$th constraint column polynomial.
 ///
 /// $T(x)$ and $H(x)$ are polynomials of degree $n - 1$, where $n$ is the length of the execution
@@ -114,8 +109,8 @@ pub struct ConstraintCompositionCoefficients<E: FieldElement> {
 /// where $\lambda$ and $\mu$ are the composition coefficients for degree adjustment.
 #[derive(Debug, Clone)]
 pub struct DeepCompositionCoefficients<E: FieldElement> {
-    /// Trace polynomial composition coefficients $\alpha_i$, $\beta_i$, and $\gamma_i$.
-    pub trace: Vec<(E, E, E)>,
+    /// Trace polynomial composition coefficients $\alpha_i$ and $\beta_i$.
+    pub trace: Vec<(E, E)>,
     /// Constraint column polynomial composition coefficients $\delta_j$.
     pub constraints: Vec<E>,
     /// Degree adjustment composition coefficients $\lambda$ and $\mu$.
