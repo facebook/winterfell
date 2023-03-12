@@ -74,7 +74,6 @@ impl BaseElement {
 
     /// Computes an exponentiation to the power 7. This is useful for computing Rescue-Prime
     /// S-Box over this field.
-    #[inline(always)]
     pub fn exp7(self) -> Self {
         let x2 = self.square();
         let x4 = x2.square();
@@ -118,7 +117,6 @@ impl FieldElement for BaseElement {
         Self(result.wrapping_sub(M * over))
     }
 
-    #[inline]
     fn exp(self, power: Self::PositiveInteger) -> Self {
         let mut b: Self;
         let mut r = Self::ONE;
@@ -134,7 +132,6 @@ impl FieldElement for BaseElement {
         r
     }
 
-    #[inline]
     #[allow(clippy::many_single_char_names)]
     fn inv(self) -> Self {
         // compute base^(M - 2) using 72 multiplications
@@ -310,7 +307,6 @@ impl Eq for BaseElement {}
 impl Add for BaseElement {
     type Output = Self;
 
-    #[inline]
     #[allow(clippy::suspicious_arithmetic_impl)]
     fn add(self, rhs: Self) -> Self {
         // We compute a + b = a - (p - b).
@@ -321,7 +317,6 @@ impl Add for BaseElement {
 }
 
 impl AddAssign for BaseElement {
-    #[inline]
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs
     }
@@ -330,7 +325,6 @@ impl AddAssign for BaseElement {
 impl Sub for BaseElement {
     type Output = Self;
 
-    #[inline]
     #[allow(clippy::suspicious_arithmetic_impl)]
     fn sub(self, rhs: Self) -> Self {
         let (x1, c1) = self.0.overflowing_sub(rhs.0);
@@ -340,7 +334,6 @@ impl Sub for BaseElement {
 }
 
 impl SubAssign for BaseElement {
-    #[inline]
     fn sub_assign(&mut self, rhs: Self) {
         *self = *self - rhs;
     }
@@ -356,7 +349,6 @@ impl Mul for BaseElement {
 }
 
 impl MulAssign for BaseElement {
-    #[inline]
     fn mul_assign(&mut self, rhs: Self) {
         *self = *self * rhs
     }
@@ -382,7 +374,6 @@ impl DivAssign for BaseElement {
 impl Neg for BaseElement {
     type Output = Self;
 
-    #[inline]
     fn neg(self) -> Self {
         Self::ZERO - self
     }
@@ -395,7 +386,7 @@ impl Neg for BaseElement {
 /// x + 2. Thus, an extension element is defined as α + β * φ, where φ is a root of this polynomial,
 /// and α and β are base field elements.
 impl ExtensibleField<2> for BaseElement {
-    #[inline(always)]
+    #[inline]
     fn mul(a: [Self; 2], b: [Self; 2]) -> [Self; 2] {
         // performs multiplication in the extension field using 3 multiplications, 3 additions,
         // and 2 subtractions in the base field. overall, a single multiplication in the extension
@@ -407,7 +398,6 @@ impl ExtensibleField<2> for BaseElement {
         ]
     }
 
-    #[inline(always)]
     fn square(a: [Self; 2]) -> [Self; 2] {
         let a0 = a[0];
         let a1 = a[1];
@@ -420,14 +410,13 @@ impl ExtensibleField<2> for BaseElement {
         [out0, out1]
     }
 
-    #[inline(always)]
+    #[inline]
     fn mul_base(a: [Self; 2], b: Self) -> [Self; 2] {
         // multiplying an extension field element by a base field element requires just 2
         // multiplications in the base field.
         [a[0] * b, a[1] * b]
     }
 
-    #[inline(always)]
     fn frobenius(x: [Self; 2]) -> [Self; 2] {
         [x[0] + x[1], -x[1]]
     }
@@ -440,7 +429,7 @@ impl ExtensibleField<2> for BaseElement {
 /// x - 1. Thus, an extension element is defined as α + β * φ + γ * φ^2, where φ is a root of this
 /// polynomial, and α, β and γ are base field elements.
 impl ExtensibleField<3> for BaseElement {
-    #[inline(always)]
+    #[inline]
     fn mul(a: [Self; 3], b: [Self; 3]) -> [Self; 3] {
         // performs multiplication in the extension field using 6 multiplications, 9 additions,
         // and 4 subtractions in the base field. overall, a single multiplication in the extension
@@ -467,7 +456,7 @@ impl ExtensibleField<3> for BaseElement {
         ]
     }
 
-    #[inline(always)]
+    #[inline]
     fn square(a: [Self; 3]) -> [Self; 3] {
         let a0 = a[0];
         let a1 = a[1];
@@ -483,14 +472,14 @@ impl ExtensibleField<3> for BaseElement {
         [out0, out1, out2]
     }
 
-    #[inline(always)]
+    #[inline]
     fn mul_base(a: [Self; 3], b: Self) -> [Self; 3] {
         // multiplying an extension field element by a base field element requires just 3
         // multiplications in the base field.
         [a[0] * b, a[1] * b, a[2] * b]
     }
 
-    #[inline(always)]
+    #[inline]
     fn frobenius(x: [Self; 3]) -> [Self; 3] {
         // coefficients were computed using SageMath
         [
@@ -618,7 +607,6 @@ impl Deserializable for BaseElement {
 }
 
 /// Squares the base N number of times and multiplies the result by the tail value.
-#[inline(always)]
 fn exp_acc<const N: usize>(base: BaseElement, tail: BaseElement) -> BaseElement {
     let mut result = base;
     for _ in 0..N {
@@ -629,7 +617,7 @@ fn exp_acc<const N: usize>(base: BaseElement, tail: BaseElement) -> BaseElement 
 
 /// Montgomery reduction (variable time)
 #[allow(dead_code)]
-#[inline(always)]
+#[inline]
 const fn mont_red_var(x: u128) -> u64 {
     const NPRIME: u64 = 4294967297;
     let q = (((x as u64) as u128) * (NPRIME as u128)) as u64;
@@ -643,7 +631,7 @@ const fn mont_red_var(x: u128) -> u64 {
 }
 
 /// Montgomery reduction (constant time)
-#[inline(always)]
+#[inline]
 const fn mont_red_cst(x: u128) -> u64 {
     // See reference above for a description of the following implementation.
     let xl = x as u64;
@@ -658,7 +646,7 @@ const fn mont_red_cst(x: u128) -> u64 {
 
 /// Test of equality between two BaseField elements; return value is
 /// 0xFFFFFFFFFFFFFFFF if the two values are equal, or 0 otherwise.
-#[inline(always)]
+#[inline]
 pub fn equals(lhs: u64, rhs: u64) -> u64 {
     let t = lhs ^ rhs;
     !((((t | t.wrapping_neg()) as i64) >> 63) as u64)

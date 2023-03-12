@@ -181,27 +181,27 @@ where
     B: StarkField,
     E: FieldElement<BaseField = B>,
 {
-    assert!(
+    debug_assert!(
         p.len().is_power_of_two(),
         "number of coefficients must be a power of 2"
     );
-    assert!(
+    debug_assert!(
         blowup_factor.is_power_of_two(),
         "blowup factor must be a power of 2"
     );
-    assert_eq!(
+    debug_assert_eq!(
         p.len(),
         twiddles.len() * 2,
         "invalid number of twiddles: expected {} but received {}",
         p.len() / 2,
         twiddles.len()
     );
-    assert!(
+    debug_assert!(
         log2(p.len() * blowup_factor) <= B::TWO_ADICITY,
         "multiplicative subgroup of size {} does not exist in the specified base field",
         p.len() * blowup_factor
     );
-    assert_ne!(domain_offset, B::ZERO, "domain offset cannot be zero");
+    debug_assert_ne!(domain_offset, B::ZERO, "domain offset cannot be zero");
 
     // assign a dummy value here to make the compiler happy
     #[allow(unused_assignments)]
@@ -279,19 +279,19 @@ where
     B: StarkField,
     E: FieldElement<BaseField = B>,
 {
-    assert!(
+    debug_assert!(
         evaluations.len().is_power_of_two(),
         "number of evaluations must be a power of 2, but was {}",
         evaluations.len()
     );
-    assert_eq!(
+    debug_assert_eq!(
         evaluations.len(),
         inv_twiddles.len() * 2,
         "invalid number of twiddles: expected {} but received {}",
         evaluations.len() / 2,
         inv_twiddles.len()
     );
-    assert!(
+    debug_assert!(
         log2(evaluations.len()) <= B::TWO_ADICITY,
         "multiplicative subgroup of size {} does not exist in the specified base field",
         evaluations.len()
@@ -370,24 +370,24 @@ pub fn interpolate_poly_with_offset<B, E>(
     B: StarkField,
     E: FieldElement<BaseField = B>,
 {
-    assert!(
+    debug_assert!(
         evaluations.len().is_power_of_two(),
         "number of evaluations must be a power of 2, but was {}",
         evaluations.len()
     );
-    assert_eq!(
+    debug_assert_eq!(
         evaluations.len(),
         inv_twiddles.len() * 2,
         "invalid number of twiddles: expected {} but received {}",
         evaluations.len() / 2,
         inv_twiddles.len()
     );
-    assert!(
+    debug_assert!(
         log2(evaluations.len()) <= B::TWO_ADICITY,
         "multiplicative subgroup of size {} does not exist in the specified base field",
         evaluations.len()
     );
-    assert_ne!(domain_offset, B::ZERO, "domain offset cannot be zero");
+    debug_assert_ne!(domain_offset, B::ZERO, "domain offset cannot be zero");
 
     // when `concurrent` feature is enabled, run the concurrent version of the function; unless
     // the polynomial is small, then don't bother with the concurrent version
@@ -421,19 +421,19 @@ where
     B: StarkField,
     E: FieldElement<BaseField = B>,
 {
-    assert!(
+    debug_assert!(
         values.len().is_power_of_two(),
         "number of values must be a power of 2, but was {}",
         values.len()
     );
-    assert_eq!(
+    debug_assert_eq!(
         values.len(),
         twiddles.len() * 2,
         "invalid number of twiddles: expected {} but received {}",
         values.len() / 2,
         twiddles.len()
     );
-    assert!(
+    debug_assert!(
         log2(values.len()) <= B::TWO_ADICITY,
         "multiplicative subgroup of size {} does not exist in the specified base field",
         values.len()
@@ -470,11 +470,11 @@ pub fn get_twiddles<B>(domain_size: usize) -> Vec<B>
 where
     B: StarkField,
 {
-    assert!(
+    debug_assert!(
         domain_size.is_power_of_two(),
         "domain size must be a power of 2"
     );
-    assert!(
+    debug_assert!(
         log2(domain_size) <= B::TWO_ADICITY,
         "multiplicative subgroup of size {domain_size} does not exist in the specified base field"
     );
@@ -598,12 +598,10 @@ fn permute<E: FieldElement>(v: &mut [E]) {
     }
 }
 
+#[inline(always)]
 fn permute_index(size: usize, index: usize) -> usize {
     debug_assert!(index < size);
-    if size == 1 {
-        return 0;
-    }
     debug_assert!(size.is_power_of_two());
     let bits = size.trailing_zeros() as usize;
-    index.reverse_bits() >> (USIZE_BITS - bits)
+    ((size != 1) as usize * index.reverse_bits()) >> (USIZE_BITS - bits).min(USIZE_BITS - 1)
 }

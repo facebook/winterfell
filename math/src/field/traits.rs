@@ -318,7 +318,7 @@ pub trait ExtensionOf<E: FieldElement>: From<E> {
 
 /// A field is always an extension of itself.
 impl<E: FieldElement> ExtensionOf<E> for E {
-    #[inline(always)]
+    #[inline]
     fn mul_base(self, other: E) -> Self {
         self * other
     }

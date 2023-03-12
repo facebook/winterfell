@@ -112,8 +112,8 @@ impl<E: FieldElement> Matrix<E> {
     /// # Panics
     /// Panics if `row_idx` is out of bounds for this matrix.
     pub fn read_row_into(&self, row_idx: usize, row: &mut [E]) {
-        for (column, value) in self.columns.iter().zip(row.iter_mut()) {
-            *value = column[row_idx];
+        for i in 0..self.columns.len().min(row.len()) {
+            row[i] = self.columns[i][row_idx];
         }
     }
 

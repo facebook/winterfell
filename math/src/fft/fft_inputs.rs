@@ -70,6 +70,7 @@ pub trait FftInputs<E: FieldElement> {
     ///
     /// # Panics
     /// Panics if length of the `twiddles` parameter is not self.len() / 2.
+    #[inline]
     fn fft_in_place(&mut self, twiddles: &[E::BaseField]) {
         fft_in_place(self, twiddles, 1, 1, 0);
     }
@@ -84,7 +85,7 @@ where
         self.len()
     }
 
-    #[inline(always)]
+    #[inline]
     fn butterfly(&mut self, offset: usize, stride: usize) {
         let i = offset;
         let j = offset + stride;
@@ -93,7 +94,7 @@ where
         self[j] = temp - self[j];
     }
 
-    #[inline(always)]
+    #[inline]
     fn butterfly_twiddle(&mut self, twiddle: E::BaseField, offset: usize, stride: usize) {
         let i = offset;
         let j = offset + stride;
@@ -162,13 +163,12 @@ pub(super) fn fft_in_place<E, I>(
 
     // Apply butterfly operations with twiddle factors.
     let last_offset = offset + size * stride;
-    for (i, offset) in (offset..last_offset)
+    for (i, offset) in (offset + 2 * stride..last_offset)
         .step_by(2 * stride)
         .enumerate()
-        .skip(1)
     {
         for j in offset..(offset + count) {
-            I::butterfly_twiddle(values, twiddles[i], j, stride);
+            I::butterfly_twiddle(values, twiddles[i + 1], j, stride);
         }
     }
 }

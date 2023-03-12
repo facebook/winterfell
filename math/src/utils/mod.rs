@@ -201,7 +201,7 @@ where
 /// assert_eq!(log2(2usize.pow(20)), 20);
 /// ```
 pub fn log2(n: usize) -> u32 {
-    assert!(n.is_power_of_two(), "n must be a power of two");
+    debug_assert!(n.is_power_of_two(), "n must be a power of two");
     n.trailing_zeros()
 }
 
