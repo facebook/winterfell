@@ -4,9 +4,10 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{ColMatrix, Segment};
+use crypto::{ElementHasher, MerkleTree};
 use math::{fft, log2, FieldElement, StarkField};
 use utils::collections::Vec;
-use utils::{flatten_vector_elements, uninit_vector};
+use utils::{batch_iter_mut, flatten_vector_elements, uninit_vector};
 
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
@@ -125,6 +126,39 @@ impl<E: FieldElement> RowMatrix<E> {
     /// Returns the data in this matrix as a slice of field elements.
     pub fn data(&self) -> &[E::BaseField] {
         &self.data
+    }
+
+    // COMMITMENTS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns a commitment to this matrix.
+    ///
+    /// The commitment is built as follows:
+    /// * Each row of the matrix is hashed into a single digest of the specified hash function.
+    /// * The resulting values are used to built a binary Merkle tree such that each row digest
+    ///   becomes a leaf in the tree. Thus, the number of leaves in the tree is equal to the
+    ///   number of rows in the matrix.
+    /// * The resulting Merkle tree is return as the commitment to the entire matrix.
+    pub fn commit_to_rows<H>(&self) -> MerkleTree<H>
+    where
+        H: ElementHasher<BaseField = E::BaseField>,
+    {
+        // allocate vector to store row hashes
+        let mut row_hashes = unsafe { uninit_vector::<H::Digest>(self.num_rows()) };
+
+        // iterate though matrix rows, hashing each row
+        batch_iter_mut!(
+            &mut row_hashes,
+            128, // min batch size
+            |batch: &mut [H::Digest], batch_offset: usize| {
+                for (i, row_hash) in batch.iter_mut().enumerate() {
+                    *row_hash = H::hash_elements(self.row(batch_offset + i));
+                }
+            }
+        );
+
+        // build Merkle tree out of hashed rows
+        MerkleTree::new(row_hashes).expect("failed to construct trace Merkle tree")
     }
 }
 
