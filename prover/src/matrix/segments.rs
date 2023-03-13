@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::Matrix;
+use super::ColMatrix;
 use math::{fft::fft_inputs::FftInputs, FieldElement, StarkField};
 use utils::{collections::Vec, uninit_vector};
 
@@ -48,7 +48,7 @@ impl<B: StarkField, const N: usize> Segment<B, N> {
     /// - Number of offsets is not a power of two.
     /// - Number of offsets is smaller than or equal to the polynomial size.
     /// - The number of twiddles is not half the size of the polynomial size.
-    pub fn new<E>(polys: &Matrix<E>, poly_offset: usize, offsets: &[B], twiddles: &[B]) -> Self
+    pub fn new<E>(polys: &ColMatrix<E>, poly_offset: usize, offsets: &[B], twiddles: &[B]) -> Self
     where
         E: FieldElement<BaseField = B>,
     {
@@ -127,7 +127,7 @@ impl<B: StarkField, const N: usize> Segment<B, N> {
     /// specified destination. Each polynomial coefficient is offset by the specified offset.
     fn copy_polys<E: FieldElement<BaseField = B>>(
         dest: &mut [[B; N]],
-        polys: &Matrix<E>,
+        polys: &ColMatrix<E>,
         poly_offset: usize,
         offsets: &[B],
     ) {
@@ -145,7 +145,7 @@ impl<B: StarkField, const N: usize> Segment<B, N> {
     /// Assumes that `num_polys` is smaller than `N`.
     fn copy_polys_partial<E: FieldElement<BaseField = B>>(
         dest: &mut [[B; N]],
-        polys: &Matrix<E>,
+        polys: &ColMatrix<E>,
         poly_offset: usize,
         num_polys: usize,
         offsets: &[B],

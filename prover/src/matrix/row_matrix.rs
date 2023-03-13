@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{Matrix, Segment};
+use super::{ColMatrix, Segment};
 use math::{fft, log2, FieldElement, StarkField};
 use utils::collections::Vec;
 use utils::{flatten_vector_elements, uninit_vector};
@@ -49,8 +49,8 @@ impl<E: FieldElement> RowMatrix<E> {
     /// in the `polys` matrix) and the `blowup_factor`.
     ///
     /// To improve performance, polynomials are evaluated in batches specified by the `N` type
-    /// parameter. Minimum batch size is 1.
-    pub fn evaluate_polys<const N: usize>(polys: &Matrix<E>, blowup_factor: usize) -> Self {
+    /// parameter. Minimum batch size is 0.
+    pub fn evaluate_polys<const N: usize>(polys: &ColMatrix<E>, blowup_factor: usize) -> Self {
         assert!(N > 0, "batch size N must be greater than zero");
         let poly_size = polys.num_rows();
         let num_segments = if polys.num_base_cols() % N == 0 {

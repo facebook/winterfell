@@ -5,7 +5,7 @@
 
 use crate::{
     math::{fields::f64::BaseElement, get_power_series, log2, polynom, StarkField},
-    Matrix, RowMatrix,
+    ColMatrix, RowMatrix,
 };
 use rand_utils::rand_vector;
 use utils::collections::Vec;
@@ -20,7 +20,8 @@ fn test_eval_poly_with_offset_matrix() {
     let mut columns: Vec<Vec<BaseElement>> = (0..num_polys).map(|_| rand_vector(n)).collect();
 
     // evaluate columns using the row matrix implementation.
-    let row_matrix = RowMatrix::evaluate_polys::<8>(&Matrix::new(columns.clone()), blowup_factor);
+    let row_matrix =
+        RowMatrix::evaluate_polys::<8>(&ColMatrix::new(columns.clone()), blowup_factor);
 
     // evaluate columns using the using the polynomial evaluation implementation.
     let offset = BaseElement::GENERATOR;

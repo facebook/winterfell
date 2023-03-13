@@ -5,7 +5,7 @@
 
 use crate::{
     matrix::{ColumnIter, MultiColumnIter},
-    Matrix,
+    ColMatrix,
 };
 use math::{log2, FieldElement, StarkField};
 use utils::collections::Vec;
@@ -19,15 +19,15 @@ use utils::collections::Vec;
 /// However, coefficients of the polynomials for the auxiliary trace segments may be either in the
 /// base field, or in the extension field, depending on whether extension field is being used.
 pub struct TracePolyTable<E: FieldElement> {
-    main_segment_polys: Matrix<E::BaseField>,
-    aux_segment_polys: Vec<Matrix<E>>,
+    main_segment_polys: ColMatrix<E::BaseField>,
+    aux_segment_polys: Vec<ColMatrix<E>>,
 }
 
 impl<E: FieldElement> TracePolyTable<E> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Creates a new table of trace polynomials from the provided main trace segment polynomials.
-    pub fn new(main_trace_polys: Matrix<E::BaseField>) -> Self {
+    pub fn new(main_trace_polys: ColMatrix<E::BaseField>) -> Self {
         Self {
             main_segment_polys: main_trace_polys,
             aux_segment_polys: Vec::new(),
@@ -38,7 +38,7 @@ impl<E: FieldElement> TracePolyTable<E> {
     // --------------------------------------------------------------------------------------------
 
     /// Adds the provided auxiliary segment polynomials to this polynomial table.
-    pub fn add_aux_segment(&mut self, aux_segment_polys: Matrix<E>) {
+    pub fn add_aux_segment(&mut self, aux_segment_polys: ColMatrix<E>) {
         assert_eq!(
             self.main_segment_polys.num_rows(),
             aux_segment_polys.num_rows(),

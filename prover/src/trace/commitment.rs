@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::Matrix;
+use crate::ColMatrix;
 use air::proof::Queries;
 use crypto::{ElementHasher, MerkleTree};
 use math::FieldElement;
@@ -31,7 +31,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> TraceCommitmen
     /// Creates a new trace commitment from the provided main trace low-degree extension and the
     /// corresponding Merkle tree commitment.
     pub fn new(
-        main_trace_lde: Matrix<E::BaseField>,
+        main_trace_lde: ColMatrix<E::BaseField>,
         main_trace_tree: MerkleTree<H>,
         blowup: usize,
     ) -> Self {
@@ -51,7 +51,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> TraceCommitmen
     // --------------------------------------------------------------------------------------------
 
     /// Adds the provided auxiliary segment trace LDE and Merkle tree to this trace commitment.
-    pub fn add_segment(&mut self, aux_segment_lde: Matrix<E>, aux_segment_tree: MerkleTree<H>) {
+    pub fn add_segment(&mut self, aux_segment_lde: ColMatrix<E>, aux_segment_tree: MerkleTree<H>) {
         assert_eq!(
             aux_segment_lde.num_rows(),
             aux_segment_tree.leaves().len(),
@@ -113,7 +113,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> TraceCommitmen
 // ================================================================================================
 
 fn build_segment_queries<E, H>(
-    segment_lde: &Matrix<E>,
+    segment_lde: &ColMatrix<E>,
     segment_tree: &MerkleTree<H>,
     positions: &[usize],
 ) -> Queries

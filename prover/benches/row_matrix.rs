@@ -7,7 +7,7 @@ use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use math::{fft, fields::f64::BaseElement, StarkField};
 use rand_utils::rand_vector;
 use std::time::Duration;
-use winter_prover::{Matrix, RowMatrix, StarkDomain};
+use winter_prover::{ColMatrix, RowMatrix, StarkDomain};
 
 // CONSTANTS
 // ================================================================================================
@@ -23,7 +23,7 @@ fn evaluate_columns(c: &mut Criterion) {
 
     for &num_poly in NUM_POLYS.iter() {
         let columns: Vec<Vec<BaseElement>> = (0..num_poly).map(|_| rand_vector(SIZE)).collect();
-        let column_matrix = Matrix::new(columns);
+        let column_matrix = ColMatrix::new(columns);
         for &blowup_factor in BLOWUP_FACTOR.iter() {
             let params = BenchmarkParams {
                 num_poly,
@@ -49,7 +49,7 @@ fn evaluate_matrix(c: &mut Criterion) {
 
     for &num_poly in NUM_POLYS.iter() {
         let columns: Vec<Vec<BaseElement>> = (0..num_poly).map(|_| rand_vector(SIZE)).collect();
-        let column_matrix = Matrix::new(columns);
+        let column_matrix = ColMatrix::new(columns);
         for &blowup_factor in BLOWUP_FACTOR.iter() {
             let params = BenchmarkParams {
                 num_poly,

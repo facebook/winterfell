@@ -7,7 +7,7 @@ mod row_matrix;
 pub use row_matrix::RowMatrix;
 
 mod col_matrix;
-pub use col_matrix::{ColumnIter, Matrix, MultiColumnIter};
+pub use col_matrix::{ColMatrix, ColumnIter, MultiColumnIter};
 
 mod segments;
 use segments::Segment;

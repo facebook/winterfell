@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::Matrix;
+use crate::ColMatrix;
 use air::EvaluationFrame;
 use math::FieldElement;
 use utils::collections::Vec;
@@ -12,8 +12,8 @@ use utils::collections::Vec;
 // ================================================================================================
 /// TODO: add docs
 pub struct TraceLde<E: FieldElement> {
-    main_segment_lde: Matrix<E::BaseField>,
-    aux_segment_ldes: Vec<Matrix<E>>,
+    main_segment_lde: ColMatrix<E::BaseField>,
+    aux_segment_ldes: Vec<ColMatrix<E>>,
     blowup: usize,
 }
 
@@ -21,7 +21,7 @@ impl<E: FieldElement> TraceLde<E> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Creates a new trace low-degree extension table from the provided main trace segment LDE.
-    pub fn new(main_trace_lde: Matrix<E::BaseField>, blowup: usize) -> Self {
+    pub fn new(main_trace_lde: ColMatrix<E::BaseField>, blowup: usize) -> Self {
         Self {
             main_segment_lde: main_trace_lde,
             aux_segment_ldes: Vec::new(),
@@ -33,7 +33,7 @@ impl<E: FieldElement> TraceLde<E> {
     // --------------------------------------------------------------------------------------------
 
     /// Adds the provided auxiliary segment LDE to this trace LDE.
-    pub fn add_aux_segment(&mut self, aux_segment_lde: Matrix<E>) {
+    pub fn add_aux_segment(&mut self, aux_segment_lde: ColMatrix<E>) {
         assert_eq!(
             self.main_segment_lde.num_rows(),
             aux_segment_lde.num_rows(),
@@ -98,13 +98,13 @@ impl<E: FieldElement> TraceLde<E> {
     }
 
     /// Returns a reference to [Matrix] representing the main trace segment.
-    pub fn get_main_segment(&self) -> &Matrix<E::BaseField> {
+    pub fn get_main_segment(&self) -> &ColMatrix<E::BaseField> {
         &self.main_segment_lde
     }
 
     /// Returns a reference to a [Matrix] representing an auxiliary trace segment at the specified
     /// index.
-    pub fn get_aux_segment(&self, aux_segment_idx: usize) -> &Matrix<E> {
+    pub fn get_aux_segment(&self, aux_segment_idx: usize) -> &ColMatrix<E> {
         &self.aux_segment_ldes[aux_segment_idx]
     }
 }
