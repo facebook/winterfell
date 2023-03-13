@@ -49,7 +49,7 @@ impl<E: FieldElement> RowMatrix<E> {
     /// in the `polys` matrix) and the `blowup_factor`.
     ///
     /// To improve performance, polynomials are evaluated in batches specified by the `N` type
-    /// parameter. Minimum batch size is 0.
+    /// parameter. Minimum batch size is 1.
     pub fn evaluate_polys<const N: usize>(polys: &Matrix<E>, blowup_factor: usize) -> Self {
         assert!(N > 0, "batch size N must be greater than zero");
         let poly_size = polys.num_rows();

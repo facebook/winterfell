@@ -5,6 +5,7 @@
 * Added `FieldElement::EXTENSION_DEGREE` constant.
 * Added `FieldElement::base_element` and `FieldElement::slice_from_base_elements` methods.
 * [BREAKING] Renamed `FieldElement::as_base_elements` into `FieldElement::slice_as_base_elements`.
+* Added `Matrix::num_base_cols` and `Matrix::get_base_element` methods.
 
 ## 0.5.1 (2023-02-20)
 * Fix no-std build for winter-utils (#153)

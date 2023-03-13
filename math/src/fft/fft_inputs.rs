@@ -68,7 +68,7 @@ pub trait FftInputs<E: FieldElement> {
     /// The FFT is applied in place, so the input is replaced with the result of the FFT. The
     /// `twiddles` parameter specifies the twiddle factors to use for the FFT.
     ///
-    /// This is convenience methods equivalent to calling fft_in_place_raw(twiddles, 1, 1, 0).
+    /// This is a convenience method equivalent to calling fft_in_place_raw(twiddles, 1, 1, 0).
     ///
     /// # Panics
     /// Panics if length of the `twiddles` parameter is not self.len() / 2.
@@ -146,7 +146,7 @@ impl<E: FieldElement> FftInputs<E> for [E] {
 // SLICE OF ARRAYS IMPLEMENTATION
 // ================================================================================================
 
-/// Implements FftInputs for a slice of field element arrays.
+/// Implements [FftInputs] for a slice of field element arrays.
 #[allow(clippy::needless_range_loop)]
 impl<E: FieldElement, const N: usize> FftInputs<E> for [[E; N]] {
     fn len(&self) -> usize {
