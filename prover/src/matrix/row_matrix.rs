@@ -11,53 +11,53 @@ use utils::{flatten_vector_elements, uninit_vector};
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
 
-// CONSTANTS
-// ================================================================================================
-
-/// Number of elements in row of a segment.
-pub const SEGMENT_WIDTH: usize = 8;
-
 // ROW-MAJOR MATRIX
 // ================================================================================================
 
-/// A row-major matrix of field elements. The matrix is represented as a single vector of field
-/// elements, where the first `row_len` elements represent the first row of the matrix, the next
-/// `row_len` elements represent the second row, and so on.
+/// A two-dimensional matrix of field elements arranged in row-major order.
 ///
-/// # Note
-/// - The number of rows in the matrix is always a multiple of ARR_SIZE.
-/// - The number of columns in the matrix is always a multiple of ARR_SIZE.
+/// The matrix is represented as a single vector of base field elements for the field defined by E
+/// type parameter. The first `row_width` base field elements represent the first row of the matrix,
+/// the next `row_width` base field elements represent the second row, and so on.
+///
+/// When rows are returned via the [RowMatrix::row()] method, base field elements are grouped
+/// together as appropriate to form elements in E.
+///
+/// In some cases, rows may be padded with extra elements. The number of elements which are
+/// accessible via the [RowMatrix::row()] method is specified by the `elements_per_row` member.
 #[derive(Clone, Debug)]
 pub struct RowMatrix<E: FieldElement> {
+    /// Field elements stored in the matrix.
     data: Vec<E::BaseField>,
-    row_len: usize,
+    /// Total number of base field elements stored in a single row.
+    row_width: usize,
+    /// Number of field elements in a single row accessible via the [RowMatrix::row()] method. This
+    /// must be equal to or smaller than `row_width`.
+    elements_per_row: usize,
 }
 
 impl<E: FieldElement> RowMatrix<E> {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new row-major matrix from the specified data and row length. The data must be
-    /// arranged in row-major order, i.e. the first `row_len` elements of the data represent the first
-    /// row of the matrix, the next `row_len` elements represent the second row, and so on.
+    /// Returns a new [RowMatrix] constructed by evaluating the provided polynomials over the
+    /// domain defined by the specified blowup factor.
     ///
-    /// # Panics
-    /// - if the number of elements in the data is not a multiple of the specified row length;
-    /// - if the specified row length is not a multiple of ARR_SIZE;
-    /// - if the specified data is empty.
-    pub fn new(data: Vec<E::BaseField>, row_len: usize) -> Self {
-        assert!(data.len() % row_len == 0);
-        assert!(row_len % SEGMENT_WIDTH == 0);
-        assert!(!data.is_empty());
-
-        Self { data, row_len }
-    }
-
-    /// Converts a column-major matrix of polynomials `Matrix<E>` into a RowMatrix evaluated at
-    /// a shifted domain offset.
-    pub fn transpose_and_extend(polys: &Matrix<E>, blowup_factor: usize) -> Self {
+    /// The provided `polys` matrix is assumed to contain polynomials in coefficient form (one
+    /// polynomial per column). Columns in the returned matrix will contain evaluations of the
+    /// corresponding polynomials over the domain defined by polynomial size (i.e., number of rows
+    /// in the `polys` matrix) and the `blowup_factor`.
+    ///
+    /// To improve performance, polynomials are evaluated in batches specified by the `N` type
+    /// parameter. Minimum batch size is 0.
+    pub fn evaluate_polys<const N: usize>(polys: &Matrix<E>, blowup_factor: usize) -> Self {
+        assert!(N > 0, "batch size N must be greater than zero");
         let poly_size = polys.num_rows();
-        let num_segments = (polys.num_cols() * E::EXTENSION_DEGREE) / SEGMENT_WIDTH;
+        let num_segments = if polys.num_base_cols() % N == 0 {
+            polys.num_base_cols() / N
+        } else {
+            polys.num_base_cols() / N + 1
+        };
 
         // compute twiddles for polynomial evaluation
         let twiddles = fft::get_twiddles::<E::BaseField>(polys.num_rows());
@@ -66,18 +66,32 @@ impl<E: FieldElement> RowMatrix<E> {
         let offsets = get_offsets::<E>(poly_size, blowup_factor, E::BaseField::GENERATOR);
 
         // build matrix segments by evaluating all polynomials
-        let segments: Vec<Segment<E::BaseField, SEGMENT_WIDTH>> = (0..num_segments)
-            .map(|i| Segment::new(polys, i * SEGMENT_WIDTH, &offsets, &twiddles))
+        let segments: Vec<Segment<E::BaseField, N>> = (0..num_segments)
+            .map(|i| Segment::new(polys, i * N, &offsets, &twiddles))
             .collect::<Vec<_>>();
 
         // transpose data in individual segments into a single row-major matrix
-        Self::from_segments(segments)
+        Self::from_segments(segments, polys.num_base_cols())
     }
 
-    /// Converts a collection of segments into a row-major matrix.
-    pub fn from_segments<const N: usize>(segments: Vec<Segment<E::BaseField, N>>) -> Self {
+    /// Returns a new [RowMatrix] instantiated from the specified matrix segments.
+    ///
+    /// `elements_per_row` specifies how many base field elements are considered to form a single
+    /// row in the matrix.
+    ///
+    /// # Panics
+    /// Panics if `elements_per_row` is greater than the row width implied by the number of
+    /// segments and `N` type parameter.
+    pub fn from_segments<const N: usize>(
+        segments: Vec<Segment<E::BaseField, N>>,
+        elements_per_row: usize,
+    ) -> Self {
         // compute the size of each row
-        let row_len = segments.len() * N;
+        let row_width = segments.len() * N;
+        assert!(
+            elements_per_row <= row_width,
+            "elements per row cannot exceed {row_width}, but was {elements_per_row}"
+        );
 
         // transpose the segments into a single vector of arrays
         let result = transpose(segments);
@@ -85,7 +99,8 @@ impl<E: FieldElement> RowMatrix<E> {
         // flatten the result to be a simple vector of elements and return
         RowMatrix {
             data: flatten_vector_elements(result),
-            row_len,
+            row_width,
+            elements_per_row,
         }
     }
 
@@ -94,17 +109,17 @@ impl<E: FieldElement> RowMatrix<E> {
 
     /// Returns the number of rows in this matrix.
     pub fn num_rows(&self) -> usize {
-        self.data.len() / self.row_len
+        self.data.len() / self.row_width
     }
 
     /// Returns a reference to a row at the specified index in this matrix.
     ///
     /// # Panics
     /// Panics if the specified row index is out of bounds.
-    pub fn get_row(&self, row_idx: usize) -> &[E] {
+    pub fn row(&self, row_idx: usize) -> &[E] {
         assert!(row_idx < self.num_rows());
-        let start = row_idx * self.row_len;
-        E::slice_from_base_elements(&self.data[start..start + self.row_len])
+        let start = row_idx * self.row_width;
+        E::slice_from_base_elements(&self.data[start..start + self.elements_per_row])
     }
 
     /// Returns the data in this matrix as a slice of field elements.
@@ -215,7 +230,5 @@ fn get_num_batches(input_size: usize) -> usize {
     if input_size < 1024 {
         return 1;
     }
-
-    use utils::rayon;
-    rayon::current_num_threads().next_power_of_two() * 2
+    utils::rayon::current_num_threads().next_power_of_two() * 2
 }

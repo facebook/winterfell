@@ -20,7 +20,7 @@ fn test_eval_poly_with_offset_matrix() {
     let mut columns: Vec<Vec<BaseElement>> = (0..num_polys).map(|_| rand_vector(n)).collect();
 
     // evaluate columns using the row matrix implementation.
-    let row_matrix = RowMatrix::transpose_and_extend(&Matrix::new(columns.clone()), blowup_factor);
+    let row_matrix = RowMatrix::evaluate_polys::<8>(&Matrix::new(columns.clone()), blowup_factor);
 
     // evaluate columns using the using the polynomial evaluation implementation.
     let offset = BaseElement::GENERATOR;
@@ -32,7 +32,7 @@ fn test_eval_poly_with_offset_matrix() {
 
     // compare the results of the two implementations row by row.
     for row in 0..n * blowup_factor {
-        let row_matrix_row = row_matrix.get_row(row);
+        let row_matrix_row = row_matrix.row(row);
         let eval_col_row = get_row(&columns, row);
         assert_eq!(row_matrix_row, eval_col_row);
     }

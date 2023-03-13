@@ -76,6 +76,14 @@ impl<E: FieldElement> Matrix<E> {
         self.columns.len()
     }
 
+    /// Returns the number of base field columns in this matrix.
+    ///
+    /// The number of base field columns is defined as the number of columns multiplied by the
+    /// extension degree of field elements contained in this matrix.
+    pub fn num_base_cols(&self) -> usize {
+        self.num_cols() * E::EXTENSION_DEGREE
+    }
+
     /// Returns the number of rows in this matrix.
     pub fn num_rows(&self) -> usize {
         self.columns[0].len()

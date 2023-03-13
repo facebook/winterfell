@@ -20,7 +20,7 @@ const MIN_CONCURRENT_SIZE: usize = 1024;
 // ================================================================================================
 
 /// A set of columns of a matrix stored in row-major form.
-/// 
+///
 /// The rows are stored in a single vector where each element is an array of size `N`. A segment
 /// can store [StarkField] elements only, but can be instantiated from a [Matrix] of any extension
 /// of the specified [StarkField]. In such a case, extension field elements are decomposed into
@@ -39,11 +39,12 @@ impl<B: StarkField, const N: usize> Segment<B, N> {
     /// The offset is assumed to be an offset into the view of the matrix where extension field
     /// elements are decomposed into base field elements. This offset must be compatible with the
     /// values supplied into [Matrix::get_base_element()] method.
-    /// 
+    ///
     /// Evaluation is performed over the domain specified by the provided twiddles and offsets.
     ///
     /// # Panics
     /// Panics if:
+    /// - `poly_offset` greater than or equal to the number of base field columns in `polys`.
     /// - Number of offsets is not a power of two.
     /// - Number of offsets is smaller than or equal to the polynomial size.
     /// - The number of twiddles is not half the size of the polynomial size.
@@ -54,9 +55,19 @@ impl<B: StarkField, const N: usize> Segment<B, N> {
         let poly_size = polys.num_rows();
         let domain_size = offsets.len();
 
-        debug_assert!(domain_size.is_power_of_two());
-        debug_assert!(domain_size > poly_size);
-        debug_assert_eq!(poly_size, twiddles.len() * 2);
+        assert!(domain_size.is_power_of_two());
+        assert!(domain_size > poly_size);
+        assert_eq!(poly_size, twiddles.len() * 2);
+        assert!(poly_offset < polys.num_base_cols());
+
+        // determine the number of polynomials to add to this segment; this number can be either N,
+        // or smaller than N when there are fewer than N polynomials remaining to be processed
+        let num_polys_remaining = polys.num_base_cols() - poly_offset;
+        let num_polys = if num_polys_remaining < N {
+            num_polys_remaining
+        } else {
+            N
+        };
 
         // allocate uninitialized memory for the segment
         let mut data = unsafe { uninit_vector::<[B; N]>(domain_size) };
@@ -69,11 +80,11 @@ impl<B: StarkField, const N: usize> Segment<B, N> {
             data.par_chunks_mut(poly_size)
                 .zip(offsets.par_chunks(poly_size))
                 .for_each(|(d_chunk, o_chunk)| {
-                    for row_idx in 0..poly_size {
-                        for i in 0..N {
-                            let coeff = polys.get_base_element(poly_offset + i, row_idx);
-                            d_chunk[row_idx][i] = coeff * o_chunk[row_idx];
-                        }
+                    // TODO: investigate multi-threaded copy
+                    if num_polys == N {
+                        Self::copy_polys(d_chunk, polys, poly_offset, o_chunk);
+                    } else {
+                        Self::copy_polys_partial(d_chunk, polys, poly_offset, num_polys, o_chunk);
                     }
                     concurrent::split_radix_fft(d_chunk, twiddles);
                 });
@@ -83,11 +94,10 @@ impl<B: StarkField, const N: usize> Segment<B, N> {
             data.chunks_mut(poly_size)
                 .zip(offsets.chunks(poly_size))
                 .for_each(|(d_chunk, o_chunk)| {
-                    for row_idx in 0..poly_size {
-                        for i in 0..N {
-                            let coeff = polys.get_base_element(poly_offset + i, row_idx);
-                            d_chunk[row_idx][i] = coeff * o_chunk[row_idx];
-                        }
+                    if num_polys == N {
+                        Self::copy_polys(d_chunk, polys, poly_offset, o_chunk);
+                    } else {
+                        Self::copy_polys_partial(d_chunk, polys, poly_offset, num_polys, o_chunk);
                     }
                     d_chunk.fft_in_place(twiddles);
                 });
@@ -108,6 +118,45 @@ impl<B: StarkField, const N: usize> Segment<B, N> {
     /// Returns the data in this segment as a slice of arrays.
     pub fn data(&self) -> &[[B; N]] {
         &self.data
+    }
+
+    // HELPER METHODS
+    // --------------------------------------------------------------------------------------------
+
+    /// Copies N polynomials starting at the specified base column offset (`poly_offset`) into the
+    /// specified destination. Each polynomial coefficient is offset by the specified offset.
+    fn copy_polys<E: FieldElement<BaseField = B>>(
+        dest: &mut [[B; N]],
+        polys: &Matrix<E>,
+        poly_offset: usize,
+        offsets: &[B],
+    ) {
+        for row_idx in 0..dest.len() {
+            for i in 0..N {
+                let coeff = polys.get_base_element(poly_offset + i, row_idx);
+                dest[row_idx][i] = coeff * offsets[row_idx];
+            }
+        }
+    }
+
+    /// Similar to `clone_and_shift` method above, but copies `num_polys` polynomials instead of
+    /// `N` polynomials.
+    ///
+    /// Assumes that `num_polys` is smaller than `N`.
+    fn copy_polys_partial<E: FieldElement<BaseField = B>>(
+        dest: &mut [[B; N]],
+        polys: &Matrix<E>,
+        poly_offset: usize,
+        num_polys: usize,
+        offsets: &[B],
+    ) {
+        debug_assert!(num_polys < N);
+        for row_idx in 0..dest.len() {
+            for i in 0..num_polys {
+                let coeff = polys.get_base_element(poly_offset + i, row_idx);
+                dest[row_idx][i] = coeff * offsets[row_idx];
+            }
+        }
     }
 }
 
