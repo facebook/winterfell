@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use air::{proof::Table, Air, DeepCompositionCoefficients, EvaluationFrame, FieldExtension};
+use air::{proof::Table, Air, DeepCompositionCoefficients, EvaluationFrame};
 use math::FieldElement;
 use utils::collections::Vec;
 
@@ -11,7 +11,6 @@ use utils::collections::Vec;
 // ================================================================================================
 
 pub struct DeepComposer<E: FieldElement> {
-    field_extension: FieldExtension,
     cc: DeepCompositionCoefficients<E>,
     x_coordinates: Vec<E>,
     z: [E; 2],
@@ -34,7 +33,6 @@ impl<E: FieldElement> DeepComposer<E> {
             .collect();
 
         DeepComposer {
-            field_extension: air.options().field_extension(),
             cc,
             x_coordinates,
             z: [z, z * E::from(air.trace_domain_generator())],
@@ -51,10 +49,6 @@ impl<E: FieldElement> DeepComposer<E> {
     /// - Then, combine all T'_i(x) and T''_i(x) values together by computing
     ///   T(x) = sum(T'_i(x) * cc'_i + T''_i(x) * cc''_i) for all i, where cc'_i and cc''_i are
     ///   the coefficients for the random linear combination drawn from the public coin.
-    /// - In cases when the proof was generated using an extension field, we also compute
-    ///   T'''_i(x) = (T_i(x) - T_i(z_conjugate)) / (x - z_conjugate), and add it to T(x) similarly
-    ///   to the way described above. This is needed in order to verify that the trace is defined
-    ///   over the base field, rather than the extension field.
     ///
     /// Note that values of T_i(z) and T_i(z * g) are received from the prover and passed into
     /// this function via the `ood_frame` parameter.
@@ -66,12 +60,6 @@ impl<E: FieldElement> DeepComposer<E> {
         ood_aux_frame: Option<EvaluationFrame<E>>,
     ) -> Vec<E> {
         let ood_main_trace_states = [ood_main_frame.current(), ood_main_frame.next()];
-
-        // when field extension is enabled, these will be set to conjugates of trace values at
-        // z as well as conjugate of z itself. we do this only for the main trace since auxiliary
-        // trace columns are in the extension field.
-        let conjugate_values =
-            get_conjugate_values(self.field_extension, ood_main_trace_states[0], self.z[0]);
 
         // compose columns of of the main trace segment
         let mut result = E::zeroed_vector(queried_main_trace_states.num_rows());
@@ -91,13 +79,6 @@ impl<E: FieldElement> DeepComposer<E> {
                 // composition coefficient, and add the result to T(x)
                 let t2 = (value - ood_main_trace_states[1][i]) / (x - self.z[1]);
                 *result += t2 * self.cc.trace[i].1;
-
-                // when extension field is enabled compute
-                // T'''_i(x) = (T_i(x) - T_i(z_conjugate)) / (x - z_conjugate)
-                if let Some((z_conjugate, ref trace_at_z1_conjugates)) = conjugate_values {
-                    let t3 = (value - trace_at_z1_conjugates[i]) / (x - z_conjugate);
-                    *result += t3 * self.cc.trace[i].2;
-                }
             }
         }
 
@@ -160,7 +141,7 @@ impl<E: FieldElement> DeepComposer<E> {
         for (query_values, &x) in queried_evaluations.rows().zip(&self.x_coordinates) {
             let mut composition = E::ZERO;
             for (i, &evaluation) in query_values.iter().enumerate() {
-                // compute H'_i(x) = (H_i(x) - H(z^m)) / (x - z^m)
+                // compute H'_i(x) = (H_i(x) - H_i(z^m)) / (x - z^m)
                 let h_i = (evaluation - ood_evaluations[i]) / (x - z_m);
                 // multiply it by a pseudo-random coefficient, and add the result to H(x)
                 composition += h_i * self.cc.constraints[i];
@@ -173,7 +154,7 @@ impl<E: FieldElement> DeepComposer<E> {
 
     /// Combines trace and constraint compositions together, and also rases the degree of the
     /// resulting value by one to match trace polynomial degree. This is needed because when
-    /// we divide evaluations by (x - z), (x - z * g) etc. the degree is reduced by one - so,
+    /// we divide evaluations by (x - z) and (x - z * g) the degree is reduced by one - so,
     /// we compensate for it here.
     #[rustfmt::skip]
     pub fn combine_compositions(&self, t_composition: Vec<E>, c_composition: Vec<E>) -> Vec<E> {
@@ -192,25 +173,5 @@ impl<E: FieldElement> DeepComposer<E> {
         }
 
         result
-    }
-}
-
-// HELPER FUNCTIONS
-// ================================================================================================
-
-/// When field extension is used, returns conjugate values of the `trace_state` and `z`;
-/// otherwise, returns None.
-fn get_conjugate_values<E: FieldElement>(
-    extension: FieldExtension,
-    trace_state: &[E],
-    z: E,
-) -> Option<(E, Vec<E>)> {
-    if extension.is_none() {
-        None
-    } else {
-        Some((
-            z.conjugate(),
-            trace_state.iter().map(|v| v.conjugate()).collect(),
-        ))
     }
 }

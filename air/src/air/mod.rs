@@ -541,7 +541,7 @@ pub trait Air: Send + Sync {
     {
         let mut t_coefficients = Vec::new();
         for _ in 0..self.trace_info().width() {
-            t_coefficients.push(public_coin.draw_triple()?);
+            t_coefficients.push(public_coin.draw_pair()?);
         }
 
         // self.ce_blowup_factor() is the same as number of composition columns

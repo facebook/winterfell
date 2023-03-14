@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.6.0 
+* Removed term involving conjugate OOD challenge z from deep composition polynomial (#166).
+
 ## 0.5.1 (2023-02-20)
 * Fix no-std build for winter-utils (#153)
 
