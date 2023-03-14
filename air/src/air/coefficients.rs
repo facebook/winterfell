@@ -88,7 +88,7 @@ pub struct ConstraintCompositionCoefficients<E: FieldElement> {
 /// $$
 /// where:
 /// * $z$ is an out-of-domain point drawn randomly from the entire field. In the interactive
-///   version of the protocol, $z$ is provided by the verifier. 
+///   version of the protocol, $z$ is provided by the verifier.
 /// * $g$ is the generator of the trace domain. This is the same as $n$th root of unity where
 ///   $n$ is the length of the execution trace.
 /// * $T_i(x)$ is an evaluation of the $i$th trace polynomial at $x$, and $k$ is the total
