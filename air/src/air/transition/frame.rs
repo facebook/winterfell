@@ -62,21 +62,30 @@ impl<E: FieldElement> EvaluationFrame<E> {
         &self.current
     }
 
-    /// Returns a mutable reference to the current row.
-    #[inline(always)]
-    pub fn current_mut(&mut self) -> &mut [E] {
-        &mut self.current
-    }
-
     /// Returns a reference to the next row.
     #[inline(always)]
     pub fn next(&self) -> &[E] {
         &self.next
     }
 
+    // DATA MUTATORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns a mutable reference to the current row.
+    #[inline(always)]
+    pub fn current_mut(&mut self) -> &mut [E] {
+        &mut self.current
+    }
+
     /// Returns a mutable reference to the next row.
     #[inline(always)]
     pub fn next_mut(&mut self) -> &mut [E] {
         &mut self.next
+    }
+
+    /// Sets the current and the next rows of this evaluation from to the provided values.
+    pub fn set_data(&mut self, current: Vec<E>, next: Vec<E>) {
+        self.current = current;
+        self.next = next;
     }
 }

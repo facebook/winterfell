@@ -6,7 +6,7 @@
 use crate::{
     tests::{build_fib_trace, MockAir},
     trace::TracePolyTable,
-    StarkDomain, Trace, TraceCommitment,
+    RowMatrix, StarkDomain, Trace, TraceCommitment,
 };
 use crypto::{hashers::Blake3_256, ElementHasher, MerkleTree};
 use math::{
@@ -48,7 +48,7 @@ fn extend_trace_table() {
 
     // build extended trace commitment
     let trace_polys = trace.main_segment().interpolate_columns();
-    let trace_lde = trace_polys.evaluate_columns_over(&domain);
+    let trace_lde = RowMatrix::evaluate_polys_over::<8>(&trace_polys, &domain);
     let trace_tree = trace_lde.commit_to_rows::<Blake3>();
     let trace_comm = TraceCommitment::<BaseElement, Blake3>::new(
         trace_lde,
@@ -83,11 +83,11 @@ fn extend_trace_table() {
     let lde_domain = build_lde_domain(domain.lde_domain_size());
     assert_eq!(
         trace_polys.get_main_trace_poly(0),
-        polynom::interpolate(&lde_domain, trace_comm.get_main_trace_column(0), true)
+        polynom::interpolate(&lde_domain, &trace_comm.get_main_trace_column(0), true)
     );
     assert_eq!(
         trace_polys.get_main_trace_poly(1),
-        polynom::interpolate(&lde_domain, trace_comm.get_main_trace_column(1), true)
+        polynom::interpolate(&lde_domain, &trace_comm.get_main_trace_column(1), true)
     );
 }
 
@@ -101,7 +101,7 @@ fn commit_trace_table() {
 
     // build extended trace commitment
     let trace_polys = trace.main_segment().interpolate_columns();
-    let trace_lde = trace_polys.evaluate_columns_over(&domain);
+    let trace_lde = RowMatrix::evaluate_polys_over::<8>(&trace_polys, &domain);
     let trace_tree = trace_lde.commit_to_rows::<Blake3>();
     let trace_comm = TraceCommitment::<BaseElement, Blake3>::new(
         trace_lde,

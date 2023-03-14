@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{ColMatrix, Segment};
+use crate::StarkDomain;
 use crypto::{ElementHasher, MerkleTree};
 use math::{fft, log2, FieldElement, StarkField};
 use utils::collections::Vec;
@@ -52,24 +53,39 @@ impl<E: FieldElement> RowMatrix<E> {
     /// To improve performance, polynomials are evaluated in batches specified by the `N` type
     /// parameter. Minimum batch size is 0.
     pub fn evaluate_polys<const N: usize>(polys: &ColMatrix<E>, blowup_factor: usize) -> Self {
-        assert!(N > 0, "batch size N must be greater than zero");
+        // pre-compute offsets for each row
         let poly_size = polys.num_rows();
-        let num_segments = if polys.num_base_cols() % N == 0 {
-            polys.num_base_cols() / N
-        } else {
-            polys.num_base_cols() / N + 1
-        };
+        let offsets = get_offsets::<E>(poly_size, blowup_factor, E::BaseField::GENERATOR);
 
         // compute twiddles for polynomial evaluation
         let twiddles = fft::get_twiddles::<E::BaseField>(polys.num_rows());
 
+        // build matrix segments by evaluating all polynomials
+        let segments = build_segments::<E, N>(polys, &twiddles, &offsets);
+
+        // transpose data in individual segments into a single row-major matrix
+        Self::from_segments(segments, polys.num_base_cols())
+    }
+
+    /// Returns a new [RowMatrix] constructed by evaluating the provided polynomials over the
+    /// specified [StarkDomain].
+    ///
+    /// The provided `polys` matrix is assumed to contain polynomials in coefficient form (one
+    /// polynomial per column). Columns in the returned matrix will contain evaluations of the
+    /// corresponding polynomials over the LDE domain defined by the provided [StarkDomain].
+    ///
+    /// To improve performance, polynomials are evaluated in batches specified by the `N` type
+    /// parameter. Minimum batch size is 0.
+    pub fn evaluate_polys_over<const N: usize>(
+        polys: &ColMatrix<E>,
+        domain: &StarkDomain<E::BaseField>,
+    ) -> Self {
         // pre-compute offsets for each row
-        let offsets = get_offsets::<E>(poly_size, blowup_factor, E::BaseField::GENERATOR);
+        let poly_size = polys.num_rows();
+        let offsets = get_offsets::<E>(poly_size, domain.trace_to_lde_blowup(), domain.offset());
 
         // build matrix segments by evaluating all polynomials
-        let segments: Vec<Segment<E::BaseField, N>> = (0..num_segments)
-            .map(|i| Segment::new(polys, i * N, &offsets, &twiddles))
-            .collect::<Vec<_>>();
+        let segments = build_segments::<E, N>(polys, domain.trace_twiddles(), &offsets);
 
         // transpose data in individual segments into a single row-major matrix
         Self::from_segments(segments, polys.num_base_cols())
@@ -108,9 +124,22 @@ impl<E: FieldElement> RowMatrix<E> {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
+    /// Returns the number of columns in this matrix.
+    pub fn num_cols(&self) -> usize {
+        self.elements_per_row / E::EXTENSION_DEGREE
+    }
+
     /// Returns the number of rows in this matrix.
     pub fn num_rows(&self) -> usize {
         self.data.len() / self.row_width
+    }
+
+    /// Returns the element located at the specified column and row indexes in this matrix.
+    ///
+    /// # Panics
+    /// Panics if either `col_idx` or `row_idx` are out of bounds for this matrix.
+    pub fn get(&self, col_idx: usize, row_idx: usize) -> E {
+        self.row(row_idx)[col_idx]
     }
 
     /// Returns a reference to a row at the specified index in this matrix.
@@ -208,6 +237,28 @@ fn get_offsets<E: FieldElement>(
         .for_each(compute_offsets);
 
     offsets
+}
+
+/// Returns matrix segments constructed by evaluating polynomials in the specified matrix over the
+/// domain defined by twiddles and offsets.
+fn build_segments<E: FieldElement, const N: usize>(
+    polys: &ColMatrix<E>,
+    twiddles: &[E::BaseField],
+    offsets: &[E::BaseField],
+) -> Vec<Segment<E::BaseField, N>> {
+    assert!(N > 0, "batch size N must be greater than zero");
+    debug_assert_eq!(polys.num_rows(), twiddles.len() * 2);
+    debug_assert_eq!(offsets.len() % polys.num_rows(), 0);
+
+    let num_segments = if polys.num_base_cols() % N == 0 {
+        polys.num_base_cols() / N
+    } else {
+        polys.num_base_cols() / N + 1
+    };
+
+    (0..num_segments)
+        .map(|i| Segment::new(polys, i * N, offsets, twiddles))
+        .collect()
 }
 
 /// Transposes a vector of segments into a single vector of fixed-size arrays.

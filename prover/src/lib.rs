@@ -458,7 +458,7 @@ pub trait Prover {
         &self,
         trace: &ColMatrix<E>,
         domain: &StarkDomain<Self::BaseField>,
-    ) -> (ColMatrix<E>, MerkleTree<Self::HashFn>, ColMatrix<E>)
+    ) -> (RowMatrix<E>, MerkleTree<Self::HashFn>, ColMatrix<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
@@ -466,7 +466,7 @@ pub trait Prover {
         #[cfg(feature = "std")]
         let now = Instant::now();
         let trace_polys = trace.interpolate_columns();
-        let trace_lde = trace_polys.evaluate_columns_over(domain);
+        let trace_lde = RowMatrix::evaluate_polys_over::<8>(&trace_polys, domain);
         #[cfg(feature = "std")]
         debug!(
             "Extended execution trace of {} columns from 2^{} to 2^{} steps ({}x blowup) in {} ms",
