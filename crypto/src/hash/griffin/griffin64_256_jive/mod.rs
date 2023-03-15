@@ -211,7 +211,7 @@ impl ElementHasher for GriffinJive64_256 {
 
     fn hash_elements<E: FieldElement<BaseField = Self::BaseField>>(elements: &[E]) -> Self::Digest {
         // convert the elements into a list of base field elements
-        let elements = E::as_base_elements(elements);
+        let elements = E::slice_as_base_elements(elements);
 
         // initialize state to all zeros, except for the first element of the capacity part, which
         // is set to 1 if the number of elements is not a multiple of RATE_WIDTH.

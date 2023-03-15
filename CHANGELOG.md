@@ -1,7 +1,10 @@
 # Changelog
 
-## 0.6.0 
+## 0.6.0 (TBD)
 * Removed term involving conjugate OOD challenge z from deep composition polynomial (#166).
+* Added `FieldElement::EXTENSION_DEGREE` constant.
+* Added `FieldElement::base_element` and `FieldElement::slice_from_base_elements` methods.
+* [BREAKING] Renamed `FieldElement::as_base_elements` into `FieldElement::slice_as_base_elements`.
 
 ## 0.5.1 (2023-02-20)
 * Fix no-std build for winter-utils (#153)

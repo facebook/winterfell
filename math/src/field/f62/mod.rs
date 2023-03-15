@@ -72,11 +72,16 @@ impl FieldElement for BaseElement {
     type PositiveInteger = u64;
     type BaseField = Self;
 
+    const EXTENSION_DEGREE: usize = 1;
+
     const ZERO: Self = BaseElement::new(0);
     const ONE: Self = BaseElement::new(1);
 
     const ELEMENT_BYTES: usize = ELEMENT_BYTES;
     const IS_CANONICAL: bool = false;
+
+    // ALGEBRA
+    // --------------------------------------------------------------------------------------------
 
     #[inline]
     fn double(self) -> Self {
@@ -113,6 +118,27 @@ impl FieldElement for BaseElement {
         BaseElement(self.0)
     }
 
+    // BASE ELEMENT CONVERSIONS
+    // --------------------------------------------------------------------------------------------
+
+    fn base_element(&self, i: usize) -> Self::BaseField {
+        match i {
+            0 => *self,
+            _ => panic!("element index must be 0, but was {i}"),
+        }
+    }
+
+    fn slice_as_base_elements(elements: &[Self]) -> &[Self::BaseField] {
+        elements
+    }
+
+    fn slice_from_base_elements(elements: &[Self::BaseField]) -> &[Self] {
+        elements
+    }
+
+    // SERIALIZATION / DESERIALIZATION
+    // --------------------------------------------------------------------------------------------
+
     fn elements_as_bytes(elements: &[Self]) -> &[u8] {
         // TODO: take endianness into account
         let p = elements.as_ptr();
@@ -140,6 +166,9 @@ impl FieldElement for BaseElement {
         Ok(slice::from_raw_parts(p as *const Self, len))
     }
 
+    // UTILITIES
+    // --------------------------------------------------------------------------------------------
+
     fn zeroed_vector(n: usize) -> Vec<Self> {
         // this uses a specialized vector initialization code which requests zero-filled memory
         // from the OS; unfortunately, this works only for built-in types and we can't use
@@ -153,10 +182,6 @@ impl FieldElement for BaseElement {
         let len = v.len();
         let cap = v.capacity();
         unsafe { Vec::from_raw_parts(p as *mut Self, len, cap) }
-    }
-
-    fn as_base_elements(elements: &[Self]) -> &[Self::BaseField] {
-        elements
     }
 }
 
