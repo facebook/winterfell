@@ -82,10 +82,4 @@ impl<E: FieldElement> EvaluationFrame<E> {
     pub fn next_mut(&mut self) -> &mut [E] {
         &mut self.next
     }
-
-    /// Sets the current and the next rows of this evaluation from to the provided values.
-    pub fn set_data(&mut self, current: Vec<E>, next: Vec<E>) {
-        self.current = current;
-        self.next = next;
-    }
 }

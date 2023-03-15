@@ -120,6 +120,11 @@ impl<B: StarkField, const N: usize> Segment<B, N> {
         &self.data
     }
 
+    /// Returns the underlying vector of arrays for this segment.
+    pub fn into_data(self) -> Vec<[B; N]> {
+        self.data
+    }
+
     // HELPER METHODS
     // --------------------------------------------------------------------------------------------
 

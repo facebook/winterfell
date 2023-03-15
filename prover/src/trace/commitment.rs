@@ -124,14 +124,12 @@ where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
 {
-    // allocate memory for queried trace states
-    let mut trace_states = Vec::with_capacity(positions.len());
-
-    // copy values from the trace segment LDE at the specified positions into rows
-    // and append the rows to trace_states
-    for &i in positions.iter() {
-        trace_states.push(segment_lde.row(i).into());
-    }
+    // for each position, get the corresponding row from the trace segment LDE and put all these
+    // rows into a single vector
+    let trace_states = positions
+        .iter()
+        .map(|&pos| segment_lde.row(pos).to_vec())
+        .collect::<Vec<_>>();
 
     // build Merkle authentication paths to the leaves specified by positions
     let trace_proof = segment_tree

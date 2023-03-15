@@ -51,8 +51,10 @@ impl<E: FieldElement> RowMatrix<E> {
     /// in the `polys` matrix) and the `blowup_factor`.
     ///
     /// To improve performance, polynomials are evaluated in batches specified by the `N` type
-    /// parameter. Minimum batch size is 0.
+    /// parameter. Minimum batch size is 1.
     pub fn evaluate_polys<const N: usize>(polys: &ColMatrix<E>, blowup_factor: usize) -> Self {
+        assert!(N > 0, "batch size N must be greater than zero");
+
         // pre-compute offsets for each row
         let poly_size = polys.num_rows();
         let offsets = get_offsets::<E>(poly_size, blowup_factor, E::BaseField::GENERATOR);
@@ -75,11 +77,13 @@ impl<E: FieldElement> RowMatrix<E> {
     /// corresponding polynomials over the LDE domain defined by the provided [StarkDomain].
     ///
     /// To improve performance, polynomials are evaluated in batches specified by the `N` type
-    /// parameter. Minimum batch size is 0.
+    /// parameter. Minimum batch size is 1.
     pub fn evaluate_polys_over<const N: usize>(
         polys: &ColMatrix<E>,
         domain: &StarkDomain<E::BaseField>,
     ) -> Self {
+        assert!(N > 0, "batch size N must be greater than zero");
+
         // pre-compute offsets for each row
         let poly_size = polys.num_rows();
         let offsets = get_offsets::<E>(poly_size, domain.trace_to_lde_blowup(), domain.offset());
@@ -97,12 +101,17 @@ impl<E: FieldElement> RowMatrix<E> {
     /// row in the matrix.
     ///
     /// # Panics
-    /// Panics if `elements_per_row` is greater than the row width implied by the number of
-    /// segments and `N` type parameter.
+    /// Panics if
+    /// - `segments` is an empty vector.
+    /// - `elements_per_row` is greater than the row width implied by the number of segments and
+    ///   `N` type parameter.
     pub fn from_segments<const N: usize>(
         segments: Vec<Segment<E::BaseField, N>>,
         elements_per_row: usize,
     ) -> Self {
+        assert!(N > 0, "batch size N must be greater than zero");
+        assert!(!segments.is_empty(), "a list of segments cannot be empty");
+
         // compute the size of each row
         let row_width = segments.len() * N;
         assert!(
@@ -164,10 +173,10 @@ impl<E: FieldElement> RowMatrix<E> {
     ///
     /// The commitment is built as follows:
     /// * Each row of the matrix is hashed into a single digest of the specified hash function.
-    /// * The resulting values are used to built a binary Merkle tree such that each row digest
+    /// * The resulting values are used to build a binary Merkle tree such that each row digest
     ///   becomes a leaf in the tree. Thus, the number of leaves in the tree is equal to the
     ///   number of rows in the matrix.
-    /// * The resulting Merkle tree is return as the commitment to the entire matrix.
+    /// * The resulting Merkle tree is returned as the commitment to the entire matrix.
     pub fn commit_to_rows<H>(&self) -> MerkleTree<H>
     where
         H: ElementHasher<BaseField = E::BaseField>,
@@ -264,10 +273,16 @@ fn build_segments<E: FieldElement, const N: usize>(
 /// Transposes a vector of segments into a single vector of fixed-size arrays.
 ///
 /// When `concurrent` feature is enabled, transposition is performed in multiple threads.
-fn transpose<B: StarkField, const N: usize>(segments: Vec<Segment<B, N>>) -> Vec<[B; N]> {
+fn transpose<B: StarkField, const N: usize>(mut segments: Vec<Segment<B, N>>) -> Vec<[B; N]> {
     let num_rows = segments[0].num_rows();
     let num_segs = segments.len();
     let result_len = num_rows * num_segs;
+
+    // if there is only one segment, there is nothing to transpose as it is already in row
+    // major form
+    if segments.len() == 1 {
+        return segments.remove(0).into_data();
+    }
 
     // allocate memory to hold the transposed result;
     // TODO: investigate transposing in-place

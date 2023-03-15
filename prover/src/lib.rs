@@ -462,11 +462,15 @@ pub trait Prover {
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
+        // this segment width seems to give the best performance for small fields (i.e., 64 bits)
+        const DEFAULT_SEGMENT_WIDTH: usize = 8;
+
         // extend the execution trace
         #[cfg(feature = "std")]
         let now = Instant::now();
         let trace_polys = trace.interpolate_columns();
-        let trace_lde = RowMatrix::evaluate_polys_over::<8>(&trace_polys, domain);
+        let trace_lde =
+            RowMatrix::evaluate_polys_over::<DEFAULT_SEGMENT_WIDTH>(&trace_polys, domain);
         #[cfg(feature = "std")]
         debug!(
             "Extended execution trace of {} columns from 2^{} to 2^{} steps ({}x blowup) in {} ms",
