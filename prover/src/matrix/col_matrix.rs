@@ -76,6 +76,14 @@ impl<E: FieldElement> Matrix<E> {
         self.columns.len()
     }
 
+    /// Returns the number of base field columns in this matrix.
+    ///
+    /// The number of base field columns is defined as the number of columns multiplied by the
+    /// extension degree of field elements contained in this matrix.
+    pub fn num_base_cols(&self) -> usize {
+        self.num_cols() * E::EXTENSION_DEGREE
+    }
+
     /// Returns the number of rows in this matrix.
     pub fn num_rows(&self) -> usize {
         self.columns[0].len()
@@ -87,6 +95,27 @@ impl<E: FieldElement> Matrix<E> {
     /// Panics if either `col_idx` or `row_idx` are out of bounds for this matrix.
     pub fn get(&self, col_idx: usize, row_idx: usize) -> E {
         self.columns[col_idx][row_idx]
+    }
+
+    /// Returns base field elements located at the specified column and row indexes in this matrix.
+    ///
+    /// For STARK fields, `base_col_idx` is the same as `col_idx` used in `Self::get` method. For
+    /// extension fields, each column in the matrix is viewed as 2 or more columns in the base
+    /// field.
+    ///
+    /// Thus, for example, if we are in a degree 2 extension field, `base_col_idx = 0` would refer
+    /// to the first base element of the first column, `base_col_idx = 1` would refer to the second
+    /// base element of the first column, `base_col_idx = 2` would refer to the first base element
+    /// of the second column etc.
+    ///
+    /// # Panics
+    /// Panics if either `base_col_idx` or `row_idx` are out of bounds for this matrix.
+    pub fn get_base_element(&self, base_col_idx: usize, row_idx: usize) -> E::BaseField {
+        let (col_idx, elem_idx) = (
+            base_col_idx / E::EXTENSION_DEGREE,
+            base_col_idx % E::EXTENSION_DEGREE,
+        );
+        self.columns[col_idx][row_idx].base_element(elem_idx)
     }
 
     /// Set the cell in this matrix at the specified column and row indexes to the provided value.

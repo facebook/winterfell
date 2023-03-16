@@ -57,7 +57,7 @@ fn evaluate_matrix(c: &mut Criterion) {
             };
             group.bench_function(BenchmarkId::new(SIZE.to_string(), params), |bench| {
                 bench.iter_with_large_drop(|| {
-                    RowMatrix::transpose_and_extend(&column_matrix, blowup_factor);
+                    RowMatrix::evaluate_polys::<8>(&column_matrix, blowup_factor);
                 });
             });
         }

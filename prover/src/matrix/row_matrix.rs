@@ -3,128 +3,127 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::segments::Segment;
-use crate::{matrix::ARR_SIZE, Matrix};
-use math::{fft, FieldElement, StarkField};
+use super::{Matrix, Segment};
+use math::{fft, log2, FieldElement, StarkField};
 use utils::collections::Vec;
 use utils::{flatten_vector_elements, uninit_vector};
 
-// ROWMAJOR MATRIX
+#[cfg(feature = "concurrent")]
+use utils::iterators::*;
+
+// ROW-MAJOR MATRIX
 // ================================================================================================
 
-/// A row-major matrix of field elements. The matrix is represented as a single vector of field
-/// elements, where the first `row_len` elements represent the first row of the matrix, the next
-/// `row_len` elements represent the second row, and so on.
+/// A two-dimensional matrix of field elements arranged in row-major order.
 ///
-/// # Note
-/// - The number of rows in the matrix is always a multiple of ARR_SIZE.
-/// - The number of columns in the matrix is always a multiple of ARR_SIZE.
+/// The matrix is represented as a single vector of base field elements for the field defined by E
+/// type parameter. The first `row_width` base field elements represent the first row of the matrix,
+/// the next `row_width` base field elements represent the second row, and so on.
+///
+/// When rows are returned via the [RowMatrix::row()] method, base field elements are grouped
+/// together as appropriate to form elements in E.
+///
+/// In some cases, rows may be padded with extra elements. The number of elements which are
+/// accessible via the [RowMatrix::row()] method is specified by the `elements_per_row` member.
 #[derive(Clone, Debug)]
 pub struct RowMatrix<E: FieldElement> {
-    data: Vec<E>,
-    row_len: usize,
+    /// Field elements stored in the matrix.
+    data: Vec<E::BaseField>,
+    /// Total number of base field elements stored in a single row.
+    row_width: usize,
+    /// Number of field elements in a single row accessible via the [RowMatrix::row()] method. This
+    /// must be equal to or smaller than `row_width`.
+    elements_per_row: usize,
 }
 
-impl<E> RowMatrix<E>
-where
-    E: FieldElement,
-{
+impl<E: FieldElement> RowMatrix<E> {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new row-major matrix from the specified data and row length. The data must be
-    /// arranged in row-major order, i.e. the first `row_len` elements of the data represent the first
-    /// row of the matrix, the next `row_len` elements represent the second row, and so on.
+    /// Returns a new [RowMatrix] constructed by evaluating the provided polynomials over the
+    /// domain defined by the specified blowup factor.
+    ///
+    /// The provided `polys` matrix is assumed to contain polynomials in coefficient form (one
+    /// polynomial per column). Columns in the returned matrix will contain evaluations of the
+    /// corresponding polynomials over the domain defined by polynomial size (i.e., number of rows
+    /// in the `polys` matrix) and the `blowup_factor`.
+    ///
+    /// To improve performance, polynomials are evaluated in batches specified by the `N` type
+    /// parameter. Minimum batch size is 1.
+    pub fn evaluate_polys<const N: usize>(polys: &Matrix<E>, blowup_factor: usize) -> Self {
+        assert!(N > 0, "batch size N must be greater than zero");
+        let poly_size = polys.num_rows();
+        let num_segments = if polys.num_base_cols() % N == 0 {
+            polys.num_base_cols() / N
+        } else {
+            polys.num_base_cols() / N + 1
+        };
+
+        // compute twiddles for polynomial evaluation
+        let twiddles = fft::get_twiddles::<E::BaseField>(polys.num_rows());
+
+        // pre-compute offsets for each row
+        let offsets = get_offsets::<E>(poly_size, blowup_factor, E::BaseField::GENERATOR);
+
+        // build matrix segments by evaluating all polynomials
+        let segments: Vec<Segment<E::BaseField, N>> = (0..num_segments)
+            .map(|i| Segment::new(polys, i * N, &offsets, &twiddles))
+            .collect::<Vec<_>>();
+
+        // transpose data in individual segments into a single row-major matrix
+        Self::from_segments(segments, polys.num_base_cols())
+    }
+
+    /// Returns a new [RowMatrix] instantiated from the specified matrix segments.
+    ///
+    /// `elements_per_row` specifies how many base field elements are considered to form a single
+    /// row in the matrix.
     ///
     /// # Panics
-    /// - if the number of elements in the data is not a multiple of the specified row length;
-    /// - if the specified row length is not a multiple of ARR_SIZE;
-    /// - if the specified data is empty.
-    pub fn new(data: Vec<E>, row_len: usize) -> Self {
-        assert!(data.len() % row_len == 0);
-        assert!(row_len % ARR_SIZE == 0);
-        assert!(!data.is_empty());
+    /// Panics if `elements_per_row` is greater than the row width implied by the number of
+    /// segments and `N` type parameter.
+    pub fn from_segments<const N: usize>(
+        segments: Vec<Segment<E::BaseField, N>>,
+        elements_per_row: usize,
+    ) -> Self {
+        // compute the size of each row
+        let row_width = segments.len() * N;
+        assert!(
+            elements_per_row <= row_width,
+            "elements per row cannot exceed {row_width}, but was {elements_per_row}"
+        );
 
-        Self { data, row_len }
-    }
+        // transpose the segments into a single vector of arrays
+        let result = transpose(segments);
 
-    /// Converts a column-major matrix of polynomials `Matrix<E>` into a RowMatrix evaluated at
-    /// a shifted domain offset.
-    pub fn transpose_and_extend(polys: &Matrix<E>, blowup_factor: usize) -> Self {
-        // get the number of rows and columns in the polys.
-        let row_width = polys.num_cols();
-        let num_rows = polys.num_rows();
-
-        // get the twiddles for the segment.
-        let twiddles = fft::get_twiddles::<E::BaseField>(polys.num_rows() * blowup_factor);
-
-        // precompute offsets for each row.
-        let offsets = get_offsets::<E>(num_rows, E::BaseField::GENERATOR);
-
-        // create a vector of uninitialised segments to hold the result.
-        let mut segments = allocate_segments::<E>(num_rows, row_width, blowup_factor);
-
-        // create segments.
-        segments
-            .iter_mut()
-            .enumerate()
-            .for_each(|(seg_idx, segment)| {
-                // prepare the segment.
-                prepare_segment(segment, polys, seg_idx, &offsets);
-
-                // evaluate the segment at the shifted domain offset.
-                segment.evaluate_poly(&twiddles);
-            });
-
-        // create a `RowMatrix` object from the segments.
-        Self::from_segments(segments)
-    }
-
-    /// Converts a collection of segments into a row-major matrix.
-    fn from_segments(segments: Vec<Segment<E>>) -> Self {
-        // get the number of rows and segments.
-        let num_rows = segments[0].num_rows();
-        let num_segs = segments.len();
-
-        // create a vector of arrays to hold the result.
-        // TODO: use a more efficient way so that we don't have to allocate a vector of arrays here.
-        let mut result = unsafe { uninit_vector::<[E; ARR_SIZE]>(num_rows * num_segs) };
-
-        // transpose the segments into a row matrix.
-        for i in 0..num_rows {
-            for j in 0..num_segs {
-                let v = &segments[j].as_data()[i];
-                result[i * num_segs + j].copy_from_slice(v);
-            }
-        }
-
-        // create a `RowMatrix` object from the result.
+        // flatten the result to be a simple vector of elements and return
         RowMatrix {
             data: flatten_vector_elements(result),
-            row_len: num_segs * ARR_SIZE,
+            row_width,
+            elements_per_row,
         }
     }
 
     // PUBLIC ACCESSORS
-    // ---------------------------------------------------------------------------------------------
+    // --------------------------------------------------------------------------------------------
 
     /// Returns the number of rows in this matrix.
     pub fn num_rows(&self) -> usize {
-        self.data.len() / self.row_len
+        self.data.len() / self.row_width
     }
 
     /// Returns a reference to a row at the specified index in this matrix.
     ///
     /// # Panics
     /// Panics if the specified row index is out of bounds.
-    pub fn get_row(&self, row_idx: usize) -> &[E] {
+    pub fn row(&self, row_idx: usize) -> &[E] {
         assert!(row_idx < self.num_rows());
-        let start = row_idx * self.row_len;
-        &self.data[start..start + self.row_len]
+        let start = row_idx * self.row_width;
+        E::slice_from_base_elements(&self.data[start..start + self.elements_per_row])
     }
 
     /// Returns the data in this matrix as a slice of field elements.
-    pub fn as_data(&self) -> &[E] {
+    pub fn data(&self) -> &[E::BaseField] {
         &self.data
     }
 }
@@ -132,70 +131,104 @@ where
 // HELPER FUNCTIONS
 // ================================================================================================
 
-/// Returns a vector of offsets for the specified number of rows. The offsets are computed as
-/// `domain_offset^i` for `i` in `[0, num_rows)`. The first offset is always 1.
-fn get_offsets<E>(num_rows: usize, domain_offset: E::BaseField) -> Vec<E::BaseField>
-where
-    E: FieldElement,
-{
-    // create a vector to hold the offsets.
-    let mut offsets = Vec::with_capacity(num_rows);
+/// Returns a vector of offsets for an evaluation defined by the specified polynomial size, blowup
+/// factor and domain offset.
+///
+/// When `concurrent` feature is enabled, offsets are computed in multiple threads.
+fn get_offsets<E: FieldElement>(
+    poly_size: usize,
+    blowup_factor: usize,
+    domain_offset: E::BaseField,
+) -> Vec<E::BaseField> {
+    let domain_size = poly_size * blowup_factor;
+    let g = E::BaseField::get_root_of_unity(log2(domain_size));
 
-    // the first offset is always 1.
-    offsets.push(E::BaseField::ONE);
+    // allocate memory to hold the offsets
+    let mut offsets = unsafe { uninit_vector(domain_size) };
 
-    // compute the remaining offsets.
-    for i in 1..num_rows {
-        offsets.push(offsets[i - 1] * domain_offset);
-    }
+    // define a closure to compute offsets for a given chunk of the result; the number of chunks
+    // is defined by the blowup factor. for example, for blowup factor = 2, the number of chunks
+    // will be 2, for blowup factor = 8, the number of chunks will be 8 etc.
+    let compute_offsets = |(chunk_idx, chunk): (usize, &mut [E::BaseField])| {
+        let idx = fft::permute_index(blowup_factor, chunk_idx) as u64;
+        let offset = g.exp_vartime(idx.into()) * domain_offset;
+        let mut factor = E::BaseField::ONE;
+        for res in chunk.iter_mut() {
+            *res = factor;
+            factor *= offset;
+        }
+    };
+
+    // compute offsets for each chunk using either parallel or regular iterators
+
+    #[cfg(not(feature = "concurrent"))]
+    offsets
+        .chunks_mut(poly_size)
+        .enumerate()
+        .for_each(compute_offsets);
+
+    #[cfg(feature = "concurrent")]
+    offsets
+        .par_chunks_mut(poly_size)
+        .enumerate()
+        .for_each(compute_offsets);
 
     offsets
 }
 
-/// Creates a vector of uninitialised segments to hold the result. The number of segments is
-/// equal to the number of columns in the matrix divided by the ARR_SIZE. Each segment is
-/// initialised with a vector of uninitialised arrays of length `num_rows * blowup_factor`.
+/// Transposes a vector of segments into a single vector of fixed-size arrays.
 ///
-/// # Panics
-/// Panics if the number of columns in the matrix is not a multiple of ARR_SIZE.
-fn allocate_segments<E>(num_rows: usize, row_width: usize, blowup_factor: usize) -> Vec<Segment<E>>
-where
-    E: FieldElement,
-{
-    assert!(
-        row_width % ARR_SIZE == 0,
-        "number of columns must be a multiple of ARR_SIZE"
-    );
-    let outer_vec_len = row_width / ARR_SIZE;
+/// When `concurrent` feature is enabled, transposition is performed in multiple threads.
+fn transpose<B: StarkField, const N: usize>(segments: Vec<Segment<B, N>>) -> Vec<[B; N]> {
+    let num_rows = segments[0].num_rows();
+    let num_segs = segments.len();
+    let result_len = num_rows * num_segs;
 
-    // create a vector of uninitialised segments to hold the result.
-    // SAFETY: we are creating a vector of uninitialised segments, and each segment is
-    // initialised with a vector of uninitialised arrays of length `num_rows * blowup_factor`.
-    // This is safe because we are not reading from the vectors, and we will initialise
-    // the vectors before reading from them.
-    let outer_vec: Vec<Segment<E>> = (0..outer_vec_len)
-        .map(|_| Segment::new(unsafe { uninit_vector::<[E; ARR_SIZE]>(num_rows * blowup_factor) }))
-        .collect();
+    // allocate memory to hold the transposed result;
+    // TODO: investigate transposing in-place
+    let mut result = unsafe { uninit_vector::<[B; N]>(result_len) };
 
-    outer_vec
+    // determine number of batches in which transposition will be preformed; if `concurrent`
+    // feature is not enabled, the number of batches will always be 1
+    let num_batches = get_num_batches(result_len);
+    let rows_per_batch = num_rows / num_batches;
+
+    // define a closure for transposing a given batch
+    let transpose_batch = |(batch_idx, batch): (usize, &mut [[B; N]])| {
+        let row_offset = batch_idx * rows_per_batch;
+        for i in 0..rows_per_batch {
+            let row_idx = i + row_offset;
+            for j in 0..num_segs {
+                let v = &segments[j].data()[row_idx];
+                batch[i * num_segs + j].copy_from_slice(v);
+            }
+        }
+    };
+
+    // call the closure either once (for single-threaded transposition) or in a parallel
+    // iterator (for multi-threaded transposition)
+
+    #[cfg(not(feature = "concurrent"))]
+    transpose_batch((0, &mut result));
+
+    #[cfg(feature = "concurrent")]
+    result
+        .par_chunks_mut(result_len / num_batches)
+        .enumerate()
+        .for_each(transpose_batch);
+
+    result
 }
 
-/// Prepares a segment for evaluation by multiplying each element in the segment by the
-/// corresponding offset.
-fn prepare_segment<E>(
-    segment: &mut Segment<E>,
-    polys: &Matrix<E>,
-    seg_idx: usize,
-    offsets: &[E::BaseField],
-) where
-    E: FieldElement,
-{
-    (seg_idx * ARR_SIZE..(seg_idx + 1) * ARR_SIZE).for_each(|col_idx| {
-        // get the column from the polys matrix.
-        let col = polys.get_column(col_idx);
-        col.iter().enumerate().for_each(|(row_idx, elem)| {
-            segment.as_mut_data()[row_idx][col_idx - seg_idx * ARR_SIZE] =
-                elem.mul_base(offsets[row_idx]);
-        });
-    });
+#[cfg(not(feature = "concurrent"))]
+fn get_num_batches(_input_size: usize) -> usize {
+    1
+}
+
+#[cfg(feature = "concurrent")]
+fn get_num_batches(input_size: usize) -> usize {
+    if input_size < 1024 {
+        return 1;
+    }
+    utils::rayon::current_num_threads().next_power_of_two() * 2
 }

@@ -9,7 +9,7 @@ use super::{permute_index, FieldElement};
 // ================================================================================================
 const MAX_LOOP: usize = 256;
 
-// FFTINPUTS TRAIT
+// FFT INPUTS TRAIT
 // ================================================================================================
 
 /// Defines the interface that must be implemented by the input to fft_in_place method.
@@ -68,18 +68,37 @@ pub trait FftInputs<E: FieldElement> {
     /// The FFT is applied in place, so the input is replaced with the result of the FFT. The
     /// `twiddles` parameter specifies the twiddle factors to use for the FFT.
     ///
+    /// This is a convenience method equivalent to calling fft_in_place_raw(twiddles, 1, 1, 0).
+    ///
     /// # Panics
     /// Panics if length of the `twiddles` parameter is not self.len() / 2.
     fn fft_in_place(&mut self, twiddles: &[E::BaseField]) {
         fft_in_place(self, twiddles, 1, 1, 0);
     }
+
+    /// Applies the FFT to this input.
+    ///
+    /// The FFT is applied in place, so the input is replaced with the result of the FFT. The
+    /// `twiddles` parameter specifies the twiddle factors to use for the FFT.
+    ///
+    /// # Panics
+    /// Panics if length of the `twiddles` parameter is not self.len() / 2.
+    fn fft_in_place_raw(
+        &mut self,
+        twiddles: &[E::BaseField],
+        count: usize,
+        stride: usize,
+        offset: usize,
+    ) {
+        fft_in_place(self, twiddles, count, stride, offset)
+    }
 }
 
+// SLICE IMPLEMENTATION
+// ================================================================================================
+
 /// Implements FftInputs for a slice of field elements.
-impl<E> FftInputs<E> for [E]
-where
-    E: FieldElement,
-{
+impl<E: FieldElement> FftInputs<E> for [E] {
     fn len(&self) -> usize {
         self.len()
     }
@@ -124,13 +143,76 @@ where
     }
 }
 
+// SLICE OF ARRAYS IMPLEMENTATION
+// ================================================================================================
+
+/// Implements [FftInputs] for a slice of field element arrays.
+#[allow(clippy::needless_range_loop)]
+impl<E: FieldElement, const N: usize> FftInputs<E> for [[E; N]] {
+    fn len(&self) -> usize {
+        self.len()
+    }
+
+    #[inline(always)]
+    fn butterfly(&mut self, offset: usize, stride: usize) {
+        let i = offset;
+        let j = offset + stride;
+
+        let temp = self[i];
+        for col_idx in 0..N {
+            self[i][col_idx] = temp[col_idx] + self[j][col_idx];
+            self[j][col_idx] = temp[col_idx] - self[j][col_idx];
+        }
+    }
+
+    #[inline(always)]
+    fn butterfly_twiddle(&mut self, twiddle: E::BaseField, offset: usize, stride: usize) {
+        let i = offset;
+        let j = offset + stride;
+
+        let twiddle = E::from(twiddle);
+        let temp = self[i];
+
+        for col_idx in 0..N {
+            self[j][col_idx] *= twiddle;
+            self[i][col_idx] = temp[col_idx] + self[j][col_idx];
+            self[j][col_idx] = temp[col_idx] - self[j][col_idx];
+        }
+    }
+
+    fn swap(&mut self, i: usize, j: usize) {
+        self.swap(i, j)
+    }
+
+    fn shift_by(&mut self, offset: E::BaseField) {
+        let offset = E::from(offset);
+        for row_idx in 0..self.len() {
+            for col_idx in 0..N {
+                self[row_idx][col_idx] *= offset;
+            }
+        }
+    }
+
+    fn shift_by_series(&mut self, offset: E::BaseField, increment: E::BaseField) {
+        let increment = E::from(increment);
+        let mut offset = E::from(offset);
+
+        for row_idx in 0..self.len() {
+            for col_idx in 0..N {
+                self[row_idx][col_idx] *= offset;
+            }
+            offset *= increment;
+        }
+    }
+}
+
 // CORE FFT ALGORITHM
 // ================================================================================================
 
 /// In-place recursive FFT with permuted output.
 ///
 /// Adapted from: https://github.com/0xProject/OpenZKP/tree/master/algebra/primefield/src/fft
-pub(super) fn fft_in_place<E, I>(
+fn fft_in_place<E, I>(
     values: &mut I,
     twiddles: &[E::BaseField],
     count: usize,
