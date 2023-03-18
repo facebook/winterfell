@@ -108,7 +108,7 @@ impl StarkProof {
             get_conjectured_security(
                 self.context.options(),
                 self.context.num_modulus_bits(),
-                self.lde_domain_size() as u64,
+                self.trace_length() as u64,
                 H::COLLISION_RESISTANCE,
             )
         } else {
@@ -181,12 +181,12 @@ impl StarkProof {
 fn get_conjectured_security(
     options: &ProofOptions,
     base_field_bits: u32,
-    lde_domain_size: u64,
+    trace_domain_size: u64,
     collision_resistance: u32,
 ) -> u32 {
     // compute max security we can get for a given field size
     let field_size = base_field_bits * options.field_extension().degree();
-    let field_security = field_size - lde_domain_size.trailing_zeros();
+    let field_security = field_size - trace_domain_size.trailing_zeros();
 
     // compute security we get by executing multiple query rounds
     let security_per_query = log2(options.blowup_factor());
