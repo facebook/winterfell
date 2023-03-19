@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{matrix::MultiColumnIter, Matrix};
+use super::{matrix::MultiColumnIter, ColMatrix};
 use air::{Air, AuxTraceRandElements, EvaluationFrame, TraceInfo, TraceLayout};
 use math::{polynom, FieldElement, StarkField};
 
@@ -57,7 +57,7 @@ pub trait Trace: Sized {
     fn meta(&self) -> &[u8];
 
     /// Returns a reference to a [Matrix] describing the main segment of this trace.
-    fn main_segment(&self) -> &Matrix<Self::BaseField>;
+    fn main_segment(&self) -> &ColMatrix<Self::BaseField>;
 
     /// Builds and returns the next auxiliary trace segment. If there are no more segments to
     /// build (i.e., the trace is complete), None is returned.
@@ -68,9 +68,9 @@ pub trait Trace: Sized {
     /// (the one built during the first invocation) etc.
     fn build_aux_segment<E: FieldElement<BaseField = Self::BaseField>>(
         &mut self,
-        aux_segments: &[Matrix<E>],
+        aux_segments: &[ColMatrix<E>],
         rand_elements: &[E],
-    ) -> Option<Matrix<E>>;
+    ) -> Option<ColMatrix<E>>;
 
     /// Reads an evaluation frame from the main trace segment at the specified row.
     fn read_main_frame(&self, row_idx: usize, frame: &mut EvaluationFrame<Self::BaseField>);
@@ -101,7 +101,7 @@ pub trait Trace: Sized {
     fn validate<A, E>(
         &self,
         air: &A,
-        aux_segments: &[Matrix<E>],
+        aux_segments: &[ColMatrix<E>],
         aux_rand_elements: &AuxTraceRandElements<E>,
     ) where
         A: Air<BaseField = Self::BaseField>,
@@ -232,7 +232,7 @@ pub trait Trace: Sized {
 /// This is probably not the most efficient implementation, but since we call this function only
 /// for trace validation purposes (which is done in debug mode only), we don't care all that much
 /// about its performance.
-fn read_aux_frame<E>(aux_segments: &[Matrix<E>], row_idx: usize, frame: &mut EvaluationFrame<E>)
+fn read_aux_frame<E>(aux_segments: &[ColMatrix<E>], row_idx: usize, frame: &mut EvaluationFrame<E>)
 where
     E: FieldElement,
 {

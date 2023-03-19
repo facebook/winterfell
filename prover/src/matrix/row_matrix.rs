@@ -3,10 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{Matrix, Segment};
+use super::{ColMatrix, Segment};
+use crate::StarkDomain;
+use crypto::{ElementHasher, MerkleTree};
 use math::{fft, log2, FieldElement, StarkField};
 use utils::collections::Vec;
-use utils::{flatten_vector_elements, uninit_vector};
+use utils::{batch_iter_mut, flatten_vector_elements, uninit_vector};
 
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
@@ -50,25 +52,44 @@ impl<E: FieldElement> RowMatrix<E> {
     ///
     /// To improve performance, polynomials are evaluated in batches specified by the `N` type
     /// parameter. Minimum batch size is 1.
-    pub fn evaluate_polys<const N: usize>(polys: &Matrix<E>, blowup_factor: usize) -> Self {
+    pub fn evaluate_polys<const N: usize>(polys: &ColMatrix<E>, blowup_factor: usize) -> Self {
         assert!(N > 0, "batch size N must be greater than zero");
+
+        // pre-compute offsets for each row
         let poly_size = polys.num_rows();
-        let num_segments = if polys.num_base_cols() % N == 0 {
-            polys.num_base_cols() / N
-        } else {
-            polys.num_base_cols() / N + 1
-        };
+        let offsets = get_offsets::<E>(poly_size, blowup_factor, E::BaseField::GENERATOR);
 
         // compute twiddles for polynomial evaluation
         let twiddles = fft::get_twiddles::<E::BaseField>(polys.num_rows());
 
+        // build matrix segments by evaluating all polynomials
+        let segments = build_segments::<E, N>(polys, &twiddles, &offsets);
+
+        // transpose data in individual segments into a single row-major matrix
+        Self::from_segments(segments, polys.num_base_cols())
+    }
+
+    /// Returns a new [RowMatrix] constructed by evaluating the provided polynomials over the
+    /// specified [StarkDomain].
+    ///
+    /// The provided `polys` matrix is assumed to contain polynomials in coefficient form (one
+    /// polynomial per column). Columns in the returned matrix will contain evaluations of the
+    /// corresponding polynomials over the LDE domain defined by the provided [StarkDomain].
+    ///
+    /// To improve performance, polynomials are evaluated in batches specified by the `N` type
+    /// parameter. Minimum batch size is 1.
+    pub fn evaluate_polys_over<const N: usize>(
+        polys: &ColMatrix<E>,
+        domain: &StarkDomain<E::BaseField>,
+    ) -> Self {
+        assert!(N > 0, "batch size N must be greater than zero");
+
         // pre-compute offsets for each row
-        let offsets = get_offsets::<E>(poly_size, blowup_factor, E::BaseField::GENERATOR);
+        let poly_size = polys.num_rows();
+        let offsets = get_offsets::<E>(poly_size, domain.trace_to_lde_blowup(), domain.offset());
 
         // build matrix segments by evaluating all polynomials
-        let segments: Vec<Segment<E::BaseField, N>> = (0..num_segments)
-            .map(|i| Segment::new(polys, i * N, &offsets, &twiddles))
-            .collect::<Vec<_>>();
+        let segments = build_segments::<E, N>(polys, domain.trace_twiddles(), &offsets);
 
         // transpose data in individual segments into a single row-major matrix
         Self::from_segments(segments, polys.num_base_cols())
@@ -80,12 +101,17 @@ impl<E: FieldElement> RowMatrix<E> {
     /// row in the matrix.
     ///
     /// # Panics
-    /// Panics if `elements_per_row` is greater than the row width implied by the number of
-    /// segments and `N` type parameter.
+    /// Panics if
+    /// - `segments` is an empty vector.
+    /// - `elements_per_row` is greater than the row width implied by the number of segments and
+    ///   `N` type parameter.
     pub fn from_segments<const N: usize>(
         segments: Vec<Segment<E::BaseField, N>>,
         elements_per_row: usize,
     ) -> Self {
+        assert!(N > 0, "batch size N must be greater than zero");
+        assert!(!segments.is_empty(), "a list of segments cannot be empty");
+
         // compute the size of each row
         let row_width = segments.len() * N;
         assert!(
@@ -107,9 +133,22 @@ impl<E: FieldElement> RowMatrix<E> {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
+    /// Returns the number of columns in this matrix.
+    pub fn num_cols(&self) -> usize {
+        self.elements_per_row / E::EXTENSION_DEGREE
+    }
+
     /// Returns the number of rows in this matrix.
     pub fn num_rows(&self) -> usize {
         self.data.len() / self.row_width
+    }
+
+    /// Returns the element located at the specified column and row indexes in this matrix.
+    ///
+    /// # Panics
+    /// Panics if either `col_idx` or `row_idx` are out of bounds for this matrix.
+    pub fn get(&self, col_idx: usize, row_idx: usize) -> E {
+        self.row(row_idx)[col_idx]
     }
 
     /// Returns a reference to a row at the specified index in this matrix.
@@ -125,6 +164,39 @@ impl<E: FieldElement> RowMatrix<E> {
     /// Returns the data in this matrix as a slice of field elements.
     pub fn data(&self) -> &[E::BaseField] {
         &self.data
+    }
+
+    // COMMITMENTS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns a commitment to this matrix.
+    ///
+    /// The commitment is built as follows:
+    /// * Each row of the matrix is hashed into a single digest of the specified hash function.
+    /// * The resulting values are used to build a binary Merkle tree such that each row digest
+    ///   becomes a leaf in the tree. Thus, the number of leaves in the tree is equal to the
+    ///   number of rows in the matrix.
+    /// * The resulting Merkle tree is returned as the commitment to the entire matrix.
+    pub fn commit_to_rows<H>(&self) -> MerkleTree<H>
+    where
+        H: ElementHasher<BaseField = E::BaseField>,
+    {
+        // allocate vector to store row hashes
+        let mut row_hashes = unsafe { uninit_vector::<H::Digest>(self.num_rows()) };
+
+        // iterate though matrix rows, hashing each row
+        batch_iter_mut!(
+            &mut row_hashes,
+            128, // min batch size
+            |batch: &mut [H::Digest], batch_offset: usize| {
+                for (i, row_hash) in batch.iter_mut().enumerate() {
+                    *row_hash = H::hash_elements(self.row(batch_offset + i));
+                }
+            }
+        );
+
+        // build Merkle tree out of hashed rows
+        MerkleTree::new(row_hashes).expect("failed to construct trace Merkle tree")
     }
 }
 
@@ -176,13 +248,41 @@ fn get_offsets<E: FieldElement>(
     offsets
 }
 
+/// Returns matrix segments constructed by evaluating polynomials in the specified matrix over the
+/// domain defined by twiddles and offsets.
+fn build_segments<E: FieldElement, const N: usize>(
+    polys: &ColMatrix<E>,
+    twiddles: &[E::BaseField],
+    offsets: &[E::BaseField],
+) -> Vec<Segment<E::BaseField, N>> {
+    assert!(N > 0, "batch size N must be greater than zero");
+    debug_assert_eq!(polys.num_rows(), twiddles.len() * 2);
+    debug_assert_eq!(offsets.len() % polys.num_rows(), 0);
+
+    let num_segments = if polys.num_base_cols() % N == 0 {
+        polys.num_base_cols() / N
+    } else {
+        polys.num_base_cols() / N + 1
+    };
+
+    (0..num_segments)
+        .map(|i| Segment::new(polys, i * N, offsets, twiddles))
+        .collect()
+}
+
 /// Transposes a vector of segments into a single vector of fixed-size arrays.
 ///
 /// When `concurrent` feature is enabled, transposition is performed in multiple threads.
-fn transpose<B: StarkField, const N: usize>(segments: Vec<Segment<B, N>>) -> Vec<[B; N]> {
+fn transpose<B: StarkField, const N: usize>(mut segments: Vec<Segment<B, N>>) -> Vec<[B; N]> {
     let num_rows = segments[0].num_rows();
     let num_segs = segments.len();
     let result_len = num_rows * num_segs;
+
+    // if there is only one segment, there is nothing to transpose as it is already in row
+    // major form
+    if segments.len() == 1 {
+        return segments.remove(0).into_data();
+    }
 
     // allocate memory to hold the transposed result;
     // TODO: investigate transposing in-place

@@ -78,7 +78,7 @@ mod domain;
 pub use domain::StarkDomain;
 
 mod matrix;
-pub use matrix::{Matrix, RowMatrix};
+pub use matrix::{ColMatrix, RowMatrix};
 
 mod constraints;
 use constraints::{CompositionPoly, ConstraintCommitment, ConstraintEvaluator};
@@ -456,17 +456,21 @@ pub trait Prover {
     /// building a Merkle tree from the resulting hashes.
     fn build_trace_commitment<E>(
         &self,
-        trace: &Matrix<E>,
+        trace: &ColMatrix<E>,
         domain: &StarkDomain<Self::BaseField>,
-    ) -> (Matrix<E>, MerkleTree<Self::HashFn>, Matrix<E>)
+    ) -> (RowMatrix<E>, MerkleTree<Self::HashFn>, ColMatrix<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
+        // this segment width seems to give the best performance for small fields (i.e., 64 bits)
+        const DEFAULT_SEGMENT_WIDTH: usize = 8;
+
         // extend the execution trace
         #[cfg(feature = "std")]
         let now = Instant::now();
         let trace_polys = trace.interpolate_columns();
-        let trace_lde = trace_polys.evaluate_columns_over(domain);
+        let trace_lde =
+            RowMatrix::evaluate_polys_over::<DEFAULT_SEGMENT_WIDTH>(&trace_polys, domain);
         #[cfg(feature = "std")]
         debug!(
             "Extended execution trace of {} columns from 2^{} to 2^{} steps ({}x blowup) in {} ms",

@@ -12,7 +12,7 @@ use utils::{batch_iter_mut, collections::Vec, iter, iter_mut, uninit_vector};
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
 
-// MATRIX
+// COLUMN-MAJOR MATRIX
 // ================================================================================================
 
 /// A two-dimensional matrix of field elements arranged in column-major order.
@@ -28,11 +28,11 @@ use utils::iterators::*;
 /// - All columns must be of the same length.
 /// - Number of rows must be a power of two.
 #[derive(Debug, Clone)]
-pub struct Matrix<E: FieldElement> {
+pub struct ColMatrix<E: FieldElement> {
     columns: Vec<Vec<E>>,
 }
 
-impl<E: FieldElement> Matrix<E> {
+impl<E: FieldElement> ColMatrix<E> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Returns a new [Matrix] instantiated with the data from the specified columns.
@@ -294,12 +294,12 @@ impl<E: FieldElement> Matrix<E> {
 // ================================================================================================
 
 pub struct ColumnIter<'a, E: FieldElement> {
-    matrix: &'a Matrix<E>,
+    matrix: &'a ColMatrix<E>,
     cursor: usize,
 }
 
 impl<'a, E: FieldElement> ColumnIter<'a, E> {
-    pub fn new(matrix: &'a Matrix<E>) -> Self {
+    pub fn new(matrix: &'a ColMatrix<E>) -> Self {
         Self { matrix, cursor: 0 }
     }
 }
@@ -331,12 +331,12 @@ impl<'a, E: FieldElement> FusedIterator for ColumnIter<'a, E> {}
 // ================================================================================================
 
 pub struct ColumnIterMut<'a, E: FieldElement> {
-    matrix: &'a mut Matrix<E>,
+    matrix: &'a mut ColMatrix<E>,
     cursor: usize,
 }
 
 impl<'a, E: FieldElement> ColumnIterMut<'a, E> {
-    pub fn new(matrix: &'a mut Matrix<E>) -> Self {
+    pub fn new(matrix: &'a mut ColMatrix<E>) -> Self {
         Self { matrix, cursor: 0 }
     }
 }
@@ -373,13 +373,13 @@ impl<'a, E: FieldElement> FusedIterator for ColumnIterMut<'a, E> {}
 // ================================================================================================
 
 pub struct MultiColumnIter<'a, E: FieldElement> {
-    matrixes: &'a [Matrix<E>],
+    matrixes: &'a [ColMatrix<E>],
     m_cursor: usize,
     c_cursor: usize,
 }
 
 impl<'a, E: FieldElement> MultiColumnIter<'a, E> {
-    pub fn new(matrixes: &'a [Matrix<E>]) -> Self {
+    pub fn new(matrixes: &'a [ColMatrix<E>]) -> Self {
         // make sure all matrixes have the same number of rows
         if !matrixes.is_empty() {
             let num_rows = matrixes[0].num_rows();

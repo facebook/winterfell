@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::Matrix;
+use super::ColMatrix;
 use air::proof::Queries;
 use crypto::{ElementHasher, MerkleTree};
 use math::FieldElement;
@@ -19,14 +19,14 @@ use utils::collections::Vec;
 /// * Merkle tree where each leaf in the tree corresponds to a row in the composition polynomial
 ///   evaluation matrix.
 pub struct ConstraintCommitment<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> {
-    evaluations: Matrix<E>,
+    evaluations: ColMatrix<E>,
     commitment: MerkleTree<H>,
 }
 
 impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> ConstraintCommitment<E, H> {
     /// Creates a new constraint evaluation commitment from the provided composition polynomial
     /// evaluations and the corresponding Merkle tree commitment.
-    pub fn new(evaluations: Matrix<E>, commitment: MerkleTree<H>) -> ConstraintCommitment<E, H> {
+    pub fn new(evaluations: ColMatrix<E>, commitment: MerkleTree<H>) -> ConstraintCommitment<E, H> {
         assert_eq!(
             evaluations.num_rows(),
             commitment.leaves().len(),
