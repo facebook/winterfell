@@ -39,9 +39,6 @@ const M: u64 = 0xFFFFFFFF00000001;
 /// 2^128 mod M; this is used for conversion of elements into Montgomery representation.
 const R2: u64 = 0xFFFFFFFE00000001;
 
-/// 2^32 root of unity
-const G: u64 = 1753635133440165772;
-
 /// Number of bytes needed to represent field element
 const ELEMENT_BYTES: usize = core::mem::size_of::<u64>();
 
@@ -254,10 +251,17 @@ impl StarkField for BaseElement {
     /// True
     const TWO_ADICITY: u32 = 32;
 
-    /// sage: k = (MODULUS - 1) / 2^32 \
-    /// sage: GF(MODULUS).primitive_element()^k \
-    /// 1753635133440165772
-    const TWO_ADIC_ROOT_OF_UNITY: Self = Self::new(G);
+    /// Root of unity for domain of 2^32 elements. This root of unity is selected because
+    /// it implies that the generator for domain of size 64 is 8. This is attractive because
+    /// it allows replacing some multiplications with shifts (e.g., for NTT computations).
+    ///
+    /// sage: Fp = GF(MODULUS) \
+    /// sage: g = Fp(7277203076849721926) \
+    /// sage: g^(2^32) \
+    /// 1 \
+    /// sage: [int(g^(2^i) == 1) for i in range(1,32)]
+    /// [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    const TWO_ADIC_ROOT_OF_UNITY: Self = Self::new(7277203076849721926);
 
     fn get_modulus_le_bytes() -> Vec<u8> {
         M.to_le_bytes().to_vec()
