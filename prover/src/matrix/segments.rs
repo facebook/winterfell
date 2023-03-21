@@ -5,7 +5,7 @@
 
 use super::ColMatrix;
 use math::{fft::fft_inputs::FftInputs, FieldElement, StarkField};
-use utils::{collections::Vec, uninit_vector};
+use utils::{collections::Vec, group_vector_elements, uninit_vector};
 
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
@@ -69,8 +69,15 @@ impl<B: StarkField, const N: usize> Segment<B, N> {
             N
         };
 
-        // allocate uninitialized memory for the segment
-        let mut data = unsafe { uninit_vector::<[B; N]>(domain_size) };
+        // allocate memory for the segment
+        let mut data = if num_polys == N {
+            // if we will fill the entire segment, we allocate uninitialized memory
+            unsafe { uninit_vector::<[B; N]>(domain_size) }
+        } else {
+            // but if some columns in the segment will remain unfilled, we allocate memory initialized
+            // to zeros to make sure we don't end up with memory with undefined values
+            group_vector_elements(B::zeroed_vector(N * domain_size))
+        };
 
         // evaluate the polynomials either in a single thread or multiple threads, depending
         // on whether `concurrent` feature is enabled and domain size is greater than 1024;
