@@ -63,7 +63,7 @@ pub struct ProofOptions {
     grinding_factor: u8,
     field_extension: FieldExtension,
     fri_folding_factor: u8,
-    fri_max_remainder_size: u8, // stored as power of 2
+    fri_remainder_max_degree_plus_1: u8, // stored as power of 2
 }
 
 // PROOF OPTIONS IMPLEMENTATION
@@ -89,7 +89,7 @@ impl ProofOptions {
     /// * `blowup_factor` is smaller than 4, greater than 256, or is not a power of two.
     /// * `grinding_factor` is greater than 32.
     /// * `fri_folding_factor` is not 4, 8, or 16.
-    /// * `fri_max_remainder_size` is smaller than 32, greater than 1024, or is not a power of two.
+    /// * `fri_remainder_max_degree_plus_1` is 0, greater than 32.
     #[rustfmt::skip]
     pub fn new(
         num_queries: usize,
@@ -97,7 +97,7 @@ impl ProofOptions {
         grinding_factor: u32,
         field_extension: FieldExtension,
         fri_folding_factor: usize,
-        fri_max_remainder_size: usize,
+        fri_remainder_max_size_plus_1: usize,
     ) -> ProofOptions {
         // TODO: return errors instead of panicking
         assert!(num_queries > 0, "number of queries must be greater than 0");
@@ -114,9 +114,9 @@ impl ProofOptions {
         assert!(fri_folding_factor >= 4, "FRI folding factor cannot be smaller than 4");
         assert!(fri_folding_factor <= 16, "FRI folding factor cannot be greater than 16");
 
-        assert!(fri_max_remainder_size.is_power_of_two(), "FRI max remainder size must be a power of 2");
-        assert!(fri_max_remainder_size >= 32, "FRI max remainder size cannot be smaller than 32");
-        assert!(fri_max_remainder_size <= 1024, "FRI max remainder size cannot be greater than 1024");
+        assert!(fri_remainder_max_size_plus_1.is_power_of_two(), "FRI polynomial remainder degree plus 1 must be a power of 2");
+        assert!(fri_remainder_max_size_plus_1 >= 1, "FRI polynomial remainder degree plus 1 cannot be 0");
+        assert!(fri_remainder_max_size_plus_1 <= 32, "FRI polynomial remainder degree plus 1 cannot be greater than 32");
 
         ProofOptions {
             num_queries: num_queries as u8,
@@ -124,7 +124,7 @@ impl ProofOptions {
             grinding_factor: grinding_factor as u8,
             field_extension,
             fri_folding_factor: fri_folding_factor as u8,
-            fri_max_remainder_size: fri_max_remainder_size.trailing_zeros() as u8,
+            fri_remainder_max_degree_plus_1: fri_remainder_max_size_plus_1.trailing_zeros() as u8,
         }
     }
 
@@ -181,8 +181,12 @@ impl ProofOptions {
     /// Returns options for FRI protocol instantiated with parameters from this proof options.
     pub fn to_fri_options(&self) -> FriOptions {
         let folding_factor = self.fri_folding_factor as usize;
-        let max_remainder_size = 2usize.pow(self.fri_max_remainder_size as u32);
-        FriOptions::new(self.blowup_factor(), folding_factor, max_remainder_size)
+        let remainder_max_degree_plus_1 = 2usize.pow(self.fri_remainder_max_degree_plus_1 as u32);
+        FriOptions::new(
+            self.blowup_factor(),
+            folding_factor,
+            remainder_max_degree_plus_1,
+        )
     }
 }
 
@@ -194,7 +198,7 @@ impl Serializable for ProofOptions {
         target.write_u8(self.grinding_factor);
         target.write(self.field_extension);
         target.write_u8(self.fri_folding_factor);
-        target.write_u8(self.fri_max_remainder_size);
+        target.write_u8(self.fri_remainder_max_degree_plus_1);
     }
 }
 

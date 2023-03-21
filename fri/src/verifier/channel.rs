@@ -62,7 +62,7 @@ pub trait VerifierChannel<E: FieldElement> {
     /// paths.
     fn take_next_fri_layer_proof(&mut self) -> BatchMerkleProof<Self::Hasher>;
 
-    /// Reads and removes the remainder (last FRI layer) values from the channel.
+    /// Reads and removes the remainder polynomial from the channel.
     fn take_fri_remainder(&mut self) -> Vec<E>;
 
     // PROVIDED METHODS
@@ -90,27 +90,9 @@ pub trait VerifierChannel<E: FieldElement> {
         Ok(group_vector_elements(layer_queries))
     }
 
-    /// Returns FRI remainder values (last FRI layer) read from this channel.
-    ///
-    /// This also checks whether the remainder is valid against the provided commitment.
-    ///
-    /// # Errors
-    /// Returns an error if:
-    /// - If the sequrntial hash constructed from the remainder values does not match the specified
-    ///   `commitment`.
-    fn read_remainder<const N: usize>(
-        &mut self,
-        commitment: &<<Self as VerifierChannel<E>>::Hasher as Hasher>::Digest,
-    ) -> Result<Vec<E>, VerifierError> {
+    /// Returns FRI remainder polynomial read from this channel.
+    fn read_remainder(&mut self) -> Result<Vec<E>, VerifierError> {
         let remainder = self.take_fri_remainder();
-
-        // sequential hash of the remainder
-        let set_commitment =
-            <<Self as VerifierChannel<E>>::Hasher as ElementHasher>::hash_elements(&remainder);
-
-        if *commitment != set_commitment {
-            return Err(VerifierError::RemainderCommitmentMismatch);
-        }
 
         Ok(remainder)
     }

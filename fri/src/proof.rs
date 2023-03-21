@@ -20,10 +20,10 @@ use utils::{
 /// of a [FriProver](crate::FriProver), and can be verified by a instance of a
 /// [FriVerifier](crate::FriVerifier) via [VerifierChannel](crate::VerifierChannel) interface.
 ///
-/// A proof consists of zero or more layers and a remainder. Each layer contains a set of
+/// A proof consists of zero or more layers and a remainder polynomial. Each layer contains a set of
 /// polynomial evaluations at positions queried by the verifier as well as Merkle authentication
 /// paths for these evaluations (the Merkle paths are compressed into a batch Merkle proof). The
-/// remainder is a list of field elements.
+/// remainder polynomial is given by its list of coefficients i.e. field elements.
 ///
 /// All values in a proof are stored as vectors of bytes. Thus, the values must be parsed before
 /// they can be returned to the user. To do this, [parse_layers()](FriProof::parse_layers())
@@ -38,7 +38,7 @@ pub struct FriProof {
 impl FriProof {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
-    /// Creates a new FRI proof from the provided layers and remainder values.
+    /// Creates a new FRI proof from the provided layers and remainder polynomial.
     ///
     /// # Panics
     /// Panics if:
@@ -139,7 +139,6 @@ impl FriProof {
 
         let mut layer_proofs = Vec::new();
         let mut layer_queries = Vec::new();
-        let num_remainder_elements = self.num_remainder_elements::<E>();
 
         // parse all layers
         for (i, layer) in self.layers.into_iter().enumerate() {
@@ -149,13 +148,6 @@ impl FriProof {
             })?;
             layer_proofs.push(mp);
             layer_queries.push(qv);
-        }
-
-        // make sure the remaining domain size matches remainder length
-        if domain_size != num_remainder_elements {
-            return Err(DeserializationError::InvalidValue(format!(
-                "FRI remainder domain size must be {num_remainder_elements}, but was {domain_size}",
-            )));
         }
 
         Ok((layer_queries, layer_proofs))

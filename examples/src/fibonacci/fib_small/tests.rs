@@ -8,7 +8,7 @@ use super::{super::utils::build_proof_options, Rp64_256};
 #[test]
 fn fib_small_test_basic_proof_verification() {
     let fib = Box::new(super::FibExample::<Rp64_256>::new(
-        16,
+        2048,
         build_proof_options(false),
     ));
     crate::tests::test_basic_proof_verification(fib);
