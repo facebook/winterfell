@@ -4,8 +4,10 @@
 // LICENSE file in the root directory of this source tree.
 
 use fri::FriOptions;
-use math::StarkField;
-use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+use math::{StarkField, ToElements};
+use utils::{
+    collections::Vec, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+};
 
 // CONSTANTS
 // ================================================================================================
@@ -206,6 +208,22 @@ impl ProofOptions {
     }
 }
 
+impl<E: StarkField> ToElements<E> for ProofOptions {
+    fn to_elements(&self) -> Vec<E> {
+        // encode filed extension and FRI parameters into a single field element
+        let mut buf = self.field_extension as u32;
+        buf = (buf << 8) | self.fri_folding_factor as u32;
+        buf = (buf << 8) | self.fri_remainder_max_degree as u32;
+
+        vec![
+            E::from(buf),
+            E::from(self.grinding_factor),
+            E::from(self.blowup_factor),
+            E::from(self.num_queries),
+        ]
+    }
+}
+
 impl Serializable for ProofOptions {
     /// Serializes `self` and writes the resulting bytes into the `target`.
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
@@ -272,5 +290,47 @@ impl Deserializable for FieldExtension {
                 "value {value} cannot be deserialized as FieldExtension enum"
             ))),
         }
+    }
+}
+
+// TESTS
+// ================================================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::{FieldExtension, ProofOptions, ToElements};
+    use math::fields::f64::BaseElement;
+
+    #[test]
+    fn proof_options_to_elements() {
+        let field_extension = FieldExtension::None;
+        let fri_folding_factor = 8;
+        let fri_remainder_max_degree = 127;
+        let grinding_factor = 20;
+        let blowup_factor = 8;
+        let num_queries = 30;
+
+        let ext_fri = u32::from_le_bytes([
+            fri_remainder_max_degree,
+            fri_folding_factor,
+            field_extension as u8,
+            0,
+        ]);
+        let expected = vec![
+            BaseElement::from(ext_fri),
+            BaseElement::from(grinding_factor as u32),
+            BaseElement::from(blowup_factor as u32),
+            BaseElement::from(num_queries as u32),
+        ];
+
+        let options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+        );
+        assert_eq!(expected, options.to_elements());
     }
 }

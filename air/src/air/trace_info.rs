@@ -3,6 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use math::{StarkField, ToElements};
 use utils::{
     collections::Vec, string::ToString, ByteReader, ByteWriter, Deserializable,
     DeserializationError, Serializable,
@@ -268,6 +269,32 @@ impl TraceLayout {
     }
 }
 
+impl<E: StarkField> ToElements<E> for TraceLayout {
+    fn to_elements(&self) -> Vec<E> {
+        let mut result = Vec::new();
+
+        // main segment width, number of auxiliary segments, and parameters of the first auxiliary
+        // segment (if present) go into the first field element; we assume that each parameter can
+        // be encoded in 8 bits (which is enforced by the constructor)
+        let mut buf = self.main_segment_width as u32;
+        buf = (buf << 8) | self.num_aux_segments as u32;
+        if self.num_aux_segments == 1 {
+            buf = (buf << 8) | self.aux_segment_widths[0] as u32;
+            buf = (buf << 8) | self.aux_segment_rands[0] as u32;
+        }
+        result.push(E::from(buf));
+
+        // parameters of all subsequent auxiliary segments go into additional elements
+        for i in 1..self.num_aux_segments {
+            buf = self.aux_segment_widths[i] as u32;
+            buf = (buf << 8) | self.aux_segment_rands[i] as u32;
+            result.push(E::from(buf));
+        }
+
+        result
+    }
+}
+
 impl Serializable for TraceLayout {
     /// Serializes `self` and writes the resulting bytes into the `target`.
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
@@ -351,5 +378,43 @@ impl Deserializable for TraceLayout {
         }
 
         Ok(TraceLayout::new(main_width, aux_widths, aux_rands))
+    }
+}
+
+// TESTS
+// ================================================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::{ToElements, TraceLayout};
+    use math::fields::f64::BaseElement;
+
+    #[test]
+    fn trace_layout_to_elements() {
+        // --- test trace with only main segment ------------------------------
+        let main_width = 20;
+        let num_aux_segments = 0;
+
+        let expected = u32::from_le_bytes([num_aux_segments, main_width as u8, 0, 0]);
+        let expected = vec![BaseElement::from(expected)];
+
+        let layout = TraceLayout::new(main_width, [0], [0]);
+        assert_eq!(expected, layout.to_elements());
+
+        // --- test trace with one auxiliary segment --------------------------
+        let main_width = 20;
+        let num_aux_segments = 1;
+        let aux_width = 9;
+        let aux_rands = 12;
+
+        let expected = u32::from_le_bytes([aux_rands, aux_width, num_aux_segments, main_width]);
+        let expected = vec![BaseElement::from(expected)];
+
+        let layout = TraceLayout::new(
+            main_width as usize,
+            [aux_width as usize],
+            [aux_rands as usize],
+        );
+        assert_eq!(expected, layout.to_elements());
     }
 }

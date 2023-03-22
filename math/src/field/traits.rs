@@ -323,3 +323,17 @@ impl<E: FieldElement> ExtensionOf<E> for E {
         self * other
     }
 }
+
+// TO ELEMENTS
+// ================================================================================================
+
+/// Defines how to convert a struct to a vector of field elements.
+pub trait ToElements<E: FieldElement> {
+    fn to_elements(&self) -> Vec<E>;
+}
+
+impl<E: FieldElement> ToElements<E> for () {
+    fn to_elements(&self) -> Vec<E> {
+        Vec::new()
+    }
+}
