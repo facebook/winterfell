@@ -337,3 +337,9 @@ impl<E: FieldElement> ToElements<E> for () {
         Vec::new()
     }
 }
+
+impl<E: FieldElement> ToElements<E> for E {
+    fn to_elements(&self) -> Vec<E> {
+        vec![*self]
+    }
+}
