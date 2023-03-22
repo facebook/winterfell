@@ -120,8 +120,8 @@ impl<E: StarkField> ToElements<E> for Context {
         result.push(E::from(self.trace_length as u64));
 
         // convert trace metadata to elements; this is done by breaking trace metadata into chunks
-        // of bytes which are slightly smaller than field element requires, and then converting
-        // these chunks into field elements.
+        // of bytes which are slightly smaller than the number of bytes needed to encode a field
+        // element, and then converting these chunks into field elements.
         if !self.trace_meta.is_empty() {
             for chunk in self.trace_meta.chunks(E::ELEMENT_BYTES - 1) {
                 result.push(bytes_to_element(chunk));

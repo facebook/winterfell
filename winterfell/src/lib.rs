@@ -149,9 +149,9 @@
 //!
 //! ```no_run
 //! use winterfell::{
-//!     math::{fields::f128::BaseElement, FieldElement},
-//!     Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ProofOptions, Serializable,
-//!     TraceInfo, TransitionConstraintDegree, crypto::hashers::Blake3_256,
+//!     math::{fields::f128::BaseElement, FieldElement, ToElements},
+//!     Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ProofOptions, TraceInfo,
+//!     TransitionConstraintDegree, crypto::hashers::Blake3_256,
 //! };
 //!
 //! // Public inputs for our computation will consist of the starting value and the end result.
@@ -160,11 +160,10 @@
 //!     result: BaseElement,
 //! }
 //!
-//! // We need to describe how public inputs can be converted to bytes.
-//! impl Serializable for PublicInputs {
-//!     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-//!         target.write(self.start);
-//!         target.write(self.result);
+//! // We need to describe how public inputs can be converted to field elements.
+//! impl ToElements<BaseElement> for PublicInputs {
+//!     fn to_elements(&self) -> Vec<BaseElement> {
+//!         vec![self.start, self.result]
 //!     }
 //! }
 //!
@@ -256,13 +255,13 @@
 //!
 //! ```no_run
 //! use winterfell::{
-//!     math::{fields::f128::BaseElement, FieldElement},
+//!     math::{fields::f128::BaseElement, FieldElement, ToElements},
 //!     ProofOptions, Prover, Trace, TraceTable, crypto::hashers::Blake3_256
 //! };
 //!
 //! # use winterfell::{
-//! #   Air, AirContext, Assertion, ByteWriter, EvaluationFrame, Serializable,
-//! #   TraceInfo, TransitionConstraintDegree,
+//! #   Air, AirContext, Assertion, ByteWriter, EvaluationFrame, TraceInfo,
+//! #   TransitionConstraintDegree,
 //! # };
 //! #
 //! # pub struct PublicInputs {
@@ -270,10 +269,9 @@
 //! #     result: BaseElement,
 //! # }
 //! #
-//! # impl Serializable for PublicInputs {
-//! #     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-//! #         target.write(self.start);
-//! #         target.write(self.result);
+//! # impl ToElements<BaseElement> for PublicInputs {
+//! #     fn to_elements(&self) -> Vec<BaseElement> {
+//! #         vec![self.start, self.result]
 //! #     }
 //! # }
 //! #
@@ -366,10 +364,10 @@
 //!
 //! ```
 //! # use winterfell::{
-//! #    math::{fields::f128::BaseElement, FieldElement},
-//! #    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, Serializable,
-//! #    TraceInfo, TransitionConstraintDegree, TraceTable, FieldExtension,
-//! #    Prover, ProofOptions, StarkProof, Trace, crypto::hashers::Blake3_256,
+//! #    math::{fields::f128::BaseElement, FieldElement, ToElements},
+//! #    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, TraceInfo,
+//! #    TransitionConstraintDegree, TraceTable, FieldExtension, Prover, ProofOptions,
+//! #    StarkProof, Trace, crypto::hashers::Blake3_256,
 //! # };
 //! #
 //! # pub fn build_do_work_trace(start: BaseElement, n: usize) -> TraceTable<BaseElement> {
@@ -392,10 +390,9 @@
 //! #     result: BaseElement,
 //! # }
 //! #
-//! # impl Serializable for PublicInputs {
-//! #     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-//! #         target.write(self.start);
-//! #         target.write(self.result);
+//! # impl ToElements<BaseElement> for PublicInputs {
+//! #     fn to_elements(&self) -> Vec<BaseElement> {
+//! #         vec![self.start, self.result]
 //! #     }
 //! # }
 //! #

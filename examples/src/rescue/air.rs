@@ -6,7 +6,7 @@
 use super::{rescue, BaseElement, FieldElement, ProofOptions, CYCLE_LENGTH, TRACE_WIDTH};
 use crate::utils::{are_equal, is_zero, not, EvaluationResult};
 use winterfell::{
-    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, Serializable, TraceInfo,
+    math::ToElements, Air, AirContext, Assertion, EvaluationFrame, TraceInfo,
     TransitionConstraintDegree,
 };
 
@@ -41,10 +41,11 @@ pub struct PublicInputs {
     pub result: [BaseElement; 2],
 }
 
-impl Serializable for PublicInputs {
-    fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write(&self.seed[..]);
-        target.write(&self.result[..]);
+impl ToElements<BaseElement> for PublicInputs {
+    fn to_elements(&self) -> Vec<BaseElement> {
+        let mut result = self.seed.to_vec();
+        result.extend_from_slice(&self.result);
+        result
     }
 }
 

@@ -42,16 +42,15 @@ pub use air::{
 pub use math;
 use math::{
     fields::{CubeExtension, QuadExtension},
-    FieldElement,
+    FieldElement, ToElements,
 };
 
-use utils::collections::Vec;
 pub use utils::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
 };
 
 pub use crypto;
-use crypto::{ElementHasher, RandomCoin};
+use crypto::{Digest, ElementHasher, RandomCoin};
 
 use fri::FriVerifier;
 
@@ -85,13 +84,16 @@ pub fn verify<AIR: Air, HashFn: ElementHasher<BaseField = AIR::BaseField>>(
     proof: StarkProof,
     pub_inputs: AIR::PublicInputs,
 ) -> Result<(), VerifierError> {
-    // build a seed for the public coin; the initial seed is the hash of public inputs and proof
-    // context, but as the protocol progresses, the coin will be reseeded with the info received
-    // from the prover
-    let mut public_coin_seed = Vec::new();
-    pub_inputs.write_into(&mut public_coin_seed);
-    proof.context.write_into(&mut public_coin_seed);
+    // build a seed for the public coin; the initial seed is a hash of the proof context and the
+    // public inputs, but as the protocol progresses, the coin will be reseeded with the info
+    // received from the prover
+    let mut coin_seed_elements = proof.context.to_elements();
+    coin_seed_elements.append(&mut pub_inputs.to_elements());
 
+    // TODO: we should be able to instantiate RandomCoin from a vector of field elements - so,
+    // this hash should not be needed
+    let public_coin_seed = HashFn::hash_elements(&coin_seed_elements).as_bytes();
+    
     // create AIR instance for the computation specified in the proof
     let air = AIR::new(proof.get_trace_info(), pub_inputs, proof.options().clone());
 

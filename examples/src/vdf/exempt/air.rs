@@ -5,7 +5,7 @@
 
 use super::{BaseElement, FieldElement, ProofOptions, ALPHA, FORTY_TWO};
 use winterfell::{
-    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, Serializable, TraceInfo,
+    math::ToElements, Air, AirContext, Assertion, EvaluationFrame, TraceInfo,
     TransitionConstraintDegree,
 };
 
@@ -18,10 +18,9 @@ pub struct VdfInputs {
     pub result: BaseElement,
 }
 
-impl Serializable for VdfInputs {
-    fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write(self.seed);
-        target.write(self.result);
+impl ToElements<BaseElement> for VdfInputs {
+    fn to_elements(&self) -> Vec<BaseElement> {
+        vec![self.seed, self.result]
     }
 }
 

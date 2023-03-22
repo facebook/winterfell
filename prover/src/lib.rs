@@ -61,7 +61,7 @@ pub use math;
 use math::{
     fft::infer_degree,
     fields::{CubeExtension, QuadExtension},
-    ExtensibleField, FieldElement, StarkField,
+    ExtensibleField, FieldElement, StarkField, ToElements,
 };
 
 pub use crypto;
@@ -193,8 +193,7 @@ pub trait Prover {
 
         // serialize public inputs; these will be included in the seed for the public coin
         let pub_inputs = self.get_pub_inputs(&trace);
-        let mut pub_inputs_bytes = Vec::new();
-        pub_inputs.write_into(&mut pub_inputs_bytes);
+        let pub_inputs_elements = pub_inputs.to_elements();
 
         // create an instance of AIR for the provided parameters. this takes a generic description
         // of the computation (provided via AIR type), and creates a description of a specific
@@ -204,7 +203,8 @@ pub trait Prover {
         // create a channel which is used to simulate interaction between the prover and the
         // verifier; the channel will be used to commit to values and to draw randomness that
         // should come from the verifier.
-        let mut channel = ProverChannel::<Self::Air, E, Self::HashFn>::new(&air, pub_inputs_bytes);
+        let mut channel =
+            ProverChannel::<Self::Air, E, Self::HashFn>::new(&air, pub_inputs_elements);
 
         // 1 ----- Commit to the execution trace --------------------------------------------------
 

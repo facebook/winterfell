@@ -210,7 +210,7 @@ impl ProofOptions {
 
 impl<E: StarkField> ToElements<E> for ProofOptions {
     fn to_elements(&self) -> Vec<E> {
-        // encode filed extension and FRI parameters into a single field element
+        // encode field extension and FRI parameters into a single field element
         let mut buf = self.field_extension as u32;
         buf = (buf << 8) | self.fri_folding_factor as u32;
         buf = (buf << 8) | self.fri_remainder_max_degree as u32;

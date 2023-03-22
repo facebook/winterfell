@@ -131,9 +131,9 @@ For more information about arithmetization see [air crate](air#Arithmetization),
 
 ```Rust
 use winterfell::{
-    math::{fields::f128::BaseElement, FieldElement},
-    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ProofOptions, Serializable,
-    TraceInfo, TransitionConstraintDegree,
+    math::{fields::f128::BaseElement, FieldElement, ToElements},
+    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ProofOptions, TraceInfo,
+    TransitionConstraintDegree,
 };
 
 // Public inputs for our computation will consist of the starting value and the end result.
@@ -142,11 +142,10 @@ pub struct PublicInputs {
     result: BaseElement,
 }
 
-// We need to describe how public inputs can be converted to bytes.
-impl Serializable for PublicInputs {
-    fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write(self.start);
-        target.write(self.result);
+// We need to describe how public inputs can be converted to field elements.
+impl ToElements<BaseElement> for PublicInputs {
+    fn to_elements(&self) -> Vec<BaseElement> {
+        vec![self.start, self.result]
     }
 }
 
