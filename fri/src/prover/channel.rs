@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use core::marker::PhantomData;
-use crypto::{Hasher, RandomCoin};
+use crypto::{ElementHasher, Hasher, RandomCoin};
 use math::{FieldElement, StarkField};
 use utils::collections::Vec;
 
@@ -54,15 +54,27 @@ pub trait ProverChannel<E: FieldElement> {
 ///
 /// Though this implementation is intended primarily for testing purposes, it can be used in
 /// production use cases as well.
-pub struct DefaultProverChannel<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> {
-    public_coin: RandomCoin<B, H>,
+pub struct DefaultProverChannel<B, E, H, R>
+where
+    B: StarkField,
+    E: FieldElement<BaseField = B>,
+    H: ElementHasher,
+    R: RandomCoin<BaseField = B, Hasher = H>,
+{
+    public_coin: R,
     commitments: Vec<H::Digest>,
     domain_size: usize,
     num_queries: usize,
     _field_element: PhantomData<E>,
 }
 
-impl<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> DefaultProverChannel<B, E, H> {
+impl<B, E, H, R> DefaultProverChannel<B, E, H, R>
+where
+    B: StarkField,
+    E: FieldElement<BaseField = B>,
+    H: ElementHasher,
+    R: RandomCoin<BaseField = B, Hasher = H>,
+{
     /// Returns a new prover channel instantiated from the specified parameters.
     ///
     /// # Panics
@@ -113,11 +125,12 @@ impl<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> DefaultProverChan
     }
 }
 
-impl<B, E, H> ProverChannel<E> for DefaultProverChannel<B, E, H>
+impl<B, E, H, R> ProverChannel<E> for DefaultProverChannel<B, E, H, R>
 where
     B: StarkField,
     E: FieldElement<BaseField = B>,
-    H: Hasher,
+    H: ElementHasher,
+    R: RandomCoin<BaseField = B, Hasher = H>,
 {
     type Hasher = H;
 

@@ -55,12 +55,13 @@ pub use channel::{DefaultVerifierChannel, VerifierChannel};
 /// * The degree of the polynomial implied by evaluations at the last FRI layer (the remainder)
 ///   is smaller than the degree resulting from reducing degree *d* by `folding_factor` at each
 ///   FRI layer.
-pub struct FriVerifier<B, E, C, H>
+pub struct FriVerifier<B, E, C, H, R>
 where
     B: StarkField,
     E: FieldElement<BaseField = B>,
     C: VerifierChannel<E, Hasher = H>,
     H: ElementHasher<BaseField = B>,
+    R: RandomCoin<BaseField = B, Hasher = H>,
 {
     max_poly_degree: usize,
     domain_size: usize,
@@ -70,14 +71,16 @@ where
     options: FriOptions,
     num_partitions: usize,
     _channel: PhantomData<C>,
+    _public_coin: PhantomData<R>,
 }
 
-impl<B, E, C, H> FriVerifier<B, E, C, H>
+impl<B, E, C, H, R> FriVerifier<B, E, C, H, R>
 where
     B: StarkField,
     E: FieldElement<BaseField = B>,
     C: VerifierChannel<E, Hasher = H>,
     H: ElementHasher<BaseField = B>,
+    R: RandomCoin<BaseField = B, Hasher = H>,
 {
     /// Returns a new instance of FRI verifier created from the specified parameters.
     ///
@@ -100,7 +103,7 @@ where
     /// * An error was encountered while drawing a random α value from the coin.
     pub fn new(
         channel: &mut C,
-        public_coin: &mut RandomCoin<B, H>,
+        public_coin: &mut R,
         options: FriOptions,
         max_poly_degree: usize,
     ) -> Result<Self, VerifierError> {
@@ -142,6 +145,7 @@ where
             options,
             num_partitions,
             _channel: PhantomData,
+            _public_coin: PhantomData,
         })
     }
 
