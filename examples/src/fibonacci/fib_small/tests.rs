@@ -8,7 +8,7 @@ use super::{super::utils::build_proof_options, Rp64_256};
 #[test]
 fn fib_small_test_basic_proof_verification() {
     let fib = Box::new(super::FibExample::<Rp64_256>::new(
-        2048,
+        128,
         build_proof_options(false),
     ));
     crate::tests::test_basic_proof_verification(fib);
@@ -17,7 +17,7 @@ fn fib_small_test_basic_proof_verification() {
 #[test]
 fn fib_small_test_basic_proof_verification_extension() {
     let fib = Box::new(super::FibExample::<Rp64_256>::new(
-        16,
+        128,
         build_proof_options(true),
     ));
     crate::tests::test_basic_proof_verification(fib);
@@ -26,7 +26,7 @@ fn fib_small_test_basic_proof_verification_extension() {
 #[test]
 fn fib_small_test_basic_proof_verification_fail() {
     let fib = Box::new(super::FibExample::<Rp64_256>::new(
-        16,
+        128,
         build_proof_options(false),
     ));
     crate::tests::test_basic_proof_verification_fail(fib);
