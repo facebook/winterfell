@@ -50,7 +50,7 @@ pub use utils::{
 };
 
 pub use crypto;
-use crypto::{Digest, ElementHasher, RandomCoin};
+use crypto::{ElementHasher, RandomCoin};
 
 use fri::FriVerifier;
 
@@ -80,19 +80,20 @@ pub use errors::VerifierError;
 /// - The specified proof was generated for a different computation.
 /// - The specified proof was generated for this computation but for different public inputs.
 #[rustfmt::skip]
-pub fn verify<AIR: Air, HashFn: ElementHasher<BaseField = AIR::BaseField>>(
+pub fn verify<AIR, HashFn, RandCoin>(
     proof: StarkProof,
     pub_inputs: AIR::PublicInputs,
-) -> Result<(), VerifierError> {
+) -> Result<(), VerifierError> 
+where 
+    AIR: Air, 
+    HashFn: ElementHasher<BaseField = AIR::BaseField>,
+    RandCoin: RandomCoin<BaseField = AIR::BaseField, Hasher = HashFn>,
+{
     // build a seed for the public coin; the initial seed is a hash of the proof context and the
     // public inputs, but as the protocol progresses, the coin will be reseeded with the info
     // received from the prover
-    let mut coin_seed_elements = proof.context.to_elements();
-    coin_seed_elements.append(&mut pub_inputs.to_elements());
-
-    // TODO: we should be able to instantiate RandomCoin from a vector of field elements - so,
-    // this hash should not be needed
-    let public_coin_seed = HashFn::hash_elements(&coin_seed_elements).as_bytes();
+    let mut public_coin_seed = proof.context.to_elements();
+    public_coin_seed.append(&mut pub_inputs.to_elements());
     
     // create AIR instance for the computation specified in the proof
     let air = AIR::new(proof.get_trace_info(), pub_inputs, proof.options().clone());
@@ -101,25 +102,25 @@ pub fn verify<AIR: Air, HashFn: ElementHasher<BaseField = AIR::BaseField>>(
     // of static dispatch for selecting two generic parameter: extension field and hash function.
     match air.options().field_extension() {
         FieldExtension::None => {
-            let public_coin = RandomCoin::new(&public_coin_seed);
+            let public_coin = RandCoin::new(&public_coin_seed);
             let channel = VerifierChannel::new(&air, proof)?;
-            perform_verification::<AIR, AIR::BaseField, HashFn>(air, channel, public_coin)
+            perform_verification::<AIR, AIR::BaseField, HashFn, RandCoin>(air, channel, public_coin)
         },
         FieldExtension::Quadratic => {
             if !<QuadExtension<AIR::BaseField>>::is_supported() {
                 return Err(VerifierError::UnsupportedFieldExtension(2));
             }
-            let public_coin = RandomCoin::new(&public_coin_seed);
+            let public_coin = RandCoin::new(&public_coin_seed);
             let channel = VerifierChannel::new(&air, proof)?;
-            perform_verification::<AIR, QuadExtension<AIR::BaseField>, HashFn>(air, channel, public_coin)
+            perform_verification::<AIR, QuadExtension<AIR::BaseField>, HashFn, RandCoin>(air, channel, public_coin)
         },
         FieldExtension::Cubic => {
             if !<CubeExtension<AIR::BaseField>>::is_supported() {
                 return Err(VerifierError::UnsupportedFieldExtension(3));
             }
-            let public_coin = RandomCoin::new(&public_coin_seed);
+            let public_coin = RandCoin::new(&public_coin_seed);
             let channel = VerifierChannel::new(&air, proof)?;
-            perform_verification::<AIR, CubeExtension<AIR::BaseField>, HashFn>(air, channel, public_coin)
+            perform_verification::<AIR, CubeExtension<AIR::BaseField>, HashFn, RandCoin>(air, channel, public_coin)
         },
     }
 }
@@ -128,15 +129,16 @@ pub fn verify<AIR: Air, HashFn: ElementHasher<BaseField = AIR::BaseField>>(
 // ================================================================================================
 /// Performs the actual verification by reading the data from the `channel` and making sure it
 /// attests to a correct execution of the computation specified by the provided `air`.
-fn perform_verification<A, E, H>(
+fn perform_verification<A, E, H, R>(
     air: A,
     mut channel: VerifierChannel<E, H>,
-    mut public_coin: RandomCoin<A::BaseField, H>,
+    mut public_coin: R,
 ) -> Result<(), VerifierError>
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseField>,
     H: ElementHasher<BaseField = A::BaseField>,
+    R: RandomCoin<BaseField = A::BaseField, Hasher = H>,
 {
     // 1 ----- trace commitment -------------------------------------------------------------------
     // Read the commitments to evaluations of the trace polynomials over the LDE domain sent by the
@@ -237,7 +239,7 @@ where
     // and the prover uses them to compute the DEEP composition polynomial. the prover, then
     // applies FRI protocol to the evaluations of the DEEP composition polynomial.
     let deep_coefficients = air
-        .get_deep_composition_coefficients::<E, H>(&mut public_coin)
+        .get_deep_composition_coefficients::<E, H, R>(&mut public_coin)
         .map_err(|_| VerifierError::RandomCoinError)?;
 
     // instantiates a FRI verifier with the FRI layer commitments read from the channel. From the
