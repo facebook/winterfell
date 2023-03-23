@@ -99,7 +99,7 @@ impl ExampleOptions {
                 self.grinding_factor,
                 field_extension,
                 self.folding_factor,
-                32,
+                31,
             ),
             hash_fn,
         )

@@ -18,7 +18,7 @@ pub fn build_layers(c: &mut Criterion) {
     fri_group.sample_size(10);
     fri_group.measurement_time(Duration::from_secs(10));
 
-    let options = FriOptions::new(BLOWUP_FACTOR, 4, 256);
+    let options = FriOptions::new(BLOWUP_FACTOR, 4, 255);
 
     for &domain_size in &BATCH_SIZES {
         let evaluations = build_evaluations(domain_size);

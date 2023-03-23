@@ -22,12 +22,12 @@ fn fri_folding_2() {
     let trace_length_e = 12;
     let lde_blowup_e = 3;
     let folding_factor_e = 1;
-    let max_remainder_size_e = 3;
+    let max_remainder_degree = 7;
     fri_prove_verify(
         trace_length_e,
         lde_blowup_e,
         folding_factor_e,
-        max_remainder_size_e,
+        max_remainder_degree,
     )
 }
 
@@ -36,12 +36,12 @@ fn fri_folding_4() {
     let trace_length_e = 12;
     let lde_blowup_e = 3;
     let folding_factor_e = 2;
-    let max_remainder_size_e = 8;
+    let max_remainder_degree = 255;
     fri_prove_verify(
         trace_length_e,
         lde_blowup_e,
         folding_factor_e,
-        max_remainder_size_e,
+        max_remainder_degree,
     )
 }
 
@@ -105,14 +105,13 @@ fn fri_prove_verify(
     trace_length_e: usize,
     lde_blowup_e: usize,
     folding_factor_e: usize,
-    max_remainder_size_e: usize,
+    max_remainder_degree: usize,
 ) {
     let trace_length = 1 << trace_length_e;
     let lde_blowup = 1 << lde_blowup_e;
     let folding_factor = 1 << folding_factor_e;
-    let max_remainder_size = 1 << max_remainder_size_e;
 
-    let options = FriOptions::new(lde_blowup, folding_factor, max_remainder_size);
+    let options = FriOptions::new(lde_blowup, folding_factor, max_remainder_degree);
     let mut channel = build_prover_channel(trace_length, &options);
     let evaluations = build_evaluations(trace_length, lde_blowup);
 

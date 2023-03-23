@@ -7,6 +7,22 @@ use fri::FriOptions;
 use math::StarkField;
 use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
+// CONSTANTS
+// ================================================================================================
+
+// most of these constants are set so that values fit into a u8 integer.
+
+const MAX_NUM_QUERIES: usize = 255;
+
+const MIN_BLOWUP_FACTOR: usize = 2;
+const MAX_BLOWUP_FACTOR: usize = 128;
+
+const MAX_GRINDING_FACTOR: u32 = 32;
+
+const FRI_MIN_FOLDING_FACTOR: usize = 2;
+const FRI_MAX_FOLDING_FACTOR: usize = 16;
+const FRI_MAX_REMAINDER_DEGREE: usize = 255;
+
 // TYPES AND INTERFACES
 // ================================================================================================
 
@@ -49,7 +65,7 @@ pub enum FieldExtension {
 ///    security level. Thus, it is frequently possible to increase blowup factor and at the same
 ///    time decrease the number of queries in such a way that the proofs become smaller.
 /// 4. Grinding factor - higher values increase proof soundness, but also may increase proof
-///    generation time. More precisely, proof soundness is bounded by
+///    generation time. More precisely, conjectured proof soundness is bounded by
 ///    `num_queries * log2(blowup_factor) + grinding_factor`.
 ///
 /// Another important parameter in defining STARK security level, which is not a part of [ProofOptions]
@@ -63,7 +79,7 @@ pub struct ProofOptions {
     grinding_factor: u8,
     field_extension: FieldExtension,
     fri_folding_factor: u8,
-    fri_remainder_max_degree_plus_1: u8, // stored as power of 2
+    fri_remainder_max_degree: u8,
 }
 
 // PROOF OPTIONS IMPLEMENTATION
@@ -77,7 +93,7 @@ impl ProofOptions {
     /// The smallest allowed blowup factor for a given computation is derived from degrees of
     /// constraints defined for that computation and may be greater than 2. But no computation may
     /// have a blowup factor smaller than 2.
-    pub const MIN_BLOWUP_FACTOR: usize = 2;
+    pub const MIN_BLOWUP_FACTOR: usize = MIN_BLOWUP_FACTOR;
 
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
@@ -85,11 +101,11 @@ impl ProofOptions {
     ///
     /// # Panics
     /// Panics if:
-    /// * `num_queries` is zero or greater than 128.
-    /// * `blowup_factor` is smaller than 4, greater than 256, or is not a power of two.
-    /// * `grinding_factor` is greater than 32.
-    /// * `fri_folding_factor` is not 4, 8, or 16.
-    /// * `fri_remainder_max_degree_plus_1` is 0, greater than 32.
+    /// - `num_queries` is zero or greater than 255.
+    /// - `blowup_factor` is smaller than 2, greater than 128, or is not a power of two.
+    /// - `grinding_factor` is greater than 32.
+    /// - `fri_folding_factor` is not 2, 4, 8, or 16.
+    /// - `fri_remainder_max_degree` is greater than 255 or is not a power of two minus 1.
     #[rustfmt::skip]
     pub fn new(
         num_queries: usize,
@@ -97,26 +113,30 @@ impl ProofOptions {
         grinding_factor: u32,
         field_extension: FieldExtension,
         fri_folding_factor: usize,
-        fri_remainder_max_size_plus_1: usize,
+        fri_remainder_max_degree: usize,
     ) -> ProofOptions {
         // TODO: return errors instead of panicking
         assert!(num_queries > 0, "number of queries must be greater than 0");
-        assert!(num_queries <= 128, "number of queries cannot be greater than 128");
+        assert!(num_queries <= MAX_NUM_QUERIES, "number of queries cannot be greater than {MAX_NUM_QUERIES}");
 
         assert!(blowup_factor.is_power_of_two(), "blowup factor must be a power of 2");
-        assert!(blowup_factor >= Self::MIN_BLOWUP_FACTOR,
-            "blowup factor cannot be smaller than {}", Self::MIN_BLOWUP_FACTOR);
-        assert!(blowup_factor <= 128, "blowup factor cannot be greater than 128");
+        assert!(blowup_factor >= MIN_BLOWUP_FACTOR, "blowup factor cannot be smaller than {MIN_BLOWUP_FACTOR}");
+        assert!(blowup_factor <= MAX_BLOWUP_FACTOR, "blowup factor cannot be greater than {MAX_BLOWUP_FACTOR}");
 
-        assert!(grinding_factor <= 32, "grinding factor cannot be greater than 32");
+        assert!(grinding_factor <= MAX_GRINDING_FACTOR, "grinding factor cannot be greater than {MAX_GRINDING_FACTOR}");
 
         assert!(fri_folding_factor.is_power_of_two(), "FRI folding factor must be a power of 2");
-        assert!(fri_folding_factor >= 4, "FRI folding factor cannot be smaller than 4");
-        assert!(fri_folding_factor <= 16, "FRI folding factor cannot be greater than 16");
+        assert!(fri_folding_factor >= FRI_MIN_FOLDING_FACTOR, "FRI folding factor cannot be smaller than {FRI_MIN_FOLDING_FACTOR}");
+        assert!(fri_folding_factor <= FRI_MAX_FOLDING_FACTOR, "FRI folding factor cannot be greater than {FRI_MAX_FOLDING_FACTOR}");
 
-        assert!(fri_remainder_max_size_plus_1.is_power_of_two(), "FRI polynomial remainder degree plus 1 must be a power of 2");
-        assert!(fri_remainder_max_size_plus_1 >= 1, "FRI polynomial remainder degree plus 1 cannot be 0");
-        assert!(fri_remainder_max_size_plus_1 <= 32, "FRI polynomial remainder degree plus 1 cannot be greater than 32");
+        assert!(
+            (fri_remainder_max_degree + 1).is_power_of_two(),
+            "FRI polynomial remainder degree must be one less than a power of two"
+        );
+        assert!(
+            fri_remainder_max_degree <= FRI_MAX_REMAINDER_DEGREE,
+            "FRI polynomial remainder degree cannot be greater than {FRI_MAX_REMAINDER_DEGREE}"
+        );
 
         ProofOptions {
             num_queries: num_queries as u8,
@@ -124,7 +144,7 @@ impl ProofOptions {
             grinding_factor: grinding_factor as u8,
             field_extension,
             fri_folding_factor: fri_folding_factor as u8,
-            fri_remainder_max_degree_plus_1: fri_remainder_max_size_plus_1.trailing_zeros() as u8,
+            fri_remainder_max_degree: fri_remainder_max_degree as u8,
         }
     }
 
@@ -152,7 +172,7 @@ impl ProofOptions {
 
     /// Returns query seed grinding factor for a STARK proof.
     ///
-    /// Grinding applies Proof-of-Work/ to the query position seed. An honest prover needs to
+    /// Grinding applies Proof-of-Work to the query position seed. An honest prover needs to
     /// perform this work only once, while a dishonest prover will need to perform it every time
     /// they try to change a commitment. Thus, higher grinding factor makes it more difficult to
     /// forge a STARK proof. However, setting grinding factor too high (e.g. higher than 20) will
@@ -181,12 +201,8 @@ impl ProofOptions {
     /// Returns options for FRI protocol instantiated with parameters from this proof options.
     pub fn to_fri_options(&self) -> FriOptions {
         let folding_factor = self.fri_folding_factor as usize;
-        let remainder_max_degree_plus_1 = 2usize.pow(self.fri_remainder_max_degree_plus_1 as u32);
-        FriOptions::new(
-            self.blowup_factor(),
-            folding_factor,
-            remainder_max_degree_plus_1,
-        )
+        let remainder_max_degree = self.fri_remainder_max_degree as usize;
+        FriOptions::new(self.blowup_factor(), folding_factor, remainder_max_degree)
     }
 }
 
@@ -198,7 +214,7 @@ impl Serializable for ProofOptions {
         target.write_u8(self.grinding_factor);
         target.write(self.field_extension);
         target.write_u8(self.fri_folding_factor);
-        target.write_u8(self.fri_remainder_max_degree_plus_1);
+        target.write_u8(self.fri_remainder_max_degree);
     }
 }
 
