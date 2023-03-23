@@ -33,7 +33,6 @@ pub fn build_layers(c: &mut Criterion) {
                     |evaluations| {
                         let mut channel = DefaultProverChannel::<
                             BaseElement,
-                            BaseElement,
                             Blake3_256<BaseElement>,
                             DefaultRandomCoin<Blake3_256<BaseElement>>,
                         >::new(domain_size, 32);
