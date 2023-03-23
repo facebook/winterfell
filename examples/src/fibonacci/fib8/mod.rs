@@ -9,7 +9,7 @@ use core::marker::PhantomData;
 use log::debug;
 use std::time::Instant;
 use winterfell::{
-    crypto::ElementHasher,
+    crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, log2, FieldElement},
     ProofOptions, Prover, StarkProof, Trace, TraceTable, VerifierError,
 };
@@ -120,10 +120,13 @@ where
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {
-        winterfell::verify::<Fib8Air, H>(proof, self.result)
+        winterfell::verify::<Fib8Air, H, DefaultRandomCoin<BaseElement, H>>(proof, self.result)
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
-        winterfell::verify::<Fib8Air, H>(proof, self.result + BaseElement::ONE)
+        winterfell::verify::<Fib8Air, H, DefaultRandomCoin<BaseElement, H>>(
+            proof,
+            self.result + BaseElement::ONE,
+        )
     }
 }

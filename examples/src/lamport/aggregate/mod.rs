@@ -11,7 +11,7 @@ use core::marker::PhantomData;
 use log::debug;
 use std::time::Instant;
 use winterfell::{
-    crypto::ElementHasher,
+    crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, get_power_series, log2, FieldElement, StarkField},
     ProofOptions, Prover, StarkProof, Trace, TraceTable, VerifierError,
 };
@@ -159,7 +159,9 @@ where
             pub_keys: self.pub_keys.clone(),
             messages: self.messages.clone(),
         };
-        winterfell::verify::<LamportAggregateAir, H>(proof, pub_inputs)
+        winterfell::verify::<LamportAggregateAir, H, DefaultRandomCoin<BaseElement, H>>(
+            proof, pub_inputs,
+        )
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
@@ -169,6 +171,8 @@ where
             pub_keys,
             messages: self.messages.clone(),
         };
-        winterfell::verify::<LamportAggregateAir, H>(proof, pub_inputs)
+        winterfell::verify::<LamportAggregateAir, H, DefaultRandomCoin<BaseElement, H>>(
+            proof, pub_inputs,
+        )
     }
 }

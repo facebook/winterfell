@@ -4,8 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    BaseElement, ElementHasher, FieldElement, PhantomData, ProofOptions, Prover, Trace, TraceTable,
-    VdfAir, VdfInputs, FORTY_TWO, INV_ALPHA,
+    BaseElement, DefaultRandomCoin, ElementHasher, FieldElement, PhantomData, ProofOptions, Prover,
+    Trace, TraceTable, VdfAir, VdfInputs, FORTY_TWO, INV_ALPHA,
 };
 
 // VDF PROVER
@@ -49,6 +49,7 @@ where
     type Air = VdfAir;
     type Trace = TraceTable<BaseElement>;
     type HashFn = H;
+    type RandomCoin = DefaultRandomCoin<Self::BaseField, Self::HashFn>;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> VdfInputs {
         // the result is read from the second to last step because the last last step contains
