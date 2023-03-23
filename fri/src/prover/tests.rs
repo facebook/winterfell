@@ -51,7 +51,8 @@ fn fri_folding_4() {
 pub fn build_prover_channel(
     trace_length: usize,
     options: &FriOptions,
-) -> DefaultProverChannel<BaseElement, BaseElement, Blake3> {
+) -> DefaultProverChannel<BaseElement, BaseElement, Blake3, DefaultRandomCoin<BaseElement, Blake3>>
+{
     DefaultProverChannel::new(trace_length * options.blowup_factor(), 32)
 }
 

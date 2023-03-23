@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
-use crypto::hashers::Blake3_256;
+use crypto::{hashers::Blake3_256, DefaultRandomCoin};
 use math::{fft, fields::f128::BaseElement, FieldElement};
 use rand_utils::rand_vector;
 use std::time::Duration;
@@ -35,6 +35,7 @@ pub fn build_layers(c: &mut Criterion) {
                             BaseElement,
                             BaseElement,
                             Blake3_256<BaseElement>,
+                            DefaultRandomCoin<BaseElement, Blake3_256<BaseElement>>,
                         >::new(domain_size, 32);
                         prover.build_layers(&mut channel, evaluations);
                         prover.reset();

@@ -4,9 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    apply_rescue_round_parallel, rescue::STATE_WIDTH, BaseElement, ElementHasher, FieldElement,
-    PhantomData, ProofOptions, Prover, PublicInputs, RapTraceTable, RescueRapsAir, Trace,
-    CYCLE_LENGTH, NUM_HASH_ROUNDS,
+    apply_rescue_round_parallel, rescue::STATE_WIDTH, BaseElement, DefaultRandomCoin,
+    ElementHasher, FieldElement, PhantomData, ProofOptions, Prover, PublicInputs, RapTraceTable,
+    RescueRapsAir, Trace, CYCLE_LENGTH, NUM_HASH_ROUNDS,
 };
 
 // RESCUE PROVER
@@ -97,6 +97,7 @@ where
     type Air = RescueRapsAir;
     type Trace = RapTraceTable<BaseElement>;
     type HashFn = H;
+    type RandomCoin = DefaultRandomCoin<Self::BaseField, Self::HashFn>;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
         let last_step = trace.length() - 1;
