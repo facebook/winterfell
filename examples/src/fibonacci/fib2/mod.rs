@@ -121,13 +121,10 @@ where
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {
-        winterfell::verify::<FibAir, H, DefaultRandomCoin<BaseElement, H>>(proof, self.result)
+        winterfell::verify::<FibAir, H, DefaultRandomCoin<H>>(proof, self.result)
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
-        winterfell::verify::<FibAir, H, DefaultRandomCoin<BaseElement, H>>(
-            proof,
-            self.result + BaseElement::ONE,
-        )
+        winterfell::verify::<FibAir, H, DefaultRandomCoin<H>>(proof, self.result + BaseElement::ONE)
     }
 }

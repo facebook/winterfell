@@ -51,8 +51,7 @@ fn fri_folding_4() {
 pub fn build_prover_channel(
     trace_length: usize,
     options: &FriOptions,
-) -> DefaultProverChannel<BaseElement, BaseElement, Blake3, DefaultRandomCoin<BaseElement, Blake3>>
-{
+) -> DefaultProverChannel<BaseElement, BaseElement, Blake3, DefaultRandomCoin<Blake3>> {
     DefaultProverChannel::new(trace_length * options.blowup_factor(), 32)
 }
 
@@ -93,7 +92,7 @@ pub fn verify_proof(
         options.folding_factor(),
     )
     .unwrap();
-    let mut coin = DefaultRandomCoin::<BaseElement, Blake3>::new(&[]);
+    let mut coin = DefaultRandomCoin::<Blake3>::new(&[]);
     let verifier = FriVerifier::new(&mut channel, &mut coin, options.clone(), max_degree)?;
     let queried_evaluations = positions
         .iter()

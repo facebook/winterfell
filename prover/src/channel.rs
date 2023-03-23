@@ -24,7 +24,7 @@ where
     A: Air,
     E: FieldElement<BaseField = A::BaseField>,
     H: ElementHasher<BaseField = A::BaseField>,
-    R: RandomCoin<BaseField = A::BaseField, Hasher = H>,
+    R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
 {
     air: &'a A,
     public_coin: R,

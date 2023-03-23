@@ -157,9 +157,7 @@ where
             num_signatures: self.signatures.len(),
             message: self.message,
         };
-        winterfell::verify::<LamportThresholdAir, H, DefaultRandomCoin<BaseElement, H>>(
-            proof, pub_inputs,
-        )
+        winterfell::verify::<LamportThresholdAir, H, DefaultRandomCoin<H>>(proof, pub_inputs)
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
@@ -169,9 +167,7 @@ where
             num_signatures: self.signatures.len() + 1,
             message: self.message,
         };
-        winterfell::verify::<LamportThresholdAir, H, DefaultRandomCoin<BaseElement, H>>(
-            proof, pub_inputs,
-        )
+        winterfell::verify::<LamportThresholdAir, H, DefaultRandomCoin<H>>(proof, pub_inputs)
     }
 }
 

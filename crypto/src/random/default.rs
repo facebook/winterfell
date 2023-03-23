@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{errors::RandomCoinError, Digest, ElementHasher, RandomCoin};
-use core::{convert::TryInto, marker::PhantomData};
+use core::convert::TryInto;
 use math::{FieldElement, StarkField};
 use utils::collections::Vec;
 
@@ -35,7 +35,7 @@ use utils::collections::Vec;
 /// let seed = &[BaseElement::new(1), BaseElement::new(2), BaseElement::new(3), BaseElement::new(4)];
 ///
 /// // instantiate a random coin using BLAKE3 as the hash function
-/// let mut coin = DefaultRandomCoin::<BaseElement, Blake3_256<BaseElement>>::new(seed);
+/// let mut coin = DefaultRandomCoin::<Blake3_256<BaseElement>>::new(seed);
 ///
 /// // should draw different elements each time
 /// let e1 = coin.draw::<BaseElement>().unwrap();;
@@ -47,27 +47,26 @@ use utils::collections::Vec;
 /// assert_ne!(e2, e3);
 ///
 /// // should draw same elements for the same seed
-/// let mut coin2 = DefaultRandomCoin::<BaseElement, Blake3_256<BaseElement>>::new(seed);
-/// let mut coin1 = DefaultRandomCoin::<BaseElement, Blake3_256<BaseElement>>::new(seed);
+/// let mut coin2 = DefaultRandomCoin::<Blake3_256<BaseElement>>::new(seed);
+/// let mut coin1 = DefaultRandomCoin::<Blake3_256<BaseElement>>::new(seed);
 /// let e1 = coin1.draw::<BaseElement>().unwrap();;
 /// let e2 = coin2.draw::<BaseElement>().unwrap();;
 /// assert_eq!(e1, e2);
 ///
 /// // should draw different elements based on seed
-/// let mut coin1 = DefaultRandomCoin::<BaseElement, Blake3_256<BaseElement>>::new(seed);
+/// let mut coin1 = DefaultRandomCoin::<Blake3_256<BaseElement>>::new(seed);
 /// let seed = &[BaseElement::new(2), BaseElement::new(3), BaseElement::new(4), BaseElement::new(5)];
-/// let mut coin2 = DefaultRandomCoin::<BaseElement, Blake3_256<BaseElement>>::new(seed);
+/// let mut coin2 = DefaultRandomCoin::<Blake3_256<BaseElement>>::new(seed);
 /// let e1 = coin1.draw::<BaseElement>().unwrap();;
 /// let e2 = coin2.draw::<BaseElement>().unwrap();;
 /// assert_ne!(e1, e2);
 /// ```
-pub struct DefaultRandomCoin<B, H: ElementHasher> {
+pub struct DefaultRandomCoin<H: ElementHasher> {
     seed: H::Digest,
     counter: u64,
-    _base_field: PhantomData<B>,
 }
 
-impl<B: StarkField, H: ElementHasher> DefaultRandomCoin<B, H> {
+impl<H: ElementHasher> DefaultRandomCoin<H> {
     /// Updates the state by incrementing the counter and returns hash(seed || counter)
     fn next(&mut self) -> H::Digest {
         self.counter += 1;
@@ -75,7 +74,7 @@ impl<B: StarkField, H: ElementHasher> DefaultRandomCoin<B, H> {
     }
 }
 
-impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRandomCoin<B, H> {
+impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRandomCoin<H> {
     type BaseField = B;
     type Hasher = H;
 
@@ -84,11 +83,7 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRando
     /// Returns a new random coin instantiated with the provided `seed`.
     fn new(seed: &[Self::BaseField]) -> Self {
         let seed = H::hash_elements(seed);
-        Self {
-            seed,
-            counter: 0,
-            _base_field: PhantomData,
-        }
+        Self { seed, counter: 0 }
     }
 
     // RESEEDING
@@ -103,8 +98,8 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRando
     /// // initial elements for seeding the random coin
     /// let seed = &[BaseElement::new(1), BaseElement::new(2), BaseElement::new(3), BaseElement::new(4)];
     ///
-    /// let mut coin1 = DefaultRandomCoin::<BaseElement, Blake3_256<BaseElement>>::new(seed);
-    /// let mut coin2 = DefaultRandomCoin::<BaseElement, Blake3_256<BaseElement>>::new(seed);
+    /// let mut coin1 = DefaultRandomCoin::<Blake3_256<BaseElement>>::new(seed);
+    /// let mut coin2 = DefaultRandomCoin::<Blake3_256<BaseElement>>::new(seed);
     ///
     /// // should draw the same element form both coins
     /// let e1 = coin1.draw::<BaseElement>().unwrap();
@@ -132,8 +127,8 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRando
     /// // initial elements for seeding the random coin
     /// let seed = &[BaseElement::new(1), BaseElement::new(2), BaseElement::new(3), BaseElement::new(4)];
     ///
-    /// let mut coin1 = DefaultRandomCoin::<BaseElement, Blake3_256<BaseElement>>::new(seed);
-    /// let mut coin2 = DefaultRandomCoin::<BaseElement, Blake3_256<BaseElement>>::new(seed);
+    /// let mut coin1 = DefaultRandomCoin::<Blake3_256<BaseElement>>::new(seed);
+    /// let mut coin2 = DefaultRandomCoin::<Blake3_256<BaseElement>>::new(seed);
     ///
     /// // should draw the same element form both coins
     /// let e1 = coin1.draw::<BaseElement>().unwrap();;
@@ -164,7 +159,7 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRando
     /// // initial elements for seeding the random coin
     /// let seed = &[BaseElement::new(1), BaseElement::new(2), BaseElement::new(3), BaseElement::new(4)];
     ///
-    /// let mut coin = DefaultRandomCoin::<BaseElement, Blake3_256<BaseElement>>::new(seed);
+    /// let mut coin = DefaultRandomCoin::<Blake3_256<BaseElement>>::new(seed);
     ///
     /// let mut value = 0;
     /// while coin.check_leading_zeros(value) < 2 {
@@ -197,7 +192,7 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRando
     /// # Errors
     /// Returns an error if a valid field element could not be generated after 1000 calls to the
     /// PRNG.
-    fn draw<E: FieldElement<BaseField = Self::BaseField>>(&mut self) -> Result<E, RandomCoinError> {
+    fn draw<E: FieldElement>(&mut self) -> Result<E, RandomCoinError> {
         for _ in 0..1000 {
             // get the next pseudo-random value and take the first ELEMENT_BYTES from it
             let value = self.next();
@@ -232,7 +227,7 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRando
     /// // initial elements for seeding the random coin
     /// let seed = &[BaseElement::new(1), BaseElement::new(2), BaseElement::new(3), BaseElement::new(4)];
     ///
-    /// let mut coin = DefaultRandomCoin::<BaseElement, Blake3_256<BaseElement>>::new(seed);
+    /// let mut coin = DefaultRandomCoin::<Blake3_256<BaseElement>>::new(seed);
     ///
     /// let num_values = 20;
     /// let domain_size = 64;

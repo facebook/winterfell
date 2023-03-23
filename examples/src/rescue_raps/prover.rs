@@ -97,7 +97,7 @@ where
     type Air = RescueRapsAir;
     type Trace = RapTraceTable<BaseElement>;
     type HashFn = H;
-    type RandomCoin = DefaultRandomCoin<Self::BaseField, Self::HashFn>;
+    type RandomCoin = DefaultRandomCoin<Self::HashFn>;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
         let last_step = trace.length() - 1;

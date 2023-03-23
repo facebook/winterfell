@@ -58,8 +58,8 @@ pub struct DefaultProverChannel<B, E, H, R>
 where
     B: StarkField,
     E: FieldElement<BaseField = B>,
-    H: ElementHasher,
-    R: RandomCoin<BaseField = B, Hasher = H>,
+    H: ElementHasher<BaseField = B>,
+    R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
 {
     public_coin: R,
     commitments: Vec<H::Digest>,
@@ -72,8 +72,8 @@ impl<B, E, H, R> DefaultProverChannel<B, E, H, R>
 where
     B: StarkField,
     E: FieldElement<BaseField = B>,
-    H: ElementHasher,
-    R: RandomCoin<BaseField = B, Hasher = H>,
+    H: ElementHasher<BaseField = B>,
+    R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
 {
     /// Returns a new prover channel instantiated from the specified parameters.
     ///
@@ -129,7 +129,7 @@ impl<B, E, H, R> ProverChannel<E> for DefaultProverChannel<B, E, H, R>
 where
     B: StarkField,
     E: FieldElement<BaseField = B>,
-    H: ElementHasher,
+    H: ElementHasher<BaseField = B>,
     R: RandomCoin<BaseField = B, Hasher = H>,
 {
     type Hasher = H;

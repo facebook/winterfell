@@ -300,7 +300,7 @@ pub fn build_context<B: StarkField>(
     AirContext::new(trace_info, t_degrees, num_assertions, options)
 }
 
-pub fn build_prng() -> DefaultRandomCoin<BaseElement, Blake3_256<BaseElement>> {
+pub fn build_prng() -> DefaultRandomCoin<Blake3_256<BaseElement>> {
     RandomCoin::new(&[BaseElement::ZERO; 32])
 }
 
