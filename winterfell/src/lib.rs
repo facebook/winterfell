@@ -339,7 +339,7 @@
 //!     type Air = WorkAir;
 //!     type Trace = TraceTable<Self::BaseField>;
 //!     type HashFn = Blake3_256<Self::BaseField>;
-//!     type RandomCoin = DefaultRandomCoin<Self::BaseField, Self::HashFn>;
+//!     type RandomCoin = DefaultRandomCoin<Self::HashFn>;
 //!
 //!     // Our public inputs consist of the first and last value in the execution trace.
 //!     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
@@ -456,7 +456,7 @@
 //! #    type Air = WorkAir;
 //! #    type Trace = TraceTable<Self::BaseField>;
 //! #    type HashFn = Blake3_256<Self::BaseField>;
-//! #    type RandomCoin = DefaultRandomCoin<Self::BaseField, Self::HashFn>;
+//! #    type RandomCoin = DefaultRandomCoin<Self::HashFn>;
 //! #
 //! #    fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
 //! #        let last_step = trace.length() - 1;
@@ -499,7 +499,7 @@
 //! let pub_inputs = PublicInputs { start, result };
 //! assert!(winterfell::verify::<WorkAir,
 //!                              Blake3_256<BaseElement>,
-//!                              DefaultRandomCoin<BaseElement, Blake3_256<BaseElement>>
+//!                              DefaultRandomCoin<Blake3_256<BaseElement>>
 //!                             >(proof, pub_inputs).is_ok());
 //! ```
 //!

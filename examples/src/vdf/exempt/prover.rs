@@ -49,7 +49,7 @@ where
     type Air = VdfAir;
     type Trace = TraceTable<BaseElement>;
     type HashFn = H;
-    type RandomCoin = DefaultRandomCoin<Self::BaseField, Self::HashFn>;
+    type RandomCoin = DefaultRandomCoin<Self::HashFn>;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> VdfInputs {
         // the result is read from the second to last step because the last last step contains

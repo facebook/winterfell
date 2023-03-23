@@ -131,7 +131,7 @@ where
             seed: self.seed,
             result: self.result,
         };
-        winterfell::verify::<RescueAir, H, DefaultRandomCoin<BaseElement, H>>(proof, pub_inputs)
+        winterfell::verify::<RescueAir, H, DefaultRandomCoin<H>>(proof, pub_inputs)
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
@@ -139,7 +139,7 @@ where
             seed: self.seed,
             result: [self.result[0], self.result[1] + BaseElement::ONE],
         };
-        winterfell::verify::<RescueAir, H, DefaultRandomCoin<BaseElement, H>>(proof, pub_inputs)
+        winterfell::verify::<RescueAir, H, DefaultRandomCoin<H>>(proof, pub_inputs)
     }
 }
 

@@ -22,7 +22,7 @@ pub use default::DefaultRandomCoin;
 /// to draw elements from the field.
 pub trait RandomCoin {
     type BaseField: StarkField;
-    type Hasher: Hasher + ElementHasher;
+    type Hasher: ElementHasher;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------

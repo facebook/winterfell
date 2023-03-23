@@ -35,7 +35,7 @@ pub fn build_layers(c: &mut Criterion) {
                             BaseElement,
                             BaseElement,
                             Blake3_256<BaseElement>,
-                            DefaultRandomCoin<BaseElement, Blake3_256<BaseElement>>,
+                            DefaultRandomCoin<Blake3_256<BaseElement>>,
                         >::new(domain_size, 32);
                         prover.build_layers(&mut channel, evaluations);
                         prover.reset();

@@ -61,7 +61,7 @@ where
     E: FieldElement<BaseField = B>,
     C: VerifierChannel<E, Hasher = H>,
     H: ElementHasher<BaseField = B>,
-    R: RandomCoin<BaseField = B, Hasher = H>,
+    R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
 {
     max_poly_degree: usize,
     domain_size: usize,

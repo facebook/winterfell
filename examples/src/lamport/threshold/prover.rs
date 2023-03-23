@@ -137,7 +137,7 @@ where
     type Air = LamportThresholdAir;
     type Trace = TraceTable<BaseElement>;
     type HashFn = H;
-    type RandomCoin = DefaultRandomCoin<Self::BaseField, Self::HashFn>;
+    type RandomCoin = DefaultRandomCoin<Self::HashFn>;
 
     fn get_pub_inputs(&self, _trace: &Self::Trace) -> PublicInputs {
         self.pub_inputs.clone()

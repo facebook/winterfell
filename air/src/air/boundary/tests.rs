@@ -275,7 +275,7 @@ fn build_constraint_params(
 ) -> (
     BaseElement,
     BTreeMap<usize, Vec<BaseElement>>,
-    DefaultRandomCoin<BaseElement, Blake3_256<BaseElement>>,
+    DefaultRandomCoin<Blake3_256<BaseElement>>,
 ) {
     let inv_g = BaseElement::get_root_of_unity(log2(trace_length)).inv();
     let prng = build_prng();
