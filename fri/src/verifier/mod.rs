@@ -55,29 +55,30 @@ pub use channel::{DefaultVerifierChannel, VerifierChannel};
 /// * The degree of the polynomial implied by evaluations at the last FRI layer (the remainder)
 ///   is smaller than the degree resulting from reducing degree *d* by `folding_factor` at each
 ///   FRI layer.
-pub struct FriVerifier<B, E, C, H>
+pub struct FriVerifier<E, C, H, R>
 where
-    B: StarkField,
-    E: FieldElement<BaseField = B>,
+    E: FieldElement,
     C: VerifierChannel<E, Hasher = H>,
-    H: ElementHasher<BaseField = B>,
+    H: ElementHasher<BaseField = E::BaseField>,
+    R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
 {
     max_poly_degree: usize,
     domain_size: usize,
-    domain_generator: B,
+    domain_generator: E::BaseField,
     layer_commitments: Vec<H::Digest>,
     layer_alphas: Vec<E>,
     options: FriOptions,
     num_partitions: usize,
     _channel: PhantomData<C>,
+    _public_coin: PhantomData<R>,
 }
 
-impl<B, E, C, H> FriVerifier<B, E, C, H>
+impl<E, C, H, R> FriVerifier<E, C, H, R>
 where
-    B: StarkField,
-    E: FieldElement<BaseField = B>,
+    E: FieldElement,
     C: VerifierChannel<E, Hasher = H>,
-    H: ElementHasher<BaseField = B>,
+    H: ElementHasher<BaseField = E::BaseField>,
+    R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
 {
     /// Returns a new instance of FRI verifier created from the specified parameters.
     ///
@@ -100,13 +101,13 @@ where
     /// * An error was encountered while drawing a random α value from the coin.
     pub fn new(
         channel: &mut C,
-        public_coin: &mut RandomCoin<B, H>,
+        public_coin: &mut R,
         options: FriOptions,
         max_poly_degree: usize,
     ) -> Result<Self, VerifierError> {
         // infer evaluation domain info
         let domain_size = max_poly_degree.next_power_of_two() * options.blowup_factor();
-        let domain_generator = B::get_root_of_unity(log2(domain_size));
+        let domain_generator = E::BaseField::get_root_of_unity(log2(domain_size));
 
         let num_partitions = channel.read_fri_num_partitions();
 
@@ -116,7 +117,7 @@ where
         let mut max_degree_plus_1 = max_poly_degree + 1;
         for (depth, commitment) in layer_commitments.iter().enumerate() {
             public_coin.reseed(*commitment);
-            let alpha = public_coin.draw().map_err(VerifierError::PublicCoinError)?;
+            let alpha = public_coin.draw().map_err(VerifierError::RandomCoinError)?;
             layer_alphas.push(alpha);
 
             // make sure the degree can be reduced by the folding factor at all layers
@@ -142,6 +143,7 @@ where
             options,
             num_partitions,
             _channel: PhantomData,
+            _public_coin: PhantomData,
         })
     }
 
@@ -313,7 +315,7 @@ where
                 max_degree_plus_1 - 1,
             ));
         }
-        let offset: B = self.options().domain_offset();
+        let offset: E::BaseField = self.options().domain_offset();
 
         for (&position, evaluation) in positions.iter().zip(evaluations) {
             let comp_eval = eval_horner::<E>(

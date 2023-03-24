@@ -16,7 +16,7 @@ use log::debug;
 use rand_utils::{rand_value, rand_vector};
 use std::time::Instant;
 use winterfell::{
-    crypto::{Digest, ElementHasher, MerkleTree},
+    crypto::{DefaultRandomCoin, Digest, ElementHasher, MerkleTree},
     math::{fields::f128::BaseElement, log2, FieldElement, StarkField},
     ProofOptions, Prover, StarkProof, Trace, TraceTable, VerifierError,
 };
@@ -142,7 +142,7 @@ where
         let pub_inputs = PublicInputs {
             tree_root: self.tree_root.to_elements(),
         };
-        winterfell::verify::<MerkleAir, H>(proof, pub_inputs)
+        winterfell::verify::<MerkleAir, H, DefaultRandomCoin<H>>(proof, pub_inputs)
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
@@ -150,7 +150,7 @@ where
         let pub_inputs = PublicInputs {
             tree_root: [tree_root[1], tree_root[0]],
         };
-        winterfell::verify::<MerkleAir, H>(proof, pub_inputs)
+        winterfell::verify::<MerkleAir, H, DefaultRandomCoin<H>>(proof, pub_inputs)
     }
 }
 

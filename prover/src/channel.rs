@@ -8,7 +8,7 @@ use air::{
     Air, ConstraintCompositionCoefficients, DeepCompositionCoefficients,
 };
 use core::marker::PhantomData;
-use crypto::{Digest, ElementHasher, RandomCoin};
+use crypto::{ElementHasher, RandomCoin};
 use fri::{self, FriProof};
 use math::{FieldElement, ToElements};
 use utils::collections::Vec;
@@ -19,14 +19,15 @@ use utils::iterators::*;
 // TYPES AND INTERFACES
 // ================================================================================================
 
-pub struct ProverChannel<'a, A, E, H>
+pub struct ProverChannel<'a, A, E, H, R>
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseField>,
     H: ElementHasher<BaseField = A::BaseField>,
+    R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
 {
     air: &'a A,
-    public_coin: RandomCoin<A::BaseField, H>,
+    public_coin: R,
     context: Context,
     commitments: Commitments,
     ood_frame: OodFrame,
@@ -37,11 +38,12 @@ where
 // PROVER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-impl<'a, A, E, H> ProverChannel<'a, A, E, H>
+impl<'a, A, E, H, R> ProverChannel<'a, A, E, H, R>
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseField>,
     H: ElementHasher<BaseField = A::BaseField>,
+    R: RandomCoin<BaseField = A::BaseField, Hasher = H> + Sync,
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -55,13 +57,9 @@ where
         let mut coin_seed_elements = context.to_elements();
         coin_seed_elements.append(&mut pub_inputs_elements);
 
-        // TODO: we should be able to instantiate RandomCoin from a vector of field elements - so,
-        // this hash should not be needed
-        let coin_seed = H::hash_elements(&coin_seed_elements).as_bytes();
-
         ProverChannel {
             air,
-            public_coin: RandomCoin::new(&coin_seed),
+            public_coin: RandomCoin::new(&coin_seed_elements),
             context,
             commitments: Commitments::default(),
             ood_frame: OodFrame::default(),
@@ -195,11 +193,12 @@ where
 // FRI PROVER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-impl<'a, A, E, H> fri::ProverChannel<E> for ProverChannel<'a, A, E, H>
+impl<'a, A, E, H, R> fri::ProverChannel<E> for ProverChannel<'a, A, E, H, R>
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseField>,
     H: ElementHasher<BaseField = A::BaseField>,
+    R: RandomCoin<BaseField = A::BaseField, Hasher = H>,
 {
     type Hasher = H;
 
