@@ -1,6 +1,7 @@
 # Changelog
 
-## 0.6.0 (TBD)
+## 0.6.0 (2023-03-24)
+* Implemented more efficient remainder handling in FRI (#139)
 * Removed term involving conjugate OOD challenge z from deep composition polynomial (#166).
 * Added `FieldElement::EXTENSION_DEGREE` constant.
 * Added `FieldElement::base_element` and `FieldElement::slice_from_base_elements` methods.
@@ -8,6 +9,10 @@
 * Added `Matrix::num_base_cols` and `Matrix::get_base_element` methods.
 * [BREAKING] Renamed `Matrix` into `ColMatrix`.
 * [BREAKING] Replaced `ColMatrix` with `RowMatrix` to hold LDE trace in the prover (#168).
+* Updated conjectured security computation and added estimation of proven security (#151).
+* Changed root of unity for `f64` field (#169).
+* Implemented reduction of public inputs and proof context to field elements (#172).
+* [BREAKING] Replaced `RandomCoin` struct with a trait (#176).
 
 ## 0.5.1 (2023-02-20)
 * Fix no-std build for winter-utils (#153)
