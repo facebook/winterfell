@@ -5,11 +5,8 @@
 
 use crate::ProofOptions;
 use crypto::{Hasher, RandomCoin, RandomCoinError};
-use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField};
-use utils::{
-    collections::{BTreeMap, Vec},
-    Serializable,
-};
+use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElements};
+use utils::collections::{BTreeMap, Vec};
 
 mod trace_info;
 pub use trace_info::{TraceInfo, TraceLayout};
@@ -184,8 +181,8 @@ pub trait Air: Send + Sync {
     type BaseField: StarkField + ExtensibleField<2> + ExtensibleField<3>;
 
     /// A type defining shape of public inputs for the computation described by this protocol.
-    /// This could be any type as long as it can be serialized into a sequence of bytes.
-    type PublicInputs: Serializable;
+    /// This could be any type as long as it can be serialized into a sequence of field elements.
+    type PublicInputs: ToElements<Self::BaseField>;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------

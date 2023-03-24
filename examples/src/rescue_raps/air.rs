@@ -8,9 +8,10 @@ use super::{
     BaseElement, ExtensionOf, FieldElement, ProofOptions, CYCLE_LENGTH, TRACE_WIDTH,
 };
 use crate::utils::{are_equal, not, EvaluationResult};
+use core_utils::flatten_slice_elements;
 use winterfell::{
-    Air, AirContext, Assertion, AuxTraceRandElements, ByteWriter, EvaluationFrame, Serializable,
-    TraceInfo, TransitionConstraintDegree,
+    math::ToElements, Air, AirContext, Assertion, AuxTraceRandElements, EvaluationFrame, TraceInfo,
+    TransitionConstraintDegree,
 };
 
 // CONSTANTS
@@ -43,9 +44,9 @@ pub struct PublicInputs {
     pub result: [[BaseElement; 2]; 2],
 }
 
-impl Serializable for PublicInputs {
-    fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write(&self.result[..]);
+impl ToElements<BaseElement> for PublicInputs {
+    fn to_elements(&self) -> Vec<BaseElement> {
+        flatten_slice_elements(&self.result).to_vec()
     }
 }
 

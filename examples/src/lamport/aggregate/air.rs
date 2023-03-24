@@ -7,9 +7,10 @@ use super::{
     rescue, CYCLE_LENGTH as HASH_CYCLE_LEN, SIG_CYCLE_LENGTH as SIG_CYCLE_LEN, TRACE_WIDTH,
 };
 use crate::utils::{are_equal, is_binary, is_zero, not, EvaluationResult};
+use core_utils::flatten_slice_elements;
 use winterfell::{
-    math::{fields::f128::BaseElement, FieldElement},
-    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ProofOptions, Serializable, TraceInfo,
+    math::{fields::f128::BaseElement, FieldElement, ToElements},
+    Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
 
@@ -26,10 +27,12 @@ pub struct PublicInputs {
     pub messages: Vec<[BaseElement; 2]>,
 }
 
-impl Serializable for PublicInputs {
-    fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write(&self.pub_keys);
-        target.write(&self.messages);
+impl ToElements<BaseElement> for PublicInputs {
+    fn to_elements(&self) -> Vec<BaseElement> {
+        let mut result = Vec::new();
+        result.extend_from_slice(flatten_slice_elements(&self.pub_keys));
+        result.extend_from_slice(flatten_slice_elements(&self.messages));
+        result
     }
 }
 

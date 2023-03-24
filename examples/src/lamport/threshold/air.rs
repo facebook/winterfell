@@ -9,8 +9,8 @@ use super::{
 };
 use crate::utils::{are_equal, is_binary, is_zero, not, EvaluationResult};
 use winterfell::{
-    math::{fields::f128::BaseElement, log2, FieldElement, StarkField},
-    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ProofOptions, Serializable, TraceInfo,
+    math::{fields::f128::BaseElement, log2, FieldElement, StarkField, ToElements},
+    Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
 
@@ -29,12 +29,13 @@ pub struct PublicInputs {
     pub message: [BaseElement; 2],
 }
 
-impl Serializable for PublicInputs {
-    fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write(&self.pub_key_root[..]);
-        target.write_u32(self.num_pub_keys as u32);
-        target.write_u32(self.num_signatures as u32);
-        target.write(&self.message[..]);
+impl ToElements<BaseElement> for PublicInputs {
+    fn to_elements(&self) -> Vec<BaseElement> {
+        let mut result = self.pub_key_root.to_vec();
+        result.push(BaseElement::from(self.num_pub_keys as u64));
+        result.push(BaseElement::from(self.num_signatures as u64));
+        result.extend_from_slice(&self.message);
+        result
     }
 }
 

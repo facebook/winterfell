@@ -8,10 +8,10 @@ use air::{
     Air, ConstraintCompositionCoefficients, DeepCompositionCoefficients,
 };
 use core::marker::PhantomData;
-use crypto::{ElementHasher, RandomCoin};
+use crypto::{Digest, ElementHasher, RandomCoin};
 use fri::{self, FriProof};
-use math::FieldElement;
-use utils::{collections::Vec, Serializable};
+use math::{FieldElement, ToElements};
+use utils::collections::Vec;
 
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
@@ -46,14 +46,18 @@ where
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Creates a new prover channel for the specified `air` and public inputs.
-    pub fn new(air: &'a A, pub_inputs_bytes: Vec<u8>) -> Self {
+    pub fn new(air: &'a A, mut pub_inputs_elements: Vec<A::BaseField>) -> Self {
         let context = Context::new::<A::BaseField>(air.trace_info(), air.options().clone());
 
-        // build a seed for the public coin; the initial seed is the hash of public inputs and proof
-        // context, but as the protocol progresses, the coin will be reseeded with the info sent to
-        // the verifier
-        let mut coin_seed = pub_inputs_bytes;
-        context.write_into(&mut coin_seed);
+        // build a seed for the public coin; the initial seed is a hash of the proof context and
+        // the public inputs, but as the protocol progresses, the coin will be reseeded with the
+        // info sent to the verifier
+        let mut coin_seed_elements = context.to_elements();
+        coin_seed_elements.append(&mut pub_inputs_elements);
+
+        // TODO: we should be able to instantiate RandomCoin from a vector of field elements - so,
+        // this hash should not be needed
+        let coin_seed = H::hash_elements(&coin_seed_elements).as_bytes();
 
         ProverChannel {
             air,
