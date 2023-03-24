@@ -8,7 +8,7 @@ use super::{
     TransitionConstraintDegree,
 };
 use crate::{AuxTraceRandElements, FieldExtension};
-use crypto::{hashers::Blake3_256, RandomCoin};
+use crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin};
 use math::{fields::f128::BaseElement, get_power_series, log2, polynom, FieldElement, StarkField};
 use utils::collections::{BTreeMap, Vec};
 
@@ -300,8 +300,8 @@ pub fn build_context<B: StarkField>(
     AirContext::new(trace_info, t_degrees, num_assertions, options)
 }
 
-pub fn build_prng() -> RandomCoin<BaseElement, Blake3_256<BaseElement>> {
-    RandomCoin::new(&[0; 32])
+pub fn build_prng() -> DefaultRandomCoin<Blake3_256<BaseElement>> {
+    RandomCoin::new(&[BaseElement::ZERO; 32])
 }
 
 pub fn build_sequence_poly(values: &[BaseElement], trace_length: usize) -> Vec<BaseElement> {

@@ -4,9 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    get_power_series, rescue, AggPublicKey, BaseElement, ElementHasher, FieldElement,
-    LamportThresholdAir, PhantomData, ProofOptions, Prover, PublicInputs, Signature, StarkField,
-    TraceTable, HASH_CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH, TRACE_WIDTH,
+    get_power_series, rescue, AggPublicKey, BaseElement, DefaultRandomCoin, ElementHasher,
+    FieldElement, LamportThresholdAir, PhantomData, ProofOptions, Prover, PublicInputs, Signature,
+    StarkField, TraceTable, HASH_CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH, TRACE_WIDTH,
 };
 use std::collections::HashMap;
 
@@ -137,6 +137,7 @@ where
     type Air = LamportThresholdAir;
     type Trace = TraceTable<BaseElement>;
     type HashFn = H;
+    type RandomCoin = DefaultRandomCoin<Self::HashFn>;
 
     fn get_pub_inputs(&self, _trace: &Self::Trace) -> PublicInputs {
         self.pub_inputs.clone()

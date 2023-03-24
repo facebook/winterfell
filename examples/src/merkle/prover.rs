@@ -4,9 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    rescue, BaseElement, ElementHasher, FieldElement, MerkleAir, PhantomData, ProofOptions, Prover,
-    PublicInputs, Trace, TraceTable, HASH_CYCLE_LEN, HASH_STATE_WIDTH, NUM_HASH_ROUNDS,
-    TRACE_WIDTH,
+    rescue, BaseElement, DefaultRandomCoin, ElementHasher, FieldElement, MerkleAir, PhantomData,
+    ProofOptions, Prover, PublicInputs, Trace, TraceTable, HASH_CYCLE_LEN, HASH_STATE_WIDTH,
+    NUM_HASH_ROUNDS, TRACE_WIDTH,
 };
 
 // MERKLE PROVER
@@ -102,6 +102,7 @@ where
     type Air = MerkleAir;
     type Trace = TraceTable<BaseElement>;
     type HashFn = H;
+    type RandomCoin = DefaultRandomCoin<Self::HashFn>;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
         let last_step = trace.length() - 1;

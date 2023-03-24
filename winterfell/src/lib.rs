@@ -151,7 +151,7 @@
 //! use winterfell::{
 //!     math::{fields::f128::BaseElement, FieldElement, ToElements},
 //!     Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ProofOptions, TraceInfo,
-//!     TransitionConstraintDegree, crypto::hashers::Blake3_256,
+//!     TransitionConstraintDegree, crypto::{hashers::Blake3_256, DefaultRandomCoin},
 //! };
 //!
 //! // Public inputs for our computation will consist of the starting value and the end result.
@@ -256,7 +256,7 @@
 //! ```no_run
 //! use winterfell::{
 //!     math::{fields::f128::BaseElement, FieldElement, ToElements},
-//!     ProofOptions, Prover, Trace, TraceTable, crypto::hashers::Blake3_256
+//!     ProofOptions, Prover, Trace, TraceTable, crypto::{hashers::Blake3_256, DefaultRandomCoin}
 //! };
 //!
 //! # use winterfell::{
@@ -339,6 +339,7 @@
 //!     type Air = WorkAir;
 //!     type Trace = TraceTable<Self::BaseField>;
 //!     type HashFn = Blake3_256<Self::BaseField>;
+//!     type RandomCoin = DefaultRandomCoin<Self::HashFn>;
 //!
 //!     // Our public inputs consist of the first and last value in the execution trace.
 //!     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
@@ -367,7 +368,7 @@
 //! #    math::{fields::f128::BaseElement, FieldElement, ToElements},
 //! #    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, TraceInfo,
 //! #    TransitionConstraintDegree, TraceTable, FieldExtension, Prover, ProofOptions,
-//! #    StarkProof, Trace, crypto::hashers::Blake3_256,
+//! #    StarkProof, Trace, crypto::{hashers::Blake3_256, DefaultRandomCoin},
 //! # };
 //! #
 //! # pub fn build_do_work_trace(start: BaseElement, n: usize) -> TraceTable<BaseElement> {
@@ -455,6 +456,7 @@
 //! #    type Air = WorkAir;
 //! #    type Trace = TraceTable<Self::BaseField>;
 //! #    type HashFn = Blake3_256<Self::BaseField>;
+//! #    type RandomCoin = DefaultRandomCoin<Self::HashFn>;
 //! #
 //! #    fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
 //! #        let last_step = trace.length() - 1;
@@ -495,7 +497,10 @@
 //! // Verify the proof. The number of steps and options are encoded in the proof itself,
 //! // so we don't need to pass them explicitly to the verifier.
 //! let pub_inputs = PublicInputs { start, result };
-//! assert!(winterfell::verify::<WorkAir, Blake3_256<BaseElement>>(proof, pub_inputs).is_ok());
+//! assert!(winterfell::verify::<WorkAir,
+//!                              Blake3_256<BaseElement>,
+//!                              DefaultRandomCoin<Blake3_256<BaseElement>>
+//!                             >(proof, pub_inputs).is_ok());
 //! ```
 //!
 //! That's all there is to it!

@@ -43,7 +43,7 @@ pub use merkle::{build_merkle_nodes, BatchMerkleProof, MerkleTree};
 pub use merkle::concurrent;
 
 mod random;
-pub use random::RandomCoin;
+pub use random::{DefaultRandomCoin, RandomCoin};
 
 mod errors;
 pub use errors::{MerkleTreeError, RandomCoinError};

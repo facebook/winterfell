@@ -65,7 +65,7 @@ use math::{
 };
 
 pub use crypto;
-use crypto::{ElementHasher, MerkleTree};
+use crypto::{ElementHasher, MerkleTree, RandomCoin};
 
 #[cfg(feature = "std")]
 use log::debug;
@@ -130,6 +130,9 @@ pub trait Prover {
 
     /// Hash function to be used.
     type HashFn: ElementHasher<BaseField = Self::BaseField>;
+
+    /// PRNG to be used for generating random field elements.
+    type RandomCoin: RandomCoin<BaseField = Self::BaseField, Hasher = Self::HashFn> + Sync;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -203,8 +206,10 @@ pub trait Prover {
         // create a channel which is used to simulate interaction between the prover and the
         // verifier; the channel will be used to commit to values and to draw randomness that
         // should come from the verifier.
-        let mut channel =
-            ProverChannel::<Self::Air, E, Self::HashFn>::new(&air, pub_inputs_elements);
+        let mut channel = ProverChannel::<Self::Air, E, Self::HashFn, Self::RandomCoin>::new(
+            &air,
+            pub_inputs_elements,
+        );
 
         // 1 ----- Commit to the execution trace --------------------------------------------------
 

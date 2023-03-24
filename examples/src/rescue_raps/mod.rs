@@ -9,7 +9,7 @@ use log::debug;
 use rand_utils::rand_array;
 use std::time::Instant;
 use winterfell::{
-    crypto::ElementHasher,
+    crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, log2, ExtensionOf, FieldElement},
     ProofOptions, Prover, StarkProof, Trace, VerifierError,
 };
@@ -143,14 +143,14 @@ where
         let pub_inputs = PublicInputs {
             result: self.result,
         };
-        winterfell::verify::<RescueRapsAir, H>(proof, pub_inputs)
+        winterfell::verify::<RescueRapsAir, H, DefaultRandomCoin<H>>(proof, pub_inputs)
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
         let pub_inputs = PublicInputs {
             result: [self.result[1], self.result[0]],
         };
-        winterfell::verify::<RescueRapsAir, H>(proof, pub_inputs)
+        winterfell::verify::<RescueRapsAir, H, DefaultRandomCoin<H>>(proof, pub_inputs)
     }
 }
 
