@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::ProofOptions;
-use crypto::{ElementHasher, RandomCoin, RandomCoinError};
+use crypto::{RandomCoin, RandomCoinError};
 use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElements};
 use utils::collections::{BTreeMap, Vec};
 
@@ -477,15 +477,14 @@ pub trait Air: Send + Sync {
     /// with the specified index.
     ///
     /// The elements are drawn uniformly at random from the provided public coin.
-    fn get_aux_trace_segment_random_elements<E, H, R>(
+    fn get_aux_trace_segment_random_elements<E, R>(
         &self,
         aux_segment_idx: usize,
         public_coin: &mut R,
     ) -> Result<Vec<E>, RandomCoinError>
     where
         E: FieldElement<BaseField = Self::BaseField>,
-        H: ElementHasher,
-        R: RandomCoin<BaseField = Self::BaseField, Hasher = H>,
+        R: RandomCoin<BaseField = Self::BaseField>,
     {
         let num_elements = self
             .trace_info()
@@ -503,14 +502,13 @@ pub trait Air: Send + Sync {
 
     /// Returns coefficients needed for random linear combination during construction of constraint
     /// composition polynomial.
-    fn get_constraint_composition_coefficients<E, H, R>(
+    fn get_constraint_composition_coefficients<E, R>(
         &self,
         public_coin: &mut R,
     ) -> Result<ConstraintCompositionCoefficients<E>, RandomCoinError>
     where
         E: FieldElement<BaseField = Self::BaseField>,
-        H: ElementHasher,
-        R: RandomCoin<BaseField = Self::BaseField, Hasher = H>,
+        R: RandomCoin<BaseField = Self::BaseField>,
     {
         let mut t_coefficients = Vec::new();
         for _ in 0..self.context().num_transition_constraints() {
@@ -530,14 +528,13 @@ pub trait Air: Send + Sync {
 
     /// Returns coefficients needed for random linear combinations during construction of DEEP
     /// composition polynomial.
-    fn get_deep_composition_coefficients<E, H, R>(
+    fn get_deep_composition_coefficients<E, R>(
         &self,
         public_coin: &mut R,
     ) -> Result<DeepCompositionCoefficients<E>, RandomCoinError>
     where
         E: FieldElement<BaseField = Self::BaseField>,
-        H: ElementHasher,
-        R: RandomCoin<BaseField = Self::BaseField, Hasher = H>,
+        R: RandomCoin<BaseField = Self::BaseField>,
     {
         let mut t_coefficients = Vec::new();
         for _ in 0..self.trace_info().width() {

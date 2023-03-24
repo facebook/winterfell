@@ -239,7 +239,7 @@ where
     // and the prover uses them to compute the DEEP composition polynomial. the prover, then
     // applies FRI protocol to the evaluations of the DEEP composition polynomial.
     let deep_coefficients = air
-        .get_deep_composition_coefficients::<E, H, R>(&mut public_coin)
+        .get_deep_composition_coefficients::<E, R>(&mut public_coin)
         .map_err(|_| VerifierError::RandomCoinError)?;
 
     // instantiates a FRI verifier with the FRI layer commitments read from the channel. From the

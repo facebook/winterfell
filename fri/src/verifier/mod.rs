@@ -117,7 +117,7 @@ where
         let mut max_degree_plus_1 = max_poly_degree + 1;
         for (depth, commitment) in layer_commitments.iter().enumerate() {
             public_coin.reseed(*commitment);
-            let alpha = public_coin.draw().map_err(VerifierError::PublicCoinError)?;
+            let alpha = public_coin.draw().map_err(VerifierError::RandomCoinError)?;
             layer_alphas.push(alpha);
 
             // make sure the degree can be reduced by the folding factor at all layers

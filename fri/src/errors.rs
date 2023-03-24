@@ -14,7 +14,7 @@ use crypto::RandomCoinError;
 #[derive(Debug, PartialEq, Eq)]
 pub enum VerifierError {
     /// Attempt to draw a random value from a public coin failed.
-    PublicCoinError(RandomCoinError),
+    RandomCoinError(RandomCoinError),
     /// Folding factor specified for the protocol is not supported. Currently, supported folding
     /// factors are: 4, 8, and 16.
     UnsupportedFoldingFactor(usize),
@@ -40,7 +40,7 @@ impl fmt::Display for VerifierError {
     #[rustfmt::skip]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::PublicCoinError(err) => {
+            Self::RandomCoinError(err) => {
                 write!(f, "failed to draw a random value from the public coin: {err}")
             }
             Self::UnsupportedFoldingFactor(value) => {
