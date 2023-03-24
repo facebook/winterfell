@@ -248,7 +248,7 @@ impl Deserializable for ProofOptions {
             source.read_u8()? as u32,
             FieldExtension::read_from(source)?,
             source.read_u8()? as usize,
-            2usize.pow(source.read_u8()? as u32),
+            source.read_u8()? as usize,
         ))
     }
 }
