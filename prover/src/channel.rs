@@ -43,7 +43,7 @@ where
     A: Air,
     E: FieldElement<BaseField = A::BaseField>,
     H: ElementHasher<BaseField = A::BaseField>,
-    R: RandomCoin<BaseField = A::BaseField, Hasher = H> + Sync,
+    R: RandomCoin<BaseField = A::BaseField, Hasher = H>,
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------

@@ -11,7 +11,7 @@ use crypto::RandomCoinError;
 // ================================================================================================
 
 /// Defines errors which can occur during FRI proof verification.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VerifierError {
     /// Attempt to draw a random value from a public coin failed.
     RandomCoinError(RandomCoinError),
