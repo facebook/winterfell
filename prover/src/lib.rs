@@ -132,7 +132,7 @@ pub trait Prover {
     type HashFn: ElementHasher<BaseField = Self::BaseField>;
 
     /// PRNG to be used for generating random field elements.
-    type RandomCoin: RandomCoin<BaseField = Self::BaseField, Hasher = Self::HashFn> + Sync;
+    type RandomCoin: RandomCoin<BaseField = Self::BaseField, Hasher = Self::HashFn>;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------

@@ -68,7 +68,7 @@ impl fmt::Display for MerkleTreeError {
 // ================================================================================================
 
 /// Defines errors which can occur when drawing values from a random coin.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RandomCoinError {
     /// A valid element could not be drawn from the field after the specified number of tries.
     FailedToDrawFieldElement(usize),
