@@ -77,11 +77,19 @@ fn main() {
     let proof_bytes = proof.to_bytes();
     debug!("Proof size: {:.1} KB", proof_bytes.len() as f64 / 1024f64);
     let conjectured_security_level = options.get_proof_security_level(&proof, true);
-    let proven_security_level = options.get_proof_security_level(&proof, false);
-    debug!(
-        "Proof security: {} bits ({} proven)",
-        conjectured_security_level, proven_security_level,
-    );
+
+    #[cfg(feature = "std")]
+    {
+        let proven_security_level = options.get_proof_security_level(&proof, false);
+        debug!(
+            "Proof security: {} bits ({} proven)",
+            conjectured_security_level, proven_security_level,
+        );
+    }
+
+    #[cfg(not(feature = "std"))]
+    debug!("Proof security: {} bits", conjectured_security_level);
+
     #[cfg(feature = "std")]
     debug!(
         "Proof hash: {}",

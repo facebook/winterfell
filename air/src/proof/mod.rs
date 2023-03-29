@@ -112,6 +112,10 @@ impl StarkProof {
                 H::COLLISION_RESISTANCE,
             )
         } else {
+            #[cfg(not(feature = "std"))]
+            panic!("proven security level is not available in no_std mode");
+
+            #[cfg(feature = "std")]
             get_proven_security(
                 self.context.options(),
                 self.context.num_modulus_bits(),
@@ -203,6 +207,7 @@ fn get_conjectured_security(
     )
 }
 
+#[cfg(feature = "std")]
 /// Estimates proven security level for the specified proof parameters.
 fn get_proven_security(
     options: &ProofOptions,
