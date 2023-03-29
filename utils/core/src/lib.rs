@@ -28,11 +28,20 @@ pub use errors::DeserializationError;
 #[cfg(test)]
 mod tests;
 
+// FEATURE-BASED RE-EXPORTS
+// ================================================================================================
+
 #[cfg(feature = "concurrent")]
 use iterators::*;
 
 #[cfg(feature = "concurrent")]
 pub use rayon;
+
+#[cfg(not(feature = "std"))]
+pub use alloc::boxed::Box;
+
+#[cfg(feature = "std")]
+pub use std::boxed::Box;
 
 // AS BYTES
 // ================================================================================================
