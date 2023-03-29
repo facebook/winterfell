@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.6.1 (2023-03-29)
+* Disabled proven security estimation in `no-std` context.
+
 ## 0.6.0 (2023-03-24)
 * Implemented more efficient remainder handling in FRI (#139)
 * Removed term involving conjugate OOD challenge z from deep composition polynomial (#166).
