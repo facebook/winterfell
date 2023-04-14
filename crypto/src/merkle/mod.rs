@@ -94,8 +94,9 @@ pub struct MerkleTree<H: Hasher> {
 // ================================================================================================
 
 impl<H: Hasher> MerkleTree<H> {
-    // CONSTRUCTOR
+    // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
+
     /// Returns new Merkle tree built from the provide leaves using hash function specified by the
     /// `H` generic parameter.
     ///
@@ -123,6 +124,31 @@ impl<H: Hasher> MerkleTree<H> {
             concurrent::build_merkle_nodes::<H>(&leaves)
         };
 
+        Ok(MerkleTree { nodes, leaves })
+    }
+
+    /// Forms a MerkleTree from a list of nodes and leaves.
+    ///
+    /// Nodes are supplied as a vector where the root is stored at position 1.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// * Fewer than two leaves were provided.
+    /// * Number of leaves is not a power of two.
+    ///
+    /// # Panics
+    /// Panics if nodes doesn't have the same length as leaves.
+    pub fn from_raw_parts(
+        nodes: Vec<H::Digest>,
+        leaves: Vec<H::Digest>,
+    ) -> Result<Self, MerkleTreeError> {
+        if leaves.len() < 2 {
+            return Err(MerkleTreeError::TooFewLeaves(2, leaves.len()));
+        }
+        if !leaves.len().is_power_of_two() {
+            return Err(MerkleTreeError::NumberOfLeavesNotPowerOfTwo(leaves.len()));
+        }
+        assert_eq!(nodes.len(), leaves.len());
         Ok(MerkleTree { nodes, leaves })
     }
 

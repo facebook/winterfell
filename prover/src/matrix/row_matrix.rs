@@ -57,7 +57,8 @@ impl<E: FieldElement> RowMatrix<E> {
 
         // pre-compute offsets for each row
         let poly_size = polys.num_rows();
-        let offsets = get_offsets::<E>(poly_size, blowup_factor, E::BaseField::GENERATOR);
+        let offsets =
+            get_evaluation_offsets::<E>(poly_size, blowup_factor, E::BaseField::GENERATOR);
 
         // compute twiddles for polynomial evaluation
         let twiddles = fft::get_twiddles::<E::BaseField>(polys.num_rows());
@@ -86,7 +87,8 @@ impl<E: FieldElement> RowMatrix<E> {
 
         // pre-compute offsets for each row
         let poly_size = polys.num_rows();
-        let offsets = get_offsets::<E>(poly_size, domain.trace_to_lde_blowup(), domain.offset());
+        let offsets =
+            get_evaluation_offsets::<E>(poly_size, domain.trace_to_lde_blowup(), domain.offset());
 
         // build matrix segments by evaluating all polynomials
         let segments = build_segments::<E, N>(polys, domain.trace_twiddles(), &offsets);
@@ -207,7 +209,7 @@ impl<E: FieldElement> RowMatrix<E> {
 /// factor and domain offset.
 ///
 /// When `concurrent` feature is enabled, offsets are computed in multiple threads.
-fn get_offsets<E: FieldElement>(
+pub fn get_evaluation_offsets<E: FieldElement>(
     poly_size: usize,
     blowup_factor: usize,
     domain_offset: E::BaseField,
@@ -299,7 +301,7 @@ fn transpose<B: StarkField, const N: usize>(mut segments: Vec<Segment<B, N>>) ->
         for i in 0..rows_per_batch {
             let row_idx = i + row_offset;
             for j in 0..num_segs {
-                let v = &segments[j].data()[row_idx];
+                let v = &segments[j][row_idx];
                 batch[i * num_segs + j].copy_from_slice(v);
             }
         }

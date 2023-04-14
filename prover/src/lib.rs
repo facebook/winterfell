@@ -77,7 +77,7 @@ use std::time::Instant;
 mod domain;
 pub use domain::StarkDomain;
 
-mod matrix;
+pub mod matrix;
 pub use matrix::{ColMatrix, RowMatrix};
 
 mod constraints;
