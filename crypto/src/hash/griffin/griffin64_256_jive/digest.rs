@@ -31,13 +31,13 @@ impl ElementDigest {
 }
 
 impl Digest for ElementDigest {
-    fn as_bytes(&self) -> [u8; 32] {
-        let mut result = [0; 32];
+    fn as_bytes(&self) -> [u8; 40] {
+        let mut result = [0; 40];
 
         result[..8].copy_from_slice(&self.0[0].as_int().to_le_bytes());
         result[8..16].copy_from_slice(&self.0[1].as_int().to_le_bytes());
         result[16..24].copy_from_slice(&self.0[2].as_int().to_le_bytes());
-        result[24..].copy_from_slice(&self.0[3].as_int().to_le_bytes());
+        result[24..32].copy_from_slice(&self.0[3].as_int().to_le_bytes());
 
         result
     }
@@ -79,7 +79,7 @@ impl From<ElementDigest> for [BaseElement; DIGEST_SIZE] {
     }
 }
 
-impl From<ElementDigest> for [u8; 32] {
+impl From<ElementDigest> for [u8; 40] {
     fn from(value: ElementDigest) -> Self {
         value.as_bytes()
     }

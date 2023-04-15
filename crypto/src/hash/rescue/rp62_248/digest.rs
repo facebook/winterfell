@@ -31,17 +31,17 @@ impl ElementDigest {
 }
 
 impl Digest for ElementDigest {
-    fn as_bytes(&self) -> [u8; 32] {
+    fn as_bytes(&self) -> [u8; 40] {
         let v1 = self.0[0].as_int();
         let v2 = self.0[1].as_int();
         let v3 = self.0[2].as_int();
         let v4 = self.0[3].as_int();
 
-        let mut result = [0; 32];
+        let mut result = [0; 40];
         result[..8].copy_from_slice(&(v1 | (v2 << 62)).to_le_bytes());
         result[8..16].copy_from_slice(&((v2 >> 2) | (v3 << 60)).to_le_bytes());
         result[16..24].copy_from_slice(&((v3 >> 4) | (v4 << 58)).to_le_bytes());
-        result[24..].copy_from_slice(&(v4 >> 6).to_le_bytes());
+        result[24..32].copy_from_slice(&(v4 >> 6).to_le_bytes());
 
         result
     }

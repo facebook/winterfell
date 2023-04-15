@@ -148,9 +148,9 @@ impl Hash {
 }
 
 impl Digest for Hash {
-    fn as_bytes(&self) -> [u8; 32] {
+    fn as_bytes(&self) -> [u8; 40] {
         let bytes = BaseElement::elements_as_bytes(&self.0);
-        let mut result = [0; 32];
+        let mut result = [0; 40];
         result[..bytes.len()].copy_from_slice(bytes);
         result
     }

@@ -21,6 +21,8 @@ pub use rescue::{Rp62_248, Rp64_256, RpJive64_256};
 mod griffin;
 pub use griffin::GriffinJive64_256;
 
+mod tip5;
+
 // HASHER TRAITS
 // ================================================================================================
 
@@ -73,9 +75,9 @@ pub trait Digest:
     ///
     /// Ideally, the length of the returned array should be defined by an associated constant, but
     /// using associated constants in const generics is not supported by Rust yet. Thus, we put an
-    /// upper limit on the possible digest size. For digests which are smaller than 32 bytes, the
+    /// upper limit on the possible digest size. For digests which are smaller than 40 bytes, the
     /// unused bytes should be set to 0.
-    fn as_bytes(&self) -> [u8; 32];
+    fn as_bytes(&self) -> [u8; 40];
 }
 
 // BYTE DIGEST
@@ -105,8 +107,8 @@ impl<const N: usize> ByteDigest<N> {
 }
 
 impl<const N: usize> Digest for ByteDigest<N> {
-    fn as_bytes(&self) -> [u8; 32] {
-        let mut result = [0; 32];
+    fn as_bytes(&self) -> [u8; 40] {
+        let mut result = [0; 40];
         result[..N].copy_from_slice(&self.0);
         result
     }
@@ -136,12 +138,12 @@ mod tests {
 
     #[test]
     fn byte_digest_as_bytes() {
-        let d = ByteDigest::new([255_u8; 32]);
-        assert_eq!([255_u8; 32], d.as_bytes());
+        let d = ByteDigest::new([255_u8; 40]);
+        assert_eq!([255_u8; 40], d.as_bytes());
 
-        let d = ByteDigest::new([255_u8; 31]);
-        let mut expected = [255_u8; 32];
-        expected[31] = 0;
+        let d = ByteDigest::new([255_u8; 39]);
+        let mut expected = [255_u8; 40];
+        expected[39] = 0;
         assert_eq!(expected, d.as_bytes());
     }
 }
