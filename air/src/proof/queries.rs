@@ -5,7 +5,7 @@
 
 use super::Table;
 use crypto::{BatchMerkleProof, ElementHasher, Hasher};
-use math::{log2, FieldElement};
+use math::FieldElement;
 use utils::{
     collections::Vec, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
     SliceReader,
@@ -130,7 +130,7 @@ impl Queries {
 
         // build batch Merkle proof
         let mut reader = SliceReader::new(&self.paths);
-        let tree_depth = log2(domain_size) as u8;
+        let tree_depth = domain_size.ilog2() as u8;
         let merkle_proof = BatchMerkleProof::deserialize(&mut reader, hashed_queries, tree_depth)?;
         if reader.has_more_bytes() {
             return Err(DeserializationError::UnconsumedBytes);

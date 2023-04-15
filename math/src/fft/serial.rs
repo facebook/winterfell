@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::fft_inputs::FftInputs;
-use crate::{field::StarkField, utils::log2, FieldElement};
+use crate::{field::StarkField, FieldElement};
 use utils::{collections::Vec, uninit_vector};
 
 // POLYNOMIAL EVALUATION
@@ -34,7 +34,7 @@ where
     E: FieldElement<BaseField = B>,
 {
     let domain_size = p.len() * blowup_factor;
-    let g = B::get_root_of_unity(log2(domain_size));
+    let g = B::get_root_of_unity(domain_size.ilog2());
     let mut result = unsafe { uninit_vector(domain_size) };
 
     result

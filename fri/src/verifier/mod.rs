@@ -8,7 +8,7 @@
 use crate::{folding::fold_positions, utils::map_positions_to_indexes, FriOptions, VerifierError};
 use core::{convert::TryInto, marker::PhantomData, mem};
 use crypto::{ElementHasher, RandomCoin};
-use math::{log2, polynom, FieldElement, StarkField};
+use math::{polynom, FieldElement, StarkField};
 use utils::collections::Vec;
 
 mod channel;
@@ -107,7 +107,7 @@ where
     ) -> Result<Self, VerifierError> {
         // infer evaluation domain info
         let domain_size = max_poly_degree.next_power_of_two() * options.blowup_factor();
-        let domain_generator = E::BaseField::get_root_of_unity(log2(domain_size));
+        let domain_generator = E::BaseField::get_root_of_unity(domain_size.ilog2());
 
         let num_partitions = channel.read_fri_num_partitions();
 

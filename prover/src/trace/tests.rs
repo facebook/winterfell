@@ -10,7 +10,7 @@ use crate::{
 };
 use crypto::{hashers::Blake3_256, ElementHasher, MerkleTree};
 use math::{
-    fields::f128::BaseElement, get_power_series, get_power_series_with_offset, log2, polynom,
+    fields::f128::BaseElement, get_power_series, get_power_series_with_offset, polynom,
     FieldElement, StarkField,
 };
 use utils::collections::Vec;
@@ -61,7 +61,7 @@ fn extend_trace_table() {
     assert_eq!(64, trace_comm.trace_table().trace_len());
 
     // make sure trace polynomials evaluate to Fibonacci trace
-    let trace_root = BaseElement::get_root_of_unity(log2(trace_length));
+    let trace_root = BaseElement::get_root_of_unity(trace_length.ilog2());
     let trace_domain = get_power_series(trace_root, trace_length);
     assert_eq!(2, trace_polys.num_main_trace_polys());
     assert_eq!(
@@ -131,6 +131,6 @@ fn commit_trace_table() {
 // ================================================================================================
 
 fn build_lde_domain<B: StarkField>(domain_size: usize) -> Vec<B> {
-    let g = B::get_root_of_unity(log2(domain_size));
+    let g = B::get_root_of_unity(domain_size.ilog2());
     get_power_series_with_offset(g, B::GENERATOR, domain_size)
 }

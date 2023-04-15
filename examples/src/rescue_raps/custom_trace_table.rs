@@ -5,7 +5,7 @@
 
 use core_utils::{collections::Vec, uninit_vector};
 use winterfell::{
-    math::{log2, FieldElement, StarkField},
+    math::{FieldElement, StarkField},
     ColMatrix, EvaluationFrame, Trace, TraceInfo, TraceLayout,
 };
 
@@ -85,10 +85,10 @@ impl<B: StarkField> RapTraceTable<B> {
             "execution trace length must be a power of 2"
         );
         assert!(
-            log2(length) <= B::TWO_ADICITY,
+            length.ilog2() <= B::TWO_ADICITY,
             "execution trace length cannot exceed 2^{} steps, but was 2^{}",
             B::TWO_ADICITY,
-            log2(length)
+            length.ilog2()
         );
         assert!(
             meta.len() <= TraceInfo::MAX_META_LENGTH,

@@ -17,7 +17,7 @@ use rand_utils::{rand_value, rand_vector};
 use std::time::Instant;
 use winterfell::{
     crypto::{DefaultRandomCoin, Digest, ElementHasher, MerkleTree},
-    math::{fields::f128::BaseElement, log2, FieldElement, StarkField},
+    math::{fields::f128::BaseElement, FieldElement, StarkField},
     ProofOptions, Prover, StarkProof, Trace, TraceTable, VerifierError,
 };
 
@@ -130,7 +130,7 @@ where
         debug!(
             "Generated execution trace of {} registers and 2^{} steps in {} ms",
             trace.width(),
-            log2(trace_length),
+            trace_length.ilog2(),
             now.elapsed().as_millis()
         );
 

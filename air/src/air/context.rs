@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{air::TransitionConstraintDegree, ProofOptions, TraceInfo};
-use math::{log2, StarkField};
+use math::StarkField;
 use utils::collections::Vec;
 
 // AIR CONTEXT
@@ -154,8 +154,8 @@ impl<B: StarkField> AirContext<B> {
             num_main_assertions,
             num_aux_assertions,
             ce_blowup_factor,
-            trace_domain_generator: B::get_root_of_unity(log2(trace_length)),
-            lde_domain_generator: B::get_root_of_unity(log2(lde_domain_size)),
+            trace_domain_generator: B::get_root_of_unity(trace_length.ilog2()),
+            lde_domain_generator: B::get_root_of_unity(lde_domain_size.ilog2()),
             num_transition_exemptions: 1,
         }
     }

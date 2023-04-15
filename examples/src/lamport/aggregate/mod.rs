@@ -12,7 +12,7 @@ use log::debug;
 use std::time::Instant;
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
-    math::{fields::f128::BaseElement, get_power_series, log2, FieldElement, StarkField},
+    math::{fields::f128::BaseElement, get_power_series, FieldElement, StarkField},
     ProofOptions, Prover, StarkProof, Trace, TraceTable, VerifierError,
 };
 
@@ -146,7 +146,7 @@ where
         debug!(
             "Generated execution trace of {} registers and 2^{} steps in {} ms",
             trace.width(),
-            log2(trace_length),
+            trace_length.ilog2(),
             now.elapsed().as_millis()
         );
 

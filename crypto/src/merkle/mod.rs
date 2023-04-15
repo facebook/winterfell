@@ -5,7 +5,6 @@
 
 use crate::{errors::MerkleTreeError, hash::Hasher};
 use core::slice;
-use math::log2;
 use utils::collections::{BTreeMap, BTreeSet, Vec};
 
 mod proofs;
@@ -139,7 +138,7 @@ impl<H: Hasher> MerkleTree<H> {
     /// The depth of a tree is zero-based. Thus, a tree with two leaves has depth 1, a tree with
     /// four leaves has depth 2 etc.
     pub fn depth(&self) -> usize {
-        log2(self.leaves.len()) as usize
+        self.leaves.len().ilog2() as usize
     }
 
     /// Returns leaf nodes of the tree.
