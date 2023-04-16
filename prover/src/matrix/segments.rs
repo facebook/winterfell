@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::ColMatrix;
+use core::ops::Deref;
 use math::{fft::fft_inputs::FftInputs, FieldElement, StarkField};
 use utils::{collections::Vec, group_vector_elements, uninit_vector};
 
@@ -31,10 +32,11 @@ pub struct Segment<B: StarkField, const N: usize> {
 }
 
 impl<B: StarkField, const N: usize> Segment<B, N> {
-    // CONSTRUCTOR
+    // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
-    /// Instantiates a new [Segment] by evaluating polynomials from the provided [Matrix] starting
-    /// at the specified offset.
+
+    /// Instantiates a new [Segment] by evaluating polynomials from the provided [ColMatrix]
+    /// starting at the specified offset.
     ///
     /// The offset is assumed to be an offset into the view of the matrix where extension field
     /// elements are decomposed into base field elements. This offset must be compatible with the
@@ -54,11 +56,59 @@ impl<B: StarkField, const N: usize> Segment<B, N> {
     {
         let poly_size = polys.num_rows();
         let domain_size = offsets.len();
+        assert!(domain_size.is_power_of_two());
+        assert!(domain_size > poly_size);
+        assert_eq!(poly_size, twiddles.len() * 2);
+        assert!(poly_offset < polys.num_base_cols());
+
+        // allocate memory for the segment
+        let data = if polys.num_base_cols() - poly_offset >= N {
+            // if we will fill the entire segment, we allocate uninitialized memory
+            unsafe { uninit_vector::<[B; N]>(domain_size) }
+        } else {
+            // but if some columns in the segment will remain unfilled, we allocate memory initialized
+            // to zeros to make sure we don't end up with memory with undefined values
+            group_vector_elements(B::zeroed_vector(N * domain_size))
+        };
+
+        Self::new_with_buffer(data, polys, poly_offset, offsets, twiddles)
+    }
+
+    /// Instantiates a new [Segment] using the provided data buffer by evaluating polynomials in
+    /// the [ColMatrix] starting at the specified offset.
+    ///
+    /// The offset is assumed to be an offset into the view of the matrix where extension field
+    /// elements are decomposed into base field elements. This offset must be compatible with the
+    /// values supplied into [Matrix::get_base_element()] method.
+    ///
+    /// Evaluation is performed over the domain specified by the provided twiddles and offsets.
+    ///
+    /// # Panics
+    /// Panics if:
+    /// - `poly_offset` greater than or equal to the number of base field columns in `polys`.
+    /// - Number of offsets is not a power of two.
+    /// - Number of offsets is smaller than or equal to the polynomial size.
+    /// - The number of twiddles is not half the size of the polynomial size.
+    /// - Number of offsets is smaller than the length of the data buffer
+    pub fn new_with_buffer<E>(
+        data_buffer: Vec<[B; N]>,
+        polys: &ColMatrix<E>,
+        poly_offset: usize,
+        offsets: &[B],
+        twiddles: &[B],
+    ) -> Self
+    where
+        E: FieldElement<BaseField = B>,
+    {
+        let poly_size = polys.num_rows();
+        let domain_size = offsets.len();
+        let mut data = data_buffer;
 
         assert!(domain_size.is_power_of_two());
         assert!(domain_size > poly_size);
         assert_eq!(poly_size, twiddles.len() * 2);
         assert!(poly_offset < polys.num_base_cols());
+        assert_eq!(data.len(), domain_size);
 
         // determine the number of polynomials to add to this segment; this number can be either N,
         // or smaller than N when there are fewer than N polynomials remaining to be processed
@@ -67,16 +117,6 @@ impl<B: StarkField, const N: usize> Segment<B, N> {
             num_polys_remaining
         } else {
             N
-        };
-
-        // allocate memory for the segment
-        let mut data = if num_polys == N {
-            // if we will fill the entire segment, we allocate uninitialized memory
-            unsafe { uninit_vector::<[B; N]>(domain_size) }
-        } else {
-            // but if some columns in the segment will remain unfilled, we allocate memory initialized
-            // to zeros to make sure we don't end up with memory with undefined values
-            group_vector_elements(B::zeroed_vector(N * domain_size))
         };
 
         // evaluate the polynomials either in a single thread or multiple threads, depending
@@ -122,11 +162,6 @@ impl<B: StarkField, const N: usize> Segment<B, N> {
         self.data.len()
     }
 
-    /// Returns the data in this segment as a slice of arrays.
-    pub fn data(&self) -> &[[B; N]] {
-        &self.data
-    }
-
     /// Returns the underlying vector of arrays for this segment.
     pub fn into_data(self) -> Vec<[B; N]> {
         self.data
@@ -169,6 +204,14 @@ impl<B: StarkField, const N: usize> Segment<B, N> {
                 dest[row_idx][i] = coeff * offsets[row_idx];
             }
         }
+    }
+}
+
+impl<B: StarkField, const N: usize> Deref for Segment<B, N> {
+    type Target = Vec<[B; N]>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.data
     }
 }
 

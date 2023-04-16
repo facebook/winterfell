@@ -156,6 +156,17 @@ impl<E: FieldElement> ColMatrix<E> {
         }
     }
 
+    /// Merges a column to the end of the matrix provided its length matches the matrix.
+    ///
+    /// # Panics
+    /// Panics if the column has a different length to other columns in the matrix.
+    pub fn merge_column(&mut self, column: Vec<E>) {
+        if let Some(first_column) = self.columns.first() {
+            assert_eq!(first_column.len(), column.len());
+        }
+        self.columns.push(column);
+    }
+
     // ITERATION
     // --------------------------------------------------------------------------------------------
 
