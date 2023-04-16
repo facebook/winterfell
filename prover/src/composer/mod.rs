@@ -105,8 +105,6 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
 
         // --- merge polynomials of the auxiliary trace segments ----------------------------------
 
-        // since trace polynomials are already in an extension field (when extension fields are
-        // used), we don't apply conjugate composition to them
         for poly in trace_polys.aux_trace_polys() {
             // compute T'(x) = T(x) - T(z), multiply it by a pseudo-random coefficient,
             // and add the result into composition polynomial
