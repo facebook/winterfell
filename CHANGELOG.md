@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.2 (2023-04-15)
+* Updated `MerkleTree` and matrix structs to make them more suitable for HW acceleration (#185).
+* Replaced `log2()` usage with native `.ilog2()` (#186).
+
 ## 0.6.1 (2023-03-29)
 * Disabled proven security estimation in `no-std` context.
 
