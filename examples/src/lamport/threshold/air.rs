@@ -9,7 +9,7 @@ use super::{
 };
 use crate::utils::{are_equal, is_binary, is_zero, not, EvaluationResult};
 use winterfell::{
-    math::{fields::f128::BaseElement, log2, FieldElement, StarkField, ToElements},
+    math::{fields::f128::BaseElement, FieldElement, StarkField, ToElements},
     Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
@@ -171,7 +171,7 @@ impl Air for LamportThresholdAir {
         // these steps depend on the depth of the public key Merkle tree; for example, if the Merkle
         // tree has 4 elements, then the steps are: 24, 1048, 2072, 3096
         let num_cycles = self.num_pub_keys.next_power_of_two();
-        let merkle_root_offset = (log2(num_cycles) + 1) as usize * HASH_CYCLE_LEN;
+        let merkle_root_offset = (num_cycles.ilog2() + 1) as usize * HASH_CYCLE_LEN;
 
         // distinct key indexes should be used; the sequence starts at the last index of the tree
         // (to pad the first cycle) and then wraps around and proceeds with index 0, 1, 2 etc.

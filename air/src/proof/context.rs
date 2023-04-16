@@ -136,7 +136,7 @@ impl Serializable for Context {
     /// Serializes `self` and writes the resulting bytes into the `target`.
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.trace_layout.write_into(target);
-        target.write_u8(math::log2(self.trace_length) as u8); // store as power of two
+        target.write_u8(self.trace_length.ilog2() as u8); // store as power of two
         target.write_u16(self.trace_meta.len() as u16);
         target.write_bytes(&self.trace_meta);
         assert!(self.field_modulus_bytes.len() < u8::MAX as usize);
@@ -157,10 +157,10 @@ impl Deserializable for Context {
 
         // read and validate trace length (which was stored as a power of two)
         let trace_length = source.read_u8()?;
-        if trace_length < math::log2(TraceInfo::MIN_TRACE_LENGTH) as u8 {
+        if trace_length < TraceInfo::MIN_TRACE_LENGTH.ilog2() as u8 {
             return Err(DeserializationError::InvalidValue(format!(
                 "trace length cannot be smaller than 2^{}, but was 2^{}",
-                math::log2(TraceInfo::MIN_TRACE_LENGTH),
+                TraceInfo::MIN_TRACE_LENGTH.ilog2(),
                 trace_length
             )));
         }

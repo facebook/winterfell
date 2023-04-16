@@ -6,7 +6,7 @@
 use super::{ColMatrix, Segment};
 use crate::StarkDomain;
 use crypto::{ElementHasher, MerkleTree};
-use math::{fft, log2, FieldElement, StarkField};
+use math::{fft, FieldElement, StarkField};
 use utils::collections::Vec;
 use utils::{batch_iter_mut, flatten_vector_elements, uninit_vector};
 
@@ -215,7 +215,7 @@ pub fn get_evaluation_offsets<E: FieldElement>(
     domain_offset: E::BaseField,
 ) -> Vec<E::BaseField> {
     let domain_size = poly_size * blowup_factor;
-    let g = E::BaseField::get_root_of_unity(log2(domain_size));
+    let g = E::BaseField::get_root_of_unity(domain_size.ilog2());
 
     // allocate memory to hold the offsets
     let mut offsets = unsafe { uninit_vector(domain_size) };

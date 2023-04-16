@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{
-    math::{fields::f64::BaseElement, get_power_series, log2, polynom, StarkField},
+    math::{fields::f64::BaseElement, get_power_series, polynom, StarkField},
     ColMatrix, RowMatrix,
 };
 use rand_utils::rand_vector;
@@ -44,7 +44,7 @@ fn test_eval_poly_with_offset_matrix() {
 
 /// Builds a domain of size `size` using the primitive element of the field.
 fn build_domain(size: usize) -> Vec<BaseElement> {
-    let g = BaseElement::get_root_of_unity(log2(size));
+    let g = BaseElement::get_root_of_unity(size.ilog2());
     get_power_series(g, size)
 }
 

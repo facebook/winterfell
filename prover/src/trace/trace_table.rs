@@ -5,7 +5,7 @@
 
 use super::{ColMatrix, Trace};
 use air::{EvaluationFrame, TraceInfo, TraceLayout};
-use math::{log2, FieldElement, StarkField};
+use math::{FieldElement, StarkField};
 use utils::{collections::Vec, uninit_vector};
 
 #[cfg(not(feature = "concurrent"))]
@@ -117,10 +117,10 @@ impl<B: StarkField> TraceTable<B> {
             "execution trace length must be a power of 2"
         );
         assert!(
-            log2(length) <= B::TWO_ADICITY,
+            length.ilog2() <= B::TWO_ADICITY,
             "execution trace length cannot exceed 2^{} steps, but was 2^{}",
             B::TWO_ADICITY,
-            log2(length)
+            length.ilog2()
         );
         assert!(
             meta.len() <= TraceInfo::MAX_META_LENGTH,
@@ -168,10 +168,10 @@ impl<B: StarkField> TraceTable<B> {
             "execution trace length must be a power of 2"
         );
         assert!(
-            log2(trace_length) <= B::TWO_ADICITY,
+            trace_length.ilog2() <= B::TWO_ADICITY,
             "execution trace length cannot exceed 2^{} steps, but was 2^{}",
             B::TWO_ADICITY,
-            log2(trace_length)
+            trace_length.ilog2()
         );
         for column in columns.iter().skip(1) {
             assert_eq!(

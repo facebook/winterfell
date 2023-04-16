@@ -9,7 +9,6 @@ use crate::{ProofOptions, TraceInfo, TraceLayout};
 use core::cmp;
 use crypto::Hasher;
 use fri::FriProof;
-use math::log2;
 use utils::{
     collections::Vec, ByteReader, Deserializable, DeserializationError, Serializable, SliceReader,
 };
@@ -193,7 +192,7 @@ fn get_conjectured_security(
     let field_security = field_size - trace_domain_size.trailing_zeros();
 
     // compute security we get by executing multiple query rounds
-    let security_per_query = log2(options.blowup_factor());
+    let security_per_query = options.blowup_factor().ilog2();
     let mut query_security = security_per_query * options.num_queries() as u32;
 
     // include grinding factor contributions only for proofs adequate security
@@ -216,7 +215,7 @@ fn get_proven_security(
     collision_resistance: u32,
 ) -> u32 {
     let extension_field_bits = (base_field_bits * options.field_extension().degree()) as f64;
-    let blowup_bits = log2(options.blowup_factor()) as f64;
+    let blowup_bits = options.blowup_factor().ilog2() as f64;
     let num_fri_queries = options.num_queries() as f64;
     let lde_size_bits = lde_domain_size.trailing_zeros() as f64;
 

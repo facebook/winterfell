@@ -99,8 +99,7 @@ mod tests {
     use crate::tests::MockAir;
     use air::Air;
     use math::{
-        fields::f128::BaseElement, get_power_series_with_offset, log2, polynom, FieldElement,
-        StarkField,
+        fields::f128::BaseElement, get_power_series_with_offset, polynom, FieldElement, StarkField,
     };
     use utils::collections::Vec;
 
@@ -155,7 +154,7 @@ mod tests {
     }
 
     fn build_ce_domain(domain_size: usize, domain_offset: BaseElement) -> Vec<BaseElement> {
-        let g = BaseElement::get_root_of_unity(log2(domain_size));
+        let g = BaseElement::get_root_of_unity(domain_size.ilog2());
         get_power_series_with_offset(g, domain_offset, domain_size)
     }
 }

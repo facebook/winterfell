@@ -6,7 +6,7 @@
 use super::remove_leading_zeros;
 use crate::{
     field::{f128::BaseElement, FieldElement, StarkField},
-    utils::{get_power_series, log2},
+    utils::get_power_series,
 };
 use utils::collections::Vec;
 
@@ -215,7 +215,7 @@ fn syn_div() {
         .collect();
 
     // build the domain
-    let root = BaseElement::get_root_of_unity(log2(ys.len()));
+    let root = BaseElement::get_root_of_unity(ys.len().ilog2());
     let domain = get_power_series(root, ys.len());
 
     // build the polynomial

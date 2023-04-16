@@ -7,7 +7,7 @@ use crate::{
     matrix::{ColumnIter, MultiColumnIter},
     ColMatrix,
 };
-use math::{log2, FieldElement, StarkField};
+use math::{FieldElement, StarkField};
 use utils::collections::Vec;
 
 // TRACE POLYNOMIAL TABLE
@@ -67,7 +67,7 @@ impl<E: FieldElement> TracePolyTable<E> {
     /// Returns an out-of-domain evaluation frame constructed by evaluating trace polynomials
     /// for all columns at points z and z * g, where g is the generator of the trace domain.
     pub fn get_ood_frame(&self, z: E) -> Vec<Vec<E>> {
-        let g = E::from(E::BaseField::get_root_of_unity(log2(self.poly_size())));
+        let g = E::from(E::BaseField::get_root_of_unity(self.poly_size().ilog2()));
         vec![self.evaluate_at(z), self.evaluate_at(z * g)]
     }
 

@@ -70,8 +70,6 @@ use crypto::{ElementHasher, MerkleTree, RandomCoin};
 #[cfg(feature = "std")]
 use log::debug;
 #[cfg(feature = "std")]
-use math::log2;
-#[cfg(feature = "std")]
 use std::time::Instant;
 
 mod domain;
@@ -220,7 +218,7 @@ pub trait Prover {
         #[cfg(feature = "std")]
         debug!(
             "Built domain of 2^{} elements in {} ms",
-            log2(domain.lde_domain_size()),
+            domain.lde_domain_size().ilog2(),
             now.elapsed().as_millis()
         );
 
@@ -261,7 +259,7 @@ pub trait Prover {
             debug!(
                 "Built auxiliary trace segment of {} columns and 2^{} steps in {} ms",
                 aux_segment.num_cols(),
-                log2(aux_segment.num_rows()),
+                aux_segment.num_rows().ilog2(),
                 now.elapsed().as_millis()
             );
 
@@ -301,7 +299,7 @@ pub trait Prover {
         #[cfg(feature = "std")]
         debug!(
             "Evaluated constraints over domain of 2^{} elements in {} ms",
-            log2(constraint_evaluations.num_rows()),
+            constraint_evaluations.num_rows().ilog2(),
             now.elapsed().as_millis()
         );
 
@@ -394,7 +392,7 @@ pub trait Prover {
         #[cfg(feature = "std")]
         debug!(
             "Evaluated DEEP composition polynomial over LDE domain (2^{} elements) in {} ms",
-            log2(domain.lde_domain_size()),
+            domain.lde_domain_size().ilog2(),
             now.elapsed().as_millis()
         );
 
@@ -480,8 +478,8 @@ pub trait Prover {
         debug!(
             "Extended execution trace of {} columns from 2^{} to 2^{} steps ({}x blowup) in {} ms",
             trace_lde.num_cols(),
-            log2(trace_polys.num_rows()),
-            log2(trace_lde.num_rows()),
+            trace_polys.num_rows().ilog2(),
+            trace_lde.num_rows().ilog2(),
             domain.trace_to_lde_blowup(),
             now.elapsed().as_millis()
         );
@@ -524,7 +522,7 @@ pub trait Prover {
         debug!(
             "Evaluated {} composition polynomial columns over LDE domain (2^{} elements) in {} ms",
             composed_evaluations.num_cols(),
-            log2(composed_evaluations.num_rows()),
+            composed_evaluations.num_rows().ilog2(),
             now.elapsed().as_millis()
         );
 

@@ -9,7 +9,7 @@ use super::{
 };
 use crate::{AuxTraceRandElements, FieldExtension};
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin};
-use math::{fields::f128::BaseElement, get_power_series, log2, polynom, FieldElement, StarkField};
+use math::{fields::f128::BaseElement, get_power_series, polynom, FieldElement, StarkField};
 use utils::collections::{BTreeMap, Vec};
 
 // PERIODIC COLUMNS
@@ -88,7 +88,7 @@ fn get_boundary_constraints() {
     let trace_length = 16;
     let air = MockAir::with_assertions(assertions, trace_length);
     let no_poly_offset = (0, BaseElement::ONE);
-    let g = BaseElement::get_root_of_unity(log2(trace_length)); // trace domain generator
+    let g = BaseElement::get_root_of_unity(trace_length.ilog2()); // trace domain generator
 
     // build coefficients for random liner combination; these will be derived for assertions
     // sorted first by stride, then by first step, and finally by column (similar to the order)
@@ -307,14 +307,14 @@ pub fn build_prng() -> DefaultRandomCoin<Blake3_256<BaseElement>> {
 pub fn build_sequence_poly(values: &[BaseElement], trace_length: usize) -> Vec<BaseElement> {
     let cycle_length = trace_length / values.len();
     let domain_size = trace_length / cycle_length;
-    let g = BaseElement::get_root_of_unity(log2(domain_size));
+    let g = BaseElement::get_root_of_unity(domain_size.ilog2());
     let xs = get_power_series(g, domain_size);
     polynom::interpolate(&xs, values, false)
 }
 
 pub fn build_periodic_column_poly(values: &[BaseElement]) -> Vec<BaseElement> {
     let domain_size = values.len();
-    let g = BaseElement::get_root_of_unity(log2(domain_size));
+    let g = BaseElement::get_root_of_unity(domain_size.ilog2());
     let xs = get_power_series(g, domain_size);
     polynom::interpolate(&xs, values, false)
 }

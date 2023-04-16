@@ -8,7 +8,7 @@ use super::{
     Assertion, BoundaryConstraint,
 };
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin};
-use math::{fields::f128::BaseElement, log2, polynom, FieldElement, StarkField};
+use math::{fields::f128::BaseElement, polynom, FieldElement, StarkField};
 use rand_utils::{rand_value, rand_vector, shuffle};
 use utils::collections::{BTreeMap, Vec};
 
@@ -277,7 +277,7 @@ fn build_constraint_params(
     BTreeMap<usize, Vec<BaseElement>>,
     DefaultRandomCoin<Blake3_256<BaseElement>>,
 ) {
-    let inv_g = BaseElement::get_root_of_unity(log2(trace_length)).inv();
+    let inv_g = BaseElement::get_root_of_unity(trace_length.ilog2()).inv();
     let prng = build_prng();
     let twiddle_map = BTreeMap::<usize, Vec<BaseElement>>::new();
     (inv_g, twiddle_map, prng)

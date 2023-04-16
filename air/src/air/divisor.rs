@@ -5,7 +5,7 @@
 
 use crate::air::Assertion;
 use core::fmt::{Display, Formatter};
-use math::{log2, FieldElement, StarkField};
+use math::{FieldElement, StarkField};
 use utils::collections::Vec;
 
 // CONSTRAINT DIVISOR
@@ -176,7 +176,7 @@ fn get_trace_domain_value_at<B: StarkField>(trace_length: usize, step: usize) ->
         step < trace_length,
         "step must be in the trace domain [0, {trace_length})"
     );
-    let g = B::get_root_of_unity(log2(trace_length));
+    let g = B::get_root_of_unity(trace_length.ilog2());
     g.exp((step as u64).into())
 }
 

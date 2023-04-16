@@ -5,7 +5,7 @@
 
 use super::{constraints::CompositionPoly, StarkDomain, TracePolyTable};
 use air::DeepCompositionCoefficients;
-use math::{add_in_place, fft, log2, mul_acc, polynom, ExtensionOf, FieldElement, StarkField};
+use math::{add_in_place, fft, mul_acc, polynom, ExtensionOf, FieldElement, StarkField};
 use utils::{collections::Vec, iter_mut};
 
 #[cfg(feature = "concurrent")]
@@ -69,7 +69,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
         // compute a second out-of-domain point offset from z by exactly trace generator; this
         // point defines the "next" computation state in relation to point z
         let trace_length = trace_polys.poly_size();
-        let g = E::from(E::BaseField::get_root_of_unity(log2(trace_length)));
+        let g = E::from(E::BaseField::get_root_of_unity(trace_length.ilog2()));
         let next_z = self.z * g;
 
         // combine trace polynomials into 2 composition polynomials T'(x) and T''(x)

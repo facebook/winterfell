@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use math::{fields::f128::BaseElement, get_power_series, log2, polynom, StarkField};
+use math::{fields::f128::BaseElement, get_power_series, polynom, StarkField};
 use rand_utils::{rand_value, rand_vector};
 use utils::group_vector_elements;
 use winter_fri::folding;
@@ -41,7 +41,7 @@ criterion_main!(quartic_group);
 // ================================================================================================
 
 fn build_coordinate_batches(batch_size: usize) -> (Vec<[BaseElement; 4]>, Vec<[BaseElement; 4]>) {
-    let r = BaseElement::get_root_of_unity(log2(batch_size));
+    let r = BaseElement::get_root_of_unity(batch_size.ilog2());
     let xs = group_vector_elements(get_power_series(r, batch_size));
     let ys = group_vector_elements(rand_vector::<BaseElement>(batch_size));
     (xs, ys)
