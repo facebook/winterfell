@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::ColMatrix;
+use super::RowMatrix;
 use air::proof::Queries;
 use crypto::{ElementHasher, MerkleTree};
 use math::FieldElement;
@@ -19,14 +19,14 @@ use utils::collections::Vec;
 /// * Merkle tree where each leaf in the tree corresponds to a row in the composition polynomial
 ///   evaluation matrix.
 pub struct ConstraintCommitment<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> {
-    evaluations: ColMatrix<E>,
+    evaluations: RowMatrix<E>,
     commitment: MerkleTree<H>,
 }
 
 impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> ConstraintCommitment<E, H> {
     /// Creates a new constraint evaluation commitment from the provided composition polynomial
     /// evaluations and the corresponding Merkle tree commitment.
-    pub fn new(evaluations: ColMatrix<E>, commitment: MerkleTree<H>) -> ConstraintCommitment<E, H> {
+    pub fn new(evaluations: RowMatrix<E>, commitment: MerkleTree<H>) -> ConstraintCommitment<E, H> {
         assert_eq!(
             evaluations.num_rows(),
             commitment.leaves().len(),
@@ -61,8 +61,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> ConstraintComm
         // determine a set of evaluations corresponding to each position
         let mut evaluations = Vec::new();
         for &position in positions {
-            let mut row = vec![E::ZERO; self.evaluations.num_cols()];
-            self.evaluations.read_row_into(position, &mut row);
+            let row = self.evaluations.row(position).to_vec();
             evaluations.push(row);
         }
 
