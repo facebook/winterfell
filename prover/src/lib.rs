@@ -79,7 +79,8 @@ pub mod matrix;
 pub use matrix::{ColMatrix, RowMatrix};
 
 mod constraints;
-use constraints::{CompositionPoly, ConstraintCommitment, ConstraintEvaluator};
+use constraints::ConstraintEvaluator;
+pub use constraints::{CompositionPoly, ConstraintCommitment};
 
 mod composer;
 use composer::DeepCompositionPoly;
@@ -99,6 +100,9 @@ pub mod tests;
 
 // PROVER
 // ================================================================================================
+
+// this segment width seems to give the best performance for small fields (i.e., 64 bits)
+const DEFAULT_SEGMENT_WIDTH: usize = 8;
 
 /// Defines a STARK prover for a computation.
 ///
@@ -465,9 +469,6 @@ pub trait Prover {
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
-        // this segment width seems to give the best performance for small fields (i.e., 64 bits)
-        const DEFAULT_SEGMENT_WIDTH: usize = 8;
-
         // extend the execution trace
         #[cfg(feature = "std")]
         let now = Instant::now();
@@ -517,7 +518,10 @@ pub trait Prover {
         // evaluate composition polynomial columns over the LDE domain
         #[cfg(feature = "std")]
         let now = Instant::now();
-        let composed_evaluations = composition_poly.evaluate(domain);
+        let composed_evaluations = RowMatrix::evaluate_polys_over::<DEFAULT_SEGMENT_WIDTH>(
+            composition_poly.data(),
+            domain,
+        );
         #[cfg(feature = "std")]
         debug!(
             "Evaluated {} composition polynomial columns over LDE domain (2^{} elements) in {} ms",

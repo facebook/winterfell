@@ -3,8 +3,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{ColMatrix, StarkDomain};
-use math::{polynom, FieldElement, StarkField};
+use super::ColMatrix;
+use math::{polynom, FieldElement};
 use utils::{collections::Vec, uninit_vector};
 
 // COMPOSITION POLYNOMIAL
@@ -67,31 +67,16 @@ impl<E: FieldElement> CompositionPoly<E> {
         self.column_len() - 1
     }
 
-    // LOW-DEGREE EXTENSION
-    // --------------------------------------------------------------------------------------------
-    /// Evaluates the columns of the composition polynomial over the specified LDE domain and
-    /// returns the result.
-    pub fn evaluate<B>(&self, domain: &StarkDomain<B>) -> ColMatrix<E>
-    where
-        B: StarkField,
-        E: FieldElement<BaseField = B>,
-    {
-        assert_eq!(
-            self.column_len(),
-            domain.trace_length(),
-            "inconsistent trace domain size; expected {}, but received {}",
-            self.column_len(),
-            domain.trace_length()
-        );
-
-        self.data.evaluate_columns_over(domain)
-    }
-
     /// Returns evaluations of all composition polynomial columns at point z^m, where m is
     /// the number of column polynomials.
     pub fn evaluate_at(&self, z: E) -> Vec<E> {
         let z_m = z.exp((self.num_columns() as u32).into());
         self.data.evaluate_columns_at(z_m)
+    }
+
+    /// Returns a reference to the matrix of individual column polynomials.
+    pub fn data(&self) -> &ColMatrix<E> {
+        &self.data
     }
 
     /// Transforms this composition polynomial into a vector of individual column polynomials.
