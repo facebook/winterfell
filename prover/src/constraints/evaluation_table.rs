@@ -193,37 +193,6 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
         })
     }
 
-    // // CONSTRAINT COMPOSITION
-    // // --------------------------------------------------------------------------------------------
-    // /// Divides constraint evaluation columns by their respective divisor (in evaluation form),
-    // /// combines the results into a single column, and interpolates this column into a composition
-    // /// polynomial in coefficient form.
-    // pub fn into_poly(self) -> Result<CompositionPoly<E>, ProverError> {
-    //     // allocate memory for the combined polynomial
-    //     let mut combined_poly = E::zeroed_vector(self.num_rows());
-
-    //     // iterate over all columns of the constraint evaluation table, divide each column
-    //     // by the evaluations of its corresponding divisor, and add all resulting evaluations
-    //     // together into a single vector
-    //     for (column, divisor) in self.evaluations.into_iter().zip(self.divisors.iter()) {
-    //         // in debug mode, make sure post-division degree of each column matches the expected
-    //         // degree
-    //         #[cfg(debug_assertions)]
-    //         validate_column_degree(&column, divisor, self.domain, column.len() - 1)?;
-
-    //         // divide the column by the divisor and accumulate the result into combined_poly
-    //         acc_column(column, divisor, self.domain, &mut combined_poly);
-    //     }
-
-    //     // at this point, combined_poly contains evaluations of the combined constraint polynomial;
-    //     // we interpolate this polynomial to transform it into coefficient form.
-    //     let inv_twiddles = fft::get_inv_twiddles::<E::BaseField>(combined_poly.len());
-    //     fft::interpolate_poly_with_offset(&mut combined_poly, &inv_twiddles, self.domain.offset());
-
-    //     let trace_length = self.domain.trace_length();
-    //     Ok(CompositionPoly::new(combined_poly, trace_length))
-    // }
-
     // DEBUG HELPERS
     // --------------------------------------------------------------------------------------------
 
