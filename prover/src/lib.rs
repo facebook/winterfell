@@ -79,8 +79,7 @@ pub mod matrix;
 pub use matrix::{ColMatrix, RowMatrix};
 
 mod constraints;
-use constraints::ConstraintEvaluator;
-pub use constraints::{CompositionPoly, ConstraintCommitment};
+use constraints::{ConstraintCommitment, ConstraintEvaluator};
 
 mod composer;
 use composer::DeepCompositionPoly;
@@ -309,26 +308,17 @@ pub trait Prover {
 
         // 3 ----- commit to constraint evaluations -----------------------------------------------
 
-        // first, build constraint composition polynomial from the constraint evaluation table:
+        // first, build constraint composition trace from the constraint evaluation table:
         // - divide all constraint evaluation columns by their respective divisors
         // - combine them into a single column of evaluations,
-        // - interpolate the column into a polynomial in coefficient form
-        // - "break" the polynomial into a set of column polynomials each of degree equal to
-        //   trace_length - 1
-        #[cfg(feature = "std")]
-        let now = Instant::now();
-        let composition_poly = constraint_evaluations.into_poly()?;
-        #[cfg(feature = "std")]
-        debug!(
-            "Converted constraint evaluations into {} composition polynomial columns of degree {} in {} ms",
-            composition_poly.num_columns(),
-            composition_poly.column_degree(),
-            now.elapsed().as_millis()
-        );
+        // - "break" the column into multiple smaller columns to create the composition trace
+        let composition_trace = constraint_evaluations.into_composition_trace()?;
 
-        // then, build a commitment to the evaluations of the composition polynomial columns
+        // then interpolate, extend and commit to the constraint composition trace
+        let (composition_trace_lde, composition_trace_tree, composition_trace_polys) =
+            self.build_trace_commitment::<E>(&composition_trace, &domain);
         let constraint_commitment =
-            self.build_constraint_commitment::<E>(&composition_poly, &domain);
+            ConstraintCommitment::new(composition_trace_lde, composition_trace_tree);
 
         // then, commit to the evaluations of constraints by writing the root of the constraint
         // Merkle tree into the channel
@@ -353,7 +343,8 @@ pub trait Prover {
         let ood_trace_states = trace_polys.get_ood_frame(z);
         channel.send_ood_trace_states(&ood_trace_states);
 
-        let ood_evaluations = composition_poly.evaluate_at(z);
+        let z_m = z.exp((composition_trace_polys.num_cols() as u32).into());
+        let ood_evaluations = composition_trace_polys.evaluate_columns_at(z_m);
         channel.send_ood_constraint_evaluations(&ood_evaluations);
 
         // draw random coefficients to use during DEEP polynomial composition, and use them to
@@ -366,7 +357,7 @@ pub trait Prover {
         deep_composition_poly.add_trace_polys(trace_polys, ood_trace_states);
 
         // merge columns of constraint composition polynomial into the DEEP composition polynomial;
-        deep_composition_poly.add_composition_poly(composition_poly, ood_evaluations);
+        deep_composition_poly.add_composition_poly(composition_trace_polys, ood_evaluations);
 
         // raise the degree of the DEEP composition polynomial by one to make sure it is equal to
         // trace_length - 1
@@ -452,14 +443,13 @@ pub trait Prover {
         Ok(proof)
     }
 
-    /// Computes a low-degree extension (LDE) of the provided execution trace over the specified
-    /// domain and build a commitment to the extended trace.
+    /// Computes a low-degree extension (LDE) of the provided trace over the specified domain
+    /// and build a commitment to the extended trace.
     ///
-    /// The extension is performed by interpolating each column of the execution trace into a
-    /// polynomial of degree = trace_length - 1, and then evaluating the polynomial over the LDE
-    /// domain.
+    /// The extension is performed by interpolating each column of the trace into a polynomial
+    /// of degree = trace_length - 1, and then evaluating the polynomial over the LDE domain.
     ///
-    /// Trace commitment is computed by hashing each row of the extended execution trace, and then
+    /// Trace commitment is computed by hashing each row of the extended trace, and then
     /// building a Merkle tree from the resulting hashes.
     fn build_trace_commitment<E>(
         &self,
@@ -469,7 +459,7 @@ pub trait Prover {
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
-        // extend the execution trace
+        // extend the trace
         #[cfg(feature = "std")]
         let now = Instant::now();
         let trace_polys = trace.interpolate_columns();
@@ -477,7 +467,7 @@ pub trait Prover {
             RowMatrix::evaluate_polys_over::<DEFAULT_SEGMENT_WIDTH>(&trace_polys, domain);
         #[cfg(feature = "std")]
         debug!(
-            "Extended execution trace of {} columns from 2^{} to 2^{} steps ({}x blowup) in {} ms",
+            "Extended trace of {} columns from 2^{} to 2^{} steps ({}x blowup) in {} ms",
             trace_lde.num_cols(),
             trace_polys.num_rows().ilog2(),
             trace_lde.num_rows().ilog2(),
@@ -491,56 +481,11 @@ pub trait Prover {
         let trace_tree = trace_lde.commit_to_rows();
         #[cfg(feature = "std")]
         debug!(
-            "Computed execution trace commitment (Merkle tree of depth {}) in {} ms",
+            "Computed trace commitment (Merkle tree of depth {}) in {} ms",
             trace_tree.depth(),
             now.elapsed().as_millis()
         );
 
         (trace_lde, trace_tree, trace_polys)
-    }
-
-    /// Evaluates constraint composition polynomial over the LDE domain and builds a commitment
-    /// to these evaluations.
-    ///
-    /// The evaluation is done by evaluating each composition polynomial column over the LDE
-    /// domain.
-    ///
-    /// The commitment is computed by hashing each row in the evaluation matrix, and then building
-    /// a Merkle tree from the resulting hashes.
-    fn build_constraint_commitment<E>(
-        &self,
-        composition_poly: &CompositionPoly<E>,
-        domain: &StarkDomain<Self::BaseField>,
-    ) -> ConstraintCommitment<E, Self::HashFn>
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        // evaluate composition polynomial columns over the LDE domain
-        #[cfg(feature = "std")]
-        let now = Instant::now();
-        let composed_evaluations = RowMatrix::evaluate_polys_over::<DEFAULT_SEGMENT_WIDTH>(
-            composition_poly.data(),
-            domain,
-        );
-        #[cfg(feature = "std")]
-        debug!(
-            "Evaluated {} composition polynomial columns over LDE domain (2^{} elements) in {} ms",
-            composed_evaluations.num_cols(),
-            composed_evaluations.num_rows().ilog2(),
-            now.elapsed().as_millis()
-        );
-
-        // build constraint evaluation commitment
-        #[cfg(feature = "std")]
-        let now = Instant::now();
-        let commitment = composed_evaluations.commit_to_rows();
-        let constraint_commitment = ConstraintCommitment::new(composed_evaluations, commitment);
-        #[cfg(feature = "std")]
-        debug!(
-            "Computed constraint evaluation commitment (Merkle tree of depth {}) in {} ms",
-            constraint_commitment.tree_depth(),
-            now.elapsed().as_millis()
-        );
-        constraint_commitment
     }
 }

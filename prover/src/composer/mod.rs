@@ -3,7 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{constraints::CompositionPoly, StarkDomain, TracePolyTable};
+use crate::ColMatrix;
+
+use super::{StarkDomain, TracePolyTable};
 use air::DeepCompositionCoefficients;
 use math::{add_in_place, fft, mul_acc, polynom, ExtensionOf, FieldElement, StarkField};
 use utils::{collections::Vec, iter_mut};
@@ -139,9 +141,9 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
 
     // CONSTRAINT POLYNOMIAL COMPOSITION
     // --------------------------------------------------------------------------------------------
-    /// Divides out OOD point z from the constraint composition polynomial and saves the result
-    /// into the DEEP composition polynomial. This method is intended to be called only after the
-    /// add_trace_polys() method has been executed. The composition is done as follows:
+    /// Divides out OOD point z from the constraint composition trace polynomials and saves the
+    /// result into the DEEP composition polynomial. This method is intended to be called only after
+    /// the add_trace_polys() method has been executed. The composition is done as follows:
     ///
     /// - For each H_i(x), compute H'_i(x) = (H_i(x) - H(z^m)) / (x - z^m), where H_i(x) is the
     ///   ith composition polynomial column and m is the total number of columns.
@@ -152,16 +154,16 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
     /// Note that evaluations of H_i(x) at z^m are passed in via the `ood_evaluations` parameter.
     pub fn add_composition_poly(
         &mut self,
-        composition_poly: CompositionPoly<E>,
+        composition_trace_polys: ColMatrix<E>,
         ood_evaluations: Vec<E>,
     ) {
         assert!(!self.coefficients.is_empty());
 
         // compute z^m
-        let num_columns = composition_poly.num_columns() as u32;
+        let num_columns = composition_trace_polys.num_cols() as u32;
         let z_m = self.z.exp(num_columns.into());
 
-        let mut column_polys = composition_poly.into_columns();
+        let mut column_polys = composition_trace_polys.into_columns();
 
         // Divide out the OOD point z from column polynomials
         iter_mut!(column_polys)

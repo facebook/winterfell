@@ -3,9 +3,15 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{CompositionPoly, ConstraintDivisor, ProverError, StarkDomain};
-use math::{batch_inversion, fft, FieldElement, StarkField};
-use utils::{batch_iter_mut, collections::Vec, iter_mut, uninit_vector};
+use crate::ColMatrix;
+
+use super::{ConstraintDivisor, ProverError, StarkDomain};
+use math::{
+    batch_inversion,
+    fft::{self, get_inv_twiddles},
+    get_power_series, FieldElement, StarkField,
+};
+use utils::{batch_iter_mut, collections::Vec, iter_mut, transpose_slice, uninit_vector};
 
 #[cfg(debug_assertions)]
 use air::TransitionConstraints;
@@ -154,11 +160,10 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
     // CONSTRAINT COMPOSITION
     // --------------------------------------------------------------------------------------------
     /// Divides constraint evaluation columns by their respective divisor (in evaluation form),
-    /// combines the results into a single column, and interpolates this column into a composition
-    /// polynomial in coefficient form.
-    pub fn into_poly(self) -> Result<CompositionPoly<E>, ProverError> {
+    /// combines the results into a single column, and splits this column into a composition trace.
+    pub fn into_composition_trace(self) -> Result<ColMatrix<E>, ProverError> {
         // allocate memory for the combined polynomial
-        let mut combined_poly = E::zeroed_vector(self.num_rows());
+        let mut combined_evaluations = E::zeroed_vector(self.num_rows());
 
         // iterate over all columns of the constraint evaluation table, divide each column
         // by the evaluations of its corresponding divisor, and add all resulting evaluations
@@ -169,18 +174,55 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
             #[cfg(debug_assertions)]
             validate_column_degree(&column, divisor, self.domain, column.len() - 1)?;
 
-            // divide the column by the divisor and accumulate the result into combined_poly
-            acc_column(column, divisor, self.domain, &mut combined_poly);
+            // divide the column by the divisor and accumulate the result into combined_evaluations
+            acc_column(column, divisor, self.domain, &mut combined_evaluations);
         }
 
-        // at this point, combined_poly contains evaluations of the combined constraint polynomial;
-        // we interpolate this polynomial to transform it into coefficient form.
-        let inv_twiddles = fft::get_inv_twiddles::<E::BaseField>(combined_poly.len());
-        fft::interpolate_poly_with_offset(&mut combined_poly, &inv_twiddles, self.domain.offset());
-
+        // TODO: docs
+        // "break" combined_evaluations into multiple smaller columns to form the composition trace
         let trace_length = self.domain.trace_length();
-        Ok(CompositionPoly::new(combined_poly, trace_length))
+        let num_columns = combined_evaluations.len() / trace_length;
+
+        Ok(match num_columns {
+            1 => ColMatrix::new(vec![combined_evaluations]),
+            2 => build_composition_trace::<E, 2>(combined_evaluations),
+            4 => build_composition_trace::<E, 4>(combined_evaluations),
+            8 => build_composition_trace::<E, 8>(combined_evaluations),
+            16 => build_composition_trace::<E, 16>(combined_evaluations),
+            _ => unimplemented!("{num_columns} columns is not supported"),
+        })
     }
+
+    // // CONSTRAINT COMPOSITION
+    // // --------------------------------------------------------------------------------------------
+    // /// Divides constraint evaluation columns by their respective divisor (in evaluation form),
+    // /// combines the results into a single column, and interpolates this column into a composition
+    // /// polynomial in coefficient form.
+    // pub fn into_poly(self) -> Result<CompositionPoly<E>, ProverError> {
+    //     // allocate memory for the combined polynomial
+    //     let mut combined_poly = E::zeroed_vector(self.num_rows());
+
+    //     // iterate over all columns of the constraint evaluation table, divide each column
+    //     // by the evaluations of its corresponding divisor, and add all resulting evaluations
+    //     // together into a single vector
+    //     for (column, divisor) in self.evaluations.into_iter().zip(self.divisors.iter()) {
+    //         // in debug mode, make sure post-division degree of each column matches the expected
+    //         // degree
+    //         #[cfg(debug_assertions)]
+    //         validate_column_degree(&column, divisor, self.domain, column.len() - 1)?;
+
+    //         // divide the column by the divisor and accumulate the result into combined_poly
+    //         acc_column(column, divisor, self.domain, &mut combined_poly);
+    //     }
+
+    //     // at this point, combined_poly contains evaluations of the combined constraint polynomial;
+    //     // we interpolate this polynomial to transform it into coefficient form.
+    //     let inv_twiddles = fft::get_inv_twiddles::<E::BaseField>(combined_poly.len());
+    //     fft::interpolate_poly_with_offset(&mut combined_poly, &inv_twiddles, self.domain.offset());
+
+    //     let trace_length = self.domain.trace_length();
+    //     Ok(CompositionPoly::new(combined_poly, trace_length))
+    // }
 
     // DEBUG HELPERS
     // --------------------------------------------------------------------------------------------
@@ -410,6 +452,49 @@ fn get_inv_evaluation<B: StarkField>(
 
     // compute 1 / (x^a - b)
     batch_inversion(&evaluations)
+}
+
+// TODO: docs
+// TODO: tests
+fn build_composition_trace<E: FieldElement, const N: usize>(
+    combined_evaluations: Vec<E>,
+) -> ColMatrix<E> {
+    // build offsets, inverses and twiddles used during polynomial interpolation
+    let inv_g = E::BaseField::get_root_of_unity(combined_evaluations.len().ilog2()).inv();
+    let inv_offsets = get_power_series(inv_g, combined_evaluations.len() / N);
+    let inv_twiddles = get_inv_twiddles::<E::BaseField>(N);
+    let len_offset = E::inv((N as u64).into());
+
+    // This process splits evaluations of a polynomial *f*(x) of degree *k* into evaluations
+    // of *N* polynomials *f_0*(x), ..., *f_(N-1)*(x) of degree *k/N* in O(k log N) such that
+    // *f*(x) = *f_0*(x) + x * *f_1*(x) + ... + x^(N-1) * *f_(N-1)*(x).
+    let mut composition_trace_rows = transpose_slice::<E, N>(&combined_evaluations);
+    iter_mut!(composition_trace_rows)
+        .zip(inv_offsets)
+        .for_each(|(row, domain_offset)| {
+            fft::serial_fft(row, &inv_twiddles);
+            let mut offset = len_offset;
+            let domain_offset = E::from(domain_offset);
+            for coeff in row {
+                *coeff *= offset;
+                offset *= domain_offset;
+            }
+        });
+
+    let mut composition_trace_columns = unsafe {
+        (0..N)
+            .map(|_| uninit_vector(composition_trace_rows.len()))
+            .collect::<Vec<_>>()
+    };
+
+    // TODO: implement multi-threaded version
+    for (row_idx, row) in composition_trace_rows.into_iter().enumerate() {
+        for (col_idx, eval) in row.into_iter().enumerate() {
+            composition_trace_columns[col_idx][row_idx] = eval;
+        }
+    }
+
+    ColMatrix::new(composition_trace_columns)
 }
 
 // DEBUG HELPERS

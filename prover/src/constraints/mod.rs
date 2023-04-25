@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{ColMatrix, ConstraintDivisor, ProverError, RowMatrix, StarkDomain};
+use super::{ConstraintDivisor, ProverError, RowMatrix, StarkDomain};
 
 mod boundary;
 use boundary::BoundaryConstraints;
@@ -13,9 +13,6 @@ use periodic_table::PeriodicValueTable;
 
 mod evaluator;
 pub use evaluator::ConstraintEvaluator;
-
-mod composition_poly;
-pub use composition_poly::CompositionPoly;
 
 mod evaluation_table;
 pub use evaluation_table::ConstraintEvaluationTable;
