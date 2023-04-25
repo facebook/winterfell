@@ -12,7 +12,6 @@
 use utils::iterators::*;
 
 use math::{
-    batch_inversion,
     fft::{get_inv_twiddles, serial_fft},
     get_power_series_with_offset, polynom, FieldElement, StarkField,
 };
@@ -183,8 +182,6 @@ where
     B: StarkField,
 {
     let n = domain_size * folding_factor;
-    let g = B::get_root_of_unity(n.trailing_zeros());
-    let offsets = get_power_series_with_offset(g, domain_offset, domain_size);
-
-    batch_inversion(&offsets)
+    let g = B::get_root_of_unity(n.ilog2());
+    get_power_series_with_offset(g.inv(), domain_offset.inv(), domain_size)
 }
