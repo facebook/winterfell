@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 mod row_matrix;
-pub use row_matrix::{get_evaluation_offsets, RowMatrix};
+pub use row_matrix::{build_segments, get_evaluation_offsets, RowMatrix};
 
 mod col_matrix;
 pub use col_matrix::{ColMatrix, ColumnIter, MultiColumnIter};
