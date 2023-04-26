@@ -252,7 +252,7 @@ pub fn get_evaluation_offsets<E: FieldElement>(
 
 /// Returns matrix segments constructed by evaluating polynomials in the specified matrix over the
 /// domain defined by twiddles and offsets.
-fn build_segments<E: FieldElement, const N: usize>(
+pub fn build_segments<E: FieldElement, const N: usize>(
     polys: &ColMatrix<E>,
     twiddles: &[E::BaseField],
     offsets: &[E::BaseField],
