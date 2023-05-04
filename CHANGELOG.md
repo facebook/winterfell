@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.3 (2023-05-03)
+* Sped up proof verification using batch inverse (#190).
+* Updated `ConstraintCommitment` to use `RowMatrix` internally (#191).
+* Sped up FRI prover via more efficient `get_inv_offsets` implementation (#193).
+* Exposed `build_segments()` method publicly (#194).
+
 ## 0.6.2 (2023-04-15)
 * Updated `MerkleTree` and matrix structs to make them more suitable for HW acceleration (#185).
 * Replaced `log2()` usage with native `.ilog2()` (#186).
