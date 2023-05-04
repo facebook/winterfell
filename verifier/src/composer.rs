@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use air::{proof::Table, Air, DeepCompositionCoefficients, EvaluationFrame};
-use math::FieldElement;
+use math::{batch_inversion, FieldElement};
 use utils::collections::Vec;
 
 // DEEP COMPOSER
@@ -62,24 +62,34 @@ impl<E: FieldElement> DeepComposer<E> {
         let ood_main_trace_states = [ood_main_frame.current(), ood_main_frame.next()];
 
         // compose columns of of the main trace segment
-        let mut result = E::zeroed_vector(queried_main_trace_states.num_rows());
-        for ((result, row), &x) in result
-            .iter_mut()
+        let n = queried_main_trace_states.num_rows();
+        let mut result_num = Vec::<E>::with_capacity(n);
+        let mut result_den = Vec::<E>::with_capacity(n);
+
+        for ((_, row), &x) in (0..n)
             .zip(queried_main_trace_states.rows())
             .zip(&self.x_coordinates)
         {
+            let mut num = E::ZERO;
+            let mut den = E::ONE;
             for (i, &value) in row.iter().enumerate() {
                 let value = E::from(value);
                 // compute T'_i(x) = (T_i(x) - T_i(z)) / (x - z), multiply it by a composition
                 // coefficient, and add the result to T(x)
-                let t1 = (value - ood_main_trace_states[0][i]) / (x - self.z[0]);
-                *result += t1 * self.cc.trace[i].0;
+                let t1_num = (value - ood_main_trace_states[0][i]) * self.cc.trace[i].0;
+                let t1_den = x - self.z[0];
+                num = num * t1_den + den * t1_num;
+                den *= t1_den;
 
                 // compute T''_i(x) = (T_i(x) - T_i(z * g)) / (x - z * g), multiply it by a
                 // composition coefficient, and add the result to T(x)
-                let t2 = (value - ood_main_trace_states[1][i]) / (x - self.z[1]);
-                *result += t2 * self.cc.trace[i].1;
+                let t2_num = (value - ood_main_trace_states[1][i]) * self.cc.trace[i].1;
+                let t2_den = x - self.z[1];
+                num = num * t2_den + den * t2_num;
+                den *= t2_den;
             }
+            result_num.push(num);
+            result_den.push(den);
         }
 
         // if the trace has auxiliary segments, compose columns from these segments as well
@@ -91,26 +101,40 @@ impl<E: FieldElement> DeepComposer<E> {
             // consumed some number of composition coefficients already.
             let cc_offset = queried_main_trace_states.num_columns();
 
-            for ((result, row), &x) in result
-                .iter_mut()
+            for ((j, row), &x) in (0..n)
                 .zip(queried_aux_trace_states.rows())
                 .zip(&self.x_coordinates)
             {
+                let mut num = E::ZERO;
+                let mut den = E::ONE;
                 for (i, &value) in row.iter().enumerate() {
                     // compute T'_i(x) = (T_i(x) - T_i(z)) / (x - z), multiply it by a composition
                     // coefficient, and add the result to T(x)
-                    let t1 = (value - ood_aux_trace_states[0][i]) / (x - self.z[0]);
-                    *result += t1 * self.cc.trace[cc_offset + i].0;
+                    let t1_num =
+                        (value - ood_aux_trace_states[0][i]) * self.cc.trace[cc_offset + i].0;
+                    let t1_den = x - self.z[0];
+                    num = num * t1_den + den * t1_num;
+                    den *= t1_den;
 
                     // compute T''_i(x) = (T_i(x) - T_i(z * g)) / (x - z * g), multiply it by a
                     // composition coefficient, and add the result to T(x)
-                    let t2 = (value - ood_aux_trace_states[1][i]) / (x - self.z[1]);
-                    *result += t2 * self.cc.trace[cc_offset + i].1;
+                    let t2_num =
+                        (value - ood_aux_trace_states[1][i]) * self.cc.trace[cc_offset + i].1;
+                    let t2_den = x - self.z[1];
+                    num = num * t2_den + den * t2_num;
+                    den *= t2_den;
                 }
+                result_num[j] = result_num[j] * den + result_den[j] * num;
+                result_den[j] *= den;
             }
         }
 
-        result
+        result_den = batch_inversion(&result_den);
+        result_num
+            .iter()
+            .zip(result_den)
+            .map(|(n, d)| *n * d)
+            .collect()
     }
 
     /// For each queried set of composition polynomial column evaluations, combine evaluations
@@ -132,24 +156,35 @@ impl<E: FieldElement> DeepComposer<E> {
     ) -> Vec<E> {
         assert_eq!(queried_evaluations.num_rows(), self.x_coordinates.len());
 
-        let mut result = Vec::with_capacity(queried_evaluations.num_rows());
+        let n = queried_evaluations.num_rows();
+        let mut result_num = Vec::<E>::with_capacity(n);
+        let mut result_den = Vec::<E>::with_capacity(n);
 
         // compute z^m
         let num_evaluation_columns = ood_evaluations.len() as u32;
         let z_m = self.z[0].exp_vartime(num_evaluation_columns.into());
 
         for (query_values, &x) in queried_evaluations.rows().zip(&self.x_coordinates) {
-            let mut composition = E::ZERO;
+            let mut composition_num = E::ZERO;
+            let mut composition_den = E::ONE;
             for (i, &evaluation) in query_values.iter().enumerate() {
                 // compute H'_i(x) = (H_i(x) - H_i(z^m)) / (x - z^m)
-                let h_i = (evaluation - ood_evaluations[i]) / (x - z_m);
+                let h_i_num = (evaluation - ood_evaluations[i]) * self.cc.constraints[i];
+                let h_i_den = x - z_m;
                 // multiply it by a pseudo-random coefficient, and add the result to H(x)
-                composition += h_i * self.cc.constraints[i];
+                composition_num = composition_num * h_i_den + composition_den * h_i_num;
+                composition_den *= h_i_den;
             }
-            result.push(composition);
+            result_num.push(composition_num);
+            result_den.push(composition_den);
         }
 
-        result
+        result_den = batch_inversion(&result_den);
+        result_num
+            .iter()
+            .zip(result_den)
+            .map(|(n, d)| *n * d)
+            .collect()
     }
 
     /// Combines trace and constraint compositions together, and also rases the degree of the
