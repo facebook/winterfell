@@ -31,14 +31,14 @@ pub struct TraceInfo {
 }
 
 impl TraceInfo {
-    /// Smallest allowed execution trace length; currently set at 8.
-    pub const MIN_TRACE_LENGTH: usize = 8;
-    /// Maximum number of columns in an execution trace (across all segments); currently set at 255.
-    pub const MAX_TRACE_WIDTH: usize = 255;
+    /// Smallest allowed execution trace length; currently set at 4.
+    pub const MIN_TRACE_LENGTH: usize = 4;
+    /// Maximum number of columns in an execution trace (across all segments); currently set at 65535.
+    pub const MAX_TRACE_WIDTH: usize = 65535;
     /// Maximum number of bytes in trace metadata; currently set at 65535.
     pub const MAX_META_LENGTH: usize = 65535;
-    /// Maximum number of random elements per auxiliary trace segment; currently set to 255.
-    pub const MAX_RAND_SEGMENT_ELEMENTS: usize = 255;
+    /// Maximum number of random elements per auxiliary trace segment; currently set to 65535.
+    pub const MAX_RAND_SEGMENT_ELEMENTS: usize = 65535;
 
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
@@ -49,8 +49,8 @@ impl TraceInfo {
     ///
     /// # Panics
     /// Panics if:
-    /// * Trace width is zero or greater than 255.
-    /// * Trace length is smaller than 8 or is not a power of two.
+    /// * Trace width is zero or greater than 65535.
+    /// * Trace length is smaller than 4 or is not a power of two.
     pub fn new(width: usize, length: usize) -> Self {
         Self::with_meta(width, length, vec![])
     }
@@ -61,8 +61,8 @@ impl TraceInfo {
     ///
     /// # Panics
     /// Panics if:
-    /// * Trace width is zero or greater than 255.
-    /// * Trace length is smaller than 8 or is not a power of two.
+    /// * Trace width is zero or greater than 25655355.
+    /// * Trace length is smaller than 4 or is not a power of two.
     /// * Length of `meta` is greater than 65535;
     pub fn with_meta(width: usize, length: usize, meta: Vec<u8>) -> Self {
         assert!(width > 0, "trace width must be greater than 0");
@@ -75,8 +75,8 @@ impl TraceInfo {
     /// # Panics
     /// Panics if:
     /// * The width of the first trace segment is zero.
-    /// * Total width of all trace segments is greater than 255.
-    /// * Trace length is smaller than 8 or is not a power of two.
+    /// * Total width of all trace segments is greater than 65535.
+    /// * Trace length is smaller than 4 or is not a power of two.
     pub fn new_multi_segment(layout: TraceLayout, length: usize, meta: Vec<u8>) -> Self {
         assert!(
             length >= Self::MIN_TRACE_LENGTH,
@@ -113,7 +113,7 @@ impl TraceInfo {
 
     /// Returns the total number of columns in an execution trace.
     ///
-    /// This is guaranteed to be between 1 and 255.
+    /// This is guaranteed to be between 1 and 65535.
     pub fn width(&self) -> usize {
         self.layout.main_trace_width() + self.layout().aux_trace_width()
     }
@@ -170,11 +170,11 @@ impl TraceLayout {
     /// # Panics
     /// Panics if:
     /// * Width of the main trace segment is set to zero.
-    /// * Sum of all segment widths exceeds 255.
+    /// * Sum of all segment widths exceeds 65535.
     /// * A zero entry in auxiliary segment width array is followed by a non-zero entry.
     /// * Number of random elements for an auxiliary trace segment of non-zero width is set to zero.
     /// * Number of random elements for an auxiliary trace segment of zero width is set to non-zero.
-    /// * Number of random elements for any auxiliary trace segment is greater than 255.
+    /// * Number of random elements for any auxiliary trace segment is greater than 65535.
     pub fn new(
         main_width: usize,
         aux_widths: [usize; NUM_AUX_SEGMENTS],
@@ -235,7 +235,7 @@ impl TraceLayout {
 
     /// Returns the number of columns in the main segment of an execution trace.
     ///
-    /// This is guaranteed to be between 1 and 255.
+    /// This is guaranteed to be between 1 and 65535.
     pub fn main_trace_width(&self) -> usize {
         self.main_segment_width
     }
