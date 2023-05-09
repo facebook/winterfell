@@ -143,13 +143,13 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
     /// into the DEEP composition polynomial. This method is intended to be called only after the
     /// add_trace_polys() method has been executed. The composition is done as follows:
     ///
-    /// - For each H_i(x), compute H'_i(x) = (H_i(x) - H(z^m)) / (x - z^m), where H_i(x) is the
-    ///   ith composition polynomial column and m is the total number of columns.
+    /// - For each H_i(x), compute H'_i(x) = (H_i(x) - H(z)) / (x - z), where H_i(x) is the
+    ///   ith composition polynomial column.
     /// - Then, combine all H_i(x) polynomials together by computing H(x) = sum(H_i(x) * cc_i) for
     ///   all i, where cc_i is the coefficient for the random linear combination drawn from the
     ///   public coin.
     ///
-    /// Note that evaluations of H_i(x) at z^m are passed in via the `ood_evaluations` parameter.
+    /// Note that evaluations of H_i(x) at z are passed in via the `ood_evaluations` parameter.
     pub fn add_composition_poly(
         &mut self,
         composition_poly: CompositionPoly<E>,
@@ -157,19 +157,17 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
     ) {
         assert!(!self.coefficients.is_empty());
 
-        // compute z^m
-        let num_columns = composition_poly.num_columns() as u32;
-        let z_m = self.z.exp(num_columns.into());
+        let z = self.z;
 
         let mut column_polys = composition_poly.into_columns();
 
         // Divide out the OOD point z from column polynomials
         iter_mut!(column_polys)
             .zip(ood_evaluations)
-            .for_each(|(poly, value_at_z_m)| {
-                // compute H'_i(x) = (H_i(x) - H_i(z^m)) / (x - z^m)
-                poly[0] -= value_at_z_m;
-                polynom::syn_div_in_place(poly, 1, z_m);
+            .for_each(|(poly, value_at_z)| {
+                // compute H'_i(x) = (H_i(x) - H_i(z)) / (x - z)
+                poly[0] -= value_at_z;
+                polynom::syn_div_in_place(poly, 1, z);
             });
 
         // add H'_i(x) * cc_i for all i into the DEEP composition polynomial

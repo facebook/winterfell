@@ -21,9 +21,7 @@ mod boundary;
 pub use boundary::{BoundaryConstraint, BoundaryConstraintGroup, BoundaryConstraints};
 
 mod transition;
-pub use transition::{
-    EvaluationFrame, TransitionConstraintDegree, TransitionConstraintGroup, TransitionConstraints,
-};
+pub use transition::{EvaluationFrame, TransitionConstraintDegree, TransitionConstraints};
 
 mod coefficients;
 pub use coefficients::{
@@ -345,7 +343,7 @@ pub trait Air: Send + Sync {
     /// function.
     fn get_transition_constraints<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        composition_coefficients: &[(E, E)],
+        composition_coefficients: &[E],
     ) -> TransitionConstraints<E> {
         TransitionConstraints::new(self.context(), composition_coefficients)
     }
@@ -359,7 +357,7 @@ pub trait Air: Send + Sync {
     fn get_boundary_constraints<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         aux_rand_elements: &AuxTraceRandElements<E>,
-        composition_coefficients: &[(E, E)],
+        composition_coefficients: &[E],
     ) -> BoundaryConstraints<E> {
         BoundaryConstraints::new(
             self.context(),
@@ -433,14 +431,6 @@ pub trait Air: Send + Sync {
         self.context().ce_domain_size()
     }
 
-    /// Returns the degree to which all constraint polynomials are normalized before they are
-    /// composed together.
-    ///
-    /// This degree is one less than the size of constraint evaluation domain.
-    fn composition_degree(&self) -> usize {
-        self.context().composition_degree()
-    }
-
     /// Returns low-degree extension domain blowup factor for the computation described by this
     /// AIR. This is guaranteed to be a power of two, and is always either equal to or greater
     /// than ce_blowup_factor.
@@ -512,12 +502,12 @@ pub trait Air: Send + Sync {
     {
         let mut t_coefficients = Vec::new();
         for _ in 0..self.context().num_transition_constraints() {
-            t_coefficients.push(public_coin.draw_pair()?);
+            t_coefficients.push(public_coin.draw()?);
         }
 
         let mut b_coefficients = Vec::new();
         for _ in 0..self.context().num_assertions() {
-            b_coefficients.push(public_coin.draw_pair()?);
+            b_coefficients.push(public_coin.draw()?);
         }
 
         Ok(ConstraintCompositionCoefficients {

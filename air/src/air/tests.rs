@@ -9,12 +9,11 @@ use super::{
 };
 use crate::{AuxTraceRandElements, FieldExtension};
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin};
-use math::{fields::f128::BaseElement, get_power_series, polynom, FieldElement, StarkField};
+use math::{fields::f64::BaseElement, get_power_series, polynom, FieldElement, StarkField};
 use utils::collections::{BTreeMap, Vec};
 
 // PERIODIC COLUMNS
 // ================================================================================================
-
 #[test]
 fn get_periodic_column_polys() {
     // no periodic columns
@@ -77,11 +76,11 @@ fn get_boundary_constraints() {
         Assertion::single(0, 0, BaseElement::new(3)), // column 0, step 0 -> group 0
         Assertion::single(0, 9, BaseElement::new(5)), // column 0, step 9 -> group 1
         Assertion::single(1, 9, BaseElement::new(9)), // column 0, step 9 -> group 1
-        Assertion::sequence(0, 2, 4, values.clone()), // column 0, steps 2, 6, 10, 14 -> group 4
-        Assertion::sequence(1, 2, 4, values.clone()), // column 1, steps 2, 6, 10, 14 -> group 4
-        Assertion::sequence(1, 0, 8, values[..2].to_vec()), // column 1, steps 0, 8 -> group 2
-        Assertion::sequence(0, 3, 8, values[..2].to_vec()), // column 0, steps 3, 11 -> group 3
-        Assertion::periodic(1, 3, 8, BaseElement::new(7)), // column 1, steps 3, 11 -> group 3
+        Assertion::sequence(0, 2, 4, values.clone()), // column 0, steps 2, 6, 10, 14 -> group 2
+        Assertion::sequence(1, 2, 4, values.clone()), // column 1, steps 2, 6, 10, 14 -> group 2
+        Assertion::sequence(1, 0, 8, values[..2].to_vec()), // column 1, steps 0, 8 -> group 3
+        Assertion::sequence(0, 3, 8, values[..2].to_vec()), // column 0, steps 3, 11 -> group 4
+        Assertion::periodic(1, 3, 8, BaseElement::new(7)), // column 1, steps 3, 11 -> group 4
     ];
 
     // instantiate mock AIR
@@ -94,36 +93,25 @@ fn get_boundary_constraints() {
     // sorted first by stride, then by first step, and finally by column (similar to the order)
     // of assertions above
     let mut prng = build_prng();
-    let mut expected_cc = BTreeMap::<usize, (BaseElement, BaseElement)>::new();
-    expected_cc.insert(0, prng.draw_pair().unwrap());
-    expected_cc.insert(1, prng.draw_pair().unwrap());
-    expected_cc.insert(2, prng.draw_pair().unwrap());
-    expected_cc.insert(6, prng.draw_pair().unwrap());
-    expected_cc.insert(7, prng.draw_pair().unwrap());
-    expected_cc.insert(3, prng.draw_pair().unwrap());
-    expected_cc.insert(4, prng.draw_pair().unwrap());
-    expected_cc.insert(5, prng.draw_pair().unwrap());
+    let mut expected_cc = BTreeMap::<usize, BaseElement>::new();
+    expected_cc.insert(0, prng.draw().unwrap());
+    expected_cc.insert(1, prng.draw().unwrap());
+    expected_cc.insert(2, prng.draw().unwrap());
+    expected_cc.insert(6, prng.draw().unwrap());
+    expected_cc.insert(7, prng.draw().unwrap());
+    expected_cc.insert(3, prng.draw().unwrap());
+    expected_cc.insert(4, prng.draw().unwrap());
+    expected_cc.insert(5, prng.draw().unwrap());
 
     // get boundary constraints from AIR, and sort constraint groups so that the order
     // is stable; the original order is just by degree_adjustment
     let mut prng = build_prng();
     let coefficients = (0..8)
-        .map(|_| prng.draw_pair().unwrap())
-        .collect::<Vec<(BaseElement, BaseElement)>>();
+        .map(|_| prng.draw().unwrap())
+        .collect::<Vec<BaseElement>>();
     let constraints = air.get_boundary_constraints(&AuxTraceRandElements::new(), &coefficients);
-    let mut groups = constraints.main_constraints().to_vec();
+    let groups = constraints.main_constraints().to_vec();
 
-    groups.sort_by(|g1, g2| {
-        if g1.degree_adjustment() == g2.degree_adjustment() {
-            let n1 = &g1.divisor().numerator()[0].1;
-            let n2 = &g2.divisor().numerator()[0].1;
-            n1.as_int().partial_cmp(&n2.as_int()).unwrap()
-        } else {
-            g1.degree_adjustment()
-                .partial_cmp(&g2.degree_adjustment())
-                .unwrap()
-        }
-    });
     assert_eq!(5, groups.len());
 
     // group 0
@@ -158,42 +146,6 @@ fn get_boundary_constraints() {
 
     // group 2
     let group = &groups[2];
-    assert_eq!(2, group.divisor().degree());
-    assert_eq!(vec![(2, g.exp(0))], group.divisor().numerator());
-    assert_eq!(1, group.constraints().len());
-
-    let constraint = &group.constraints()[0];
-    assert_eq!(1, constraint.column());
-    assert_eq!(
-        build_sequence_poly(&values[..2], trace_length),
-        constraint.poly()
-    );
-    assert_eq!(no_poly_offset, constraint.poly_offset());
-    assert_eq!(expected_cc[&3], constraint.cc().clone());
-
-    // group 3
-    let group = &groups[3];
-    assert_eq!(2, group.divisor().degree());
-    assert_eq!(vec![(2, g.exp(2 * 3))], group.divisor().numerator());
-    assert_eq!(2, group.constraints().len());
-
-    let constraint = &group.constraints()[0];
-    assert_eq!(0, constraint.column());
-    assert_eq!(
-        build_sequence_poly(&values[..2], trace_length),
-        constraint.poly()
-    );
-    assert_eq!((3, g.inv().exp(3)), constraint.poly_offset());
-    assert_eq!(expected_cc[&4], constraint.cc().clone());
-
-    let constraint = &group.constraints()[1];
-    assert_eq!(1, constraint.column());
-    assert_eq!(vec![BaseElement::new(7)], constraint.poly());
-    assert_eq!(no_poly_offset, constraint.poly_offset());
-    assert_eq!(expected_cc[&5], constraint.cc().clone());
-
-    // group 4
-    let group = &groups[4];
     assert_eq!(4, group.divisor().degree());
     assert_eq!(vec![(4, g.exp(4 * 2))], group.divisor().numerator());
     assert_eq!(2, group.constraints().len());
@@ -215,6 +167,42 @@ fn get_boundary_constraints() {
     );
     assert_eq!((2, g.inv().exp(2)), constraint.poly_offset());
     assert_eq!(expected_cc[&7], constraint.cc().clone());
+
+    // group 3
+    let group = &groups[3];
+    assert_eq!(2, group.divisor().degree());
+    assert_eq!(vec![(2, g.exp(0))], group.divisor().numerator());
+    assert_eq!(1, group.constraints().len());
+
+    let constraint = &group.constraints()[0];
+    assert_eq!(1, constraint.column());
+    assert_eq!(
+        build_sequence_poly(&values[..2], trace_length),
+        constraint.poly()
+    );
+    assert_eq!(no_poly_offset, constraint.poly_offset());
+    assert_eq!(expected_cc[&3], constraint.cc().clone());
+
+    // group 4
+    let group = &groups[4];
+    assert_eq!(2, group.divisor().degree());
+    assert_eq!(vec![(2, g.exp(2 * 3))], group.divisor().numerator());
+    assert_eq!(2, group.constraints().len());
+
+    let constraint = &group.constraints()[0];
+    assert_eq!(0, constraint.column());
+    assert_eq!(
+        build_sequence_poly(&values[..2], trace_length),
+        constraint.poly()
+    );
+    assert_eq!((3, g.inv().exp(3)), constraint.poly_offset());
+    assert_eq!(expected_cc[&4], constraint.cc().clone());
+
+    let constraint = &group.constraints()[1];
+    assert_eq!(1, constraint.column());
+    assert_eq!(vec![BaseElement::new(7)], constraint.poly());
+    assert_eq!(no_poly_offset, constraint.poly_offset());
+    assert_eq!(expected_cc[&5], constraint.cc().clone());
 }
 
 // MOCK AIR

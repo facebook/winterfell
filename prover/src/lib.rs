@@ -47,7 +47,7 @@ pub use air::{
     proof::StarkProof, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
     BoundaryConstraintGroup, ConstraintCompositionCoefficients, ConstraintDivisor,
     DeepCompositionCoefficients, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo,
-    TraceLayout, TransitionConstraintDegree, TransitionConstraintGroup,
+    TraceLayout, TransitionConstraintDegree,
 };
 pub use utils::{
     iterators, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
@@ -317,7 +317,8 @@ pub trait Prover {
         //   trace_length - 1
         #[cfg(feature = "std")]
         let now = Instant::now();
-        let composition_poly = constraint_evaluations.into_poly()?;
+        let composition_poly =
+            constraint_evaluations.into_poly(air.context().num_constraint_composition_columns())?;
         #[cfg(feature = "std")]
         debug!(
             "Converted constraint evaluations into {} composition polynomial columns of degree {} in {} ms",

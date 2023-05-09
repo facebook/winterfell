@@ -534,6 +534,6 @@ pub use prover::{
     ConstraintDivisor, DeepCompositionCoefficients, Deserializable, DeserializationError,
     EvaluationFrame, FieldExtension, ProofOptions, Prover, ProverError, Serializable, SliceReader,
     StarkProof, Trace, TraceInfo, TraceLayout, TraceTable, TraceTableFragment,
-    TransitionConstraintDegree, TransitionConstraintGroup,
+    TransitionConstraintDegree,
 };
 pub use verifier::{verify, VerifierError};

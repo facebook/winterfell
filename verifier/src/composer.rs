@@ -141,13 +141,12 @@ impl<E: FieldElement> DeepComposer<E> {
     /// into a single value by computing their random linear combination as follows:
     ///
     /// - Assume each queried value is an evaluation of a composition polynomial column H_i(x).
-    /// - For each H_i(x), compute H'_i(x) = (H_i(x) - H(z^m)) / (x - z^m), where m is the total
-    ///   number of composition polynomial columns.
+    /// - For each H_i(x), compute H'_i(x) = (H_i(x) - H(z)) / (x - z).
     /// - Then, combine all H_i(x) values together by computing H(x) = sum(H_i(x) * cc_i) for
     ///   all i, where cc_i is the coefficient for the random linear combination drawn from the
     ///   public coin.
     ///
-    /// Note that values of H_i(z^m)are received from teh prover and passed into this function
+    /// Note that values of H_i(z) are received from the prover and passed into this function
     /// via the `ood_evaluations` parameter.
     pub fn compose_constraint_evaluations(
         &self,
@@ -160,21 +159,19 @@ impl<E: FieldElement> DeepComposer<E> {
         let mut result_num = Vec::<E>::with_capacity(n);
         let mut result_den = Vec::<E>::with_capacity(n);
 
-        // compute z^m
-        let num_evaluation_columns = ood_evaluations.len() as u32;
-        let z_m = self.z[0].exp_vartime(num_evaluation_columns.into());
+        let z = self.z[0];
 
         // combine composition polynomial columns separately for numerators and denominators;
         // this way we can use batch inversion in the end.
         for (query_values, &x) in queried_evaluations.rows().zip(&self.x_coordinates) {
             let mut composition_num = E::ZERO;
             for (i, &evaluation) in query_values.iter().enumerate() {
-                // compute the numerator of H'_i(x) as (H_i(x) - H_i(z^m)), multiply it by a
+                // compute the numerator of H'_i(x) as (H_i(x) - H_i(z)), multiply it by a
                 // composition coefficient, and add the result to the numerator aggregator
                 composition_num += (evaluation - ood_evaluations[i]) * self.cc.constraints[i];
             }
             result_num.push(composition_num);
-            result_den.push(x - z_m);
+            result_den.push(x - z);
         }
 
         result_den = batch_inversion(&result_den);

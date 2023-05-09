@@ -36,7 +36,7 @@ pub use air::{
     proof::StarkProof, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
     BoundaryConstraintGroup, ConstraintCompositionCoefficients, ConstraintDivisor,
     DeepCompositionCoefficients, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo,
-    TransitionConstraintDegree, TransitionConstraintGroup,
+    TransitionConstraintDegree,
 };
 
 pub use math;
@@ -202,16 +202,20 @@ where
     public_coin.reseed(H::hash_elements(ood_trace_frame.values()));
 
     // read evaluations of composition polynomial columns sent by the prover, and reduce them into
-    // a single value by computing sum(z^i * value_i), where value_i is the evaluation of the ith
-    // column polynomial at z^m, where m is the total number of column polynomials; also, reseed
-    // the public coin with the OOD constraint evaluations received from the prover.
+    // a single value by computing \sum_{i=0}^{m-1}(z^(i * l) * value_i), where value_i is the
+    // evaluation of the ith column polynomial H_i(X) at z, l is the trace length and m is
+    // the number of composition column polynomials. This computes H(z) (i.e.
+    // the evaluation of the composition polynomial at z) using the fact that
+    // H(X) = \sum_{i=0}^{m-1} X^{i * l} H_i(X).
+    // Also, reseed the public coin with the OOD constraint evaluations received from the prover.
     let ood_constraint_evaluations = channel.read_ood_constraint_evaluations();
-    let ood_constraint_evaluation_2 = ood_constraint_evaluations
-        .iter()
-        .enumerate()
-        .fold(E::ZERO, |result, (i, &value)| {
-            result + z.exp_vartime((i as u32).into()) * value
-        });
+    let ood_constraint_evaluation_2 =
+        ood_constraint_evaluations
+            .iter()
+            .enumerate()
+            .fold(E::ZERO, |result, (i, &value)| {
+                result + z.exp_vartime(((i * (air.trace_length())) as u32).into()) * value
+            });
     public_coin.reseed(H::hash_elements(&ood_constraint_evaluations));
 
     // finally, make sure the values are the same

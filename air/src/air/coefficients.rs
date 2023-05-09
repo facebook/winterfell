@@ -51,22 +51,21 @@ impl<E: FieldElement> Default for AuxTraceRandElements<E> {
 /// function. In the interactive version of the protocol, the verifier draws these coefficients
 /// uniformly at random from the extension field of the protocol.
 ///
-/// There are two coefficients for each constraint so that we can compute a random linear
-/// combination of constraints like so:
+/// There is one coefficient for each constraint so that we can compute a random linear
+/// combination of constraints as:
 /// $$
-/// \sum_{i = 0}^k{C_i(x) \cdot (\alpha_i + \beta_i \cdot x^{d_i})}
+/// \sum_{i = 0}^k{\alpha_i \cdot C_i(x)}
 /// $$
 /// where:
-/// * $\alpha_i$ and $\beta_i$ are the coefficients for the $i$th constraint.
+/// * $\alpha_i$ is the coefficient for the $i$th constraint.
 /// * $C_i(x)$ is an evaluation of the $i$th constraint at $x$.
-/// * $d_i$ is the degree adjustment factor needed to normalize all constraints to the same degree.
 ///
 /// The coefficients are separated into two lists: one for transition constraints and another one
 /// for boundary constraints. This separation is done for convenience only.
 #[derive(Debug, Clone)]
 pub struct ConstraintCompositionCoefficients<E: FieldElement> {
-    pub transition: Vec<(E, E)>,
-    pub boundary: Vec<(E, E)>,
+    pub transition: Vec<E>,
+    pub boundary: Vec<E>,
 }
 
 // DEEP COMPOSITION COEFFICIENTS
@@ -84,7 +83,7 @@ pub struct ConstraintCompositionCoefficients<E: FieldElement> {
 /// Y(x) = \sum_{i=0}^k{(
 ///     \alpha_i \cdot \frac{T_i(x) - T_i(z)}{x - z} +
 ///     \beta_i \cdot \frac{T_i(x) - T_i(z \cdot g)}{x - z \cdot g}
-/// )} + \sum_{j=0}^m{\delta \cdot \frac{H_j(x) - H_j(z^m)}{x - z^m}}
+/// )} + \sum_{j=0}^m{\delta_j \cdot \frac{H_j(x) - H_j(z)}{x - z}}
 /// $$
 /// where:
 /// * $z$ is an out-of-domain point drawn randomly from the entire field. In the interactive
@@ -94,9 +93,7 @@ pub struct ConstraintCompositionCoefficients<E: FieldElement> {
 /// * $T_i(x)$ is an evaluation of the $i$th trace polynomial at $x$, and $k$ is the total
 ///   number of trace polynomials (which is equal to the width of the execution trace).
 /// * $H_i(x)$ is an evaluation of the $j$th constraint composition column polynomial at $x$,
-///   and $m$ is the total number of column polynomials. The number of column polynomials is equal
-///   to the highest constraint degree rounded to the next power of two. For example, if the
-///   highest constraint degree is 6, $m$ will be equal to 8.
+///   and $m$ is the total number of column polynomials.
 /// * $\alpha_i, \beta_i$ are composition coefficients for the $i$th trace polynomial.
 /// * $\delta_j$ is a composition coefficient for $j$th constraint column polynomial.
 ///
