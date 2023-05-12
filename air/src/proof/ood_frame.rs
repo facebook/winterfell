@@ -3,7 +3,6 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::EvaluationFrame;
 use math::FieldElement;
 use utils::{
     collections::Vec, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
@@ -13,7 +12,7 @@ use utils::{
 // TYPE ALIASES
 // ================================================================================================
 
-type ParsedOodFrame<E> = (EvaluationFrame<E>, Option<EvaluationFrame<E>>, Vec<E>);
+type ParsedOodFrame<E> = (Vec<E>, Vec<E>);
 
 // OUT-OF-DOMAIN FRAME
 // ================================================================================================
@@ -38,18 +37,33 @@ impl OodFrame {
     // UPDATERS
     // --------------------------------------------------------------------------------------------
 
-    /// Updates the trace state portion of this out-of-domain frame.
+    /// Updates the trace state portion of this out-of-domain frame. This also returns a compactified
+    /// version of the out-of-domain frame with the rows interleaved. This is done so that reseeding
+    /// of the random coin needs to be done only once as opposed to once per each row.
     ///
     /// # Panics
     /// Panics if evaluation frame has already been set.
-    pub fn set_trace_states<E: FieldElement>(&mut self, trace_states: &[Vec<E>]) {
+    pub fn set_trace_states<E: FieldElement>(&mut self, trace_states: &[Vec<E>]) -> Vec<E> {
         assert!(
             self.trace_states.is_empty(),
             "trace sates have already been set"
         );
-        for trace_state in trace_states {
-            trace_state.write_into(&mut self.trace_states);
+
+        // save the evaluations with the current and next evaluations interleaved for each polynomial
+        let frame_size = trace_states.len();
+        let width = trace_states[0].len();
+
+        let mut result = vec![];
+        for i in 0..width {
+            for row in trace_states.iter() {
+                result.push(row[i]);
+            }
         }
+        debug_assert!(frame_size <= u8::MAX as usize);
+        self.trace_states.write_u8(frame_size as u8);
+        result.write_into(&mut self.trace_states);
+
+        result
     }
 
     /// Updates constraint evaluation portion of this out-of-domain frame.
@@ -94,23 +108,16 @@ impl OodFrame {
         assert!(main_trace_width > 0, "trace width cannot be zero");
         assert!(num_evaluations > 0, "number of evaluations cannot be zero");
 
-        // parse current and next trace states for main and auxiliary trace evaluation frames
+        // parse main and auxiliary trace evaluation frames
         let mut reader = SliceReader::new(&self.trace_states);
-        let current = E::read_batch_from(&mut reader, main_trace_width)?;
-        let current_aux = E::read_batch_from(&mut reader, aux_trace_width)?;
-        let next = E::read_batch_from(&mut reader, main_trace_width)?;
-        let next_aux = E::read_batch_from(&mut reader, aux_trace_width)?;
+        let frame_size = reader.read_u8()? as usize;
+        let trace = E::read_batch_from(
+            &mut reader,
+            (main_trace_width + aux_trace_width) * frame_size,
+        )?;
         if reader.has_more_bytes() {
             return Err(DeserializationError::UnconsumedBytes);
         }
-
-        // instantiate the frames from the parsed rows
-        let main_frame = EvaluationFrame::from_rows(current, next);
-        let aux_frame = if aux_trace_width > 0 {
-            Some(EvaluationFrame::from_rows(current_aux, next_aux))
-        } else {
-            None
-        };
 
         // parse the constraint evaluations
         let mut reader = SliceReader::new(&self.evaluations);
@@ -119,7 +126,7 @@ impl OodFrame {
             return Err(DeserializationError::UnconsumedBytes);
         }
 
-        Ok((main_frame, aux_frame, evaluations))
+        Ok((trace, evaluations))
     }
 }
 
