@@ -92,10 +92,11 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         // --- parse out-of-domain evaluation frame -----------------------------------------------
-        let (ood_main_trace_frame, ood_aux_trace_frame, ood_constraint_evaluations) = ood_frame
+        let (ood_trace_evaluations, ood_constraint_evaluations) = ood_frame
             .parse(main_trace_width, aux_trace_width, air.ce_blowup_factor())
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
-        let ood_trace_frame = TraceOodFrame::new(ood_main_trace_frame, ood_aux_trace_frame);
+        let ood_trace_frame =
+            TraceOodFrame::new(ood_trace_evaluations, main_trace_width, aux_trace_width);
 
         Ok(VerifierChannel {
             // trace queries
@@ -138,11 +139,9 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
     /// generator of the LDE domain.
     ///
     /// For computations requiring multiple trace segments, evaluations of auxiliary trace
-    /// polynomials are also included as the second value of the returned tuple. Otherwise, the
-    /// second value is None.
-    pub fn read_ood_trace_frame(&mut self) -> (EvaluationFrame<E>, Option<EvaluationFrame<E>>) {
-        let frame = self.ood_trace_frame.take().expect("already read");
-        (frame.main_frame, frame.aux_frame)
+    /// polynomials are also included.
+    pub fn read_ood_trace_frame(&mut self) -> TraceOodFrame<E> {
+        self.ood_trace_frame.take().expect("already read")
     }
 
     /// Returns evaluations of composition polynomial columns at z^m, where z is the out-of-domain
@@ -343,16 +342,87 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> ConstraintQuer
 // TRACE OUT-OF-DOMAIN FRAME
 // ================================================================================================
 
-struct TraceOodFrame<E: FieldElement> {
-    main_frame: EvaluationFrame<E>,
-    aux_frame: Option<EvaluationFrame<E>>,
+pub struct TraceOodFrame<E: FieldElement> {
+    values: Vec<E>,
+    main_trace_width: usize,
+    aux_trace_width: usize,
 }
 
 impl<E: FieldElement> TraceOodFrame<E> {
-    pub fn new(main_frame: EvaluationFrame<E>, aux_frame: Option<EvaluationFrame<E>>) -> Self {
+    pub fn new(values: Vec<E>, main_trace_width: usize, aux_trace_width: usize) -> Self {
         Self {
-            main_frame,
-            aux_frame,
+            values,
+            main_trace_width,
+            aux_trace_width,
+        }
+    }
+
+    pub fn values(&self) -> &[E] {
+        &self.values
+    }
+
+    // The out-of-domain frame is stored as one vector of interleaved values, one from the
+    // current row and the other from the next row. See `OodFrame::set_trace_states`.
+    // Thus we need to untangle the current and next rows stored in `Self::values` and we
+    // do that for the main and auxiliary traces separately.
+    // Pictorially, for the main trace portion:
+    //
+    // Input vector: [a1, b1, a2, b2, ..., an, bn, c1, d1, c2, d2, ..., cm, dm]
+    // with n being the main trace width and m the auxiliary trace width.
+    //
+    // Output:
+    //          +-------+-------+-------+-------+-------+
+    //          |  a1   |   a2  |   a3  |  ...  |   an  |
+    //          +-------+-------+-------+-------+-------+
+    //          |  b1   |   b2  |   b3  |  ...  |   bn  |
+    //          +-------+-------+-------+-------+-------+
+    pub fn main_frame(&self) -> EvaluationFrame<E> {
+        let mut current = vec![E::ZERO; self.main_trace_width];
+        let mut next = vec![E::ZERO; self.main_trace_width];
+
+        for (i, a) in self
+            .values
+            .chunks(2)
+            .take(self.main_trace_width)
+            .enumerate()
+        {
+            current[i] = a[0];
+            next[i] = a[1];
+        }
+
+        EvaluationFrame::from_rows(current, next)
+    }
+
+    // Similar to `Self::main_frame`, the following untangles the current and next rows stored
+    // in `Self::values` for the auxiliary trace portion when it exists else it returns `None`.
+    // Pictorially:
+    //
+    // Input vector: [a1, b1, a2, b2, ..., an, bn, c1, d1, c2, d2, ..., cm, dm]
+    // with n being the main trace width and m the auxiliary trace width.
+    //
+    // Output:
+    //          +-------+-------+-------+-------+-------+
+    //          |  c1   |   c2  |   c3  |  ...  |   cm  |
+    //          +-------+-------+-------+-------+-------+
+    //          |  d1   |   d2  |   d3  |  ...  |   dm  |
+    //          +-------+-------+-------+-------+-------+
+    pub fn aux_frame(&self) -> Option<EvaluationFrame<E>> {
+        if self.aux_trace_width == 0 {
+            None
+        } else {
+            let mut current_aux = vec![E::ZERO; self.aux_trace_width];
+            let mut next_aux = vec![E::ZERO; self.aux_trace_width];
+
+            for (i, a) in self
+                .values
+                .chunks(2)
+                .skip(self.main_trace_width)
+                .enumerate()
+            {
+                current_aux[i] = a[0];
+                next_aux[i] = a[1];
+            }
+            Some(EvaluationFrame::from_rows(current_aux, next_aux))
         }
     }
 }

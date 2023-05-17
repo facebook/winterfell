@@ -188,7 +188,9 @@ where
     // read the out-of-domain trace frames (the main trace frame and auxiliary trace frame, if
     // provided) sent by the prover and evaluate constraints over them; also, reseed the public
     // coin with the OOD frames received from the prover.
-    let (ood_main_trace_frame, ood_aux_trace_frame) = channel.read_ood_trace_frame();
+    let ood_trace_frame = channel.read_ood_trace_frame();
+    let ood_main_trace_frame = ood_trace_frame.main_frame();
+    let ood_aux_trace_frame = ood_trace_frame.aux_frame();
     let ood_constraint_evaluation_1 = evaluate_constraints(
         &air,
         constraint_coeffs,
@@ -197,23 +199,7 @@ where
         aux_trace_rand_elements,
         z,
     );
-
-    if let Some(ref aux_trace_frame) = ood_aux_trace_frame {
-        // when the trace contains auxiliary segments, append auxiliary trace elements at the
-        // end of main trace elements for both current and next rows in the frame. this is
-        // needed to be consistent with how the prover writes OOD frame into the channel.
-
-        let mut current = ood_main_trace_frame.current().to_vec();
-        current.extend_from_slice(aux_trace_frame.current());
-        public_coin.reseed(H::hash_elements(&current));
-
-        let mut next = ood_main_trace_frame.next().to_vec();
-        next.extend_from_slice(aux_trace_frame.next());
-        public_coin.reseed(H::hash_elements(&next));
-    } else {
-        public_coin.reseed(H::hash_elements(ood_main_trace_frame.current()));
-        public_coin.reseed(H::hash_elements(ood_main_trace_frame.next()));
-    }
+    public_coin.reseed(H::hash_elements(ood_trace_frame.values()));
 
     // read evaluations of composition polynomial columns sent by the prover, and reduce them into
     // a single value by computing sum(z^i * value_i), where value_i is the evaluation of the ith
