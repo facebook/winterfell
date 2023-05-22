@@ -10,13 +10,13 @@
 //! standard library.
 
 #[cfg(not(feature = "std"))]
-pub use alloc::collections::{BTreeMap, BTreeSet};
+pub use alloc::collections::{btree_map, btree_set, BTreeMap, BTreeSet};
 
 #[cfg(not(feature = "std"))]
 pub use alloc::vec::{self as vec, Vec};
 
 #[cfg(feature = "std")]
-pub use std::collections::{BTreeMap, BTreeSet};
+pub use std::collections::{btree_map, btree_set, BTreeMap, BTreeSet};
 
 #[cfg(feature = "std")]
 pub use std::vec::{self as vec, Vec};
