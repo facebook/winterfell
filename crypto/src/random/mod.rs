@@ -70,19 +70,4 @@ pub trait RandomCoin: Sync {
         num_values: usize,
         domain_size: usize,
     ) -> Result<Vec<usize>, RandomCoinError>;
-
-    // PROVIDED METHODS
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns the next pair of pseudo-random field elements.
-    ///
-    /// # Errors
-    /// Returns an error if any of the field elements could not be generated after 100 calls to
-    /// the PRNG;
-    fn draw_pair<E>(&mut self) -> Result<(E, E), RandomCoinError>
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        Ok((self.draw()?, self.draw()?))
-    }
 }
