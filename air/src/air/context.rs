@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{air::TransitionConstraintDegree, ProofOptions, TraceInfo};
+use core::cmp;
 use math::StarkField;
 use utils::collections::Vec;
 
@@ -184,14 +185,6 @@ impl<B: StarkField> AirContext<B> {
         self.trace_info.length() * self.ce_blowup_factor
     }
 
-    /// Returns the degree to which all constraint polynomials are normalized before they are
-    /// composed together.
-    ///
-    /// This degree is always `ce_domain_size` - 1.
-    pub fn composition_degree(&self) -> usize {
-        self.ce_domain_size() - 1
-    }
-
     /// Returns the size of the low-degree extension domain.
     ///
     /// This is guaranteed to be a power of two, and is equal to `trace_length * lde_blowup_factor`.
@@ -237,6 +230,50 @@ impl<B: StarkField> AirContext<B> {
         self.num_transition_exemptions
     }
 
+    /// Returns the number of columns needed to store the constraint composition polynomial.
+    ///
+    /// This is the maximum of:
+    /// 1. The maximum evaluation degree over all transition constraints minus the degree
+    /// of the transition constraint divisor divided by trace length.
+    /// 2. `1`, because the constraint composition polynomial requires at least one column.
+    ///
+    /// Since the degree of a constraint `C(x)` can be well approximated by
+    /// `[constraint.base + constraint.cycles.len()] * [trace_length - 1]` the degree of the
+    /// constraint composition polynomial can be approximated by:
+    /// `([constraint.base + constraint.cycles.len()] * [trace_length - 1] - [trace_length - n])`
+    /// where `constraint` is the constraint attaining the maximum and `n` is the number of
+    /// exemption points.
+    /// In the case `n = 1`, the expression simplifies to:
+    /// `[constraint.base + constraint.cycles.len() - 1] * [trace_length - 1]`
+    /// Thus, if each column is of length `trace_length`, we would need
+    /// `[constraint.base + constraint.cycles.len() - 1]` columns to store the coefficients of
+    /// the constraint composition polynomial.
+    /// This means that if the highest constraint degree is equal to `5`, the constraint
+    /// composition polynomial will require four columns and if the highest constraint degree is
+    /// equal to `7`, it will require six columns to store.
+    pub fn num_constraint_composition_columns(&self) -> usize {
+        let mut highest_constraint_degree = 0_usize;
+        for degree in self
+            .main_transition_constraint_degrees
+            .iter()
+            .chain(self.aux_transition_constraint_degrees.iter())
+        {
+            let eval_degree = degree.get_evaluation_degree(self.trace_len());
+            if eval_degree > highest_constraint_degree {
+                highest_constraint_degree = eval_degree
+            }
+        }
+        let trace_length = self.trace_len();
+        let transition_divisior_degree = trace_length - self.num_transition_exemptions();
+
+        // we use the identity: ceil(a/b) = (a + b - 1)/b
+        let num_constraint_col =
+            (highest_constraint_degree - transition_divisior_degree + trace_length - 1)
+                / trace_length;
+
+        cmp::max(num_constraint_col, 1)
+    }
+
     // DATA MUTATORS
     // --------------------------------------------------------------------------------------------
 
@@ -262,14 +299,20 @@ impl<B: StarkField> AirContext<B> {
             n
         );
         // make sure the composition polynomial can be computed correctly with the specified
-        // number of exemptions
+        // number of exemptions.
+        // The `ce_blowup` factor puts a ceiling on the maximal degree of a constraint composition
+        // polynomial we can accomodate. On the other hand, adding exemption points reduces the
+        // degree of the divisor which results in an increase of the resulting constraint composition
+        // polynomial.Thus we need to check that the number of exemption points is not too large
+        // given the above.
         for degree in self
             .main_transition_constraint_degrees
             .iter()
             .chain(self.aux_transition_constraint_degrees.iter())
         {
             let eval_degree = degree.get_evaluation_degree(self.trace_len());
-            let max_exemptions = self.composition_degree() + self.trace_len() - eval_degree;
+            let max_constraint_composition_degree = self.ce_domain_size() - 1;
+            let max_exemptions = max_constraint_composition_degree + self.trace_len() - eval_degree;
             assert!(
                 n <= max_exemptions,
                 "number of transition exemptions cannot exceed: {max_exemptions}, but was {n}"

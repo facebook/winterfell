@@ -41,7 +41,6 @@ where
 {
     constraints: Vec<BoundaryConstraint<F, E>>,
     divisor: ConstraintDivisor<F::BaseField>,
-    degree_adjustment: u64,
 }
 
 impl<F, E> BoundaryConstraintGroup<F, E>
@@ -51,23 +50,11 @@ where
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
-    /// Returns a new  boundary constraint group to hold constraints with the specified divisor.
-    pub(super) fn new(
-        divisor: ConstraintDivisor<F::BaseField>,
-        trace_poly_degree: usize,
-        composition_degree: usize,
-    ) -> Self {
-        // We want to make sure that once we divide a constraint polynomial by its divisor, the
-        // degree of the resulting polynomial will be exactly equal to the composition_degree.
-        // Boundary constraint degree is always deg(trace). So, the degree adjustment is simply:
-        // deg(composition) + deg(divisor) - deg(trace)
-        let target_degree = composition_degree + divisor.degree();
-        let degree_adjustment = (target_degree - trace_poly_degree) as u64;
-
+    /// Returns a new boundary constraint group to hold constraints with the specified divisor.
+    pub(super) fn new(divisor: ConstraintDivisor<F::BaseField>) -> Self {
         BoundaryConstraintGroup {
             constraints: Vec::new(),
             divisor,
-            degree_adjustment,
         }
     }
 
@@ -84,11 +71,6 @@ where
         &self.divisor
     }
 
-    /// Returns a degree adjustment factor for all boundary constraints in this group.
-    pub fn degree_adjustment(&self) -> u64 {
-        self.degree_adjustment
-    }
-
     // PUBLIC METHODS
     // --------------------------------------------------------------------------------------------
 
@@ -98,7 +80,7 @@ where
         assertion: Assertion<F>,
         inv_g: F::BaseField,
         twiddle_map: &mut BTreeMap<usize, Vec<F::BaseField>>,
-        composition_coefficients: (E, E),
+        composition_coefficients: E,
     ) {
         self.constraints.push(BoundaryConstraint::new(
             assertion,
@@ -110,35 +92,21 @@ where
 
     /// Evaluates all constraints in this group at the specified point `x`.
     ///
-    /// `xp` is a degree adjustment multiplier which must be computed as `x^degree_adjustment`.
-    /// This value is provided as an argument to this function for optimization purposes.
-    ///
     /// Constraint evaluations are merges into a single value by computing their random linear
     /// combination and dividing the result by the divisor of this constraint group as follows:
     /// $$
-    /// \frac{\sum_{i=0}^{k-1}{C_i(x) \cdot (\alpha_i + \beta_i \cdot x^d)}}{z(x)}
+    /// \frac{\sum_{i=0}^{k-1}{\alpha_i \cdot C_i(x)}}{z(x)}
     /// $$
     /// where:
     /// * $C_i(x)$ is the evaluation of the $i$th constraint at `x` computed as $f(x) - b(x)$.
-    /// * $\alpha$ and $\beta$ are random field elements. In the interactive version of the
+    /// * $\alpha_i$ are random field elements. In the interactive version of the
     ///   protocol, these are provided by the verifier.
-    /// * $z(x)$ is the evaluation of the divisor polynomial for this group at $x$.
-    /// * $d$ is the degree adjustment factor computed as $D - deg(C_i(x)) + deg(z(x))$, where
-    ///   $D$ is the degree of the composition polynomial.
-    ///
-    /// Thus, the merged evaluations represent a polynomial of degree $D$, as the degree of the
-    /// numerator is $D + deg(z(x))$, and the division by $z(x)$ reduces the degree by $deg(z(x))$.
-    pub fn evaluate_at(&self, state: &[E], x: E, xp: E) -> E {
-        debug_assert_eq!(
-            x.exp(self.degree_adjustment.into()),
-            xp,
-            "inconsistent degree adjustment"
-        );
+    pub fn evaluate_at(&self, state: &[E], x: E) -> E {
         let mut numerator = E::ZERO;
         for constraint in self.constraints().iter() {
             let trace_value = state[constraint.column()];
             let evaluation = constraint.evaluate_at(x, trace_value);
-            numerator += evaluation * (constraint.cc().0 + constraint.cc().1 * xp);
+            numerator += evaluation * *constraint.cc();
         }
 
         let denominator = self.divisor.evaluate_at(x);

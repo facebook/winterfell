@@ -156,7 +156,10 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
     /// Divides constraint evaluation columns by their respective divisor (in evaluation form),
     /// combines the results into a single column, and interpolates this column into a composition
     /// polynomial in coefficient form.
-    pub fn into_poly(self) -> Result<CompositionPoly<E>, ProverError> {
+    /// `num_cols` is the number of necessary columns (of length `trace_length`) needed to store
+    /// the coefficients of the constraint composition polynomial and is needed by
+    /// `CompositionPoly::new`.
+    pub fn into_poly(self, num_cols: usize) -> Result<CompositionPoly<E>, ProverError> {
         // allocate memory for the combined polynomial
         let mut combined_poly = E::zeroed_vector(self.num_rows());
 
@@ -164,11 +167,6 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
         // by the evaluations of its corresponding divisor, and add all resulting evaluations
         // together into a single vector
         for (column, divisor) in self.evaluations.into_iter().zip(self.divisors.iter()) {
-            // in debug mode, make sure post-division degree of each column matches the expected
-            // degree
-            #[cfg(debug_assertions)]
-            validate_column_degree(&column, divisor, self.domain, column.len() - 1)?;
-
             // divide the column by the divisor and accumulate the result into combined_poly
             acc_column(column, divisor, self.domain, &mut combined_poly);
         }
@@ -179,7 +177,7 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
         fft::interpolate_poly_with_offset(&mut combined_poly, &inv_twiddles, self.domain.offset());
 
         let trace_length = self.domain.trace_length();
-        Ok(CompositionPoly::new(combined_poly, trace_length))
+        Ok(CompositionPoly::new(combined_poly, trace_length, num_cols))
     }
 
     // DEBUG HELPERS
@@ -466,38 +464,6 @@ fn get_transition_poly_degree<E: FieldElement>(
         .collect::<Vec<_>>();
     fft::interpolate_poly(&mut evaluations, inv_twiddles);
     math::polynom::degree_of(&evaluations)
-}
-
-/// Makes sure that the post-division degree of the polynomial matches the expected degree
-#[cfg(debug_assertions)]
-fn validate_column_degree<B: StarkField, E: FieldElement<BaseField = B>>(
-    column: &[E],
-    divisor: &ConstraintDivisor<B>,
-    domain: &StarkDomain<B>,
-    expected_degree: usize,
-) -> Result<(), ProverError> {
-    // build domain for divisor evaluation, and evaluate it over this domain
-    let div_values = evaluate_divisor(divisor, column.len(), domain.offset());
-
-    // divide column values by the divisor
-    let mut evaluations = column
-        .iter()
-        .zip(div_values)
-        .map(|(&c, d)| c / d)
-        .collect::<Vec<_>>();
-
-    // interpolate evaluations into a polynomial in coefficient form
-    let inv_twiddles = fft::get_inv_twiddles::<B>(evaluations.len());
-    fft::interpolate_poly_with_offset(&mut evaluations, &inv_twiddles, domain.offset());
-    let poly = evaluations;
-
-    if expected_degree != math::polynom::degree_of(&poly) {
-        return Err(ProverError::MismatchedConstraintPolynomialDegree(
-            expected_degree,
-            math::polynom::degree_of(&poly),
-        ));
-    }
-    Ok(())
 }
 
 /// Evaluates constraint divisor over the specified domain. This is similar to [get_inv_evaluation]

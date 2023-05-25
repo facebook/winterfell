@@ -34,7 +34,7 @@ impl<E: FieldElement> BoundaryConstraints<E> {
     pub fn new<A: Air<BaseField = E::BaseField>>(
         air: &A,
         aux_rand_elements: &AuxTraceRandElements<E>,
-        composition_coefficients: &[(E, E)],
+        composition_coefficients: &[E],
     ) -> Self {
         // get constraints from the AIR instance
         let source = air.get_boundary_constraints(aux_rand_elements, composition_coefficients);
@@ -96,10 +96,7 @@ impl<E: FieldElement> BoundaryConstraints<E> {
     ) {
         let x = domain.get_ce_x_at(step);
         for (group, result) in self.0.iter().zip(result.iter_mut()) {
-            // evaluate the group and save the result
-            let (power, offset_exp) = (group.degree_adjustment, group.domain_offset_exp);
-            let xp = domain.get_ce_x_power_at(step, power, offset_exp);
-            *result = group.evaluate_main(main_state, step, x, xp);
+            *result = group.evaluate_main(main_state, step, x);
         }
     }
 
@@ -115,10 +112,7 @@ impl<E: FieldElement> BoundaryConstraints<E> {
     ) {
         let x = domain.get_ce_x_at(step);
         for (group, result) in self.0.iter().zip(result.iter_mut()) {
-            // evaluate the group and save the result
-            let (power, offset_exp) = (group.degree_adjustment, group.domain_offset_exp);
-            let xp = domain.get_ce_x_power_at(step, power, offset_exp);
-            *result = group.evaluate_all(main_state, aux_state, step, x, xp);
+            *result = group.evaluate_all(main_state, aux_state, step, x);
         }
     }
 }
@@ -131,13 +125,8 @@ impl<E: FieldElement> BoundaryConstraints<E> {
 ///
 /// The constraints are also separated into constraints against the main segment of the execution
 /// and the constraints against auxiliary segments of the execution trace (if any).
-///
-/// Domain offset exponent is pre-computed to be used later during constraint evaluation process,
-/// and thus, to help avoid exponentiations.
 pub struct BoundaryConstraintGroup<E: FieldElement> {
     divisor: ConstraintDivisor<E::BaseField>,
-    degree_adjustment: u64,
-    domain_offset_exp: E::BaseField,
     // main trace constraints
     main_single_value: Vec<SingleValueConstraint<E::BaseField, E>>,
     main_small_poly: Vec<SmallPolyConstraint<E::BaseField, E>>,
@@ -154,15 +143,9 @@ impl<E: FieldElement> BoundaryConstraintGroup<E> {
 
     /// Returns an empty [BoundaryConstraintGroup] instantiated with the specified divisor and
     /// degree adjustment factor.
-    fn new(
-        divisor: ConstraintDivisor<E::BaseField>,
-        degree_adjustment: u64,
-        domain_offset: E::BaseField,
-    ) -> Self {
+    fn new(divisor: ConstraintDivisor<E::BaseField>) -> Self {
         Self {
             divisor,
-            degree_adjustment,
-            domain_offset_exp: domain_offset.exp(degree_adjustment.into()),
             main_single_value: Vec::new(),
             main_small_poly: Vec::new(),
             main_large_poly: Vec::new(),
@@ -183,11 +166,7 @@ impl<E: FieldElement> BoundaryConstraintGroup<E> {
         air: &A,
         twiddle_map: &mut BTreeMap<usize, Vec<E::BaseField>>,
     ) -> Self {
-        let mut result = Self::new(
-            source.divisor().clone(),
-            source.degree_adjustment(),
-            air.domain_offset(),
-        );
+        let mut result = Self::new(source.divisor().clone());
 
         for constraint in source.constraints() {
             if constraint.poly().len() == 1 {
@@ -216,11 +195,7 @@ impl<E: FieldElement> BoundaryConstraintGroup<E> {
         air: &A,
         twiddle_map: &mut BTreeMap<usize, Vec<E::BaseField>>,
     ) -> Self {
-        let mut result = Self::new(
-            group.divisor().clone(),
-            group.degree_adjustment(),
-            air.domain_offset(),
-        );
+        let mut result = Self::new(group.divisor().clone());
         result.add_aux_constraints(group, air, twiddle_map);
         result
     }
@@ -267,28 +242,22 @@ impl<E: FieldElement> BoundaryConstraintGroup<E> {
 
     /// Evaluates the constraints against the main segment of the execution trace contained in
     /// this group at the specified step of the trace.
-    pub fn evaluate_main(
-        &self,
-        state: &[E::BaseField],
-        ce_step: usize,
-        x: E::BaseField,
-        xp: E::BaseField,
-    ) -> E {
+    pub fn evaluate_main(&self, state: &[E::BaseField], ce_step: usize, x: E::BaseField) -> E {
         let mut result = E::ZERO;
 
         // evaluate all single-value constraints
         for constraint in self.main_single_value.iter() {
-            result += constraint.evaluate(state, xp);
+            result += constraint.evaluate(state);
         }
 
         // evaluate all small polynomial constraints
         for constraint in self.main_small_poly.iter() {
-            result += constraint.evaluate(state, x, xp);
+            result += constraint.evaluate(state, x);
         }
 
         // evaluate all large polynomial constraints
         for constraint in self.main_large_poly.iter() {
-            result += constraint.evaluate(state, ce_step, xp);
+            result += constraint.evaluate(state, ce_step);
         }
 
         result
@@ -302,23 +271,22 @@ impl<E: FieldElement> BoundaryConstraintGroup<E> {
         aux_state: &[E],
         ce_step: usize,
         x: E::BaseField,
-        xp: E::BaseField,
     ) -> E {
-        let mut result = self.evaluate_main(main_state, ce_step, x, xp);
+        let mut result = self.evaluate_main(main_state, ce_step, x);
 
         // evaluate all single-value constraints
         for constraint in self.aux_single_value.iter() {
-            result += constraint.evaluate(aux_state, xp);
+            result += constraint.evaluate(aux_state);
         }
 
         // evaluate all small polynomial constraints
         for constraint in self.aux_small_poly.iter() {
-            result += constraint.evaluate(aux_state, x, xp);
+            result += constraint.evaluate(aux_state, x);
         }
 
         // evaluate all large polynomial constraints
         for constraint in self.aux_large_poly.iter() {
-            result += constraint.evaluate(aux_state, ce_step, xp);
+            result += constraint.evaluate(aux_state, ce_step);
         }
 
         result
@@ -337,7 +305,7 @@ where
 {
     column: usize,
     value: F,
-    coefficients: (E, E),
+    coefficients: E,
 }
 
 impl<F, E> SingleValueConstraint<F, E>
@@ -358,11 +326,10 @@ where
 
     /// Evaluates this constraint over the specified state and returns the result.
     ///
-    /// This also applies composition coefficients as well as the degree adjustment factor
-    /// (defined by `xp` parameter) to the evaluation before it is returned.
-    pub fn evaluate(&self, state: &[F], xp: F::BaseField) -> E {
+    /// This also multiplies by the composition coefficient.
+    pub fn evaluate(&self, state: &[F]) -> E {
         let evaluation = state[self.column] - self.value;
-        (self.coefficients.0 + self.coefficients.1.mul_base(xp)).mul_base(evaluation)
+        self.coefficients.mul_base(evaluation)
     }
 }
 
@@ -380,7 +347,7 @@ where
     column: usize,
     poly: Vec<F>,
     x_offset: F::BaseField,
-    coefficients: (E, E),
+    coefficients: E,
 }
 
 impl<F, E> SmallPolyConstraint<F, E>
@@ -405,12 +372,9 @@ where
 
     /// Evaluates this constraint over the specified state and returns the result.
     ///
-    /// This also applies composition coefficients as well as the degree adjustment factor
-    /// (defined by `xp` parameter) to the evaluation before it is returned.
-    ///
     /// We need the point in the domain ('x') corresponding to the passed-in state because to
     /// evaluate the constraint we need to evaluate its value polynomial at `x`.
-    pub fn evaluate(&self, state: &[F], x: F::BaseField, xp: F::BaseField) -> E {
+    pub fn evaluate(&self, state: &[F], x: F::BaseField) -> E {
         let x = x * self.x_offset;
         // evaluate constraint polynomial as x * offset using Horner evaluation
         let assertion_value = self
@@ -420,7 +384,7 @@ where
             .fold(F::ZERO, |acc, &coeff| acc.mul_base(x) + coeff);
         // evaluate the constraint
         let evaluation = state[self.column] - assertion_value;
-        (self.coefficients.0 + self.coefficients.1.mul_base(xp)).mul_base(evaluation)
+        self.coefficients.mul_base(evaluation)
     }
 }
 
@@ -435,7 +399,7 @@ where
     column: usize,
     values: Vec<F>,
     step_offset: usize,
-    coefficients: (E, E),
+    coefficients: E,
 }
 
 impl<F, E> LargePolyConstraint<F, E>
@@ -480,7 +444,7 @@ where
     ///
     /// This also applies composition coefficients as well as the degree adjustment factor
     /// (defined by `xp` parameter) to the evaluation before it is returned.
-    pub fn evaluate(&self, state: &[F], ce_step: usize, xp: F::BaseField) -> E {
+    pub fn evaluate(&self, state: &[F], ce_step: usize) -> E {
         let value_index = if self.step_offset > 0 {
             // if the assertion happens on steps which are not a power of 2, we need to offset the
             // evaluation; the below basically computes (ce_step - step_offset) % values.len();
@@ -494,6 +458,6 @@ where
             ce_step
         };
         let evaluation = state[self.column] - self.values[value_index];
-        (self.coefficients.0 + self.coefficients.1.mul_base(xp)).mul_base(evaluation)
+        (self.coefficients).mul_base(evaluation)
     }
 }

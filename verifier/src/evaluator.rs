@@ -62,22 +62,11 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     let b_constraints =
         air.get_boundary_constraints(&aux_rand_elements, &composition_coefficients.boundary);
 
-    // cache power of x here so that we only re-compute it when degree_adjustment changes
-    let mut degree_adjustment = b_constraints.main_constraints()[0].degree_adjustment();
-    let mut xp = x.exp_vartime(degree_adjustment.into());
-
     // iterate over boundary constraint groups for the main trace segment (each group has a
     // distinct divisor), evaluate constraints in each group and add their combination to the
     // result
     for group in b_constraints.main_constraints().iter() {
-        // if adjustment degree hasn't changed, no need to recompute `xp` - so just reuse the
-        // previous value; otherwise, compute new `xp`
-        if group.degree_adjustment() != degree_adjustment {
-            degree_adjustment = group.degree_adjustment();
-            xp = x.exp_vartime(degree_adjustment.into());
-        }
-        // evaluate all constraints in the group, and add the evaluation to the result
-        result += group.evaluate_at(main_trace_frame.current(), x, xp);
+        result += group.evaluate_at(main_trace_frame.current(), x);
     }
 
     // iterate over boundary constraint groups for auxiliary trace segments (each group has a
@@ -85,14 +74,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     // result
     if let Some(aux_trace_frame) = aux_trace_frame {
         for group in b_constraints.aux_constraints().iter() {
-            // if adjustment degree hasn't changed, no need to recompute `xp` - so just reuse the
-            // previous value; otherwise, compute new `xp`
-            if group.degree_adjustment() != degree_adjustment {
-                degree_adjustment = group.degree_adjustment();
-                xp = x.exp_vartime(degree_adjustment.into());
-            }
-            // evaluate all constraints in the group, and add the evaluation to the result
-            result += group.evaluate_at(aux_trace_frame.current(), x, xp);
+            result += group.evaluate_at(aux_trace_frame.current(), x);
         }
     }
 

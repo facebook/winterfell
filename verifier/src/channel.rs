@@ -59,10 +59,11 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
             pow_nonce,
         } = proof;
 
-        // make AIR and proof base fields are the same
+        // make sure AIR and proof base fields are the same
         if E::BaseField::get_modulus_le_bytes() != context.field_modulus_bytes() {
             return Err(VerifierError::InconsistentBaseField);
         }
+        let constraint_frame_width = air.context().num_constraint_composition_columns();
 
         let num_trace_segments = air.trace_layout().num_segments();
         let main_trace_width = air.trace_layout().main_trace_width();
@@ -93,7 +94,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
 
         // --- parse out-of-domain evaluation frame -----------------------------------------------
         let (ood_trace_evaluations, ood_constraint_evaluations) = ood_frame
-            .parse(main_trace_width, aux_trace_width, air.ce_blowup_factor())
+            .parse(main_trace_width, aux_trace_width, constraint_frame_width)
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
         let ood_trace_frame =
             TraceOodFrame::new(ood_trace_evaluations, main_trace_width, aux_trace_width);
@@ -324,8 +325,10 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> ConstraintQuer
         air: &A,
     ) -> Result<Self, VerifierError> {
         let num_queries = air.options().num_queries();
+        let constraint_frame_width = air.context().num_constraint_composition_columns();
+
         let (query_proofs, evaluations) = queries
-            .parse::<H, E>(air.lde_domain_size(), num_queries, air.ce_blowup_factor())
+            .parse::<H, E>(air.lde_domain_size(), num_queries, constraint_frame_width)
             .map_err(|err| {
                 VerifierError::ProofDeserializationError(format!(
                     "constraint evaluation query deserialization failed: {err}"
