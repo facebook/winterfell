@@ -77,39 +77,40 @@ pub struct ConstraintCompositionCoefficients<E: FieldElement> {
 /// function. In the interactive version of the protocol, the verifier draws these coefficients
 /// uniformly at random from the extension field of the protocol.
 ///
-/// The coefficients are used in computing the DEEP composition polynomial in two steps. First,
-/// we compute a random linear combination of trace and constraint composition polynomials as:
+/// The coefficients are used in computing the DEEP composition polynomial as:
 /// $$
 /// Y(x) = \sum_{i=0}^k{(
-///     \alpha_i \cdot \frac{T_i(x) - T_i(z)}{x - z} +
-///     \beta_i \cdot \frac{T_i(x) - T_i(z \cdot g)}{x - z \cdot g}
-/// )} + \sum_{j=0}^m{\delta_j \cdot \frac{H_j(x) - H_j(z)}{x - z}}
+///     \alpha_i \cdot (\frac{T_i(x) - T_i(z)}{x - z} +
+///     \frac{T_i(x) - T_i(z \cdot g)}{x - z \cdot g})
+/// )} + \sum_{j=0}^m{\beta_j \cdot \frac{H_j(x) - H_j(z)}{x - z}}
 /// $$
 /// where:
 /// * $z$ is an out-of-domain point drawn randomly from the entire field. In the interactive
 ///   version of the protocol, $z$ is provided by the verifier.
-/// * $g$ is the generator of the trace domain. This is the same as $n$th root of unity where
+/// * $g$ is the generator of the trace domain. This is the $n$th root of unity where
 ///   $n$ is the length of the execution trace.
 /// * $T_i(x)$ is an evaluation of the $i$th trace polynomial at $x$, and $k$ is the total
 ///   number of trace polynomials (which is equal to the width of the execution trace).
 /// * $H_i(x)$ is an evaluation of the $j$th constraint composition column polynomial at $x$,
 ///   and $m$ is the total number of column polynomials.
-/// * $\alpha_i, \beta_i$ are composition coefficients for the $i$th trace polynomial.
-/// * $\delta_j$ is a composition coefficient for $j$th constraint column polynomial.
+/// * $\alpha_i$ is a composition coefficient for the $i$th trace polynomial.
+/// * $\beta_j$ is a composition coefficient for the $j$th constraint column polynomial.
 ///
-/// $T(x)$ and $H(x)$ are polynomials of degree $n - 1$, where $n$ is the length of the execution
-/// trace. Thus, the degree of $Y(x)$ polynomial is $n - 2$. To bring the degree back up to
-/// $n - 1$, we compute the DEEP composition polynomial as:
-/// $$
-/// C(x) = Y(x) \cdot (\lambda + \mu \cdot x)
-/// $$
-/// where $\lambda$ and $\mu$ are the composition coefficients for degree adjustment.
+/// The soundness of the resulting protocol with batching as above is given in Theorem 8 in
+/// https://eprint.iacr.org/2022/1216 and it relies on two points:
+///
+/// 1. The evaluation proofs for each trace polynomial at $z$ and $g \cdot z$ can be batched using
+/// the non-normalized Lagrange kernel over the set $\{z, g \cdot z\}$. This, however, requires
+/// that the FRI protocol is run with rate $\rho^{+} := \frac{\kappa + 2}{\nu}$ where $\kappa$ and
+/// $\nu$ are the length of the execution trace and the LDE domain size, respectively.
+/// 2. The resulting $Y(x)$ do not need to be degree adjusted but the soundness error of the
+/// protocol needs to be updated. For most combinations of batching parameters, this leads to a
+/// negligible increase in soundness error. The formula for the updated error can be found in
+/// Theorem 8 of https://eprint.iacr.org/2022/1216.
 #[derive(Debug, Clone)]
 pub struct DeepCompositionCoefficients<E: FieldElement> {
-    /// Trace polynomial composition coefficients $\alpha_i$ and $\beta_i$.
-    pub trace: Vec<(E, E)>,
-    /// Constraint column polynomial composition coefficients $\delta_j$.
+    /// Trace polynomial composition coefficients $\alpha_i$.
+    pub trace: Vec<E>,
+    /// Constraint column polynomial composition coefficients $\beta_j$.
     pub constraints: Vec<E>,
-    /// Degree adjustment composition coefficients $\lambda$ and $\mu$.
-    pub degree: (E, E),
 }

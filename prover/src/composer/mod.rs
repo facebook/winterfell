@@ -54,11 +54,12 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
     /// - Compute polynomials T'_i(x) = (T_i(x) - T_i(z)) / (x - z) and
     ///   T''_i(x) = (T_i(x) - T_i(z * g)) / (x - z * g) for all i, where T_i(x) is a trace
     ///   polynomial for column i.
-    /// - Then, combine together all T'_i(x) polynomials using random liner combination as
-    ///   T(x) = sum(T'_i(x) * cc'_i + T''_i(x) * cc''_i) for all i, where cc'_i and cc''_i are
-    ///   the coefficients for the random linear combination drawn from the public coin.
+    /// - Then, combine together all T'_i(x) and T''_i(x) polynomials using a random linear
+    ///   combination as T(x) = sum((T'_i(x) + T''_i(x)) * cc_i) for all i, where cc_i is
+    ///   the coefficient for the random linear combination drawn from the public coin.
     ///
-    /// Note that evaluations of T_i(z) and T_i(z * g) are passed in via the `ood_frame` parameter.
+    /// Note that evaluations of T_i(z) and T_i(z * g) are passed in via the `ood_trace_state`
+    /// parameter.
     pub fn add_trace_polys(
         &mut self,
         trace_polys: TracePolyTable<E>,
@@ -88,7 +89,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
                 &mut t1_composition,
                 poly,
                 ood_trace_states[0][i],
-                self.cc.trace[i].0,
+                self.cc.trace[i],
             );
 
             // compute T''(x) = T(x) - T(z * g), multiply it by a pseudo-random coefficient,
@@ -97,7 +98,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
                 &mut t2_composition,
                 poly,
                 ood_trace_states[1][i],
-                self.cc.trace[i].1,
+                self.cc.trace[i],
             );
 
             i += 1;
@@ -111,7 +112,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
                 &mut t1_composition,
                 poly,
                 ood_trace_states[0][i],
-                self.cc.trace[i].0,
+                self.cc.trace[i],
             );
 
             // compute T''(x) = T(x) - T(z * g), multiply it by a pseudo-random coefficient,
@@ -120,7 +121,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
                 &mut t2_composition,
                 poly,
                 ood_trace_states[1][i],
-                self.cc.trace[i].1,
+                self.cc.trace[i],
             );
 
             i += 1;
@@ -175,33 +176,6 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
             mul_acc::<E, E>(&mut self.coefficients, &poly, self.cc.constraints[i]);
         }
         assert_eq!(self.poly_size() - 2, self.degree());
-    }
-
-    // FINAL DEGREE ADJUSTMENT
-    // --------------------------------------------------------------------------------------------
-    /// Increase the degree of the DEEP composition polynomial by one. After add_trace_polys() and
-    /// add_composition_poly() are executed, the degree of the DEEP composition polynomial is
-    /// trace_length - 2 because in these functions we divide the polynomials of degree
-    /// trace_length - 1 by (x - z) and (x - z * g) which decreases the degree by one. We want to
-    /// ensure that degree of the DEEP composition polynomial is trace_length - 1, so we make the
-    /// adjustment here by computing C'(x) = C(x) * (cc_0 + x * cc_1), where cc_0 and cc_1 are the
-    /// coefficients for the random linear combination drawn from the public coin.
-    pub fn adjust_degree(&mut self) {
-        assert_eq!(self.poly_size() - 2, self.degree());
-
-        let mut result = E::zeroed_vector(self.coefficients.len());
-
-        // this is equivalent to C(x) * cc_0
-        mul_acc::<E, E>(&mut result, &self.coefficients, self.cc.degree.0);
-        // this is equivalent to C(x) * x * cc_1
-        mul_acc::<E, E>(
-            &mut result[1..],
-            &self.coefficients[..(self.coefficients.len() - 1)],
-            self.cc.degree.1,
-        );
-
-        self.coefficients = result;
-        assert_eq!(self.poly_size() - 1, self.degree());
     }
 
     // LOW-DEGREE EXTENSION

@@ -45,13 +45,13 @@ impl<E: FieldElement> DeepComposer<E> {
     /// - Assume each column value is an evaluation of a trace polynomial T_i(x).
     /// - For each T_i(x) compute T'_i(x) = (T_i(x) - T_i(z)) / (x - z) and
     ///   T''_i = (T_i(x) - T_i(z * g)) / (x - z * g), where z is the out-of-domain point and
-    ///   g is the generation of the LDE domain.
+    ///   g is the the LDE domain generator.
     /// - Then, combine all T'_i(x) and T''_i(x) values together by computing
-    ///   T(x) = sum(T'_i(x) * cc'_i + T''_i(x) * cc''_i) for all i, where cc'_i and cc''_i are
-    ///   the coefficients for the random linear combination drawn from the public coin.
+    ///   T(x) = sum((T'_i(x) + T''_i(x)) * cc_i) for all i, where cc_i is the coefficient for
+    ///   for the random linear combination drawn from the public coin.
     ///
     /// Note that values of T_i(z) and T_i(z * g) are received from the prover and passed into
-    /// this function via the `ood_frame` parameter.
+    /// this function via the `ood_main_frame` and `ood_aux_frame` parameters.
     pub fn compose_trace_columns(
         &self,
         queried_main_trace_states: Table<E::BaseField>,
@@ -79,11 +79,11 @@ impl<E: FieldElement> DeepComposer<E> {
                 let value = E::from(value);
                 // compute the numerator of T'_i(x) as (T_i(x) - T_i(z)), multiply it by a
                 // composition coefficient, and add the result to the numerator aggregator
-                t1_num += (value - ood_main_trace_states[0][i]) * self.cc.trace[i].0;
+                t1_num += (value - ood_main_trace_states[0][i]) * self.cc.trace[i];
 
                 // compute the numerator of T''_i(x) as (T_i(x) - T_i(z * g)), multiply it by a
                 // composition coefficient, and add the result to the numerator aggregator
-                t2_num += (value - ood_main_trace_states[1][i]) * self.cc.trace[i].1;
+                t2_num += (value - ood_main_trace_states[1][i]) * self.cc.trace[i];
             }
             // compute the common denominator as (x - z) * (x - z * g)
             let t1_den = x - self.z[0];
@@ -114,11 +114,11 @@ impl<E: FieldElement> DeepComposer<E> {
                 for (i, &value) in row.iter().enumerate() {
                     // compute the numerator of T'_i(x) as (T_i(x) - T_i(z)), multiply it by a
                     // composition coefficient, and add the result to the numerator aggregator
-                    t1_num += (value - ood_aux_trace_states[0][i]) * self.cc.trace[cc_offset + i].0;
+                    t1_num += (value - ood_aux_trace_states[0][i]) * self.cc.trace[cc_offset + i];
 
                     // compute the numerator of T''_i(x) as (T_i(x) - T_i(z * g)), multiply it by a
                     // composition coefficient, and add the result to the numerator aggregator
-                    t2_num += (value - ood_aux_trace_states[1][i]) * self.cc.trace[cc_offset + i].1;
+                    t2_num += (value - ood_aux_trace_states[1][i]) * self.cc.trace[cc_offset + i];
                 }
 
                 // compute the common denominators (x - z) and (x - z * g), and use the to aggregate
@@ -182,24 +182,16 @@ impl<E: FieldElement> DeepComposer<E> {
             .collect()
     }
 
-    /// Combines trace and constraint compositions together, and also rases the degree of the
-    /// resulting value by one to match trace polynomial degree. This is needed because when
-    /// we divide evaluations by (x - z) and (x - z * g) the degree is reduced by one - so,
-    /// we compensate for it here.
+    /// Combines trace and constraint compositions together.
     #[rustfmt::skip]
     pub fn combine_compositions(&self, t_composition: Vec<E>, c_composition: Vec<E>) -> Vec<E> {
         assert_eq!(t_composition.len(), self.x_coordinates.len());
         assert_eq!(c_composition.len(), self.x_coordinates.len());
 
         let mut result = Vec::with_capacity(self.x_coordinates.len());
-        for ((&x, t), c) in self.x_coordinates.iter().zip(t_composition).zip(c_composition) {
+        for (t, c) in t_composition.iter().zip(c_composition) {
             // compute C(x) by adding the two compositions together
-            let composition = t + c;
-
-            // raise the degree of C(x) by computing C'(x) = C(x) * (cc_0 + x * cc_1), where
-            // cc_0 and cc_1 are the coefficients for the random linear combination drawn from
-            // the public coin.
-            result.push(composition * (self.cc.degree.0 + x * self.cc.degree.1));
+            result.push(*t + c);
         }
 
         result

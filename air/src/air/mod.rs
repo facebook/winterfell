@@ -528,19 +528,17 @@ pub trait Air: Send + Sync {
     {
         let mut t_coefficients = Vec::new();
         for _ in 0..self.trace_info().width() {
-            t_coefficients.push(public_coin.draw_pair()?);
+            t_coefficients.push(public_coin.draw()?);
         }
 
-        // self.ce_blowup_factor() is the same as number of composition columns
         let mut c_coefficients = Vec::new();
-        for _ in 0..self.ce_blowup_factor() {
+        for _ in 0..self.context().num_constraint_composition_columns() {
             c_coefficients.push(public_coin.draw()?);
         }
 
         Ok(DeepCompositionCoefficients {
             trace: t_coefficients,
             constraints: c_coefficients,
-            degree: public_coin.draw_pair()?,
         })
     }
 }

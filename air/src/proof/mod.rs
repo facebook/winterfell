@@ -119,6 +119,7 @@ impl StarkProof {
                 self.context.options(),
                 self.context.num_modulus_bits(),
                 self.lde_domain_size() as u64,
+                self.trace_length() as u64,
                 H::COLLISION_RESISTANCE,
             )
         }
@@ -212,12 +213,21 @@ fn get_proven_security(
     options: &ProofOptions,
     base_field_bits: u32,
     lde_domain_size: u64,
+    trace_domain_size: u64,
     collision_resistance: u32,
 ) -> u32 {
     let extension_field_bits = (base_field_bits * options.field_extension().degree()) as f64;
+
     let blowup_bits = options.blowup_factor().ilog2() as f64;
     let num_fri_queries = options.num_queries() as f64;
     let lde_size_bits = lde_domain_size.trailing_zeros() as f64;
+
+    // blowup_plus_bits is the number of bits in the blowup factor which is the inverse of
+    // `\rho^+ := (trace_domain_size + 2) / lde_domain_size`. `\rho^+` is used in order to define a larger
+    // agreement parameter `\alpha^+ := (1 + 1/2m)\sqrt{rho^+} := 1 - \theta^+`. The reason for
+    // running FRI with a larger agreement parameter is to account for the simplified
+    // DEEP composition polynomial. See Protocol 3 in https://eprint.iacr.org/2022/1216.
+    let blowup_plus_bits = ((lde_domain_size as f64) / (trace_domain_size as f64 + 2_f64)).log2();
 
     // m is a parameter greater or equal to 3.
     // A larger m gives a worse field security bound but a better query security bound.
@@ -227,7 +237,8 @@ fn get_proven_security(
     // of m, unless the calculated value is less than 3 in which case it gets rounded up to 3.
     let mut m = extension_field_bits + 1.0;
     m -= options.grinding_factor() as f64;
-    m -= (num_fri_queries + 3.0) / 2.0 * blowup_bits;
+    m -= 1.5 * blowup_bits;
+    m -= 0.5 * num_fri_queries * blowup_plus_bits;
     m -= 2.0 * lde_size_bits;
     m /= 7.0;
     m = 2.0_f64.powf(m);
@@ -244,7 +255,7 @@ fn get_proven_security(
         - 7.0 * (m + 0.5).log2()) as u32;
 
     // compute security we get by executing multiple query rounds
-    let security_per_query = 0.5 * blowup_bits - (1.0 + 1.0 / (2.0 * m)).log2();
+    let security_per_query = 0.5 * blowup_plus_bits - (1.0 + 1.0 / (2.0 * m)).log2();
     let mut query_security = (security_per_query * num_fri_queries) as u32;
 
     query_security += options.grinding_factor();

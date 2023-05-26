@@ -369,10 +369,6 @@ pub trait Prover {
         // merge columns of constraint composition polynomial into the DEEP composition polynomial;
         deep_composition_poly.add_composition_poly(composition_poly, ood_evaluations);
 
-        // raise the degree of the DEEP composition polynomial by one to make sure it is equal to
-        // trace_length - 1
-        deep_composition_poly.adjust_degree();
-
         #[cfg(feature = "std")]
         debug!(
             "Built DEEP composition polynomial of degree {} in {} ms",
@@ -381,8 +377,8 @@ pub trait Prover {
         );
 
         // make sure the degree of the DEEP composition polynomial is equal to trace polynomial
-        // degree
-        assert_eq!(domain.trace_length() - 1, deep_composition_poly.degree());
+        // degree minus 1.
+        assert_eq!(domain.trace_length() - 2, deep_composition_poly.degree());
 
         // 5 ----- evaluate DEEP composition polynomial over LDE domain ---------------------------
         #[cfg(feature = "std")]
@@ -391,7 +387,7 @@ pub trait Prover {
         // we check the following condition in debug mode only because infer_degree is an expensive
         // operation
         debug_assert_eq!(
-            domain.trace_length() - 1,
+            domain.trace_length() - 2,
             infer_degree(&deep_evaluations, domain.offset())
         );
         #[cfg(feature = "std")]
