@@ -193,9 +193,8 @@ fn get_conjectured_security(
     let field_security = field_size - trace_domain_size.trailing_zeros();
 
     // compute security we get by executing multiple query rounds
-    let lde_domain_size = (options.blowup_factor() as u64) * trace_domain_size;
-    let security_per_query = ((lde_domain_size as f64) / (trace_domain_size as f64 + 2_f64)).log2();
-    let mut query_security = (security_per_query * options.num_queries() as f64) as u32;
+    let security_per_query = options.blowup_factor().ilog2();
+    let mut query_security = security_per_query * options.num_queries() as u32;
 
     // include grinding factor contributions only for proofs adequate security
     if query_security >= GRINDING_CONTRIBUTION_FLOOR {
