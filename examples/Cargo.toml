@@ -1,6 +1,6 @@
 [package]
 name = "examples"
-version = "0.6.3"
+version = "0.6.4"
 description = "Examples of using Winterfell STARK prover/verifier"
 authors = ["winterfell contributors"]
 readme = "README.md"
@@ -36,7 +36,7 @@ env_logger = { version = "0.10", default-features = false }
 structopt = { version = "0.3", default-features = false }
 
 [dev-dependencies]
-criterion = "0.4"
+criterion = "0.5"
 
 [[bench]]
 name = "fibonacci"

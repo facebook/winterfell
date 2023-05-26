@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.4 (2023-05-26)
+* Simplified construction of constraint composition polynomial (#198).
+* Refactored serialization of OOD frame in STARK proofs (#199).
+* Re-exported `btree_map` and `btree_set` modules from core collections (#202).
+* Simplified construction of DEEP composition polynomial (#203).
+
 ## 0.6.3 (2023-05-03)
 * Sped up proof verification using batch inverse (#190).
 * Updated `ConstraintCommitment` to use `RowMatrix` internally (#191).
