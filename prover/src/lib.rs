@@ -86,8 +86,7 @@ mod composer;
 use composer::DeepCompositionPoly;
 
 mod trace;
-pub use trace::{Trace, TraceTable, TraceTableFragment};
-use trace::{TraceCommitment, TraceLde, TracePolyTable};
+pub use trace::{Trace, TraceLde, TracePolyTable, TraceTable, TraceTableFragment};
 
 mod channel;
 use channel::ProverChannel;
@@ -135,6 +134,13 @@ pub trait Prover {
 
     /// PRNG to be used for generating random field elements.
     type RandomCoin: RandomCoin<BaseField = Self::BaseField, Hasher = Self::HashFn>;
+
+    // Trace low-degree extension for building the LDEs of trace segments and their commitments.
+    type TraceLde<E: FieldElement<BaseField = Self::BaseField>>: TraceLde<
+        BaseField = Self::BaseField,
+        ExtensionField = E,
+        HashFn = Self::HashFn,
+    >;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -227,22 +233,15 @@ pub trait Prover {
         );
 
         // extend the main execution trace and build a Merkle tree from the extended trace
-        let (main_trace_lde, main_trace_tree, main_trace_polys) =
-            self.build_trace_commitment::<Self::BaseField>(trace.main_segment(), &domain);
+        let (mut trace_polys, mut trace_lde): (TracePolyTable<E>, Self::TraceLde<E>) =
+            TraceLde::new(&trace.get_info(), trace.main_segment(), &domain);
+
+        // get the commitment to the main trace segment LDE
+        let main_trace_root = trace_lde.get_main_trace_commitment();
 
         // commit to the LDE of the main trace by writing the root of its Merkle tree into
         // the channel
-        channel.commit_trace(*main_trace_tree.root());
-
-        // initialize trace commitment and trace polynomial table structs with the main trace
-        // data; for multi-segment traces these structs will be used as accumulators of all
-        // trace segments
-        let mut trace_commitment = TraceCommitment::new(
-            main_trace_lde,
-            main_trace_tree,
-            domain.trace_to_lde_blowup(),
-        );
-        let mut trace_polys = TracePolyTable::new(main_trace_polys);
+        channel.commit_trace(main_trace_root);
 
         // build auxiliary trace segments (if any), and append the resulting segments to trace
         // commitment and trace polynomial table structs
@@ -268,15 +267,13 @@ pub trait Prover {
             );
 
             // extend the auxiliary trace segment and build a Merkle tree from the extended trace
-            let (aux_segment_lde, aux_segment_tree, aux_segment_polys) =
-                self.build_trace_commitment::<E>(&aux_segment, &domain);
+            let (aux_segment_polys, aux_segment_root) =
+                trace_lde.add_aux_segment(&aux_segment, &domain);
 
-            // commit to the LDE of the extended auxiliary trace segment  by writing the root of
+            // commit to the LDE of the extended auxiliary trace segment by writing the root of
             // its Merkle tree into the channel
-            channel.commit_trace(*aux_segment_tree.root());
+            channel.commit_trace(aux_segment_root);
 
-            // append the segment to the trace commitment and trace polynomial table structs
-            trace_commitment.add_segment(aux_segment_lde, aux_segment_tree);
             trace_polys.add_aux_segment(aux_segment_polys);
             aux_trace_rand_elements.add_segment_elements(rand_elements);
             aux_trace_segments.push(aux_segment);
@@ -299,7 +296,7 @@ pub trait Prover {
         let now = Instant::now();
         let constraint_coeffs = channel.get_constraint_composition_coeffs();
         let evaluator = ConstraintEvaluator::new(&air, aux_trace_rand_elements, constraint_coeffs);
-        let constraint_evaluations = evaluator.evaluate(trace_commitment.trace_table(), &domain);
+        let constraint_evaluations = evaluator.evaluate(&trace_lde, &domain);
         #[cfg(feature = "std")]
         debug!(
             "Evaluated constraints over domain of 2^{} elements in {} ms",
@@ -434,7 +431,7 @@ pub trait Prover {
 
         // query the execution trace at the selected position; for each query, we need the
         // state of the trace at that position + Merkle authentication path
-        let trace_queries = trace_commitment.query(&query_positions);
+        let trace_queries = trace_lde.query(&query_positions);
 
         // query the constraint commitment at the selected positions; for each query, we need just
         // a Merkle authentication path. this is because constraint evaluations for each step are

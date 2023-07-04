@@ -71,9 +71,9 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     /// Evaluates constraints against the provided extended execution trace. Constraints are
     /// evaluated over a constraint evaluation domain. This is an optimization because constraint
     /// evaluation domain can be many times smaller than the full LDE domain.
-    pub fn evaluate(
+    pub fn evaluate<T: TraceLde<BaseField = E::BaseField, ExtensionField = E>>(
         self,
-        trace: &TraceLde<E>,
+        trace: &T,
         domain: &'a StarkDomain<E::BaseField>,
     ) -> ConstraintEvaluationTable<'a, E> {
         assert_eq!(
@@ -137,14 +137,14 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     /// Evaluates constraints for a single fragment of the evaluation table.
     ///
     /// This evaluates constraints only over the main segment of the execution trace.
-    fn evaluate_fragment_main(
+    fn evaluate_fragment_main<T: TraceLde<BaseField = E::BaseField, ExtensionField = E>>(
         &self,
-        trace: &TraceLde<E>,
+        trace: &T,
         domain: &StarkDomain<A::BaseField>,
         fragment: &mut EvaluationTableFragment<E>,
     ) {
         // initialize buffers to hold trace values and evaluation results at each step;
-        let mut main_frame = EvaluationFrame::new(trace.main_trace_width());
+        let mut main_frame = EvaluationFrame::new(trace.trace_layout().main_trace_width());
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
         let mut t_evaluations = vec![E::BaseField::ZERO; self.num_main_transition_constraints()];
 
@@ -188,15 +188,15 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
     ///
     /// This evaluates constraints only over all segments of the execution trace (i.e. main segment
     /// and all auxiliary segments).
-    fn evaluate_fragment_full(
+    fn evaluate_fragment_full<T: TraceLde<BaseField = E::BaseField, ExtensionField = E>>(
         &self,
-        trace: &TraceLde<E>,
+        trace: &T,
         domain: &StarkDomain<A::BaseField>,
         fragment: &mut EvaluationTableFragment<E>,
     ) {
         // initialize buffers to hold trace values and evaluation results at each step
-        let mut main_frame = EvaluationFrame::new(trace.main_trace_width());
-        let mut aux_frame = EvaluationFrame::new(trace.aux_trace_width());
+        let mut main_frame = EvaluationFrame::new(trace.trace_layout().main_trace_width());
+        let mut aux_frame = EvaluationFrame::new(trace.trace_layout().aux_trace_width());
         let mut tm_evaluations = vec![E::BaseField::ZERO; self.num_main_transition_constraints()];
         let mut ta_evaluations = vec![E::ZERO; self.num_aux_transition_constraints()];
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
