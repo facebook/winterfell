@@ -9,6 +9,9 @@ use air::{proof::Queries, TraceInfo, TraceLayout};
 use crypto::{ElementHasher, Hasher};
 use utils::collections::Vec;
 
+mod default;
+pub use default::DefaultTraceLde;
+
 // TRACE LOW DEGREE EXTENSION
 // ================================================================================================
 /// Contains all segments of the extended execution trace and their commitments.

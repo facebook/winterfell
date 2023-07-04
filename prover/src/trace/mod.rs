@@ -8,7 +8,7 @@ use air::{Air, AuxTraceRandElements, EvaluationFrame, TraceInfo, TraceLayout};
 use math::{polynom, FieldElement, StarkField};
 
 mod trace_lde;
-pub use trace_lde::TraceLde;
+pub use trace_lde::{DefaultTraceLde, TraceLde};
 
 mod poly_table;
 pub use poly_table::TracePolyTable;

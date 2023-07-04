@@ -65,7 +65,7 @@ use math::{
 };
 
 pub use crypto;
-use crypto::{ElementHasher, MerkleTree, RandomCoin};
+use crypto::{ElementHasher, RandomCoin};
 
 #[cfg(feature = "std")]
 use log::debug;
@@ -444,53 +444,6 @@ pub trait Prover {
         debug!("Built proof object in {} ms", now.elapsed().as_millis());
 
         Ok(proof)
-    }
-
-    /// Computes a low-degree extension (LDE) of the provided execution trace over the specified
-    /// domain and build a commitment to the extended trace.
-    ///
-    /// The extension is performed by interpolating each column of the execution trace into a
-    /// polynomial of degree = trace_length - 1, and then evaluating the polynomial over the LDE
-    /// domain.
-    ///
-    /// Trace commitment is computed by hashing each row of the extended execution trace, and then
-    /// building a Merkle tree from the resulting hashes.
-    fn build_trace_commitment<E>(
-        &self,
-        trace: &ColMatrix<E>,
-        domain: &StarkDomain<Self::BaseField>,
-    ) -> (RowMatrix<E>, MerkleTree<Self::HashFn>, ColMatrix<E>)
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        // extend the execution trace
-        #[cfg(feature = "std")]
-        let now = Instant::now();
-        let trace_polys = trace.interpolate_columns();
-        let trace_lde =
-            RowMatrix::evaluate_polys_over::<DEFAULT_SEGMENT_WIDTH>(&trace_polys, domain);
-        #[cfg(feature = "std")]
-        debug!(
-            "Extended execution trace of {} columns from 2^{} to 2^{} steps ({}x blowup) in {} ms",
-            trace_lde.num_cols(),
-            trace_polys.num_rows().ilog2(),
-            trace_lde.num_rows().ilog2(),
-            domain.trace_to_lde_blowup(),
-            now.elapsed().as_millis()
-        );
-
-        // build trace commitment
-        #[cfg(feature = "std")]
-        let now = Instant::now();
-        let trace_tree = trace_lde.commit_to_rows();
-        #[cfg(feature = "std")]
-        debug!(
-            "Computed execution trace commitment (Merkle tree of depth {}) in {} ms",
-            trace_tree.depth(),
-            now.elapsed().as_millis()
-        );
-
-        (trace_lde, trace_tree, trace_polys)
     }
 
     /// Evaluates constraint composition polynomial over the LDE domain and builds a commitment
