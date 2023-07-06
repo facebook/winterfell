@@ -255,8 +255,9 @@
 //!
 //! ```no_run
 //! use winterfell::{
+//!     crypto::{hashers::Blake3_256, DefaultRandomCoin},
 //!     math::{fields::f128::BaseElement, FieldElement, ToElements},
-//!     ProofOptions, Prover, Trace, TraceTable, crypto::{hashers::Blake3_256, DefaultRandomCoin}
+//!     DefaultTraceLde, ProofOptions, Prover, Trace, TraceTable,
 //! };
 //!
 //! # use winterfell::{
@@ -340,6 +341,7 @@
 //!     type Trace = TraceTable<Self::BaseField>;
 //!     type HashFn = Blake3_256<Self::BaseField>;
 //!     type RandomCoin = DefaultRandomCoin<Self::HashFn>;
+//!     type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
 //!
 //!     // Our public inputs consist of the first and last value in the execution trace.
 //!     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
@@ -366,7 +368,7 @@
 //! ```
 //! # use winterfell::{
 //! #    math::{fields::f128::BaseElement, FieldElement, ToElements},
-//! #    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, TraceInfo,
+//! #    Air, AirContext, Assertion, ByteWriter, DefaultTraceLde, EvaluationFrame, TraceInfo,
 //! #    TransitionConstraintDegree, TraceTable, FieldExtension, Prover, ProofOptions,
 //! #    StarkProof, Trace, crypto::{hashers::Blake3_256, DefaultRandomCoin},
 //! # };
@@ -457,6 +459,7 @@
 //! #    type Trace = TraceTable<Self::BaseField>;
 //! #    type HashFn = Blake3_256<Self::BaseField>;
 //! #    type RandomCoin = DefaultRandomCoin<Self::HashFn>;
+//! #    type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
 //! #
 //! #    fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
 //! #        let last_step = trace.length() - 1;
@@ -531,9 +534,9 @@
 pub use prover::{
     crypto, iterators, math, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
     BoundaryConstraintGroup, ByteReader, ByteWriter, ColMatrix, ConstraintCompositionCoefficients,
-    ConstraintDivisor, DeepCompositionCoefficients, Deserializable, DeserializationError,
-    EvaluationFrame, FieldExtension, ProofOptions, Prover, ProverError, Serializable, SliceReader,
-    StarkProof, Trace, TraceInfo, TraceLayout, TraceTable, TraceTableFragment,
-    TransitionConstraintDegree,
+    ConstraintDivisor, DeepCompositionCoefficients, DefaultTraceLde, Deserializable,
+    DeserializationError, EvaluationFrame, FieldExtension, ProofOptions, Prover, ProverError,
+    Serializable, SliceReader, StarkProof, Trace, TraceInfo, TraceLayout, TraceLde, TraceTable,
+    TraceTableFragment, TransitionConstraintDegree,
 };
 pub use verifier::{verify, VerifierError};

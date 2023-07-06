@@ -13,7 +13,7 @@ use std::time::Instant;
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, get_power_series, FieldElement, StarkField},
-    ProofOptions, Prover, StarkProof, Trace, TraceTable, VerifierError,
+    DefaultTraceLde, ProofOptions, Prover, StarkProof, Trace, TraceTable, VerifierError,
 };
 
 mod air;

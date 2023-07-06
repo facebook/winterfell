@@ -5,8 +5,8 @@
 
 use super::{
     apply_rescue_round_parallel, rescue::STATE_WIDTH, BaseElement, DefaultRandomCoin,
-    ElementHasher, FieldElement, PhantomData, ProofOptions, Prover, PublicInputs, RapTraceTable,
-    RescueRapsAir, Trace, CYCLE_LENGTH, NUM_HASH_ROUNDS,
+    DefaultTraceLde, ElementHasher, FieldElement, PhantomData, ProofOptions, Prover, PublicInputs,
+    RapTraceTable, RescueRapsAir, Trace, CYCLE_LENGTH, NUM_HASH_ROUNDS,
 };
 
 // RESCUE PROVER
@@ -98,6 +98,7 @@ where
     type Trace = RapTraceTable<BaseElement>;
     type HashFn = H;
     type RandomCoin = DefaultRandomCoin<Self::HashFn>;
+    type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
         let last_step = trace.length() - 1;
