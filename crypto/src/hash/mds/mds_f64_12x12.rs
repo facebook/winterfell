@@ -19,7 +19,8 @@ use math::{fields::f64::BaseElement, FieldElement};
 /// divisions by 2 and repeated modular reductions. This is because of our explicit choice of
 /// an MDS matrix that has small powers of 2 entries in frequency domain.
 /// The following implementation has benefited greatly from the discussions and insights of
-/// Hamish Ivey-Law and Jacqueline Nabaglo of Polygon Zero.
+/// Hamish Ivey-Law and Jacqueline Nabaglo of Polygon Zero and is based on Nabaglo's implementation
+/// in [Plonky2](https://github.com/mir-protocol/plonky2).
 /// The circulant matrix is identified by its first row: [7, 23, 8, 26, 13, 10, 9, 7, 6, 22, 21, 8].
 
 // MDS matrix in frequency domain.
