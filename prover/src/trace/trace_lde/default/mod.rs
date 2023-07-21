@@ -15,6 +15,9 @@ use log::debug;
 #[cfg(feature = "std")]
 use std::time::Instant;
 
+#[cfg(test)]
+mod tests;
+
 // TRACE LOW DEGREE EXTENSION
 // ================================================================================================
 /// Contains all segments of the extended execution trace, the commitments to these segments, the
@@ -36,6 +39,30 @@ pub struct DefaultTraceLde<E: FieldElement, H: ElementHasher<BaseField = E::Base
     aux_segment_trees: Vec<MerkleTree<H>>,
     blowup: usize,
     trace_info: TraceInfo,
+}
+
+#[cfg(test)]
+impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> DefaultTraceLde<E, H> {
+    // TEST HELPERS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns number of columns in the main segment of the execution trace.
+    pub fn main_segment_width(&self) -> usize {
+        self.main_segment_lde.num_cols()
+    }
+
+    /// Returns a reference to [Matrix] representing the main trace segment.
+    pub fn get_main_segment(&self) -> &RowMatrix<E::BaseField> {
+        &self.main_segment_lde
+    }
+
+    /// Returns the entire trace for the column at the specified index.
+    #[cfg(test)]
+    pub fn get_main_segment_column(&self, col_idx: usize) -> Vec<E::BaseField> {
+        (0..self.main_segment_lde.num_rows())
+            .map(|row_idx| self.main_segment_lde.get(col_idx, row_idx))
+            .collect()
+    }
 }
 
 impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> TraceLde
