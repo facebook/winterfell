@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.7.0 (TBD)
+* [BREAKING] replaced the `TraceLde` struct with a trait (#207).
+
 ## 0.6.4 (2023-05-26)
 * Simplified construction of constraint composition polynomial (#198).
 * Refactored serialization of OOD frame in STARK proofs (#199).

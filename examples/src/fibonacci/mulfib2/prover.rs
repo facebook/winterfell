@@ -4,8 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    BaseElement, DefaultRandomCoin, ElementHasher, MulFib2Air, PhantomData, ProofOptions, Prover,
-    Trace, TraceTable,
+    BaseElement, DefaultRandomCoin, DefaultTraceLde, ElementHasher, FieldElement, MulFib2Air,
+    PhantomData, ProofOptions, Prover, Trace, TraceTable,
 };
 
 // FIBONACCI PROVER
@@ -53,6 +53,7 @@ where
     type Trace = TraceTable<BaseElement>;
     type HashFn = H;
     type RandomCoin = DefaultRandomCoin<Self::HashFn>;
+    type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> BaseElement {
         let last_step = trace.length() - 1;

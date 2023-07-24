@@ -11,7 +11,7 @@ use std::time::Instant;
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, ExtensionOf, FieldElement},
-    ProofOptions, Prover, StarkProof, Trace, VerifierError,
+    DefaultTraceLde, ProofOptions, Prover, StarkProof, Trace, VerifierError,
 };
 
 mod custom_trace_table;

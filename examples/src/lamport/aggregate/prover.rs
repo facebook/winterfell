@@ -4,9 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    get_power_series, rescue, BaseElement, DefaultRandomCoin, ElementHasher, FieldElement,
-    LamportAggregateAir, PhantomData, ProofOptions, Prover, PublicInputs, Signature, StarkField,
-    TraceTable, CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH, TRACE_WIDTH,
+    get_power_series, rescue, BaseElement, DefaultRandomCoin, DefaultTraceLde, ElementHasher,
+    FieldElement, LamportAggregateAir, PhantomData, ProofOptions, Prover, PublicInputs, Signature,
+    StarkField, TraceTable, CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH, TRACE_WIDTH,
 };
 
 #[cfg(feature = "concurrent")]
@@ -97,6 +97,7 @@ where
     type Trace = TraceTable<BaseElement>;
     type HashFn = H;
     type RandomCoin = DefaultRandomCoin<Self::HashFn>;
+    type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
 
     fn get_pub_inputs(&self, _trace: &Self::Trace) -> PublicInputs {
         self.pub_inputs.clone()

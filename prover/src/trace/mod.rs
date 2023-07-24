@@ -8,16 +8,13 @@ use air::{Air, AuxTraceRandElements, EvaluationFrame, TraceInfo, TraceLayout};
 use math::{polynom, FieldElement, StarkField};
 
 mod trace_lde;
-pub use trace_lde::TraceLde;
+pub use trace_lde::{DefaultTraceLde, TraceLde};
 
 mod poly_table;
 pub use poly_table::TracePolyTable;
 
 mod trace_table;
 pub use trace_table::{TraceTable, TraceTableFragment};
-
-mod commitment;
-pub use commitment::TraceCommitment;
 
 #[cfg(test)]
 mod tests;
