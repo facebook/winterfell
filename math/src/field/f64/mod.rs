@@ -27,6 +27,9 @@ use utils::{
     DeserializationError, Randomizable, Serializable,
 };
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 #[cfg(test)]
 mod tests;
 
@@ -50,7 +53,10 @@ const ELEMENT_BYTES: usize = core::mem::size_of::<u64>();
 /// Internal values represent x * R mod M where R = 2^64 mod M and x in [0, M).
 /// The backing type is `u64` but the internal values are always in the range [0, M).
 #[derive(Copy, Clone, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
+#[cfg_attr(feature = "serde", serde(from = "u64", into = "u64"))]
 pub struct BaseElement(u64);
+
 impl BaseElement {
     /// Creates a new field element from the provided `value`; the value is converted into
     /// Montgomery representation.
@@ -588,6 +594,18 @@ impl<'a> TryFrom<&'a [u8]> for BaseElement {
             )));
         }
         Ok(Self::new(value))
+    }
+}
+
+impl From<BaseElement> for u128 {
+    fn from(value: BaseElement) -> Self {
+        value.as_int() as u128
+    }
+}
+
+impl From<BaseElement> for u64 {
+    fn from(value: BaseElement) -> Self {
+        value.as_int()
     }
 }
 
