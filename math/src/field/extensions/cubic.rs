@@ -15,6 +15,9 @@ use utils::{
     DeserializationError, Randomizable, Serializable, SliceReader,
 };
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 // QUADRATIC EXTENSION FIELD
 // ================================================================================================
 
@@ -25,6 +28,7 @@ use utils::{
 /// field elements.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 pub struct CubeExtension<B: ExtensibleField<3>>(B, B, B);
 
 impl<B: ExtensibleField<3>> CubeExtension<B> {

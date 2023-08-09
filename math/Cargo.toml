@@ -33,6 +33,7 @@ default = ["std"]
 std = ["utils/std"]
 
 [dependencies]
+serde = { version = "1.0", features = [ "derive" ], optional = true, default-features = false }
 utils = { version = "0.6", path = "../utils/core", package = "winter-utils", default-features = false }
 
 [dev-dependencies]

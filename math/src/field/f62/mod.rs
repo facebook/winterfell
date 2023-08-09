@@ -22,6 +22,9 @@ use utils::{
     DeserializationError, Randomizable, Serializable,
 };
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 #[cfg(test)]
 mod tests;
 
@@ -54,6 +57,8 @@ const G: u64 = 4421547261963328785;
 /// Internal values are stored in Montgomery representation and can be in the range [0; 2M). The
 /// backing type is `u64`.
 #[derive(Copy, Clone, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
+#[cfg_attr(feature = "serde", serde(from = "u64", into = "u64"))]
 pub struct BaseElement(u64);
 
 impl BaseElement {
@@ -454,6 +459,18 @@ impl From<[u8; 8]> for BaseElement {
     fn from(bytes: [u8; 8]) -> Self {
         let value = u64::from_le_bytes(bytes);
         BaseElement::new(value)
+    }
+}
+
+impl From<BaseElement> for u128 {
+    fn from(value: BaseElement) -> Self {
+        value.as_int() as u128
+    }
+}
+
+impl From<BaseElement> for u64 {
+    fn from(value: BaseElement) -> Self {
+        value.as_int()
     }
 }
 
