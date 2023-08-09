@@ -59,6 +59,7 @@ const MIN_FRAGMENT_LENGTH: usize = 2;
 /// [fill()](TraceTableFragment::fill) method to fill all fragments with data in parallel.
 /// The semantics of the fragment's [TraceTableFragment::fill()] method are identical to the
 /// semantics of the [TraceTable::fill()] method.
+#[derive(Debug, Clone)]
 pub struct TraceTable<B: StarkField> {
     layout: TraceLayout,
     trace: ColMatrix<B>,
