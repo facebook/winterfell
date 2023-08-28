@@ -20,20 +20,6 @@ use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serial
 ///
 /// - `Dynamic`: Represents a dynamic schedule of folding factors. This means
 ///   that the prover can use different folding factors across different rounds.
-///
-/// # Examples
-///
-/// Using a constant factor:
-///
-/// ```
-/// let constant_schedule = FoldingSchedule::constant(4, 2);
-/// ```
-///
-/// Using a dynamic schedule:
-///
-/// ```
-/// let dynamic_schedule = FoldingSchedule::dynamic(vec![4, 2, 2]);
-/// ```
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum FoldingSchedule {
     Constant {

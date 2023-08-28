@@ -118,7 +118,7 @@ impl ProofOptions {
         blowup_factor: usize,
         grinding_factor: u32,
         field_extension: FieldExtension,
-        fri_folding_schedule: FoldingSchedule,
+        fri_folding_schedule: &FoldingSchedule,
     ) -> ProofOptions {
         // TODO: return errors instead of panicking
         assert!(num_queries > 0, "number of queries must be greater than 0");
@@ -135,15 +135,15 @@ impl ProofOptions {
         match fri_folding_schedule {
             FoldingSchedule::Constant { fri_folding_factor, fri_remainder_max_degree } => {
                 assert!(fri_folding_factor.is_power_of_two(), "FRI folding factor must be a power of 2");
-                assert!(fri_folding_factor as usize >= FRI_MIN_FOLDING_FACTOR, "FRI folding factor cannot be smaller than {FRI_MIN_FOLDING_FACTOR}");
-                assert!(fri_folding_factor as usize <= FRI_MAX_FOLDING_FACTOR, "FRI folding factor cannot be greater than {FRI_MAX_FOLDING_FACTOR}");
+                assert!(*fri_folding_factor as usize >= FRI_MIN_FOLDING_FACTOR, "FRI folding factor cannot be smaller than {FRI_MIN_FOLDING_FACTOR}");
+                assert!(*fri_folding_factor as usize <= FRI_MAX_FOLDING_FACTOR, "FRI folding factor cannot be greater than {FRI_MAX_FOLDING_FACTOR}");
 
                 assert!(
                     (fri_remainder_max_degree + 1).is_power_of_two(),
                     "FRI polynomial remainder degree must be one less than a power of two"
                 );
                 assert!(
-                    fri_remainder_max_degree as usize <= FRI_MAX_REMAINDER_DEGREE,
+                    *fri_remainder_max_degree as usize <= FRI_MAX_REMAINDER_DEGREE,
                     "FRI polynomial remainder degree cannot be greater than {FRI_MAX_REMAINDER_DEGREE}"
                 );
 
@@ -159,7 +159,7 @@ impl ProofOptions {
             blowup_factor: blowup_factor as u8,
             grinding_factor: grinding_factor as u8,
             field_extension,
-            fri_schedule: fri_folding_schedule,
+            fri_schedule: fri_folding_schedule.clone(),
         }
     }
 
@@ -255,7 +255,7 @@ impl Serializable for ProofOptions {
         target.write_u8(self.blowup_factor);
         target.write_u8(self.grinding_factor);
         target.write(self.field_extension);
-        target.write(self.fri_schedule);
+        target.write(self.fri_schedule.clone());
     }
 }
 
@@ -270,7 +270,7 @@ impl Deserializable for ProofOptions {
             source.read_u8()? as usize,
             source.read_u8()? as u32,
             FieldExtension::read_from(source)?,
-            FoldingSchedule::read_from(source)?,
+            &FoldingSchedule::read_from(source)?,
         ))
     }
 }
@@ -321,14 +321,17 @@ impl Deserializable for FieldExtension {
 #[cfg(test)]
 mod tests {
     use super::{FieldExtension, ProofOptions, ToElements};
+    use fri::fri_schedule::FoldingSchedule;
     use math::fields::f64::BaseElement;
 
     #[test]
     fn proof_options_to_elements() {
         let field_extension = FieldExtension::None;
+        let fri_folding_factor = 8;
+        let fri_remainder_max_degree = 127;
         let fri_folding_schedule = FoldingSchedule::Constant {
-            fri_folding_factor: 8,
-            fri_remainder_max_degree: 127,
+            fri_folding_factor,
+            fri_remainder_max_degree,
         };
         let grinding_factor = 20;
         let blowup_factor = 8;
@@ -352,7 +355,7 @@ mod tests {
             blowup_factor,
             grinding_factor,
             field_extension,
-            fri_folding_schedule,
+            &fri_folding_schedule,
         );
         assert_eq!(expected, options.to_elements());
     }

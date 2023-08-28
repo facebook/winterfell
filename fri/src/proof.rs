@@ -10,6 +10,8 @@ use utils::{
     DeserializationError, Serializable, SliceReader,
 };
 
+use crate::fri_schedule::FoldingSchedule;
+
 // FRI PROOF
 // ================================================================================================
 
@@ -121,7 +123,7 @@ impl FriProof {
     pub fn parse_layers<H, E>(
         self,
         mut domain_size: usize,
-        folding_factor: usize,
+        folding_schedule: &FoldingSchedule,
     ) -> Result<(Vec<Vec<E>>, Vec<BatchMerkleProof<H>>), DeserializationError>
     where
         E: FieldElement,
@@ -131,23 +133,61 @@ impl FriProof {
             domain_size.is_power_of_two(),
             "domain size must be a power of two"
         );
-        assert!(
-            folding_factor.is_power_of_two(),
-            "folding factor must be a power of two"
-        );
-        assert!(folding_factor > 1, "folding factor must be greater than 1");
 
         let mut layer_proofs = Vec::new();
         let mut layer_queries = Vec::new();
 
-        // parse all layers
-        for (i, layer) in self.layers.into_iter().enumerate() {
-            domain_size /= folding_factor;
-            let (qv, mp) = layer.parse(domain_size, folding_factor).map_err(|err| {
-                DeserializationError::InvalidValue(format!("failed to parse FRI layer {i}: {err}"))
-            })?;
-            layer_proofs.push(mp);
-            layer_queries.push(qv);
+        match folding_schedule {
+            FoldingSchedule::Constant {
+                fri_folding_factor,
+                fri_remainder_max_degree: _,
+            } => {
+                let folding_factor = *fri_folding_factor as usize;
+                assert!(
+                    folding_factor.is_power_of_two(),
+                    "folding factor must be a power of two"
+                );
+                assert!(folding_factor > 1, "folding factor must be greater than 1");
+
+                // parse all layers.
+                for (i, layer) in self.layers.into_iter().enumerate() {
+                    domain_size /= folding_factor;
+                    let (qv, mp) = layer.parse(domain_size, folding_factor).map_err(|err| {
+                        DeserializationError::InvalidValue(format!(
+                            "failed to parse FRI layer {}: {}",
+                            i, err
+                        ))
+                    })?;
+                    layer_proofs.push(mp);
+                    layer_queries.push(qv);
+                }
+            }
+            FoldingSchedule::Dynamic { schedule } => {
+                for (i, layer) in self.layers.into_iter().enumerate() {
+                    let fri_folding_factor = schedule[i];
+
+                    assert!(
+                        fri_folding_factor.is_power_of_two(),
+                        "folding factor must be a power of two"
+                    );
+                    assert!(
+                        fri_folding_factor > 1,
+                        "folding factor must be greater than 1"
+                    );
+
+                    domain_size /= fri_folding_factor as usize;
+                    let (qv, mp) = layer
+                        .parse(domain_size, fri_folding_factor.into())
+                        .map_err(|err| {
+                            DeserializationError::InvalidValue(format!(
+                                "failed to parse FRI layer {}: {}",
+                                i, err
+                            ))
+                        })?;
+                    layer_proofs.push(mp);
+                    layer_queries.push(qv);
+                }
+            }
         }
 
         Ok((layer_queries, layer_proofs))
