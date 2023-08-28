@@ -5,6 +5,7 @@
 
 use crate::{
     folding::{apply_drp, fold_positions},
+    fri_schedule::FoldingSchedule,
     proof::{FriProof, FriProofLayer},
     utils::hash_values,
     FriOptions,
@@ -132,11 +133,6 @@ where
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns folding factor for this prover.
-    pub fn folding_factor(&self) -> usize {
-        self.options.folding_factor()
-    }
-
     /// Returns offset of the domain over which FRI protocol is executed by this prover.
     pub fn domain_offset(&self) -> B {
         self.options.domain_offset()
@@ -175,15 +171,41 @@ where
             "a prior proof generation request has not been completed yet"
         );
 
-        // reduce the degree by folding_factor at each iteration until the remaining polynomial
-        // has small enough degree
-        for _ in 0..self.options.num_fri_layers(evaluations.len()) {
-            match self.folding_factor() {
-                2 => self.build_layer::<2>(channel, &mut evaluations),
-                4 => self.build_layer::<4>(channel, &mut evaluations),
-                8 => self.build_layer::<8>(channel, &mut evaluations),
-                16 => self.build_layer::<16>(channel, &mut evaluations),
-                _ => unimplemented!("folding factor {} is not supported", self.folding_factor()),
+        let schedule = self.options.get_schedule().clone();
+
+        match schedule {
+            FoldingSchedule::Constant {
+                fri_folding_factor,
+                fri_remainder_max_degree: _,
+            } => {
+                // reduce the degree by folding_factor at each iteration until the remaining polynomial
+                // has small enough degree
+                for _ in 0..self.options.num_fri_layers(evaluations.len()) {
+                    match fri_folding_factor {
+                        2 => self.build_layer::<2>(channel, &mut evaluations),
+                        4 => self.build_layer::<4>(channel, &mut evaluations),
+                        8 => self.build_layer::<8>(channel, &mut evaluations),
+                        16 => self.build_layer::<16>(channel, &mut evaluations),
+                        _ => {
+                            unimplemented!("folding factor {} is not supported", fri_folding_factor)
+                        }
+                    }
+                }
+            }
+
+            FoldingSchedule::Dynamic { schedule } => {
+                for &fri_folding_factor in schedule.iter() {
+                    match fri_folding_factor {
+                        2 => self.build_layer::<2>(channel, &mut evaluations),
+                        4 => self.build_layer::<4>(channel, &mut evaluations),
+                        8 => self.build_layer::<8>(channel, &mut evaluations),
+                        16 => self.build_layer::<16>(channel, &mut evaluations),
+                        32 => self.build_layer::<32>(channel, &mut evaluations),
+                        _ => {
+                            unimplemented!("folding factor {} is not supported", fri_folding_factor)
+                        }
+                    }
+                }
             }
         }
 
@@ -247,24 +269,65 @@ where
         if !self.layers.is_empty() {
             let mut positions = positions.to_vec();
             let mut domain_size = self.layers[0].evaluations.len();
-            let folding_factor = self.options.folding_factor();
 
-            // for all FRI layers, except the last one, record tree root, determine a set of query
-            // positions, and query the layer at these positions.
-            for i in 0..self.layers.len() {
-                positions = fold_positions(&positions, domain_size, folding_factor);
+            match self.options.get_schedule() {
+                FoldingSchedule::Constant {
+                    fri_folding_factor,
+                    fri_remainder_max_degree: _,
+                } => {
+                    // for all FRI layers, except the last one, record tree root, determine a set of query
+                    // positions, and query the layer at these positions.
+                    for i in 0..self.layers.len() {
+                        positions =
+                            fold_positions(&positions, domain_size, *fri_folding_factor as usize);
 
-                // sort of a static dispatch for folding_factor parameter
-                let proof_layer = match folding_factor {
-                    2 => query_layer::<B, E, H, 2>(&self.layers[i], &positions),
-                    4 => query_layer::<B, E, H, 4>(&self.layers[i], &positions),
-                    8 => query_layer::<B, E, H, 8>(&self.layers[i], &positions),
-                    16 => query_layer::<B, E, H, 16>(&self.layers[i], &positions),
-                    _ => unimplemented!("folding factor {} is not supported", folding_factor),
-                };
+                        // sort of a static dispatch for folding_factor parameter
+                        let proof_layer = match fri_folding_factor {
+                            2 => query_layer::<B, E, H, 2>(&self.layers[i], &positions),
+                            4 => query_layer::<B, E, H, 4>(&self.layers[i], &positions),
+                            8 => query_layer::<B, E, H, 8>(&self.layers[i], &positions),
+                            16 => query_layer::<B, E, H, 16>(&self.layers[i], &positions),
+                            _ => {
+                                unimplemented!(
+                                    "folding factor {} is not supported",
+                                    fri_folding_factor
+                                )
+                            }
+                        };
 
-                layers.push(proof_layer);
-                domain_size /= folding_factor;
+                        layers.push(proof_layer);
+                        domain_size /= *fri_folding_factor as usize;
+                    }
+                }
+
+                FoldingSchedule::Dynamic { schedule } => {
+                    // for all FRI layers, except the last one, record tree root, determine a set of query
+                    // positions, and query the layer at these positions.
+                    for i in 0..self.layers.len() {
+                        let fri_folding_factor = schedule[i];
+
+                        positions =
+                            fold_positions(&positions, domain_size, fri_folding_factor as usize);
+
+                        // sort of a static dispatch for folding_factor parameter
+                        let proof_layer = match fri_folding_factor {
+                            2 => query_layer::<B, E, H, 2>(&self.layers[i], &positions),
+                            4 => query_layer::<B, E, H, 4>(&self.layers[i], &positions),
+                            8 => query_layer::<B, E, H, 8>(&self.layers[i], &positions),
+                            16 => query_layer::<B, E, H, 16>(&self.layers[i], &positions),
+                            32 => query_layer::<B, E, H, 32>(&self.layers[i], &positions),
+                            _ => {
+                                unimplemented!(
+                                    "folding factor {} is not supported",
+                                    fri_folding_factor
+                                )
+                            }
+                        };
+
+                        layers.push(proof_layer);
+                        domain_size /= fri_folding_factor as usize;
+                    }
+                }
             }
         }
 

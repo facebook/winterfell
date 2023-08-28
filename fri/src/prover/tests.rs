@@ -5,6 +5,7 @@
 
 use super::{DefaultProverChannel, FriProver};
 use crate::{
+    fri_schedule::FoldingSchedule,
     verifier::{DefaultVerifierChannel, FriVerifier},
     FriOptions, FriProof, VerifierError,
 };
@@ -23,12 +24,8 @@ fn fri_folding_2() {
     let lde_blowup_e = 3;
     let folding_factor_e = 1;
     let max_remainder_degree = 7;
-    fri_prove_verify(
-        trace_length_e,
-        lde_blowup_e,
-        folding_factor_e,
-        max_remainder_degree,
-    )
+    let folding_schedule = FoldingSchedule::new_constant(folding_factor_e, max_remainder_degree);
+    fri_prove_verify(trace_length_e, lde_blowup_e, folding_schedule)
 }
 
 #[test]
@@ -37,12 +34,8 @@ fn fri_folding_4() {
     let lde_blowup_e = 3;
     let folding_factor_e = 2;
     let max_remainder_degree = 255;
-    fri_prove_verify(
-        trace_length_e,
-        lde_blowup_e,
-        folding_factor_e,
-        max_remainder_degree,
-    )
+    let folding_schedule = FoldingSchedule::new_constant(folding_factor_e, max_remainder_degree);
+    fri_prove_verify(trace_length_e, lde_blowup_e, folding_schedule)
 }
 
 // TEST UTILS
@@ -101,17 +94,12 @@ pub fn verify_proof(
     verifier.verify(&mut channel, &queried_evaluations, positions)
 }
 
-fn fri_prove_verify(
-    trace_length_e: usize,
-    lde_blowup_e: usize,
-    folding_factor_e: usize,
-    max_remainder_degree: usize,
-) {
+fn fri_prove_verify(trace_length_e: usize, lde_blowup_e: usize, folding_schedule: FoldingSchedule) {
     let trace_length = 1 << trace_length_e;
     let lde_blowup = 1 << lde_blowup_e;
-    let folding_factor = 1 << folding_factor_e;
+    // let folding_factor = 1 << folding_factor_e;
 
-    let options = FriOptions::new(lde_blowup, folding_factor, max_remainder_degree);
+    let options = FriOptions::new(lde_blowup, folding_schedule);
     let mut channel = build_prover_channel(trace_length, &options);
     let evaluations = build_evaluations(trace_length, lde_blowup);
 
