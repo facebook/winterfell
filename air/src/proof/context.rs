@@ -258,7 +258,7 @@ mod tests {
             BaseElement::from(1_u32),    // lower bits of field modulus
             BaseElement::from(u32::MAX), // upper bits of field modulus
             BaseElement::from(ext_fri),
-            BaseElement::from(grinding_factor as u32),
+            BaseElement::from(grinding_factor),
             BaseElement::from(blowup_factor as u32),
             BaseElement::from(num_queries as u32),
             BaseElement::from(trace_length as u32),

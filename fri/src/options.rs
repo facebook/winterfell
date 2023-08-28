@@ -48,7 +48,7 @@ impl FriOptions {
                     schedule.iter().all(|factor| factor.is_power_of_two()),
                     "FRI folding factors must be powers of 2"
                 );
-                assert!(schedule.len() > 0, "FRI folding schedule cannot be empty");
+                assert!(!schedule.is_empty(), "FRI folding schedule cannot be empty");
             }
         }
 
@@ -124,7 +124,7 @@ impl FriOptions {
                     domain_size /= *fri_folding_factor as usize;
                     result += 1;
                 }
-                return result;
+                result
             }
             FoldingSchedule::Dynamic { schedule } => schedule.len(),
         }

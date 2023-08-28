@@ -150,7 +150,7 @@ impl ProofOptions {
             },
             FoldingSchedule::Dynamic { schedule} => {
                 assert!(schedule.iter().all(|factor| factor.is_power_of_two()), "FRI folding factors must be powers of 2");
-                assert!(schedule.len() > 0, "FRI folding schedule cannot be empty");
+                assert!(!schedule.is_empty(), "FRI folding schedule cannot be empty");
             },
         }
 
@@ -345,7 +345,7 @@ mod tests {
         ]);
         let expected = vec![
             BaseElement::from(ext_fri),
-            BaseElement::from(grinding_factor as u32),
+            BaseElement::from(grinding_factor),
             BaseElement::from(blowup_factor as u32),
             BaseElement::from(num_queries as u32),
         ];

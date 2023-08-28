@@ -358,6 +358,7 @@ where
             }
         }
 
+        // verify remainder
         self.verify_remainder(
             channel,
             &evaluations,
@@ -367,111 +368,8 @@ where
         )
     }
 
-    // /// This is the actual implementation of the verification procedure described above, but it
-    // /// also takes folding factor as a generic parameter N.
-    // fn verify_generic<const N: usize>(
-    //     &self,
-    //     channel: &mut C,
-    //     evaluations: &[E],
-    //     positions: &[usize],
-    // ) -> Result<(), VerifierError> {
-    //     // pre-compute roots of unity used in computing x coordinates in the folded domain
-    //     let folding_roots = (0..N)
-    //         .map(|i| {
-    //             self.domain_generator
-    //                 .exp_vartime(((self.domain_size / N * i) as u64).into())
-    //         })
-    //         .collect::<Vec<_>>();
-
-    //     // 1 ----- verify the recursive components of the FRI proof -----------------------------------
-    //     let mut domain_generator = self.domain_generator;
-    //     let mut domain_size = self.domain_size;
-    //     let mut max_degree_plus_1 = self.max_poly_degree + 1;
-    //     let mut positions = positions.to_vec();
-    //     let mut evaluations = evaluations.to_vec();
-
-    //     for depth in 0..self.options.num_fri_layers(self.domain_size) {
-    //         // determine which evaluations were queried in the folded layer
-    //         let mut folded_positions =
-    //             fold_positions(&positions, domain_size, self.options.folding_factor());
-    //         // determine where these evaluations are in the commitment Merkle tree
-    //         let position_indexes = map_positions_to_indexes(
-    //             &folded_positions,
-    //             domain_size,
-    //             self.options.folding_factor(),
-    //             self.num_partitions,
-    //         );
-    //         // read query values from the specified indexes in the Merkle tree
-    //         let layer_commitment = self.layer_commitments[depth];
-    //         // TODO: add layer depth to the potential error message
-    //         let layer_values = channel.read_layer_queries(&position_indexes, &layer_commitment)?;
-    //         let query_values =
-    //             get_query_values::<E, N>(&layer_values, &positions, &folded_positions, domain_size);
-    //         if evaluations != query_values {
-    //             return Err(VerifierError::InvalidLayerFolding(depth));
-    //         }
-
-    //         // build a set of x coordinates for each row polynomial
-    //         #[rustfmt::skip]
-    //         let xs = folded_positions.iter().map(|&i| {
-    //             let xe = domain_generator.exp_vartime((i as u64).into()) * self.options.domain_offset();
-    //             folding_roots.iter()
-    //                 .map(|&r| E::from(xe * r))
-    //                 .collect::<Vec<_>>().try_into().unwrap()
-    //         })
-    //         .collect::<Vec<_>>();
-
-    //         // interpolate x and y values into row polynomials
-    //         let row_polys = polynom::interpolate_batch(&xs, &layer_values);
-
-    //         // calculate the pseudo-random value used for linear combination in layer folding
-    //         let alpha = self.layer_alphas[depth];
-
-    //         // check that when the polynomials are evaluated at alpha, the result is equal to
-    //         // the corresponding column value
-    //         evaluations = row_polys.iter().map(|p| polynom::eval(p, alpha)).collect();
-
-    //         // make sure next degree reduction does not result in degree truncation
-    //         if max_degree_plus_1 % N != 0 {
-    //             return Err(VerifierError::DegreeTruncation(
-    //                 max_degree_plus_1 - 1,
-    //                 N,
-    //                 depth,
-    //             ));
-    //         }
-
-    //         // update variables for the next iteration of the loop
-    //         domain_generator = domain_generator.exp_vartime((N as u32).into());
-    //         max_degree_plus_1 /= N;
-    //         domain_size /= N;
-    //         mem::swap(&mut positions, &mut folded_positions);
-    //     }
-
-    //     // 2 ----- verify the remainder polynomial of the FRI proof -------------------------------
-
-    //     // read the remainder polynomial from the channel and make sure it agrees with the evaluations
-    //     // from the previous layer.
-    //     let remainder_poly = channel.read_remainder()?;
-    //     if remainder_poly.len() > max_degree_plus_1 {
-    //         return Err(VerifierError::RemainderDegreeMismatch(
-    //             max_degree_plus_1 - 1,
-    //         ));
-    //     }
-    //     let offset: E::BaseField = self.options().domain_offset();
-
-    //     for (&position, evaluation) in positions.iter().zip(evaluations) {
-    //         let comp_eval = eval_horner::<E>(
-    //             &remainder_poly,
-    //             offset * domain_generator.exp_vartime((position as u64).into()),
-    //         );
-    //         if comp_eval != evaluation {
-    //             return Err(VerifierError::InvalidRemainderFolding);
-    //         }
-    //     }
-
-    //     Ok(())
-    // }
-
+    /// Executes the query phase of the FRI protocol.
+    #[allow(clippy::too_many_arguments)]
     fn verify_layer<const N: usize>(
         &self,
         channel: &mut C,
@@ -483,7 +381,7 @@ where
         max_degree_plus_1: usize,
     ) -> Result<(Vec<E>, Vec<usize>), VerifierError> {
         // 1. Determining which evaluations were queried in the folded layer.
-        let folded_positions = fold_positions(&positions, domain_size, N);
+        let folded_positions = fold_positions(positions, domain_size, N);
 
         // 2. Finding these evaluations in the commitment Merkle tree.
         let position_indexes =
@@ -494,7 +392,7 @@ where
         let layer_values: Vec<[E; N]> =
             channel.read_layer_queries(&position_indexes, &layer_commitment)?;
         let query_values =
-            get_query_values(&layer_values, &positions, &folded_positions, domain_size);
+            get_query_values(&layer_values, positions, &folded_positions, domain_size);
 
         if evaluations != query_values {
             return Err(VerifierError::InvalidLayerFolding(depth));

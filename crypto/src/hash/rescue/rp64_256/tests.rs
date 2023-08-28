@@ -199,7 +199,7 @@ proptest! {
         for i in 0..STATE_WIDTH {
             v1[i] = BaseElement::new(a[i]);
         }
-        v2 = v1.clone();
+        v2 = v1;
 
         apply_mds_naive(&mut v1);
         Rp64_256::apply_mds(&mut v2);

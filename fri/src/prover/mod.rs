@@ -303,6 +303,7 @@ where
                 FoldingSchedule::Dynamic { schedule } => {
                     // for all FRI layers, except the last one, record tree root, determine a set of query
                     // positions, and query the layer at these positions.
+                    #[allow(clippy::needless_range_loop)]
                     for i in 0..self.layers.len() {
                         let fri_folding_factor = schedule[i];
 
