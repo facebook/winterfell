@@ -6,6 +6,7 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use examples::{fibonacci, Example};
 use std::time::Duration;
+use winter_fri::fri_schedule::FoldingSchedule;
 use winterfell::{
     crypto::hashers::Blake3_256, math::fields::f128::BaseElement, FieldExtension, ProofOptions,
 };
@@ -17,7 +18,9 @@ fn fibonacci(c: &mut Criterion) {
     group.sample_size(10);
     group.measurement_time(Duration::from_secs(20));
 
-    let options = ProofOptions::new(32, 8, 0, FieldExtension::None, 4, 255);
+    let fri_constant_schedule = FoldingSchedule::new_constant(4, 255);
+
+    let options = ProofOptions::new(32, 8, 0, FieldExtension::None, &fri_constant_schedule);
 
     for &size in SIZES.iter() {
         let fib =

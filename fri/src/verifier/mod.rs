@@ -6,12 +6,10 @@
 //! Contains an implementation of FRI verifier and associated components.
 
 use crate::{
-    folding::{self, fold_positions},
-    fri_schedule::FoldingSchedule,
-    utils::map_positions_to_indexes,
+    folding::fold_positions, fri_schedule::FoldingSchedule, utils::map_positions_to_indexes,
     FriOptions, VerifierError,
 };
-use core::{convert::TryInto, marker::PhantomData, mem};
+use core::{convert::TryInto, marker::PhantomData};
 use crypto::{ElementHasher, RandomCoin};
 use math::{polynom, FieldElement, StarkField};
 use utils::collections::Vec;

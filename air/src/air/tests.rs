@@ -9,6 +9,7 @@ use super::{
 };
 use crate::{AuxTraceRandElements, FieldExtension};
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin};
+use fri::fri_schedule::FoldingSchedule;
 use math::{fields::f64::BaseElement, get_power_series, polynom, FieldElement, StarkField};
 use utils::collections::{BTreeMap, Vec};
 
@@ -219,20 +220,22 @@ impl MockAir {
         column_values: Vec<Vec<BaseElement>>,
         trace_length: usize,
     ) -> Self {
+        let fri_constant_schedule = FoldingSchedule::new_constant(4, 31);
         let mut result = Self::new(
             TraceInfo::with_meta(4, trace_length, vec![1]),
             (),
-            ProofOptions::new(32, 8, 0, FieldExtension::None, 4, 31),
+            ProofOptions::new(32, 8, 0, FieldExtension::None, &fri_constant_schedule),
         );
         result.periodic_columns = column_values;
         result
     }
 
     pub fn with_assertions(assertions: Vec<Assertion<BaseElement>>, trace_length: usize) -> Self {
+        let fri_constant_schedule = FoldingSchedule::new_constant(4, 31);
         let mut result = Self::new(
             TraceInfo::with_meta(4, trace_length, vec![assertions.len() as u8]),
             (),
-            ProofOptions::new(32, 8, 0, FieldExtension::None, 4, 31),
+            ProofOptions::new(32, 8, 0, FieldExtension::None, &fri_constant_schedule),
         );
         result.assertions = assertions;
         result
@@ -282,7 +285,8 @@ pub fn build_context<B: StarkField>(
     trace_width: usize,
     num_assertions: usize,
 ) -> AirContext<B> {
-    let options = ProofOptions::new(32, 8, 0, FieldExtension::None, 4, 31);
+    let fri_constant_schedule = FoldingSchedule::new_constant(4, 31);
+    let options = ProofOptions::new(32, 8, 0, FieldExtension::None, &fri_constant_schedule);
     let t_degrees = vec![TransitionConstraintDegree::new(2)];
     let trace_info = TraceInfo::new(trace_width, trace_length);
     AirContext::new(trace_info, t_degrees, num_assertions, options)

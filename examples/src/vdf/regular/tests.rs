@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::Blake3_256;
+use winter_fri::fri_schedule::FoldingSchedule;
 use winterfell::{FieldExtension, ProofOptions};
 
 #[test]
@@ -39,5 +40,7 @@ fn build_options(use_extension_field: bool) -> ProofOptions {
     } else {
         FieldExtension::None
     };
-    ProofOptions::new(85, 2, 0, extension, 4, 31)
+
+    let fri_constant_schedule = FoldingSchedule::new_constant(4, 31);
+    ProofOptions::new(85, 2, 0, extension, &fri_constant_schedule)
 }

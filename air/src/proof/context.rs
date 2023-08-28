@@ -223,6 +223,7 @@ fn bytes_to_element<B: StarkField>(bytes: &[u8]) -> B {
 mod tests {
     use super::{Context, ProofOptions, ToElements, TraceInfo};
     use crate::{FieldExtension, TraceLayout};
+    use fri::fri_schedule::FoldingSchedule;
     use math::fields::f64::BaseElement;
 
     #[test]
@@ -247,6 +248,9 @@ mod tests {
             0,
         ]);
 
+        let fri_constant_schedule =
+            FoldingSchedule::new_constant(fri_folding_factor, fri_remainder_max_degree);
+
         let layout_info = u32::from_le_bytes([aux_rands, aux_width, num_aux_segments, main_width]);
 
         let expected = vec![
@@ -265,8 +269,7 @@ mod tests {
             blowup_factor,
             grinding_factor,
             field_extension,
-            fri_folding_factor as usize,
-            fri_remainder_max_degree as usize,
+            &fri_constant_schedule,
         );
         let layout = TraceLayout::new(
             main_width as usize,

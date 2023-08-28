@@ -83,7 +83,9 @@ impl FriOptions {
     /// In combination with `folding_factor` this property defines how many FRI layers are needed
     /// for an evaluation domain of a given size.
     pub fn remainder_max_degree(&self) -> Option<usize> {
-        self.remainder_max_degree().map(|d| d as usize)
+        self.folding_schedule
+            .get_max_remainder_degree()
+            .map(|degree| degree as usize)
     }
 
     /// Returns a blowup factor of the evaluation domain.

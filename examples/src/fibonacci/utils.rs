@@ -31,6 +31,7 @@ pub fn compute_mulfib_term(n: usize) -> BaseElement {
 
 #[cfg(test)]
 pub fn build_proof_options(use_extension_field: bool) -> winterfell::ProofOptions {
+    use winter_fri::fri_schedule::FoldingSchedule;
     use winterfell::{FieldExtension, ProofOptions};
 
     let extension = if use_extension_field {
@@ -38,5 +39,7 @@ pub fn build_proof_options(use_extension_field: bool) -> winterfell::ProofOption
     } else {
         FieldExtension::None
     };
-    ProofOptions::new(28, 8, 0, extension, 4, 7)
+
+    let fri_constant_schedule = FoldingSchedule::new_constant(4, 7);
+    ProofOptions::new(28, 8, 0, extension, &fri_constant_schedule)
 }
