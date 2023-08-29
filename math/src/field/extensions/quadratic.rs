@@ -15,9 +15,6 @@ use utils::{
     DeserializationError, Randomizable, Serializable, SliceReader,
 };
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
 // QUADRATIC EXTENSION FIELD
 // ================================================================================================
 
@@ -28,7 +25,7 @@ use serde::{Deserialize, Serialize};
 /// elements.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
-#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct QuadExtension<B: ExtensibleField<2>>(B, B);
 
 impl<B: ExtensibleField<2>> QuadExtension<B> {

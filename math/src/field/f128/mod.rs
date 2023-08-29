@@ -25,9 +25,6 @@ use utils::{
     Serializable,
 };
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
 #[cfg(test)]
 mod tests;
 
@@ -51,7 +48,7 @@ const ELEMENT_BYTES: usize = core::mem::size_of::<u128>();
 /// Internal values are stored in their canonical form in the range [0, M). The backing type is
 /// `u128`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
-#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct BaseElement(u128);
 
