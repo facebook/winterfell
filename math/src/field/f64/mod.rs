@@ -682,3 +682,13 @@ pub fn equals(lhs: u64, rhs: u64) -> u64 {
     let t = lhs ^ rhs;
     !((((t | t.wrapping_neg()) as i64) >> 63) as u64)
 }
+
+// RANDOMIZATION
+// ================================================================================================
+#[cfg(feature = "rand")]
+impl rand::distributions::Distribution<BaseElement> for rand::distributions::Standard {
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> BaseElement {
+        let value = rand::distributions::Uniform::new(0, M).sample(rng);
+        BaseElement::new(value)
+    }
+}

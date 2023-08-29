@@ -385,6 +385,22 @@ impl<B: ExtensibleField<3>> Deserializable for CubeExtension<B> {
     }
 }
 
+// RANDOMIZATION
+// ================================================================================================
+#[cfg(feature = "rand")]
+impl<B> rand::distributions::Distribution<CubeExtension<B>> for rand::distributions::Standard
+where
+    rand::distributions::Standard: rand::distributions::Distribution<B>,
+    B: ExtensibleField<3>,
+{
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> CubeExtension<B> {
+        let a = rng.gen();
+        let b = rng.gen();
+        let c = rng.gen();
+        CubeExtension(a, b, c)
+    }
+}
+
 // TESTS
 // ================================================================================================
 

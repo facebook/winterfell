@@ -373,6 +373,21 @@ impl<B: ExtensibleField<2>> Deserializable for QuadExtension<B> {
     }
 }
 
+// RANDOMIZATION
+// ================================================================================================
+#[cfg(feature = "rand")]
+impl<B> rand::distributions::Distribution<QuadExtension<B>> for rand::distributions::Standard
+where
+    rand::distributions::Standard: rand::distributions::Distribution<B>,
+    B: ExtensibleField<2>,
+{
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> QuadExtension<B> {
+        let a = rng.gen();
+        let b = rng.gen();
+        QuadExtension(a, b)
+    }
+}
+
 // TESTS
 // ================================================================================================
 

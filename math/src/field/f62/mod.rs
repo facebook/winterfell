@@ -630,3 +630,13 @@ fn normalize(value: u64) -> u64 {
         value
     }
 }
+
+// RANDOMIZATION
+// ================================================================================================
+#[cfg(feature = "rand")]
+impl rand::distributions::Distribution<BaseElement> for rand::distributions::Standard {
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> BaseElement {
+        let value = rand::distributions::Uniform::new(0, M).sample(rng);
+        BaseElement::new(value)
+    }
+}

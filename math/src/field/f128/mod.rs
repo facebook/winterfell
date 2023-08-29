@@ -626,3 +626,13 @@ const fn add64_with_carry(a: u64, b: u64, carry: u64) -> (u64, u64) {
     let ret = (a as u128) + (b as u128) + (carry as u128);
     (ret as u64, (ret >> 64) as u64)
 }
+
+// RANDOMIZATION
+// ================================================================================================
+#[cfg(feature = "rand")]
+impl rand::distributions::Distribution<BaseElement> for rand::distributions::Standard {
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> BaseElement {
+        let value = rand::distributions::Uniform::new(0, M).sample(rng);
+        BaseElement::new(value)
+    }
+}
