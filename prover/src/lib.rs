@@ -414,10 +414,10 @@ pub trait Prover {
         let now = Instant::now();
 
         // apply proof-of-work to the query seed
-        channel.grind_query_seed();
+        let nonce = channel.grind_query_seed();
 
         // generate pseudo-random query positions
-        let query_positions = channel.get_query_positions();
+        let query_positions = channel.get_query_positions(nonce);
         #[cfg(feature = "std")]
         debug!(
             "Determined {} query positions in {} ms",

@@ -118,7 +118,7 @@ fn fri_prove_verify(
     // instantiate the prover and generate the proof
     let mut prover = FriProver::new(options.clone());
     prover.build_layers(&mut channel, evaluations.clone());
-    let positions = channel.draw_query_positions();
+    let positions = channel.draw_query_positions(0);
     let proof = prover.build_proof(&positions);
 
     // make sure the proof can be verified
