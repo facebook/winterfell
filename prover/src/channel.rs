@@ -137,18 +137,18 @@ where
     /// constraint composition polynomials should be queried.
     ///
     /// The positions are drawn from the public coin uniformly at random.
-    pub fn get_query_positions(&mut self, nonce: u64) -> Vec<usize> {
+    pub fn get_query_positions(&mut self) -> Vec<usize> {
         let num_queries = self.context.options().num_queries();
         let lde_domain_size = self.context.lde_domain_size();
         self.public_coin
-            .draw_integers(num_queries, lde_domain_size, nonce)
+            .draw_integers(num_queries, lde_domain_size, self.pow_nonce)
             .expect("failed to draw query position")
     }
 
     /// Determines a nonce, which when hashed with the current seed of the public coin results
     /// in a new seed with the number of leading zeros equal to the grinding_factor specified
     /// in the proof options.
-    pub fn grind_query_seed(&mut self) -> u64 {
+    pub fn grind_query_seed(&mut self) {
         let grinding_factor = self.context.options().grinding_factor();
 
         #[cfg(not(feature = "concurrent"))]
@@ -163,7 +163,6 @@ where
             .expect("nonce not found");
 
         self.pow_nonce = nonce;
-        nonce
     }
 
     // PROOF BUILDER

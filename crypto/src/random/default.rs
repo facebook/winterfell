@@ -154,7 +154,7 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRando
     }
 
     /// Returns a vector of unique integers selected from the range [0, domain_size) after reseeding
-    /// the PRNG with the specified `nonce`.
+    /// the PRNG with the specified `nonce` by setting the new seed to hash(`seed` || `nonce`).
     ///
     /// # Errors
     /// Returns an error if the specified number of unique integers could not be generated

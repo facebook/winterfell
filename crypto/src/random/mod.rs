@@ -48,7 +48,7 @@ pub trait RandomCoin: Sync {
     fn draw<E: FieldElement<BaseField = Self::BaseField>>(&mut self) -> Result<E, RandomCoinError>;
 
     /// Returns a vector of unique integers selected from the range [0, domain_size) after it reseeds
-    /// the coin with a nonce by setting the new seed to hash(`seed` || `nonce`).
+    /// the coin with a nonce.
     ///
     /// # Errors
     /// Returns an error if the specified number of unique integers could not be generated
