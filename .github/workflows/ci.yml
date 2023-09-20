@@ -67,6 +67,9 @@ jobs:
         with:
           command: clippy
           args: --all -- -D clippy::all -D warnings
+        env:
+          # Seems necessary until https://github.com/rust-lang/rust/pull/115819 is merged.
+          CARGO_INCREMENTAL: 0
 
   rustfmt:
     name: rustfmt
