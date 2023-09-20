@@ -36,14 +36,6 @@ pub trait RandomCoin: Sync {
     /// Reseeds the coin with the specified data by setting the new seed to hash(`seed` || `data`).
     fn reseed(&mut self, data: <Self::Hasher as Hasher>::Digest);
 
-    /// Reseeds the coin with the specified value by setting the new seed to hash(`seed` ||
-    /// `value`).
-    fn reseed_with_int(&mut self, value: u64);
-
-    /// Returns the number of leading zeros in the seed if it is interpreted as an integer in
-    /// big-endian byte order.
-    fn leading_zeros(&self) -> u32;
-
     /// Computes hash(`seed` || `value`) and returns the number of leading zeros in the resulting
     /// value if it is interpreted as an integer in big-endian byte order.
     fn check_leading_zeros(&self, value: u64) -> u32;
@@ -55,7 +47,8 @@ pub trait RandomCoin: Sync {
     /// PRNG.
     fn draw<E: FieldElement<BaseField = Self::BaseField>>(&mut self) -> Result<E, RandomCoinError>;
 
-    /// Returns a vector of unique integers selected from the range [0, domain_size).
+    /// Returns a vector of unique integers selected from the range [0, domain_size) after it reseeds
+    /// the coin with a nonce.
     ///
     /// # Errors
     /// Returns an error if the specified number of unique integers could not be generated
@@ -69,5 +62,6 @@ pub trait RandomCoin: Sync {
         &mut self,
         num_values: usize,
         domain_size: usize,
+        nonce: u64,
     ) -> Result<Vec<usize>, RandomCoinError>;
 }

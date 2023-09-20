@@ -141,7 +141,7 @@ where
         let num_queries = self.context.options().num_queries();
         let lde_domain_size = self.context.lde_domain_size();
         self.public_coin
-            .draw_integers(num_queries, lde_domain_size)
+            .draw_integers(num_queries, lde_domain_size, self.pow_nonce)
             .expect("failed to draw query position")
     }
 
@@ -163,7 +163,6 @@ where
             .expect("nonce not found");
 
         self.pow_nonce = nonce;
-        self.public_coin.reseed_with_int(nonce);
     }
 
     // PROOF BUILDER

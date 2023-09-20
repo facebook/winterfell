@@ -117,63 +117,8 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRando
         self.counter = 0;
     }
 
-    /// Reseeds the coin with the specified value by setting the new seed to hash(`seed` ||
-    /// `value`).
-    ///
-    /// # Examples
-    /// ```
-    /// # use winter_crypto::{RandomCoin, DefaultRandomCoin, Hasher, hashers::Blake3_256};
-    /// # use math::fields::f128::BaseElement;
-    /// // initial elements for seeding the random coin
-    /// let seed = &[BaseElement::new(1), BaseElement::new(2), BaseElement::new(3), BaseElement::new(4)];
-    ///
-    /// let mut coin1 = DefaultRandomCoin::<Blake3_256<BaseElement>>::new(seed);
-    /// let mut coin2 = DefaultRandomCoin::<Blake3_256<BaseElement>>::new(seed);
-    ///
-    /// // should draw the same element form both coins
-    /// let e1 = coin1.draw::<BaseElement>().unwrap();;
-    /// let e2 = coin2.draw::<BaseElement>().unwrap();;
-    /// assert_eq!(e1, e2);
-    ///
-    /// // after reseeding should draw different elements
-    /// coin2.reseed_with_int(42);
-    /// let e1 = coin1.draw::<BaseElement>().unwrap();;
-    /// let e2 = coin2.draw::<BaseElement>().unwrap();;
-    /// assert_ne!(e1, e2);
-    /// ```
-    fn reseed_with_int(&mut self, value: u64) {
-        self.seed = H::merge_with_int(self.seed, value);
-        self.counter = 0;
-    }
-
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
-
-    /// Returns the number of leading zeros in the seed if it is interpreted as an integer in
-    /// big-endian byte order.
-    ///
-    /// # Examples
-    /// ```
-    /// # use winter_crypto::{RandomCoin, DefaultRandomCoin, Hasher, hashers::Blake3_256};
-    /// # use math::fields::f128::BaseElement;
-    /// // initial elements for seeding the random coin
-    /// let seed = &[BaseElement::new(1), BaseElement::new(2), BaseElement::new(3), BaseElement::new(4)];
-    ///
-    /// let mut coin = DefaultRandomCoin::<Blake3_256<BaseElement>>::new(seed);
-    ///
-    /// let mut value = 0;
-    /// while coin.check_leading_zeros(value) < 2 {
-    ///     value += 1;
-    /// }
-    ///
-    /// coin.reseed_with_int(value);
-    /// assert!(coin.leading_zeros() >= 2);
-    /// ```
-    fn leading_zeros(&self) -> u32 {
-        let bytes = self.seed.as_bytes();
-        let seed_head = u64::from_le_bytes(bytes[..8].try_into().unwrap());
-        seed_head.trailing_zeros()
-    }
 
     /// Computes hash(`seed` || `value`) and returns the number of leading zeros in the resulting
     /// value if it is interpreted as an integer in big-endian byte order.
@@ -208,7 +153,8 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRando
         Err(RandomCoinError::FailedToDrawFieldElement(1000))
     }
 
-    /// Returns a vector of unique integers selected from the range [0, domain_size).
+    /// Returns a vector of unique integers selected from the range [0, domain_size) after reseeding
+    /// the PRNG with the specified `nonce` by setting the new seed to hash(`seed` || `nonce`).
     ///
     /// # Errors
     /// Returns an error if the specified number of unique integers could not be generated
@@ -231,7 +177,8 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRando
     ///
     /// let num_values = 20;
     /// let domain_size = 64;
-    /// let values = coin.draw_integers(num_values, domain_size).unwrap();
+    /// let nonce = 0;
+    /// let values = coin.draw_integers(num_values, domain_size, nonce).unwrap();
     ///
     /// assert_eq!(num_values, values.len());
     ///
@@ -245,6 +192,7 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRando
         &mut self,
         num_values: usize,
         domain_size: usize,
+        nonce: u64,
     ) -> Result<Vec<usize>, RandomCoinError> {
         assert!(
             domain_size.is_power_of_two(),
@@ -254,6 +202,10 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRando
             num_values < domain_size,
             "number of values must be smaller than domain size"
         );
+
+        // reseed with nonce
+        self.seed = H::merge_with_int(self.seed, nonce);
+        self.counter = 0;
 
         // determine how many bits are needed to represent valid values in the domain
         let v_mask = (domain_size - 1) as u64;

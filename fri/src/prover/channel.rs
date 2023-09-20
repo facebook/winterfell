@@ -105,15 +105,15 @@ where
     /// layer should be queried.
     ///
     /// The positions are pseudo-randomly generated based on the values the prover has written
-    /// into this channel.
+    /// into this channel and a PoW nonce.
     ///
     /// # Panics
     /// Panics if the specified number of unique positions could not be drawn from the specified
     /// domain. Both number of queried positions and domain size are specified during
     /// construction of the channel.
-    pub fn draw_query_positions(&mut self) -> Vec<usize> {
+    pub fn draw_query_positions(&mut self, nonce: u64) -> Vec<usize> {
         self.public_coin
-            .draw_integers(self.num_queries, self.domain_size)
+            .draw_integers(self.num_queries, self.domain_size, nonce)
             .expect("failed to draw query position")
     }
 

@@ -247,12 +247,11 @@ where
     // TODO: make sure air.lde_domain_size() == fri_verifier.domain_size()
 
     // 5 ----- trace and constraint queries -------------------------------------------------------
-    // read proof-of-work nonce sent by the prover and update the public coin with it
+    // read proof-of-work nonce sent by the prover
     let pow_nonce = channel.read_pow_nonce();
-    public_coin.reseed_with_int(pow_nonce);
 
     // make sure the proof-of-work specified by the grinding factor is satisfied
-    if public_coin.leading_zeros() < air.options().grinding_factor() {
+    if public_coin.check_leading_zeros(pow_nonce) < air.options().grinding_factor() {
         return Err(VerifierError::QuerySeedProofOfWorkVerificationFailed);
     }
 
@@ -261,7 +260,11 @@ where
     // and the prover responds with decommitments against these positions for trace and constraint
     // composition polynomial evaluations.
     let query_positions = public_coin
-        .draw_integers(air.options().num_queries(), air.lde_domain_size())
+        .draw_integers(
+            air.options().num_queries(),
+            air.lde_domain_size(),
+            pow_nonce,
+        )
         .map_err(|_| VerifierError::RandomCoinError)?;
 
     // read evaluations of trace and constraint composition polynomials at the queried positions;
