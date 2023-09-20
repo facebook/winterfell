@@ -2,6 +2,7 @@
 
 ## 0.7.0 (TBD)
 * [BREAKING] replaced the `TraceLde` struct with a trait (#207).
+* [BREAKING] refactored `RandomCoin` trait (#214).
 
 ## 0.6.5 (2023-08-09) - math crate only
 * Added conditional support for serde on field elements (#209)
