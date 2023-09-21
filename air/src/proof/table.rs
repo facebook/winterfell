@@ -10,8 +10,8 @@ use math::FieldElement;
 // CONSTANTS
 // ================================================================================================
 
-const MAX_ROWS: usize = 255;
-const MAX_COLS: usize = 255;
+const MAX_ROWS: usize = 65535;
+const MAX_COLS: usize = 65535;
 
 // TABLE
 // ================================================================================================
@@ -34,8 +34,8 @@ impl<E: FieldElement> Table<E> {
     ///
     /// # Panics
     /// Panics if:
-    /// * Specified number of rows is 0 or greater than 255.
-    /// * Specified number of columns is 0 or greater than 255.
+    /// * Specified number of rows is 0 or greater than 65535.
+    /// * Specified number of columns is 0 or greater than 65535.
     /// * Provided bytes do not encode valid field elements required to fill the table.
     pub fn from_bytes(
         bytes: &[u8],

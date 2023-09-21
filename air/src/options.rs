@@ -77,7 +77,7 @@ pub enum FieldExtension {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ProofOptions {
     num_queries: u8,
-    blowup_factor: u8,
+    blowup_factor: u16,
     grinding_factor: u8,
     field_extension: FieldExtension,
     fri_folding_factor: u8,
@@ -142,7 +142,7 @@ impl ProofOptions {
 
         ProofOptions {
             num_queries: num_queries as u8,
-            blowup_factor: blowup_factor as u8,
+            blowup_factor: blowup_factor as u16,
             grinding_factor: grinding_factor as u8,
             field_extension,
             fri_folding_factor: fri_folding_factor as u8,
@@ -228,7 +228,7 @@ impl Serializable for ProofOptions {
     /// Serializes `self` and writes the resulting bytes into the `target`.
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_u8(self.num_queries);
-        target.write_u8(self.blowup_factor);
+        target.write_u16(self.blowup_factor);
         target.write_u8(self.grinding_factor);
         target.write(self.field_extension);
         target.write_u8(self.fri_folding_factor);
@@ -244,7 +244,7 @@ impl Deserializable for ProofOptions {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         Ok(ProofOptions::new(
             source.read_u8()? as usize,
-            source.read_u8()? as usize,
+            source.read_u16()? as usize,
             source.read_u8()? as u32,
             FieldExtension::read_from(source)?,
             source.read_u8()? as usize,

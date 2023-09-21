@@ -48,27 +48,27 @@ pub struct ExampleOptions {
 
     /// Hash function used in the protocol
     #[structopt(short = "h", long = "hash_fn", default_value = "blake3_256")]
-    hash_fn: String,
+    pub hash_fn: String,
 
     /// Number of queries to include in a proof
     #[structopt(short = "q", long = "queries")]
-    num_queries: Option<usize>,
+    pub num_queries: Option<usize>,
 
     /// Blowup factor for low degree extension
     #[structopt(short = "b", long = "blowup")]
-    blowup_factor: Option<usize>,
+    pub blowup_factor: Option<usize>,
 
     /// Grinding factor for query seed
     #[structopt(short = "g", long = "grinding", default_value = "16")]
-    grinding_factor: u32,
+    pub grinding_factor: u32,
 
     /// Field extension degree for composition polynomial
     #[structopt(short = "e", long = "field_extension", default_value = "1")]
-    field_extension: u32,
+    pub field_extension: u32,
 
     /// Folding factor for FRI protocol
     #[structopt(short = "f", long = "folding", default_value = "8")]
-    folding_factor: usize,
+    pub folding_factor: usize,
 }
 
 impl ExampleOptions {

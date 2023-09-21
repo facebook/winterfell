@@ -44,8 +44,8 @@ impl<B: StarkField> RapTraceTable<B> {
     ///
     /// # Panics
     /// Panics if:
-    /// * `width` is zero or greater than 255.
-    /// * `length` is smaller than 8, greater than biggest multiplicative subgroup in the field
+    /// * `width` is zero or greater than 65535.
+    /// * `length` is smaller than 4, greater than biggest multiplicative subgroup in the field
     ///   `B`, or is not a power of two.
     pub fn new(width: usize, length: usize) -> Self {
         Self::with_meta(width, length, vec![])
@@ -59,7 +59,7 @@ impl<B: StarkField> RapTraceTable<B> {
     ///
     /// # Panics
     /// Panics if:
-    /// * `width` is zero or greater than 255.
+    /// * `width` is zero or greater than 65535.
     /// * `length` is smaller than 8, greater than the biggest multiplicative subgroup in the
     ///   field `B`, or is not a power of two.
     /// * Length of `meta` is greater than 65535;

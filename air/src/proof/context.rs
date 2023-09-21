@@ -240,6 +240,11 @@ mod tests {
         let aux_rands = 12;
         let trace_length = 4096;
 
+        let main_width_bytes = (main_width as u16).to_le_bytes();
+        let num_aux_segments_bytes = (num_aux_segments as u16).to_le_bytes();
+        let aux_width_bytes = (aux_width as u16).to_le_bytes();
+        let aux_rands_bytes = (aux_rands as u16).to_le_bytes();
+
         let ext_fri = u32::from_le_bytes([
             fri_remainder_max_degree,
             fri_folding_factor,
@@ -247,7 +252,16 @@ mod tests {
             0,
         ]);
 
-        let layout_info = u32::from_le_bytes([aux_rands, aux_width, num_aux_segments, main_width]);
+        let layout_info = u64::from_le_bytes([
+            aux_rands_bytes[0],
+            aux_rands_bytes[1],
+            aux_width_bytes[0],
+            aux_width_bytes[1],
+            num_aux_segments_bytes[0],
+            num_aux_segments_bytes[1],
+            main_width_bytes[0],
+            main_width_bytes[1],
+        ]);
 
         let expected = vec![
             BaseElement::from(layout_info),
