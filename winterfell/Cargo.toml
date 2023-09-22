@@ -23,6 +23,7 @@ std = ["prover/std", "verifier/std"]
 [dependencies]
 prover = { version = "0.6", path = "../prover", package = "winter-prover", default-features = false }
 verifier = { version = "0.6", path = "../verifier", package = "winter-verifier", default-features = false }
+winter-fri = { version = "0.6", path = "../fri", package = "winter-fri", default-features = false }
 
 # Allow math in docs
 [package.metadata.docs.rs]

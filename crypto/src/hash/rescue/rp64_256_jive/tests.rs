@@ -36,7 +36,7 @@ fn mds_inv_test() {
 #[test]
 fn test_alphas() {
     let e: BaseElement = rand_value();
-    let e_exp = e.exp(ALPHA.into());
+    let e_exp = e.exp(ALPHA);
     assert_eq!(e, e_exp.exp(INV_ALPHA));
 }
 
@@ -197,7 +197,7 @@ proptest! {
         for i in 0..STATE_WIDTH {
             v1[i] = BaseElement::new(a[i]);
         }
-        v2 = v1.clone();
+        v2 = v1;
 
         apply_mds_naive(&mut v1);
         RpJive64_256::apply_mds(&mut v2);

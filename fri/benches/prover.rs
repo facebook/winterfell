@@ -8,7 +8,7 @@ use crypto::{hashers::Blake3_256, DefaultRandomCoin};
 use math::{fft, fields::f128::BaseElement, FieldElement};
 use rand_utils::rand_vector;
 use std::time::Duration;
-use winter_fri::{DefaultProverChannel, FriOptions, FriProver};
+use winter_fri::{fri_schedule::FoldingSchedule, DefaultProverChannel, FriOptions, FriProver};
 
 static BATCH_SIZES: [usize; 3] = [65536, 131072, 262144];
 static BLOWUP_FACTOR: usize = 8;
@@ -18,7 +18,8 @@ pub fn build_layers(c: &mut Criterion) {
     fri_group.sample_size(10);
     fri_group.measurement_time(Duration::from_secs(10));
 
-    let options = FriOptions::new(BLOWUP_FACTOR, 4, 255);
+    let fri_constant_schedule = FoldingSchedule::new_constant(4, 255);
+    let options = FriOptions::new(BLOWUP_FACTOR, fri_constant_schedule);
 
     for &domain_size in &BATCH_SIZES {
         let evaluations = build_evaluations(domain_size);

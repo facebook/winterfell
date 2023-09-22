@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{FriProof, VerifierError};
+use crate::{fri_schedule::FoldingSchedule, FriProof, VerifierError};
 use crypto::{BatchMerkleProof, ElementHasher, Hasher, MerkleTree};
 use math::FieldElement;
 use utils::{collections::Vec, group_vector_elements, DeserializationError};
@@ -128,13 +128,13 @@ where
         proof: FriProof,
         layer_commitments: Vec<H::Digest>,
         domain_size: usize,
-        folding_factor: usize,
+        folding_schedule: &FoldingSchedule,
     ) -> Result<Self, DeserializationError> {
         let num_partitions = proof.num_partitions();
 
         let remainder = proof.parse_remainder()?;
         let (layer_queries, layer_proofs) =
-            proof.parse_layers::<H, E>(domain_size, folding_factor)?;
+            proof.parse_layers::<H, E>(domain_size, folding_schedule)?;
 
         Ok(DefaultVerifierChannel {
             layer_commitments,

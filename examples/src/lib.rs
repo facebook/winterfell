@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use structopt::StructOpt;
+use winter_fri::fri_schedule::FoldingSchedule;
 use winterfell::{
     crypto::hashers::{GriffinJive64_256, Rp64_256, RpJive64_256},
     math::fields::f128::BaseElement,
@@ -92,14 +93,17 @@ impl ExampleOptions {
             val => panic!("'{val}' is not a valid hash function option"),
         };
 
+        let fri_constant_schedule = FoldingSchedule::Constant {
+            fri_folding_factor: self.folding_factor as u8,
+            fri_remainder_max_degree: 31,
+        };
         (
             ProofOptions::new(
                 num_queries,
                 blowup_factor,
                 self.grinding_factor,
                 field_extension,
-                self.folding_factor,
-                31,
+                &fri_constant_schedule,
             ),
             hash_fn,
         )

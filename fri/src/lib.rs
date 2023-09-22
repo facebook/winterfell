@@ -69,6 +69,7 @@ extern crate alloc;
 
 pub mod folding;
 
+pub mod fri_schedule;
 mod prover;
 pub use prover::{DefaultProverChannel, FriProver, ProverChannel};
 

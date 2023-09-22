@@ -27,6 +27,7 @@ std = ["hex/std", "winterfell/std", "core-utils/std", "rand-utils"]
 
 [dependencies]
 winterfell = { version="0.6", path = "../winterfell", default-features = false }
+winter-fri = { version="0.6", path = "../fri", default-features = false }
 core-utils = { version = "0.6", path = "../utils/core", package = "winter-utils", default-features = false }
 rand-utils = { version = "0.6", path = "../utils/rand", package = "winter-rand-utils", optional = true }
 hex = { version = "0.4", optional = true }

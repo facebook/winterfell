@@ -372,6 +372,7 @@
 //! #    TransitionConstraintDegree, TraceTable, FieldExtension, Prover, ProofOptions,
 //! #    StarkProof, Trace, crypto::{hashers::Blake3_256, DefaultRandomCoin},
 //! # };
+//! # use winter_fri::fri_schedule::FoldingSchedule;
 //! #
 //! # pub fn build_do_work_trace(start: BaseElement, n: usize) -> TraceTable<BaseElement> {
 //! #     let trace_width = 1;
@@ -483,14 +484,20 @@
 //! let trace = build_do_work_trace(start, n);
 //! let result = trace.get(0, n - 1);
 //!
+//! // Define a constant FRI folding schedule. This means that the prover will use the same
+//! // folding factor for all FRI layers.
+//! // The first parameter is the folding factor, and the second parameter is the maximum
+//! // degree of the remainder polynomial at the last FRI layer.
+//! let fri_constant_schedule = FoldingSchedule::new_constant(8, 31);
+//!
 //! // Define proof options; these will be enough for ~96-bit security level.
 //! let options = ProofOptions::new(
 //!     32, // number of queries
 //!     8,  // blowup factor
 //!     0,  // grinding factor
 //!     FieldExtension::None,
-//!     8,  // FRI folding factor
-//!     31, // FRI max remainder polynomial degree
+//!     &fri_constant_schedule, // constant FRI folding schedule with folding factor 8 and
+//!                            // remainder polynomial degree 31
 //! );
 //!
 //! // Instantiate the prover and generate the proof.

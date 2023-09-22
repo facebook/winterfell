@@ -89,7 +89,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
             .parse_remainder()
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
         let (fri_layer_queries, fri_layer_proofs) = fri_proof
-            .parse_layers::<H, E>(lde_domain_size, fri_options.folding_factor())
+            .parse_layers::<H, E>(lde_domain_size, fri_options.get_schedule())
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         // --- parse out-of-domain evaluation frame -----------------------------------------------
