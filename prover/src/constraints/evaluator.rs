@@ -11,6 +11,7 @@ use air::{
     Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
     TransitionConstraints,
 };
+
 use math::FieldElement;
 use utils::iter_mut;
 
@@ -23,10 +24,23 @@ use utils::{iterators::*, rayon};
 #[cfg(feature = "concurrent")]
 const MIN_CONCURRENT_DOMAIN_SIZE: usize = 8192;
 
-// CONSTRAINT EVALUATOR
+// CONSTRAINT EVALUATOR TRAIT
 // ================================================================================================
 
-pub struct ConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> {
+pub trait ConstraintEvaluator<'a, E: FieldElement> {
+    type Air: Air<BaseField = E::BaseField>;
+
+    fn evaluate<T: TraceLde<BaseField = E::BaseField, ExtensionField = E>>(
+        self,
+        trace: &T,
+        domain: &'a StarkDomain<E::BaseField>,
+    ) -> ConstraintEvaluationTable<'a, E>;
+}
+
+// CONSTRAINT EVALUATOR DEFAULT IMPLEMENTATION
+// ================================================================================================
+
+pub struct DefaultConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> {
     air: &'a A,
     boundary_constraints: BoundaryConstraints<E>,
     transition_constraints: TransitionConstraints<E>,
@@ -34,47 +48,18 @@ pub struct ConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A::BaseFi
     periodic_values: PeriodicValueTable<E::BaseField>,
 }
 
-impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<'a, A, E> {
-    // CONSTRUCTOR
-    // --------------------------------------------------------------------------------------------
-    /// Returns a new evaluator which can be used to evaluate transition and boundary constraints
-    /// over extended execution trace.
-    pub fn new(
-        air: &'a A,
-        aux_rand_elements: AuxTraceRandElements<E>,
-        composition_coefficients: ConstraintCompositionCoefficients<E>,
-    ) -> Self {
-        // build transition constraint groups; these will be used to compose transition constraint
-        // evaluations
-        let transition_constraints =
-            air.get_transition_constraints(&composition_coefficients.transition);
+impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<'a, E>
+    for DefaultConstraintEvaluator<'a, A, E>
+{
+    type Air = A;
 
-        // build periodic value table
-        let periodic_values = PeriodicValueTable::new(air);
-
-        // build boundary constraint groups; these will be used to evaluate and compose boundary
-        // constraint evaluations.
-        let boundary_constraints =
-            BoundaryConstraints::new(air, &aux_rand_elements, &composition_coefficients.boundary);
-
-        ConstraintEvaluator {
-            air,
-            boundary_constraints,
-            transition_constraints,
-            aux_rand_elements,
-            periodic_values,
-        }
-    }
-
-    // EVALUATOR
-    // --------------------------------------------------------------------------------------------
     /// Evaluates constraints against the provided extended execution trace. Constraints are
     /// evaluated over a constraint evaluation domain. This is an optimization because constraint
     /// evaluation domain can be many times smaller than the full LDE domain.
-    pub fn evaluate<T: TraceLde<BaseField = E::BaseField, ExtensionField = E>>(
+    fn evaluate<T: TraceLde<BaseField = E::BaseField, ExtensionField = E>>(
         self,
         trace: &T,
-        domain: &'a StarkDomain<E::BaseField>,
+        domain: &'a StarkDomain<<E as FieldElement>::BaseField>,
     ) -> ConstraintEvaluationTable<'a, E> {
         assert_eq!(
             trace.trace_len(),
@@ -129,6 +114,38 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         evaluation_table.validate_transition_degrees();
 
         evaluation_table
+    }
+}
+impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> DefaultConstraintEvaluator<'a, A, E> {
+    // CONSTRUCTOR
+    // --------------------------------------------------------------------------------------------
+    /// Returns a new evaluator which can be used to evaluate transition and boundary constraints
+    /// over extended execution trace.
+    pub fn new(
+        air: &'a A,
+        aux_rand_elements: AuxTraceRandElements<E>,
+        composition_coefficients: ConstraintCompositionCoefficients<E>,
+    ) -> Self {
+        // build transition constraint groups; these will be used to compose transition constraint
+        // evaluations
+        let transition_constraints =
+            air.get_transition_constraints(&composition_coefficients.transition);
+
+        // build periodic value table
+        let periodic_values = PeriodicValueTable::new(air);
+
+        // build boundary constraint groups; these will be used to evaluate and compose boundary
+        // constraint evaluations.
+        let boundary_constraints =
+            BoundaryConstraints::new(air, &aux_rand_elements, &composition_coefficients.boundary);
+
+        DefaultConstraintEvaluator {
+            air,
+            boundary_constraints,
+            transition_constraints,
+            aux_rand_elements,
+            periodic_values,
+        }
     }
 
     // EVALUATION HELPERS

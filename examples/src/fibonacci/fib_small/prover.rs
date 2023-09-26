@@ -3,8 +3,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 use super::{
-    air::FibSmall, BaseElement, DefaultRandomCoin, DefaultTraceLde, ElementHasher, FieldElement,
-    PhantomData, ProofOptions, Prover, Trace, TraceTable, TRACE_WIDTH,
+    air::FibSmall, BaseElement, DefaultConstraintEvaluator, DefaultRandomCoin, DefaultTraceLde,
+    ElementHasher, FieldElement, PhantomData, ProofOptions, Prover, Trace, TraceTable, TRACE_WIDTH,
 };
 
 // FIBONACCI PROVER
@@ -57,6 +57,8 @@ where
     type HashFn = H;
     type RandomCoin = DefaultRandomCoin<Self::HashFn>;
     type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
+    type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
+        DefaultConstraintEvaluator<'a, Self::Air, E>;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> BaseElement {
         let last_step = trace.length() - 1;
@@ -65,5 +67,17 @@ where
 
     fn options(&self) -> &ProofOptions {
         &self.options
+    }
+
+    fn new_evaluator<'a, E>(
+        &self,
+        air: &'a Self::Air,
+        aux_rand_elements: winterfell::AuxTraceRandElements<E>,
+        composition_coefficients: winterfell::ConstraintCompositionCoefficients<E>,
+    ) -> Self::ConstraintEvaluator<'a, E>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
     }
 }

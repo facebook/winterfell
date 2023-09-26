@@ -79,8 +79,9 @@ pub mod matrix;
 pub use matrix::{ColMatrix, RowMatrix};
 
 mod constraints;
-use constraints::ConstraintEvaluator;
-pub use constraints::{CompositionPoly, ConstraintCommitment};
+pub use constraints::{
+    CompositionPoly, ConstraintCommitment, ConstraintEvaluator, DefaultConstraintEvaluator,
+};
 
 mod composer;
 use composer::DeepCompositionPoly;
@@ -135,12 +136,17 @@ pub trait Prover {
     /// PRNG to be used for generating random field elements.
     type RandomCoin: RandomCoin<BaseField = Self::BaseField, Hasher = Self::HashFn>;
 
-    // Trace low-degree extension for building the LDEs of trace segments and their commitments.
+    /// Trace low-degree extension for building the LDEs of trace segments and their commitments.
     type TraceLde<E: FieldElement<BaseField = Self::BaseField>>: TraceLde<
         BaseField = Self::BaseField,
         ExtensionField = E,
         HashFn = Self::HashFn,
     >;
+
+    /// Constraints evaluator used to evaluate AIR constraints over the extended execution trace.
+    type ConstraintEvaluator<'a, E>: ConstraintEvaluator<'a, E, Air = Self::Air>
+    where
+        E: FieldElement<BaseField = Self::BaseField>;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -157,6 +163,17 @@ pub trait Prover {
     /// grinding factor etc. These properties directly inform such metrics as proof generation time,
     /// proof size, and proof security level.
     fn options(&self) -> &ProofOptions;
+
+    /// Returns a new constraint evaluator which can be used to evaluate transition and boundary
+    /// constraints over the extended execution trace.
+    fn new_evaluator<'a, E>(
+        &self,
+        air: &'a Self::Air,
+        aux_rand_elements: AuxTraceRandElements<E>,
+        composition_coefficients: ConstraintCompositionCoefficients<E>,
+    ) -> Self::ConstraintEvaluator<'a, E>
+    where
+        E: FieldElement<BaseField = Self::BaseField>;
 
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
@@ -295,7 +312,7 @@ pub trait Prover {
         #[cfg(feature = "std")]
         let now = Instant::now();
         let constraint_coeffs = channel.get_constraint_composition_coeffs();
-        let evaluator = ConstraintEvaluator::new(&air, aux_trace_rand_elements, constraint_coeffs);
+        let evaluator = self.new_evaluator(&air, aux_trace_rand_elements, constraint_coeffs);
         let constraint_evaluations = evaluator.evaluate(&trace_lde, &domain);
         #[cfg(feature = "std")]
         debug!(

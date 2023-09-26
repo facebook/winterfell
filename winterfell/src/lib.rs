@@ -261,7 +261,7 @@
 //! };
 //!
 //! # use winterfell::{
-//! #   Air, AirContext, Assertion, ByteWriter, EvaluationFrame, TraceInfo,
+//! #   Air, AirContext, Assertion, ByteWriter, DefaultConstraintEvaluator, EvaluationFrame, TraceInfo,
 //! #   TransitionConstraintDegree,
 //! # };
 //! #
@@ -342,7 +342,8 @@
 //!     type HashFn = Blake3_256<Self::BaseField>;
 //!     type RandomCoin = DefaultRandomCoin<Self::HashFn>;
 //!     type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
-//!
+//!     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> = DefaultConstraintEvaluator<'a, Self::Air, E>;
+//!     
 //!     // Our public inputs consist of the first and last value in the execution trace.
 //!     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
 //!         let last_step = trace.length() - 1;
@@ -354,6 +355,18 @@
 //!
 //!     fn options(&self) -> &ProofOptions {
 //!         &self.options
+//!     }
+//!     
+//!     fn new_evaluator<'a, E>(
+//!         &self,
+//!         air: &'a Self::Air,
+//!         aux_rand_elements: winterfell::AuxTraceRandElements<E>,
+//!         composition_coefficients: winterfell::ConstraintCompositionCoefficients<E>,
+//!     ) -> Self::ConstraintEvaluator<'a, E>
+//!     where
+//!         E: FieldElement<BaseField = Self::BaseField>,
+//!     {
+//!         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
 //!     }
 //! }
 //! ```
@@ -368,7 +381,7 @@
 //! ```
 //! # use winterfell::{
 //! #    math::{fields::f128::BaseElement, FieldElement, ToElements},
-//! #    Air, AirContext, Assertion, ByteWriter, DefaultTraceLde, EvaluationFrame, TraceInfo,
+//! #    Air, AirContext, Assertion, ByteWriter, DefaultConstraintEvaluator, DefaultTraceLde, EvaluationFrame, TraceInfo,
 //! #    TransitionConstraintDegree, TraceTable, FieldExtension, Prover, ProofOptions,
 //! #    StarkProof, Trace, crypto::{hashers::Blake3_256, DefaultRandomCoin},
 //! # };
@@ -460,6 +473,7 @@
 //! #    type HashFn = Blake3_256<Self::BaseField>;
 //! #    type RandomCoin = DefaultRandomCoin<Self::HashFn>;
 //! #    type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
+//! #    type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> = DefaultConstraintEvaluator<'a, Self::Air, E>;
 //! #
 //! #    fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
 //! #        let last_step = trace.length() - 1;
@@ -472,6 +486,19 @@
 //! #    fn options(&self) -> &ProofOptions {
 //! #        &self.options
 //! #    }
+//! #
+//! #    fn new_evaluator<'a, E>(
+//! #        &self,
+//! #        air: &'a Self::Air,
+//! #        aux_rand_elements: winterfell::AuxTraceRandElements<E>,
+//! #        composition_coefficients: winterfell::ConstraintCompositionCoefficients<E>,
+//! #    ) -> Self::ConstraintEvaluator<'a, E>
+//! #    where
+//! #        E: FieldElement<BaseField = Self::BaseField>,
+//! #    {
+//! #        DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
+//! #    }
+//! #
 //! #  }
 //! #
 //! // We'll just hard-code the parameters here for this example. We'll also just run the
@@ -534,9 +561,10 @@
 pub use prover::{
     crypto, iterators, math, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
     BoundaryConstraintGroup, ByteReader, ByteWriter, ColMatrix, ConstraintCompositionCoefficients,
-    ConstraintDivisor, DeepCompositionCoefficients, DefaultTraceLde, Deserializable,
-    DeserializationError, EvaluationFrame, FieldExtension, ProofOptions, Prover, ProverError,
-    Serializable, SliceReader, StarkProof, Trace, TraceInfo, TraceLayout, TraceLde, TraceTable,
-    TraceTableFragment, TransitionConstraintDegree,
+    ConstraintDivisor, ConstraintEvaluator, DeepCompositionCoefficients,
+    DefaultConstraintEvaluator, DefaultTraceLde, Deserializable, DeserializationError,
+    EvaluationFrame, FieldExtension, ProofOptions, Prover, ProverError, Serializable, SliceReader,
+    StarkProof, Trace, TraceInfo, TraceLayout, TraceLde, TraceTable, TraceTableFragment,
+    TransitionConstraintDegree,
 };
 pub use verifier::{verify, VerifierError};
