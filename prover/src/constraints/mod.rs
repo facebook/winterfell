@@ -12,7 +12,7 @@ mod periodic_table;
 use periodic_table::PeriodicValueTable;
 
 mod evaluator;
-pub use evaluator::ConstraintEvaluator;
+pub use evaluator::{ConstraintEvaluator, DefaultConstraintEvaluator};
 
 mod composition_poly;
 pub use composition_poly::CompositionPoly;

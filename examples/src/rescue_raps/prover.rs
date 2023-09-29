@@ -4,9 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    apply_rescue_round_parallel, rescue::STATE_WIDTH, BaseElement, DefaultRandomCoin,
-    DefaultTraceLde, ElementHasher, FieldElement, PhantomData, ProofOptions, Prover, PublicInputs,
-    RapTraceTable, RescueRapsAir, Trace, CYCLE_LENGTH, NUM_HASH_ROUNDS,
+    apply_rescue_round_parallel, rescue::STATE_WIDTH, BaseElement, DefaultConstraintEvaluator,
+    DefaultRandomCoin, DefaultTraceLde, ElementHasher, FieldElement, PhantomData, ProofOptions,
+    Prover, PublicInputs, RapTraceTable, RescueRapsAir, Trace, CYCLE_LENGTH, NUM_HASH_ROUNDS,
 };
 
 // RESCUE PROVER
@@ -99,6 +99,8 @@ where
     type HashFn = H;
     type RandomCoin = DefaultRandomCoin<Self::HashFn>;
     type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
+    type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
+        DefaultConstraintEvaluator<'a, Self::Air, E>;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
         let last_step = trace.length() - 1;
@@ -112,5 +114,17 @@ where
 
     fn options(&self) -> &ProofOptions {
         &self.options
+    }
+
+    fn new_evaluator<'a, E>(
+        &self,
+        air: &'a Self::Air,
+        aux_rand_elements: winterfell::AuxTraceRandElements<E>,
+        composition_coefficients: winterfell::ConstraintCompositionCoefficients<E>,
+    ) -> Self::ConstraintEvaluator<'a, E>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
     }
 }

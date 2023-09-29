@@ -4,9 +4,10 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    get_power_series, rescue, BaseElement, DefaultRandomCoin, DefaultTraceLde, ElementHasher,
-    FieldElement, LamportAggregateAir, PhantomData, ProofOptions, Prover, PublicInputs, Signature,
-    StarkField, TraceTable, CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH, TRACE_WIDTH,
+    get_power_series, rescue, BaseElement, DefaultConstraintEvaluator, DefaultRandomCoin,
+    DefaultTraceLde, ElementHasher, FieldElement, LamportAggregateAir, PhantomData, ProofOptions,
+    Prover, PublicInputs, Signature, StarkField, TraceTable, CYCLE_LENGTH, NUM_HASH_ROUNDS,
+    SIG_CYCLE_LENGTH, TRACE_WIDTH,
 };
 
 #[cfg(feature = "concurrent")]
@@ -98,6 +99,8 @@ where
     type HashFn = H;
     type RandomCoin = DefaultRandomCoin<Self::HashFn>;
     type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
+    type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
+        DefaultConstraintEvaluator<'a, Self::Air, E>;
 
     fn get_pub_inputs(&self, _trace: &Self::Trace) -> PublicInputs {
         self.pub_inputs.clone()
@@ -105,6 +108,18 @@ where
 
     fn options(&self) -> &ProofOptions {
         &self.options
+    }
+
+    fn new_evaluator<'a, E>(
+        &self,
+        air: &'a Self::Air,
+        aux_rand_elements: winterfell::AuxTraceRandElements<E>,
+        composition_coefficients: winterfell::ConstraintCompositionCoefficients<E>,
+    ) -> Self::ConstraintEvaluator<'a, E>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
     }
 }
 
