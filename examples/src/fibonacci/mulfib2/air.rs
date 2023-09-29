@@ -27,10 +27,7 @@ impl Air for MulFib2Air {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     fn new(trace_info: TraceInfo, pub_inputs: Self::BaseField, options: ProofOptions) -> Self {
-        let degrees = vec![
-            TransitionConstraintDegree::new(2),
-            TransitionConstraintDegree::new(2),
-        ];
+        let degrees = vec![TransitionConstraintDegree::new(2), TransitionConstraintDegree::new(2)];
         assert_eq!(TRACE_WIDTH, trace_info.width());
         MulFib2Air {
             context: AirContext::new(trace_info, degrees, 3, options),

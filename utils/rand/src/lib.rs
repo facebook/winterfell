@@ -67,9 +67,7 @@ mod internal {
     /// * A valid value could not be generated after 1000 tries.
     pub fn rand_array<R: Randomizable + Debug, const N: usize>() -> [R; N] {
         let elements = rand_vector(N);
-        elements
-            .try_into()
-            .expect("failed to convert vector to array")
+        elements.try_into().expect("failed to convert vector to array")
     }
 
     /// Returns a vector of value of the specified type and the specified length generated
@@ -104,9 +102,7 @@ mod internal {
     /// * A valid value could not be generated after 1000 tries.
     pub fn prng_array<R: Randomizable + Debug, const N: usize>(seed: [u8; 32]) -> [R; N] {
         let elements = prng_vector(seed, N);
-        elements
-            .try_into()
-            .expect("failed to convert vector to array")
+        elements.try_into().expect("failed to convert vector to array")
     }
 
     // SHUFFLING

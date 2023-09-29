@@ -265,7 +265,6 @@ where
     ///
     /// `x` is the corresponding domain value at the specified step. That is, x = s * g^step,
     /// where g is the generator of the constraint evaluation domain, and s is the domain offset.
-    #[rustfmt::skip]
     fn evaluate_main_transition(
         &self,
         main_frame: &EvaluationFrame<E::BaseField>,
@@ -287,9 +286,7 @@ where
         evaluations
             .iter()
             .zip(self.transition_constraints.main_constraint_coef().iter())
-            .fold(E::ZERO, |acc, (&const_eval, &coef)| {
-                acc + coef.mul_base(const_eval)
-            })
+            .fold(E::ZERO, |acc, (&const_eval, &coef)| acc + coef.mul_base(const_eval))
     }
 
     /// Evaluates all transition constraints (i.e., for main and auxiliary trace segments) at the
@@ -297,7 +294,6 @@ where
     ///
     /// `x` is the corresponding domain value at the specified step. That is, x = s * g^step,
     /// where g is the generator of the constraint evaluation domain, and s is the domain offset.
-    #[rustfmt::skip]
     fn evaluate_aux_transition(
         &self,
         main_frame: &EvaluationFrame<E::BaseField>,

@@ -27,10 +27,7 @@ impl<H: ElementHasher> MulFib2Prover<H> {
     /// Builds an execution trace for computing a multiplicative version of a Fibonacci sequence of
     /// the specified length such that each row advances the sequence by 2 terms.
     pub fn build_trace(&self, length: usize) -> TraceTable<BaseElement> {
-        assert!(
-            length.is_power_of_two(),
-            "sequence length must be a power of 2"
-        );
+        assert!(length.is_power_of_two(), "sequence length must be a power of 2");
 
         let mut reg0 = vec![BaseElement::new(1)];
         let mut reg1 = vec![BaseElement::new(2)];

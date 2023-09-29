@@ -189,7 +189,6 @@ pub trait Prover {
     /// the computation described by [Self::Air](Prover::Air) and generated using some set of
     /// secret and public inputs. Public inputs must match the value returned from
     /// [Self::get_pub_inputs()](Prover::get_pub_inputs) for the provided trace.
-    #[rustfmt::skip]
     fn prove(&self, trace: Self::Trace) -> Result<StarkProof, ProverError> {
         // figure out which version of the generic proof generation procedure to run. this is a sort
         // of static dispatch for selecting two generic parameter: extension field and hash function.

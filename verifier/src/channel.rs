@@ -73,10 +73,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
 
         // --- parse commitments ------------------------------------------------------------------
         let (trace_roots, constraint_root, fri_roots) = commitments
-            .parse::<H>(
-                num_trace_segments,
-                fri_options.num_fri_layers(lde_domain_size),
-            )
+            .parse::<H>(num_trace_segments, fri_options.num_fri_layers(lde_domain_size))
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         // --- parse trace and constraint queries -------------------------------------------------
@@ -148,9 +145,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
     /// Returns evaluations of composition polynomial columns at z^m, where z is the out-of-domain
     /// point, and m is the number of composition polynomial columns.
     pub fn read_ood_constraint_evaluations(&mut self) -> Vec<E> {
-        self.ood_constraint_evaluations
-            .take()
-            .expect("already read")
+        self.ood_constraint_evaluations.take().expect("already read")
     }
 
     /// Returns query proof-of-work nonce sent by the prover.
@@ -383,12 +378,7 @@ impl<E: FieldElement> TraceOodFrame<E> {
         let mut current = vec![E::ZERO; self.main_trace_width];
         let mut next = vec![E::ZERO; self.main_trace_width];
 
-        for (i, a) in self
-            .values
-            .chunks(2)
-            .take(self.main_trace_width)
-            .enumerate()
-        {
+        for (i, a) in self.values.chunks(2).take(self.main_trace_width).enumerate() {
             current[i] = a[0];
             next[i] = a[1];
         }
@@ -416,12 +406,7 @@ impl<E: FieldElement> TraceOodFrame<E> {
             let mut current_aux = vec![E::ZERO; self.aux_trace_width];
             let mut next_aux = vec![E::ZERO; self.aux_trace_width];
 
-            for (i, a) in self
-                .values
-                .chunks(2)
-                .skip(self.main_trace_width)
-                .enumerate()
-            {
+            for (i, a) in self.values.chunks(2).skip(self.main_trace_width).enumerate() {
                 current_aux[i] = a[0];
                 next_aux[i] = a[1];
             }

@@ -177,9 +177,7 @@ where
     // and sends the results back to the verifier.
     let constraint_commitment = channel.read_constraint_commitment();
     public_coin.reseed(constraint_commitment);
-    let z = public_coin
-        .draw::<E>()
-        .map_err(|_| VerifierError::RandomCoinError)?;
+    let z = public_coin.draw::<E>().map_err(|_| VerifierError::RandomCoinError)?;
 
     // 3 ----- OOD consistency check --------------------------------------------------------------
     // make sure that evaluations obtained by evaluating constraints over the out-of-domain frame
@@ -260,11 +258,7 @@ where
     // and the prover responds with decommitments against these positions for trace and constraint
     // composition polynomial evaluations.
     let query_positions = public_coin
-        .draw_integers(
-            air.options().num_queries(),
-            air.lde_domain_size(),
-            pow_nonce,
-        )
+        .draw_integers(air.options().num_queries(), air.lde_domain_size(), pow_nonce)
         .map_err(|_| VerifierError::RandomCoinError)?;
 
     // read evaluations of trace and constraint composition polynomials at the queried positions;

@@ -411,10 +411,7 @@ impl ExtensibleField<2> for BaseElement {
         // and 2 subtractions in the base field. overall, a single multiplication in the extension
         // field is slightly faster than 5 multiplications in the base field.
         let a0b0 = a[0] * b[0];
-        [
-            a0b0 - (a[1] * b[1]).double(),
-            (a[0] + a[1]) * (b[0] + b[1]) - a0b0,
-        ]
+        [a0b0 - (a[1] * b[1]).double(), (a[0] + a[1]) * (b[0] + b[1]) - a0b0]
     }
 
     #[inline(always)]
@@ -470,11 +467,7 @@ impl ExtensibleField<3> for BaseElement {
             a0b0_a0b1_a1b0_a1b1 + a1b1_a1b2_a2b1_a2b2 - a1b1.double() - a0b0;
         let a0b2_a1b1_a2b0_a2b2 = a0b0_a0b2_a2b0_a2b2 - a0b0_minus_a1b1;
 
-        [
-            a0b0_a1b2_a2b1,
-            a0b1_a1b0_a1b2_a2b1_a2b2,
-            a0b2_a1b1_a2b0_a2b2,
-        ]
+        [a0b0_a1b2_a2b1, a0b1_a1b0_a1b2_a2b1_a2b2, a0b2_a1b1_a2b0_a2b2]
     }
 
     #[inline(always)]

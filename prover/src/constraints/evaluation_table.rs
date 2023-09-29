@@ -478,8 +478,5 @@ fn evaluate_divisor<E: FieldElement>(
 ) -> Vec<E> {
     let g = E::BaseField::get_root_of_unity(domain_size.trailing_zeros());
     let domain = math::get_power_series_with_offset(g, domain_offset, domain_size);
-    domain
-        .into_iter()
-        .map(|x| E::from(divisor.evaluate_at(x)))
-        .collect()
+    domain.into_iter().map(|x| E::from(divisor.evaluate_at(x))).collect()
 }

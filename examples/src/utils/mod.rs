@@ -92,9 +92,6 @@ pub fn print_trace_step<E: StarkField>(trace: &[Vec<E>], step: usize) {
     println!(
         "{}\t{:?}",
         step,
-        state
-            .iter()
-            .map(|v| v.as_int())
-            .collect::<Vec<E::PositiveInteger>>()
+        state.iter().map(|v| v.as_int()).collect::<Vec<E::PositiveInteger>>()
     );
 }

@@ -23,10 +23,7 @@ fn add() {
     assert_eq!(r, r + BaseElement::ZERO);
 
     // test addition within bounds
-    assert_eq!(
-        BaseElement::from(5u8),
-        BaseElement::from(2u8) + BaseElement::from(3u8)
-    );
+    assert_eq!(BaseElement::from(5u8), BaseElement::from(2u8) + BaseElement::from(3u8));
 
     // test overflow
     let t = BaseElement::from(BaseElement::MODULUS - 1);
@@ -49,10 +46,7 @@ fn sub() {
     assert_eq!(r, r - BaseElement::ZERO);
 
     // test subtraction within bounds
-    assert_eq!(
-        BaseElement::from(2u8),
-        BaseElement::from(5u8) - BaseElement::from(3u8)
-    );
+    assert_eq!(BaseElement::from(2u8), BaseElement::from(5u8) - BaseElement::from(3u8));
 
     // test underflow
     let expected = BaseElement::from(BaseElement::MODULUS - 2);
@@ -67,10 +61,7 @@ fn mul() {
     assert_eq!(r, r * BaseElement::ONE);
 
     // test multiplication within bounds
-    assert_eq!(
-        BaseElement::from(15u8),
-        BaseElement::from(5u8) * BaseElement::from(3u8)
-    );
+    assert_eq!(BaseElement::from(15u8), BaseElement::from(5u8) * BaseElement::from(3u8));
 
     // test overflow
     let m = BaseElement::MODULUS;
@@ -80,10 +71,7 @@ fn mul() {
     assert_eq!(BaseElement::from(m - 4), t * BaseElement::from(4u8));
 
     let t = (m + 1) / 2;
-    assert_eq!(
-        BaseElement::ONE,
-        BaseElement::from(t) * BaseElement::from(2u8)
-    );
+    assert_eq!(BaseElement::ONE, BaseElement::from(t) * BaseElement::from(2u8));
 
     // test random values
     let v1: Vec<BaseElement> = rand_vector(1000);
@@ -128,10 +116,7 @@ fn conjugate() {
 #[test]
 fn get_root_of_unity() {
     let root_40 = BaseElement::get_root_of_unity(40);
-    assert_eq!(
-        BaseElement::from(23953097886125630542083529559205016746u128),
-        root_40
-    );
+    assert_eq!(BaseElement::from(23953097886125630542083529559205016746u128), root_40);
     assert_eq!(BaseElement::ONE, root_40.exp(u128::pow(2, 40)));
 
     let root_39 = BaseElement::get_root_of_unity(39);

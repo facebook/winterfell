@@ -49,15 +49,8 @@ impl<H: Hasher> BatchMerkleProof<H> {
     pub fn from_paths(paths: &[Vec<H::Digest>], indexes: &[usize]) -> BatchMerkleProof<H> {
         // TODO: optimize this to reduce amount of vector cloning.
         assert!(!paths.is_empty(), "at least one path must be provided");
-        assert!(
-            paths.len() <= MAX_PATHS,
-            "number of paths cannot exceed {MAX_PATHS}"
-        );
-        assert_eq!(
-            paths.len(),
-            indexes.len(),
-            "number of paths must equal number of indexes"
-        );
+        assert!(paths.len() <= MAX_PATHS, "number of paths cannot exceed {MAX_PATHS}");
+        assert_eq!(paths.len(), indexes.len(), "number of paths must equal number of indexes");
 
         let depth = paths[0].len();
 
@@ -132,10 +125,7 @@ impl<H: Hasher> BatchMerkleProof<H> {
             return Err(MerkleTreeError::TooFewLeafIndexes);
         }
         if indexes.len() > MAX_PATHS {
-            return Err(MerkleTreeError::TooManyLeafIndexes(
-                MAX_PATHS,
-                indexes.len(),
-            ));
+            return Err(MerkleTreeError::TooManyLeafIndexes(MAX_PATHS, indexes.len()));
         }
 
         let mut buf = [H::Digest::default(); 2];
@@ -269,10 +259,7 @@ impl<H: Hasher> BatchMerkleProof<H> {
             return Err(MerkleTreeError::TooFewLeafIndexes);
         }
         if indexes.len() > MAX_PATHS {
-            return Err(MerkleTreeError::TooManyLeafIndexes(
-                MAX_PATHS,
-                indexes.len(),
-            ));
+            return Err(MerkleTreeError::TooManyLeafIndexes(MAX_PATHS, indexes.len()));
         }
         if indexes.len() != self.leaves.len() {
             return Err(MerkleTreeError::InvalidProof);

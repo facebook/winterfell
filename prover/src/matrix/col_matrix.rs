@@ -44,25 +44,12 @@ impl<E: FieldElement> ColMatrix<E> {
     /// * Number of rows is smaller than or equal to 1.
     /// * Number of rows is not a power of two.
     pub fn new(columns: Vec<Vec<E>>) -> Self {
-        assert!(
-            !columns.is_empty(),
-            "a matrix must contain at least one column"
-        );
+        assert!(!columns.is_empty(), "a matrix must contain at least one column");
         let num_rows = columns[0].len();
-        assert!(
-            num_rows > 1,
-            "number of rows in a matrix must be greater than one"
-        );
-        assert!(
-            num_rows.is_power_of_two(),
-            "number of rows in a matrix must be a power of 2"
-        );
+        assert!(num_rows > 1, "number of rows in a matrix must be greater than one");
+        assert!(num_rows.is_power_of_two(), "number of rows in a matrix must be a power of 2");
         for column in columns.iter().skip(1) {
-            assert_eq!(
-                column.len(),
-                num_rows,
-                "all matrix columns must have the same length"
-            );
+            assert_eq!(column.len(), num_rows, "all matrix columns must have the same length");
         }
 
         Self { columns }
@@ -111,10 +98,8 @@ impl<E: FieldElement> ColMatrix<E> {
     /// # Panics
     /// Panics if either `base_col_idx` or `row_idx` are out of bounds for this matrix.
     pub fn get_base_element(&self, base_col_idx: usize, row_idx: usize) -> E::BaseField {
-        let (col_idx, elem_idx) = (
-            base_col_idx / E::EXTENSION_DEGREE,
-            base_col_idx % E::EXTENSION_DEGREE,
-        );
+        let (col_idx, elem_idx) =
+            (base_col_idx / E::EXTENSION_DEGREE, base_col_idx % E::EXTENSION_DEGREE);
         self.columns[col_idx][row_idx].base_element(elem_idx)
     }
 

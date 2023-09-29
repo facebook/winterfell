@@ -139,11 +139,7 @@ pub fn group_vector_elements<T, const N: usize>(source: Vec<T>) -> Vec<[T; N]> {
 /// assert_eq!(&[[0, 1], [2, 3], [4, 5], [6, 7]], b);
 /// ```
 pub fn group_slice_elements<T, const N: usize>(source: &[T]) -> &[[T; N]] {
-    assert_eq!(
-        source.len() % N,
-        0,
-        "source length must be divisible by {N}"
-    );
+    assert_eq!(source.len() % N, 0, "source length must be divisible by {N}");
     let p = source.as_ptr();
     let len = source.len() / N;
     unsafe { slice::from_raw_parts(p as *const [T; N], len) }
@@ -214,13 +210,11 @@ pub fn transpose_slice<T: Copy + Send + Sync, const N: usize>(source: &[T]) -> V
     );
 
     let mut result = unsafe { group_vector_elements(uninit_vector(row_count * N)) };
-    iter_mut!(result, 1024)
-        .enumerate()
-        .for_each(|(i, element)| {
-            for j in 0..N {
-                element[j] = source[i + j * row_count]
-            }
-        });
+    iter_mut!(result, 1024).enumerate().for_each(|(i, element)| {
+        for j in 0..N {
+            element[j] = source[i + j * row_count]
+        }
+    });
     result
 }
 

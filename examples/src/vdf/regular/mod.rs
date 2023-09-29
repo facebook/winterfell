@@ -54,10 +54,7 @@ pub struct VdfExample<H: ElementHasher> {
 
 impl<H: ElementHasher> VdfExample<H> {
     pub fn new(num_steps: usize, options: ProofOptions) -> Self {
-        assert!(
-            num_steps.is_power_of_two(),
-            "number of steps must be a power of 2"
-        );
+        assert!(num_steps.is_power_of_two(), "number of steps must be a power of 2");
 
         // run the VDF function
         let now = Instant::now();

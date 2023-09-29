@@ -444,10 +444,7 @@ mod tests {
         expected.extend_from_slice(&source[1].0.inner().to_le_bytes());
         expected.extend_from_slice(&source[1].1.inner().to_le_bytes());
 
-        assert_eq!(
-            expected,
-            QuadExtension::<BaseElement>::elements_as_bytes(&source)
-        );
+        assert_eq!(expected, QuadExtension::<BaseElement>::elements_as_bytes(&source));
     }
 
     #[test]
@@ -491,9 +488,6 @@ mod tests {
             BaseElement::new(4),
         ];
 
-        assert_eq!(
-            expected,
-            QuadExtension::<BaseElement>::slice_as_base_elements(&elements)
-        );
+        assert_eq!(expected, QuadExtension::<BaseElement>::slice_as_base_elements(&elements));
     }
 }

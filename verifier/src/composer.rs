@@ -68,9 +68,7 @@ impl<E: FieldElement> DeepComposer<E> {
         let mut result_num = Vec::<E>::with_capacity(n);
         let mut result_den = Vec::<E>::with_capacity(n);
 
-        for ((_, row), &x) in (0..n)
-            .zip(queried_main_trace_states.rows())
-            .zip(&self.x_coordinates)
+        for ((_, row), &x) in (0..n).zip(queried_main_trace_states.rows()).zip(&self.x_coordinates)
         {
             let mut t1_num = E::ZERO;
             let mut t2_num = E::ZERO;
@@ -105,9 +103,8 @@ impl<E: FieldElement> DeepComposer<E> {
             // consumed some number of composition coefficients already.
             let cc_offset = queried_main_trace_states.num_columns();
 
-            for ((j, row), &x) in (0..n)
-                .zip(queried_aux_trace_states.rows())
-                .zip(&self.x_coordinates)
+            for ((j, row), &x) in
+                (0..n).zip(queried_aux_trace_states.rows()).zip(&self.x_coordinates)
             {
                 let mut t1_num = E::ZERO;
                 let mut t2_num = E::ZERO;
@@ -130,11 +127,7 @@ impl<E: FieldElement> DeepComposer<E> {
         }
 
         result_den = batch_inversion(&result_den);
-        result_num
-            .iter()
-            .zip(result_den)
-            .map(|(n, d)| *n * d)
-            .collect()
+        result_num.iter().zip(result_den).map(|(n, d)| *n * d).collect()
     }
 
     /// For each queried set of composition polynomial column evaluations, combine evaluations
@@ -175,15 +168,10 @@ impl<E: FieldElement> DeepComposer<E> {
         }
 
         result_den = batch_inversion(&result_den);
-        result_num
-            .iter()
-            .zip(result_den)
-            .map(|(n, d)| *n * d)
-            .collect()
+        result_num.iter().zip(result_den).map(|(n, d)| *n * d).collect()
     }
 
     /// Combines trace and constraint compositions together.
-    #[rustfmt::skip]
     pub fn combine_compositions(&self, t_composition: Vec<E>, c_composition: Vec<E>) -> Vec<E> {
         assert_eq!(t_composition.len(), self.x_coordinates.len());
         assert_eq!(c_composition.len(), self.x_coordinates.len());

@@ -22,12 +22,7 @@ fn get_periodic_column_polys() {
     assert_eq!(0, column_polys.len());
 
     let col1 = vec![BaseElement::ONE, BaseElement::ZERO];
-    let col2 = vec![
-        BaseElement::ONE,
-        BaseElement::ZERO,
-        BaseElement::ONE,
-        BaseElement::ONE,
-    ];
+    let col2 = vec![BaseElement::ONE, BaseElement::ZERO, BaseElement::ONE, BaseElement::ONE];
     let air = MockAir::with_periodic_columns(vec![col1.clone(), col2.clone()], 16);
     let column_polys = air.get_periodic_column_polys();
     assert_eq!(2, column_polys.len());
@@ -106,9 +101,7 @@ fn get_boundary_constraints() {
     // get boundary constraints from AIR, and sort constraint groups so that the order
     // is stable; the original order is just by degree_adjustment
     let mut prng = build_prng();
-    let coefficients = (0..8)
-        .map(|_| prng.draw().unwrap())
-        .collect::<Vec<BaseElement>>();
+    let coefficients = (0..8).map(|_| prng.draw().unwrap()).collect::<Vec<BaseElement>>();
     let constraints = air.get_boundary_constraints(&AuxTraceRandElements::new(), &coefficients);
     let groups = constraints.main_constraints().to_vec();
 
@@ -152,19 +145,13 @@ fn get_boundary_constraints() {
 
     let constraint = &group.constraints()[0];
     assert_eq!(0, constraint.column());
-    assert_eq!(
-        build_sequence_poly(&values, trace_length),
-        constraint.poly()
-    );
+    assert_eq!(build_sequence_poly(&values, trace_length), constraint.poly());
     assert_eq!((2, g.inv().exp(2)), constraint.poly_offset());
     assert_eq!(expected_cc[&6], constraint.cc().clone());
 
     let constraint = &group.constraints()[1];
     assert_eq!(1, constraint.column());
-    assert_eq!(
-        build_sequence_poly(&values, trace_length),
-        constraint.poly()
-    );
+    assert_eq!(build_sequence_poly(&values, trace_length), constraint.poly());
     assert_eq!((2, g.inv().exp(2)), constraint.poly_offset());
     assert_eq!(expected_cc[&7], constraint.cc().clone());
 
@@ -176,10 +163,7 @@ fn get_boundary_constraints() {
 
     let constraint = &group.constraints()[0];
     assert_eq!(1, constraint.column());
-    assert_eq!(
-        build_sequence_poly(&values[..2], trace_length),
-        constraint.poly()
-    );
+    assert_eq!(build_sequence_poly(&values[..2], trace_length), constraint.poly());
     assert_eq!(no_poly_offset, constraint.poly_offset());
     assert_eq!(expected_cc[&3], constraint.cc().clone());
 
@@ -191,10 +175,7 @@ fn get_boundary_constraints() {
 
     let constraint = &group.constraints()[0];
     assert_eq!(0, constraint.column());
-    assert_eq!(
-        build_sequence_poly(&values[..2], trace_length),
-        constraint.poly()
-    );
+    assert_eq!(build_sequence_poly(&values[..2], trace_length), constraint.poly());
     assert_eq!((3, g.inv().exp(3)), constraint.poly_offset());
     assert_eq!(expected_cc[&4], constraint.cc().clone());
 

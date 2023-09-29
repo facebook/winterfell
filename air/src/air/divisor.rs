@@ -116,10 +116,7 @@ impl<B: StarkField> ConstraintDivisor<B> {
 
     /// Returns the degree of the divisor polynomial
     pub fn degree(&self) -> usize {
-        let numerator_degree = self
-            .numerator
-            .iter()
-            .fold(0, |degree, term| degree + term.0);
+        let numerator_degree = self.numerator.iter().fold(0, |degree, term| degree + term.0);
         let denominator_degree = self.exemptions.len();
         numerator_degree - denominator_degree
     }
@@ -146,9 +143,7 @@ impl<B: StarkField> ConstraintDivisor<B> {
     /// coordinate.
     #[inline(always)]
     pub fn evaluate_exemptions_at<E: FieldElement<BaseField = B>>(&self, x: E) -> E {
-        self.exemptions
-            .iter()
-            .fold(E::ONE, |r, &e| r * (x - E::from(e)))
+        self.exemptions.iter().fold(E::ONE, |r, &e| r * (x - E::from(e)))
     }
 }
 
@@ -172,10 +167,7 @@ impl<B: StarkField> Display for ConstraintDivisor<B> {
 
 /// Returns g^step, where g is the generator of trace domain.
 fn get_trace_domain_value_at<B: StarkField>(trace_length: usize, step: usize) -> B {
-    debug_assert!(
-        step < trace_length,
-        "step must be in the trace domain [0, {trace_length})"
-    );
+    debug_assert!(step < trace_length, "step must be in the trace domain [0, {trace_length})");
     let g = B::get_root_of_unity(trace_length.ilog2());
     g.exp((step as u64).into())
 }
@@ -196,22 +188,14 @@ mod tests {
 
         // multi-term numerator
         let div = ConstraintDivisor::new(
-            vec![
-                (4, BaseElement::ONE),
-                (2, BaseElement::new(2)),
-                (3, BaseElement::new(3)),
-            ],
+            vec![(4, BaseElement::ONE), (2, BaseElement::new(2)), (3, BaseElement::new(3))],
             vec![],
         );
         assert_eq!(9, div.degree());
 
         // multi-term numerator with exemption points
         let div = ConstraintDivisor::new(
-            vec![
-                (4, BaseElement::ONE),
-                (2, BaseElement::new(2)),
-                (3, BaseElement::new(3)),
-            ],
+            vec![(4, BaseElement::ONE), (2, BaseElement::new(2)), (3, BaseElement::new(3))],
             vec![BaseElement::ONE, BaseElement::new(2)],
         );
         assert_eq!(7, div.degree());
@@ -225,11 +209,7 @@ mod tests {
 
         // multi-term numerator: (x^4 - 1) * (x^2 - 2) * (x^3 - 3)
         let div = ConstraintDivisor::new(
-            vec![
-                (4, BaseElement::ONE),
-                (2, BaseElement::new(2)),
-                (3, BaseElement::new(3)),
-            ],
+            vec![(4, BaseElement::ONE), (2, BaseElement::new(2)), (3, BaseElement::new(3))],
             vec![],
         );
         let expected = BaseElement::new(15) * BaseElement::new(2) * BaseElement::new(5);
@@ -238,11 +218,7 @@ mod tests {
         // multi-term numerator with exemption points:
         // (x^4 - 1) * (x^2 - 2) * (x^3 - 3) / ((x - 1) * (x - 2))
         let div = ConstraintDivisor::new(
-            vec![
-                (4, BaseElement::ONE),
-                (2, BaseElement::new(2)),
-                (3, BaseElement::new(3)),
-            ],
+            vec![(4, BaseElement::ONE), (2, BaseElement::new(2)), (3, BaseElement::new(3))],
             vec![BaseElement::ONE, BaseElement::new(2)],
         );
         let expected = BaseElement::new(255) * BaseElement::new(14) * BaseElement::new(61)
@@ -290,10 +266,7 @@ mod tests {
         let offset = 1_u32;
         let assertion = Assertion::periodic(0, offset as usize, j as usize, BaseElement::ONE);
         let divisor = ConstraintDivisor::from_assertion(&assertion, n);
-        assert_eq!(
-            ConstraintDivisor::new(vec![(k as usize, g.exp(k.into()))], vec![]),
-            divisor
-        );
+        assert_eq!(ConstraintDivisor::new(vec![(k as usize, g.exp(k.into()))], vec![]), divisor);
 
         // z(x) = x^4 - g^4 = (x - g) * (x - g^3) * (x - g^5) * (x - g^7)
         let poly = polynom::mul(

@@ -234,18 +234,12 @@ impl<E: FieldElement> Assertion<E> {
             }
         } else if self.is_periodic() {
             if self.stride > trace_length {
-                return Err(AssertionError::TraceLengthTooShort(
-                    self.stride,
-                    trace_length,
-                ));
+                return Err(AssertionError::TraceLengthTooShort(self.stride, trace_length));
             }
         } else {
             let expected_length = self.values.len() * self.stride;
             if expected_length != trace_length {
-                return Err(AssertionError::TraceLengthNotExact(
-                    expected_length,
-                    trace_length,
-                ));
+                return Err(AssertionError::TraceLengthNotExact(expected_length, trace_length));
             }
         }
         Ok(())
@@ -260,10 +254,9 @@ impl<E: FieldElement> Assertion<E> {
     where
         F: FnMut(usize, E),
     {
-        self.validate_trace_length(trace_length)
-            .unwrap_or_else(|err| {
-                panic!("invalid trace length: {err}");
-            });
+        self.validate_trace_length(trace_length).unwrap_or_else(|err| {
+            panic!("invalid trace length: {err}");
+        });
         if self.is_single() {
             f(self.first_step, self.values[0]);
         } else if self.is_periodic() {
@@ -287,10 +280,9 @@ impl<E: FieldElement> Assertion<E> {
     /// # Panics
     /// Panics if the specified trace length is not valid for this assertion.
     pub fn get_num_steps(&self, trace_length: usize) -> usize {
-        self.validate_trace_length(trace_length)
-            .unwrap_or_else(|err| {
-                panic!("invalid trace length: {err}");
-            });
+        self.validate_trace_length(trace_length).unwrap_or_else(|err| {
+            panic!("invalid trace length: {err}");
+        });
         if self.is_single() {
             1
         } else if self.is_periodic() {

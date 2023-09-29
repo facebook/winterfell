@@ -38,18 +38,15 @@ pub fn get_example(
     let (options, hash_fn) = options.to_proof_options(28, 8);
 
     match hash_fn {
-        HashFunction::Blake3_192 => Ok(Box::new(LamportAggregateExample::<Blake3_192>::new(
-            num_signatures,
-            options,
-        ))),
-        HashFunction::Blake3_256 => Ok(Box::new(LamportAggregateExample::<Blake3_256>::new(
-            num_signatures,
-            options,
-        ))),
-        HashFunction::Sha3_256 => Ok(Box::new(LamportAggregateExample::<Sha3_256>::new(
-            num_signatures,
-            options,
-        ))),
+        HashFunction::Blake3_192 => {
+            Ok(Box::new(LamportAggregateExample::<Blake3_192>::new(num_signatures, options)))
+        }
+        HashFunction::Blake3_256 => {
+            Ok(Box::new(LamportAggregateExample::<Blake3_256>::new(num_signatures, options)))
+        }
+        HashFunction::Sha3_256 => {
+            Ok(Box::new(LamportAggregateExample::<Sha3_256>::new(num_signatures, options)))
+        }
         _ => Err("The specified hash function cannot be used with this example.".to_string()),
     }
 }
@@ -64,10 +61,7 @@ pub struct LamportAggregateExample<H: ElementHasher> {
 
 impl<H: ElementHasher> LamportAggregateExample<H> {
     pub fn new(num_signatures: usize, options: ProofOptions) -> Self {
-        assert!(
-            num_signatures.is_power_of_two(),
-            "number of signatures must be a power of 2"
-        );
+        assert!(num_signatures.is_power_of_two(), "number of signatures must be a power of 2");
         // generate private/public key pairs for the specified number of signatures
         let mut private_keys = Vec::with_capacity(num_signatures);
         let mut public_keys = Vec::with_capacity(num_signatures);
@@ -91,11 +85,7 @@ impl<H: ElementHasher> LamportAggregateExample<H> {
             signatures.push(private_key.sign(msg.as_bytes()));
             messages.push(message_to_elements(msg.as_bytes()));
         }
-        debug!(
-            "Signed {} messages in {} ms",
-            num_signatures,
-            now.elapsed().as_millis()
-        );
+        debug!("Signed {} messages in {} ms", num_signatures, now.elapsed().as_millis());
 
         // verify signature
         let now = Instant::now();
@@ -106,11 +96,7 @@ impl<H: ElementHasher> LamportAggregateExample<H> {
             let msg = format!("test message {i}");
             assert!(pk.verify(msg.as_bytes(), signature));
         }
-        debug!(
-            "Verified {} signature in {} ms",
-            num_signatures,
-            now.elapsed().as_millis()
-        );
+        debug!("Verified {} signature in {} ms", num_signatures, now.elapsed().as_millis());
 
         LamportAggregateExample {
             options,

@@ -32,10 +32,7 @@ impl TransitionConstraintDegree {
     /// # Panics
     /// Panics if the provided `degree` is zero.
     pub fn new(degree: usize) -> Self {
-        assert!(
-            degree > 0,
-            "transition constraint degree must be at least one, but was zero"
-        );
+        assert!(degree > 0, "transition constraint degree must be at least one, but was zero");
         TransitionConstraintDegree {
             base: degree,
             cycles: vec![],
@@ -118,9 +115,6 @@ impl TransitionConstraintDegree {
         // For example, if degree of our constraints is 6, the blowup factor would need to be 8.
         // However, if the degree is 5, the blowup factor could be as small as 4.
         let degree_bound = self.base + self.cycles.len() - 1;
-        cmp::max(
-            degree_bound.next_power_of_two(),
-            ProofOptions::MIN_BLOWUP_FACTOR,
-        )
+        cmp::max(degree_bound.next_power_of_two(), ProofOptions::MIN_BLOWUP_FACTOR)
     }
 }

@@ -80,18 +80,12 @@ where
     /// * `domain_size` is smaller than 8 or is not a power of two.
     /// * `num_queries` is zero.
     pub fn new(domain_size: usize, num_queries: usize) -> Self {
-        assert!(
-            domain_size >= 8,
-            "domain size must be at least 8, but was {domain_size}"
-        );
+        assert!(domain_size >= 8, "domain size must be at least 8, but was {domain_size}");
         assert!(
             domain_size.is_power_of_two(),
             "domain size must be a power of two, but was {domain_size}"
         );
-        assert!(
-            num_queries > 0,
-            "number of queries must be greater than zero"
-        );
+        assert!(num_queries > 0, "number of queries must be greater than zero");
         DefaultProverChannel {
             public_coin: RandomCoin::new(&[]),
             commitments: Vec::new(),

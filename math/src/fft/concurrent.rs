@@ -75,16 +75,13 @@ where
     let inv_len = E::inv((values.len() as u64).into());
     let batch_size = values.len() / rayon::current_num_threads().next_power_of_two();
 
-    values
-        .par_chunks_mut(batch_size)
-        .enumerate()
-        .for_each(|(i, batch)| {
-            let mut offset = domain_offset.exp(((i * batch_size) as u64).into()) * inv_len;
-            for coeff in batch.iter_mut() {
-                *coeff = *coeff * offset;
-                offset = offset * domain_offset;
-            }
-        });
+    values.par_chunks_mut(batch_size).enumerate().for_each(|(i, batch)| {
+        let mut offset = domain_offset.exp(((i * batch_size) as u64).into()) * inv_len;
+        for coeff in batch.iter_mut() {
+            *coeff = *coeff * offset;
+            offset = offset * domain_offset;
+        }
+    });
 }
 
 // PERMUTATIONS
@@ -145,21 +142,18 @@ pub(super) fn split_radix_fft<B: StarkField, E: FieldElement<BaseField = B>>(
     transpose_square_stretch(values, inner_len, stretch);
 
     // apply outer FFTs
-    values
-        .par_chunks_mut(outer_len)
-        .enumerate()
-        .for_each(|(i, row)| {
-            if i > 0 {
-                let i = super::permute_index(inner_len, i);
-                let inner_twiddle = g.exp((i as u32).into());
-                let mut outer_twiddle = inner_twiddle;
-                for element in row.iter_mut().skip(1) {
-                    *element = (*element).mul_base(outer_twiddle);
-                    outer_twiddle = outer_twiddle * inner_twiddle;
-                }
+    values.par_chunks_mut(outer_len).enumerate().for_each(|(i, row)| {
+        if i > 0 {
+            let i = super::permute_index(inner_len, i);
+            let inner_twiddle = g.exp((i as u32).into());
+            let mut outer_twiddle = inner_twiddle;
+            for element in row.iter_mut().skip(1) {
+                *element = (*element).mul_base(outer_twiddle);
+                outer_twiddle = outer_twiddle * inner_twiddle;
             }
-            row.fft_in_place(&twiddles);
-        });
+        }
+        row.fft_in_place(&twiddles);
+    });
 }
 
 // TRANSPOSING

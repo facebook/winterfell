@@ -61,9 +61,7 @@ pub trait ByteReader {
         match byte {
             0 => Ok(false),
             1 => Ok(true),
-            _ => Err(DeserializationError::InvalidValue(format!(
-                "{byte} is not a boolean value"
-            ))),
+            _ => Err(DeserializationError::InvalidValue(format!("{byte} is not a boolean value"))),
         }
     }
 

@@ -56,9 +56,7 @@ where
     E: FieldElement + From<B>,
 {
     // Horner evaluation
-    p.iter()
-        .rev()
-        .fold(E::ZERO, |acc, &coeff| acc * x + E::from(coeff))
+    p.iter().rev().fold(E::ZERO, |acc, &coeff| acc * x + E::from(coeff))
 }
 
 /// Evaluates a polynomial at multiple points and returns a vector of results.
@@ -113,19 +111,12 @@ pub fn interpolate<E>(xs: &[E], ys: &[E], remove_leading_zeros: bool) -> Vec<E>
 where
     E: FieldElement,
 {
-    debug_assert!(
-        xs.len() == ys.len(),
-        "number of X and Y coordinates must be the same"
-    );
+    debug_assert!(xs.len() == ys.len(), "number of X and Y coordinates must be the same");
 
     let roots = get_zero_roots(xs);
     let numerators: Vec<Vec<E>> = xs.iter().map(|&x| syn_div(&roots, 1, x)).collect();
 
-    let denominators: Vec<E> = numerators
-        .iter()
-        .zip(xs)
-        .map(|(e, &x)| eval(e, x))
-        .collect();
+    let denominators: Vec<E> = numerators.iter().zip(xs).map(|(e, &x)| eval(e, x)).collect();
     let denominators = batch_inversion(&denominators);
 
     let mut result = E::zeroed_vector(xs.len());
@@ -527,10 +518,7 @@ where
 {
     assert!(a != 0, "divisor degree cannot be zero");
     assert!(b != E::ZERO, "constant cannot be zero");
-    assert!(
-        p.len() > a,
-        "divisor degree cannot be greater than dividend size"
-    );
+    assert!(p.len() > a, "divisor degree cannot be greater than dividend size");
 
     if a == 1 {
         // if we are dividing by (x - `b`), we can use a single variable to keep track

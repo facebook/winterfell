@@ -184,10 +184,7 @@ impl<H: Hasher> MerkleTree<H> {
     /// in the tree.
     pub fn prove(&self, index: usize) -> Result<Vec<H::Digest>, MerkleTreeError> {
         if index >= self.leaves.len() {
-            return Err(MerkleTreeError::LeafIndexOutOfBounds(
-                self.leaves.len(),
-                index,
-            ));
+            return Err(MerkleTreeError::LeafIndexOutOfBounds(self.leaves.len(), index));
         }
 
         let mut proof = vec![self.leaves[index], self.leaves[index ^ 1]];
@@ -215,10 +212,7 @@ impl<H: Hasher> MerkleTree<H> {
             return Err(MerkleTreeError::TooFewLeafIndexes);
         }
         if indexes.len() > proofs::MAX_PATHS {
-            return Err(MerkleTreeError::TooManyLeafIndexes(
-                proofs::MAX_PATHS,
-                indexes.len(),
-            ));
+            return Err(MerkleTreeError::TooManyLeafIndexes(proofs::MAX_PATHS, indexes.len()));
         }
 
         let index_map = map_indexes(indexes, self.depth())?;

@@ -108,11 +108,7 @@ impl<B: ExtensibleField<3>> FieldElement for CubeExtension<B> {
         debug_assert_eq!(norm[2], B::ZERO, "norm must be in the base field");
         let denom_inv = norm[0].inv();
 
-        Self(
-            numerator[0] * denom_inv,
-            numerator[1] * denom_inv,
-            numerator[2] * denom_inv,
-        )
+        Self(numerator[0] * denom_inv, numerator[1] * denom_inv, numerator[2] * denom_inv)
     }
 
     #[inline]
@@ -446,16 +442,8 @@ mod tests {
     #[test]
     fn elements_as_bytes() {
         let source = vec![
-            CubeExtension(
-                BaseElement::new(1),
-                BaseElement::new(2),
-                BaseElement::new(3),
-            ),
-            CubeExtension(
-                BaseElement::new(4),
-                BaseElement::new(5),
-                BaseElement::new(6),
-            ),
+            CubeExtension(BaseElement::new(1), BaseElement::new(2), BaseElement::new(3)),
+            CubeExtension(BaseElement::new(4), BaseElement::new(5), BaseElement::new(6)),
         ];
 
         let mut expected = vec![];
@@ -466,25 +454,14 @@ mod tests {
         expected.extend_from_slice(&source[1].1.inner().to_le_bytes());
         expected.extend_from_slice(&source[1].2.inner().to_le_bytes());
 
-        assert_eq!(
-            expected,
-            CubeExtension::<BaseElement>::elements_as_bytes(&source)
-        );
+        assert_eq!(expected, CubeExtension::<BaseElement>::elements_as_bytes(&source));
     }
 
     #[test]
     fn bytes_as_elements() {
         let elements = vec![
-            CubeExtension(
-                BaseElement::new(1),
-                BaseElement::new(2),
-                BaseElement::new(3),
-            ),
-            CubeExtension(
-                BaseElement::new(4),
-                BaseElement::new(5),
-                BaseElement::new(6),
-            ),
+            CubeExtension(BaseElement::new(1), BaseElement::new(2), BaseElement::new(3)),
+            CubeExtension(BaseElement::new(4), BaseElement::new(5), BaseElement::new(6)),
         ];
 
         let mut bytes = vec![];
@@ -513,16 +490,8 @@ mod tests {
     #[test]
     fn as_base_elements() {
         let elements = vec![
-            CubeExtension(
-                BaseElement::new(1),
-                BaseElement::new(2),
-                BaseElement::new(3),
-            ),
-            CubeExtension(
-                BaseElement::new(4),
-                BaseElement::new(5),
-                BaseElement::new(6),
-            ),
+            CubeExtension(BaseElement::new(1), BaseElement::new(2), BaseElement::new(3)),
+            CubeExtension(BaseElement::new(4), BaseElement::new(5), BaseElement::new(6)),
         ];
 
         let expected = vec![
@@ -534,9 +503,6 @@ mod tests {
             BaseElement::new(6),
         ];
 
-        assert_eq!(
-            expected,
-            CubeExtension::<BaseElement>::slice_as_base_elements(&elements)
-        );
+        assert_eq!(expected, CubeExtension::<BaseElement>::slice_as_base_elements(&elements));
     }
 }

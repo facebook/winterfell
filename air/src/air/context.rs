@@ -97,10 +97,7 @@ impl<B: StarkField> AirContext<B> {
             !main_transition_constraint_degrees.is_empty(),
             "at least one transition constraint degree must be specified"
         );
-        assert!(
-            num_main_assertions > 0,
-            "at least one assertion must be specified"
-        );
+        assert!(num_main_assertions > 0, "at least one assertion must be specified");
 
         if trace_info.is_multi_segment() {
             assert!(
@@ -287,10 +284,7 @@ impl<B: StarkField> AirContext<B> {
     ///   context, the number of exemptions is too larger for a valid computation of the constraint
     ///   composition polynomial.
     pub fn set_num_transition_exemptions(mut self, n: usize) -> Self {
-        assert!(
-            n > 0,
-            "number of transition exemptions must be greater than zero"
-        );
+        assert!(n > 0, "number of transition exemptions must be greater than zero");
         // exemptions which are for more than half the trace plus one are probably a mistake
         assert!(
             n <= self.trace_len() / 2 + 1,

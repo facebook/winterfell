@@ -87,10 +87,7 @@ where
     B: StarkField,
     E: FieldElement<BaseField = B>,
 {
-    assert!(
-        p.len().is_power_of_two(),
-        "number of coefficients must be a power of 2"
-    );
+    assert!(p.len().is_power_of_two(), "number of coefficients must be a power of 2");
     assert_eq!(
         p.len(),
         twiddles.len() * 2,
@@ -178,14 +175,8 @@ where
     B: StarkField,
     E: FieldElement<BaseField = B>,
 {
-    assert!(
-        p.len().is_power_of_two(),
-        "number of coefficients must be a power of 2"
-    );
-    assert!(
-        blowup_factor.is_power_of_two(),
-        "blowup factor must be a power of 2"
-    );
+    assert!(p.len().is_power_of_two(), "number of coefficients must be a power of 2");
+    assert!(blowup_factor.is_power_of_two(), "blowup factor must be a power of 2");
     assert_eq!(
         p.len(),
         twiddles.len() * 2,
@@ -467,10 +458,7 @@ pub fn get_twiddles<B>(domain_size: usize) -> Vec<B>
 where
     B: StarkField,
 {
-    assert!(
-        domain_size.is_power_of_two(),
-        "domain size must be a power of 2"
-    );
+    assert!(domain_size.is_power_of_two(), "domain size must be a power of 2");
     assert!(
         domain_size.ilog2() <= B::TWO_ADICITY,
         "multiplicative subgroup of size {domain_size} does not exist in the specified base field"
@@ -506,10 +494,7 @@ pub fn get_inv_twiddles<B>(domain_size: usize) -> Vec<B>
 where
     B: StarkField,
 {
-    assert!(
-        domain_size.is_power_of_two(),
-        "domain size must be a power of 2"
-    );
+    assert!(domain_size.is_power_of_two(), "domain size must be a power of 2");
     assert!(
         domain_size.ilog2() <= B::TWO_ADICITY,
         "multiplicative subgroup of size {domain_size} does not exist in the specified base field"

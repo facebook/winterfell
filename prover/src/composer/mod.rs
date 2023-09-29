@@ -163,13 +163,11 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
         let mut column_polys = composition_poly.into_columns();
 
         // Divide out the OOD point z from column polynomials
-        iter_mut!(column_polys)
-            .zip(ood_evaluations)
-            .for_each(|(poly, value_at_z)| {
-                // compute H'_i(x) = (H_i(x) - H_i(z)) / (x - z)
-                poly[0] -= value_at_z;
-                polynom::syn_div_in_place(poly, 1, z);
-            });
+        iter_mut!(column_polys).zip(ood_evaluations).for_each(|(poly, value_at_z)| {
+            // compute H'_i(x) = (H_i(x) - H_i(z)) / (x - z)
+            poly[0] -= value_at_z;
+            polynom::syn_div_in_place(poly, 1, z);
+        });
 
         // add H'_i(x) * cc_i for all i into the DEEP composition polynomial
         for (i, poly) in column_polys.into_iter().enumerate() {

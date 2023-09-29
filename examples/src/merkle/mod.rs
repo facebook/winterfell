@@ -45,15 +45,13 @@ pub fn get_example(
     let (options, hash_fn) = options.to_proof_options(28, 8);
 
     match hash_fn {
-        HashFunction::Blake3_192 => Ok(Box::new(MerkleExample::<Blake3_192>::new(
-            tree_depth, options,
-        ))),
-        HashFunction::Blake3_256 => Ok(Box::new(MerkleExample::<Blake3_256>::new(
-            tree_depth, options,
-        ))),
-        HashFunction::Sha3_256 => Ok(Box::new(MerkleExample::<Sha3_256>::new(
-            tree_depth, options,
-        ))),
+        HashFunction::Blake3_192 => {
+            Ok(Box::new(MerkleExample::<Blake3_192>::new(tree_depth, options)))
+        }
+        HashFunction::Blake3_256 => {
+            Ok(Box::new(MerkleExample::<Blake3_256>::new(tree_depth, options)))
+        }
+        HashFunction::Sha3_256 => Ok(Box::new(MerkleExample::<Sha3_256>::new(tree_depth, options))),
         _ => Err("The specified hash function cannot be used with this example.".to_string()),
     }
 }
@@ -80,11 +78,7 @@ impl<H: ElementHasher> MerkleExample<H> {
         // build Merkle tree of the specified depth
         let now = Instant::now();
         let tree = build_merkle_tree(tree_depth, value, index);
-        debug!(
-            "Built Merkle tree of depth {} in {} ms",
-            tree_depth,
-            now.elapsed().as_millis(),
-        );
+        debug!("Built Merkle tree of depth {} in {} ms", tree_depth, now.elapsed().as_millis(),);
 
         // compute Merkle path form the leaf specified by the index
         let now = Instant::now();

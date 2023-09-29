@@ -24,10 +24,7 @@ impl Air for FibAir {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     fn new(trace_info: TraceInfo, pub_inputs: Self::BaseField, options: ProofOptions) -> Self {
-        let degrees = vec![
-            TransitionConstraintDegree::new(1),
-            TransitionConstraintDegree::new(1),
-        ];
+        let degrees = vec![TransitionConstraintDegree::new(1), TransitionConstraintDegree::new(1)];
         assert_eq!(TRACE_WIDTH, trace_info.width());
         FibAir {
             context: AirContext::new(trace_info, degrees, 3, options),

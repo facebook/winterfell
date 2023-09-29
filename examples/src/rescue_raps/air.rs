@@ -195,20 +195,12 @@ impl Air for RescueRapsAir {
         let copied_value_1 = random_elements[0] * (main_next[0] - main_current[0]).into()
             + random_elements[1] * (main_next[1] - main_current[1]).into();
 
-        result.agg_constraint(
-            0,
-            absorption_flag.into(),
-            are_equal(aux_current[0], copied_value_1),
-        );
+        result.agg_constraint(0, absorption_flag.into(), are_equal(aux_current[0], copied_value_1));
 
         let copied_value_2 = random_elements[0] * (main_next[4] - main_current[4]).into()
             + random_elements[1] * (main_next[5] - main_current[5]).into();
 
-        result.agg_constraint(
-            1,
-            absorption_flag.into(),
-            are_equal(aux_current[1], copied_value_2),
-        );
+        result.agg_constraint(1, absorption_flag.into(), are_equal(aux_current[1], copied_value_2));
 
         // Enforce that the permutation argument column scales at each step by (aux[0] + γ) / (aux[1] + γ).
         result.agg_constraint(
@@ -244,10 +236,7 @@ impl Air for RescueRapsAir {
         _aux_rand_elements: &AuxTraceRandElements<E>,
     ) -> Vec<Assertion<E>> {
         let last_step = self.trace_length() - 1;
-        vec![
-            Assertion::single(2, 0, E::ONE),
-            Assertion::single(2, last_step, E::ONE),
-        ]
+        vec![Assertion::single(2, 0, E::ONE), Assertion::single(2, last_step, E::ONE)]
     }
 
     fn get_periodic_column_values(&self) -> Vec<Vec<Self::BaseField>> {

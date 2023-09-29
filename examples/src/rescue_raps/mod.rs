@@ -46,18 +46,15 @@ pub fn get_example(
     let (options, hash_fn) = options.to_proof_options(42, 4);
 
     match hash_fn {
-        HashFunction::Blake3_192 => Ok(Box::new(RescueRapsExample::<Blake3_192>::new(
-            chain_length,
-            options,
-        ))),
-        HashFunction::Blake3_256 => Ok(Box::new(RescueRapsExample::<Blake3_256>::new(
-            chain_length,
-            options,
-        ))),
-        HashFunction::Sha3_256 => Ok(Box::new(RescueRapsExample::<Sha3_256>::new(
-            chain_length,
-            options,
-        ))),
+        HashFunction::Blake3_192 => {
+            Ok(Box::new(RescueRapsExample::<Blake3_192>::new(chain_length, options)))
+        }
+        HashFunction::Blake3_256 => {
+            Ok(Box::new(RescueRapsExample::<Blake3_256>::new(chain_length, options)))
+        }
+        HashFunction::Sha3_256 => {
+            Ok(Box::new(RescueRapsExample::<Sha3_256>::new(chain_length, options)))
+        }
         _ => Err("The specified hash function cannot be used with this example.".to_string()),
     }
 }
@@ -73,10 +70,7 @@ pub struct RescueRapsExample<H: ElementHasher> {
 
 impl<H: ElementHasher> RescueRapsExample<H> {
     pub fn new(chain_length: usize, options: ProofOptions) -> Self {
-        assert!(
-            chain_length.is_power_of_two(),
-            "chain length must a power of 2"
-        );
+        assert!(chain_length.is_power_of_two(), "chain length must a power of 2");
         assert!(chain_length > 2, "chain length must be at least 4");
 
         let mut seeds = vec![[BaseElement::ZERO; 2]; chain_length];

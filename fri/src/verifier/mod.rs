@@ -235,10 +235,7 @@ where
     ) -> Result<(), VerifierError> {
         // pre-compute roots of unity used in computing x coordinates in the folded domain
         let folding_roots = (0..N)
-            .map(|i| {
-                self.domain_generator
-                    .exp_vartime(((self.domain_size / N * i) as u64).into())
-            })
+            .map(|i| self.domain_generator.exp_vartime(((self.domain_size / N * i) as u64).into()))
             .collect::<Vec<_>>();
 
         // 1 ----- verify the recursive components of the FRI proof -----------------------------------
@@ -291,11 +288,7 @@ where
 
             // make sure next degree reduction does not result in degree truncation
             if max_degree_plus_1 % N != 0 {
-                return Err(VerifierError::DegreeTruncation(
-                    max_degree_plus_1 - 1,
-                    N,
-                    depth,
-                ));
+                return Err(VerifierError::DegreeTruncation(max_degree_plus_1 - 1, N, depth));
             }
 
             // update variables for the next iteration of the loop
@@ -311,9 +304,7 @@ where
         // from the previous layer.
         let remainder_poly = channel.read_remainder()?;
         if remainder_poly.len() > max_degree_plus_1 {
-            return Err(VerifierError::RemainderDegreeMismatch(
-                max_degree_plus_1 - 1,
-            ));
+            return Err(VerifierError::RemainderDegreeMismatch(max_degree_plus_1 - 1));
         }
         let offset: E::BaseField = self.options().domain_offset();
 
@@ -343,10 +334,7 @@ fn get_query_values<E: FieldElement, const N: usize>(
 
     let mut result = Vec::new();
     for position in positions {
-        let idx = folded_positions
-            .iter()
-            .position(|&v| v == position % row_length)
-            .unwrap();
+        let idx = folded_positions.iter().position(|&v| v == position % row_length).unwrap();
         let value = values[idx][position / row_length];
         result.push(value);
     }
@@ -359,7 +347,5 @@ pub fn eval_horner<E>(p: &[E], x: E::BaseField) -> E
 where
     E: FieldElement,
 {
-    p.iter()
-        .rev()
-        .fold(E::ZERO, |acc, &coeff| acc * E::from(x) + coeff)
+    p.iter().rev().fold(E::ZERO, |acc, &coeff| acc * E::from(x) + coeff)
 }

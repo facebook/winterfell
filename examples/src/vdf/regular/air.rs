@@ -60,10 +60,7 @@ impl Air for VdfAir {
 
     fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>> {
         let last_step = self.trace_length() - 1;
-        vec![
-            Assertion::single(0, 0, self.seed),
-            Assertion::single(0, last_step, self.result),
-        ]
+        vec![Assertion::single(0, 0, self.seed), Assertion::single(0, last_step, self.result)]
     }
 
     fn context(&self) -> &AirContext<Self::BaseField> {

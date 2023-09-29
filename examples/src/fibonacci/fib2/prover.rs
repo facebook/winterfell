@@ -27,10 +27,7 @@ impl<H: ElementHasher> FibProver<H> {
     /// Builds an execution trace for computing a Fibonacci sequence of the specified length such
     /// that each row advances the sequence by 2 terms.
     pub fn build_trace(&self, sequence_length: usize) -> TraceTable<BaseElement> {
-        assert!(
-            sequence_length.is_power_of_two(),
-            "sequence length must be a power of 2"
-        );
+        assert!(sequence_length.is_power_of_two(), "sequence length must be a power of 2");
 
         let mut trace = TraceTable::new(TRACE_WIDTH, sequence_length / 2);
         trace.fill(

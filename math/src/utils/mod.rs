@@ -107,10 +107,7 @@ pub fn add_in_place<E>(a: &mut [E], b: &[E])
 where
     E: FieldElement,
 {
-    assert!(
-        a.len() == b.len(),
-        "number of values must be the same for both operands"
-    );
+    assert!(a.len() == b.len(), "number of values must be the same for both operands");
     iter_mut!(a).zip(b).for_each(|(a, &b)| *a += b);
 }
 
@@ -145,10 +142,7 @@ where
     F: FieldElement,
     E: FieldElement<BaseField = F::BaseField> + ExtensionOf<F>,
 {
-    assert!(
-        a.len() == b.len(),
-        "number of values must be the same for both slices"
-    );
+    assert!(a.len() == b.len(), "number of values must be the same for both slices");
     iter_mut!(a).zip(b).for_each(|(a, &b)| *a += c.mul_base(b));
 }
 

@@ -49,19 +49,13 @@ impl FriProof {
         remainder: Vec<E>,
         num_partitions: usize,
     ) -> Self {
-        assert!(
-            !remainder.is_empty(),
-            "number of remainder elements must be greater than zero"
-        );
+        assert!(!remainder.is_empty(), "number of remainder elements must be greater than zero");
         assert!(
             remainder.len().is_power_of_two(),
             "size of the remainder must be a power of two, but was {}",
             remainder.len()
         );
-        assert!(
-            num_partitions > 0,
-            "number of partitions must be greater than zero"
-        );
+        assert!(num_partitions > 0, "number of partitions must be greater than zero");
         assert!(
             num_partitions.is_power_of_two(),
             "number of partitions must be a power of two, but was {num_partitions}"
@@ -127,14 +121,8 @@ impl FriProof {
         E: FieldElement,
         H: ElementHasher<BaseField = E::BaseField>,
     {
-        assert!(
-            domain_size.is_power_of_two(),
-            "domain size must be a power of two"
-        );
-        assert!(
-            folding_factor.is_power_of_two(),
-            "folding factor must be a power of two"
-        );
+        assert!(domain_size.is_power_of_two(), "domain size must be a power of two");
+        assert!(folding_factor.is_power_of_two(), "folding factor must be a power of two");
         assert!(folding_factor > 1, "folding factor must be greater than 1");
 
         let mut layer_proofs = Vec::new();

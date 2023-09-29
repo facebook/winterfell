@@ -236,16 +236,10 @@ pub fn get_evaluation_offsets<E: FieldElement>(
     // compute offsets for each chunk using either parallel or regular iterators
 
     #[cfg(not(feature = "concurrent"))]
-    offsets
-        .chunks_mut(poly_size)
-        .enumerate()
-        .for_each(compute_offsets);
+    offsets.chunks_mut(poly_size).enumerate().for_each(compute_offsets);
 
     #[cfg(feature = "concurrent")]
-    offsets
-        .par_chunks_mut(poly_size)
-        .enumerate()
-        .for_each(compute_offsets);
+    offsets.par_chunks_mut(poly_size).enumerate().for_each(compute_offsets);
 
     offsets
 }

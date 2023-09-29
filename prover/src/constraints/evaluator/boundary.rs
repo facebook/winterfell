@@ -217,11 +217,7 @@ impl<E: FieldElement> BoundaryConstraintGroup<E> {
         air: &A,
         twiddle_map: &mut BTreeMap<usize, Vec<E::BaseField>>,
     ) {
-        assert_eq!(
-            group.divisor(),
-            &self.divisor,
-            "inconsistent constraint divisor"
-        );
+        assert_eq!(group.divisor(), &self.divisor, "inconsistent constraint divisor");
 
         for constraint in group.constraints() {
             if constraint.poly().len() == 1 {
@@ -377,11 +373,8 @@ where
     pub fn evaluate(&self, state: &[F], x: F::BaseField) -> E {
         let x = x * self.x_offset;
         // evaluate constraint polynomial as x * offset using Horner evaluation
-        let assertion_value = self
-            .poly
-            .iter()
-            .rev()
-            .fold(F::ZERO, |acc, &coeff| acc.mul_base(x) + coeff);
+        let assertion_value =
+            self.poly.iter().rev().fold(F::ZERO, |acc, &coeff| acc.mul_base(x) + coeff);
         // evaluate the constraint
         let evaluation = state[self.column] - assertion_value;
         self.coefficients.mul_base(evaluation)
@@ -414,16 +407,12 @@ where
         air: &A,
         twiddle_map: &mut BTreeMap<usize, Vec<F::BaseField>>,
     ) -> Self {
-        debug_assert!(
-            source.poly().len() >= SMALL_POLY_DEGREE,
-            "not a large poly constraint"
-        );
+        debug_assert!(source.poly().len() >= SMALL_POLY_DEGREE, "not a large poly constraint");
         // evaluate the polynomial over the entire constraint evaluation domain; first
         // get twiddles for the evaluation; if twiddles haven't been built yet, build them
         let poly_length = source.poly().len();
-        let twiddles = twiddle_map
-            .entry(poly_length)
-            .or_insert_with(|| fft::get_twiddles(poly_length));
+        let twiddles =
+            twiddle_map.entry(poly_length).or_insert_with(|| fft::get_twiddles(poly_length));
 
         let values = fft::evaluate_poly_with_offset(
             source.poly(),

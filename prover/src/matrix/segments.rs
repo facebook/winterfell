@@ -124,9 +124,8 @@ impl<B: StarkField, const N: usize> Segment<B, N> {
 
         if cfg!(feature = "concurrent") && domain_size >= MIN_CONCURRENT_SIZE {
             #[cfg(feature = "concurrent")]
-            data.par_chunks_mut(poly_size)
-                .zip(offsets.par_chunks(poly_size))
-                .for_each(|(d_chunk, o_chunk)| {
+            data.par_chunks_mut(poly_size).zip(offsets.par_chunks(poly_size)).for_each(
+                |(d_chunk, o_chunk)| {
                     // TODO: investigate multi-threaded copy
                     if num_polys == N {
                         Self::copy_polys(d_chunk, polys, poly_offset, o_chunk);
@@ -134,20 +133,21 @@ impl<B: StarkField, const N: usize> Segment<B, N> {
                         Self::copy_polys_partial(d_chunk, polys, poly_offset, num_polys, o_chunk);
                     }
                     concurrent::split_radix_fft(d_chunk, twiddles);
-                });
+                },
+            );
             #[cfg(feature = "concurrent")]
             concurrent::permute(&mut data);
         } else {
-            data.chunks_mut(poly_size)
-                .zip(offsets.chunks(poly_size))
-                .for_each(|(d_chunk, o_chunk)| {
+            data.chunks_mut(poly_size).zip(offsets.chunks(poly_size)).for_each(
+                |(d_chunk, o_chunk)| {
                     if num_polys == N {
                         Self::copy_polys(d_chunk, polys, poly_offset, o_chunk);
                     } else {
                         Self::copy_polys_partial(d_chunk, polys, poly_offset, num_polys, o_chunk);
                     }
                     d_chunk.fft_in_place(twiddles);
-                });
+                },
+            );
             data.permute();
         }
 
@@ -252,22 +252,20 @@ mod concurrent {
         transpose_square_stretch(data, inner_len, stretch);
 
         // apply outer FFTs
-        data.par_chunks_mut(outer_len)
-            .enumerate()
-            .for_each(|(i, row)| {
-                if i > 0 {
-                    let i = permute_index(inner_len, i);
-                    let inner_twiddle = g.exp_vartime((i as u32).into());
-                    let mut outer_twiddle = inner_twiddle;
-                    for element in row.iter_mut().skip(1) {
-                        for col_idx in 0..N {
-                            element[col_idx] = element[col_idx] * outer_twiddle;
-                        }
-                        outer_twiddle = outer_twiddle * inner_twiddle;
+        data.par_chunks_mut(outer_len).enumerate().for_each(|(i, row)| {
+            if i > 0 {
+                let i = permute_index(inner_len, i);
+                let inner_twiddle = g.exp_vartime((i as u32).into());
+                let mut outer_twiddle = inner_twiddle;
+                for element in row.iter_mut().skip(1) {
+                    for col_idx in 0..N {
+                        element[col_idx] = element[col_idx] * outer_twiddle;
                     }
+                    outer_twiddle = outer_twiddle * inner_twiddle;
                 }
-                row.fft_in_place(&twiddles)
-            });
+            }
+            row.fft_in_place(&twiddles)
+        });
     }
 
     // PERMUTATIONS

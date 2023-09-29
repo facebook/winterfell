@@ -185,9 +185,8 @@ impl Hasher for RpJive64_256 {
     // the Jive compression mode designed in https://eprint.iacr.org/2022/840.pdf.
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest {
         // initialize the state by copying the digest elements into the state
-        let initial_state: [BaseElement; STATE_WIDTH] = Self::Digest::digests_as_elements(values)
-            .try_into()
-            .unwrap();
+        let initial_state: [BaseElement; STATE_WIDTH] =
+            Self::Digest::digests_as_elements(values).try_into().unwrap();
         let mut state = initial_state;
 
         // apply the Rescue permutation and apply the final Jive summation

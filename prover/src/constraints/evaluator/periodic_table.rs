@@ -48,9 +48,8 @@ impl<B: StarkField> PeriodicValueTable<B> {
                 let poly_size = poly.len();
                 let num_cycles = (air.trace_length() / poly_size) as u64;
                 let offset = air.domain_offset().exp(num_cycles.into());
-                let twiddles = twiddle_map
-                    .entry(poly_size)
-                    .or_insert_with(|| fft::get_twiddles(poly_size));
+                let twiddles =
+                    twiddle_map.entry(poly_size).or_insert_with(|| fft::get_twiddles(poly_size));
 
                 fft::evaluate_poly_with_offset(poly, twiddles, offset, air.ce_blowup_factor())
             })
@@ -108,14 +107,8 @@ mod tests {
         let trace_length = 32;
 
         // instantiate AIR with 2 periodic columns
-        let col1 = vec![1u128, 2]
-            .into_iter()
-            .map(BaseElement::new)
-            .collect::<Vec<_>>();
-        let col2 = vec![3u128, 4, 5, 6]
-            .into_iter()
-            .map(BaseElement::new)
-            .collect::<Vec<_>>();
+        let col1 = vec![1u128, 2].into_iter().map(BaseElement::new).collect::<Vec<_>>();
+        let col2 = vec![3u128, 4, 5, 6].into_iter().map(BaseElement::new).collect::<Vec<_>>();
         let air = MockAir::with_periodic_columns(vec![col1, col2], trace_length);
 
         // build a table of periodic values

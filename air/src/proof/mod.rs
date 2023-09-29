@@ -201,10 +201,7 @@ fn get_conjectured_security(
         query_security += options.grinding_factor();
     }
 
-    cmp::min(
-        cmp::min(field_security, query_security) - 1,
-        collision_resistance,
-    )
+    cmp::min(cmp::min(field_security, query_security) - 1, collision_resistance)
 }
 
 #[cfg(feature = "std")]
@@ -260,8 +257,5 @@ fn get_proven_security(
 
     query_security += options.grinding_factor();
 
-    cmp::min(
-        cmp::min(pre_query_security, query_security) - 1,
-        collision_resistance,
-    )
+    cmp::min(cmp::min(pre_query_security, query_security) - 1, collision_resistance)
 }

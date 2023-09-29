@@ -24,9 +24,7 @@ type GriffinJive64_256Digest = <GriffinJive64_256 as Hasher>::Digest;
 
 fn blake3(c: &mut Criterion) {
     let v: [Blake3Digest; 2] = [Blake3::hash(&[1u8]), Blake3::hash(&[2u8])];
-    c.bench_function("hash_blake3 (cached)", |bench| {
-        bench.iter(|| Blake3::merge(black_box(&v)))
-    });
+    c.bench_function("hash_blake3 (cached)", |bench| bench.iter(|| Blake3::merge(black_box(&v))));
 
     c.bench_function("hash_blake3 (random)", |b| {
         b.iter_batched(
@@ -44,9 +42,7 @@ fn blake3(c: &mut Criterion) {
 
 fn sha3(c: &mut Criterion) {
     let v: [Sha3Digest; 2] = [Sha3::hash(&[1u8]), Sha3::hash(&[2u8])];
-    c.bench_function("hash_sha3 (cached)", |bench| {
-        bench.iter(|| Sha3::merge(black_box(&v)))
-    });
+    c.bench_function("hash_sha3 (cached)", |bench| bench.iter(|| Sha3::merge(black_box(&v))));
 
     c.bench_function("hash_sha3 (random)", |b| {
         b.iter_batched(
@@ -123,10 +119,8 @@ fn rescue_jive256(c: &mut Criterion) {
 }
 
 fn griffin_jive256(c: &mut Criterion) {
-    let v: [GriffinJive64_256Digest; 2] = [
-        GriffinJive64_256::hash(&[1u8]),
-        GriffinJive64_256::hash(&[2u8]),
-    ];
+    let v: [GriffinJive64_256Digest; 2] =
+        [GriffinJive64_256::hash(&[1u8]), GriffinJive64_256::hash(&[2u8])];
     c.bench_function("hash_griffin_jive64_256 (cached)", |bench| {
         bench.iter(|| GriffinJive64_256::merge(black_box(&v)))
     });
@@ -145,13 +139,5 @@ fn griffin_jive256(c: &mut Criterion) {
     });
 }
 
-criterion_group!(
-    hash_group,
-    blake3,
-    sha3,
-    rescue248,
-    rescue256,
-    rescue_jive256,
-    griffin_jive256,
-);
+criterion_group!(hash_group, blake3, sha3, rescue248, rescue256, rescue_jive256, griffin_jive256,);
 criterion_main!(hash_group);

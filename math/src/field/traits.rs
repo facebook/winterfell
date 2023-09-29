@@ -253,11 +253,7 @@ pub trait StarkField: FieldElement<BaseField = Self> {
     /// Panics if the root of unity for the specified order does not exist in this field.
     fn get_root_of_unity(n: u32) -> Self {
         assert!(n != 0, "cannot get root of unity for n = 0");
-        assert!(
-            n <= Self::TWO_ADICITY,
-            "order cannot exceed 2^{}",
-            Self::TWO_ADICITY
-        );
+        assert!(n <= Self::TWO_ADICITY, "order cannot exceed 2^{}", Self::TWO_ADICITY);
         let power = Self::PositiveInteger::from(1u32) << (Self::TWO_ADICITY - n);
         Self::TWO_ADIC_ROOT_OF_UNITY.exp(power)
     }

@@ -69,24 +69,15 @@ fn new_tree() {
     let leaves = Digest256::bytes_as_digests(&LEAVES4).to_vec();
     let tree = MerkleTree::<Blake3_256>::new(leaves.clone()).unwrap();
     assert_eq!(2, tree.depth());
-    let root = hash_2x1(
-        hash_2x1(leaves[0], leaves[1]),
-        hash_2x1(leaves[2], leaves[3]),
-    );
+    let root = hash_2x1(hash_2x1(leaves[0], leaves[1]), hash_2x1(leaves[2], leaves[3]));
     assert_eq!(&root, tree.root());
 
     let leaves = Digest256::bytes_as_digests(&LEAVES8).to_vec();
     let tree = MerkleTree::<Blake3_256>::new(leaves.clone()).unwrap();
     assert_eq!(3, tree.depth());
     let root = hash_2x1(
-        hash_2x1(
-            hash_2x1(leaves[0], leaves[1]),
-            hash_2x1(leaves[2], leaves[3]),
-        ),
-        hash_2x1(
-            hash_2x1(leaves[4], leaves[5]),
-            hash_2x1(leaves[6], leaves[7]),
-        ),
+        hash_2x1(hash_2x1(leaves[0], leaves[1]), hash_2x1(leaves[2], leaves[3])),
+        hash_2x1(hash_2x1(leaves[4], leaves[5]), hash_2x1(leaves[6], leaves[7])),
     );
     assert_eq!(&root, tree.root());
 }
@@ -111,10 +102,7 @@ fn prove() {
         leaves[1],
         leaves[0],
         hash_2x1(leaves[2], leaves[3]),
-        hash_2x1(
-            hash_2x1(leaves[4], leaves[5]),
-            hash_2x1(leaves[6], leaves[7]),
-        ),
+        hash_2x1(hash_2x1(leaves[4], leaves[5]), hash_2x1(leaves[6], leaves[7])),
     ];
     assert_eq!(proof, tree.prove(1).unwrap());
 
@@ -122,10 +110,7 @@ fn prove() {
         leaves[6],
         leaves[7],
         hash_2x1(leaves[4], leaves[5]),
-        hash_2x1(
-            hash_2x1(leaves[0], leaves[1]),
-            hash_2x1(leaves[2], leaves[3]),
-        ),
+        hash_2x1(hash_2x1(leaves[0], leaves[1]), hash_2x1(leaves[2], leaves[3])),
     ];
     assert_eq!(proof, tree.prove(6).unwrap());
 }
@@ -162,10 +147,7 @@ fn prove_batch() {
     let expected_nodes = vec![vec![
         leaves[0],
         hash_2x1(leaves[2], leaves[3]),
-        hash_2x1(
-            hash_2x1(leaves[4], leaves[5]),
-            hash_2x1(leaves[6], leaves[7]),
-        ),
+        hash_2x1(hash_2x1(leaves[4], leaves[5]), hash_2x1(leaves[6], leaves[7])),
     ]];
     assert_eq!(expected_values, proof.leaves);
     assert_eq!(expected_nodes, proof.nodes);
@@ -177,10 +159,7 @@ fn prove_batch() {
     let expected_nodes = vec![
         vec![
             leaves[0],
-            hash_2x1(
-                hash_2x1(leaves[4], leaves[5]),
-                hash_2x1(leaves[6], leaves[7]),
-            ),
+            hash_2x1(hash_2x1(leaves[4], leaves[5]), hash_2x1(leaves[6], leaves[7])),
         ],
         vec![leaves[3]],
     ];

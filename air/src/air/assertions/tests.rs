@@ -27,16 +27,10 @@ fn single_assertion() {
     });
 
     assert_eq!(Ok(()), a.validate_trace_width(3));
-    assert_eq!(
-        Err(AssertionError::TraceWidthTooShort(2, 1)),
-        a.validate_trace_width(1)
-    );
+    assert_eq!(Err(AssertionError::TraceWidthTooShort(2, 1)), a.validate_trace_width(1));
 
     assert_eq!(Ok(()), a.validate_trace_length(16));
-    assert_eq!(
-        Err(AssertionError::TraceLengthTooShort(16, 8)),
-        a.validate_trace_length(8)
-    );
+    assert_eq!(Err(AssertionError::TraceLengthTooShort(16, 8)), a.validate_trace_length(8));
 }
 
 // PERIODIC ASSERTIONS
@@ -66,15 +60,9 @@ fn periodic_assertion() {
     });
 
     assert_eq!(Ok(()), a.validate_trace_width(5));
-    assert_eq!(
-        Err(AssertionError::TraceWidthTooShort(4, 2)),
-        a.validate_trace_width(2)
-    );
+    assert_eq!(Err(AssertionError::TraceWidthTooShort(4, 2)), a.validate_trace_width(2));
     assert_eq!(Ok(()), a.validate_trace_length(16));
-    assert_eq!(
-        Err(AssertionError::TraceLengthTooShort(16, 8)),
-        a.validate_trace_length(8)
-    );
+    assert_eq!(Err(AssertionError::TraceLengthTooShort(16, 8)), a.validate_trace_length(8));
 }
 
 #[test]
@@ -133,20 +121,11 @@ fn sequence_assertion() {
     });
 
     assert_eq!(Ok(()), a.validate_trace_length(8));
-    assert_eq!(
-        Err(AssertionError::TraceLengthNotExact(8, 4)),
-        a.validate_trace_length(4)
-    );
-    assert_eq!(
-        Err(AssertionError::TraceLengthNotExact(8, 16)),
-        a.validate_trace_length(16)
-    );
+    assert_eq!(Err(AssertionError::TraceLengthNotExact(8, 4)), a.validate_trace_length(4));
+    assert_eq!(Err(AssertionError::TraceLengthNotExact(8, 16)), a.validate_trace_length(16));
 
     assert_eq!(Ok(()), a.validate_trace_width(4));
-    assert_eq!(
-        Err(AssertionError::TraceWidthTooShort(3, 2)),
-        a.validate_trace_width(2)
-    );
+    assert_eq!(Err(AssertionError::TraceWidthTooShort(3, 2)), a.validate_trace_width(2));
 }
 
 #[test]
@@ -191,12 +170,8 @@ fn sequence_assertion_empty_values() {
     expected = "invalid assertion for column 3: number of asserted values must be a power of two, but was 3"
 )]
 fn sequence_assertion_num_values_not_power_of_two() {
-    let _ = Assertion::sequence(
-        3,
-        2,
-        4,
-        vec![BaseElement::ONE, BaseElement::ZERO, BaseElement::ONE],
-    );
+    let _ =
+        Assertion::sequence(3, 2, 4, vec![BaseElement::ONE, BaseElement::ZERO, BaseElement::ONE]);
 }
 
 // OVERLAPPING ASSERTIONS

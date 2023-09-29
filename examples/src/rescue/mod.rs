@@ -43,18 +43,15 @@ pub fn get_example(
     let (options, hash_fn) = options.to_proof_options(42, 4);
 
     match hash_fn {
-        HashFunction::Blake3_192 => Ok(Box::new(RescueExample::<Blake3_192>::new(
-            chain_length,
-            options,
-        ))),
-        HashFunction::Blake3_256 => Ok(Box::new(RescueExample::<Blake3_256>::new(
-            chain_length,
-            options,
-        ))),
-        HashFunction::Sha3_256 => Ok(Box::new(RescueExample::<Sha3_256>::new(
-            chain_length,
-            options,
-        ))),
+        HashFunction::Blake3_192 => {
+            Ok(Box::new(RescueExample::<Blake3_192>::new(chain_length, options)))
+        }
+        HashFunction::Blake3_256 => {
+            Ok(Box::new(RescueExample::<Blake3_256>::new(chain_length, options)))
+        }
+        HashFunction::Sha3_256 => {
+            Ok(Box::new(RescueExample::<Sha3_256>::new(chain_length, options)))
+        }
         _ => Err("The specified hash function cannot be used with this example.".to_string()),
     }
 }
@@ -69,10 +66,7 @@ pub struct RescueExample<H: ElementHasher> {
 
 impl<H: ElementHasher> RescueExample<H> {
     pub fn new(chain_length: usize, options: ProofOptions) -> Self {
-        assert!(
-            chain_length.is_power_of_two(),
-            "chain length must a power of 2"
-        );
+        assert!(chain_length.is_power_of_two(), "chain length must a power of 2");
         let seed = [BaseElement::from(42u8), BaseElement::from(43u8)];
 
         // compute the sequence of hashes using external implementation of Rescue hash

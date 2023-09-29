@@ -30,17 +30,11 @@ fn eval() {
 
     // degree 2
     let x2 = x.exp(2);
-    assert_eq!(
-        poly[0] + poly[1] * x + poly[2] * x2,
-        super::eval(&poly[..3], x)
-    );
+    assert_eq!(poly[0] + poly[1] * x + poly[2] * x2, super::eval(&poly[..3], x));
 
     // degree 3
     let x3 = x.exp(3);
-    assert_eq!(
-        poly[0] + poly[1] * x + poly[2] * x2 + poly[3] * x3,
-        super::eval(&poly, x)
-    );
+    assert_eq!(poly[0] + poly[1] * x + poly[2] * x2 + poly[3] * x3, super::eval(&poly, x));
 }
 
 #[test]
@@ -57,11 +51,7 @@ fn add() {
     ];
 
     // same degree
-    let pr = vec![
-        poly1[0] + poly2[0],
-        poly1[1] + poly2[1],
-        poly1[2] + poly2[2],
-    ];
+    let pr = vec![poly1[0] + poly2[0], poly1[1] + poly2[1], poly1[2] + poly2[2]];
     assert_eq!(pr, super::add(&poly1, &poly2));
 
     // poly1 is lower degree
@@ -87,11 +77,7 @@ fn sub() {
     ];
 
     // same degree
-    let pr = vec![
-        poly1[0] - poly2[0],
-        poly1[1] - poly2[1],
-        poly1[2] - poly2[2],
-    ];
+    let pr = vec![poly1[0] - poly2[0], poly1[1] - poly2[1], poly1[2] - poly2[2]];
     assert_eq!(pr, super::sub(&poly1, &poly2));
 
     // poly1 is lower degree
@@ -168,10 +154,7 @@ fn div() {
 
     // divide degree 3 by degree 3
     let poly3 = super::mul_by_scalar(&poly1, BaseElement::from(11269864713250585702u128));
-    assert_eq!(
-        vec![BaseElement::from(11269864713250585702u128)],
-        super::div(&poly3, &poly1)
-    );
+    assert_eq!(vec![BaseElement::from(11269864713250585702u128)], super::div(&poly3, &poly1));
 }
 
 #[test]
@@ -199,11 +182,7 @@ fn syn_div() {
 
     // divide by (x - 3), this does not divide evenly, but the remainder is ignored
     let result = super::syn_div(&poly, 1, BaseElement::from(3u8));
-    let expected = vec![
-        -BaseElement::from(27u8),
-        -BaseElement::from(9u8),
-        BaseElement::ONE,
-    ];
+    let expected = vec![-BaseElement::from(27u8), -BaseElement::from(9u8), BaseElement::ONE];
     assert_eq!(expected, remove_leading_zeros(&result));
 
     // ----- division by high-degree polynomial ---------------------------------------------------

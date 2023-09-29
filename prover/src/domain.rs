@@ -58,10 +58,7 @@ impl<B: StarkField> StarkDomain<B> {
             trace_twiddles.len().is_power_of_two(),
             "the length of trace twiddles must be a power of 2"
         );
-        assert!(
-            blowup_factor.is_power_of_two(),
-            "blowup factor must be a power of 2"
-        );
+        assert!(blowup_factor.is_power_of_two(), "blowup factor must be a power of 2");
 
         let ce_domain_size = trace_twiddles.len() * blowup_factor * 2;
         let domain_gen = B::get_root_of_unity(ce_domain_size.ilog2());

@@ -64,10 +64,7 @@ impl<B: StarkField> RapTraceTable<B> {
     ///   field `B`, or is not a power of two.
     /// * Length of `meta` is greater than 65535;
     pub fn with_meta(width: usize, length: usize, meta: Vec<u8>) -> Self {
-        assert!(
-            width > 0,
-            "execution trace must consist of at least one column"
-        );
+        assert!(width > 0, "execution trace must consist of at least one column");
         assert!(
             width <= TraceInfo::MAX_TRACE_WIDTH,
             "execution trace width cannot be greater than {}, but was {}",
@@ -80,10 +77,7 @@ impl<B: StarkField> RapTraceTable<B> {
             TraceInfo::MIN_TRACE_LENGTH,
             length
         );
-        assert!(
-            length.is_power_of_two(),
-            "execution trace length must be a power of 2"
-        );
+        assert!(length.is_power_of_two(), "execution trace length must be a power of 2");
         assert!(
             length.ilog2() <= B::TWO_ADICITY,
             "execution trace length cannot exceed 2^{} steps, but was 2^{}",

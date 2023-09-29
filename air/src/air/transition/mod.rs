@@ -156,9 +156,7 @@ impl<E: FieldElement> TransitionConstraints<E> {
         let mut result = main_evaluations
             .iter()
             .zip(self.main_constraint_coef.iter())
-            .fold(E::ZERO, |acc, (&const_eval, &coef)| {
-                acc + coef.mul_base(const_eval)
-            });
+            .fold(E::ZERO, |acc, (&const_eval, &coef)| acc + coef.mul_base(const_eval));
 
         if !self.aux_constraint_coef.is_empty() {
             result += aux_evaluations

@@ -27,10 +27,7 @@ impl<H: ElementHasher> Fib8Prover<H> {
     /// Builds an execution trace for computing a Fibonacci sequence of the specified length such
     /// that each row advances the sequence by 8 terms.
     pub fn build_trace(&self, length: usize) -> TraceTable<BaseElement> {
-        assert!(
-            length.is_power_of_two(),
-            "sequence length must be a power of 2"
-        );
+        assert!(length.is_power_of_two(), "sequence length must be a power of 2");
 
         // initialize the trace with 7th and 8th terms of Fibonacci sequence (skipping the first 6)
         let n0 = BaseElement::ONE;

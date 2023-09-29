@@ -43,18 +43,15 @@ pub fn get_example(
     let (_, hash_fn) = options.to_proof_options(28, 8);
 
     match hash_fn {
-        HashFunction::Blake3_192 => Ok(Box::new(LamportThresholdExample::<Blake3_192>::new(
-            num_signers,
-            options,
-        ))),
-        HashFunction::Blake3_256 => Ok(Box::new(LamportThresholdExample::<Blake3_256>::new(
-            num_signers,
-            options,
-        ))),
-        HashFunction::Sha3_256 => Ok(Box::new(LamportThresholdExample::<Sha3_256>::new(
-            num_signers,
-            options,
-        ))),
+        HashFunction::Blake3_192 => {
+            Ok(Box::new(LamportThresholdExample::<Blake3_192>::new(num_signers, options)))
+        }
+        HashFunction::Blake3_256 => {
+            Ok(Box::new(LamportThresholdExample::<Blake3_256>::new(num_signers, options)))
+        }
+        HashFunction::Sha3_256 => {
+            Ok(Box::new(LamportThresholdExample::<Sha3_256>::new(num_signers, options)))
+        }
         _ => Err("The specified hash function cannot be used with this example.".to_string()),
     }
 }
@@ -95,10 +92,7 @@ impl<H: ElementHasher> LamportThresholdExample<H> {
         // build the aggregated public key
         let now = Instant::now();
         let pub_key = AggPublicKey::new(public_keys);
-        debug!(
-            "Built aggregated public key in {} ms",
-            now.elapsed().as_millis()
-        );
+        debug!("Built aggregated public key in {} ms", now.elapsed().as_millis());
 
         let (options, _) = options.to_proof_options(28, 8);
 

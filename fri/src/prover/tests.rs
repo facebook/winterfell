@@ -23,12 +23,7 @@ fn fri_folding_2() {
     let lde_blowup_e = 3;
     let folding_factor_e = 1;
     let max_remainder_degree = 7;
-    fri_prove_verify(
-        trace_length_e,
-        lde_blowup_e,
-        folding_factor_e,
-        max_remainder_degree,
-    )
+    fri_prove_verify(trace_length_e, lde_blowup_e, folding_factor_e, max_remainder_degree)
 }
 
 #[test]
@@ -37,12 +32,7 @@ fn fri_folding_4() {
     let lde_blowup_e = 3;
     let folding_factor_e = 2;
     let max_remainder_degree = 255;
-    fri_prove_verify(
-        trace_length_e,
-        lde_blowup_e,
-        folding_factor_e,
-        max_remainder_degree,
-    )
+    fri_prove_verify(trace_length_e, lde_blowup_e, folding_factor_e, max_remainder_degree)
 }
 
 // TEST UTILS
@@ -56,9 +46,7 @@ pub fn build_prover_channel(
 }
 
 pub fn build_evaluations(trace_length: usize, lde_blowup: usize) -> Vec<BaseElement> {
-    let mut p = (0..trace_length as u128)
-        .map(BaseElement::new)
-        .collect::<Vec<_>>();
+    let mut p = (0..trace_length as u128).map(BaseElement::new).collect::<Vec<_>>();
     let domain_size = trace_length * lde_blowup;
     p.resize(domain_size, BaseElement::ZERO);
 
@@ -94,10 +82,7 @@ pub fn verify_proof(
     .unwrap();
     let mut coin = DefaultRandomCoin::<Blake3>::new(&[]);
     let verifier = FriVerifier::new(&mut channel, &mut coin, options.clone(), max_degree)?;
-    let queried_evaluations = positions
-        .iter()
-        .map(|&p| evaluations[p])
-        .collect::<Vec<_>>();
+    let queried_evaluations = positions.iter().map(|&p| evaluations[p]).collect::<Vec<_>>();
     verifier.verify(&mut channel, &queried_evaluations, positions)
 }
 

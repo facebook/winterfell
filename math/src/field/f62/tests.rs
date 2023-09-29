@@ -20,10 +20,7 @@ fn add() {
     assert_eq!(r, r + BaseElement::ZERO);
 
     // test addition within bounds
-    assert_eq!(
-        BaseElement::from(5u8),
-        BaseElement::from(2u8) + BaseElement::from(3u8)
-    );
+    assert_eq!(BaseElement::from(5u8), BaseElement::from(2u8) + BaseElement::from(3u8));
 
     // test overflow
     let t = BaseElement::from(BaseElement::MODULUS - 1);
@@ -38,10 +35,7 @@ fn sub() {
     assert_eq!(r, r - BaseElement::ZERO);
 
     // test subtraction within bounds
-    assert_eq!(
-        BaseElement::from(2u8),
-        BaseElement::from(5u8) - BaseElement::from(3u8)
-    );
+    assert_eq!(BaseElement::from(2u8), BaseElement::from(5u8) - BaseElement::from(3u8));
 
     // test underflow
     let expected = BaseElement::from(BaseElement::MODULUS - 2);
@@ -56,10 +50,7 @@ fn mul() {
     assert_eq!(r, r * BaseElement::ONE);
 
     // test multiplication within bounds
-    assert_eq!(
-        BaseElement::from(15u8),
-        BaseElement::from(5u8) * BaseElement::from(3u8)
-    );
+    assert_eq!(BaseElement::from(15u8), BaseElement::from(5u8) * BaseElement::from(3u8));
 
     // test overflow
     let m = BaseElement::MODULUS;
@@ -69,10 +60,7 @@ fn mul() {
     assert_eq!(BaseElement::from(m - 4), t * BaseElement::from(4u8));
 
     let t = (m + 1) / 2;
-    assert_eq!(
-        BaseElement::ONE,
-        BaseElement::from(t) * BaseElement::from(2u8)
-    );
+    assert_eq!(BaseElement::ONE, BaseElement::from(t) * BaseElement::from(2u8));
 }
 
 #[test]
@@ -139,10 +127,7 @@ fn quad_mul_base() {
 fn cube_mul() {
     // identity
     let r: CubeExtension<BaseElement> = rand_value();
-    assert_eq!(
-        <CubeExtension<BaseElement>>::ZERO,
-        r * <CubeExtension<BaseElement>>::ZERO
-    );
+    assert_eq!(<CubeExtension<BaseElement>>::ZERO, r * <CubeExtension<BaseElement>>::ZERO);
     assert_eq!(r, r * <CubeExtension<BaseElement>>::ONE);
 
     // test multiplication within bounds

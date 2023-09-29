@@ -44,10 +44,7 @@ impl OodFrame {
     /// # Panics
     /// Panics if evaluation frame has already been set.
     pub fn set_trace_states<E: FieldElement>(&mut self, trace_states: &[Vec<E>]) -> Vec<E> {
-        assert!(
-            self.trace_states.is_empty(),
-            "trace sates have already been set"
-        );
+        assert!(self.trace_states.is_empty(), "trace sates have already been set");
 
         // save the evaluations with the current and next evaluations interleaved for each polynomial
         let frame_size = trace_states.len();
@@ -73,14 +70,8 @@ impl OodFrame {
     /// * Constraint evaluations have already been set.
     /// * `evaluations` is an empty vector.
     pub fn set_constraint_evaluations<E: FieldElement>(&mut self, evaluations: &[E]) {
-        assert!(
-            self.evaluations.is_empty(),
-            "constraint evaluations have already been set"
-        );
-        assert!(
-            !evaluations.is_empty(),
-            "cannot set to empty constraint evaluations"
-        );
+        assert!(self.evaluations.is_empty(), "constraint evaluations have already been set");
+        assert!(!evaluations.is_empty(), "cannot set to empty constraint evaluations");
         evaluations.write_into(&mut self.evaluations)
     }
 
@@ -111,10 +102,8 @@ impl OodFrame {
         // parse main and auxiliary trace evaluation frames
         let mut reader = SliceReader::new(&self.trace_states);
         let frame_size = reader.read_u8()? as usize;
-        let trace = E::read_batch_from(
-            &mut reader,
-            (main_trace_width + aux_trace_width) * frame_size,
-        )?;
+        let trace =
+            E::read_batch_from(&mut reader, (main_trace_width + aux_trace_width) * frame_size)?;
         if reader.has_more_bytes() {
             return Err(DeserializationError::UnconsumedBytes);
         }

@@ -25,7 +25,6 @@ pub enum AssertionError {
 }
 
 impl fmt::Display for AssertionError {
-    #[rustfmt::skip]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::TraceWidthTooShort(expected, actual) => {

@@ -237,10 +237,7 @@ where
     /// # Panics
     /// Panics is the prover state is clean (no FRI layers have been build yet).
     pub fn build_proof(&mut self, positions: &[usize]) -> FriProof {
-        assert!(
-            !self.remainder_poly.0.is_empty(),
-            "FRI layers have not been built yet"
-        );
+        assert!(!self.remainder_poly.0.is_empty(), "FRI layers have not been built yet");
 
         let mut layers = Vec::with_capacity(self.layers.len());
 

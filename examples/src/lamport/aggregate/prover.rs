@@ -198,14 +198,8 @@ fn update_sig_verification_state(
         );
 
         // copy next set of private keys into the registers computing private key hashes
-        init_hash_state(
-            sec_key_1_hash,
-            &sig_info.key_schedule.sec_keys1[cycle_num + 1],
-        );
-        init_hash_state(
-            sec_key_2_hash,
-            &sig_info.key_schedule.sec_keys2[cycle_num + 1],
-        );
+        init_hash_state(sec_key_1_hash, &sig_info.key_schedule.sec_keys1[cycle_num + 1]);
+        init_hash_state(sec_key_2_hash, &sig_info.key_schedule.sec_keys2[cycle_num + 1]);
 
         // update message accumulator with the next set of message bits
         apply_message_acc(

@@ -194,14 +194,8 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRando
         domain_size: usize,
         nonce: u64,
     ) -> Result<Vec<usize>, RandomCoinError> {
-        assert!(
-            domain_size.is_power_of_two(),
-            "domain size must be a power of two"
-        );
-        assert!(
-            num_values < domain_size,
-            "number of values must be smaller than domain size"
-        );
+        assert!(domain_size.is_power_of_two(), "domain size must be a power of two");
+        assert!(num_values < domain_size, "number of values must be smaller than domain size");
 
         // reseed with nonce
         self.seed = H::merge_with_int(self.seed, nonce);
@@ -230,11 +224,7 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRando
         }
 
         if values.len() < num_values {
-            return Err(RandomCoinError::FailedToDrawIntegers(
-                num_values,
-                values.len(),
-                1000,
-            ));
+            return Err(RandomCoinError::FailedToDrawIntegers(num_values, values.len(), 1000));
         }
 
         Ok(values)

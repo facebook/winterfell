@@ -53,10 +53,7 @@ impl Queries {
     ) -> Self {
         assert!(!query_values.is_empty(), "query values cannot be empty");
         let elements_per_query = query_values[0].len();
-        assert_ne!(
-            elements_per_query, 0,
-            "a query must contain at least one evaluation"
-        );
+        assert_ne!(elements_per_query, 0, "a query must contain at least one evaluation");
 
         // TODO: add debug check that values actually hash into the leaf nodes of the batch proof
 
@@ -99,15 +96,9 @@ impl Queries {
         E: FieldElement,
         H: ElementHasher<BaseField = E::BaseField>,
     {
-        assert!(
-            domain_size.is_power_of_two(),
-            "domain size must be a power of two"
-        );
+        assert!(domain_size.is_power_of_two(), "domain size must be a power of two");
         assert!(num_queries > 0, "there must be at least one query");
-        assert!(
-            values_per_query > 0,
-            "a query must contain at least one value"
-        );
+        assert!(values_per_query > 0, "a query must contain at least one value");
 
         // make sure we have enough bytes to read the expected number of queries
         let num_query_bytes = E::ELEMENT_BYTES * values_per_query;
@@ -123,10 +114,7 @@ impl Queries {
         // read bytes corresponding to each query, convert them into field elements,
         // and also hash them to build leaf nodes of the batch Merkle proof
         let query_values = Table::<E>::from_bytes(&self.values, num_queries, values_per_query)?;
-        let hashed_queries = query_values
-            .rows()
-            .map(|row| H::hash_elements(row))
-            .collect();
+        let hashed_queries = query_values.rows().map(|row| H::hash_elements(row)).collect();
 
         // build batch Merkle proof
         let mut reader = SliceReader::new(&self.paths);

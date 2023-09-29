@@ -23,21 +23,12 @@ pub enum DeserializationError {
 }
 
 impl fmt::Display for DeserializationError {
-    #[rustfmt::skip]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidValue(err_msg) => {
-                write!(f, "{err_msg}")
-            }
-            Self::UnexpectedEOF => {
-                write!(f, "unexpected EOF")
-            }
-            Self::UnconsumedBytes => {
-                write!(f, "not all bytes were consumed")
-            }
-            Self::UnknownError(err_msg) => {
-                write!(f, "unknown error: {err_msg}")
-            }
+            Self::InvalidValue(err_msg) => write!(f, "{err_msg}"),
+            Self::UnexpectedEOF => write!(f, "unexpected EOF"),
+            Self::UnconsumedBytes => write!(f, "not all bytes were consumed"),
+            Self::UnknownError(err_msg) => write!(f, "unknown error: {err_msg}"),
         }
     }
 }

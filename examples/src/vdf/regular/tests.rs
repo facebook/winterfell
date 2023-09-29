@@ -8,28 +8,19 @@ use winterfell::{FieldExtension, ProofOptions};
 
 #[test]
 fn vdf_test_basic_proof_verification() {
-    let fib = Box::new(super::VdfExample::<Blake3_256>::new(
-        128,
-        build_options(false),
-    ));
+    let fib = Box::new(super::VdfExample::<Blake3_256>::new(128, build_options(false)));
     crate::tests::test_basic_proof_verification(fib);
 }
 
 #[test]
 fn vdf_test_basic_proof_verification_extension() {
-    let fib = Box::new(super::VdfExample::<Blake3_256>::new(
-        128,
-        build_options(true),
-    ));
+    let fib = Box::new(super::VdfExample::<Blake3_256>::new(128, build_options(true)));
     crate::tests::test_basic_proof_verification(fib);
 }
 
 #[test]
 fn vdf_test_basic_proof_verification_fail() {
-    let fib = Box::new(super::VdfExample::<Blake3_256>::new(
-        128,
-        build_options(false),
-    ));
+    let fib = Box::new(super::VdfExample::<Blake3_256>::new(128, build_options(false)));
     crate::tests::test_basic_proof_verification_fail(fib);
 }
 

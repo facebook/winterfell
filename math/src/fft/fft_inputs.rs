@@ -244,11 +244,7 @@ fn fft_in_place<E, I>(
 
     // Apply butterfly operations with twiddle factors.
     let last_offset = offset + size * stride;
-    for (i, offset) in (offset..last_offset)
-        .step_by(2 * stride)
-        .enumerate()
-        .skip(1)
-    {
+    for (i, offset) in (offset..last_offset).step_by(2 * stride).enumerate().skip(1) {
         for j in offset..(offset + count) {
             I::butterfly_twiddle(values, twiddles[i], j, stride);
         }

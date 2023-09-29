@@ -27,10 +27,7 @@ impl<E: FieldElement> EvaluationFrame<E> {
     /// # Panics
     /// Panics if `num_columns` is zero.
     pub fn new(num_columns: usize) -> Self {
-        assert!(
-            num_columns > 0,
-            "number of columns must be greater than zero"
-        );
+        assert!(num_columns > 0, "number of columns must be greater than zero");
         EvaluationFrame {
             current: E::zeroed_vector(num_columns),
             next: E::zeroed_vector(num_columns),
@@ -45,11 +42,7 @@ impl<E: FieldElement> EvaluationFrame<E> {
     /// * Lengths of the provided rows are not the same.
     pub fn from_rows(current: Vec<E>, next: Vec<E>) -> Self {
         assert!(!current.is_empty(), "a row must contain at least one value");
-        assert_eq!(
-            current.len(),
-            next.len(),
-            "number of values in the rows must be the same"
-        );
+        assert_eq!(current.len(), next.len(), "number of values in the rows must be the same");
         Self { current, next }
     }
 

@@ -97,10 +97,7 @@ impl<B: StarkField> TraceTable<B> {
     ///   field `B`, or is not a power of two.
     /// * Length of `meta` is greater than 65535;
     pub fn with_meta(width: usize, length: usize, meta: Vec<u8>) -> Self {
-        assert!(
-            width > 0,
-            "execution trace must consist of at least one column"
-        );
+        assert!(width > 0, "execution trace must consist of at least one column");
         assert!(
             width <= TraceInfo::MAX_TRACE_WIDTH,
             "execution trace width cannot be greater than {}, but was {}",
@@ -113,10 +110,7 @@ impl<B: StarkField> TraceTable<B> {
             TraceInfo::MIN_TRACE_LENGTH,
             length
         );
-        assert!(
-            length.is_power_of_two(),
-            "execution trace length must be a power of 2"
-        );
+        assert!(length.is_power_of_two(), "execution trace length must be a power of 2");
         assert!(
             length.ilog2() <= B::TWO_ADICITY,
             "execution trace length cannot exceed 2^{} steps, but was 2^{}",
@@ -147,10 +141,7 @@ impl<B: StarkField> TraceTable<B> {
     ///   multiplicative subgroup in the field `B`, or is not a power of two.
     /// * Number of elements is not identical for all columns.
     pub fn init(columns: Vec<Vec<B>>) -> Self {
-        assert!(
-            !columns.is_empty(),
-            "execution trace must consist of at least one column"
-        );
+        assert!(!columns.is_empty(), "execution trace must consist of at least one column");
         assert!(
             columns.len() <= TraceInfo::MAX_TRACE_WIDTH,
             "execution trace width cannot be greater than {}, but was {}",
@@ -164,10 +155,7 @@ impl<B: StarkField> TraceTable<B> {
             TraceInfo::MIN_TRACE_LENGTH,
             trace_length
         );
-        assert!(
-            trace_length.is_power_of_two(),
-            "execution trace length must be a power of 2"
-        );
+        assert!(trace_length.is_power_of_two(), "execution trace length must be a power of 2");
         assert!(
             trace_length.ilog2() <= B::TWO_ADICITY,
             "execution trace length cannot exceed 2^{} steps, but was 2^{}",
@@ -175,11 +163,7 @@ impl<B: StarkField> TraceTable<B> {
             trace_length.ilog2()
         );
         for column in columns.iter().skip(1) {
-            assert_eq!(
-                column.len(),
-                trace_length,
-                "all columns traces must have the same length"
-            );
+            assert_eq!(column.len(), trace_length, "all columns traces must have the same length");
         }
 
         Self {
@@ -293,10 +277,7 @@ impl<B: StarkField> TraceTable<B> {
             self.length(),
             fragment_length
         );
-        assert!(
-            fragment_length.is_power_of_two(),
-            "fragment length must be a power of 2"
-        );
+        assert!(fragment_length.is_power_of_two(), "fragment length must be a power of 2");
         let num_fragments = self.length() / fragment_length;
 
         let mut fragment_data = (0..num_fragments).map(|_| Vec::new()).collect::<Vec<_>>();

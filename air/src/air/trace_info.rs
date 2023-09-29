@@ -181,10 +181,7 @@ impl TraceLayout {
         aux_rands: [usize; NUM_AUX_SEGMENTS],
     ) -> Self {
         // validate trace segment widths
-        assert!(
-            main_width > 0,
-            "main trace segment must consist of at least one column"
-        );
+        assert!(main_width > 0, "main trace segment must consist of at least one column");
         let full_width = main_width + aux_widths.iter().sum::<usize>();
         assert!(
             full_width <= TraceInfo::MAX_TRACE_WIDTH,
@@ -300,10 +297,7 @@ impl Serializable for TraceLayout {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_u8(self.main_segment_width as u8);
         for &w in self.aux_segment_widths.iter() {
-            debug_assert!(
-                w <= u8::MAX as usize,
-                "aux segment width does not fit into u8 value"
-            );
+            debug_assert!(w <= u8::MAX as usize, "aux segment width does not fit into u8 value");
             target.write_u8(w as u8);
         }
         for &rc in self.aux_segment_rands.iter() {
@@ -410,11 +404,8 @@ mod tests {
         let expected = u32::from_le_bytes([aux_rands, aux_width, num_aux_segments, main_width]);
         let expected = vec![BaseElement::from(expected)];
 
-        let layout = TraceLayout::new(
-            main_width as usize,
-            [aux_width as usize],
-            [aux_rands as usize],
-        );
+        let layout =
+            TraceLayout::new(main_width as usize, [aux_width as usize], [aux_rands as usize]);
         assert_eq!(expected, layout.to_elements());
     }
 }

@@ -37,10 +37,7 @@ impl fmt::Display for MerkleTreeError {
                 )
             }
             Self::NumberOfLeavesNotPowerOfTwo(num_leaves) => {
-                write!(
-                    f,
-                    "number of leaves must be a power of two, but {num_leaves} were provided"
-                )
+                write!(f, "number of leaves must be a power of two, but {num_leaves} were provided")
             }
             Self::LeafIndexOutOfBounds(expected, actual) => {
                 write!(f, "a leaf index cannot exceed {expected}, but was {actual}")
@@ -81,10 +78,7 @@ impl fmt::Display for RandomCoinError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::FailedToDrawFieldElement(num_tries) => {
-                write!(
-                    f,
-                    "failed to generate a valid field element after {num_tries} tries"
-                )
+                write!(f, "failed to generate a valid field element after {num_tries} tries")
             }
             Self::FailedToDrawIntegers(num_expected, num_actual, num_tries) => {
                 write!(

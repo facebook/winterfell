@@ -268,11 +268,8 @@ mod tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
         );
-        let layout = TraceLayout::new(
-            main_width as usize,
-            [aux_width as usize],
-            [aux_rands as usize],
-        );
+        let layout =
+            TraceLayout::new(main_width as usize, [aux_width as usize], [aux_rands as usize]);
         let trace_info = TraceInfo::new_multi_segment(layout, trace_length, vec![]);
         let context = Context::new::<BaseElement>(&trace_info, options);
         assert_eq!(expected, context.to_elements());

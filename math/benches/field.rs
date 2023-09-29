@@ -191,14 +191,7 @@ pub fn array_ops<E: FieldElement, M: Measurement>(group: &mut BenchmarkGroup<M>,
 pub fn batch_ops<E: FieldElement, M: Measurement>(group: &mut BenchmarkGroup<M>, extension: &str) {
     group.bench_function(format!("{extension}/batch/add"), |b| {
         b.iter_batched(
-            || {
-                (
-                    rand_value::<E>(),
-                    rand_value::<E>(),
-                    rand_value::<E>(),
-                    rand_value::<E>(),
-                )
-            },
+            || (rand_value::<E>(), rand_value::<E>(), rand_value::<E>(), rand_value::<E>()),
             |(mut a, mut b, mut c, mut d)| {
                 for _ in 0..25 {
                     let t0 = a + b;
@@ -219,14 +212,7 @@ pub fn batch_ops<E: FieldElement, M: Measurement>(group: &mut BenchmarkGroup<M>,
 
     group.bench_function(format!("{extension}/batch/sub"), |b| {
         b.iter_batched(
-            || {
-                (
-                    rand_value::<E>(),
-                    rand_value::<E>(),
-                    rand_value::<E>(),
-                    rand_value::<E>(),
-                )
-            },
+            || (rand_value::<E>(), rand_value::<E>(), rand_value::<E>(), rand_value::<E>()),
             |(mut a, mut b, mut c, mut d)| {
                 for _ in 0..25 {
                     let t0 = a - b;
@@ -247,14 +233,7 @@ pub fn batch_ops<E: FieldElement, M: Measurement>(group: &mut BenchmarkGroup<M>,
 
     group.bench_function(format!("{extension}/batch/mul"), |b| {
         b.iter_batched(
-            || {
-                (
-                    rand_value::<E>(),
-                    rand_value::<E>(),
-                    rand_value::<E>(),
-                    rand_value::<E>(),
-                )
-            },
+            || (rand_value::<E>(), rand_value::<E>(), rand_value::<E>(), rand_value::<E>()),
             |(mut a, mut b, mut c, mut d)| {
                 for _ in 0..25 {
                     let t0 = a * b;

@@ -157,12 +157,8 @@ where
         let next_lde_step = (lde_step + self.blowup()) % self.trace_len();
 
         // copy main trace segment values into the frame
-        frame
-            .current_mut()
-            .copy_from_slice(self.main_segment_lde.row(lde_step));
-        frame
-            .next_mut()
-            .copy_from_slice(self.main_segment_lde.row(next_lde_step));
+        frame.current_mut().copy_from_slice(self.main_segment_lde.row(lde_step));
+        frame.next_mut().copy_from_slice(self.main_segment_lde.row(next_lde_step));
     }
 
     /// Reads current and next rows from the auxiliary trace segment into the specified frame.
@@ -276,10 +272,8 @@ where
 {
     // for each position, get the corresponding row from the trace segment LDE and put all these
     // rows into a single vector
-    let trace_states = positions
-        .iter()
-        .map(|&pos| segment_lde.row(pos).to_vec())
-        .collect::<Vec<_>>();
+    let trace_states =
+        positions.iter().map(|&pos| segment_lde.row(pos).to_vec()).collect::<Vec<_>>();
 
     // build Merkle authentication paths to the leaves specified by positions
     let trace_proof = segment_tree

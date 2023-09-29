@@ -39,18 +39,15 @@ pub fn get_example(
     let (options, hash_fn) = options.to_proof_options(28, 8);
 
     match hash_fn {
-        HashFunction::Blake3_192 => Ok(Box::new(Fib8Example::<Blake3_192>::new(
-            sequence_length,
-            options,
-        ))),
-        HashFunction::Blake3_256 => Ok(Box::new(Fib8Example::<Blake3_256>::new(
-            sequence_length,
-            options,
-        ))),
-        HashFunction::Sha3_256 => Ok(Box::new(Fib8Example::<Sha3_256>::new(
-            sequence_length,
-            options,
-        ))),
+        HashFunction::Blake3_192 => {
+            Ok(Box::new(Fib8Example::<Blake3_192>::new(sequence_length, options)))
+        }
+        HashFunction::Blake3_256 => {
+            Ok(Box::new(Fib8Example::<Blake3_256>::new(sequence_length, options)))
+        }
+        HashFunction::Sha3_256 => {
+            Ok(Box::new(Fib8Example::<Sha3_256>::new(sequence_length, options)))
+        }
         _ => Err("The specified hash function cannot be used with this example.".to_string()),
     }
 }
@@ -64,10 +61,7 @@ pub struct Fib8Example<H: ElementHasher> {
 
 impl<H: ElementHasher> Fib8Example<H> {
     pub fn new(sequence_length: usize, options: ProofOptions) -> Self {
-        assert!(
-            sequence_length.is_power_of_two(),
-            "sequence length must be a power of 2"
-        );
+        assert!(sequence_length.is_power_of_two(), "sequence length must be a power of 2");
 
         // compute Fibonacci sequence
         let now = Instant::now();

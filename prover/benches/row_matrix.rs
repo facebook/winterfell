@@ -73,11 +73,7 @@ struct BenchmarkParams {
 
 impl std::fmt::Display for BenchmarkParams {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "num_poly: {}, blowup_factor: {}",
-            self.num_poly, self.blowup_factor
-        )
+        write!(f, "num_poly: {}, blowup_factor: {}", self.num_poly, self.blowup_factor)
     }
 }
 

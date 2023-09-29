@@ -8,28 +8,19 @@ use winterfell::{FieldExtension, ProofOptions};
 
 #[test]
 fn merkle_test_basic_proof_verification() {
-    let merkle = Box::new(super::MerkleExample::<Blake3_256>::new(
-        7,
-        build_options(false),
-    ));
+    let merkle = Box::new(super::MerkleExample::<Blake3_256>::new(7, build_options(false)));
     crate::tests::test_basic_proof_verification(merkle);
 }
 
 #[test]
 fn merkle_test_basic_proof_verification_extension() {
-    let merkle = Box::new(super::MerkleExample::<Blake3_256>::new(
-        7,
-        build_options(true),
-    ));
+    let merkle = Box::new(super::MerkleExample::<Blake3_256>::new(7, build_options(true)));
     crate::tests::test_basic_proof_verification(merkle);
 }
 
 #[test]
 fn merkle_test_basic_proof_verification_fail() {
-    let merkle = Box::new(super::MerkleExample::<Blake3_256>::new(
-        7,
-        build_options(false),
-    ));
+    let merkle = Box::new(super::MerkleExample::<Blake3_256>::new(7, build_options(false)));
     crate::tests::test_basic_proof_verification_fail(merkle);
 }
 

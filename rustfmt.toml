@@ -1,0 +1,9 @@
+edition = "2021"
+array_width = 80
+attr_fn_like_width = 80
+chain_width = 80
+fn_call_width = 80
+newline_style = "Unix"
+single_line_if_else_max_width = 60
+use_field_init_shorthand = true
+use_try_shorthand = true
