@@ -5,12 +5,6 @@
 
 use super::{ColMatrix, ConstraintDivisor, ProverError, RowMatrix, StarkDomain};
 
-mod boundary;
-use boundary::BoundaryConstraints;
-
-mod periodic_table;
-use periodic_table::PeriodicValueTable;
-
 mod evaluator;
 pub use evaluator::{ConstraintEvaluator, DefaultConstraintEvaluator};
 
@@ -18,7 +12,7 @@ mod composition_poly;
 pub use composition_poly::CompositionPoly;
 
 mod evaluation_table;
-pub use evaluation_table::ConstraintEvaluationTable;
+pub use evaluation_table::{ConstraintEvaluationTable, EvaluationTableFragment};
 
 mod commitment;
 pub use commitment::ConstraintCommitment;

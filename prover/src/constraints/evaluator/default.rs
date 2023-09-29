@@ -4,14 +4,13 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    super::TraceLde, evaluation_table::EvaluationTableFragment, BoundaryConstraints,
-    ConstraintEvaluationTable, PeriodicValueTable, StarkDomain,
+    super::EvaluationTableFragment, BoundaryConstraints, ConstraintEvaluationTable,
+    ConstraintEvaluator, PeriodicValueTable, StarkDomain, TraceLde,
 };
 use air::{
     Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
     TransitionConstraints,
 };
-
 use math::FieldElement;
 use utils::iter_mut;
 
@@ -24,22 +23,19 @@ use utils::{iterators::*, rayon};
 #[cfg(feature = "concurrent")]
 const MIN_CONCURRENT_DOMAIN_SIZE: usize = 8192;
 
-// CONSTRAINT EVALUATOR TRAIT
+// DEFAULT CONSTRAINT EVALUATOR
 // ================================================================================================
 
-pub trait ConstraintEvaluator<'a, E: FieldElement> {
-    type Air: Air<BaseField = E::BaseField>;
-
-    fn evaluate<T: TraceLde<BaseField = E::BaseField, ExtensionField = E>>(
-        self,
-        trace: &T,
-        domain: &'a StarkDomain<E::BaseField>,
-    ) -> ConstraintEvaluationTable<'a, E>;
-}
-
-// CONSTRAINT EVALUATOR DEFAULT IMPLEMENTATION
-// ================================================================================================
-
+/// Default implementation of the [ConstraintEvaluator] trait.
+///
+/// This implementation iterates over all evaluation frames of an extended execution trace and
+/// evaluates constraints over these frames one-by-one. Constraint evaluations for the constraints
+/// in the same domain are merged together using random linear combinations. Thus, the resulting
+/// [ConstraintEvaluationTable] will contain as many columns as there are unique constraint domains.
+///
+/// When `concurrent` feature is enabled, the extended execution trace is split into sets of
+/// sequential evaluation frames (called fragments), and frames in each fragment are evaluated
+/// in separate threads.
 pub struct DefaultConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> {
     air: &'a A,
     boundary_constraints: BoundaryConstraints<E>,
@@ -48,15 +44,14 @@ pub struct DefaultConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A:
     periodic_values: PeriodicValueTable<E::BaseField>,
 }
 
-impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<'a, E>
-    for DefaultConstraintEvaluator<'a, A, E>
+impl<'a, A, E> ConstraintEvaluator<'a, E> for DefaultConstraintEvaluator<'a, A, E>
+where
+    A: Air,
+    E: FieldElement<BaseField = A::BaseField>,
 {
     type Air = A;
 
-    /// Evaluates constraints against the provided extended execution trace. Constraints are
-    /// evaluated over a constraint evaluation domain. This is an optimization because constraint
-    /// evaluation domain can be many times smaller than the full LDE domain.
-    fn evaluate<T: TraceLde<BaseField = E::BaseField, ExtensionField = E>>(
+    fn evaluate<T: TraceLde<E>>(
         self,
         trace: &T,
         domain: &'a StarkDomain<<E as FieldElement>::BaseField>,
@@ -116,7 +111,12 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> ConstraintEvaluator<
         evaluation_table
     }
 }
-impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> DefaultConstraintEvaluator<'a, A, E> {
+
+impl<'a, A, E> DefaultConstraintEvaluator<'a, A, E>
+where
+    A: Air,
+    E: FieldElement<BaseField = A::BaseField>,
+{
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Returns a new evaluator which can be used to evaluate transition and boundary constraints
@@ -154,7 +154,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> DefaultConstraintEva
     /// Evaluates constraints for a single fragment of the evaluation table.
     ///
     /// This evaluates constraints only over the main segment of the execution trace.
-    fn evaluate_fragment_main<T: TraceLde<BaseField = E::BaseField, ExtensionField = E>>(
+    fn evaluate_fragment_main<T: TraceLde<E>>(
         &self,
         trace: &T,
         domain: &StarkDomain<A::BaseField>,
@@ -205,7 +205,7 @@ impl<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> DefaultConstraintEva
     ///
     /// This evaluates constraints only over all segments of the execution trace (i.e. main segment
     /// and all auxiliary segments).
-    fn evaluate_fragment_full<T: TraceLde<BaseField = E::BaseField, ExtensionField = E>>(
+    fn evaluate_fragment_full<T: TraceLde<E>>(
         &self,
         trace: &T,
         domain: &StarkDomain<A::BaseField>,

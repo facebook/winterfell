@@ -65,11 +65,11 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> DefaultTraceLd
     }
 }
 
-impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> TraceLde
-    for DefaultTraceLde<E, H>
+impl<E, H> TraceLde<E> for DefaultTraceLde<E, H>
+where
+    E: FieldElement,
+    H: ElementHasher<BaseField = E::BaseField>,
 {
-    type BaseField = E::BaseField;
-    type ExtensionField = E;
     type HashFn = H;
 
     /// Takes the main trace segment columns as input, interpolates them into polynomials in
@@ -81,12 +81,12 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> TraceLde
     /// segment and the new [DefaultTraceLde].
     fn new(
         trace_info: &TraceInfo,
-        main_trace: &ColMatrix<Self::BaseField>,
-        domain: &StarkDomain<Self::BaseField>,
-    ) -> (TracePolyTable<Self::ExtensionField>, Self) {
+        main_trace: &ColMatrix<E::BaseField>,
+        domain: &StarkDomain<E::BaseField>,
+    ) -> (TracePolyTable<E>, Self) {
         // extend the main execution trace and build a Merkle tree from the extended trace
         let (main_segment_lde, main_segment_tree, main_segment_polys) =
-            build_trace_commitment::<E, Self::BaseField, H>(main_trace, domain);
+            build_trace_commitment::<E, E::BaseField, H>(main_trace, domain);
 
         let trace_poly_table = TracePolyTable::new(main_segment_polys);
         let trace_lde = DefaultTraceLde {
@@ -122,7 +122,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> TraceLde
     fn add_aux_segment(
         &mut self,
         aux_trace: &ColMatrix<E>,
-        domain: &StarkDomain<Self::BaseField>,
+        domain: &StarkDomain<E::BaseField>,
     ) -> (ColMatrix<E>, <Self::HashFn as Hasher>::Digest) {
         // extend the auxiliary trace segment and build a Merkle tree from the extended trace
         let (aux_segment_lde, aux_segment_tree, aux_segment_polys) =
@@ -151,7 +151,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> TraceLde
     fn read_main_trace_frame_into(
         &self,
         lde_step: usize,
-        frame: &mut EvaluationFrame<Self::BaseField>,
+        frame: &mut EvaluationFrame<E::BaseField>,
     ) {
         // at the end of the trace, next state wraps around and we read the first step again
         let next_lde_step = (lde_step + self.blowup()) % self.trace_len();

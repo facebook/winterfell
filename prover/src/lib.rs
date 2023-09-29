@@ -109,8 +109,8 @@ const DEFAULT_SEGMENT_WIDTH: usize = 8;
 /// A STARK prover can be used to generate STARK proofs. The prover contains definitions of a
 /// computation's AIR (specified via [Air](Prover::Air) associated type), execution trace
 /// (specified via [Trace](Prover::Trace) associated type) and hash function to be used (specified
-/// via [HashFn](Prover::HashFn) associated type), and exposes [prove()](Prover::prove) method which can
-/// be used to build STARK proofs for provided execution traces.
+/// via [HashFn](Prover::HashFn) associated type), and exposes [prove()](Prover::prove) method which
+/// can be used to build STARK proofs for provided execution traces.
 ///
 /// Thus, once a prover is defined and instantiated, generating a STARK proof consists of two
 /// steps:
@@ -120,6 +120,12 @@ const DEFAULT_SEGMENT_WIDTH: usize = 8;
 ///
 /// The generated proof is built using protocol parameters defined by the [ProofOptions] struct
 /// return from [Prover::options] method.
+///
+/// To further customize the prover, implementers can specify custom implementations of the
+/// [RandomCoin], [TraceLde], and [ConstraintEvaluator] associated types (default implementations
+/// of these types are provided with the prover). For example, providing custom implementations
+/// of [TraceLde] and/or [ConstraintEvaluator] can be beneficial when some steps of proof
+/// generation can be delegated to non-CPU hardware (e.g., GPUs).
 pub trait Prover {
     /// Base field for the computation described by this prover.
     type BaseField: StarkField + ExtensibleField<2> + ExtensibleField<3>;
@@ -137,11 +143,9 @@ pub trait Prover {
     type RandomCoin: RandomCoin<BaseField = Self::BaseField, Hasher = Self::HashFn>;
 
     /// Trace low-degree extension for building the LDEs of trace segments and their commitments.
-    type TraceLde<E: FieldElement<BaseField = Self::BaseField>>: TraceLde<
-        BaseField = Self::BaseField,
-        ExtensionField = E,
-        HashFn = Self::HashFn,
-    >;
+    type TraceLde<E>: TraceLde<E, HashFn = Self::HashFn>
+    where
+        E: FieldElement<BaseField = Self::BaseField>;
 
     /// Constraints evaluator used to evaluate AIR constraints over the extended execution trace.
     type ConstraintEvaluator<'a, E>: ConstraintEvaluator<'a, E, Air = Self::Air>

@@ -91,10 +91,11 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
         self.evaluations[0].len()
     }
 
-    /// Returns number of columns in this table. The first column always contains the value of
-    /// combined transition constraint evaluations; the remaining columns contain values of
-    /// assertion constraint evaluations combined based on common divisors.
-    #[allow(dead_code)]
+    /// Returns number of columns in this table.
+    ///
+    /// The first column always contains the value of combined transition constraint evaluations;
+    /// the remaining columns contain values of assertion constraint evaluations combined based on
+    /// common divisors.
     pub fn num_columns(&self) -> usize {
         self.evaluations.len()
     }

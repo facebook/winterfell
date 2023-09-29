@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{ColMatrix, EvaluationFrame, FieldElement, StarkField, TracePolyTable};
+use super::{ColMatrix, EvaluationFrame, FieldElement, TracePolyTable};
 use crate::StarkDomain;
 use air::{proof::Queries, TraceInfo, TraceLayout};
 use crypto::{ElementHasher, Hasher};
@@ -21,13 +21,9 @@ pub use default::DefaultTraceLde;
 ///   will always be elements in the base field (even when an extension field is used).
 /// - Auxiliary segments: a list of 0 or more segments for traces generated after the prover
 ///   commits to the first trace segment. Currently, at most 1 auxiliary segment is possible.
-pub trait TraceLde: Sync {
-    /// The base field, used for computation on the main trace segment.
-    type BaseField: StarkField;
-    /// The extension field, used for computation on auxiliary trace segments.
-    type ExtensionField: FieldElement<BaseField = Self::BaseField>;
+pub trait TraceLde<E: FieldElement>: Sync {
     /// The hash function used for building the Merkle tree commitments to trace segment LDEs.
-    type HashFn: ElementHasher<BaseField = Self::BaseField>;
+    type HashFn: ElementHasher<BaseField = E::BaseField>;
 
     /// Takes the main trace segment columns as input, interpolates them into polynomials in
     /// coefficient form, and evaluates the polynomials over the LDE domain.
@@ -36,9 +32,9 @@ pub trait TraceLde: Sync {
     /// and a new [TraceLde] instance from which the LDE and trace commitments can be obtained.
     fn new(
         trace_info: &TraceInfo,
-        main_trace: &ColMatrix<Self::BaseField>,
-        domain: &StarkDomain<Self::BaseField>,
-    ) -> (TracePolyTable<Self::ExtensionField>, Self);
+        main_trace: &ColMatrix<E::BaseField>,
+        domain: &StarkDomain<E::BaseField>,
+    ) -> (TracePolyTable<E>, Self);
 
     /// Returns the commitment to the low-degree extension of the main trace segment.
     fn get_main_trace_commitment(&self) -> <Self::HashFn as Hasher>::Digest;
@@ -57,26 +53,19 @@ pub trait TraceLde: Sync {
     /// - this segment would exceed the number of segments specified by the trace layout.
     fn add_aux_segment(
         &mut self,
-        aux_trace: &ColMatrix<Self::ExtensionField>,
-        domain: &StarkDomain<Self::BaseField>,
-    ) -> (
-        ColMatrix<Self::ExtensionField>,
-        <Self::HashFn as Hasher>::Digest,
-    );
+        aux_trace: &ColMatrix<E>,
+        domain: &StarkDomain<E::BaseField>,
+    ) -> (ColMatrix<E>, <Self::HashFn as Hasher>::Digest);
 
     /// Reads current and next rows from the main trace segment into the specified frame.
     fn read_main_trace_frame_into(
         &self,
         lde_step: usize,
-        frame: &mut EvaluationFrame<Self::BaseField>,
+        frame: &mut EvaluationFrame<E::BaseField>,
     );
 
     /// Reads current and next rows from the auxiliary trace segment into the specified frame.
-    fn read_aux_trace_frame_into(
-        &self,
-        lde_step: usize,
-        frame: &mut EvaluationFrame<Self::ExtensionField>,
-    );
+    fn read_aux_trace_frame_into(&self, lde_step: usize, frame: &mut EvaluationFrame<E>);
 
     /// Returns trace table rows at the specified positions along with Merkle authentication paths
     /// from the commitment root to these rows.
