@@ -32,8 +32,6 @@ pub use table::Table;
 // ================================================================================================
 
 const GRINDING_CONTRIBUTION_FLOOR: u32 = 80;
-
-#[cfg(feature = "std")]
 const MAX_PROXIMITY_PARAMETER: u64 = 1000;
 
 // STARK PROOF
@@ -114,10 +112,6 @@ impl StarkProof {
                 H::COLLISION_RESISTANCE,
             )
         } else {
-            #[cfg(not(feature = "std"))]
-            panic!("proven security level is not available in no_std mode");
-
-            #[cfg(feature = "std")]
             get_proven_security(
                 self.context.options(),
                 self.context.num_modulus_bits(),
@@ -208,7 +202,6 @@ fn get_conjectured_security(
 }
 
 /// Estimates proven security level for the specified proof parameters.
-#[cfg(feature = "std")]
 fn get_proven_security(
     options: &ProofOptions,
     base_field_bits: u32,
@@ -247,7 +240,6 @@ fn get_proven_security(
 
 /// Computes proven security level for the specified proof parameters for a fixed
 /// value of the proximity parameter m in the list-decoding regime.
-#[cfg(feature = "std")]
 fn proven_security_protocol_for_m(
     options: &ProofOptions,
     base_field_bits: u32,
@@ -259,7 +251,7 @@ fn proven_security_protocol_for_m(
     let num_fri_queries = options.num_queries() as f64;
     let m = m as f64;
     let rho = 1.0 / options.blowup_factor() as f64;
-    let alpha = (1.0 + 0.5 / m) * rho.sqrt();
+    let alpha = (1.0 + 0.5 / m) * sqrt(rho);
     let theta = 1.0 - alpha;
     let max_deg = options.blowup_factor() as f64;
 
@@ -270,11 +262,11 @@ fn proven_security_protocol_for_m(
     // This considers only the first term given in eq. 7 in https://eprint.iacr.org/2022/1216.pdf,
     // i.e. 0.5 * (m + 0.5)^7 * n^2 / (rho^1.5.q) as all other terms are negligible in comparison.
     let fri_commit_err_bits = extension_field_bits
-        - ((0.5 * (m + 0.5).powf(7.0) / rho.powf(1.5)) * lde_domain_size.powf(2.0)).log2();
+        - log2((0.5 * powf(m + 0.5, 7.0) / powf(rho, 1.5)) * powf(lde_domain_size, 2.0));
 
     // Compute FRI query-phase soundness error
     let fri_queries_err_bits =
-        options.grinding_factor() as f64 - ((1.0 - theta).powf(num_fri_queries)).log2();
+        options.grinding_factor() as f64 - log2(powf(1.0 - theta, num_fri_queries));
 
     // Combined error for FRI
     let fri_err_bits = cmp::min(fri_commit_err_bits as u64, fri_queries_err_bits as u64);
@@ -298,19 +290,20 @@ fn proven_security_protocol_for_m(
     let rho_plus = (trace_domain_size + 2.0) / lde_domain_size;
     // New proximity parameter m_plus, corresponding to rho_plus, needed to make sure that
     //  alpha < rho_plus.sqrt() * (1 + 1 / (2 * m_plus))
-    let m_plus = (1.0 / (2.0 * (alpha / rho_plus.sqrt() - 1.0))).ceil();
+    let m_plus = ceil(1.0 / (2.0 * (alpha / sqrt(rho_plus) - 1.0)));
 
     // List size
-    let l_plus = (2.0 * m_plus + 1.0) / (2.0 * rho_plus.sqrt());
+    let l_plus = (2.0 * m_plus + 1.0) / (2.0 * sqrt(rho_plus));
 
     // ALI related soundness error. Note that C here is equal to 1 because of our use of
     // linear batching.
-    let ali_err_bits = -l_plus.log2() + extension_field_bits;
+    let ali_err_bits = -log2(l_plus) + extension_field_bits;
 
     // DEEP related soundness error. Note that this uses that the denominator |F| - |D ∪ H|
-    // can be approximated by |F| for all practical domain sizes.
+    // can be approximated by |F| for all practical domain sizes. We also use the blow-up factor
+    // as an upper bound for the maximal constraint degree.
     let deep_err_bits =
-        -(l_plus * (max_deg * (trace_domain_size + 1.0) + (trace_domain_size - 1.0))).log2()
+        -log2(l_plus * (max_deg * (trace_domain_size + 1.0) + (trace_domain_size - 1.0)))
             + extension_field_bits;
 
     let min = cmp::min(cmp::min(fri_err_bits, ali_err_bits as u64), deep_err_bits as u64);
@@ -321,15 +314,57 @@ fn proven_security_protocol_for_m(
     min - 1
 }
 
+// HELPER FUNCTIONS
+// ================================================================================================
+
 /// Computes the largest proximity parameter m needed for Theorem 8
 /// in <https://eprint.iacr.org/2022/1216.pdf> to work.
-#[cfg(feature = "std")]
 fn compute_upper_m(h: u64) -> f64 {
     let h = h as f64;
-    let m_max = (0.25 * h * (1.0 + (1.0 + 2.0 / h).sqrt())).ceil();
+    let m_max = ceil(0.25 * h * (1.0 + sqrt(1.0 + 2.0 / h)));
 
     // We cap the range to 1000 as the optimal m value will be in the lower range of [m_min, m_max]
     // since increasing m too much will lead to a deterioration in the FRI commit soundness making
     // any benefit gained in the FRI query soundess mute.
     cmp::min(m_max as u64, MAX_PROXIMITY_PARAMETER) as f64
+}
+
+#[cfg(feature = "std")]
+pub fn log2(value: f64) -> f64 {
+    value.log2()
+}
+
+#[cfg(not(feature = "std"))]
+pub fn log2(value: f64) -> f64 {
+    libm::log2(value)
+}
+
+#[cfg(feature = "std")]
+pub fn sqrt(value: f64) -> f64 {
+    value.sqrt()
+}
+
+#[cfg(not(feature = "std"))]
+pub fn sqrt(value: f64) -> f64 {
+    libm::sqrt(value)
+}
+
+#[cfg(feature = "std")]
+pub fn powf(value: f64, exp: f64) -> f64 {
+    value.powf(exp)
+}
+
+#[cfg(not(feature = "std"))]
+pub fn powf(value: f64, exp: f64) -> f64 {
+    libm::pow(value, exp)
+}
+
+#[cfg(feature = "std")]
+pub fn ceil(value: f64) -> f64 {
+    value.ceil()
+}
+
+#[cfg(not(feature = "std"))]
+pub fn ceil(value: f64) -> f64 {
+    libm::ceil(value)
 }
