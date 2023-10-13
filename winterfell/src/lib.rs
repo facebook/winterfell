@@ -527,10 +527,11 @@
 //! // Verify the proof. The number of steps and options are encoded in the proof itself,
 //! // so we don't need to pass them explicitly to the verifier.
 //! let pub_inputs = PublicInputs { start, result };
+//! let acceptable_opt = winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
 //! assert!(winterfell::verify::<WorkAir,
 //!                              Blake3_256<BaseElement>,
 //!                              DefaultRandomCoin<Blake3_256<BaseElement>>
-//!                             >(proof, pub_inputs).is_ok());
+//!                             >(proof, pub_inputs, &acceptable_opt).is_ok());
 //! ```
 //!
 //! That's all there is to it!
@@ -567,4 +568,4 @@ pub use prover::{
     StarkProof, Trace, TraceInfo, TraceLayout, TraceLde, TraceTable, TraceTableFragment,
     TransitionConstraintDegree,
 };
-pub use verifier::{verify, VerifierError};
+pub use verifier::{verify, AcceptableOptions, VerifierError};

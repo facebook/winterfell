@@ -137,7 +137,13 @@ where
         let pub_inputs = PublicInputs {
             tree_root: self.tree_root.to_elements(),
         };
-        winterfell::verify::<MerkleAir, H, DefaultRandomCoin<H>>(proof, pub_inputs)
+        let acceptable_options =
+            winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
+        winterfell::verify::<MerkleAir, H, DefaultRandomCoin<H>>(
+            proof,
+            pub_inputs,
+            &acceptable_options,
+        )
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
@@ -145,7 +151,13 @@ where
         let pub_inputs = PublicInputs {
             tree_root: [tree_root[1], tree_root[0]],
         };
-        winterfell::verify::<MerkleAir, H, DefaultRandomCoin<H>>(proof, pub_inputs)
+        let acceptable_options =
+            winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
+        winterfell::verify::<MerkleAir, H, DefaultRandomCoin<H>>(
+            proof,
+            pub_inputs,
+            &acceptable_options,
+        )
     }
 }
 

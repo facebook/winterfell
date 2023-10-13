@@ -146,7 +146,13 @@ where
             pub_keys: self.pub_keys.clone(),
             messages: self.messages.clone(),
         };
-        winterfell::verify::<LamportAggregateAir, H, DefaultRandomCoin<H>>(proof, pub_inputs)
+        let acceptable_options =
+            winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
+        winterfell::verify::<LamportAggregateAir, H, DefaultRandomCoin<H>>(
+            proof,
+            pub_inputs,
+            &acceptable_options,
+        )
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
@@ -156,6 +162,12 @@ where
             pub_keys,
             messages: self.messages.clone(),
         };
-        winterfell::verify::<LamportAggregateAir, H, DefaultRandomCoin<H>>(proof, pub_inputs)
+        let acceptable_options =
+            winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
+        winterfell::verify::<LamportAggregateAir, H, DefaultRandomCoin<H>>(
+            proof,
+            pub_inputs,
+            &acceptable_options,
+        )
     }
 }
