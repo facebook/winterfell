@@ -22,6 +22,7 @@ std = ["crypto/std", "fri/std", "math/std", "utils/std"]
 [dependencies]
 crypto = { version = "0.6", path = "../crypto", package = "winter-crypto", default-features = false }
 fri = { version = "0.6", path = "../fri", package = "winter-fri", default-features = false }
+libm = "0.2.8"
 math = { version = "0.6", path = "../math", package = "winter-math", default-features = false }
 utils = { version = "0.6", path = "../utils/core", package = "winter-utils", default-features = false }
 
