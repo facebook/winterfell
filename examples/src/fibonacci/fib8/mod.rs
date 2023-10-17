@@ -115,13 +115,22 @@ where
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {
-        winterfell::verify::<Fib8Air, H, DefaultRandomCoin<H>>(proof, self.result)
+        let acceptable_options =
+            winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
+        winterfell::verify::<Fib8Air, H, DefaultRandomCoin<H>>(
+            proof,
+            self.result,
+            &acceptable_options,
+        )
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
+        let acceptable_options =
+            winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
         winterfell::verify::<Fib8Air, H, DefaultRandomCoin<H>>(
             proof,
             self.result + BaseElement::ONE,
+            &acceptable_options,
         )
     }
 }

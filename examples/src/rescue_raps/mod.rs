@@ -138,14 +138,26 @@ where
         let pub_inputs = PublicInputs {
             result: self.result,
         };
-        winterfell::verify::<RescueRapsAir, H, DefaultRandomCoin<H>>(proof, pub_inputs)
+        let acceptable_options =
+            winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
+        winterfell::verify::<RescueRapsAir, H, DefaultRandomCoin<H>>(
+            proof,
+            pub_inputs,
+            &acceptable_options,
+        )
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
         let pub_inputs = PublicInputs {
             result: [self.result[1], self.result[0]],
         };
-        winterfell::verify::<RescueRapsAir, H, DefaultRandomCoin<H>>(proof, pub_inputs)
+        let acceptable_options =
+            winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
+        winterfell::verify::<RescueRapsAir, H, DefaultRandomCoin<H>>(
+            proof,
+            pub_inputs,
+            &acceptable_options,
+        )
     }
 }
 

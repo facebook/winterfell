@@ -46,11 +46,12 @@ use math::{
 };
 
 pub use utils::{
-    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
+    collections::Vec, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+    SliceReader,
 };
 
 pub use crypto;
-use crypto::{ElementHasher, RandomCoin};
+use crypto::{ElementHasher, Hasher, RandomCoin};
 
 use fri::FriVerifier;
 
@@ -70,25 +71,31 @@ pub use errors::VerifierError;
 // ================================================================================================
 /// Verifies that the specified computation was executed correctly against the specified inputs.
 ///
-/// Specifically, for a computation specified by `AIR` and `HashFn` type parameter, verifies that the provided
-/// `proof` attests to the correct execution of the computation against public inputs specified
-/// by `pub_inputs`. If the verification is successful, `Ok(())` is returned.
+/// Specifically, for a computation specified by `AIR` and `HashFn` type parameter, verifies that 
+/// the provided `proof` attests to the correct execution of the computation against public inputs
+/// specified by `pub_inputs`. If the verification is successful, `Ok(())` is returned.
 ///
 /// # Errors
 /// Returns an error if combination of the provided proof and public inputs does not attest to
 /// a correct execution of the computation. This could happen for many various reasons, including:
 /// - The specified proof was generated for a different computation.
 /// - The specified proof was generated for this computation but for different public inputs.
+/// - The specified proof was generated with parameters not providing an acceptable security level.
 #[rustfmt::skip]
 pub fn verify<AIR, HashFn, RandCoin>(
     proof: StarkProof,
     pub_inputs: AIR::PublicInputs,
+    acceptable_options: &AcceptableOptions,
 ) -> Result<(), VerifierError> 
 where 
     AIR: Air, 
     HashFn: ElementHasher<BaseField = AIR::BaseField>,
     RandCoin: RandomCoin<BaseField = AIR::BaseField, Hasher = HashFn>,
 {
+    // check that `proof` was generated with an acceptable set of parameters from the point of view
+    // of the verifier
+    acceptable_options.validate::<HashFn>(&proof)?;
+
     // build a seed for the public coin; the initial seed is a hash of the proof context and the
     // public inputs, but as the protocol progresses, the coin will be reseeded with the info
     // received from the prover
@@ -286,4 +293,49 @@ where
     fri_verifier
         .verify(&mut channel, &deep_evaluations, &query_positions)
         .map_err(VerifierError::FriVerificationFailed)
+}
+
+// ACCEPTABLE OPTIONS
+// ================================================================================================
+// Specifies either the minimal, conjectured or proven, security level or a set of
+// `ProofOptions` that are acceptable by the verification procedure.
+pub enum AcceptableOptions {
+    /// Minimal acceptable conjectured security level
+    MinConjecturedSecurity(u32),
+    /// Minimal acceptable proven security level
+    MinProvenSecurity(u32),
+    /// Set of acceptable proof parameters
+    OptionSet(Vec<ProofOptions>),
+}
+
+impl AcceptableOptions {
+    /// Checks that a proof was generated using an acceptable set of parameters.
+    pub fn validate<H: Hasher>(&self, proof: &StarkProof) -> Result<(), VerifierError> {
+        match self {
+            AcceptableOptions::MinConjecturedSecurity(minimal_security) => {
+                let proof_security = proof.security_level::<H>(true);
+                if proof_security < *minimal_security {
+                    return Err(VerifierError::InsufficientConjecturedSecurity(
+                        *minimal_security,
+                        proof_security,
+                    ));
+                }
+            }
+            AcceptableOptions::MinProvenSecurity(minimal_security) => {
+                let proof_security = proof.security_level::<H>(false);
+                if proof_security < *minimal_security {
+                    return Err(VerifierError::InsufficientProvenSecurity(
+                        *minimal_security,
+                        proof_security,
+                    ));
+                }
+            }
+            AcceptableOptions::OptionSet(options) => {
+                if !options.iter().any(|opt| opt == proof.options()) {
+                    return Err(VerifierError::UnacceptableProofOptions);
+                }
+            }
+        }
+        Ok(())
+    }
 }

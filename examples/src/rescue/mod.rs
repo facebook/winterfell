@@ -126,7 +126,13 @@ where
             seed: self.seed,
             result: self.result,
         };
-        winterfell::verify::<RescueAir, H, DefaultRandomCoin<H>>(proof, pub_inputs)
+        let acceptable_options =
+            winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
+        winterfell::verify::<RescueAir, H, DefaultRandomCoin<H>>(
+            proof,
+            pub_inputs,
+            &acceptable_options,
+        )
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
@@ -134,7 +140,13 @@ where
             seed: self.seed,
             result: [self.result[0], self.result[1] + BaseElement::ONE],
         };
-        winterfell::verify::<RescueAir, H, DefaultRandomCoin<H>>(proof, pub_inputs)
+        let acceptable_options =
+            winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
+        winterfell::verify::<RescueAir, H, DefaultRandomCoin<H>>(
+            proof,
+            pub_inputs,
+            &acceptable_options,
+        )
     }
 }
 

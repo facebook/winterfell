@@ -41,6 +41,17 @@ pub enum VerifierError {
     /// constraint evaluation queries do not represent a polynomial of the degree expected by the
     /// verifier.
     FriVerificationFailed(fri::VerifierError),
+    /// This error occurs when the parameters, that were used to generate the proof, do not provide
+    /// a conjectured security level greater than or equal to the conjectured security level
+    /// expected by the verifier.
+    InsufficientConjecturedSecurity(u32, u32),
+    /// This error occurs when the parameters, that were used to generate the proof, do not provide
+    /// a proven security level greater than or equal to the proven security level expected by
+    /// the verifier.
+    InsufficientProvenSecurity(u32, u32),
+    /// This error occurs when the parameters, that were used to generate the proof, do not match
+    /// any of the set of parameters expected by the verifier.
+    UnacceptableProofOptions,
 }
 
 impl fmt::Display for VerifierError {
@@ -74,6 +85,13 @@ impl fmt::Display for VerifierError {
             Self::FriVerificationFailed(err) => {
                 write!(f, "verification of low-degree proof failed: {err}")
             }
+            Self::InsufficientConjecturedSecurity(minimal_security, proof_security)=> {
+                write!(f, "insufficient proof security level: expected at least {minimal_security} bits of conjectured security, but was {proof_security} bits")
+            }
+            Self::InsufficientProvenSecurity(minimal_security, proof_security)=> {
+                write!(f, "insufficient proof security level: expected at least {minimal_security} bits of proven security, but was {proof_security} bits")
+            }
+            Self::UnacceptableProofOptions => {write!(f, "invalid proof options: security parameters do not match the acceptable parameter set")}
         }
     }
 }
