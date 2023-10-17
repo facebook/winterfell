@@ -47,11 +47,11 @@ pub trait RandomCoin: Sync {
     /// PRNG.
     fn draw<E: FieldElement<BaseField = Self::BaseField>>(&mut self) -> Result<E, RandomCoinError>;
 
-    /// Returns a vector of unique integers selected from the range [0, domain_size) after it reseeds
-    /// the coin with a nonce.
+    /// Returns a vector of randomly selected integers from the range [0, domain_size) after it 
+    /// reseeds the coin with a nonce.
     ///
     /// # Errors
-    /// Returns an error if the specified number of unique integers could not be generated
+    /// Returns an error if the specified number of random integers could not be generated
     /// after 1000 calls to the PRNG.
     ///
     /// # Panics
