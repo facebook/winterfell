@@ -17,8 +17,6 @@ pub enum MerkleTreeError {
     NumberOfLeavesNotPowerOfTwo(usize),
     /// A leaf index was greater than or equal to the number of leaves in the tree.
     LeafIndexOutOfBounds(usize, usize),
-    /// A leaf index was included more than once in the list of indexes for a batch proof.
-    DuplicateLeafIndex,
     /// No leaf indexes were provided for a batch Merkle proof.
     TooFewLeafIndexes,
     /// Too many leaf index were provided for a batch Merkle proof.
@@ -41,9 +39,6 @@ impl fmt::Display for MerkleTreeError {
             }
             Self::LeafIndexOutOfBounds(expected, actual) => {
                 write!(f, "a leaf index cannot exceed {expected}, but was {actual}")
-            }
-            Self::DuplicateLeafIndex => {
-                write!(f, "repeating indexes detected")
             }
             Self::TooFewLeafIndexes => {
                 write!(f, "at least one leaf index must be provided")

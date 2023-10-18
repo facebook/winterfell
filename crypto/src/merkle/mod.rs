@@ -214,9 +214,12 @@ impl<H: Hasher> MerkleTree<H> {
         if indexes.len() > proofs::MAX_PATHS {
             return Err(MerkleTreeError::TooManyLeafIndexes(proofs::MAX_PATHS, indexes.len()));
         }
+        let mut indexes = indexes.to_vec();
+        indexes.sort_unstable();
+        indexes.dedup();
 
-        let index_map = map_indexes(indexes, self.depth())?;
-        let indexes = normalize_indexes(indexes);
+        let index_map = map_indexes(&indexes, self.depth())?;
+        let indexes = normalize_indexes(&indexes);
         let mut leaves = vec![H::Digest::default(); index_map.len()];
         let mut nodes: Vec<Vec<H::Digest>> = Vec::with_capacity(indexes.len());
 
@@ -369,10 +372,6 @@ fn map_indexes(
         if index >= num_leaves {
             return Err(MerkleTreeError::LeafIndexOutOfBounds(num_leaves, index));
         }
-    }
-
-    if indexes.len() != map.len() {
-        return Err(MerkleTreeError::DuplicateLeafIndex);
     }
 
     Ok(map)

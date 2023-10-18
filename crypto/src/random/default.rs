@@ -182,10 +182,8 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRando
     ///
     /// assert_eq!(num_values, values.len());
     ///
-    /// let mut value_set = HashSet::new();
     /// for value in values {
     ///     assert!(value < domain_size);
-    ///     assert!(value_set.insert(value));
     /// }
     /// ```
     fn draw_integers(
@@ -204,7 +202,7 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRando
         // determine how many bits are needed to represent valid values in the domain
         let v_mask = (domain_size - 1) as u64;
 
-        // draw values from PRNG until we get as many unique values as specified by num_queries
+        // draw values from PRNG until we get as many values as specified by num_queries
         let mut values = Vec::new();
         for _ in 0..1000 {
             // get the next pseudo-random value and read the first 8 bytes from it
