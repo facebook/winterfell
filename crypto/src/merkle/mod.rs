@@ -206,7 +206,6 @@ impl<H: Hasher> MerkleTree<H> {
     /// * Number of provided indexes is greater than 255.
     /// * Any of the provided indexes are greater than or equal to the number of leaves in the
     ///   tree.
-    /// * List of indexes contains duplicates.
     pub fn prove_batch(&self, indexes: &[usize]) -> Result<BatchMerkleProof<H>, MerkleTreeError> {
         if indexes.is_empty() {
             return Err(MerkleTreeError::TooFewLeafIndexes);
@@ -214,13 +213,10 @@ impl<H: Hasher> MerkleTree<H> {
         if indexes.len() > proofs::MAX_PATHS {
             return Err(MerkleTreeError::TooManyLeafIndexes(proofs::MAX_PATHS, indexes.len()));
         }
-        let mut indexes = indexes.to_vec();
-        indexes.sort_unstable();
-        indexes.dedup();
 
-        let index_map = map_indexes(&indexes, self.depth())?;
-        let indexes = normalize_indexes(&indexes);
-        let mut leaves = vec![H::Digest::default(); index_map.len()];
+        let index_map = map_indexes(indexes, self.depth())?;
+        let mut leaves = vec![H::Digest::default(); indexes.len()];
+        let indexes = normalize_indexes(indexes);
         let mut nodes: Vec<Vec<H::Digest>> = Vec::with_capacity(indexes.len());
 
         // populate the proof with leaf node values
@@ -311,7 +307,6 @@ impl<H: Hasher> MerkleTree<H> {
     /// * Number of provided indexes is greater than 255.
     /// * Any of the specified `indexes` is greater than or equal to the number of leaves in the
     ///   tree from which the batch proof was generated.
-    /// * List of indexes contains duplicates.
     /// * Any of the paths in the batch proof does not resolve to the specified `root`.
     pub fn verify_batch(
         root: &H::Digest,

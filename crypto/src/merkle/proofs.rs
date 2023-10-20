@@ -118,7 +118,6 @@ impl<H: Hasher> BatchMerkleProof<H> {
     /// * Number of provided indexes is greater than 255.
     /// * Any of the specified `indexes` is greater than or equal to the number of leaves in the
     ///   tree for which this batch proof was generated.
-    /// * List of indexes contains duplicates.
     /// * The proof does not resolve to a single root.
     pub fn get_root(&self, indexes: &[usize]) -> Result<H::Digest, MerkleTreeError> {
         if indexes.is_empty() {
