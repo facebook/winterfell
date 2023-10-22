@@ -150,7 +150,7 @@
 //! ```no_run
 //! use winterfell::{
 //!     math::{fields::f128::BaseElement, FieldElement, ToElements},
-//!     Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ProofOptions, TraceInfo,
+//!     Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
 //!     TransitionConstraintDegree, crypto::{hashers::Blake3_256, DefaultRandomCoin},
 //! };
 //!
@@ -332,9 +332,10 @@
 //!     }
 //! }
 //!
-//! // When implementing Prover trait we set the `Air` associated type to the AIR of the
+//! // When implementing the Prover trait we set the `Air` associated type to the AIR of the
 //! // computation we defined previously, and set the `Trace` associated type to `TraceTable`
-//! // struct as we don't need to define a custom trace for our computation.
+//! // struct as we don't need to define a custom trace for our computation. For other
+//! // associated types, we'll use default implementation provided by Winterfell.
 //! impl Prover for WorkProver {
 //!     type BaseField = BaseElement;
 //!     type Air = WorkAir;
@@ -342,7 +343,8 @@
 //!     type HashFn = Blake3_256<Self::BaseField>;
 //!     type RandomCoin = DefaultRandomCoin<Self::HashFn>;
 //!     type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
-//!     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> = DefaultConstraintEvaluator<'a, Self::Air, E>;
+//!     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
+//!         DefaultConstraintEvaluator<'a, Self::Air, E>;
 //!     
 //!     // Our public inputs consist of the first and last value in the execution trace.
 //!     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
@@ -357,15 +359,12 @@
 //!         &self.options
 //!     }
 //!     
-//!     fn new_evaluator<'a, E>(
+//!     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
 //!         &self,
 //!         air: &'a Self::Air,
 //!         aux_rand_elements: winterfell::AuxTraceRandElements<E>,
 //!         composition_coefficients: winterfell::ConstraintCompositionCoefficients<E>,
-//!     ) -> Self::ConstraintEvaluator<'a, E>
-//!     where
-//!         E: FieldElement<BaseField = Self::BaseField>,
-//!     {
+//!     ) -> Self::ConstraintEvaluator<'a, E> {
 //!         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
 //!     }
 //! }
@@ -381,9 +380,9 @@
 //! ```
 //! # use winterfell::{
 //! #    math::{fields::f128::BaseElement, FieldElement, ToElements},
-//! #    Air, AirContext, Assertion, ByteWriter, DefaultConstraintEvaluator, DefaultTraceLde, EvaluationFrame, TraceInfo,
-//! #    TransitionConstraintDegree, TraceTable, FieldExtension, Prover, ProofOptions,
-//! #    StarkProof, Trace, crypto::{hashers::Blake3_256, DefaultRandomCoin},
+//! #    Air, AirContext, Assertion, ByteWriter, DefaultConstraintEvaluator, DefaultTraceLde,
+//! #    EvaluationFrame, TraceInfo, TransitionConstraintDegree, TraceTable, FieldExtension,
+//! #    Prover, ProofOptions, StarkProof, Trace, crypto::{hashers::Blake3_256, DefaultRandomCoin},
 //! # };
 //! #
 //! # pub fn build_do_work_trace(start: BaseElement, n: usize) -> TraceTable<BaseElement> {
@@ -473,7 +472,8 @@
 //! #    type HashFn = Blake3_256<Self::BaseField>;
 //! #    type RandomCoin = DefaultRandomCoin<Self::HashFn>;
 //! #    type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
-//! #    type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> = DefaultConstraintEvaluator<'a, Self::Air, E>;
+//! #    type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
+//! #        DefaultConstraintEvaluator<'a, Self::Air, E>;
 //! #
 //! #    fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
 //! #        let last_step = trace.length() - 1;
@@ -487,15 +487,12 @@
 //! #        &self.options
 //! #    }
 //! #
-//! #    fn new_evaluator<'a, E>(
+//! #    fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
 //! #        &self,
 //! #        air: &'a Self::Air,
 //! #        aux_rand_elements: winterfell::AuxTraceRandElements<E>,
 //! #        composition_coefficients: winterfell::ConstraintCompositionCoefficients<E>,
-//! #    ) -> Self::ConstraintEvaluator<'a, E>
-//! #    where
-//! #        E: FieldElement<BaseField = Self::BaseField>,
-//! #    {
+//! #    ) -> Self::ConstraintEvaluator<'a, E> {
 //! #        DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
 //! #    }
 //! #
@@ -524,14 +521,17 @@
 //! let prover = WorkProver::new(options);
 //! let proof = prover.prove(trace).unwrap();
 //!
+//! // The verifier will accept proofs with parameters which guarantee 95 bits or more of
+//! // conjectured security
+//! let min_opts = winterfell::AcceptableOptions::MinConjecturedSecurity(95);
+//!
 //! // Verify the proof. The number of steps and options are encoded in the proof itself,
 //! // so we don't need to pass them explicitly to the verifier.
 //! let pub_inputs = PublicInputs { start, result };
-//! let acceptable_opt = winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
 //! assert!(winterfell::verify::<WorkAir,
 //!                              Blake3_256<BaseElement>,
 //!                              DefaultRandomCoin<Blake3_256<BaseElement>>
-//!                             >(proof, pub_inputs, &acceptable_opt).is_ok());
+//!                             >(proof, pub_inputs, &min_opts).is_ok());
 //! ```
 //!
 //! That's all there is to it!

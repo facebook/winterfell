@@ -16,9 +16,10 @@ The resulting `StarkProof` object can be serialized and sent to a [verifier](../
 Proof generation time is also highly dependent on the specifics of a given computation, but also depends on the capabilities of the machine used to generate the proofs (i.e. on number of CPU cores and memory bandwidth). For some high level benchmarks, see the [performance](..#Performance) section of the root README.
 
 ### Prover
-To define a prover for a computation, you'll need implement the `Prover` trait. This trait specifies the computation's AIR (via the `Air` associated type) and the shape of its execution trace (via the `Trace` associated type). Besides these, a prover must provide implementations for two methods:
+To define a prover for a computation, you'll need implement the `Prover` trait. This trait specifies the computation's AIR (via the `Air` associated type) and the shape of its execution trace (via the `Trace` associated type). The trait also requires specifying several other associated types, but for most of these default implementations provided by Winterfell should be used. Besides these, a prover must provide implementations for three methods:
 
 * `get_pub_inputs()`, which describes how a set of public inputs can be extracted from a given instance of an execution trace. These inputs will need to be shared with the verifier in order for them to verify the proof.
+* `new_evaluator()`, which constructs a new instance of the AIR constraint evaluator. Unless your prover needs to implement specialized optimizations for evaluating constraints, this method can just return a default constraint evaluator provided by Winterfell.
 * `options()`, which defines STARK protocol parameters to be used during proof generation. These parameters include number of queries, blowup factor, grinding factor, hash function to be used during proof generation etc.. Values of these parameters directly inform such metrics as proof generation time, proof size, and proof security level. See [air crate](../air) for more info.
 
 A prover exposes a `prove()` method which can be used to generate a STARK proof using a given execution trace as a witness.
