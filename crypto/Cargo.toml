@@ -33,6 +33,8 @@ std = ["blake3/std", "math/std", "sha3/std", "utils/std"]
 blake3 = { version = "1.3", default-features = false }
 math = { version = "0.6", path = "../math", package = "winter-math", default-features = false }
 sha3 = { version = "0.10", default-features = false }
+twenty-first = "0.19.3"
+rand = "0.8.5"
 utils = { version = "0.6", path = "../utils/core", package = "winter-utils", default-features = false }
 
 [dev-dependencies]
