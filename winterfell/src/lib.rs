@@ -257,7 +257,7 @@
 //! use winterfell::{
 //!     crypto::{hashers::Blake3_256, DefaultRandomCoin},
 //!     math::{fields::f128::BaseElement, FieldElement, ToElements},
-//!     DefaultTraceLde, ProofOptions, Prover, Trace, TraceTable,
+//!     DefaultTraceLde, ProofOptions, Prover, StarkDomain, Trace, TracePolyTable, TraceTable,
 //! };
 //!
 //! # use winterfell::{
@@ -358,7 +358,16 @@
 //!     fn options(&self) -> &ProofOptions {
 //!         &self.options
 //!     }
-//!     
+//!
+//!     fn new_trace_lde<E: FieldElement<BaseField = Self::BaseField>>(
+//!         &self,
+//!         trace_info: &winterfell::TraceInfo,
+//!         main_trace: &winterfell::ColMatrix<Self::BaseField>,
+//!         domain: &StarkDomain<Self::BaseField>,
+//!     ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
+//!         DefaultTraceLde::new(trace_info, main_trace, domain)
+//!     }    
+//!
 //!     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
 //!         &self,
 //!         air: &'a Self::Air,
@@ -379,10 +388,11 @@
 //!
 //! ```
 //! # use winterfell::{
+//! #    crypto::{hashers::Blake3_256, DefaultRandomCoin},
 //! #    math::{fields::f128::BaseElement, FieldElement, ToElements},
 //! #    Air, AirContext, Assertion, ByteWriter, DefaultConstraintEvaluator, DefaultTraceLde,
 //! #    EvaluationFrame, TraceInfo, TransitionConstraintDegree, TraceTable, FieldExtension,
-//! #    Prover, ProofOptions, StarkProof, Trace, crypto::{hashers::Blake3_256, DefaultRandomCoin},
+//! #    Prover, ProofOptions, StarkDomain, StarkProof, Trace, TracePolyTable,
 //! # };
 //! #
 //! # pub fn build_do_work_trace(start: BaseElement, n: usize) -> TraceTable<BaseElement> {
@@ -487,6 +497,15 @@
 //! #        &self.options
 //! #    }
 //! #
+//! #    fn new_trace_lde<E: FieldElement<BaseField = Self::BaseField>>(
+//! #        &self,
+//! #        trace_info: &winterfell::TraceInfo,
+//! #        main_trace: &winterfell::ColMatrix<Self::BaseField>,
+//! #        domain: &StarkDomain<Self::BaseField>,
+//! #    ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
+//! #        DefaultTraceLde::new(trace_info, main_trace, domain)
+//! #    }
+//! #  
 //! #    fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
 //! #        &self,
 //! #        air: &'a Self::Air,
@@ -565,7 +584,7 @@ pub use prover::{
     ConstraintDivisor, ConstraintEvaluator, DeepCompositionCoefficients,
     DefaultConstraintEvaluator, DefaultTraceLde, Deserializable, DeserializationError,
     EvaluationFrame, FieldExtension, ProofOptions, Prover, ProverError, Serializable, SliceReader,
-    StarkProof, Trace, TraceInfo, TraceLayout, TraceLde, TraceTable, TraceTableFragment,
-    TransitionConstraintDegree,
+    StarkDomain, StarkProof, Trace, TraceInfo, TraceLayout, TraceLde, TracePolyTable, TraceTable,
+    TraceTableFragment, TransitionConstraintDegree,
 };
 pub use verifier::{verify, AcceptableOptions, VerifierError};

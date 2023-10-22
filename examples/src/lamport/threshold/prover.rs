@@ -6,8 +6,8 @@
 use super::{
     get_power_series, rescue, AggPublicKey, BaseElement, DefaultConstraintEvaluator,
     DefaultRandomCoin, DefaultTraceLde, ElementHasher, FieldElement, LamportThresholdAir,
-    PhantomData, ProofOptions, Prover, PublicInputs, Signature, StarkField, TraceTable,
-    HASH_CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH, TRACE_WIDTH,
+    PhantomData, ProofOptions, Prover, PublicInputs, Signature, StarkDomain, StarkField,
+    TracePolyTable, TraceTable, HASH_CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH, TRACE_WIDTH,
 };
 use std::collections::HashMap;
 
@@ -151,15 +151,21 @@ where
         &self.options
     }
 
-    fn new_evaluator<'a, E>(
+    fn new_trace_lde<E: FieldElement<BaseField = Self::BaseField>>(
+        &self,
+        trace_info: &winterfell::TraceInfo,
+        main_trace: &winterfell::ColMatrix<Self::BaseField>,
+        domain: &StarkDomain<Self::BaseField>,
+    ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
+        DefaultTraceLde::new(trace_info, main_trace, domain)
+    }
+
+    fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         air: &'a Self::Air,
         aux_rand_elements: winterfell::AuxTraceRandElements<E>,
         composition_coefficients: winterfell::ConstraintCompositionCoefficients<E>,
-    ) -> Self::ConstraintEvaluator<'a, E>
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
+    ) -> Self::ConstraintEvaluator<'a, E> {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
     }
 }

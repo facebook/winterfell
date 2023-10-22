@@ -168,6 +168,20 @@ pub trait Prover {
     /// proof size, and proof security level.
     fn options(&self) -> &ProofOptions;
 
+    /// Takes the main trace segment columns as input, interpolates them into polynomials in
+    /// coefficient form, and evaluates the polynomials over the LDE domain.
+    ///
+    /// Returns a tuple containing a [TracePolyTable] with the trace polynomials for the main trace
+    /// and a new [TraceLde] instance from which the LDE and trace commitments can be obtained.
+    fn new_trace_lde<E>(
+        &self,
+        trace_info: &TraceInfo,
+        main_trace: &ColMatrix<Self::BaseField>,
+        domain: &StarkDomain<Self::BaseField>,
+    ) -> (Self::TraceLde<E>, TracePolyTable<E>)
+    where
+        E: FieldElement<BaseField = Self::BaseField>;
+
     /// Returns a new constraint evaluator which can be used to evaluate transition and boundary
     /// constraints over the extended execution trace.
     fn new_evaluator<'a, E>(
@@ -253,8 +267,8 @@ pub trait Prover {
         );
 
         // extend the main execution trace and build a Merkle tree from the extended trace
-        let (mut trace_polys, mut trace_lde): (TracePolyTable<E>, Self::TraceLde<E>) =
-            TraceLde::new(&trace.get_info(), trace.main_segment(), &domain);
+        let (mut trace_lde, mut trace_polys): (Self::TraceLde<E>, TracePolyTable<E>) =
+            self.new_trace_lde(&trace.get_info(), trace.main_segment(), &domain);
 
         // get the commitment to the main trace segment LDE
         let main_trace_root = trace_lde.get_main_trace_commitment();
@@ -304,6 +318,10 @@ pub trait Prover {
         // mode only because this is a very expensive operation.
         #[cfg(debug_assertions)]
         trace.validate(&air, &aux_trace_segments, &aux_trace_rand_elements);
+
+        // drop the main trace and aux trace segments as they are no longer needed
+        drop(trace);
+        drop(aux_trace_segments);
 
         // 2 ----- evaluate constraints -----------------------------------------------------------
         // evaluate constraints specified by the AIR over the constraint evaluation domain, and
