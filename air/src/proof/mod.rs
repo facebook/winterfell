@@ -111,15 +111,14 @@ impl StarkProof {
             get_conjectured_security(
                 self.context.options(),
                 self.context.num_modulus_bits(),
-                self.trace_length() as u64,
+                self.trace_length(),
                 H::COLLISION_RESISTANCE,
             )
         } else {
             get_proven_security(
                 self.context.options(),
                 self.context.num_modulus_bits(),
-                self.lde_domain_size() as u64,
-                self.trace_length() as u64,
+                self.trace_length(),
                 H::COLLISION_RESISTANCE,
             )
         }
@@ -190,12 +189,12 @@ impl StarkProof {
 fn get_conjectured_security(
     options: &ProofOptions,
     base_field_bits: u32,
-    trace_domain_size: u64,
+    trace_domain_size: usize,
     collision_resistance: u32,
 ) -> u32 {
     // compute max security we can get for a given field size
     let field_size = base_field_bits * options.field_extension().degree();
-    let field_security = field_size - trace_domain_size.trailing_zeros();
+    let field_security = field_size - (trace_domain_size * options.blowup_factor()).ilog2();
 
     // compute security we get by executing multiple query rounds
     let security_per_query = options.blowup_factor().ilog2();
@@ -213,8 +212,7 @@ fn get_conjectured_security(
 fn get_proven_security(
     options: &ProofOptions,
     base_field_bits: u32,
-    lde_domain_size: u64,
-    trace_domain_size: u64,
+    trace_domain_size: usize,
     collision_resistance: u32,
 ) -> u32 {
     let m_min: usize = 3;
@@ -225,7 +223,6 @@ fn get_proven_security(
             proven_security_protocol_for_m(
                 options,
                 base_field_bits,
-                lde_domain_size,
                 trace_domain_size,
                 a as usize,
             )
@@ -238,7 +235,6 @@ fn get_proven_security(
         proven_security_protocol_for_m(
             options,
             base_field_bits,
-            lde_domain_size,
             trace_domain_size,
             m_optimal as usize,
         ),
@@ -251,8 +247,7 @@ fn get_proven_security(
 fn proven_security_protocol_for_m(
     options: &ProofOptions,
     base_field_bits: u32,
-    lde_domain_size: u64,
-    trace_domain_size: u64,
+    trace_domain_size: usize,
     m: usize,
 ) -> u64 {
     let extension_field_bits = (base_field_bits * options.field_extension().degree()) as f64;
@@ -263,7 +258,7 @@ fn proven_security_protocol_for_m(
     let theta = 1.0 - alpha;
     let max_deg = options.blowup_factor() as f64;
 
-    let lde_domain_size = lde_domain_size as f64;
+    let lde_domain_size = (trace_domain_size * options.blowup_factor()) as f64;
     let trace_domain_size = trace_domain_size as f64;
 
     // Computes FRI commit-phase (i.e., pre-query) soundness error.
@@ -327,7 +322,7 @@ fn proven_security_protocol_for_m(
 
 /// Computes the largest proximity parameter m needed for Theorem 8
 /// in <https://eprint.iacr.org/2022/1216.pdf> to work.
-fn compute_upper_m(h: u64) -> f64 {
+fn compute_upper_m(h: usize) -> f64 {
     let h = h as f64;
     let m_max = ceil(0.25 * h * (1.0 + sqrt(1.0 + 2.0 / h)));
 
