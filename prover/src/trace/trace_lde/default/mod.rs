@@ -41,17 +41,47 @@ pub struct DefaultTraceLde<E: FieldElement, H: ElementHasher<BaseField = E::Base
     trace_info: TraceInfo,
 }
 
-#[cfg(test)]
 impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> DefaultTraceLde<E, H> {
+    /// Takes the main trace segment columns as input, interpolates them into polynomials in
+    /// coefficient form, evaluates the polynomials over the LDE domain, commits to the
+    /// polynomial evaluations, and creates a new [DefaultTraceLde] with the LDE of the main trace
+    /// segment and the commitment.
+    ///
+    /// Returns a tuple containing a [TracePolyTable] with the trace polynomials for the main trace
+    /// segment and the new [DefaultTraceLde].
+    pub fn new(
+        trace_info: &TraceInfo,
+        main_trace: &ColMatrix<E::BaseField>,
+        domain: &StarkDomain<E::BaseField>,
+    ) -> (Self, TracePolyTable<E>) {
+        // extend the main execution trace and build a Merkle tree from the extended trace
+        let (main_segment_lde, main_segment_tree, main_segment_polys) =
+            build_trace_commitment::<E, E::BaseField, H>(main_trace, domain);
+
+        let trace_poly_table = TracePolyTable::new(main_segment_polys);
+        let trace_lde = DefaultTraceLde {
+            main_segment_lde,
+            main_segment_tree,
+            aux_segment_ldes: Vec::new(),
+            aux_segment_trees: Vec::new(),
+            blowup: domain.trace_to_lde_blowup(),
+            trace_info: trace_info.clone(),
+        };
+
+        (trace_lde, trace_poly_table)
+    }
+
     // TEST HELPERS
     // --------------------------------------------------------------------------------------------
 
     /// Returns number of columns in the main segment of the execution trace.
+    #[cfg(test)]
     pub fn main_segment_width(&self) -> usize {
         self.main_segment_lde.num_cols()
     }
 
     /// Returns a reference to [Matrix] representing the main trace segment.
+    #[cfg(test)]
     pub fn get_main_segment(&self) -> &RowMatrix<E::BaseField> {
         &self.main_segment_lde
     }
@@ -71,35 +101,6 @@ where
     H: ElementHasher<BaseField = E::BaseField>,
 {
     type HashFn = H;
-
-    /// Takes the main trace segment columns as input, interpolates them into polynomials in
-    /// coefficient form, evaluates the polynomials over the LDE domain, commits to the
-    /// polynomial evaluations, and creates a new [DefaultTraceLde] with the LDE of the main trace
-    /// segment and the commitment.
-    ///
-    /// Returns a tuple containing a [TracePolyTable] with the trace polynomials for the main trace
-    /// segment and the new [DefaultTraceLde].
-    fn new(
-        trace_info: &TraceInfo,
-        main_trace: &ColMatrix<E::BaseField>,
-        domain: &StarkDomain<E::BaseField>,
-    ) -> (TracePolyTable<E>, Self) {
-        // extend the main execution trace and build a Merkle tree from the extended trace
-        let (main_segment_lde, main_segment_tree, main_segment_polys) =
-            build_trace_commitment::<E, E::BaseField, H>(main_trace, domain);
-
-        let trace_poly_table = TracePolyTable::new(main_segment_polys);
-        let trace_lde = DefaultTraceLde {
-            main_segment_lde,
-            main_segment_tree,
-            aux_segment_ldes: Vec::new(),
-            aux_segment_trees: Vec::new(),
-            blowup: domain.trace_to_lde_blowup(),
-            trace_info: trace_info.clone(),
-        };
-
-        (trace_poly_table, trace_lde)
-    }
 
     /// Returns the commitment to the low-degree extension of the main trace segment.
     fn get_main_trace_commitment(&self) -> <Self::HashFn as Hasher>::Digest {

@@ -25,17 +25,6 @@ pub trait TraceLde<E: FieldElement>: Sync {
     /// The hash function used for building the Merkle tree commitments to trace segment LDEs.
     type HashFn: ElementHasher<BaseField = E::BaseField>;
 
-    /// Takes the main trace segment columns as input, interpolates them into polynomials in
-    /// coefficient form, and evaluates the polynomials over the LDE domain.
-    ///
-    /// Returns a tuple containing a [TracePolyTable] with the trace polynomials for the main trace
-    /// and a new [TraceLde] instance from which the LDE and trace commitments can be obtained.
-    fn new(
-        trace_info: &TraceInfo,
-        main_trace: &ColMatrix<E::BaseField>,
-        domain: &StarkDomain<E::BaseField>,
-    ) -> (TracePolyTable<E>, Self);
-
     /// Returns the commitment to the low-degree extension of the main trace segment.
     fn get_main_trace_commitment(&self) -> <Self::HashFn as Hasher>::Digest;
 
