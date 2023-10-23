@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.0 (TBD)
+## 0.7.0 (2023-10-23)
 * [BREAKING] replaced the `TraceLde` struct with a trait (#207).
 * [BREAKING] refactored `RandomCoin` trait (#214).
 * Improved proven security estimation (#215).
