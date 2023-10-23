@@ -264,9 +264,14 @@ where
     // interactive version of the protocol, the verifier sends these query positions to the prover,
     // and the prover responds with decommitments against these positions for trace and constraint
     // composition polynomial evaluations.
-    let query_positions = public_coin
+    let mut query_positions = public_coin
         .draw_integers(air.options().num_queries(), air.lde_domain_size(), pow_nonce)
         .map_err(|_| VerifierError::RandomCoinError)?;
+
+    // remove any potential duplicates from the positions as the prover will send openings only
+    // for unique queries
+    query_positions.sort_unstable();
+    query_positions.dedup();
 
     // read evaluations of trace and constraint composition polynomials at the queried positions;
     // this also checks that the read values are valid against trace and constraint commitments

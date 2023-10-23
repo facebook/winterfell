@@ -153,12 +153,12 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRando
         Err(RandomCoinError::FailedToDrawFieldElement(1000))
     }
 
-    /// Returns a vector of unique integers selected from the range [0, domain_size) after reseeding
+    /// Returns a vector of integers selected from the range [0, domain_size) after reseeding
     /// the PRNG with the specified `nonce` by setting the new seed to hash(`seed` || `nonce`).
     ///
     /// # Errors
-    /// Returns an error if the specified number of unique integers could not be generated
-    /// after 1000 calls to the PRNG.
+    /// Returns an error if the specified number of integers could not be generated after 1000
+    /// calls to the PRNG.
     ///
     /// # Panics
     /// Panics if:
@@ -182,10 +182,8 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRando
     ///
     /// assert_eq!(num_values, values.len());
     ///
-    /// let mut value_set = HashSet::new();
     /// for value in values {
     ///     assert!(value < domain_size);
-    ///     assert!(value_set.insert(value));
     /// }
     /// ```
     fn draw_integers(
@@ -214,9 +212,6 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRando
             // into the specified domain
             let value = (u64::from_le_bytes(bytes) & v_mask) as usize;
 
-            if values.contains(&value) {
-                continue;
-            }
             values.push(value);
             if values.len() == num_values {
                 break;

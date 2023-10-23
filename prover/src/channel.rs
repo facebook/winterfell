@@ -136,13 +136,21 @@ where
     /// Returns a set of positions in the LDE domain against which the evaluations of trace and
     /// constraint composition polynomials should be queried.
     ///
-    /// The positions are drawn from the public coin uniformly at random.
+    /// The positions are drawn from the public coin uniformly at random. Duplicate positions
+    /// are removed from the returned vector.
     pub fn get_query_positions(&mut self) -> Vec<usize> {
         let num_queries = self.context.options().num_queries();
         let lde_domain_size = self.context.lde_domain_size();
-        self.public_coin
+        let mut positions = self
+            .public_coin
             .draw_integers(num_queries, lde_domain_size, self.pow_nonce)
-            .expect("failed to draw query position")
+            .expect("failed to draw query position");
+
+        // remove any duplicate positions from the list
+        positions.sort_unstable();
+        positions.dedup();
+
+        positions
     }
 
     /// Determines a nonce, which when hashed with the current seed of the public coin results
@@ -174,7 +182,10 @@ where
         trace_queries: Vec<Queries>,
         constraint_queries: Queries,
         fri_proof: FriProof,
+        num_query_positions: usize,
     ) -> StarkProof {
+        assert!(num_query_positions <= u8::MAX as usize, "num_query_positions too big");
+
         StarkProof {
             context: self.context,
             commitments: self.commitments,
@@ -183,6 +194,7 @@ where
             constraint_queries,
             fri_proof,
             pow_nonce: self.pow_nonce,
+            num_unique_queries: num_query_positions as u8,
         }
     }
 }
