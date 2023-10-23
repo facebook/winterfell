@@ -52,6 +52,9 @@ const MAX_PROXIMITY_PARAMETER: u64 = 1000;
 pub struct StarkProof {
     /// Basic metadata about the execution of the computation described by this proof.
     pub context: Context,
+    /// Number of unique queries made by the verifier. This will be different from the
+    /// context.options.num_queries if the same position in the domain was queried more than once.
+    pub num_unique_queries: u8,
     /// Commitments made by the prover during the commit phase of the protocol.
     pub commitments: Commitments,
     /// Decommitments of extended execution trace values (for all trace segments) at position
@@ -129,6 +132,7 @@ impl StarkProof {
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut result = Vec::new();
         self.context.write_into(&mut result);
+        result.push(self.num_unique_queries);
         self.commitments.write_into(&mut result);
         self.trace_queries.write_into(&mut result);
         self.constraint_queries.write_into(&mut result);
@@ -148,6 +152,9 @@ impl StarkProof {
         // parse the context
         let context = Context::read_from(&mut source)?;
 
+        // parse the number of unique queries made by the verifier
+        let num_unique_queries = source.read_u8()?;
+
         // parse the commitments
         let commitments = Commitments::read_from(&mut source)?;
 
@@ -161,6 +168,7 @@ impl StarkProof {
         // parse the rest of the proof
         let proof = StarkProof {
             context,
+            num_unique_queries,
             commitments,
             trace_queries,
             constraint_queries: Queries::read_from(&mut source)?,

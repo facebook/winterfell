@@ -51,6 +51,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
     ) -> Result<Self, VerifierError> {
         let StarkProof {
             context,
+            num_unique_queries,
             commitments,
             trace_queries,
             constraint_queries,
@@ -77,8 +78,9 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         // --- parse trace and constraint queries -------------------------------------------------
-        let trace_queries = TraceQueries::new(trace_queries, air)?;
-        let constraint_queries = ConstraintQueries::new(constraint_queries, air)?;
+        let trace_queries = TraceQueries::new(trace_queries, air, num_unique_queries as usize)?;
+        let constraint_queries =
+            ConstraintQueries::new(constraint_queries, air, num_unique_queries as usize)?;
 
         // --- parse FRI proofs -------------------------------------------------------------------
         let fri_num_partitions = fri_proof.num_partitions();
@@ -242,6 +244,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> TraceQueries<E
     pub fn new<A: Air<BaseField = E::BaseField>>(
         mut queries: Vec<Queries>,
         air: &A,
+        num_queries: usize,
     ) -> Result<Self, VerifierError> {
         assert_eq!(
             queries.len(),
@@ -250,8 +253,6 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> TraceQueries<E
             air.trace_layout().num_segments(),
             queries.len()
         );
-
-        let num_queries = air.options().num_queries();
 
         // parse main trace segment queries; parsing also validates that hashes of each table row
         // form the leaves of Merkle authentication paths in the proofs
@@ -318,8 +319,8 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> ConstraintQuer
     pub fn new<A: Air<BaseField = E::BaseField>>(
         queries: Queries,
         air: &A,
+        num_queries: usize,
     ) -> Result<Self, VerifierError> {
-        let num_queries = air.options().num_queries();
         let constraint_frame_width = air.context().num_constraint_composition_columns();
 
         let (query_proofs, evaluations) = queries

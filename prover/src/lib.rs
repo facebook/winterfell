@@ -439,7 +439,7 @@ pub trait Prover {
         let query_positions = channel.get_query_positions();
         #[cfg(feature = "std")]
         debug!(
-            "Determined {} query positions in {} ms",
+            "Determined {} unique query positions in {} ms",
             query_positions.len(),
             now.elapsed().as_millis()
         );
@@ -461,7 +461,12 @@ pub trait Prover {
         let constraint_queries = constraint_commitment.query(&query_positions);
 
         // build the proof object
-        let proof = channel.build_proof(trace_queries, constraint_queries, fri_proof);
+        let proof = channel.build_proof(
+            trace_queries,
+            constraint_queries,
+            fri_proof,
+            query_positions.len(),
+        );
         #[cfg(feature = "std")]
         debug!("Built proof object in {} ms", now.elapsed().as_millis());
 
