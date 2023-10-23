@@ -132,7 +132,7 @@ For more information about arithmetization see [air crate](air#Arithmetization),
 ```Rust
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement, ToElements},
-    Air, AirContext, Assertion, ByteWriter, EvaluationFrame, ProofOptions, TraceInfo,
+    Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
 
@@ -235,14 +235,18 @@ pretty simple and has just a few required methods. Here is how our implementatio
 like:
 ```Rust
 use winterfell::{
+    crypto::{hashers::Blake3_256, DefaultRandomCoin},
     math::{fields::f128::BaseElement, FieldElement},
-    ProofOptions, Prover, Trace, TraceTable
+    DefaultConstraintEvaluator, DefaultTraceLde, ProofOptions, Prover, Trace, TraceTable,
 };
+
+// We'll use BLAKE3 as the hash function during proof generation.
+type Blake3 = Blake3_256<BaseElement>;
 
 // Our prover needs to hold STARK protocol parameters which are specified via ProofOptions
 // struct.
 struct WorkProver {
-    options: ProofOptions
+    options: ProofOptions,
 }
 
 impl WorkProver {
@@ -251,14 +255,19 @@ impl WorkProver {
     }
 }
 
-// When implementing Prover trait we set the `Air` associated type to the AIR of the
+// When implementing the Prover trait we set the `Air` associated type to the AIR of the
 // computation we defined previously, and set the `Trace` associated type to `TraceTable`
-// struct as we don't need to define a custom trace for our computation.
+// struct as we don't need to define a custom trace for our computation. For other
+// associated types, we'll use default implementation provided by Winterfell.
 impl Prover for WorkProver {
     type BaseField = BaseElement;
     type Air = WorkAir;
-    type Trace = TraceTable<Self::BaseField>;
-    type HashFn = Blake3_256<Self::BaseField>;
+    type Trace = TraceTable<BaseElement>;
+    type HashFn = Blake3;
+    type RandomCoin = DefaultRandomCoin<Blake3>;
+    type TraceLde<E: FieldElement<BaseField = BaseElement>> = DefaultTraceLde<E, Blake3>;
+    type ConstraintEvaluator<'a, E: FieldElement<BaseField = BaseElement>> =
+        DefaultConstraintEvaluator<'a, WorkAir, E>;
 
     // Our public inputs consist of the first and last value in the execution trace.
     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
@@ -267,6 +276,16 @@ impl Prover for WorkProver {
             start: trace.get(0, 0),
             result: trace.get(0, last_step),
         }
+    }
+
+    // We'll use the default constraint evaluator to evaluate AIR constraints.
+    fn new_evaluator<'a, E: FieldElement<BaseField = BaseElement>>(
+        &self,
+        air: &'a WorkAir,
+        aux_rand_elements: winterfell::AuxTraceRandElements<E>,
+        composition_coefficients: winterfell::ConstraintCompositionCoefficients<E>,
+    ) -> Self::ConstraintEvaluator<'a, E> {
+        DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
     }
 
     fn options(&self) -> &ProofOptions {
@@ -313,11 +332,23 @@ pub fn prove_work() -> (BaseElement, StarkProof) {
 We can then give this proof (together with the public inputs) to anyone, and they can verify that we did in fact execute the computation and got the claimed result. They can do this like so:
 
 ```Rust
+use winterfell::{
+    crypto::{hashers::Blake3_256, DefaultRandomCoin},
+    math::fields::f128::BaseElement,
+    verify, AcceptableOptions, StarkProof,
+};
+
+type Blake3 = Blake3_256<BaseElement>;
+
 pub fn verify_work(start: BaseElement, result: BaseElement, proof: StarkProof) {
-    // The number of steps and options are encoded in the proof itself, so we
-    // don't need to pass them explicitly to the verifier.
+    // The verifier will accept proofs with parameters which guarantee 95 bits or more of
+    // conjectured security
+    let min_opts = AcceptableOptions::MinConjecturedSecurity(95);
+
+    // The number of steps and options are encoded in the proof itself, so we don't need to
+    // pass them explicitly to the verifier.
     let pub_inputs = PublicInputs { start, result };
-    match winterfell::verify::<WorkAir, Blake3_256<Self::BaseField>>(proof, pub_inputs) {
+    match verify::<WorkAir, Blake3, DefaultRandomCoin<Blake3>>(proof, pub_inputs, &min_opts) {
         Ok(_) => println!("yay! all good!"),
         Err(_) => panic!("something went terribly wrong!"),
     }

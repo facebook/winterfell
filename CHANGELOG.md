@@ -3,7 +3,11 @@
 ## 0.7.0 (TBD)
 * [BREAKING] replaced the `TraceLde` struct with a trait (#207).
 * [BREAKING] refactored `RandomCoin` trait (#214).
+* Improved proven security estimation (#215).
 * [BREAKING] replaced the `ConstraintEvaluator` struct with a trait (#217).
+* Added support for proven security estimation in `no_std` context (#218).
+* [BREAKING] refactored `verify()` function to take `AcceptableOptions` as a parameter (#219).
+* Increased min version of `rustc` to 1.73 (#221).
 
 ## 0.6.5 (2023-08-09) - math crate only
 * Added conditional support for serde on field elements (#209)
