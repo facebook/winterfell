@@ -4,8 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    super::EvaluationTableFragment, BoundaryConstraints, ConstraintEvaluationTable,
-    ConstraintEvaluator, PeriodicValueTable, StarkDomain, TraceLde,
+    super::EvaluationTableFragment, BoundaryConstraints, CompositionPolyTrace,
+    ConstraintEvaluationTable, ConstraintEvaluator, PeriodicValueTable, StarkDomain, TraceLde,
 };
 use air::{
     Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
@@ -29,9 +29,8 @@ const MIN_CONCURRENT_DOMAIN_SIZE: usize = 8192;
 /// Default implementation of the [ConstraintEvaluator] trait.
 ///
 /// This implementation iterates over all evaluation frames of an extended execution trace and
-/// evaluates constraints over these frames one-by-one. Constraint evaluations for the constraints
-/// in the same domain are merged together using random linear combinations. Thus, the resulting
-/// [ConstraintEvaluationTable] will contain as many columns as there are unique constraint domains.
+/// evaluates constraints over these frames one-by-one. Constraint evaluations are merged together
+/// using random linear combinations and in the end, only a single column is returned.
 ///
 /// When `concurrent` feature is enabled, the extended execution trace is split into sets of
 /// sequential evaluation frames (called fragments), and frames in each fragment are evaluated
@@ -44,7 +43,7 @@ pub struct DefaultConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A:
     periodic_values: PeriodicValueTable<E::BaseField>,
 }
 
-impl<'a, A, E> ConstraintEvaluator<'a, E> for DefaultConstraintEvaluator<'a, A, E>
+impl<'a, A, E> ConstraintEvaluator<E> for DefaultConstraintEvaluator<'a, A, E>
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseField>,
@@ -54,8 +53,8 @@ where
     fn evaluate<T: TraceLde<E>>(
         self,
         trace: &T,
-        domain: &'a StarkDomain<<E as FieldElement>::BaseField>,
-    ) -> ConstraintEvaluationTable<'a, E> {
+        domain: &StarkDomain<<E as FieldElement>::BaseField>,
+    ) -> CompositionPolyTrace<E> {
         assert_eq!(
             trace.trace_len(),
             domain.lde_domain_size(),
@@ -108,7 +107,8 @@ where
         #[cfg(debug_assertions)]
         evaluation_table.validate_transition_degrees();
 
-        evaluation_table
+        // combine all evaluations into a single column and return
+        evaluation_table.combine()
     }
 }
 

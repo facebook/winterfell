@@ -3,9 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{CompositionPoly, ConstraintDivisor, ProverError, StarkDomain};
-use math::{batch_inversion, fft, FieldElement, StarkField};
+use super::{CompositionPolyTrace, ConstraintDivisor, StarkDomain};
+use math::{batch_inversion, FieldElement, StarkField};
 use utils::{batch_iter_mut, collections::Vec, iter_mut, uninit_vector};
+
+#[cfg(debug_assertions)]
+use math::fft;
 
 #[cfg(debug_assertions)]
 use air::TransitionConstraints;
@@ -96,6 +99,7 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
     /// The first column always contains the value of combined transition constraint evaluations;
     /// the remaining columns contain values of assertion constraint evaluations combined based on
     /// common divisors.
+    #[allow(dead_code)]
     pub fn num_columns(&self) -> usize {
         self.evaluations.len()
     }
@@ -154,13 +158,9 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
 
     // CONSTRAINT COMPOSITION
     // --------------------------------------------------------------------------------------------
-    /// Divides constraint evaluation columns by their respective divisor (in evaluation form),
-    /// combines the results into a single column, and interpolates this column into a composition
-    /// polynomial in coefficient form.
-    /// `num_cols` is the number of necessary columns (of length `trace_length`) needed to store
-    /// the coefficients of the constraint composition polynomial and is needed by
-    /// `CompositionPoly::new`.
-    pub fn into_poly(self, num_cols: usize) -> Result<CompositionPoly<E>, ProverError> {
+    /// Divides constraint evaluation columns by their respective divisor (in evaluation form) and
+    /// combines the results into a single column.
+    pub fn combine(self) -> CompositionPolyTrace<E> {
         // allocate memory for the combined polynomial
         let mut combined_poly = E::zeroed_vector(self.num_rows());
 
@@ -172,13 +172,7 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
             acc_column(column, divisor, self.domain, &mut combined_poly);
         }
 
-        // at this point, combined_poly contains evaluations of the combined constraint polynomial;
-        // we interpolate this polynomial to transform it into coefficient form.
-        let inv_twiddles = fft::get_inv_twiddles::<E::BaseField>(combined_poly.len());
-        fft::interpolate_poly_with_offset(&mut combined_poly, &inv_twiddles, self.domain.offset());
-
-        let trace_length = self.domain.trace_length();
-        Ok(CompositionPoly::new(combined_poly, trace_length, num_cols))
+        CompositionPolyTrace::new(combined_poly)
     }
 
     // DEBUG HELPERS

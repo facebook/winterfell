@@ -3,37 +3,73 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::ColMatrix;
-use math::{polynom::degree_of, FieldElement};
+use super::{ColMatrix, StarkDomain};
+use math::{fft, polynom::degree_of, FieldElement};
 use utils::collections::Vec;
 
-// COMPOSITION POLYNOMIAL
+// CONSTRAINT COMPOSITION POLYNOMIAL TRACE
+// ================================================================================================
+
+/// Represents merged evaluations of all constraint evaluations.
+pub struct CompositionPolyTrace<E>(Vec<E>);
+
+impl<E: FieldElement> CompositionPolyTrace<E> {
+    /// Returns a new instance of [CompositionPolyTrace] instantiated from the provided evaluations.
+    ///
+    /// # Panics
+    /// Panics if the number of evaluations is not a power of 2.
+    pub fn new(evaluations: Vec<E>) -> Self {
+        assert!(
+            evaluations.len().is_power_of_two(),
+            "length of composition polynomial trace must be a power of 2, but was {}",
+            evaluations.len(),
+        );
+
+        Self(evaluations)
+    }
+
+    /// Returns the number of evaluations in this trace.
+    pub fn num_rows(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Returns the internal vector representing this trace.
+    pub fn into_inner(self) -> Vec<E> {
+        self.0
+    }
+}
+
+// CONSTRAINT COMPOSITION POLYNOMIAL
 // ================================================================================================
 /// Represents a composition polynomial split into columns with each column being of length equal
-/// to trace_length. Thus, for example, if the composition polynomial has degree 2N - 1, where N
-/// is the trace length, it will be stored as two columns of size N (each of degree N - 1).
+/// to trace_length.
+///
+/// For example, if the composition polynomial has degree 2N - 1, where N is the trace length,
+/// it will be stored as two columns of size N (each of degree N - 1).
 pub struct CompositionPoly<E: FieldElement> {
     data: ColMatrix<E>,
 }
 
 impl<E: FieldElement> CompositionPoly<E> {
     /// Returns a new composition polynomial.
-    pub fn new(coefficients: Vec<E>, trace_length: usize, num_cols: usize) -> Self {
+    pub fn new(
+        composition_trace: CompositionPolyTrace<E>,
+        domain: &StarkDomain<E::BaseField>,
+        num_cols: usize,
+    ) -> Self {
         assert!(
-            coefficients.len().is_power_of_two(),
-            "size of composition polynomial must be a power of 2, but was {}",
-            coefficients.len(),
-        );
-        assert!(
-            trace_length.is_power_of_two(),
-            "trace length must be a power of 2, but was {trace_length}"
-        );
-        assert!(
-            trace_length < coefficients.len(),
-            "trace length must be smaller than size of composition polynomial"
+            domain.trace_length() < composition_trace.num_rows(),
+            "trace length must be smaller than length of composition polynomial trace"
         );
 
-        let polys = segment(coefficients, trace_length, num_cols);
+        let mut trace = composition_trace.into_inner();
+
+        // at this point, combined_poly contains evaluations of the combined constraint polynomial;
+        // we interpolate this polynomial to transform it into coefficient form.
+        let inv_twiddles = fft::get_inv_twiddles::<E::BaseField>(trace.len());
+        fft::interpolate_poly_with_offset(&mut trace, &inv_twiddles, domain.offset());
+
+        let polys = segment(trace, domain.trace_length(), num_cols);
 
         CompositionPoly {
             data: ColMatrix::new(polys),
