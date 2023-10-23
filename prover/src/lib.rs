@@ -80,7 +80,8 @@ pub use matrix::{ColMatrix, RowMatrix};
 
 mod constraints;
 pub use constraints::{
-    CompositionPoly, ConstraintCommitment, ConstraintEvaluator, DefaultConstraintEvaluator,
+    CompositionPoly, CompositionPolyTrace, ConstraintCommitment, ConstraintEvaluator,
+    DefaultConstraintEvaluator,
 };
 
 mod composer;
@@ -148,7 +149,7 @@ pub trait Prover {
         E: FieldElement<BaseField = Self::BaseField>;
 
     /// Constraints evaluator used to evaluate AIR constraints over the extended execution trace.
-    type ConstraintEvaluator<'a, E>: ConstraintEvaluator<'a, E, Air = Self::Air>
+    type ConstraintEvaluator<'a, E>: ConstraintEvaluator<E, Air = Self::Air>
     where
         E: FieldElement<BaseField = Self::BaseField>;
 
@@ -326,45 +327,28 @@ pub trait Prover {
         // 2 ----- evaluate constraints -----------------------------------------------------------
         // evaluate constraints specified by the AIR over the constraint evaluation domain, and
         // compute random linear combinations of these evaluations using coefficients drawn from
-        // the channel; this step evaluates only constraint numerators, thus, only constraints with
-        // identical denominators are merged together. the results are saved into a constraint
-        // evaluation table where each column contains merged evaluations of constraints with
-        // identical denominators.
+        // the channel
         #[cfg(feature = "std")]
         let now = Instant::now();
         let constraint_coeffs = channel.get_constraint_composition_coeffs();
         let evaluator = self.new_evaluator(&air, aux_trace_rand_elements, constraint_coeffs);
-        let constraint_evaluations = evaluator.evaluate(&trace_lde, &domain);
+        let composition_poly_trace = evaluator.evaluate(&trace_lde, &domain);
         #[cfg(feature = "std")]
         debug!(
             "Evaluated constraints over domain of 2^{} elements in {} ms",
-            constraint_evaluations.num_rows().ilog2(),
+            composition_poly_trace.num_rows().ilog2(),
             now.elapsed().as_millis()
         );
 
         // 3 ----- commit to constraint evaluations -----------------------------------------------
 
-        // first, build constraint composition polynomial from the constraint evaluation table:
-        // - divide all constraint evaluation columns by their respective divisors
-        // - combine them into a single column of evaluations,
-        // - interpolate the column into a polynomial in coefficient form
-        // - "break" the polynomial into a set of column polynomials each of degree equal to
-        //   trace_length - 1
-        #[cfg(feature = "std")]
-        let now = Instant::now();
-        let composition_poly =
-            constraint_evaluations.into_poly(air.context().num_constraint_composition_columns())?;
-        #[cfg(feature = "std")]
-        debug!(
-            "Converted constraint evaluations into {} composition polynomial columns of degree {} in {} ms",
-            composition_poly.num_columns(),
-            composition_poly.column_degree(),
-            now.elapsed().as_millis()
+        // first, build a commitment to the evaluations of the constraint composition polynomial
+        // columns
+        let (constraint_commitment, composition_poly) = self.build_constraint_commitment::<E>(
+            composition_poly_trace,
+            air.context().num_constraint_composition_columns(),
+            &domain,
         );
-
-        // then, build a commitment to the evaluations of the composition polynomial columns
-        let constraint_commitment =
-            self.build_constraint_commitment::<E>(&composition_poly, &domain);
 
         // then, commit to the evaluations of constraints by writing the root of the constraint
         // Merkle tree into the channel
@@ -484,23 +468,42 @@ pub trait Prover {
         Ok(proof)
     }
 
-    /// Evaluates constraint composition polynomial over the LDE domain and builds a commitment
-    /// to these evaluations.
+    /// Extends constraint composition polynomial over the LDE domain and builds a commitment to
+    /// its evaluations.
     ///
-    /// The evaluation is done by evaluating each composition polynomial column over the LDE
-    /// domain.
+    /// The extension is done by first interpolating the evaluations of the polynomial so that we
+    /// get the composition polynomial in coefficient form; then breaking the polynomial into
+    /// columns each of size equal to trace length, and finally evaluating each composition
+    /// polynomial column over the LDE domain.
     ///
     /// The commitment is computed by hashing each row in the evaluation matrix, and then building
     /// a Merkle tree from the resulting hashes.
     fn build_constraint_commitment<E>(
         &self,
-        composition_poly: &CompositionPoly<E>,
+        composition_poly_trace: CompositionPolyTrace<E>,
+        num_trace_poly_columns: usize,
         domain: &StarkDomain<Self::BaseField>,
-    ) -> ConstraintCommitment<E, Self::HashFn>
+    ) -> (ConstraintCommitment<E, Self::HashFn>, CompositionPoly<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
-        // evaluate composition polynomial columns over the LDE domain
+        // first, build constraint composition polynomial from its trace as follows:
+        // - interpolate the trace into a polynomial in coefficient form
+        // - "break" the polynomial into a set of column polynomials each of degree equal to
+        //   trace_length - 1
+        #[cfg(feature = "std")]
+        let now = Instant::now();
+        let composition_poly =
+            CompositionPoly::new(composition_poly_trace, domain, num_trace_poly_columns);
+        #[cfg(feature = "std")]
+        debug!(
+            "Converted constraint evaluations into {} composition polynomial columns of degree {} in {} ms",
+            composition_poly.num_columns(),
+            composition_poly.column_degree(),
+            now.elapsed().as_millis()
+        );
+
+        // then, evaluate composition polynomial columns over the LDE domain
         #[cfg(feature = "std")]
         let now = Instant::now();
         let composed_evaluations = RowMatrix::evaluate_polys_over::<DEFAULT_SEGMENT_WIDTH>(
@@ -515,7 +518,7 @@ pub trait Prover {
             now.elapsed().as_millis()
         );
 
-        // build constraint evaluation commitment
+        // finally, build constraint evaluation commitment
         #[cfg(feature = "std")]
         let now = Instant::now();
         let commitment = composed_evaluations.commit_to_rows();
@@ -526,6 +529,7 @@ pub trait Prover {
             constraint_commitment.tree_depth(),
             now.elapsed().as_millis()
         );
-        constraint_commitment
+
+        (constraint_commitment, composition_poly)
     }
 }

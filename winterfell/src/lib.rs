@@ -580,11 +580,11 @@
 
 pub use prover::{
     crypto, iterators, math, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
-    BoundaryConstraintGroup, ByteReader, ByteWriter, ColMatrix, ConstraintCompositionCoefficients,
-    ConstraintDivisor, ConstraintEvaluator, DeepCompositionCoefficients,
-    DefaultConstraintEvaluator, DefaultTraceLde, Deserializable, DeserializationError,
-    EvaluationFrame, FieldExtension, ProofOptions, Prover, ProverError, Serializable, SliceReader,
-    StarkDomain, StarkProof, Trace, TraceInfo, TraceLayout, TraceLde, TracePolyTable, TraceTable,
-    TraceTableFragment, TransitionConstraintDegree,
+    BoundaryConstraintGroup, ByteReader, ByteWriter, ColMatrix, CompositionPolyTrace,
+    ConstraintCompositionCoefficients, ConstraintDivisor, ConstraintEvaluator,
+    DeepCompositionCoefficients, DefaultConstraintEvaluator, DefaultTraceLde, Deserializable,
+    DeserializationError, EvaluationFrame, FieldExtension, ProofOptions, Prover, ProverError,
+    Serializable, SliceReader, StarkDomain, StarkProof, Trace, TraceInfo, TraceLayout, TraceLde,
+    TracePolyTable, TraceTable, TraceTableFragment, TransitionConstraintDegree,
 };
 pub use verifier::{verify, AcceptableOptions, VerifierError};
