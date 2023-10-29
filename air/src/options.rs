@@ -109,7 +109,7 @@ impl ProofOptions {
     /// - `fri_folding_factor` is not 2, 4, 8, or 16.
     /// - `fri_remainder_max_degree` is greater than 255 or is not a power of two minus 1.
     #[rustfmt::skip]
-    pub fn new(
+    pub const fn new(
         num_queries: usize,
         blowup_factor: usize,
         grinding_factor: u32,
@@ -119,17 +119,17 @@ impl ProofOptions {
     ) -> ProofOptions {
         // TODO: return errors instead of panicking
         assert!(num_queries > 0, "number of queries must be greater than 0");
-        assert!(num_queries <= MAX_NUM_QUERIES, "number of queries cannot be greater than {MAX_NUM_QUERIES}");
+        assert!(num_queries <= MAX_NUM_QUERIES, "number of queries cannot be greater than 255");
 
         assert!(blowup_factor.is_power_of_two(), "blowup factor must be a power of 2");
-        assert!(blowup_factor >= MIN_BLOWUP_FACTOR, "blowup factor cannot be smaller than {MIN_BLOWUP_FACTOR}");
-        assert!(blowup_factor <= MAX_BLOWUP_FACTOR, "blowup factor cannot be greater than {MAX_BLOWUP_FACTOR}");
+        assert!(blowup_factor >= MIN_BLOWUP_FACTOR, "blowup factor cannot be smaller than 2");
+        assert!(blowup_factor <= MAX_BLOWUP_FACTOR, "blowup factor cannot be greater than 128");
 
-        assert!(grinding_factor <= MAX_GRINDING_FACTOR, "grinding factor cannot be greater than {MAX_GRINDING_FACTOR}");
+        assert!(grinding_factor <= MAX_GRINDING_FACTOR, "grinding factor cannot be greater than 32");
 
         assert!(fri_folding_factor.is_power_of_two(), "FRI folding factor must be a power of 2");
-        assert!(fri_folding_factor >= FRI_MIN_FOLDING_FACTOR, "FRI folding factor cannot be smaller than {FRI_MIN_FOLDING_FACTOR}");
-        assert!(fri_folding_factor <= FRI_MAX_FOLDING_FACTOR, "FRI folding factor cannot be greater than {FRI_MAX_FOLDING_FACTOR}");
+        assert!(fri_folding_factor >= FRI_MIN_FOLDING_FACTOR, "FRI folding factor cannot be smaller than 2");
+        assert!(fri_folding_factor <= FRI_MAX_FOLDING_FACTOR, "FRI folding factor cannot be greater than 16");
 
         assert!(
             (fri_remainder_max_degree + 1).is_power_of_two(),
@@ -137,7 +137,7 @@ impl ProofOptions {
         );
         assert!(
             fri_remainder_max_degree <= FRI_MAX_REMAINDER_DEGREE,
-            "FRI polynomial remainder degree cannot be greater than {FRI_MAX_REMAINDER_DEGREE}"
+            "FRI polynomial remainder degree cannot be greater than 255"
         );
 
         ProofOptions {
@@ -158,7 +158,7 @@ impl ProofOptions {
     /// This directly impacts proof soundness as each additional query adds roughly
     /// `log2(blowup_factor)` bits of security to a proof. However, each additional query also
     /// increases proof size.
-    pub fn num_queries(&self) -> usize {
+    pub const fn num_queries(&self) -> usize {
         self.num_queries as usize
     }
 
@@ -168,7 +168,7 @@ impl ProofOptions {
     /// has a direct impact on proof soundness as each query adds roughly `log2(blowup_factor)`
     /// bits of security to a proof. However, higher blowup factors also increases prover runtime,
     /// and may increase proof size.
-    pub fn blowup_factor(&self) -> usize {
+    pub const fn blowup_factor(&self) -> usize {
         self.blowup_factor as usize
     }
 
@@ -179,7 +179,7 @@ impl ProofOptions {
     /// they try to change a commitment. Thus, higher grinding factor makes it more difficult to
     /// forge a STARK proof. However, setting grinding factor too high (e.g. higher than 20) will
     /// adversely affect prover time.
-    pub fn grinding_factor(&self) -> u32 {
+    pub const fn grinding_factor(&self) -> u32 {
         self.grinding_factor as u32
     }
 
@@ -188,7 +188,7 @@ impl ProofOptions {
     ///
     /// Using a field extension increases maximum security level of a proof, but also has
     /// non-negligible impact on prover performance.
-    pub fn field_extension(&self) -> FieldExtension {
+    pub const fn field_extension(&self) -> FieldExtension {
         self.field_extension
     }
 
@@ -196,7 +196,7 @@ impl ProofOptions {
     /// trace domain.
     ///
     /// Currently, this is hard-coded to the primitive element of the underlying base field.
-    pub fn domain_offset<B: StarkField>(&self) -> B {
+    pub const fn domain_offset<B: StarkField>(&self) -> B {
         B::GENERATOR
     }
 
@@ -258,12 +258,12 @@ impl Deserializable for ProofOptions {
 
 impl FieldExtension {
     /// Returns `true` if this field extension is set to `None`.
-    pub fn is_none(&self) -> bool {
+    pub const fn is_none(&self) -> bool {
         matches!(self, Self::None)
     }
 
     /// Returns extension degree of this field extension.
-    pub fn degree(&self) -> u32 {
+    pub const fn degree(&self) -> u32 {
         match self {
             Self::None => 1,
             Self::Quadratic => 2,
