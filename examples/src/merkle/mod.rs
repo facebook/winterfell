@@ -18,8 +18,7 @@ use std::time::Instant;
 use winterfell::{
     crypto::{DefaultRandomCoin, Digest, ElementHasher, MerkleTree},
     math::{fields::f128::BaseElement, FieldElement, StarkField},
-    DefaultConstraintEvaluator, DefaultTraceLde, ProofOptions, Prover, StarkDomain, StarkProof,
-    Trace, TracePolyTable, TraceTable, VerifierError,
+    ProofOptions, Prover, StarkProof, Trace, VerifierError,
 };
 
 mod air;

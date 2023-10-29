@@ -6,7 +6,8 @@
 use core_utils::{collections::Vec, uninit_vector};
 use winterfell::{
     math::{FieldElement, StarkField},
-    ColMatrix, EvaluationFrame, Trace, TraceInfo, TraceLayout,
+    matrix::ColMatrix,
+    EvaluationFrame, Trace, TraceInfo, TraceLayout,
 };
 
 // RAP TRACE TABLE

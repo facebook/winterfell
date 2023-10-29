@@ -10,6 +10,7 @@ use utils::collections::Vec;
 // TYPES AND INTERFACES
 // ================================================================================================
 
+/// Info about domains related to specific instance of proof generation.
 pub struct StarkDomain<B: StarkField> {
     /// Twiddles which can be used to evaluate polynomials in the trace domain. Length of this
     /// vector is half the length of the trace domain size.

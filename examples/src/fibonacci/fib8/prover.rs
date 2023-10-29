@@ -4,8 +4,12 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    BaseElement, DefaultConstraintEvaluator, DefaultRandomCoin, DefaultTraceLde, ElementHasher,
-    Fib8Air, FieldElement, PhantomData, ProofOptions, Prover, StarkDomain, Trace, TracePolyTable,
+    BaseElement, DefaultRandomCoin, ElementHasher, Fib8Air, FieldElement, PhantomData,
+    ProofOptions, Prover,
+};
+use winterfell::{
+    matrix::ColMatrix, AuxTraceRandElements, ConstraintCompositionCoefficients,
+    DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable,
     TraceTable,
 };
 
@@ -85,8 +89,8 @@ where
 
     fn new_trace_lde<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        trace_info: &winterfell::TraceInfo,
-        main_trace: &winterfell::ColMatrix<Self::BaseField>,
+        trace_info: &TraceInfo,
+        main_trace: &ColMatrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
         DefaultTraceLde::new(trace_info, main_trace, domain)
@@ -95,8 +99,8 @@ where
     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         air: &'a Self::Air,
-        aux_rand_elements: winterfell::AuxTraceRandElements<E>,
-        composition_coefficients: winterfell::ConstraintCompositionCoefficients<E>,
+        aux_rand_elements: AuxTraceRandElements<E>,
+        composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E> {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
     }

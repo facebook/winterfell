@@ -44,7 +44,7 @@
 extern crate alloc;
 
 pub use air::{
-    proof::StarkProof, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
+    proof, proof::StarkProof, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
     BoundaryConstraintGroup, ConstraintCompositionCoefficients, ConstraintDivisor,
     DeepCompositionCoefficients, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo,
     TraceLayout, TransitionConstraintDegree,
@@ -76,7 +76,7 @@ mod domain;
 pub use domain::StarkDomain;
 
 pub mod matrix;
-pub use matrix::{ColMatrix, RowMatrix};
+use matrix::{ColMatrix, RowMatrix};
 
 mod constraints;
 pub use constraints::{

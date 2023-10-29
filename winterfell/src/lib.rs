@@ -257,6 +257,7 @@
 //! use winterfell::{
 //!     crypto::{hashers::Blake3_256, DefaultRandomCoin},
 //!     math::{fields::f128::BaseElement, FieldElement, ToElements},
+//!     matrix::ColMatrix,
 //!     DefaultTraceLde, ProofOptions, Prover, StarkDomain, Trace, TracePolyTable, TraceTable,
 //! };
 //!
@@ -361,8 +362,8 @@
 //!
 //!     fn new_trace_lde<E: FieldElement<BaseField = Self::BaseField>>(
 //!         &self,
-//!         trace_info: &winterfell::TraceInfo,
-//!         main_trace: &winterfell::ColMatrix<Self::BaseField>,
+//!         trace_info: &TraceInfo,
+//!         main_trace: &ColMatrix<Self::BaseField>,
 //!         domain: &StarkDomain<Self::BaseField>,
 //!     ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
 //!         DefaultTraceLde::new(trace_info, main_trace, domain)
@@ -390,6 +391,7 @@
 //! # use winterfell::{
 //! #    crypto::{hashers::Blake3_256, DefaultRandomCoin},
 //! #    math::{fields::f128::BaseElement, FieldElement, ToElements},
+//! #    matrix::ColMatrix,
 //! #    Air, AirContext, Assertion, ByteWriter, DefaultConstraintEvaluator, DefaultTraceLde,
 //! #    EvaluationFrame, TraceInfo, TransitionConstraintDegree, TraceTable, FieldExtension,
 //! #    Prover, ProofOptions, StarkDomain, StarkProof, Trace, TracePolyTable,
@@ -499,8 +501,8 @@
 //! #
 //! #    fn new_trace_lde<E: FieldElement<BaseField = Self::BaseField>>(
 //! #        &self,
-//! #        trace_info: &winterfell::TraceInfo,
-//! #        main_trace: &winterfell::ColMatrix<Self::BaseField>,
+//! #        trace_info: &TraceInfo,
+//! #        main_trace: &ColMatrix<Self::BaseField>,
 //! #        domain: &StarkDomain<Self::BaseField>,
 //! #    ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
 //! #        DefaultTraceLde::new(trace_info, main_trace, domain)
@@ -579,8 +581,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub use prover::{
-    crypto, iterators, math, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
-    BoundaryConstraintGroup, ByteReader, ByteWriter, ColMatrix, CompositionPolyTrace,
+    crypto, iterators, math, matrix, Air, AirContext, Assertion, AuxTraceRandElements,
+    BoundaryConstraint, BoundaryConstraintGroup, ByteReader, ByteWriter, CompositionPolyTrace,
     ConstraintCompositionCoefficients, ConstraintDivisor, ConstraintEvaluator,
     DeepCompositionCoefficients, DefaultConstraintEvaluator, DefaultTraceLde, Deserializable,
     DeserializationError, EvaluationFrame, FieldExtension, ProofOptions, Prover, ProverError,

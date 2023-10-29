@@ -289,6 +289,7 @@ impl<E: FieldElement> ColMatrix<E> {
 // COLUMN ITERATOR
 // ================================================================================================
 
+/// Iterator over columns of [ColMatrix].
 pub struct ColumnIter<'a, E: FieldElement> {
     matrix: &'a ColMatrix<E>,
     cursor: usize,
@@ -326,6 +327,7 @@ impl<'a, E: FieldElement> FusedIterator for ColumnIter<'a, E> {}
 // MUTABLE COLUMN ITERATOR
 // ================================================================================================
 
+/// Iterator over mutable columns of [ColMatrix].
 pub struct ColumnIterMut<'a, E: FieldElement> {
     matrix: &'a mut ColMatrix<E>,
     cursor: usize,
@@ -368,6 +370,7 @@ impl<'a, E: FieldElement> FusedIterator for ColumnIterMut<'a, E> {}
 // MULTI-MATRIX COLUMN ITERATOR
 // ================================================================================================
 
+/// Iterator over columns several [ColMatrix]'s.
 pub struct MultiColumnIter<'a, E: FieldElement> {
     matrixes: &'a [ColMatrix<E>],
     m_cursor: usize,

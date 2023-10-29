@@ -237,8 +237,9 @@ like:
 use winterfell::{
     crypto::{hashers::Blake3_256, DefaultRandomCoin},
     math::{fields::f128::BaseElement, FieldElement},
+    matrix::ColMatrix,
     DefaultConstraintEvaluator, DefaultTraceLde, ProofOptions, Prover, StarkDomain, Trace,
-    TracePolyTable, TraceTable,
+    TraceInfo, TracePolyTable, TraceTable,
 };
 
 // We'll use BLAKE3 as the hash function during proof generation.
@@ -282,8 +283,8 @@ impl Prover for WorkProver {
     // We'll use the default trace low-degree extension.
     fn new_trace_lde<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        trace_info: &winterfell::TraceInfo,
-        main_trace: &winterfell::ColMatrix<Self::BaseField>,
+        trace_info: &TraceInfo,
+        main_trace: &ColMatrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
         DefaultTraceLde::new(trace_info, main_trace, domain)

@@ -7,7 +7,10 @@ use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use math::{fft, fields::f64::BaseElement, StarkField};
 use rand_utils::rand_vector;
 use std::time::Duration;
-use winter_prover::{ColMatrix, RowMatrix, StarkDomain};
+use winter_prover::{
+    matrix::{ColMatrix, RowMatrix},
+    StarkDomain,
+};
 
 // CONSTANTS
 // ================================================================================================

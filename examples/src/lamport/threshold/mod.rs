@@ -14,8 +14,7 @@ use std::time::Instant;
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, get_power_series, FieldElement, StarkField},
-    DefaultConstraintEvaluator, DefaultTraceLde, ProofOptions, Prover, StarkDomain, StarkProof,
-    Trace, TracePolyTable, TraceTable, VerifierError,
+    ProofOptions, Prover, StarkProof, Trace, VerifierError,
 };
 
 mod signature;

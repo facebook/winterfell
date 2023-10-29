@@ -4,10 +4,14 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    get_power_series, rescue, BaseElement, DefaultConstraintEvaluator, DefaultRandomCoin,
-    DefaultTraceLde, ElementHasher, FieldElement, LamportAggregateAir, PhantomData, ProofOptions,
-    Prover, PublicInputs, Signature, StarkDomain, StarkField, TracePolyTable, TraceTable,
+    get_power_series, rescue, BaseElement, DefaultRandomCoin, ElementHasher, FieldElement,
+    LamportAggregateAir, PhantomData, ProofOptions, Prover, PublicInputs, Signature, StarkField,
     CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH, TRACE_WIDTH,
+};
+use winterfell::{
+    matrix::ColMatrix, AuxTraceRandElements, ConstraintCompositionCoefficients,
+    DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, TraceInfo, TracePolyTable,
+    TraceTable,
 };
 
 #[cfg(feature = "concurrent")]
@@ -112,8 +116,8 @@ where
 
     fn new_trace_lde<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        trace_info: &winterfell::TraceInfo,
-        main_trace: &winterfell::ColMatrix<Self::BaseField>,
+        trace_info: &TraceInfo,
+        main_trace: &ColMatrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
         DefaultTraceLde::new(trace_info, main_trace, domain)
@@ -122,8 +126,8 @@ where
     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         air: &'a Self::Air,
-        aux_rand_elements: winterfell::AuxTraceRandElements<E>,
-        composition_coefficients: winterfell::ConstraintCompositionCoefficients<E>,
+        aux_rand_elements: AuxTraceRandElements<E>,
+        composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E> {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
     }
