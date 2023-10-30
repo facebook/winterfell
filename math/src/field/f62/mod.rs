@@ -56,7 +56,7 @@ const G: u64 = 4421547261963328785;
 ///
 /// Internal values are stored in Montgomery representation and can be in the range [0; 2M). The
 /// backing type is `u64`.
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 #[cfg_attr(feature = "serde", serde(from = "u64", into = "u64"))]
 pub struct BaseElement(u64);
@@ -250,8 +250,6 @@ impl PartialEq for BaseElement {
         normalize(self.0) == normalize(other.0)
     }
 }
-
-impl Eq for BaseElement {}
 
 // OVERLOADED OPERATORS
 // ================================================================================================
