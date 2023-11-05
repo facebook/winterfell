@@ -295,7 +295,7 @@ impl<B: StarkField> AirContext<B> {
         // make sure the composition polynomial can be computed correctly with the specified
         // number of exemptions.
         // The `ce_blowup` factor puts a ceiling on the maximal degree of a constraint composition
-        // polynomial we can accomodate. On the other hand, adding exemption points reduces the
+        // polynomial we can accommodate. On the other hand, adding exemption points reduces the
         // degree of the divisor which results in an increase of the resulting constraint composition
         // polynomial.Thus we need to check that the number of exemption points is not too large
         // given the above.
