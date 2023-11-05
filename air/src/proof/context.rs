@@ -96,7 +96,7 @@ impl Context {
 impl<E: StarkField> ToElements<E> for Context {
     /// Converts this [Context] into a vector of field elements.
     ///
-    /// The elements are layed out as follows:
+    /// The elements are laid out as follows:
     /// - trace layout info [1 or more elements].
     /// - field modulus bytes [2 field elements].
     /// - field extension and FRI parameters [1 element].
