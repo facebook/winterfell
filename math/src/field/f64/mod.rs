@@ -52,7 +52,7 @@ const ELEMENT_BYTES: usize = core::mem::size_of::<u64>();
 ///
 /// Internal values represent x * R mod M where R = 2^64 mod M and x in [0, M).
 /// The backing type is `u64` but the internal values are always in the range [0, M).
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Default)]
 #[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 #[cfg_attr(feature = "serde", serde(from = "u64", into = "u64"))]
 pub struct BaseElement(u64);
@@ -293,6 +293,12 @@ impl Randomizable for BaseElement {
 
     fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
         Self::try_from(bytes).ok()
+    }
+}
+
+impl Debug for BaseElement {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self)
     }
 }
 

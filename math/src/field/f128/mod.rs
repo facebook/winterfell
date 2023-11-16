@@ -50,7 +50,7 @@ const ELEMENT_BYTES: usize = core::mem::size_of::<u128>();
 ///
 /// Internal values are stored in their canonical form in the range [0, M). The backing type is
 /// `u128`.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+#[derive(Copy, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct BaseElement(u128);
@@ -193,6 +193,12 @@ impl Randomizable for BaseElement {
 
     fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
         Self::try_from(bytes).ok()
+    }
+}
+
+impl Debug for BaseElement {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self)
     }
 }
 

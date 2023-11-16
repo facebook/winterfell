@@ -56,7 +56,7 @@ const G: u64 = 4421547261963328785;
 ///
 /// Internal values are stored in Montgomery representation and can be in the range [0; 2M). The
 /// backing type is `u64`.
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Default)]
 #[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 #[cfg_attr(feature = "serde", serde(from = "u64", into = "u64"))]
 pub struct BaseElement(u64);
@@ -230,6 +230,12 @@ impl Randomizable for BaseElement {
 
     fn from_random_bytes(bytes: &[u8]) -> Option<Self> {
         Self::try_from(bytes).ok()
+    }
+}
+
+impl Debug for BaseElement {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self)
     }
 }
 
