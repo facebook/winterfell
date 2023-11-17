@@ -1,6 +1,9 @@
 # Changelog
 
-## 0.7.1 (2023-10-28) - air crate only
+## 0.7.1 (2023-11-17) - `math` crate only
+* Changed `Debug` format for field elements (#228).
+
+## 0.7.1 (2023-10-28) - `air` crate only
 * Changed most methods for `ProofOption` to be `const fn`.
 
 ## 0.7.0 (2023-10-23)
