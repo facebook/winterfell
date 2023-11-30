@@ -53,6 +53,54 @@ impl Serializable for () {
     fn write_into<W: ByteWriter>(&self, _target: &mut W) {}
 }
 
+impl Serializable for u8 {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_u8(*self);
+    }
+}
+
+impl Serializable for u16 {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_u16(*self);
+    }
+}
+
+impl Serializable for u32 {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_u32(*self);
+    }
+}
+
+impl Serializable for u64 {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_u64(*self);
+    }
+}
+
+impl<T: Serializable> Serializable for Option<T> {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        match self {
+            Some(v) => {
+                target.write_bool(true);
+                v.write_into(target);
+            }
+            None => target.write_bool(false),
+        }
+    }
+}
+
+impl<T: Serializable> Serializable for &Option<T> {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        match self {
+            Some(v) => {
+                target.write_bool(true);
+                v.write_into(target);
+            }
+            None => target.write_bool(false),
+        }
+    }
+}
+
 impl<T: Serializable> Serializable for Vec<T> {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         T::write_batch_into(self, target);

@@ -128,6 +128,9 @@ impl Queries {
     }
 }
 
+// SERIALIZATION
+// ================================================================================================
+
 impl Serializable for Queries {
     /// Serializes `self` and writes the resulting bytes into the `target`.
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
@@ -138,6 +141,11 @@ impl Serializable for Queries {
         // write path bytes
         target.write_u32(self.paths.len() as u32);
         target.write_bytes(&self.paths);
+    }
+
+    /// Returns an estimate of how many bytes are needed to represent self.
+    fn get_size_hint(&self) -> usize {
+        self.paths.len() + self.values.len() + 8
     }
 }
 

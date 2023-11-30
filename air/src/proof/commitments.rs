@@ -86,12 +86,20 @@ impl Commitments {
     }
 }
 
+// SERIALIZATION
+// ================================================================================================
+
 impl Serializable for Commitments {
     /// Serializes `self` and writes the resulting bytes into the `target`.
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         assert!(self.0.len() < u16::MAX as usize);
         target.write_u16(self.0.len() as u16);
         target.write_bytes(&self.0);
+    }
+
+    /// Returns an estimate of how many bytes are needed to represent self.
+    fn get_size_hint(&self) -> usize {
+        self.0.len() + 2
     }
 }
 

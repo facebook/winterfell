@@ -272,10 +272,18 @@ impl FieldExtension {
     }
 }
 
+// SERIALIZATION
+// ================================================================================================
+
 impl Serializable for FieldExtension {
     /// Serializes `self` and writes the resulting bytes into the `target`.
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_u8(*self as u8);
+    }
+
+    /// Returns an estimate of how many bytes are needed to represent self.
+    fn get_size_hint(&self) -> usize {
+        1
     }
 }
 
