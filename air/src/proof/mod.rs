@@ -181,7 +181,7 @@ impl StarkProof {
         Ok(proof)
     }
 
-    /// Creates a dummy `StarkProof` for use in tests
+    /// Creates a dummy `StarkProof` for use in tests.
     pub fn new_dummy() -> Self {
         use crate::FieldExtension;
         use crypto::hashers::Blake3_192 as DummyHasher;

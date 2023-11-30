@@ -67,7 +67,7 @@ impl FriProof {
         }
     }
 
-    /// Creates a dummy `FriProof` for use in tests
+    /// Creates a dummy `FriProof` for use in tests.
     pub fn new_dummy() -> Self {
         Self {
             layers: Vec::new(),
