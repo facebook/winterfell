@@ -67,6 +67,15 @@ impl FriProof {
         }
     }
 
+    /// Creates a dummy `FriProof` for use in tests.
+    pub fn new_dummy() -> Self {
+        Self {
+            layers: Vec::new(),
+            remainder: Vec::new(),
+            num_partitions: 0,
+        }
+    }
+
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 

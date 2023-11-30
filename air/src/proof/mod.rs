@@ -180,6 +180,35 @@ impl StarkProof {
         }
         Ok(proof)
     }
+
+    /// Creates a dummy `StarkProof` for use in tests.
+    pub fn new_dummy() -> Self {
+        use crate::FieldExtension;
+        use crypto::hashers::Blake3_192 as DummyHasher;
+        use crypto::BatchMerkleProof;
+        use math::fields::f64::BaseElement as DummyField;
+
+        Self {
+            context: Context::new::<DummyField>(
+                &TraceInfo::new(0, 0),
+                ProofOptions::new(0, 0, 0, FieldExtension::None, 0, 0),
+            ),
+            num_unique_queries: 0,
+            commitments: Commitments::default(),
+            trace_queries: Vec::new(),
+            constraint_queries: Queries::new::<_, DummyField>(
+                BatchMerkleProof::<DummyHasher<DummyField>> {
+                    leaves: Vec::new(),
+                    nodes: Vec::new(),
+                    depth: 0,
+                },
+                Vec::new(),
+            ),
+            ood_frame: OodFrame::default(),
+            fri_proof: FriProof::new_dummy(),
+            pow_nonce: 0,
+        }
+    }
 }
 
 // HELPER FUNCTIONS
