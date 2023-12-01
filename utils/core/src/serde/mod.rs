@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{flatten_slice_elements, DeserializationError, Vec};
+use super::{DeserializationError, Vec};
 
 mod byte_reader;
 pub use byte_reader::{ByteReader, SliceReader};
@@ -197,43 +197,15 @@ impl<T: Serializable> Serializable for &Vec<T> {
     }
 }
 
-impl Serializable for String {
-    fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write_u64(self.len() as u64);
-        target.write_bytes(self.as_bytes());
-    }
-}
-
-impl Serializable for &String {
-    fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        (*self).write_into(target)
-    }
-}
-
-impl<T: Serializable, const N: usize> Serializable for Vec<[T; N]> {
-    fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        let source = flatten_slice_elements(self);
-        T::write_batch_into(source, target);
-    }
-}
-
-impl<T: Serializable, const N: usize> Serializable for &Vec<[T; N]> {
-    fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        let source = flatten_slice_elements(self);
-        T::write_batch_into(source, target);
-    }
-}
-
 impl<T: Serializable> Serializable for &[T] {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         T::write_batch_into(self, target);
     }
 }
 
-impl<T: Serializable, const N: usize> Serializable for &[[T; N]] {
+impl<T: Serializable, const C: usize> Serializable for [T; C] {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        let source = flatten_slice_elements(self);
-        T::write_batch_into(source, target);
+        T::write_batch_into(self, target);
     }
 }
 
@@ -426,14 +398,16 @@ impl<T: Deserializable> Deserializable for Option<T> {
     }
 }
 
-impl Deserializable for String {
+impl<T: Deserializable, const C: usize> Deserializable for [T; C] {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let length = source
-            .read_u64()?
-            .try_into()
-            .map_err(|err| DeserializationError::InvalidValue(format!("{err}",)))?;
-        let data = source.read_vec(length)?;
+        let data: Vec<T> = T::read_batch_from(source, C)?;
 
-        String::from_utf8(data).map_err(|err| DeserializationError::InvalidValue(format!("{err}")))
+        // SAFETY: the call above only returns a Vec if there are `C` elements, this conversion
+        // always succeeds
+        let res = data.try_into().unwrap_or_else(|v: Vec<T>| {
+            panic!("Expected a Vec of length {} but it was {}", C, v.len())
+        });
+
+        Ok(res)
     }
 }
