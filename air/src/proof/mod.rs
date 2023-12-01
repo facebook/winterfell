@@ -9,6 +9,7 @@ use crate::{ProofOptions, TraceInfo, TraceLayout};
 use core::cmp;
 use crypto::Hasher;
 use fri::FriProof;
+use math::FieldElement;
 use utils::{
     collections::Vec, ByteReader, Deserializable, DeserializationError, Serializable, SliceReader,
 };
@@ -152,8 +153,8 @@ impl StarkProof {
 
         Self {
             context: Context::new::<DummyField>(
-                &TraceInfo::new(0, 0),
-                ProofOptions::new(0, 0, 0, FieldExtension::None, 0, 0),
+                &TraceInfo::new(1, 8),
+                ProofOptions::new(1, 2, 2, FieldExtension::None, 8, 1),
             ),
             num_unique_queries: 0,
             commitments: Commitments::default(),
@@ -164,7 +165,7 @@ impl StarkProof {
                     nodes: Vec::new(),
                     depth: 0,
                 },
-                Vec::new(),
+                vec![vec![DummyField::ONE]],
             ),
             ood_frame: OodFrame::default(),
             fri_proof: FriProof::new_dummy(),
