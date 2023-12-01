@@ -53,6 +53,90 @@ impl Serializable for () {
     fn write_into<W: ByteWriter>(&self, _target: &mut W) {}
 }
 
+impl<T1> Serializable for (T1,)
+where
+    T1: Serializable,
+{
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.0.write_into(target);
+    }
+}
+
+impl<T1, T2> Serializable for (T1, T2)
+where
+    T1: Serializable,
+    T2: Serializable,
+{
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.0.write_into(target);
+        self.1.write_into(target);
+    }
+}
+
+impl<T1, T2, T3> Serializable for (T1, T2, T3)
+where
+    T1: Serializable,
+    T2: Serializable,
+    T3: Serializable,
+{
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.0.write_into(target);
+        self.1.write_into(target);
+        self.2.write_into(target);
+    }
+}
+
+impl<T1, T2, T3, T4> Serializable for (T1, T2, T3, T4)
+where
+    T1: Serializable,
+    T2: Serializable,
+    T3: Serializable,
+    T4: Serializable,
+{
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.0.write_into(target);
+        self.1.write_into(target);
+        self.2.write_into(target);
+        self.3.write_into(target);
+    }
+}
+
+impl<T1, T2, T3, T4, T5> Serializable for (T1, T2, T3, T4, T5)
+where
+    T1: Serializable,
+    T2: Serializable,
+    T3: Serializable,
+    T4: Serializable,
+    T5: Serializable,
+{
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.0.write_into(target);
+        self.1.write_into(target);
+        self.2.write_into(target);
+        self.3.write_into(target);
+        self.4.write_into(target);
+    }
+}
+
+impl<T1, T2, T3, T4, T5, T6> Serializable for (T1, T2, T3, T4, T5, T6)
+where
+    T1: Serializable,
+    T2: Serializable,
+    T3: Serializable,
+    T4: Serializable,
+    T5: Serializable,
+    T6: Serializable,
+{
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.0.write_into(target);
+        self.1.write_into(target);
+        self.2.write_into(target);
+        self.3.write_into(target);
+        self.4.write_into(target);
+        self.5.write_into(target);
+    }
+}
+
 impl Serializable for u8 {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_u8(*self);
@@ -214,6 +298,96 @@ pub trait Deserializable: Sized {
 impl Deserializable for () {
     fn read_from<R: ByteReader>(_source: &mut R) -> Result<Self, DeserializationError> {
         Ok(())
+    }
+}
+
+impl<T1> Deserializable for (T1,)
+where
+    T1: Deserializable,
+{
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let v1 = T1::read_from(source)?;
+        Ok((v1,))
+    }
+}
+
+impl<T1, T2> Deserializable for (T1, T2)
+where
+    T1: Deserializable,
+    T2: Deserializable,
+{
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let v1 = T1::read_from(source)?;
+        let v2 = T2::read_from(source)?;
+        Ok((v1, v2))
+    }
+}
+
+impl<T1, T2, T3> Deserializable for (T1, T2, T3)
+where
+    T1: Deserializable,
+    T2: Deserializable,
+    T3: Deserializable,
+{
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let v1 = T1::read_from(source)?;
+        let v2 = T2::read_from(source)?;
+        let v3 = T3::read_from(source)?;
+        Ok((v1, v2, v3))
+    }
+}
+
+impl<T1, T2, T3, T4> Deserializable for (T1, T2, T3, T4)
+where
+    T1: Deserializable,
+    T2: Deserializable,
+    T3: Deserializable,
+    T4: Deserializable,
+{
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let v1 = T1::read_from(source)?;
+        let v2 = T2::read_from(source)?;
+        let v3 = T3::read_from(source)?;
+        let v4 = T4::read_from(source)?;
+        Ok((v1, v2, v3, v4))
+    }
+}
+
+impl<T1, T2, T3, T4, T5> Deserializable for (T1, T2, T3, T4, T5)
+where
+    T1: Deserializable,
+    T2: Deserializable,
+    T3: Deserializable,
+    T4: Deserializable,
+    T5: Deserializable,
+{
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let v1 = T1::read_from(source)?;
+        let v2 = T2::read_from(source)?;
+        let v3 = T3::read_from(source)?;
+        let v4 = T4::read_from(source)?;
+        let v5 = T5::read_from(source)?;
+        Ok((v1, v2, v3, v4, v5))
+    }
+}
+
+impl<T1, T2, T3, T4, T5, T6> Deserializable for (T1, T2, T3, T4, T5, T6)
+where
+    T1: Deserializable,
+    T2: Deserializable,
+    T3: Deserializable,
+    T4: Deserializable,
+    T5: Deserializable,
+    T6: Deserializable,
+{
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let v1 = T1::read_from(source)?;
+        let v2 = T2::read_from(source)?;
+        let v3 = T3::read_from(source)?;
+        let v4 = T4::read_from(source)?;
+        let v5 = T5::read_from(source)?;
+        let v6 = T6::read_from(source)?;
+        Ok((v1, v2, v3, v4, v5, v6))
     }
 }
 
