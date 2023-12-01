@@ -129,16 +129,7 @@ impl StarkProof {
 
     /// Serializes this proof into a vector of bytes.
     pub fn to_bytes(&self) -> Vec<u8> {
-        let mut result = Vec::new();
-        self.context.write_into(&mut result);
-        result.push(self.num_unique_queries);
-        self.commitments.write_into(&mut result);
-        self.trace_queries.write_into(&mut result);
-        self.constraint_queries.write_into(&mut result);
-        self.ood_frame.write_into(&mut result);
-        self.fri_proof.write_into(&mut result);
-        result.extend_from_slice(&self.pow_nonce.to_le_bytes());
-        result
+        Serializable::to_bytes(self)
     }
 
     /// Returns a STARK proof read from the specified `source`.
@@ -146,39 +137,7 @@ impl StarkProof {
     /// # Errors
     /// Returns an error of a valid STARK proof could not be read from the specified `source`.
     pub fn from_bytes(source: &[u8]) -> Result<Self, DeserializationError> {
-        let mut source = SliceReader::new(source);
-
-        // parse the context
-        let context = Context::read_from(&mut source)?;
-
-        // parse the number of unique queries made by the verifier
-        let num_unique_queries = source.read_u8()?;
-
-        // parse the commitments
-        let commitments = Commitments::read_from(&mut source)?;
-
-        // parse trace queries
-        let num_trace_segments = context.trace_layout().num_segments();
-        let mut trace_queries = Vec::with_capacity(num_trace_segments);
-        for _ in 0..num_trace_segments {
-            trace_queries.push(Queries::read_from(&mut source)?);
-        }
-
-        // parse the rest of the proof
-        let proof = StarkProof {
-            context,
-            num_unique_queries,
-            commitments,
-            trace_queries,
-            constraint_queries: Queries::read_from(&mut source)?,
-            ood_frame: OodFrame::read_from(&mut source)?,
-            fri_proof: FriProof::read_from(&mut source)?,
-            pow_nonce: source.read_u64()?,
-        };
-        if source.has_more_bytes() {
-            return Err(DeserializationError::UnconsumedBytes);
-        }
-        Ok(proof)
+        Deserializable::read_from_bytes(source)
     }
 
     /// Creates a dummy `StarkProof` for use in tests.
@@ -208,6 +167,50 @@ impl StarkProof {
             fri_proof: FriProof::new_dummy(),
             pow_nonce: 0,
         }
+    }
+}
+
+// SERIALIZATION
+// ================================================================================================
+
+impl Serializable for StarkProof {
+    fn write_into<W: utils::ByteWriter>(&self, target: &mut W) {
+        self.context.write_into(target);
+        target.write_u8(self.num_unique_queries);
+        self.commitments.write_into(target);
+        self.trace_queries.write_into(target);
+        self.constraint_queries.write_into(target);
+        self.ood_frame.write_into(target);
+        self.fri_proof.write_into(target);
+        self.pow_nonce.write_into(target)
+    }
+}
+
+impl Deserializable for StarkProof {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let context = Context::read_from(source)?;
+        let num_unique_queries = source.read_u8()?;
+        let commitments = Commitments::read_from(source)?;
+        let num_trace_segments = context.trace_layout().num_segments();
+        let mut trace_queries = Vec::with_capacity(num_trace_segments);
+        for _ in 0..num_trace_segments {
+            trace_queries.push(Queries::read_from(source)?);
+        }
+
+        let proof = StarkProof {
+            context,
+            num_unique_queries,
+            commitments,
+            trace_queries,
+            constraint_queries: Queries::read_from(source)?,
+            ood_frame: OodFrame::read_from(source)?,
+            fri_proof: FriProof::read_from(source)?,
+            pow_nonce: source.read_u64()?,
+        };
+        if source.has_more_bytes() {
+            return Err(DeserializationError::UnconsumedBytes);
+        }
+        Ok(proof)
     }
 }
 

@@ -132,6 +132,9 @@ impl<E: StarkField> ToElements<E> for Context {
     }
 }
 
+// SERIALIZATION
+// ================================================================================================
+
 impl Serializable for Context {
     /// Serializes `self` and writes the resulting bytes into the `target`.
     fn write_into<W: ByteWriter>(&self, target: &mut W) {

@@ -119,6 +119,9 @@ impl OodFrame {
     }
 }
 
+// SERIALIZATION
+// ================================================================================================
+
 impl Serializable for OodFrame {
     /// Serializes `self` and writes the resulting bytes into the `target`.
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
@@ -129,6 +132,11 @@ impl Serializable for OodFrame {
         // write constraint evaluations row
         target.write_u16(self.evaluations.len() as u16);
         target.write_bytes(&self.evaluations)
+    }
+
+    /// Returns an estimate of how many bytes are needed to represent self.
+    fn get_size_hint(&self) -> usize {
+        self.trace_states.len() + self.evaluations.len() + 4
     }
 }
 
