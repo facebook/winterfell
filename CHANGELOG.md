@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.2 (2023-11-30) - `air`, `fri`, and `utils/core` crates only
+* Minor proof serialization and deserialization refactoring (#231).
+* Added `StarkProof::new_dummy()` constructor to simplify testing (#232).
+
 ## 0.7.1 (2023-11-17) - `math` crate only
 * Changed `Debug` format for field elements (#228).
 

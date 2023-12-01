@@ -1,12 +1,12 @@
 [package]
 name = "winter-air"
-version = "0.7.1"
+version = "0.7.2"
 description = "AIR components for the Winterfell STARK prover/verifier"
 authors = ["winterfell contributors"]
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/novifinancial/winterfell"
-documentation = "https://docs.rs/winter-air/0.7.1"
+documentation = "https://docs.rs/winter-air/0.7.2"
 categories = ["cryptography", "no-std"]
 keywords = ["crypto", "arithmetization", "air"]
 edition = "2021"
