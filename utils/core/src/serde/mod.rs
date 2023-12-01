@@ -197,3 +197,44 @@ pub trait Deserializable: Sized {
         Ok(result)
     }
 }
+
+impl Deserializable for () {
+    fn read_from<R: ByteReader>(_source: &mut R) -> Result<Self, DeserializationError> {
+        Ok(())
+    }
+}
+
+impl Deserializable for u8 {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        source.read_u8()
+    }
+}
+
+impl Deserializable for u16 {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        source.read_u16()
+    }
+}
+
+impl Deserializable for u32 {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        source.read_u32()
+    }
+}
+
+impl Deserializable for u64 {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        source.read_u64()
+    }
+}
+
+impl<T: Deserializable> Deserializable for Option<T> {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let contains = source.read_bool()?;
+
+        match contains {
+            true => Ok(Some(T::read_from(source)?)),
+            false => Ok(None),
+        }
+    }
+}
