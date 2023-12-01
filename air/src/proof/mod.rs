@@ -28,6 +28,9 @@ pub use ood_frame::OodFrame;
 mod table;
 pub use table::Table;
 
+#[cfg(test)]
+mod tests;
+
 // CONSTANTS
 // ================================================================================================
 
