@@ -113,6 +113,19 @@ impl<T: Serializable> Serializable for &Vec<T> {
     }
 }
 
+impl Serializable for String {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_u64(self.len() as u64);
+        target.write_bytes(self.as_bytes());
+    }
+}
+
+impl Serializable for &String {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        (*self).write_into(target)
+    }
+}
+
 impl<T: Serializable, const N: usize> Serializable for Vec<[T; N]> {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         let source = flatten_slice_elements(self);
@@ -236,5 +249,17 @@ impl<T: Deserializable> Deserializable for Option<T> {
             true => Ok(Some(T::read_from(source)?)),
             false => Ok(None),
         }
+    }
+}
+
+impl Deserializable for String {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let length = source
+            .read_u64()?
+            .try_into()
+            .map_err(|err| DeserializationError::InvalidValue(format!("{err}",)))?;
+        let data = source.read_vec(length)?;
+
+        String::from_utf8(data).map_err(|err| DeserializationError::InvalidValue(format!("{err}")))
     }
 }
