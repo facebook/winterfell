@@ -25,12 +25,12 @@ pub trait ByteReader {
     /// Returns a [DeserializationError] error the reader is at EOF.
     fn peek_u8(&self) -> Result<u8, DeserializationError>;
 
-    /// Returns a byte vector of the specified length read from `self`.
-    ///
+    /// Returns a slice of bytes of the specified length read from `self`.
+    /// 
     /// # Errors
-    /// Returns a [DeserializationError] if a vector of the specified length could not be read
+    /// Returns a [DeserializationError] if a slice of the specified length could not be read
     /// from `self`.
-    fn read_vec(&mut self, len: usize) -> Result<Vec<u8>, DeserializationError>;
+    fn read_slice(&mut self, len: usize) -> Result<&[u8], DeserializationError>;
 
     /// Returns a byte array of length `N` read from `self`.
     ///
@@ -43,7 +43,7 @@ pub trait ByteReader {
     ///
     /// # Errors
     /// Returns an error if, when reading the requested number of bytes, we go beyond the
-    /// boundaries of the array
+    /// the data available in the reader.
     fn check_eor(&self, num_bytes: usize) -> Result<(), DeserializationError>;
 
     /// Returns true if there are more bytes left to be read from `self`.
@@ -101,6 +101,26 @@ pub trait ByteReader {
         Ok(u128::from_le_bytes(bytes))
     }
 
+    /// Returns a byte vector of the specified length read from `self`.
+    ///
+    /// # Errors
+    /// Returns a [DeserializationError] if a vector of the specified length could not be read
+    /// from `self`.
+    fn read_vec(&mut self, len: usize) -> Result<Vec<u8>, DeserializationError> {
+        let data = self.read_slice(len)?;
+        Ok(data.to_vec())
+    }
+
+    /// Returns a String of the specified length read from `self`.
+    /// 
+    /// # Errors
+    /// Returns a [DeserializationError] if a String of the specified length could not be read
+    /// from `self`.
+    fn read_string(&mut self, num_bytes: usize) -> Result<String, DeserializationError> {
+        let data = self.read_vec(num_bytes)?;
+        String::from_utf8(data).map_err(|err| DeserializationError::InvalidValue(format!("{err}")))
+    }
+
     /// Reads a deserializable value from `self`.
     ///
     /// # Panics
@@ -143,9 +163,9 @@ impl<'a> ByteReader for SliceReader<'a> {
         Ok(self.source[self.pos])
     }
 
-    fn read_vec(&mut self, len: usize) -> Result<Vec<u8>, DeserializationError> {
+    fn read_slice(&mut self, len: usize) -> Result<&[u8], DeserializationError> {
         self.check_eor(len)?;
-        let result = self.source[self.pos..self.pos + len].to_vec();
+        let result = &self.source[self.pos..self.pos + len];
         self.pos += len;
         Ok(result)
     }
