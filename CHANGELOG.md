@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.7.3 (2023-12-06) - `utils/core` crate only
+* Added default deserializer implementations (#233)
+
 ## 0.7.3 (2023-12-01) - `air` crate only
 * Fixed `StarkProof::new_dummy()` constructor (#234).
 

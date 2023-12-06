@@ -26,7 +26,7 @@ pub trait ByteReader {
     fn peek_u8(&self) -> Result<u8, DeserializationError>;
 
     /// Returns a slice of bytes of the specified length read from `self`.
-    /// 
+    ///
     /// # Errors
     /// Returns a [DeserializationError] if a slice of the specified length could not be read
     /// from `self`.
@@ -112,7 +112,7 @@ pub trait ByteReader {
     }
 
     /// Returns a String of the specified length read from `self`.
-    /// 
+    ///
     /// # Errors
     /// Returns a [DeserializationError] if a String of the specified length could not be read
     /// from `self`.
