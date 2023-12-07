@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.7.4 (2023-12-07) - `utils/core` crate only
+* Added `Clone` derive to `DeserializationError`.
+
 ## 0.7.3 (2023-12-06) - `utils/core` crate only
 * Added default deserializer implementations (#233)
 

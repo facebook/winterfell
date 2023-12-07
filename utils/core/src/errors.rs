@@ -10,7 +10,7 @@ use core::fmt;
 // ================================================================================================
 
 /// Defines errors which can occur during deserialization.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DeserializationError {
     /// Bytes in the input do not represent a valid value.
     InvalidValue(String),
