@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.7.4 (2023-12-18) - `air` crate only
+* Fixed a bug in `StarkProof` deserialization (#236).
+
 ## 0.7.4 (2023-12-07) - `utils/core` crate only
 * Added `Clone` derive to `DeserializationError`.
 
