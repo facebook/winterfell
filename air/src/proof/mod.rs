@@ -211,9 +211,6 @@ impl Deserializable for StarkProof {
             fri_proof: FriProof::read_from(source)?,
             pow_nonce: source.read_u64()?,
         };
-        if source.has_more_bytes() {
-            return Err(DeserializationError::UnconsumedBytes);
-        }
         Ok(proof)
     }
 }
