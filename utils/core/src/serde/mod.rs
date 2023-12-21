@@ -161,6 +161,12 @@ impl Serializable for u64 {
     }
 }
 
+impl Serializable for usize {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_usize(*self)
+    }
+}
+
 impl<T: Serializable> Serializable for Option<T> {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         match self {
@@ -384,6 +390,12 @@ impl Deserializable for u32 {
 impl Deserializable for u64 {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         source.read_u64()
+    }
+}
+
+impl Deserializable for usize {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        source.read_usize()
     }
 }
 

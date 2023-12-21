@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.7.5 (2023-12-21) - `utils/core` crate only
+* Added variable-length serialization and deserialization for `usize` type (#238).
+
 ## 0.7.4 (2023-12-18) - `air` crate only
 * Fixed a bug in `StarkProof` deserialization (#236).
 
