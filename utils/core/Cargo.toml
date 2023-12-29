@@ -22,3 +22,6 @@ std = []
 
 [dependencies]
 rayon = { version = "1.8", optional = true }
+
+[dev-dependencies]
+proptest = "1.3"

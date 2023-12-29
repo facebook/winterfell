@@ -92,6 +92,41 @@ pub trait ByteReader {
         Ok(u64::from_le_bytes(bytes))
     }
 
+    /// Returns a usize value read from `self` in [vint64](https://docs.rs/vint64/latest/vint64/)
+    /// format.
+    ///
+    /// # Errors
+    /// Returns a [DeserializationError] if:
+    /// * usize value could not be read from `self`.
+    /// * encoded value is greater than `usize` maximum value on a given platform.
+    fn read_usize(&mut self) -> Result<usize, DeserializationError> {
+        let first_byte = self.peek_u8()?;
+        let length = first_byte.trailing_zeros() as usize + 1;
+
+        let result = if length == 9 {
+            // 9-byte special case
+            self.read_u8()?;
+            let value = self.read_array::<8>()?;
+            u64::from_le_bytes(value)
+        } else {
+            let mut encoded = [0u8; 8];
+            let value = self.read_slice(length)?;
+            encoded[..length].copy_from_slice(value);
+            u64::from_le_bytes(encoded) >> length
+        };
+
+        // check if the result value is within acceptable bounds for `usize` on a given platform
+        if result > usize::MAX as u64 {
+            return Err(DeserializationError::InvalidValue(format!(
+                "Encoded value must be less than {}, but {} was provided",
+                usize::MAX,
+                result
+            )));
+        }
+
+        Ok(result as usize)
+    }
+
     /// Returns a u128 value read from `self` in little-endian byte order.
     ///
     /// # Errors
