@@ -50,7 +50,7 @@ impl<B: StarkField> ElementHasher for Sha3_256<B> {
             // when elements' internal and canonical representations differ, we need to serialize
             // them before hashing
             let mut hasher = ShaHasher::new();
-            hasher.write(elements);
+            hasher.write_many(elements);
             ByteDigest(hasher.finalize())
         }
     }

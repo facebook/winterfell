@@ -92,12 +92,6 @@ fn read_u8_vec() {
 // SERIALIZATION TESTS
 // ================================================================================================
 
-impl Serializable for u128 {
-    fn write_into<W: crate::ByteWriter>(&self, target: &mut W) {
-        target.write_bytes(&self.to_le_bytes());
-    }
-}
-
 #[test]
 fn write_serializable() {
     let mut target: Vec<u8> = Vec::new();
@@ -141,11 +135,11 @@ fn write_serializable_batch() {
     let mut target: Vec<u8> = Vec::new();
 
     let batch1 = vec![1u128, 2, 3, 4];
-    batch1.write_into(&mut target);
+    target.write_many(&batch1);
     assert_eq!(64, target.len());
 
     let batch2 = [5u128, 6, 7, 8];
-    target.write(&batch2[..]);
+    target.write_many(&batch2);
     assert_eq!(128, target.len());
 
     let mut reader = SliceReader::new(&target);
@@ -159,11 +153,11 @@ fn write_serializable_array_batch() {
     let mut target: Vec<u8> = Vec::new();
 
     let batch1 = vec![[1u128, 2], [3, 4]];
-    batch1.write_into(&mut target);
+    target.write_many(&batch1);
     assert_eq!(64, target.len());
 
     let batch2 = [[5u128, 6], [7, 8]];
-    target.write(&batch2[..]);
+    target.write_many(&batch2);
     assert_eq!(128, target.len());
 
     let mut reader = SliceReader::new(&target);

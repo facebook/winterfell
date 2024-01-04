@@ -37,7 +37,7 @@ impl OodFrame {
     // UPDATERS
     // --------------------------------------------------------------------------------------------
 
-    /// Updates the trace state portion of this out-of-domain frame. This also returns a compactified
+    /// Updates the trace state portion of this out-of-domain frame. This also returns a compacted
     /// version of the out-of-domain frame with the rows interleaved. This is done so that reseeding
     /// of the random coin needs to be done only once as opposed to once per each row.
     ///
@@ -58,7 +58,7 @@ impl OodFrame {
         }
         debug_assert!(frame_size <= u8::MAX as usize);
         self.trace_states.write_u8(frame_size as u8);
-        result.write_into(&mut self.trace_states);
+        self.trace_states.write_many(&result);
 
         result
     }
@@ -72,7 +72,7 @@ impl OodFrame {
     pub fn set_constraint_evaluations<E: FieldElement>(&mut self, evaluations: &[E]) {
         assert!(self.evaluations.is_empty(), "constraint evaluations have already been set");
         assert!(!evaluations.is_empty(), "cannot set to empty constraint evaluations");
-        evaluations.write_into(&mut self.evaluations)
+        self.evaluations.write_many(evaluations);
     }
 
     // PARSER
@@ -102,15 +102,14 @@ impl OodFrame {
         // parse main and auxiliary trace evaluation frames
         let mut reader = SliceReader::new(&self.trace_states);
         let frame_size = reader.read_u8()? as usize;
-        let trace =
-            E::read_batch_from(&mut reader, (main_trace_width + aux_trace_width) * frame_size)?;
+        let trace = reader.read_many((main_trace_width + aux_trace_width) * frame_size)?;
         if reader.has_more_bytes() {
             return Err(DeserializationError::UnconsumedBytes);
         }
 
         // parse the constraint evaluations
         let mut reader = SliceReader::new(&self.evaluations);
-        let evaluations = E::read_batch_from(&mut reader, num_evaluations)?;
+        let evaluations = reader.read_many(num_evaluations)?;
         if reader.has_more_bytes() {
             return Err(DeserializationError::UnconsumedBytes);
         }

@@ -4,8 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{
-    AsBytes, BaseElement, ByteReader, Deserializable, DeserializationError, FieldElement,
-    StarkField, Vec, M,
+    AsBytes, BaseElement, ByteReader, DeserializationError, FieldElement, StarkField, Vec, M,
 };
 use crate::field::{ExtensionOf, QuadExtension};
 use core::convert::TryFrom;
@@ -207,21 +206,21 @@ fn read_elements_from() {
 
     // fill whole target
     let mut reader = SliceReader::new(&bytes[..64]);
-    let result = BaseElement::read_batch_from(&mut reader, 4);
+    let result = reader.read_many(4);
     assert!(result.is_ok());
     assert_eq!(expected, result.unwrap());
     assert!(!reader.has_more_bytes());
 
     // partial number of elements
     let mut reader = SliceReader::new(&bytes[..65]);
-    let result = BaseElement::read_batch_from(&mut reader, 4);
+    let result = reader.read_many(4);
     assert!(result.is_ok());
     assert_eq!(expected, result.unwrap());
     assert!(reader.has_more_bytes());
 
     // invalid element
     let mut reader = SliceReader::new(&bytes[16..]);
-    let result = BaseElement::read_batch_from(&mut reader, 4);
+    let result = reader.read_many::<BaseElement>(4);
     assert!(result.is_err());
     if let Err(err) = result {
         assert!(matches!(err, DeserializationError::InvalidValue(_)));

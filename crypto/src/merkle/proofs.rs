@@ -7,7 +7,7 @@ use crate::{errors::MerkleTreeError, Hasher};
 use utils::{
     collections::{BTreeMap, Vec},
     string::ToString,
-    ByteReader, Deserializable, DeserializationError, Serializable,
+    ByteReader, DeserializationError, Serializable,
 };
 
 // CONSTANTS
@@ -463,7 +463,7 @@ impl<H: Hasher> BatchMerkleProof<H> {
             let num_digests = node_bytes.read_u8()? as usize;
 
             // read the digests and add them to the node vector
-            let digests = H::Digest::read_batch_from(node_bytes, num_digests)?;
+            let digests = node_bytes.read_many(num_digests)?;
             nodes.push(digests);
         }
 

@@ -9,6 +9,10 @@ use super::{Deserializable, DeserializationError, String, Vec};
 // ================================================================================================
 
 /// Defines how primitive values are to be read from `Self`.
+///
+/// Whenever data is read from the reader using any of the `read_*` functions, the reader advances
+/// to the next unread byte. If the error occurs, the reader is not rolled back to the state prior
+/// to calling any of the function.
 pub trait ByteReader {
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -92,6 +96,15 @@ pub trait ByteReader {
         Ok(u64::from_le_bytes(bytes))
     }
 
+    /// Returns a u128 value read from `self` in little-endian byte order.
+    ///
+    /// # Errors
+    /// Returns a [DeserializationError] if a u128 value could not be read from `self`.
+    fn read_u128(&mut self) -> Result<u128, DeserializationError> {
+        let bytes = self.read_array::<16>()?;
+        Ok(u128::from_le_bytes(bytes))
+    }
+
     /// Returns a usize value read from `self` in [vint64](https://docs.rs/vint64/latest/vint64/)
     /// format.
     ///
@@ -127,15 +140,6 @@ pub trait ByteReader {
         Ok(result as usize)
     }
 
-    /// Returns a u128 value read from `self` in little-endian byte order.
-    ///
-    /// # Errors
-    /// Returns a [DeserializationError] if a u128 value could not be read from `self`.
-    fn read_u128(&mut self) -> Result<u128, DeserializationError> {
-        let bytes = self.read_array::<16>()?;
-        Ok(u128::from_le_bytes(bytes))
-    }
-
     /// Returns a byte vector of the specified length read from `self`.
     ///
     /// # Errors
@@ -158,14 +162,33 @@ pub trait ByteReader {
 
     /// Reads a deserializable value from `self`.
     ///
-    /// # Panics
-    /// Panics if the value could not be read from `self`.
+    /// # Errors
+    /// Returns a [DeserializationError] if the specified value could not be read from `self`.
     fn read<D>(&mut self) -> Result<D, DeserializationError>
     where
         Self: Sized,
         D: Deserializable,
     {
         D::read_from(self)
+    }
+
+    /// Reads a sequence of bytes from `self`, attempts to deserialize these bytes into a vector
+    /// with the specified number of `D` elements, and returns the result.
+    ///
+    /// # Errors
+    /// Returns a [DeserializationError] if the specified number elements could not be read from
+    /// `self`.
+    fn read_many<D>(&mut self, num_elements: usize) -> Result<Vec<D>, DeserializationError>
+    where
+        Self: Sized,
+        D: Deserializable,
+    {
+        let mut result = Vec::with_capacity(num_elements);
+        for _ in 0..num_elements {
+            let element = D::read_from(self)?;
+            result.push(element)
+        }
+        Ok(result)
     }
 }
 

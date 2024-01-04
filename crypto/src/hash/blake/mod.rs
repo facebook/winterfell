@@ -53,7 +53,7 @@ impl<B: StarkField> ElementHasher for Blake3_256<B> {
             // when elements' internal and canonical representations differ, we need to serialize
             // them before hashing
             let mut hasher = BlakeHasher::new();
-            hasher.write(elements);
+            hasher.write_many(elements);
             ByteDigest(hasher.finalize())
         }
     }
@@ -106,7 +106,7 @@ impl<B: StarkField> ElementHasher for Blake3_192<B> {
             // when elements' internal and canonical representations differ, we need to serialize
             // them before hashing
             let mut hasher = BlakeHasher::new();
-            hasher.write(elements);
+            hasher.write_many(elements);
             let result = hasher.finalize();
             ByteDigest(result[..24].try_into().unwrap())
         }
