@@ -3,10 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use log::debug;
-use std::io::Write;
 use std::time::Instant;
 use structopt::StructOpt;
+use tracing::{event, level_filters::LevelFilter, Level};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, Layer};
 use winterfell::StarkProof;
 
 use examples::{fibonacci, rescue, vdf, ExampleOptions, ExampleType};
@@ -18,15 +18,21 @@ use examples::{lamport, merkle, rescue_raps};
 
 fn main() {
     // configure logging
-    env_logger::Builder::new()
-        .format(|buf, record| writeln!(buf, "{}", record.args()))
-        .filter_level(log::LevelFilter::Debug)
-        .init();
+    let format = tracing_subscriber::fmt::layer()
+        .with_level(false)
+        .with_target(false)
+        .with_thread_ids(false)
+        .with_thread_names(false)
+        .with_file(false)
+        .without_time()
+        .with_filter(LevelFilter::DEBUG);
+
+    tracing_subscriber::registry().with(format).init();
 
     // read command-line args
     let options = ExampleOptions::from_args();
 
-    debug!("============================================================");
+    event!(Level::DEBUG, "============================================================");
 
     // instantiate and prepare the example
     let example = match options.example {
@@ -69,35 +75,49 @@ fn main() {
     let now = Instant::now();
     let example = example.as_ref();
     let proof = example.prove();
-    debug!("---------------------\nProof generated in {} ms", now.elapsed().as_millis());
+    event!(
+        Level::DEBUG,
+        "---------------------\nProof generated in {} ms",
+        now.elapsed().as_millis()
+    );
 
     let proof_bytes = proof.to_bytes();
-    debug!("Proof size: {:.1} KB", proof_bytes.len() as f64 / 1024f64);
+    event!(Level::DEBUG, "Proof size: {:.1} KB", proof_bytes.len() as f64 / 1024f64);
     let conjectured_security_level = options.get_proof_security_level(&proof, true);
 
     #[cfg(feature = "std")]
     {
         let proven_security_level = options.get_proof_security_level(&proof, false);
-        debug!(
+        event!(
+            Level::DEBUG,
             "Proof security: {} bits ({} proven)",
-            conjectured_security_level, proven_security_level,
+            conjectured_security_level,
+            proven_security_level,
         );
     }
 
     #[cfg(not(feature = "std"))]
-    debug!("Proof security: {} bits", conjectured_security_level);
+    event!(Level::DEBUG, "Proof security: {} bits", conjectured_security_level);
 
     #[cfg(feature = "std")]
-    debug!("Proof hash: {}", hex::encode(blake3::hash(&proof_bytes).as_bytes()));
+    event!(
+        Level::DEBUG,
+        "Proof hash: {}",
+        hex::encode(blake3::hash(&proof_bytes).as_bytes())
+    );
 
     // verify the proof
-    debug!("---------------------");
+    event!(Level::DEBUG, "---------------------");
     let parsed_proof = StarkProof::from_bytes(&proof_bytes).unwrap();
     assert_eq!(proof, parsed_proof);
     let now = Instant::now();
     match example.verify(proof) {
-        Ok(_) => debug!("Proof verified in {:.1} ms", now.elapsed().as_micros() as f64 / 1000f64),
-        Err(msg) => debug!("Failed to verify proof: {}", msg),
+        Ok(_) => event!(
+            Level::DEBUG,
+            "Proof verified in {:.1} ms",
+            now.elapsed().as_micros() as f64 / 1000f64
+        ),
+        Err(msg) => event!(Level::DEBUG, "Failed to verify proof: {}", msg),
     }
-    debug!("============================================================");
+    event!(Level::DEBUG, "============================================================");
 }

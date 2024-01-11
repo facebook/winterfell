@@ -11,9 +11,9 @@ use crate::{RowMatrix, DEFAULT_SEGMENT_WIDTH};
 use crypto::MerkleTree;
 
 #[cfg(feature = "std")]
-use log::debug;
-#[cfg(feature = "std")]
 use std::time::Instant;
+#[cfg(feature = "std")]
+use tracing::{event, Level};
 
 #[cfg(test)]
 mod tests;
@@ -239,7 +239,8 @@ where
     let trace_polys = trace.interpolate_columns();
     let trace_lde = RowMatrix::evaluate_polys_over::<DEFAULT_SEGMENT_WIDTH>(&trace_polys, domain);
     #[cfg(feature = "std")]
-    debug!(
+    event!(
+        Level::DEBUG,
         "Extended execution trace of {} columns from 2^{} to 2^{} steps ({}x blowup) in {} ms",
         trace_lde.num_cols(),
         trace_polys.num_rows().ilog2(),
@@ -253,7 +254,8 @@ where
     let now = Instant::now();
     let trace_tree = trace_lde.commit_to_rows();
     #[cfg(feature = "std")]
-    debug!(
+    event!(
+        Level::DEBUG,
         "Computed execution trace commitment (Merkle tree of depth {}) in {} ms",
         trace_tree.depth(),
         now.elapsed().as_millis()

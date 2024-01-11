@@ -6,8 +6,8 @@
 use super::utils::compute_fib_term;
 use crate::{Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256};
 use core::marker::PhantomData;
-use log::debug;
 use std::time::Instant;
+use tracing::{event, Level};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, FieldElement},
@@ -65,7 +65,8 @@ impl<H: ElementHasher> FibExample<H> {
         // compute Fibonacci sequence
         let now = Instant::now();
         let result = compute_fib_term(sequence_length);
-        debug!(
+        event!(
+            Level::DEBUG,
             "Computed Fibonacci sequence up to {}th term in {} ms",
             sequence_length,
             now.elapsed().as_millis()
@@ -88,7 +89,8 @@ where
     H: ElementHasher<BaseField = BaseElement>,
 {
     fn prove(&self) -> StarkProof {
-        debug!(
+        event!(
+            Level::DEBUG,
             "Generating proof for computing Fibonacci sequence (2 terms per step) up to {}th term\n\
             ---------------------",
             self.sequence_length
@@ -103,7 +105,8 @@ where
 
         let trace_width = trace.width();
         let trace_length = trace.length();
-        debug!(
+        event!(
+            Level::DEBUG,
             "Generated execution trace of {} registers and 2^{} steps in {} ms",
             trace_width,
             trace_length.ilog2(),

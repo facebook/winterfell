@@ -5,9 +5,9 @@
 
 use crate::{Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256};
 use core::marker::PhantomData;
-use log::debug;
 use rand_utils::rand_array;
 use std::time::Instant;
+use tracing::{event, Level};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, ExtensionOf, FieldElement},
@@ -83,7 +83,8 @@ impl<H: ElementHasher> RescueRapsExample<H> {
         // compute the sequence of hashes using external implementation of Rescue hash
         let now = Instant::now();
         let result = compute_permuted_hash_chains(&seeds, &permuted_seeds);
-        debug!(
+        event!(
+            Level::DEBUG,
             "Computed two permuted chains of {} Rescue hashes in {} ms",
             chain_length,
             now.elapsed().as_millis(),
@@ -109,7 +110,8 @@ where
 {
     fn prove(&self) -> StarkProof {
         // generate the execution trace
-        debug!(
+        event!(
+            Level::DEBUG,
             "Generating proof for computing a chain of {} Rescue hashes\n\
             ---------------------",
             self.chain_length
@@ -122,7 +124,8 @@ where
         let now = Instant::now();
         let trace = prover.build_trace(&self.seeds, &self.permuted_seeds, self.result);
         let trace_length = trace.length();
-        debug!(
+        event!(
+            Level::DEBUG,
             "Generated execution trace of {} registers and 2^{} steps in {} ms",
             trace.width(),
             trace_length.ilog2(),

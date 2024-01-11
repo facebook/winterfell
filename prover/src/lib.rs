@@ -68,9 +68,9 @@ pub use crypto;
 use crypto::{ElementHasher, RandomCoin};
 
 #[cfg(feature = "std")]
-use log::debug;
-#[cfg(feature = "std")]
 use std::time::Instant;
+#[cfg(feature = "std")]
+use tracing::{event, Level};
 
 mod domain;
 pub use domain::StarkDomain;
@@ -261,7 +261,8 @@ pub trait Prover {
         let now = Instant::now();
         let domain = StarkDomain::new(&air);
         #[cfg(feature = "std")]
-        debug!(
+        event!(
+            Level::DEBUG,
             "Built domain of 2^{} elements in {} ms",
             domain.lde_domain_size().ilog2(),
             now.elapsed().as_millis()
@@ -294,7 +295,8 @@ pub trait Prover {
                 .build_aux_segment(&aux_trace_segments, &rand_elements)
                 .expect("failed build auxiliary trace segment");
             #[cfg(feature = "std")]
-            debug!(
+            event!(
+                Level::DEBUG,
                 "Built auxiliary trace segment of {} columns and 2^{} steps in {} ms",
                 aux_segment.num_cols(),
                 aux_segment.num_rows().ilog2(),
@@ -334,7 +336,8 @@ pub trait Prover {
         let evaluator = self.new_evaluator(&air, aux_trace_rand_elements, constraint_coeffs);
         let composition_poly_trace = evaluator.evaluate(&trace_lde, &domain);
         #[cfg(feature = "std")]
-        debug!(
+        event!(
+            Level::DEBUG,
             "Evaluated constraints over domain of 2^{} elements in {} ms",
             composition_poly_trace.num_rows().ilog2(),
             now.elapsed().as_millis()
@@ -389,7 +392,8 @@ pub trait Prover {
         deep_composition_poly.add_composition_poly(composition_poly, ood_evaluations);
 
         #[cfg(feature = "std")]
-        debug!(
+        event!(
+            Level::DEBUG,
             "Built DEEP composition polynomial of degree {} in {} ms",
             deep_composition_poly.degree(),
             now.elapsed().as_millis()
@@ -410,7 +414,8 @@ pub trait Prover {
             infer_degree(&deep_evaluations, domain.offset())
         );
         #[cfg(feature = "std")]
-        debug!(
+        event!(
+            Level::DEBUG,
             "Evaluated DEEP composition polynomial over LDE domain (2^{} elements) in {} ms",
             domain.lde_domain_size().ilog2(),
             now.elapsed().as_millis()
@@ -422,7 +427,8 @@ pub trait Prover {
         let mut fri_prover = FriProver::new(air.options().to_fri_options());
         fri_prover.build_layers(&mut channel, deep_evaluations);
         #[cfg(feature = "std")]
-        debug!(
+        event!(
+            Level::DEBUG,
             "Computed {} FRI layers from composition polynomial evaluations in {} ms",
             fri_prover.num_layers(),
             now.elapsed().as_millis()
@@ -438,7 +444,8 @@ pub trait Prover {
         // generate pseudo-random query positions
         let query_positions = channel.get_query_positions();
         #[cfg(feature = "std")]
-        debug!(
+        event!(
+            Level::DEBUG,
             "Determined {} unique query positions in {} ms",
             query_positions.len(),
             now.elapsed().as_millis()
@@ -468,7 +475,7 @@ pub trait Prover {
             query_positions.len(),
         );
         #[cfg(feature = "std")]
-        debug!("Built proof object in {} ms", now.elapsed().as_millis());
+        event!(Level::DEBUG, "Built proof object in {} ms", now.elapsed().as_millis());
 
         Ok(proof)
     }
@@ -501,7 +508,8 @@ pub trait Prover {
         let composition_poly =
             CompositionPoly::new(composition_poly_trace, domain, num_trace_poly_columns);
         #[cfg(feature = "std")]
-        debug!(
+        event!(
+            Level::DEBUG,
             "Converted constraint evaluations into {} composition polynomial columns of degree {} in {} ms",
             composition_poly.num_columns(),
             composition_poly.column_degree(),
@@ -516,7 +524,8 @@ pub trait Prover {
             domain,
         );
         #[cfg(feature = "std")]
-        debug!(
+        event!(
+            Level::DEBUG,
             "Evaluated {} composition polynomial columns over LDE domain (2^{} elements) in {} ms",
             composed_evaluations.num_cols(),
             composed_evaluations.num_rows().ilog2(),
@@ -529,7 +538,8 @@ pub trait Prover {
         let commitment = composed_evaluations.commit_to_rows();
         let constraint_commitment = ConstraintCommitment::new(composed_evaluations, commitment);
         #[cfg(feature = "std")]
-        debug!(
+        event!(
+            Level::DEBUG,
             "Computed constraint evaluation commitment (Merkle tree of depth {}) in {} ms",
             constraint_commitment.tree_depth(),
             now.elapsed().as_millis()

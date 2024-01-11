@@ -12,9 +12,9 @@ use crate::{
     Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256,
 };
 use core::marker::PhantomData;
-use log::debug;
 use rand_utils::{rand_value, rand_vector};
 use std::time::Instant;
+use tracing::{event, Level};
 use winterfell::{
     crypto::{DefaultRandomCoin, Digest, ElementHasher, MerkleTree},
     math::{fields::f128::BaseElement, FieldElement, StarkField},
@@ -77,12 +77,18 @@ impl<H: ElementHasher> MerkleExample<H> {
         // build Merkle tree of the specified depth
         let now = Instant::now();
         let tree = build_merkle_tree(tree_depth, value, index);
-        debug!("Built Merkle tree of depth {} in {} ms", tree_depth, now.elapsed().as_millis(),);
+        event!(
+            Level::DEBUG,
+            "Built Merkle tree of depth {} in {} ms",
+            tree_depth,
+            now.elapsed().as_millis(),
+        );
 
         // compute Merkle path form the leaf specified by the index
         let now = Instant::now();
         let path = tree.prove(index).unwrap();
-        debug!(
+        event!(
+            Level::DEBUG,
             "Computed Merkle path from leaf {} to root {} in {} ms",
             index,
             hex::encode(tree.root().as_bytes()),
@@ -109,7 +115,8 @@ where
 {
     fn prove(&self) -> StarkProof {
         // generate the execution trace
-        debug!(
+        event!(
+            Level::DEBUG,
             "Generating proof for proving membership in a Merkle tree of depth {}\n\
             ---------------------",
             self.path.len()
@@ -121,7 +128,8 @@ where
         let now = Instant::now();
         let trace = prover.build_trace(self.value, &self.path, self.index);
         let trace_length = trace.length();
-        debug!(
+        event!(
+            Level::DEBUG,
             "Generated execution trace of {} registers and 2^{} steps in {} ms",
             trace.width(),
             trace_length.ilog2(),
