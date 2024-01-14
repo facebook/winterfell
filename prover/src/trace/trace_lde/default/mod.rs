@@ -9,11 +9,7 @@ use super::{
 };
 use crate::{RowMatrix, DEFAULT_SEGMENT_WIDTH};
 use crypto::MerkleTree;
-
-#[cfg(feature = "std")]
-use std::time::Instant;
-#[cfg(feature = "std")]
-use tracing::{event, Level};
+use tracing::{debug_span, event, Level};
 
 #[cfg(test)]
 mod tests;
@@ -234,32 +230,31 @@ where
     H: ElementHasher<BaseField = E::BaseField>,
 {
     // extend the execution trace
-    #[cfg(feature = "std")]
-    let now = Instant::now();
-    let trace_polys = trace.interpolate_columns();
-    let trace_lde = RowMatrix::evaluate_polys_over::<DEFAULT_SEGMENT_WIDTH>(&trace_polys, domain);
-    #[cfg(feature = "std")]
-    event!(
-        Level::DEBUG,
-        "Extended execution trace of {} columns from 2^{} to 2^{} steps ({}x blowup) in {} ms",
-        trace_lde.num_cols(),
-        trace_polys.num_rows().ilog2(),
-        trace_lde.num_rows().ilog2(),
-        domain.trace_to_lde_blowup(),
-        now.elapsed().as_millis()
-    );
+    let (trace_lde, trace_polys) = debug_span!("Extending execution trace").in_scope(|| {
+        let trace_polys = trace.interpolate_columns();
+        let trace_lde =
+            RowMatrix::evaluate_polys_over::<DEFAULT_SEGMENT_WIDTH>(&trace_polys, domain);
+        event!(
+            Level::TRACE,
+            "Extended execution trace of {} columns from 2^{} to 2^{} steps ({}x blowup)",
+            trace_lde.num_cols(),
+            trace_polys.num_rows().ilog2(),
+            trace_lde.num_rows().ilog2(),
+            domain.trace_to_lde_blowup(),
+        );
+        (trace_lde, trace_polys)
+    });
 
     // build trace commitment
-    #[cfg(feature = "std")]
-    let now = Instant::now();
-    let trace_tree = trace_lde.commit_to_rows();
-    #[cfg(feature = "std")]
-    event!(
-        Level::DEBUG,
-        "Computed execution trace commitment (Merkle tree of depth {}) in {} ms",
-        trace_tree.depth(),
-        now.elapsed().as_millis()
-    );
+    let trace_tree = debug_span!("Computed execution trace commitment").in_scope(|| {
+        let trace_tree = trace_lde.commit_to_rows();
+        event!(
+            Level::TRACE,
+            "Computed execution trace commitment (Merkle tree of depth {})",
+            trace_tree.depth(),
+        );
+        trace_tree
+    });
 
     (trace_lde, trace_tree, trace_polys)
 }

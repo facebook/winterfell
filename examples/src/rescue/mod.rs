@@ -6,7 +6,7 @@
 use crate::{Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256};
 use core::marker::PhantomData;
 use std::time::Instant;
-use tracing::{event, Level};
+use tracing::{debug_span, event, Level};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, FieldElement},
@@ -71,8 +71,7 @@ impl<H: ElementHasher> RescueExample<H> {
         // compute the sequence of hashes using external implementation of Rescue hash
         let now = Instant::now();
         let result = compute_hash_chain(seed, chain_length);
-        event!(
-            Level::DEBUG,
+        println!(
             "Computed a chain of {} Rescue hashes in {} ms",
             chain_length,
             now.elapsed().as_millis(),
@@ -99,8 +98,7 @@ where
         // generate the execution trace
         event!(
             Level::DEBUG,
-            "Generating proof for computing a chain of {} Rescue hashes\n\
-            ---------------------",
+            "Generating proof for computing a chain of {} Rescue hashes",
             self.chain_length
         );
 
@@ -108,16 +106,17 @@ where
         let prover = RescueProver::<H>::new(self.options.clone());
 
         // generate the execution trace
-        let now = Instant::now();
-        let trace = prover.build_trace(self.seed, self.chain_length);
-        let trace_length = trace.length();
-        event!(
-            Level::DEBUG,
-            "Generated execution trace of {} registers and 2^{} steps in {} ms",
-            trace.width(),
-            trace_length.ilog2(),
-            now.elapsed().as_millis()
-        );
+        let trace = debug_span!("Generating execution trace").in_scope(|| {
+            let trace = prover.build_trace(self.seed, self.chain_length);
+            let trace_length = trace.length();
+            event!(
+                Level::TRACE,
+                "Generated execution trace of {} registers and 2^{} steps",
+                trace.width(),
+                trace_length.ilog2(),
+            );
+            trace
+        });
 
         // generate the proof
         prover.prove(trace).unwrap()

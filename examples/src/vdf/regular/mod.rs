@@ -6,7 +6,7 @@
 use crate::{Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256};
 use core::marker::PhantomData;
 use std::time::Instant;
-use tracing::{event, Level};
+use tracing::{debug_span, event, Level};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, FieldElement},
@@ -59,8 +59,7 @@ impl<H: ElementHasher> VdfExample<H> {
         let now = Instant::now();
         let seed = BaseElement::new(123);
         let result = execute_vdf(seed, num_steps);
-        event!(
-            Level::DEBUG,
+        println!(
             "Executed the VDF function for {} steps in {} ms",
             num_steps,
             now.elapsed().as_millis()
@@ -86,8 +85,7 @@ where
     fn prove(&self) -> StarkProof {
         event!(
             Level::DEBUG,
-            "Generating proof for executing a VDF function for {} steps\n\
-            ---------------------",
+            "Generating proof for executing a VDF function for {} steps",
             self.num_steps
         );
 
@@ -95,18 +93,18 @@ where
         let prover = VdfProver::<H>::new(self.options.clone());
 
         // generate execution trace
-        let now = Instant::now();
-        let trace = VdfProver::<H>::build_trace(self.seed, self.num_steps);
-
-        let trace_width = trace.width();
-        let trace_length = trace.length();
-        event!(
-            Level::DEBUG,
-            "Generated execution trace of {} registers and 2^{} steps in {} ms",
-            trace_width,
-            trace_length.ilog2(),
-            now.elapsed().as_millis()
-        );
+        let trace = debug_span!("Generating execution trace").in_scope(|| {
+            let trace = VdfProver::<H>::build_trace(self.seed, self.num_steps);
+            let trace_width = trace.width();
+            let trace_length = trace.length();
+            event!(
+                Level::TRACE,
+                "Generated execution trace of {} registers and 2^{} steps",
+                trace_width,
+                trace_length.ilog2(),
+            );
+            trace
+        });
 
         // generate the proof
         prover.prove(trace).unwrap()

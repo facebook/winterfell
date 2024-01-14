@@ -7,7 +7,7 @@ use super::utils::compute_fib_term;
 use crate::{Example, ExampleOptions, HashFunction};
 use core::marker::PhantomData;
 use std::time::Instant;
-use tracing::{event, Level};
+use tracing::{debug_span, event, Level};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f64::BaseElement, FieldElement},
@@ -80,8 +80,7 @@ impl<H: ElementHasher> FibExample<H> {
         // compute Fibonacci sequence
         let now = Instant::now();
         let result = compute_fib_term::<BaseElement>(sequence_length);
-        event!(
-            Level::DEBUG,
+        println!(
             "Computed Fibonacci sequence up to {}th term in {} ms",
             sequence_length,
             now.elapsed().as_millis()
@@ -106,8 +105,7 @@ where
     fn prove(&self) -> StarkProof {
         event!(
             Level::DEBUG,
-            "Generating proof for computing Fibonacci sequence (2 terms per step) up to {}th term\n\
-            ---------------------",
+            "Generating proof for computing Fibonacci sequence (2 terms per step) up to {}th term",
             self.sequence_length
         );
 
@@ -115,18 +113,18 @@ where
         let prover = FibSmallProver::<H>::new(self.options.clone());
 
         // generate execution trace
-        let now = Instant::now();
-        let trace = prover.build_trace(self.sequence_length);
-
-        let trace_width = trace.width();
-        let trace_length = trace.length();
-        event!(
-            Level::DEBUG,
-            "Generated execution trace of {} registers and 2^{} steps in {} ms",
-            trace_width,
-            trace_length.ilog2(),
-            now.elapsed().as_millis()
-        );
+        let trace = debug_span!("Generating execution trace").in_scope(|| {
+            let trace = prover.build_trace(self.sequence_length);
+            let trace_width = trace.width();
+            let trace_length = trace.length();
+            event!(
+                Level::TRACE,
+                "Generated execution trace of {} registers and 2^{} steps",
+                trace_width,
+                trace_length.ilog2(),
+            );
+            trace
+        });
 
         // generate the proof
         prover.prove(trace).unwrap()

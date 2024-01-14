@@ -10,7 +10,7 @@ use super::{
 use crate::{Blake3_192, Blake3_256, ExampleOptions, HashFunction, Sha3_256};
 use core::marker::PhantomData;
 use std::time::Instant;
-use tracing::{event, Level};
+use tracing::{debug_span, event, Level};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, get_power_series, FieldElement, StarkField},
@@ -72,8 +72,7 @@ impl<H: ElementHasher> LamportThresholdExample<H> {
         // generate private/public key pairs for the specified number of signatures
         let now = Instant::now();
         let private_keys = build_keys(num_signers);
-        event!(
-            Level::DEBUG,
+        println!(
             "Generated {} private-public key pairs in {} ms",
             num_signers,
             now.elapsed().as_millis()
@@ -92,7 +91,7 @@ impl<H: ElementHasher> LamportThresholdExample<H> {
         // build the aggregated public key
         let now = Instant::now();
         let pub_key = AggPublicKey::new(public_keys);
-        event!(Level::DEBUG, "Built aggregated public key in {} ms", now.elapsed().as_millis());
+        println!("Built aggregated public key in {} ms", now.elapsed().as_millis());
 
         let (options, _) = options.to_proof_options(28, 8);
 
@@ -117,8 +116,7 @@ where
         // generate the execution trace
         event!(
             Level::DEBUG,
-            "Generating proof for verifying {}-of-{} signature \n\
-            ---------------------",
+            "Generating proof for verifying {}-of-{} signature",
             self.signatures.len(),
             self.pub_key.num_keys(),
         );
@@ -132,16 +130,17 @@ where
         );
 
         // generate execution trace
-        let now = Instant::now();
-        let trace = prover.build_trace(&self.pub_key, self.message, &self.signatures);
-        let trace_length = trace.length();
-        event!(
-            Level::DEBUG,
-            "Generated execution trace of {} registers and 2^{} steps in {} ms",
-            trace.width(),
-            trace_length.ilog2(),
-            now.elapsed().as_millis()
-        );
+        let trace = debug_span!("Generating execution trace").in_scope(|| {
+            let trace = prover.build_trace(&self.pub_key, self.message, &self.signatures);
+            let trace_length = trace.length();
+            event!(
+                Level::TRACE,
+                "Generated execution trace of {} registers and 2^{} steps",
+                trace.width(),
+                trace_length.ilog2(),
+            );
+            trace
+        });
 
         // generate the proof
         prover.prove(trace).unwrap()
