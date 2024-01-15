@@ -7,7 +7,7 @@ use crate::{Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_
 use core::marker::PhantomData;
 use rand_utils::rand_array;
 use std::time::Instant;
-use tracing::{debug_span, event, Level};
+use tracing::{event, info_span, Level};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, ExtensionOf, FieldElement},
@@ -109,21 +109,17 @@ where
 {
     fn prove(&self) -> StarkProof {
         // generate the execution trace
-        event!(
-            Level::DEBUG,
-            "Generating proof for computing a chain of {} Rescue hashes",
-            self.chain_length
-        );
+        println!("Generating proof for computing a chain of {} Rescue hashes", self.chain_length);
 
         // create a prover
         let prover = RescueRapsProver::<H>::new(self.options.clone());
 
         // generate the execution trace
-        let trace = debug_span!("Generating execution trace").in_scope(|| {
+        let trace = info_span!("Generating execution trace").in_scope(|| {
             let trace = prover.build_trace(&self.seeds, &self.permuted_seeds, self.result);
             let trace_length = trace.length();
             event!(
-                Level::TRACE,
+                Level::DEBUG,
                 "Generated execution trace of {} registers and 2^{} steps",
                 trace.width(),
                 trace_length.ilog2(),

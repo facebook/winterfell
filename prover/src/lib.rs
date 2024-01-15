@@ -49,7 +49,7 @@ pub use air::{
     DeepCompositionCoefficients, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo,
     TraceLayout, TransitionConstraintDegree,
 };
-use tracing::{debug_span, event, Level};
+use tracing::{event, info_span, Level};
 pub use utils::{
     iterators, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
     SliceReader,
@@ -254,10 +254,10 @@ pub trait Prover {
 
         // build computation domain; this is used later for polynomial evaluations
         let domain =
-            debug_span!("Building domain").in_scope(|| {
+            info_span!("Building domain").in_scope(|| {
                 let domain = StarkDomain::new(&air);
                 event!(
-                    Level::TRACE,
+                    Level::DEBUG,
                     "Built domain of 2^{} elements",
                     domain.lde_domain_size().ilog2(),
                 );
@@ -280,7 +280,7 @@ pub trait Prover {
         let mut aux_trace_segments = Vec::new();
         let mut aux_trace_rand_elements = AuxTraceRandElements::new();
         for i in 0..trace.layout().num_aux_segments() {
-            let (aux_segment, rand_elements) = debug_span!("Built auxiliary trace segment")
+            let (aux_segment, rand_elements) = info_span!("Built auxiliary trace segment")
                 .in_scope(|| {
                     // draw a set of random elements required to build an auxiliary trace segment
                     let rand_elements = channel.get_aux_trace_segment_rand_elements(i);
@@ -290,7 +290,7 @@ pub trait Prover {
                         .build_aux_segment(&aux_trace_segments, &rand_elements)
                         .expect("failed build auxiliary trace segment");
                     event!(
-                        Level::TRACE,
+                        Level::DEBUG,
                         "Built auxiliary trace segment of {} columns and 2^{} steps",
                         aux_segment.num_cols(),
                         aux_segment.num_rows().ilog2(),
@@ -325,12 +325,12 @@ pub trait Prover {
         // evaluate constraints specified by the AIR over the constraint evaluation domain, and
         // compute random linear combinations of these evaluations using coefficients drawn from
         // the channel
-        let composition_poly_trace = debug_span!("Evaluating constraints").in_scope(|| {
+        let composition_poly_trace = info_span!("Evaluating constraints").in_scope(|| {
             let constraint_coeffs = channel.get_constraint_composition_coeffs();
             let evaluator = self.new_evaluator(&air, aux_trace_rand_elements, constraint_coeffs);
             let composition_poly_trace = evaluator.evaluate(&trace_lde, &domain);
             event!(
-                Level::TRACE,
+                Level::DEBUG,
                 "Evaluated constraints over domain of 2^{} elements",
                 composition_poly_trace.num_rows().ilog2(),
             );
@@ -353,7 +353,7 @@ pub trait Prover {
 
         // 4 ----- build DEEP composition polynomial ----------------------------------------------
         let deep_composition_poly =
-            debug_span!("Building DEEP composition polynomial").in_scope(|| {
+            info_span!("Building DEEP composition polynomial").in_scope(|| {
                 // draw an out-of-domain point z. Depending on the type of E, the point is drawn either
                 // from the base field or from an extension field defined by E.
                 //
@@ -385,7 +385,7 @@ pub trait Prover {
                 deep_composition_poly.add_composition_poly(composition_poly, ood_evaluations);
 
                 event!(
-                    Level::TRACE,
+                    Level::DEBUG,
                     "Built DEEP composition polynomial of degree {}",
                     deep_composition_poly.degree(),
                 );
@@ -397,8 +397,8 @@ pub trait Prover {
         assert_eq!(domain.trace_length() - 2, deep_composition_poly.degree());
 
         // 5 ----- evaluate DEEP composition polynomial over LDE domain ---------------------------
-        let deep_evaluations =
-            debug_span!("Evaluating DEEP composition polynomial over LDE domain").in_scope(|| {
+        let deep_evaluations = info_span!("Evaluating DEEP composition polynomial over LDE domain")
+            .in_scope(|| {
                 let deep_evaluations = deep_composition_poly.evaluate(&domain);
                 // we check the following condition in debug mode only because infer_degree is an expensive
                 // operation
@@ -407,7 +407,7 @@ pub trait Prover {
                     infer_degree(&deep_evaluations, domain.offset())
                 );
                 event!(
-                    Level::TRACE,
+                    Level::DEBUG,
                     "Evaluated DEEP composition polynomial over LDE domain (2^{} elements)",
                     domain.lde_domain_size().ilog2(),
                 );
@@ -415,14 +415,14 @@ pub trait Prover {
             });
 
         // 6 ----- compute FRI layers for the composition polynomial ------------------------------
-        let mut fri_prover = debug_span!(
+        let mut fri_prover = info_span!(
             "Computing FRI layers from composition polynomial evaluations"
         )
         .in_scope(|| {
             let mut fri_prover = FriProver::new(air.options().to_fri_options());
             fri_prover.build_layers(&mut channel, deep_evaluations);
             event!(
-                Level::TRACE,
+                Level::DEBUG,
                 "Computed {} FRI layers from composition polynomial evaluations",
                 fri_prover.num_layers(),
             );
@@ -430,18 +430,18 @@ pub trait Prover {
         });
 
         // 7 ----- determine query positions ------------------------------------------------------
-        let query_positions = debug_span!("Determining unique query positions").in_scope(|| {
+        let query_positions = info_span!("Determining unique query positions").in_scope(|| {
             // apply proof-of-work to the query seed
             channel.grind_query_seed();
 
             // generate pseudo-random query positions
             let query_positions = channel.get_query_positions();
-            event!(Level::TRACE, "Determined {} unique query positions", query_positions.len(),);
+            event!(Level::DEBUG, "Determined {} unique query positions", query_positions.len(),);
             query_positions
         });
 
         // 8 ----- build proof object -------------------------------------------------------------
-        let proof = debug_span!("Building proof object").in_scope(|| {
+        let proof = info_span!("Building proof object").in_scope(|| {
             // generate FRI proof
             let fri_proof = fri_prover.build_proof(&query_positions);
 
@@ -484,11 +484,11 @@ pub trait Prover {
         // - interpolate the trace into a polynomial in coefficient form
         // - "break" the polynomial into a set of column polynomials each of degree equal to
         //   trace_length - 1
-        let composition_poly = debug_span!("Converting constraint evaluations into composition polynomial columns").in_scope(|| {
+        let composition_poly = info_span!("Converting constraint evaluations into composition polynomial columns").in_scope(|| {
             let composition_poly =
                 CompositionPoly::new(composition_poly_trace, domain, num_trace_poly_columns);
             event!(
-                Level::TRACE,
+                Level::DEBUG,
                 "Converted constraint evaluations into {} composition polynomial columns of degree {}",
                 composition_poly.num_columns(),
                 composition_poly.column_degree(),
@@ -497,7 +497,7 @@ pub trait Prover {
         });
 
         // then, evaluate composition polynomial columns over the LDE domain
-        let composed_evaluations = debug_span!(
+        let composed_evaluations = info_span!(
             "Evaluating composition polynomial columns over LDE domain"
         )
         .in_scope(|| {
@@ -506,7 +506,7 @@ pub trait Prover {
                 domain,
             );
             event!(
-                Level::TRACE,
+                Level::DEBUG,
                 "Evaluated {} composition polynomial columns over LDE domain (2^{} elements)",
                 composed_evaluations.num_cols(),
                 composed_evaluations.num_rows().ilog2(),
@@ -515,13 +515,13 @@ pub trait Prover {
         });
 
         // finally, build constraint evaluation commitment
-        let constraint_commitment = debug_span!("Computing constraint evaluation commitment")
+        let constraint_commitment = info_span!("Computing constraint evaluation commitment")
             .in_scope(|| {
                 let commitment = composed_evaluations.commit_to_rows();
                 let constraint_commitment =
                     ConstraintCommitment::new(composed_evaluations, commitment);
                 event!(
-                    Level::TRACE,
+                    Level::DEBUG,
                     "Computed constraint evaluation commitment (Merkle tree of depth {})",
                     constraint_commitment.tree_depth(),
                 );

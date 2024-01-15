@@ -7,7 +7,7 @@ use super::utils::compute_fib_term;
 use crate::{Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256};
 use core::marker::PhantomData;
 use std::time::Instant;
-use tracing::{debug_span, event, Level};
+use tracing::{event, info_span, Level};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, FieldElement},
@@ -88,8 +88,7 @@ where
     H: ElementHasher<BaseField = BaseElement>,
 {
     fn prove(&self) -> StarkProof {
-        event!(
-            Level::DEBUG,
+        println!(
             "Generating proof for computing Fibonacci sequence (8 terms per step) up to {}th term",
             self.sequence_length
         );
@@ -98,12 +97,12 @@ where
         let prover = Fib8Prover::<H>::new(self.options.clone());
 
         // generate execution trace
-        let trace = debug_span!("Generating execution trace").in_scope(|| {
+        let trace = info_span!("Generating execution trace").in_scope(|| {
             let trace = prover.build_trace(self.sequence_length);
             let trace_width = trace.width();
             let trace_length = trace.length();
             event!(
-                Level::TRACE,
+                Level::DEBUG,
                 "Generated execution trace of {} registers and 2^{} steps",
                 trace_width,
                 trace_length.ilog2(),

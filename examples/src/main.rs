@@ -3,6 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use std::time::Instant;
 use structopt::StructOpt;
 use tracing::info_span;
 use tracing_forest::ForestLayer;
@@ -68,7 +69,9 @@ fn main() {
     .expect("The example failed to initialize.");
 
     // generate proof
+    let now = Instant::now();
     let proof = info_span!("Generating proof").in_scope(|| example.as_ref().prove());
+    println!("---------------------\nProof generated in {} ms", now.elapsed().as_millis());
 
     let proof_bytes = proof.to_bytes();
     println!("Proof size: {:.1} KB", proof_bytes.len() as f64 / 1024f64);
@@ -90,11 +93,12 @@ fn main() {
     println!("Proof hash: {}", hex::encode(blake3::hash(&proof_bytes).as_bytes()));
 
     // verify the proof
-    let parsed_proof = StarkProof::from_bytes(&proof.to_bytes()).unwrap();
+    println!("---------------------");
+    let parsed_proof = StarkProof::from_bytes(&proof_bytes).unwrap();
     assert_eq!(proof, parsed_proof);
-    let result = info_span!("Verifying proof").in_scope(|| example.verify(proof));
-    match result {
-        Ok(_) => println!("Proof verified"),
+    let now = Instant::now();
+    match example.verify(proof) {
+        Ok(_) => println!("Proof verified in {:.1} ms", now.elapsed().as_micros() as f64 / 1000f64),
         Err(msg) => println!("Failed to verify proof: {}", msg),
     }
 }

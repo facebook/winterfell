@@ -14,7 +14,7 @@ use crate::{
 use core::marker::PhantomData;
 use rand_utils::{rand_value, rand_vector};
 use std::time::Instant;
-use tracing::{debug_span, event, Level};
+use tracing::{event, info_span, Level};
 use winterfell::{
     crypto::{DefaultRandomCoin, Digest, ElementHasher, MerkleTree},
     math::{fields::f128::BaseElement, FieldElement, StarkField},
@@ -109,8 +109,7 @@ where
 {
     fn prove(&self) -> StarkProof {
         // generate the execution trace
-        event!(
-            Level::DEBUG,
+        println!(
             "Generating proof for proving membership in a Merkle tree of depth {}",
             self.path.len()
         );
@@ -118,11 +117,11 @@ where
         let prover = MerkleProver::<H>::new(self.options.clone());
 
         // generate the execution trace
-        let trace = debug_span!("Generating execution trace").in_scope(|| {
+        let trace = info_span!("Generating execution trace").in_scope(|| {
             let trace = prover.build_trace(self.value, &self.path, self.index);
             let trace_length = trace.length();
             event!(
-                Level::TRACE,
+                Level::DEBUG,
                 "Generated execution trace of {} registers and 2^{} steps",
                 trace.width(),
                 trace_length.ilog2(),

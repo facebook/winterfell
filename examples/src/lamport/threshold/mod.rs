@@ -10,7 +10,7 @@ use super::{
 use crate::{Blake3_192, Blake3_256, ExampleOptions, HashFunction, Sha3_256};
 use core::marker::PhantomData;
 use std::time::Instant;
-use tracing::{debug_span, event, Level};
+use tracing::{event, info_span, Level};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, get_power_series, FieldElement, StarkField},
@@ -114,8 +114,7 @@ where
 {
     fn prove(&self) -> StarkProof {
         // generate the execution trace
-        event!(
-            Level::DEBUG,
+        println!(
             "Generating proof for verifying {}-of-{} signature",
             self.signatures.len(),
             self.pub_key.num_keys(),
@@ -130,11 +129,11 @@ where
         );
 
         // generate execution trace
-        let trace = debug_span!("Generating execution trace").in_scope(|| {
+        let trace = info_span!("Generating execution trace").in_scope(|| {
             let trace = prover.build_trace(&self.pub_key, self.message, &self.signatures);
             let trace_length = trace.length();
             event!(
-                Level::TRACE,
+                Level::DEBUG,
                 "Generated execution trace of {} registers and 2^{} steps",
                 trace.width(),
                 trace_length.ilog2(),

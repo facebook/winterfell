@@ -6,7 +6,7 @@
 use crate::{Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256};
 use core::marker::PhantomData;
 use std::time::Instant;
-use tracing::{debug_span, event, Level};
+use tracing::{event, info_span, Level};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, FieldElement},
@@ -83,22 +83,18 @@ where
     H: ElementHasher<BaseField = BaseElement>,
 {
     fn prove(&self) -> StarkProof {
-        event!(
-            Level::DEBUG,
-            "Generating proof for executing a VDF function for {} steps",
-            self.num_steps
-        );
+        println!("Generating proof for executing a VDF function for {} steps", self.num_steps);
 
         // create a prover
         let prover = VdfProver::<H>::new(self.options.clone());
 
         // generate execution trace
-        let trace = debug_span!("Generating execution trace").in_scope(|| {
+        let trace = info_span!("Generating execution trace").in_scope(|| {
             let trace = VdfProver::<H>::build_trace(self.seed, self.num_steps);
             let trace_width = trace.width();
             let trace_length = trace.length();
             event!(
-                Level::TRACE,
+                Level::DEBUG,
                 "Generated execution trace of {} registers and 2^{} steps",
                 trace_width,
                 trace_length.ilog2(),

@@ -9,7 +9,7 @@ use super::{
 };
 use crate::{RowMatrix, DEFAULT_SEGMENT_WIDTH};
 use crypto::MerkleTree;
-use tracing::{debug_span, event, Level};
+use tracing::{event, info_span, Level};
 
 #[cfg(test)]
 mod tests;
@@ -230,12 +230,12 @@ where
     H: ElementHasher<BaseField = E::BaseField>,
 {
     // extend the execution trace
-    let (trace_lde, trace_polys) = debug_span!("Extending execution trace").in_scope(|| {
+    let (trace_lde, trace_polys) = info_span!("Extending execution trace").in_scope(|| {
         let trace_polys = trace.interpolate_columns();
         let trace_lde =
             RowMatrix::evaluate_polys_over::<DEFAULT_SEGMENT_WIDTH>(&trace_polys, domain);
         event!(
-            Level::TRACE,
+            Level::DEBUG,
             "Extended execution trace of {} columns from 2^{} to 2^{} steps ({}x blowup)",
             trace_lde.num_cols(),
             trace_polys.num_rows().ilog2(),
@@ -246,10 +246,10 @@ where
     });
 
     // build trace commitment
-    let trace_tree = debug_span!("Computed execution trace commitment").in_scope(|| {
+    let trace_tree = info_span!("Computing execution trace commitment").in_scope(|| {
         let trace_tree = trace_lde.commit_to_rows();
         event!(
-            Level::TRACE,
+            Level::DEBUG,
             "Computed execution trace commitment (Merkle tree of depth {})",
             trace_tree.depth(),
         );

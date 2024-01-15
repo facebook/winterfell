@@ -9,7 +9,7 @@ use super::{
 use crate::{Blake3_192, Blake3_256, ExampleOptions, HashFunction, Sha3_256};
 use core::marker::PhantomData;
 use std::time::Instant;
-use tracing::{debug_span, event, Level};
+use tracing::{event, info_span, Level};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, get_power_series, FieldElement, StarkField},
@@ -116,21 +116,17 @@ where
 {
     fn prove(&self) -> StarkProof {
         // generate the execution trace
-        event!(
-            Level::DEBUG,
-            "Generating proof for verifying {} Lamport+ signatures",
-            self.signatures.len(),
-        );
+        println!("Generating proof for verifying {} Lamport+ signatures", self.signatures.len());
 
         // create a prover
         let prover =
             LamportAggregateProver::<H>::new(&self.pub_keys, &self.messages, self.options.clone());
 
-        let trace = debug_span!("Generating execution trace").in_scope(|| {
+        let trace = info_span!("Generating execution trace").in_scope(|| {
             let trace = prover.build_trace(&self.messages, &self.signatures);
             let trace_length = trace.length();
             event!(
-                Level::TRACE,
+                Level::DEBUG,
                 "Generated execution trace of {} registers and 2^{} steps",
                 trace.width(),
                 trace_length.ilog2(),
