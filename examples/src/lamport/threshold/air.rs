@@ -228,8 +228,8 @@ impl Air for LamportThresholdAir {
         let mut m1_bits = Vec::with_capacity(SIG_CYCLE_LEN);
         for i in 0..SIG_CYCLE_LEN {
             let cycle_num = i / HASH_CYCLE_LEN;
-            m0_bits.push(BaseElement::from((m0 >> cycle_num) & 1));
-            m1_bits.push(BaseElement::from((m1 >> cycle_num) & 1));
+            m0_bits.push(BaseElement::new((m0 >> cycle_num) & 1));
+            m1_bits.push(BaseElement::new((m1 >> cycle_num) & 1));
         }
         result.push(m0_bits);
         result.push(m1_bits);

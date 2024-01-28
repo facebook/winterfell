@@ -245,8 +245,8 @@ fn update_sig_verification_state(
     } else {
         // for the 8th step of very cycle do the following:
 
-        let m0_bit = BaseElement::from((sig_info.m0 >> cycle_num) & 1);
-        let m1_bit = BaseElement::from((sig_info.m1 >> cycle_num) & 1);
+        let m0_bit = BaseElement::new((sig_info.m0 >> cycle_num) & 1);
+        let m1_bit = BaseElement::new((sig_info.m1 >> cycle_num) & 1);
         let mp_bit = merkle_path_idx[0];
 
         // copy next set of public keys into the registers computing hash of the public key
@@ -345,7 +345,7 @@ fn update_merkle_path_index(
     let index_bit = state[0];
     // the cycle is offset by +1 because the first node in the Merkle path is redundant and we
     // get it by hashing the public key
-    state[0] = BaseElement::from((index >> (cycle_num + 1)) & 1);
+    state[0] = BaseElement::new((index >> (cycle_num + 1)) & 1);
     state[1] += power_of_two * index_bit;
 }
 

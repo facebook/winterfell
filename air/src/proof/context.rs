@@ -27,10 +27,22 @@ impl Context {
     // --------------------------------------------------------------------------------------------
     /// Creates a new context for a computation described by the specified field, trace info, and
     /// proof options.
+    ///
+    /// # Panics
+    /// Panics if either trace length or the LDE domain size implied by the trace length and the
+    /// blowup factor is greater then [u32::MAX].
     pub fn new<B: StarkField>(trace_info: &TraceInfo, options: ProofOptions) -> Self {
+        // TODO: return errors instead of panicking?
+
+        let trace_length = trace_info.length();
+        assert!(trace_length <= u32::MAX as usize, "trace length too big");
+
+        let lde_domain_size = trace_length * options.blowup_factor();
+        assert!(lde_domain_size <= u32::MAX as usize, "LDE domain size too big");
+
         Context {
             trace_layout: trace_info.layout().clone(),
-            trace_length: trace_info.length(),
+            trace_length,
             trace_meta: trace_info.meta().to_vec(),
             field_modulus_bytes: B::get_modulus_le_bytes(),
             options,
@@ -117,7 +129,7 @@ impl<E: StarkField> ToElements<E> for Context {
 
         // convert proof options and trace length to elements
         result.append(&mut self.options.to_elements());
-        result.push(E::from(self.trace_length as u64));
+        result.push(E::from(self.trace_length as u32));
 
         // convert trace metadata to elements; this is done by breaking trace metadata into chunks
         // of bytes which are slightly smaller than the number of bytes needed to encode a field
@@ -257,7 +269,7 @@ mod tests {
             BaseElement::from(1_u32),    // lower bits of field modulus
             BaseElement::from(u32::MAX), // upper bits of field modulus
             BaseElement::from(ext_fri),
-            BaseElement::from(grinding_factor as u32),
+            BaseElement::from(grinding_factor),
             BaseElement::from(blowup_factor as u32),
             BaseElement::from(num_queries as u32),
             BaseElement::from(trace_length as u32),

@@ -82,7 +82,7 @@ mod tests {
     proptest! {
         #[test]
         fn build_merkle_nodes_concurrent(ref data in vec(any::<[u8; 32]>(), 256..257).no_shrink()) {
-            let leaves = ByteDigest::bytes_as_digests(&data).to_vec();
+            let leaves = ByteDigest::bytes_as_digests(data).to_vec();
             let sequential = super::super::build_merkle_nodes::<Sha3_256<BaseElement>>(&leaves);
             let concurrent = super::build_merkle_nodes::<Sha3_256<BaseElement>>(&leaves);
             assert_eq!(concurrent, sequential);

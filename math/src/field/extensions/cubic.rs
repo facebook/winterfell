@@ -301,18 +301,6 @@ impl<B: ExtensibleField<3>> From<B> for CubeExtension<B> {
     }
 }
 
-impl<B: ExtensibleField<3>> From<u128> for CubeExtension<B> {
-    fn from(value: u128) -> Self {
-        Self(B::from(value), B::ZERO, B::ZERO)
-    }
-}
-
-impl<B: ExtensibleField<3>> From<u64> for CubeExtension<B> {
-    fn from(value: u64) -> Self {
-        Self(B::from(value), B::ZERO, B::ZERO)
-    }
-}
-
 impl<B: ExtensibleField<3>> From<u32> for CubeExtension<B> {
     fn from(value: u32) -> Self {
         Self(B::from(value), B::ZERO, B::ZERO)

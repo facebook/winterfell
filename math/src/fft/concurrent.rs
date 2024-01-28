@@ -50,36 +50,47 @@ pub fn evaluate_poly_with_offset<B: StarkField, E: FieldElement<BaseField = B>>(
 
 /// Uses FFT algorithm to interpolate a polynomial from provided `values`; the interpolation
 /// is done in-place, meaning `values` are updated with polynomial coefficients.
-pub fn interpolate_poly<B, E>(v: &mut [E], inv_twiddles: &[B])
+///
+/// # Panics
+/// Panics if the length of `values` is greater than [u32::MAX].
+pub fn interpolate_poly<B, E>(values: &mut [E], inv_twiddles: &[B])
 where
     B: StarkField,
     E: FieldElement<BaseField = B>,
 {
-    split_radix_fft(v, inv_twiddles);
-    let inv_length = E::inv((v.len() as u64).into());
-    v.par_iter_mut().for_each(|e| *e *= inv_length);
-    permute(v);
+    assert!(values.len() <= u32::MAX as usize, "too many values");
+
+    split_radix_fft(values, inv_twiddles);
+    let inv_length = E::inv((values.len() as u32).into());
+    values.par_iter_mut().for_each(|e| *e *= inv_length);
+    permute(values);
 }
 
 /// Uses FFT algorithm to interpolate a polynomial from provided `values` over the domain defined
 /// by `inv_twiddles` and offset by `domain_offset` factor.
+///
+///
+/// # Panics
+/// Panics if the length of `values` is greater than [u32::MAX].
 pub fn interpolate_poly_with_offset<B, E>(values: &mut [E], inv_twiddles: &[B], domain_offset: B)
 where
     B: StarkField,
     E: FieldElement<BaseField = B>,
 {
+    assert!(values.len() <= u32::MAX as usize, "too many values");
+
     split_radix_fft(values, inv_twiddles);
     permute(values);
 
     let domain_offset = E::inv(domain_offset.into());
-    let inv_len = E::inv((values.len() as u64).into());
+    let inv_len = E::inv((values.len() as u32).into());
     let batch_size = values.len() / rayon::current_num_threads().next_power_of_two();
 
     values.par_chunks_mut(batch_size).enumerate().for_each(|(i, batch)| {
         let mut offset = domain_offset.exp(((i * batch_size) as u64).into()) * inv_len;
         for coeff in batch.iter_mut() {
-            *coeff = *coeff * offset;
-            offset = offset * domain_offset;
+            *coeff *= offset;
+            offset *= domain_offset;
         }
     });
 }
@@ -136,7 +147,7 @@ pub(super) fn split_radix_fft<B: StarkField, E: FieldElement<BaseField = B>>(
     // apply inner FFTs
     values
         .par_chunks_mut(outer_len)
-        .for_each(|row| row.fft_in_place_raw(&twiddles, stretch, stretch, 0));
+        .for_each(|row| row.fft_in_place_raw(twiddles, stretch, stretch, 0));
 
     // transpose inner x inner x stretch square matrix
     transpose_square_stretch(values, inner_len, stretch);
@@ -149,10 +160,10 @@ pub(super) fn split_radix_fft<B: StarkField, E: FieldElement<BaseField = B>>(
             let mut outer_twiddle = inner_twiddle;
             for element in row.iter_mut().skip(1) {
                 *element = (*element).mul_base(outer_twiddle);
-                outer_twiddle = outer_twiddle * inner_twiddle;
+                outer_twiddle *= inner_twiddle;
             }
         }
-        row.fft_in_place(&twiddles);
+        row.fft_in_place(twiddles);
     });
 }
 
@@ -216,7 +227,7 @@ fn clone_and_shift<E: FieldElement>(source: &[E], destination: &mut [E], offset:
             let mut factor = offset.exp(((i * batch_size) as u64).into());
             for (s, d) in source.iter().zip(destination.iter_mut()) {
                 *d = (*s).mul_base(factor);
-                factor = factor * offset;
+                factor *= offset;
             }
         });
 }

@@ -229,6 +229,7 @@ mod concurrent {
 
     /// In-place recursive FFT with permuted output.
     /// Adapted from: https://github.com/0xProject/OpenZKP/tree/master/algebra/primefield/src/fft
+    #[allow(clippy::needless_range_loop)]
     pub fn split_radix_fft<B: StarkField, const N: usize>(data: &mut [[B; N]], twiddles: &[B]) {
         // generator of the domain should be in the middle of twiddles
         let n = data.len();
@@ -246,7 +247,7 @@ mod concurrent {
 
         // apply inner FFTs
         data.par_chunks_mut(outer_len)
-            .for_each(|row| row.fft_in_place_raw(&twiddles, stretch, stretch, 0));
+            .for_each(|row| row.fft_in_place_raw(twiddles, stretch, stretch, 0));
 
         // transpose inner x inner x stretch square matrix
         transpose_square_stretch(data, inner_len, stretch);
@@ -259,12 +260,12 @@ mod concurrent {
                 let mut outer_twiddle = inner_twiddle;
                 for element in row.iter_mut().skip(1) {
                     for col_idx in 0..N {
-                        element[col_idx] = element[col_idx] * outer_twiddle;
+                        element[col_idx] *= outer_twiddle;
                     }
-                    outer_twiddle = outer_twiddle * inner_twiddle;
+                    outer_twiddle *= inner_twiddle;
                 }
             }
-            row.fft_in_place(&twiddles)
+            row.fft_in_place(twiddles)
         });
     }
 

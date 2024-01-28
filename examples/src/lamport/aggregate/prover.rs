@@ -232,8 +232,8 @@ fn apply_message_acc(
     let m0_bit = state[0];
     let m1_bit = state[1];
 
-    state[0] = BaseElement::from((m0 >> (cycle_num + 1)) & 1);
-    state[1] = BaseElement::from((m1 >> (cycle_num + 1)) & 1);
+    state[0] = BaseElement::new((m0 >> (cycle_num + 1)) & 1);
+    state[1] = BaseElement::new((m1 >> (cycle_num + 1)) & 1);
     state[2] += power_of_two * m0_bit;
     state[3] += power_of_two * m1_bit;
 }

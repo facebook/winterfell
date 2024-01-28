@@ -90,7 +90,7 @@ where
     // build offset inverses and twiddles used during polynomial interpolation
     let inv_offsets = get_inv_offsets(values.len(), domain_offset, N);
     let inv_twiddles = get_inv_twiddles::<B>(N);
-    let len_offset = E::inv((N as u64).into());
+    let len_offset = E::inv((N as u32).into());
 
     let mut result = unsafe { uninit_vector(values.len()) };
     iter_mut!(result)

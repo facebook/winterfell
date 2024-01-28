@@ -46,8 +46,6 @@ pub trait FieldElement:
     + MulAssign<Self>
     + DivAssign<Self>
     + Neg<Output = Self>
-    + From<u128>
-    + From<u64>
     + From<u32>
     + From<u16>
     + From<u8>

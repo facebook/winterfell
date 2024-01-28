@@ -326,7 +326,7 @@ mod tests {
         ]);
         let expected = vec![
             BaseElement::from(ext_fri),
-            BaseElement::from(grinding_factor as u32),
+            BaseElement::from(grinding_factor),
             BaseElement::from(blowup_factor as u32),
             BaseElement::from(num_queries as u32),
         ];

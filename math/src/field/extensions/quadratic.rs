@@ -295,18 +295,6 @@ impl<B: ExtensibleField<2>> From<B> for QuadExtension<B> {
     }
 }
 
-impl<B: ExtensibleField<2>> From<u128> for QuadExtension<B> {
-    fn from(value: u128) -> Self {
-        Self(B::from(value), B::ZERO)
-    }
-}
-
-impl<B: ExtensibleField<2>> From<u64> for QuadExtension<B> {
-    fn from(value: u64) -> Self {
-        Self(B::from(value), B::ZERO)
-    }
-}
-
 impl<B: ExtensibleField<2>> From<u32> for QuadExtension<B> {
     fn from(value: u32) -> Self {
         Self(B::from(value), B::ZERO)
