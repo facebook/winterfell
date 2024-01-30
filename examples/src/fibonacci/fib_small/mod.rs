@@ -7,7 +7,7 @@ use super::utils::compute_fib_term;
 use crate::{Example, ExampleOptions, HashFunction};
 use core::marker::PhantomData;
 use std::time::Instant;
-use tracing::{event, info_span, Level};
+use tracing::{field, info_span};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f64::BaseElement, FieldElement},
@@ -112,16 +112,15 @@ where
         let prover = FibSmallProver::<H>::new(self.options.clone());
 
         // generate execution trace
-        let trace = info_span!("Generating execution trace").in_scope(|| {
+        let trace = info_span!(
+            "Generated execution trace",
+            registers_num = field::Empty,
+            steps = field::Empty
+        )
+        .in_scope(|| {
             let trace = prover.build_trace(self.sequence_length);
-            let trace_width = trace.width();
-            let trace_length = trace.length();
-            event!(
-                Level::DEBUG,
-                "Generated execution trace of {} registers and 2^{} steps",
-                trace_width,
-                trace_length.ilog2(),
-            );
+            tracing::Span::current().record("registers_num", &format!("{}", trace.width()));
+            tracing::Span::current().record("steps", &format!("2^{}", trace.length().ilog2()));
             trace
         });
 

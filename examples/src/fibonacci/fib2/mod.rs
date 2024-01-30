@@ -7,7 +7,7 @@ use super::utils::compute_fib_term;
 use crate::{Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256};
 use core::marker::PhantomData;
 use std::time::Instant;
-use tracing::{event, info_span, Level};
+use tracing::{field, info_span};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, FieldElement},
@@ -97,18 +97,35 @@ where
         let prover = FibProver::<H>::new(self.options.clone());
 
         // generate execution trace
-        let trace = info_span!("Generating execution trace").in_scope(|| {
+        let trace = info_span!(
+            "Generated execution trace",
+            registers_num = field::Empty,
+            steps = field::Empty
+        )
+        .in_scope(|| {
             let trace = prover.build_trace(self.sequence_length);
-            let trace_width = trace.width();
-            let trace_length = trace.length();
-            event!(
-                Level::DEBUG,
-                "Generated execution trace of {} registers and 2^{} steps",
-                trace_width,
-                trace_length.ilog2(),
-            );
+            tracing::Span::current().record("registers_num", &format!("{}", trace.width()));
+            tracing::Span::current().record("steps", &format!("2^{}", trace.length().ilog2()));
             trace
         });
+
+        // let span = info_span!("Generating execution trace", registers_num = field::Empty, steps = field::Empty);
+        // let trace = prover.build_trace(self.sequence_length);
+        // span.record("registers_num", &format!("{}", trace.width()));
+        // span.record("steps", &format!("2^{} steps", trace.length().ilog2()));
+
+        // let trace = info_span!("Generating execution trace").in_scope(|| {
+        //     let trace = prover.build_trace(self.sequence_length);
+        //     let trace_width = trace.width();
+        //     let trace_length = trace.length();
+        //     event!(
+        //         Level::DEBUG,
+        //         "Generated execution trace of {} registers and 2^{} steps",
+        //         trace_width,
+        //         trace_length.ilog2(),
+        //     );
+        //     trace
+        // });
 
         // generate the proof
         prover.prove(trace).unwrap()

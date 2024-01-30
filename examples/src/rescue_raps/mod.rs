@@ -7,7 +7,7 @@ use crate::{Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_
 use core::marker::PhantomData;
 use rand_utils::rand_array;
 use std::time::Instant;
-use tracing::{event, info_span, Level};
+use tracing::{field, info_span};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, ExtensionOf, FieldElement},
@@ -114,16 +114,16 @@ where
         // create a prover
         let prover = RescueRapsProver::<H>::new(self.options.clone());
 
-        // generate the execution trace
-        let trace = info_span!("Generating execution trace").in_scope(|| {
+        // generate execution trace
+        let trace = info_span!(
+            "Generated execution trace",
+            registers_num = field::Empty,
+            steps = field::Empty
+        )
+        .in_scope(|| {
             let trace = prover.build_trace(&self.seeds, &self.permuted_seeds, self.result);
-            let trace_length = trace.length();
-            event!(
-                Level::DEBUG,
-                "Generated execution trace of {} registers and 2^{} steps",
-                trace.width(),
-                trace_length.ilog2(),
-            );
+            tracing::Span::current().record("registers_num", &format!("{}", trace.width()));
+            tracing::Span::current().record("steps", &format!("2^{}", trace.length().ilog2()));
             trace
         });
 

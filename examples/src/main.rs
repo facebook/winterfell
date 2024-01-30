@@ -6,7 +6,10 @@
 use std::time::Instant;
 use structopt::StructOpt;
 use tracing::info_span;
+#[cfg(feature = "tree")]
 use tracing_forest::ForestLayer;
+#[cfg(not(feature = "tree"))]
+use tracing_subscriber::fmt::format::FmtSpan;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 use winterfell::StarkProof;
 
@@ -22,11 +25,25 @@ fn main() {
     if std::env::var("WINTER_LOG").is_err() {
         std::env::set_var("WINTER_LOG", "info");
     }
+    let registry =
+        tracing_subscriber::registry::Registry::default().with(EnvFilter::from_env("WINTER_LOG"));
 
-    tracing_subscriber::registry::Registry::default()
-        .with(EnvFilter::from_env("WINTER_LOG"))
-        .with(ForestLayer::default())
-        .init();
+    #[cfg(feature = "tree")]
+    registry.with(ForestLayer::default()).init();
+
+    #[cfg(not(feature = "tree"))]
+    {
+        let format = tracing_subscriber::fmt::layer()
+            .with_level(false)
+            .with_target(false)
+            .with_thread_names(false)
+            .with_span_events(FmtSpan::CLOSE)
+            .with_ansi(false)
+            .with_timer(tracing_subscriber::fmt::time::SystemTime)
+            .compact();
+
+        registry.with(format).init();
+    }
 
     // read command-line args
     let options = ExampleOptions::from_args();

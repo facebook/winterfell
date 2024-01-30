@@ -23,6 +23,7 @@ doc = false
 [features]
 concurrent = ["winterfell/concurrent", "std"]
 default = ["std"]
+tree = ["std", "tracing-forest"]
 std = ["core-utils/std", "hex/std", "rand-utils", "winterfell/std"]
 
 [dependencies]
@@ -33,7 +34,7 @@ rand-utils = { version = "0.7", path = "../utils/rand", package = "winter-rand-u
 structopt = { version = "0.3", default-features = false }
 tracing = { version = "0.1", default-features = false }
 tracing-subscriber = { version = "0.3", features = ["std", "env-filter"] }
-tracing-forest = { version = "0.1", features = ["ansi", "smallvec"] }
+tracing-forest = { version = "0.1", features = ["ansi", "smallvec"], optional = true }
 winterfell = { version="0.7", path = "../winterfell", default-features = false }
 
 [dev-dependencies]
