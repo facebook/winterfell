@@ -230,29 +230,28 @@ where
     H: ElementHasher<BaseField = E::BaseField>,
 {
     // extend the execution trace
-    let (trace_lde, trace_polys) = info_span!(
-        "extend_execution_trace",
-        num_cols = trace.num_cols(),
-        from_domain_size = format!("2^{}", trace.num_rows()),
-        to_domain_size = format!("2^{}", domain.lde_domain_size()),
-        blowup = format!("{}x", domain.trace_to_lde_blowup())
-    )
-    .in_scope(|| {
+    let (trace_lde, trace_polys) = {
+        let _ = info_span!(
+            "extend_execution_trace",
+            num_cols = trace.num_cols(),
+            blowup = domain.trace_to_lde_blowup()
+        )
+        .entered();
         let trace_polys = trace.interpolate_columns();
         let trace_lde =
             RowMatrix::evaluate_polys_over::<DEFAULT_SEGMENT_WIDTH>(&trace_polys, domain);
 
         (trace_lde, trace_polys)
-    });
+    };
     assert_eq!(trace_lde.num_cols(), trace.num_cols());
     assert_eq!(trace_polys.num_rows(), trace.num_rows());
     assert_eq!(trace_lde.num_rows(), domain.lde_domain_size());
 
     // build trace commitment
-    let trace_tree =
-        info_span!("compute_execution_trace_commitment", depth = trace_lde.num_rows().ilog2())
-            .in_scope(|| trace_lde.commit_to_rows());
-    assert_eq!(trace_tree.depth(), trace_lde.num_rows().ilog2() as usize);
+    let tree_depth = trace_lde.num_rows().ilog2() as usize;
+    let trace_tree = info_span!("compute_execution_trace_commitment", tree_depth)
+        .in_scope(|| trace_lde.commit_to_rows());
+    assert_eq!(trace_tree.depth(), tree_depth);
 
     (trace_lde, trace_tree, trace_polys)
 }

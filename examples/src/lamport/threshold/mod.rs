@@ -129,17 +129,13 @@ where
         );
 
         // generate execution trace
-        let trace = info_span!(
-            "Generated execution trace",
-            registers_num = field::Empty,
-            steps = field::Empty
-        )
-        .in_scope(|| {
-            let trace = prover.build_trace(&self.pub_key, self.message, &self.signatures);
-            tracing::Span::current().record("registers_num", &format!("{}", trace.width()));
-            tracing::Span::current().record("steps", &format!("2^{}", trace.length().ilog2()));
-            trace
-        });
+        let trace =
+            info_span!("generate_execution_trace", num_cols = TRACE_WIDTH, steps = field::Empty)
+                .in_scope(|| {
+                    let trace = prover.build_trace(&self.pub_key, self.message, &self.signatures);
+                    tracing::Span::current().record("steps", trace.length());
+                    trace
+                });
 
         // generate the proof
         prover.prove(trace).unwrap()

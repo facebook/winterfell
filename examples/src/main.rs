@@ -6,9 +6,9 @@
 use std::time::Instant;
 use structopt::StructOpt;
 use tracing::info_span;
-#[cfg(feature = "tree")]
+#[cfg(feature = "tracing-forest")]
 use tracing_forest::ForestLayer;
-#[cfg(not(feature = "tree"))]
+#[cfg(not(feature = "tracing-forest"))]
 use tracing_subscriber::fmt::format::FmtSpan;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 use winterfell::StarkProof;
@@ -28,10 +28,10 @@ fn main() {
     let registry =
         tracing_subscriber::registry::Registry::default().with(EnvFilter::from_env("WINTER_LOG"));
 
-    #[cfg(feature = "tree")]
+    #[cfg(feature = "tracing-forest")]
     registry.with(ForestLayer::default()).init();
 
-    #[cfg(not(feature = "tree"))]
+    #[cfg(not(feature = "tracing-forest"))]
     {
         let format = tracing_subscriber::fmt::layer()
             .with_level(false)
@@ -87,7 +87,7 @@ fn main() {
 
     // generate proof
     let now = Instant::now();
-    let proof = info_span!("Generating proof").in_scope(|| example.as_ref().prove());
+    let proof = info_span!("generate_proof").in_scope(|| example.as_ref().prove());
     println!("---------------------\nProof generated in {} ms", now.elapsed().as_millis());
 
     let proof_bytes = proof.to_bytes();

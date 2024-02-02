@@ -23,7 +23,6 @@ doc = false
 [features]
 concurrent = ["winterfell/concurrent", "std"]
 default = ["std"]
-tree = ["std", "tracing-forest"]
 std = ["core-utils/std", "hex/std", "rand-utils", "winterfell/std"]
 
 [dependencies]
