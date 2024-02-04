@@ -231,7 +231,7 @@ where
 {
     // extend the execution trace
     let (trace_lde, trace_polys) = {
-        let _ = info_span!(
+        let span = info_span!(
             "extend_execution_trace",
             num_cols = trace.num_cols(),
             blowup = domain.trace_to_lde_blowup()
@@ -240,6 +240,7 @@ where
         let trace_polys = trace.interpolate_columns();
         let trace_lde =
             RowMatrix::evaluate_polys_over::<DEFAULT_SEGMENT_WIDTH>(&trace_polys, domain);
+        drop(span);
 
         (trace_lde, trace_polys)
     };
