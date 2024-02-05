@@ -1,7 +1,8 @@
 # Changelog
 
-## 0.7.5 (2023-12-21) - `utils/core` crate only
+## 0.8.0 (TBD)
 * Added variable-length serialization and deserialization for `usize` type (#238).
+* [BREAKING] Removed `Serializable` and `Deserializable` implementations from slices and vectors (#239).
 
 ## 0.7.4 (2023-12-18) - `air` crate only
 * Fixed a bug in `StarkProof` deserialization (#236).

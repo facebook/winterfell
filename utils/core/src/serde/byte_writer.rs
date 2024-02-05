@@ -62,6 +62,14 @@ pub trait ByteWriter: Sized {
         self.write_bytes(&value.to_le_bytes());
     }
 
+    /// Writes a u128 value in little-endian byte order into `self`.
+    ///
+    /// # Panics
+    /// Panics if the value could not be written into `self`.
+    fn write_u128(&mut self, value: u128) {
+        self.write_bytes(&value.to_le_bytes());
+    }
+
     /// Writes a usize value in [vint64](https://docs.rs/vint64/latest/vint64/) format into `self`.
     ///
     /// # Panics
@@ -87,6 +95,15 @@ pub trait ByteWriter: Sized {
     fn write<S: Serializable>(&mut self, value: S) {
         value.write_into(self)
     }
+
+    /// Serializes all `elements` and writes the resulting bytes into `self`.
+    ///
+    /// This method does not write any metadata (e.g. number of serialized elements) into `self`.
+    fn write_many<S: Serializable>(&mut self, elements: &[S]) {
+        for element in elements {
+            element.write_into(self);
+        }
+    }
 }
 
 // BYTE WRITER IMPLEMENTATIONS
@@ -105,8 +122,8 @@ impl ByteWriter for Vec<u8> {
 // HELPER FUNCTIONS
 // ================================================================================================
 
-/// Returns the length of the value in vint64 enсoding.
-pub fn encoded_len(value: usize) -> usize {
+/// Returns the length of the value in vint64 encoding.
+fn encoded_len(value: usize) -> usize {
     let zeros = value.leading_zeros() as usize;
     let len = zeros.saturating_sub(1) / 7;
     9 - core::cmp::min(len, 8)

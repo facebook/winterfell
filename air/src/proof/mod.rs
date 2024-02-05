@@ -182,7 +182,7 @@ impl Serializable for StarkProof {
         self.context.write_into(target);
         target.write_u8(self.num_unique_queries);
         self.commitments.write_into(target);
-        self.trace_queries.write_into(target);
+        target.write_many(&self.trace_queries);
         self.constraint_queries.write_into(target);
         self.ood_frame.write_into(target);
         self.fri_proof.write_into(target);

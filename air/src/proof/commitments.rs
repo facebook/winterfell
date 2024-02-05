@@ -34,9 +34,9 @@ impl Commitments {
         fri_roots: Vec<H::Digest>,
     ) -> Self {
         let mut bytes = Vec::new();
-        bytes.write(trace_roots);
+        bytes.write_many(&trace_roots);
         bytes.write(constraint_root);
-        bytes.write(fri_roots);
+        bytes.write_many(&fri_roots);
         Commitments(bytes)
     }
 
@@ -70,13 +70,13 @@ impl Commitments {
         let mut reader = SliceReader::new(&self.0);
 
         // parse trace commitments
-        let trace_commitments = H::Digest::read_batch_from(&mut reader, num_trace_segments)?;
+        let trace_commitments = reader.read_many(num_trace_segments)?;
 
         // parse constraint evaluation commitment:
-        let constraint_commitment = H::Digest::read_from(&mut reader)?;
+        let constraint_commitment = reader.read()?;
 
         // read FRI commitments (+ 1 for remainder polynomial commitment)
-        let fri_commitments = H::Digest::read_batch_from(&mut reader, num_fri_layers + 1)?;
+        let fri_commitments = reader.read_many(num_fri_layers + 1)?;
 
         // make sure we consumed all available commitment bytes
         if reader.has_more_bytes() {

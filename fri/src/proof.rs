@@ -60,9 +60,13 @@ impl FriProof {
             num_partitions.is_power_of_two(),
             "number of partitions must be a power of two, but was {num_partitions}"
         );
+
+        let mut remainder_bytes = Vec::with_capacity(E::ELEMENT_BYTES * remainder.len());
+        remainder_bytes.write_many(&remainder);
+
         FriProof {
             layers,
-            remainder: remainder.to_bytes(),
+            remainder: remainder_bytes,
             num_partitions: num_partitions.trailing_zeros() as u8,
         }
     }
@@ -166,7 +170,7 @@ impl FriProof {
             )));
         }
         let mut reader = SliceReader::new(&self.remainder);
-        let remainder = E::read_batch_from(&mut reader, num_elements).map_err(|err| {
+        let remainder = reader.read_many(num_elements).map_err(|err| {
             DeserializationError::InvalidValue(format!("failed to parse FRI remainder: {err}"))
         })?;
         if reader.has_more_bytes() {
@@ -205,7 +209,7 @@ impl Deserializable for FriProof {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         // read layers
         let num_layers = source.read_u8()? as usize;
-        let layers = FriProofLayer::read_batch_from(source, num_layers)?;
+        let layers = source.read_many(num_layers)?;
 
         // read remainder
         let num_remainder_bytes = source.read_u16()? as usize;
@@ -247,11 +251,14 @@ impl FriProofLayer {
 
         // TODO: add debug check that values actually hash into the leaf nodes of the batch proof
 
+        let mut value_bytes = Vec::with_capacity(E::ELEMENT_BYTES * N * query_values.len());
+        value_bytes.write_many(&query_values);
+
         // concatenate all query values and all internal Merkle proof nodes into vectors of bytes;
         // we care about internal nodes only because leaf nodes can be reconstructed from hashes
         // of query values
         FriProofLayer {
-            values: query_values.to_bytes(),
+            values: value_bytes,
             paths: merkle_proof.serialize_nodes(),
         }
     }
@@ -306,7 +313,7 @@ impl FriProofLayer {
         // and also hash them to build leaf nodes of the batch Merkle proof
         let mut reader = SliceReader::new(&self.values);
         for query_hash in hashed_queries.iter_mut() {
-            let mut qe = E::read_batch_from(&mut reader, folding_factor)?;
+            let mut qe = reader.read_many(folding_factor)?;
             *query_hash = H::hash_elements(&qe);
             query_values.append(&mut qe);
         }

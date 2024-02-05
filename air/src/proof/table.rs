@@ -6,6 +6,7 @@
 use super::{DeserializationError, SliceReader, Vec};
 use core::iter::FusedIterator;
 use math::FieldElement;
+use utils::ByteReader;
 
 // CONSTANTS
 // ================================================================================================
@@ -56,7 +57,7 @@ impl<E: FieldElement> Table<E> {
         let mut reader = SliceReader::new(bytes);
         let num_elements = num_rows * num_cols;
         Ok(Self {
-            data: E::read_batch_from(&mut reader, num_elements)?,
+            data: reader.read_many(num_elements)?,
             row_width: num_cols,
         })
     }
