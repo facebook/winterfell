@@ -3,6 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use super::TRACE_WIDTH;
 use crate::utils::are_equal;
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement},
@@ -12,8 +13,6 @@ use winterfell::{
 
 // FIBONACCI AIR
 // ================================================================================================
-
-const TRACE_WIDTH: usize = 8;
 
 pub struct MulFib8Air {
     context: AirContext<BaseElement>,

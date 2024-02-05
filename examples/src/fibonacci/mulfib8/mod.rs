@@ -6,8 +6,8 @@
 use super::utils::compute_mulfib_term;
 use crate::{Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256};
 use core::marker::PhantomData;
-use log::debug;
 use std::time::Instant;
+use tracing::{field, info_span};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, FieldElement},
@@ -22,6 +22,11 @@ use prover::MulFib8Prover;
 
 #[cfg(test)]
 mod tests;
+
+// CONSTANTS
+// ================================================================================================
+
+const TRACE_WIDTH: usize = 8;
 
 // FIBONACCI EXAMPLE
 // ================================================================================================
@@ -60,7 +65,7 @@ impl<H: ElementHasher> MulFib8Example<H> {
         // compute Fibonacci sequence
         let now = Instant::now();
         let result = compute_mulfib_term(sequence_length);
-        debug!(
+        println!(
             "Computed multiplicative Fibonacci sequence up to {}th term in {} ms",
             sequence_length,
             now.elapsed().as_millis()
@@ -84,9 +89,8 @@ where
 {
     fn prove(&self) -> StarkProof {
         let sequence_length = self.sequence_length;
-        debug!(
-            "Generating proof for computing multiplicative Fibonacci sequence (2 terms per step) up to {}th term\n\
-            ---------------------",
+        println!(
+            "Generating proof for computing multiplicative Fibonacci sequence (8 terms per step) up to {}th term",
             sequence_length
         );
 
@@ -94,16 +98,13 @@ where
         let prover = MulFib8Prover::<H>::new(self.options.clone());
 
         // generate execution trace
-        let now = Instant::now();
-        let trace = prover.build_trace(sequence_length);
-        let trace_width = trace.width();
-        let trace_length = trace.length();
-        debug!(
-            "Generated execution trace of {} registers and 2^{} steps in {} ms",
-            trace_width,
-            trace_length.ilog2(),
-            now.elapsed().as_millis()
-        );
+        let trace =
+            info_span!("generate_execution_trace", num_cols = TRACE_WIDTH, steps = field::Empty)
+                .in_scope(|| {
+                    let trace = prover.build_trace(sequence_length);
+                    tracing::Span::current().record("steps", trace.length());
+                    trace
+                });
 
         // generate the proof
         prover.prove(trace).unwrap()

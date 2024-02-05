@@ -29,8 +29,8 @@ For example, if we have a struct `FibAir` which implements the `Air` trait and d
 let min_sec = AcceptableOptions::MinConjecturedSecurity(95);
 let fib_result = BaseElement::new(226333832811148522147755045522163790995);
 match verifier::verify::<FibAir, Blake3, DefaultRandomCoin<Blake3>>(proof, fib_result, &min_sec) {
-    Ok(_) => debug!("Proof verified!"),
-    Err(err) => debug!("Failed to verify proof: {}", err),
+    Ok(_) => println!("Proof verified!"),
+    Err(err) => println!("Failed to verify proof: {}", err),
 }
 ```
 where, `226333832811148522147755045522163790995` is the 1,048,576th term of the Fibonacci sequence when the sequence is computed in a 128-bit field with modulus 2<sup>128</sup> - 45 * 2<sup>40</sup>.

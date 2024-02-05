@@ -49,6 +49,7 @@ pub use air::{
     DeepCompositionCoefficients, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo,
     TraceLayout, TransitionConstraintDegree,
 };
+use tracing::{event, info_span, Level};
 pub use utils::{
     iterators, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
     SliceReader,
@@ -66,11 +67,6 @@ use math::{
 
 pub use crypto;
 use crypto::{ElementHasher, RandomCoin};
-
-#[cfg(feature = "std")]
-use log::debug;
-#[cfg(feature = "std")]
-use std::time::Instant;
 
 mod domain;
 pub use domain::StarkDomain;
@@ -206,7 +202,8 @@ pub trait Prover {
     /// [Self::get_pub_inputs()](Prover::get_pub_inputs) for the provided trace.
     fn prove(&self, trace: Self::Trace) -> Result<StarkProof, ProverError> {
         // figure out which version of the generic proof generation procedure to run. this is a sort
-        // of static dispatch for selecting two generic parameter: extension field and hash function.
+        // of static dispatch for selecting two generic parameter: extension field and hash
+        // function.
         match self.options().field_extension() {
             FieldExtension::None => self.generate_proof::<Self::BaseField>(trace),
             FieldExtension::Quadratic => {
@@ -257,57 +254,68 @@ pub trait Prover {
         // 1 ----- Commit to the execution trace --------------------------------------------------
 
         // build computation domain; this is used later for polynomial evaluations
-        #[cfg(feature = "std")]
-        let now = Instant::now();
-        let domain = StarkDomain::new(&air);
-        #[cfg(feature = "std")]
-        debug!(
-            "Built domain of 2^{} elements in {} ms",
-            domain.lde_domain_size().ilog2(),
-            now.elapsed().as_millis()
-        );
+        let lde_domain_size = air.lde_domain_size();
+        let trace_length = air.trace_length();
+        let domain = info_span!("build_domain", lde_domain_size, trace_length)
+            .in_scope(|| StarkDomain::new(&air));
+        assert_eq!(domain.lde_domain_size(), lde_domain_size);
+        assert_eq!(domain.trace_length(), trace_length);
 
-        // extend the main execution trace and build a Merkle tree from the extended trace
-        let (mut trace_lde, mut trace_polys): (Self::TraceLde<E>, TracePolyTable<E>) =
-            self.new_trace_lde(&trace.get_info(), trace.main_segment(), &domain);
+        // commit to the main trace segment
+        let (mut trace_lde, mut trace_polys) = {
+            // extend the main execution trace and build a Merkle tree from the extended trace
+            let span = info_span!("commit_to_main_trace_segment").entered();
+            let (trace_lde, trace_polys) =
+                self.new_trace_lde(&trace.get_info(), trace.main_segment(), &domain);
 
-        // get the commitment to the main trace segment LDE
-        let main_trace_root = trace_lde.get_main_trace_commitment();
+            // get the commitment to the main trace segment LDE
+            let main_trace_root = trace_lde.get_main_trace_commitment();
 
-        // commit to the LDE of the main trace by writing the root of its Merkle tree into
-        // the channel
-        channel.commit_trace(main_trace_root);
+            // commit to the LDE of the main trace by writing the root of its Merkle tree into
+            // the channel
+            channel.commit_trace(main_trace_root);
+
+            drop(span);
+            (trace_lde, trace_polys)
+        };
 
         // build auxiliary trace segments (if any), and append the resulting segments to trace
         // commitment and trace polynomial table structs
         let mut aux_trace_segments = Vec::new();
         let mut aux_trace_rand_elements = AuxTraceRandElements::new();
         for i in 0..trace.layout().num_aux_segments() {
-            #[cfg(feature = "std")]
-            let now = Instant::now();
+            let num_columns = trace.layout().get_aux_segment_width(i);
+            let (aux_segment, rand_elements) = {
+                let _ = info_span!("build_aux_trace_segment", num_columns).entered();
 
-            // draw a set of random elements required to build an auxiliary trace segment
-            let rand_elements = channel.get_aux_trace_segment_rand_elements(i);
+                // draw a set of random elements required to build an auxiliary trace segment
+                let rand_elements = channel.get_aux_trace_segment_rand_elements(i);
 
-            // build the trace segment
-            let aux_segment = trace
-                .build_aux_segment(&aux_trace_segments, &rand_elements)
-                .expect("failed build auxiliary trace segment");
-            #[cfg(feature = "std")]
-            debug!(
-                "Built auxiliary trace segment of {} columns and 2^{} steps in {} ms",
-                aux_segment.num_cols(),
-                aux_segment.num_rows().ilog2(),
-                now.elapsed().as_millis()
-            );
+                // build the trace segment
+                let aux_segment = trace
+                    .build_aux_segment(&aux_trace_segments, &rand_elements)
+                    .expect("failed build auxiliary trace segment");
 
-            // extend the auxiliary trace segment and build a Merkle tree from the extended trace
-            let (aux_segment_polys, aux_segment_root) =
-                trace_lde.add_aux_segment(&aux_segment, &domain);
+                (aux_segment, rand_elements)
+            };
+            assert_eq!(aux_segment.num_cols(), num_columns);
+            assert_eq!(aux_segment.num_rows(), air.trace_length());
 
-            // commit to the LDE of the extended auxiliary trace segment by writing the root of
-            // its Merkle tree into the channel
-            channel.commit_trace(aux_segment_root);
+            // commit to the auxiliary trace segment
+            let aux_segment_polys = {
+                // extend the auxiliary trace segment and build a Merkle tree from the extended
+                // trace
+                let span = info_span!("commit_to_aux_trace_segment").entered();
+                let (aux_segment_polys, aux_segment_root) =
+                    trace_lde.add_aux_segment(&aux_segment, &domain);
+
+                // commit to the LDE of the extended auxiliary trace segment by writing the root of
+                // its Merkle tree into the channel
+                channel.commit_trace(aux_segment_root);
+
+                drop(span);
+                aux_segment_polys
+            };
 
             trace_polys.add_aux_segment(aux_segment_polys);
             aux_trace_rand_elements.add_segment_elements(rand_elements);
@@ -328,147 +336,151 @@ pub trait Prover {
         // evaluate constraints specified by the AIR over the constraint evaluation domain, and
         // compute random linear combinations of these evaluations using coefficients drawn from
         // the channel
-        #[cfg(feature = "std")]
-        let now = Instant::now();
-        let constraint_coeffs = channel.get_constraint_composition_coeffs();
-        let evaluator = self.new_evaluator(&air, aux_trace_rand_elements, constraint_coeffs);
-        let composition_poly_trace = evaluator.evaluate(&trace_lde, &domain);
-        #[cfg(feature = "std")]
-        debug!(
-            "Evaluated constraints over domain of 2^{} elements in {} ms",
-            composition_poly_trace.num_rows().ilog2(),
-            now.elapsed().as_millis()
-        );
+        let ce_domain_size = air.ce_domain_size();
+        let composition_poly_trace = {
+            let span = info_span!("evaluate_constraints", ce_domain_size).entered();
+            let composition_poly_trace = self
+                .new_evaluator(
+                    &air,
+                    aux_trace_rand_elements,
+                    channel.get_constraint_composition_coeffs(),
+                )
+                .evaluate(&trace_lde, &domain);
+            drop(span);
+
+            composition_poly_trace
+        };
+        assert_eq!(composition_poly_trace.num_rows(), ce_domain_size);
 
         // 3 ----- commit to constraint evaluations -----------------------------------------------
 
         // first, build a commitment to the evaluations of the constraint composition polynomial
         // columns
-        let (constraint_commitment, composition_poly) = self.build_constraint_commitment::<E>(
-            composition_poly_trace,
-            air.context().num_constraint_composition_columns(),
-            &domain,
-        );
+        let (constraint_commitment, composition_poly) =
+            info_span!("commit_to_constraint_evaluations").in_scope(|| {
+                self.build_constraint_commitment::<E>(
+                    composition_poly_trace,
+                    air.context().num_constraint_composition_columns(),
+                    &domain,
+                )
+            });
 
         // then, commit to the evaluations of constraints by writing the root of the constraint
         // Merkle tree into the channel
         channel.commit_constraints(constraint_commitment.root());
 
         // 4 ----- build DEEP composition polynomial ----------------------------------------------
-        #[cfg(feature = "std")]
-        let now = Instant::now();
+        let deep_composition_poly = {
+            let span = info_span!("build_deep_composition_poly").entered();
+            // draw an out-of-domain point z. Depending on the type of E, the point is drawn either
+            // from the base field or from an extension field defined by E.
+            //
+            // The purpose of sampling from the extension field here (instead of the base field) is
+            // to increase security. Soundness is limited by the size of the field that the random
+            // point is drawn from, and we can potentially save on performance by only drawing this
+            // point from an extension field, rather than increasing the size of the field overall.
+            let z = channel.get_ood_point();
 
-        // draw an out-of-domain point z. Depending on the type of E, the point is drawn either
-        // from the base field or from an extension field defined by E.
-        //
-        // The purpose of sampling from the extension field here (instead of the base field) is to
-        // increase security. Soundness is limited by the size of the field that the random point
-        // is drawn from, and we can potentially save on performance by only drawing this point
-        // from an extension field, rather than increasing the size of the field overall.
-        let z = channel.get_ood_point();
+            // evaluate trace and constraint polynomials at the OOD point z, and send the results to
+            // the verifier. the trace polynomials are actually evaluated over two points: z and
+            // z * g, where g is the generator of the trace domain.
+            let ood_trace_states = trace_polys.get_ood_frame(z);
+            channel.send_ood_trace_states(&ood_trace_states);
 
-        // evaluate trace and constraint polynomials at the OOD point z, and send the results to
-        // the verifier. the trace polynomials are actually evaluated over two points: z and z * g,
-        // where g is the generator of the trace domain.
-        let ood_trace_states = trace_polys.get_ood_frame(z);
-        channel.send_ood_trace_states(&ood_trace_states);
+            let ood_evaluations = composition_poly.evaluate_at(z);
+            channel.send_ood_constraint_evaluations(&ood_evaluations);
 
-        let ood_evaluations = composition_poly.evaluate_at(z);
-        channel.send_ood_constraint_evaluations(&ood_evaluations);
+            // draw random coefficients to use during DEEP polynomial composition, and use them to
+            // initialize the DEEP composition polynomial
+            let deep_coefficients = channel.get_deep_composition_coeffs();
+            let mut deep_composition_poly = DeepCompositionPoly::new(z, deep_coefficients);
 
-        // draw random coefficients to use during DEEP polynomial composition, and use them to
-        // initialize the DEEP composition polynomial
-        let deep_coefficients = channel.get_deep_composition_coeffs();
-        let mut deep_composition_poly = DeepCompositionPoly::new(z, deep_coefficients);
+            // combine all trace polynomials together and merge them into the DEEP composition
+            // polynomial
+            deep_composition_poly.add_trace_polys(trace_polys, ood_trace_states);
 
-        // combine all trace polynomials together and merge them into the DEEP composition
-        // polynomial
-        deep_composition_poly.add_trace_polys(trace_polys, ood_trace_states);
+            // merge columns of constraint composition polynomial into the DEEP composition
+            // polynomial
+            deep_composition_poly.add_composition_poly(composition_poly, ood_evaluations);
 
-        // merge columns of constraint composition polynomial into the DEEP composition polynomial;
-        deep_composition_poly.add_composition_poly(composition_poly, ood_evaluations);
+            event!(Level::DEBUG, "degree: {}", deep_composition_poly.degree());
 
-        #[cfg(feature = "std")]
-        debug!(
-            "Built DEEP composition polynomial of degree {} in {} ms",
-            deep_composition_poly.degree(),
-            now.elapsed().as_millis()
-        );
+            drop(span);
+            deep_composition_poly
+        };
 
         // make sure the degree of the DEEP composition polynomial is equal to trace polynomial
         // degree minus 1.
         assert_eq!(domain.trace_length() - 2, deep_composition_poly.degree());
 
         // 5 ----- evaluate DEEP composition polynomial over LDE domain ---------------------------
-        #[cfg(feature = "std")]
-        let now = Instant::now();
-        let deep_evaluations = deep_composition_poly.evaluate(&domain);
-        // we check the following condition in debug mode only because infer_degree is an expensive
-        // operation
-        debug_assert_eq!(
-            domain.trace_length() - 2,
-            infer_degree(&deep_evaluations, domain.offset())
-        );
-        #[cfg(feature = "std")]
-        debug!(
-            "Evaluated DEEP composition polynomial over LDE domain (2^{} elements) in {} ms",
-            domain.lde_domain_size().ilog2(),
-            now.elapsed().as_millis()
-        );
+        let deep_evaluations = {
+            let span = info_span!("evaluate_deep_composition_poly").entered();
+            let deep_evaluations = deep_composition_poly.evaluate(&domain);
+            // we check the following condition in debug mode only because infer_degree is an
+            // expensive operation
+            debug_assert_eq!(
+                domain.trace_length() - 2,
+                infer_degree(&deep_evaluations, domain.offset())
+            );
+
+            drop(span);
+            deep_evaluations
+        };
 
         // 6 ----- compute FRI layers for the composition polynomial ------------------------------
-        #[cfg(feature = "std")]
-        let now = Instant::now();
-        let mut fri_prover = FriProver::new(air.options().to_fri_options());
-        fri_prover.build_layers(&mut channel, deep_evaluations);
-        #[cfg(feature = "std")]
-        debug!(
-            "Computed {} FRI layers from composition polynomial evaluations in {} ms",
-            fri_prover.num_layers(),
-            now.elapsed().as_millis()
-        );
+        let fri_options = air.options().to_fri_options();
+        let num_layers = fri_options.num_fri_layers(air.lde_domain_size());
+        let mut fri_prover = FriProver::new(fri_options);
+        info_span!("compute_fri_layers", num_layers)
+            .in_scope(|| fri_prover.build_layers(&mut channel, deep_evaluations));
 
         // 7 ----- determine query positions ------------------------------------------------------
-        #[cfg(feature = "std")]
-        let now = Instant::now();
+        let query_positions = {
+            let span = info_span!(
+                "determine_query_positions",
+                num_positions = air.options().num_queries(),
+                grinding_factor = air.options().grinding_factor()
+            )
+            .entered();
+            // apply proof-of-work to the query seed
+            channel.grind_query_seed();
 
-        // apply proof-of-work to the query seed
-        channel.grind_query_seed();
+            // generate pseudo-random query positions
+            let query_positions = channel.get_query_positions();
+            event!(Level::DEBUG, "query_positions_len: {}", query_positions.len());
 
-        // generate pseudo-random query positions
-        let query_positions = channel.get_query_positions();
-        #[cfg(feature = "std")]
-        debug!(
-            "Determined {} unique query positions in {} ms",
-            query_positions.len(),
-            now.elapsed().as_millis()
-        );
+            drop(span);
+            query_positions
+        };
 
         // 8 ----- build proof object -------------------------------------------------------------
-        #[cfg(feature = "std")]
-        let now = Instant::now();
+        let proof = {
+            let span = info_span!("build_proof_object").entered();
+            // generate FRI proof
+            let fri_proof = fri_prover.build_proof(&query_positions);
 
-        // generate FRI proof
-        let fri_proof = fri_prover.build_proof(&query_positions);
+            // query the execution trace at the selected position; for each query, we need the
+            // state of the trace at that position + Merkle authentication path
+            let trace_queries = trace_lde.query(&query_positions);
 
-        // query the execution trace at the selected position; for each query, we need the
-        // state of the trace at that position + Merkle authentication path
-        let trace_queries = trace_lde.query(&query_positions);
+            // query the constraint commitment at the selected positions; for each query, we need
+            // just a Merkle authentication path. this is because constraint evaluations for each
+            // step are merged into a single value and Merkle authentication paths contain these
+            // values already
+            let constraint_queries = constraint_commitment.query(&query_positions);
 
-        // query the constraint commitment at the selected positions; for each query, we need just
-        // a Merkle authentication path. this is because constraint evaluations for each step are
-        // merged into a single value and Merkle authentication paths contain these values already
-        let constraint_queries = constraint_commitment.query(&query_positions);
+            // build the proof object
+            let proof = channel.build_proof(
+                trace_queries,
+                constraint_queries,
+                fri_proof,
+                query_positions.len(),
+            );
 
-        // build the proof object
-        let proof = channel.build_proof(
-            trace_queries,
-            constraint_queries,
-            fri_proof,
-            query_positions.len(),
-        );
-        #[cfg(feature = "std")]
-        debug!("Built proof object in {} ms", now.elapsed().as_millis());
+            drop(span);
+            proof
+        };
 
         Ok(proof)
     }
@@ -486,7 +498,7 @@ pub trait Prover {
     fn build_constraint_commitment<E>(
         &self,
         composition_poly_trace: CompositionPolyTrace<E>,
-        num_trace_poly_columns: usize,
+        num_constraint_composition_columns: usize,
         domain: &StarkDomain<Self::BaseField>,
     ) -> (ConstraintCommitment<E, Self::HashFn>, CompositionPoly<E>)
     where
@@ -496,44 +508,34 @@ pub trait Prover {
         // - interpolate the trace into a polynomial in coefficient form
         // - "break" the polynomial into a set of column polynomials each of degree equal to
         //   trace_length - 1
-        #[cfg(feature = "std")]
-        let now = Instant::now();
-        let composition_poly =
-            CompositionPoly::new(composition_poly_trace, domain, num_trace_poly_columns);
-        #[cfg(feature = "std")]
-        debug!(
-            "Converted constraint evaluations into {} composition polynomial columns of degree {} in {} ms",
-            composition_poly.num_columns(),
-            composition_poly.column_degree(),
-            now.elapsed().as_millis()
-        );
+        let composition_poly = info_span!(
+            "build_composition_poly_columns",
+            num_columns = num_constraint_composition_columns
+        )
+        .in_scope(|| {
+            CompositionPoly::new(composition_poly_trace, domain, num_constraint_composition_columns)
+        });
+        assert_eq!(composition_poly.num_columns(), num_constraint_composition_columns);
+        assert_eq!(composition_poly.column_degree(), domain.trace_length() - 1);
 
         // then, evaluate composition polynomial columns over the LDE domain
-        #[cfg(feature = "std")]
-        let now = Instant::now();
-        let composed_evaluations = RowMatrix::evaluate_polys_over::<DEFAULT_SEGMENT_WIDTH>(
-            composition_poly.data(),
-            domain,
-        );
-        #[cfg(feature = "std")]
-        debug!(
-            "Evaluated {} composition polynomial columns over LDE domain (2^{} elements) in {} ms",
-            composed_evaluations.num_cols(),
-            composed_evaluations.num_rows().ilog2(),
-            now.elapsed().as_millis()
-        );
+        let domain_size = domain.lde_domain_size();
+        let composed_evaluations = info_span!("evaluate_composition_poly_columns").in_scope(|| {
+            RowMatrix::evaluate_polys_over::<DEFAULT_SEGMENT_WIDTH>(composition_poly.data(), domain)
+        });
+        assert_eq!(composed_evaluations.num_cols(), num_constraint_composition_columns);
+        assert_eq!(composed_evaluations.num_rows(), domain_size);
 
         // finally, build constraint evaluation commitment
-        #[cfg(feature = "std")]
-        let now = Instant::now();
-        let commitment = composed_evaluations.commit_to_rows();
-        let constraint_commitment = ConstraintCommitment::new(composed_evaluations, commitment);
-        #[cfg(feature = "std")]
-        debug!(
-            "Computed constraint evaluation commitment (Merkle tree of depth {}) in {} ms",
-            constraint_commitment.tree_depth(),
-            now.elapsed().as_millis()
-        );
+        let constraint_commitment = info_span!(
+            "compute_constraint_evaluation_commitment",
+            tree_depth = domain_size.ilog2()
+        )
+        .in_scope(|| {
+            let commitment = composed_evaluations.commit_to_rows();
+            ConstraintCommitment::new(composed_evaluations, commitment)
+        });
+        assert_eq!(constraint_commitment.tree_depth(), domain_size.ilog2() as usize);
 
         (constraint_commitment, composition_poly)
     }

@@ -28,8 +28,8 @@ std = ["air/std", "crypto/std", "fri/std", "math/std", "utils/std"]
 air = { version = "0.7", path = "../air", package = "winter-air", default-features = false }
 crypto = { version = "0.7", path = "../crypto", package = "winter-crypto", default-features = false }
 fri = { version = "0.7", path = '../fri', package = "winter-fri", default-features = false }
-log = { version = "0.4", default-features = false }
 math = { version = "0.7", path = "../math", package = "winter-math", default-features = false }
+tracing = { version = "0.1", default-features = false }
 utils = { version = "0.7", path = "../utils/core", package = "winter-utils", default-features = false }
 
 [dev-dependencies]

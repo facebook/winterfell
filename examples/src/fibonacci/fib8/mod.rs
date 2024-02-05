@@ -6,8 +6,8 @@
 use super::utils::compute_fib_term;
 use crate::{Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256};
 use core::marker::PhantomData;
-use log::debug;
 use std::time::Instant;
+use tracing::{field, info_span};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, FieldElement},
@@ -65,7 +65,7 @@ impl<H: ElementHasher> Fib8Example<H> {
         // compute Fibonacci sequence
         let now = Instant::now();
         let result = compute_fib_term(sequence_length);
-        debug!(
+        println!(
             "Computed Fibonacci sequence up to {}th term in {} ms",
             sequence_length,
             now.elapsed().as_millis()
@@ -88,9 +88,8 @@ where
     H: ElementHasher<BaseField = BaseElement>,
 {
     fn prove(&self) -> StarkProof {
-        debug!(
-            "Generating proof for computing Fibonacci sequence (8 terms per step) up to {}th term\n\
-            ---------------------",
+        println!(
+            "Generating proof for computing Fibonacci sequence (8 terms per step) up to {}th term",
             self.sequence_length
         );
 
@@ -98,16 +97,13 @@ where
         let prover = Fib8Prover::<H>::new(self.options.clone());
 
         // generate execution trace
-        let now = Instant::now();
-        let trace = prover.build_trace(self.sequence_length);
-        let trace_width = trace.width();
-        let trace_length = trace.length();
-        debug!(
-            "Generated execution trace of {} registers and 2^{} steps in {} ms",
-            trace_width,
-            trace_length.ilog2(),
-            now.elapsed().as_millis()
-        );
+        let trace =
+            info_span!("generate_execution_trace", num_cols = TRACE_WIDTH, steps = field::Empty)
+                .in_scope(|| {
+                    let trace = prover.build_trace(self.sequence_length);
+                    tracing::Span::current().record("steps", trace.length());
+                    trace
+                });
 
         // generate the proof
         prover.prove(trace).unwrap()

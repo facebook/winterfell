@@ -5,8 +5,8 @@
 
 use crate::{Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256};
 use core::marker::PhantomData;
-use log::debug;
 use std::time::Instant;
+use tracing::{field, info_span};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, FieldElement},
@@ -28,6 +28,7 @@ mod tests;
 const ALPHA: u64 = 3;
 const INV_ALPHA: u128 = 226854911280625642308916371969163307691;
 const FORTY_TWO: BaseElement = BaseElement::new(42);
+const TRACE_WIDTH: usize = 1;
 
 // VDF EXAMPLE
 // ================================================================================================
@@ -62,7 +63,7 @@ impl<H: ElementHasher> VdfExample<H> {
         let now = Instant::now();
         let seed = BaseElement::new(123);
         let result = execute_vdf(seed, num_steps);
-        debug!(
+        println!(
             "Executed the VDF function for {} steps in {} ms",
             num_steps,
             now.elapsed().as_millis()
@@ -86,27 +87,19 @@ where
     H: ElementHasher<BaseField = BaseElement>,
 {
     fn prove(&self) -> StarkProof {
-        debug!(
-            "Generating proof for executing a VDF function for {} steps\n\
-            ---------------------",
-            self.num_steps
-        );
+        println!("Generating proof for executing a VDF function for {} steps", self.num_steps);
 
         // create a prover
         let prover = VdfProver::<H>::new(self.options.clone());
 
         // generate execution trace
-        let now = Instant::now();
-        let trace = VdfProver::<H>::build_trace(self.seed, self.num_steps + 1);
-
-        let trace_width = trace.width();
-        let trace_length = trace.length();
-        debug!(
-            "Generated execution trace of {} registers and 2^{} steps in {} ms",
-            trace_width,
-            trace_length.ilog2(),
-            now.elapsed().as_millis()
-        );
+        let trace =
+            info_span!("generate_execution_trace", num_cols = TRACE_WIDTH, steps = field::Empty)
+                .in_scope(|| {
+                    let trace = VdfProver::<H>::build_trace(self.seed, self.num_steps + 1);
+                    tracing::Span::current().record("steps", trace.length());
+                    trace
+                });
 
         // generate the proof
         prover.prove(trace).unwrap()

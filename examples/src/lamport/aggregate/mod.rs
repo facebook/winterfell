@@ -8,8 +8,8 @@ use super::{
 };
 use crate::{Blake3_192, Blake3_256, ExampleOptions, HashFunction, Sha3_256};
 use core::marker::PhantomData;
-use log::debug;
 use std::time::Instant;
+use tracing::{field, info_span};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, get_power_series, FieldElement, StarkField},
@@ -69,7 +69,7 @@ impl<H: ElementHasher> LamportAggregateExample<H> {
             private_keys.push(PrivateKey::from_seed([i as u8; 32]));
             public_keys.push(private_keys[i].pub_key().to_elements());
         }
-        debug!(
+        println!(
             "Generated {} private-public key pairs in {} ms",
             num_signatures,
             now.elapsed().as_millis()
@@ -84,7 +84,7 @@ impl<H: ElementHasher> LamportAggregateExample<H> {
             signatures.push(private_key.sign(msg.as_bytes()));
             messages.push(message_to_elements(msg.as_bytes()));
         }
-        debug!("Signed {} messages in {} ms", num_signatures, now.elapsed().as_millis());
+        println!("Signed {} messages in {} ms", num_signatures, now.elapsed().as_millis());
 
         // verify signature
         let now = Instant::now();
@@ -95,7 +95,7 @@ impl<H: ElementHasher> LamportAggregateExample<H> {
             let msg = format!("test message {i}");
             assert!(pk.verify(msg.as_bytes(), signature));
         }
-        debug!("Verified {} signature in {} ms", num_signatures, now.elapsed().as_millis());
+        println!("Verified {} signature in {} ms", num_signatures, now.elapsed().as_millis());
 
         LamportAggregateExample {
             options,
@@ -116,25 +116,20 @@ where
 {
     fn prove(&self) -> StarkProof {
         // generate the execution trace
-        debug!(
-            "Generating proof for verifying {} Lamport+ signatures \n\
-            ---------------------",
-            self.signatures.len(),
-        );
+        println!("Generating proof for verifying {} Lamport+ signatures", self.signatures.len());
 
         // create a prover
         let prover =
             LamportAggregateProver::<H>::new(&self.pub_keys, &self.messages, self.options.clone());
 
-        let now = Instant::now();
-        let trace = prover.build_trace(&self.messages, &self.signatures);
-        let trace_length = trace.length();
-        debug!(
-            "Generated execution trace of {} registers and 2^{} steps in {} ms",
-            trace.width(),
-            trace_length.ilog2(),
-            now.elapsed().as_millis()
-        );
+        // generate execution trace
+        let trace =
+            info_span!("generate_execution_trace", num_cols = TRACE_WIDTH, steps = field::Empty)
+                .in_scope(|| {
+                    let trace = prover.build_trace(&self.messages, &self.signatures);
+                    tracing::Span::current().record("steps", trace.length());
+                    trace
+                });
 
         // generate the proof
         prover.prove(trace).unwrap()

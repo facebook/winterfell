@@ -12,9 +12,9 @@ use crate::{
     Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256,
 };
 use core::marker::PhantomData;
-use log::debug;
 use rand_utils::{rand_value, rand_vector};
 use std::time::Instant;
+use tracing::{field, info_span};
 use winterfell::{
     crypto::{DefaultRandomCoin, Digest, ElementHasher, MerkleTree},
     math::{fields::f128::BaseElement, FieldElement, StarkField},
@@ -77,12 +77,12 @@ impl<H: ElementHasher> MerkleExample<H> {
         // build Merkle tree of the specified depth
         let now = Instant::now();
         let tree = build_merkle_tree(tree_depth, value, index);
-        debug!("Built Merkle tree of depth {} in {} ms", tree_depth, now.elapsed().as_millis(),);
+        println!("Built Merkle tree of depth {} in {} ms", tree_depth, now.elapsed().as_millis(),);
 
         // compute Merkle path form the leaf specified by the index
         let now = Instant::now();
         let path = tree.prove(index).unwrap();
-        debug!(
+        println!(
             "Computed Merkle path from leaf {} to root {} in {} ms",
             index,
             hex::encode(tree.root().as_bytes()),
@@ -109,24 +109,21 @@ where
 {
     fn prove(&self) -> StarkProof {
         // generate the execution trace
-        debug!(
-            "Generating proof for proving membership in a Merkle tree of depth {}\n\
-            ---------------------",
+        println!(
+            "Generating proof for proving membership in a Merkle tree of depth {}",
             self.path.len()
         );
         // create the prover
         let prover = MerkleProver::<H>::new(self.options.clone());
 
-        // generate the execution trace
-        let now = Instant::now();
-        let trace = prover.build_trace(self.value, &self.path, self.index);
-        let trace_length = trace.length();
-        debug!(
-            "Generated execution trace of {} registers and 2^{} steps in {} ms",
-            trace.width(),
-            trace_length.ilog2(),
-            now.elapsed().as_millis()
-        );
+        // generate execution trace
+        let trace =
+            info_span!("generate_execution_trace", num_cols = TRACE_WIDTH, steps = field::Empty)
+                .in_scope(|| {
+                    let trace = prover.build_trace(self.value, &self.path, self.index);
+                    tracing::Span::current().record("steps", trace.length());
+                    trace
+                });
 
         // generate the proof
         prover.prove(trace).unwrap()

@@ -9,11 +9,7 @@ use super::{
 };
 use crate::{RowMatrix, DEFAULT_SEGMENT_WIDTH};
 use crypto::MerkleTree;
-
-#[cfg(feature = "std")]
-use log::debug;
-#[cfg(feature = "std")]
-use std::time::Instant;
+use tracing::info_span;
 
 #[cfg(test)]
 mod tests;
@@ -234,30 +230,29 @@ where
     H: ElementHasher<BaseField = E::BaseField>,
 {
     // extend the execution trace
-    #[cfg(feature = "std")]
-    let now = Instant::now();
-    let trace_polys = trace.interpolate_columns();
-    let trace_lde = RowMatrix::evaluate_polys_over::<DEFAULT_SEGMENT_WIDTH>(&trace_polys, domain);
-    #[cfg(feature = "std")]
-    debug!(
-        "Extended execution trace of {} columns from 2^{} to 2^{} steps ({}x blowup) in {} ms",
-        trace_lde.num_cols(),
-        trace_polys.num_rows().ilog2(),
-        trace_lde.num_rows().ilog2(),
-        domain.trace_to_lde_blowup(),
-        now.elapsed().as_millis()
-    );
+    let (trace_lde, trace_polys) = {
+        let span = info_span!(
+            "extend_execution_trace",
+            num_cols = trace.num_cols(),
+            blowup = domain.trace_to_lde_blowup()
+        )
+        .entered();
+        let trace_polys = trace.interpolate_columns();
+        let trace_lde =
+            RowMatrix::evaluate_polys_over::<DEFAULT_SEGMENT_WIDTH>(&trace_polys, domain);
+        drop(span);
+
+        (trace_lde, trace_polys)
+    };
+    assert_eq!(trace_lde.num_cols(), trace.num_cols());
+    assert_eq!(trace_polys.num_rows(), trace.num_rows());
+    assert_eq!(trace_lde.num_rows(), domain.lde_domain_size());
 
     // build trace commitment
-    #[cfg(feature = "std")]
-    let now = Instant::now();
-    let trace_tree = trace_lde.commit_to_rows();
-    #[cfg(feature = "std")]
-    debug!(
-        "Computed execution trace commitment (Merkle tree of depth {}) in {} ms",
-        trace_tree.depth(),
-        now.elapsed().as_millis()
-    );
+    let tree_depth = trace_lde.num_rows().ilog2() as usize;
+    let trace_tree = info_span!("compute_execution_trace_commitment", tree_depth)
+        .in_scope(|| trace_lde.commit_to_rows());
+    assert_eq!(trace_tree.depth(), tree_depth);
 
     (trace_lde, trace_tree, trace_polys)
 }
