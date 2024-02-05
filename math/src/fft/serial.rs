@@ -57,12 +57,16 @@ where
 
 /// Interpolates `evaluations` over a domain of length `evaluations.len()` in the field specified
 /// `B` into a polynomial in coefficient form using the FFT algorithm.
+///
+/// # Panics
+/// Panics if the length of `evaluations` is greater than [u32::MAX].
 pub fn interpolate_poly<B, E>(evaluations: &mut [E], inv_twiddles: &[B])
 where
     B: StarkField,
     E: FieldElement<BaseField = B>,
 {
-    let inv_length = B::inv((evaluations.len() as u64).into());
+    assert!(evaluations.len() <= u32::MAX as usize, "too many evaluations");
+    let inv_length = B::inv((evaluations.len() as u32).into());
     evaluations.fft_in_place(inv_twiddles);
     evaluations.shift_by(inv_length);
     evaluations.permute();
@@ -71,6 +75,9 @@ where
 /// Interpolates `evaluations` over a domain of length `evaluations.len()` and shifted by
 /// `domain_offset` in the field specified by `B` into a polynomial in coefficient form using
 /// the FFT algorithm.
+///
+/// # Panics
+/// Panics if the length of `evaluations` is greater than [u32::MAX].
 pub fn interpolate_poly_with_offset<B, E>(
     evaluations: &mut [E],
     inv_twiddles: &[B],
@@ -79,11 +86,13 @@ pub fn interpolate_poly_with_offset<B, E>(
     B: StarkField,
     E: FieldElement<BaseField = B>,
 {
+    assert!(evaluations.len() <= u32::MAX as usize, "too many evaluations");
+
     evaluations.fft_in_place(inv_twiddles);
     evaluations.permute();
 
     let domain_offset = B::inv(domain_offset);
-    let offset = B::inv((evaluations.len() as u64).into());
+    let offset = B::inv((evaluations.len() as u32).into());
 
     evaluations.shift_by_series(offset, domain_offset);
 }

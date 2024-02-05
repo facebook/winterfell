@@ -12,6 +12,7 @@ use winter_crypto::{build_merkle_nodes, concurrent, hashers::Blake3_256, Hasher}
 type Blake3 = Blake3_256<BaseElement>;
 type Blake3Digest = <Blake3 as Hasher>::Digest;
 
+#[allow(clippy::needless_range_loop)]
 pub fn merkle_tree_construction(c: &mut Criterion) {
     let mut merkle_group = c.benchmark_group("merkle tree construction");
 
@@ -26,10 +27,10 @@ pub fn merkle_tree_construction(c: &mut Criterion) {
             res
         };
         merkle_group.bench_with_input(BenchmarkId::new("sequential", size), &data, |b, i| {
-            b.iter(|| build_merkle_nodes::<Blake3>(&i))
+            b.iter(|| build_merkle_nodes::<Blake3>(i))
         });
         merkle_group.bench_with_input(BenchmarkId::new("concurrent", size), &data, |b, i| {
-            b.iter(|| concurrent::build_merkle_nodes::<Blake3>(&i))
+            b.iter(|| concurrent::build_merkle_nodes::<Blake3>(i))
         });
     }
 }

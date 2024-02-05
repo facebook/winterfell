@@ -187,7 +187,7 @@ pub fn message_to_elements(message: &[u8]) -> [BaseElement; 2] {
     let checksum = m0.count_zeros() + m1.count_zeros();
     let m1 = m1 | ((checksum as u128) << 119);
 
-    [BaseElement::from(m0), BaseElement::from(m1)]
+    [BaseElement::new(m0), BaseElement::new(m1)]
 }
 
 /// Reduces a list of public key elements to a single 32-byte value. The reduction is done

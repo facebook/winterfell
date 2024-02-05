@@ -12,12 +12,12 @@ use utils::collections::Vec;
 
 #[test]
 fn eval() {
-    let x = BaseElement::from(11269864713250585702u128);
+    let x = BaseElement::new(11269864713250585702u128);
     let poly: [BaseElement; 4] = [
-        BaseElement::from(384863712573444386u128),
-        BaseElement::from(7682273369345308472u128),
-        BaseElement::from(13294661765012277990u128),
-        BaseElement::from(16234810094004944758u128),
+        BaseElement::new(384863712573444386u128),
+        BaseElement::new(7682273369345308472u128),
+        BaseElement::new(13294661765012277990u128),
+        BaseElement::new(16234810094004944758u128),
     ];
 
     assert_eq!(BaseElement::ZERO, super::eval(&poly[..0], x));
@@ -40,14 +40,14 @@ fn eval() {
 #[test]
 fn add() {
     let poly1: [BaseElement; 3] = [
-        BaseElement::from(384863712573444386u128),
-        BaseElement::from(7682273369345308472u128),
-        BaseElement::from(13294661765012277990u128),
+        BaseElement::new(384863712573444386u128),
+        BaseElement::new(7682273369345308472u128),
+        BaseElement::new(13294661765012277990u128),
     ];
     let poly2: [BaseElement; 3] = [
-        BaseElement::from(9918505539874556741u128),
-        BaseElement::from(16401861429499852246u128),
-        BaseElement::from(12181445947541805654u128),
+        BaseElement::new(9918505539874556741u128),
+        BaseElement::new(16401861429499852246u128),
+        BaseElement::new(12181445947541805654u128),
     ];
 
     // same degree
@@ -66,14 +66,14 @@ fn add() {
 #[test]
 fn sub() {
     let poly1: [BaseElement; 3] = [
-        BaseElement::from(384863712573444386u128),
-        BaseElement::from(7682273369345308472u128),
-        BaseElement::from(13294661765012277990u128),
+        BaseElement::new(384863712573444386u128),
+        BaseElement::new(7682273369345308472u128),
+        BaseElement::new(13294661765012277990u128),
     ];
     let poly2: [BaseElement; 3] = [
-        BaseElement::from(9918505539874556741u128),
-        BaseElement::from(16401861429499852246u128),
-        BaseElement::from(12181445947541805654u128),
+        BaseElement::new(9918505539874556741u128),
+        BaseElement::new(16401861429499852246u128),
+        BaseElement::new(12181445947541805654u128),
     ];
 
     // same degree
@@ -92,14 +92,14 @@ fn sub() {
 #[test]
 fn mul() {
     let poly1: [BaseElement; 3] = [
-        BaseElement::from(384863712573444386u128),
-        BaseElement::from(7682273369345308472u128),
-        BaseElement::from(13294661765012277990u128),
+        BaseElement::new(384863712573444386u128),
+        BaseElement::new(7682273369345308472u128),
+        BaseElement::new(13294661765012277990u128),
     ];
     let poly2: [BaseElement; 3] = [
-        BaseElement::from(9918505539874556741u128),
-        BaseElement::from(16401861429499852246u128),
-        BaseElement::from(12181445947541805654u128),
+        BaseElement::new(9918505539874556741u128),
+        BaseElement::new(16401861429499852246u128),
+        BaseElement::new(12181445947541805654u128),
     ];
 
     // same degree
@@ -134,14 +134,14 @@ fn mul() {
 #[test]
 fn div() {
     let poly1 = vec![
-        BaseElement::from(384863712573444386u128),
-        BaseElement::from(7682273369345308472u128),
-        BaseElement::from(13294661765012277990u128),
+        BaseElement::new(384863712573444386u128),
+        BaseElement::new(7682273369345308472u128),
+        BaseElement::new(13294661765012277990u128),
     ];
     let poly2 = vec![
-        BaseElement::from(9918505539874556741u128),
-        BaseElement::from(16401861429499852246u128),
-        BaseElement::from(12181445947541805654u128),
+        BaseElement::new(9918505539874556741u128),
+        BaseElement::new(16401861429499852246u128),
+        BaseElement::new(12181445947541805654u128),
     ];
 
     // divide degree 4 by degree 2
@@ -153,8 +153,8 @@ fn div() {
     assert_eq!(poly1[..2].to_vec(), super::div(&poly3, &poly2));
 
     // divide degree 3 by degree 3
-    let poly3 = super::mul_by_scalar(&poly1, BaseElement::from(11269864713250585702u128));
-    assert_eq!(vec![BaseElement::from(11269864713250585702u128)], super::div(&poly3, &poly1));
+    let poly3 = super::mul_by_scalar(&poly1, BaseElement::new(11269864713250585702u128));
+    assert_eq!(vec![BaseElement::new(11269864713250585702u128)], super::div(&poly3, &poly1));
 }
 
 #[test]

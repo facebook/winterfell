@@ -327,14 +327,6 @@ impl ExtensibleField<3> for BaseElement {
 // TYPE CONVERSIONS
 // ================================================================================================
 
-impl From<u128> for BaseElement {
-    /// Converts a 128-bit value into a field element. If the value is greater than or equal to
-    /// the field modulus, modular reduction is silently performed.
-    fn from(value: u128) -> Self {
-        BaseElement::new(value)
-    }
-}
-
 impl From<u64> for BaseElement {
     /// Converts a 64-bit value into a field element.
     fn from(value: u64) -> Self {
@@ -360,16 +352,6 @@ impl From<u8> for BaseElement {
     /// Converts an 8-bit value into a field element.
     fn from(value: u8) -> Self {
         BaseElement(value as u128)
-    }
-}
-
-impl From<[u8; 16]> for BaseElement {
-    /// Converts the value encoded in an array of 16 bytes into a field element. The bytes
-    /// are assumed to be in little-endian byte order. If the value is greater than or equal
-    /// to the field modulus, modular reduction is silently performed.
-    fn from(bytes: [u8; 16]) -> Self {
-        let value = u128::from_le_bytes(bytes);
-        BaseElement::from(value)
     }
 }
 

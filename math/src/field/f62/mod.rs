@@ -18,8 +18,10 @@ use core::{
     slice,
 };
 use utils::{
-    collections::Vec, string::ToString, AsBytes, ByteReader, ByteWriter, Deserializable,
-    DeserializationError, Randomizable, Serializable,
+    collections::Vec,
+    string::{String, ToString},
+    AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Randomizable,
+    Serializable,
 };
 
 #[cfg(feature = "serde")]
@@ -58,7 +60,7 @@ const G: u64 = 4421547261963328785;
 /// backing type is `u64`.
 #[derive(Copy, Clone, Default)]
 #[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
-#[cfg_attr(feature = "serde", serde(from = "u64", into = "u64"))]
+#[cfg_attr(feature = "serde", serde(try_from = "u64", into = "u64"))]
 pub struct BaseElement(u64);
 
 impl BaseElement {
@@ -406,36 +408,6 @@ impl ExtensibleField<3> for BaseElement {
 // TYPE CONVERSIONS
 // ================================================================================================
 
-impl From<u128> for BaseElement {
-    /// Converts a 128-bit value into a field element. If the value is greater than or equal to
-    /// the field modulus, modular reduction is silently performed.
-    fn from(value: u128) -> Self {
-        // make sure the value is < 4M^2 - 4M + 1; this is overly conservative and a single
-        // subtraction of (M * 2^65) should be enough, but this needs to be proven
-        const M4: u128 = (2 * M as u128).pow(2) - 4 * (M as u128) + 1;
-        const Q: u128 = (2 * M as u128).pow(2) - 4 * (M as u128);
-        let mut v = value;
-        while v >= M4 {
-            v -= Q;
-        }
-
-        // apply similar reduction as during multiplication; as output we get z = v * R^{-1} mod M,
-        // so we need to Montgomery-multiply it be R^3 to get z = v * R mod M
-        let q = (((v as u64) as u128) * U) as u64;
-        let z = v + (q as u128) * (M as u128);
-        let z = mul((z >> 64) as u64, R3);
-        BaseElement(z)
-    }
-}
-
-impl From<u64> for BaseElement {
-    /// Converts a 64-bit value into a field element. If the value is greater than or equal to
-    /// the field modulus, modular reduction is silently performed.
-    fn from(value: u64) -> Self {
-        BaseElement::new(value)
-    }
-}
-
 impl From<u32> for BaseElement {
     /// Converts a 32-bit value into a field element.
     fn from(value: u32) -> Self {
@@ -457,17 +429,6 @@ impl From<u8> for BaseElement {
     }
 }
 
-impl From<[u8; 8]> for BaseElement {
-    /// Converts the value encoded in an array of 8 bytes into a field element. The bytes are
-    /// assumed to encode the element in the canonical representation in little-endian byte order.
-    /// If the value is greater than or equal to the field modulus, modular reduction is silently
-    /// performed.
-    fn from(bytes: [u8; 8]) -> Self {
-        let value = u64::from_le_bytes(bytes);
-        BaseElement::new(value)
-    }
-}
-
 impl From<BaseElement> for u128 {
     fn from(value: BaseElement) -> Self {
         value.as_int() as u128
@@ -477,6 +438,29 @@ impl From<BaseElement> for u128 {
 impl From<BaseElement> for u64 {
     fn from(value: BaseElement) -> Self {
         value.as_int()
+    }
+}
+
+impl TryFrom<u64> for BaseElement {
+    type Error = String;
+
+    fn try_from(value: u64) -> Result<Self, Self::Error> {
+        if value >= M {
+            Err(format!(
+                "invalid field element: value {value} is greater than or equal to the field modulus"
+            ))
+        } else {
+            Ok(Self::new(value))
+        }
+    }
+}
+
+impl TryFrom<[u8; 8]> for BaseElement {
+    type Error = String;
+
+    fn try_from(bytes: [u8; 8]) -> Result<Self, Self::Error> {
+        let value = u64::from_le_bytes(bytes);
+        Self::try_from(value)
     }
 }
 

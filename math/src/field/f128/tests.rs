@@ -8,7 +8,6 @@ use super::{
     StarkField, Vec, M,
 };
 use crate::field::{ExtensionOf, QuadExtension};
-use core::convert::TryFrom;
 use num_bigint::BigUint;
 use rand_utils::{rand_value, rand_vector};
 use utils::SliceReader;
@@ -26,7 +25,7 @@ fn add() {
     assert_eq!(BaseElement::from(5u8), BaseElement::from(2u8) + BaseElement::from(3u8));
 
     // test overflow
-    let t = BaseElement::from(BaseElement::MODULUS - 1);
+    let t = BaseElement::new(BaseElement::MODULUS - 1);
     assert_eq!(BaseElement::ZERO, t + BaseElement::ONE);
     assert_eq!(BaseElement::ONE, t + BaseElement::from(2u8));
 
@@ -49,7 +48,7 @@ fn sub() {
     assert_eq!(BaseElement::from(2u8), BaseElement::from(5u8) - BaseElement::from(3u8));
 
     // test underflow
-    let expected = BaseElement::from(BaseElement::MODULUS - 2);
+    let expected = BaseElement::new(BaseElement::MODULUS - 2);
     assert_eq!(expected, BaseElement::from(3u8) - BaseElement::from(5u8));
 }
 
@@ -65,13 +64,13 @@ fn mul() {
 
     // test overflow
     let m = BaseElement::MODULUS;
-    let t = BaseElement::from(m - 1);
+    let t = BaseElement::new(m - 1);
     assert_eq!(BaseElement::ONE, t * t);
-    assert_eq!(BaseElement::from(m - 2), t * BaseElement::from(2u8));
-    assert_eq!(BaseElement::from(m - 4), t * BaseElement::from(4u8));
+    assert_eq!(BaseElement::new(m - 2), t * BaseElement::from(2u8));
+    assert_eq!(BaseElement::new(m - 4), t * BaseElement::from(4u8));
 
     let t = (m + 1) / 2;
-    assert_eq!(BaseElement::ONE, BaseElement::from(t) * BaseElement::from(2u8));
+    assert_eq!(BaseElement::ONE, BaseElement::new(t) * BaseElement::from(2u8));
 
     // test random values
     let v1: Vec<BaseElement> = rand_vector(1000);
@@ -116,7 +115,7 @@ fn conjugate() {
 #[test]
 fn get_root_of_unity() {
     let root_40 = BaseElement::get_root_of_unity(40);
-    assert_eq!(BaseElement::from(23953097886125630542083529559205016746u128), root_40);
+    assert_eq!(BaseElement::new(23953097886125630542083529559205016746u128), root_40);
     assert_eq!(BaseElement::ONE, root_40.exp(u128::pow(2, 40)));
 
     let root_39 = BaseElement::get_root_of_unity(39);
@@ -251,7 +250,8 @@ impl BaseElement {
     pub fn from_big_uint(value: BigUint) -> Self {
         let bytes = value.to_bytes_le();
         let mut buffer = [0u8; 16];
-        buffer[0..bytes.len()].copy_from_slice(&bytes);
-        BaseElement::try_from(buffer).unwrap()
+        buffer[..bytes.len()].copy_from_slice(&bytes);
+        let value = u128::from_le_bytes(buffer);
+        BaseElement::new(value)
     }
 }
