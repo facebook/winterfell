@@ -24,4 +24,4 @@ std = []
 rayon = { version = "1.8", optional = true }
 
 [dev-dependencies]
-proptest = "1.3"
+proptest = "1.4"

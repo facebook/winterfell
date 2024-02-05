@@ -3,6 +3,9 @@
 ## 0.8.0 (TBD)
 * Added variable-length serialization and deserialization for `usize` type (#238).
 * [BREAKING] Removed `Serializable` and `Deserializable` implementations from slices and vectors (#239).
+* Moved from `log` to `tracing` for logging and added `tracing-forest` feature (#241).
+* Updated provable security estimation to explicitly use the number of openings (#242).
+* [BREAKING] Removed `From<u64>` and `From<u128>` implementations from field elements (#243).
 
 ## 0.7.4 (2023-12-18) - `air` crate only
 * Fixed a bug in `StarkProof` deserialization (#236).
