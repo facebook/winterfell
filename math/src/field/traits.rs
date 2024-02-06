@@ -49,6 +49,8 @@ pub trait FieldElement:
     + From<u32>
     + From<u16>
     + From<u8>
+    + TryFrom<u64>
+    + TryFrom<u128>
     + for<'a> TryFrom<&'a [u8]>
     + ExtensionOf<<Self as FieldElement>::BaseField>
     + AsBytes
