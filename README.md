@@ -15,7 +15,7 @@ A STARK prover and verifier for arbitrary computations.
 
 A STARK is a novel proof-of-computation scheme to create efficiently verifiable proofs of the correct execution of a computation. The scheme was developed by Eli Ben-Sasson, Michael Riabzev et al. at Technion - Israel Institute of Technology. STARKs do not require an initial trusted setup, and rely on very few cryptographic assumptions. See [references](#References) for more info.
 
-The aim of this project is to build a feature-rich, easy to use, and highly performant STARK prover which can generate integrity proofs for very large computations. STARK proof generation process is massively parallelizable, however, it also requires lots of RAM. For very large computations, amount of RAM available on a single machine may not be sufficient to efficiently generate a proof. Therefore, our final goal is to efficiently distribute proof generation across many machines.
+The aim of this project is to build a feature-rich, easy to use, and highly performant STARK prover which can generate integrity proofs for very large computations.
 
 ### Status and features
 
@@ -27,17 +27,13 @@ Winterfell is a fully-functional, multi-threaded STARK prover and verifier with 
 
 **Multi-threaded proof generation.** When compiled with `concurrent` feature enabled, the proof generation process will run in multiple threads. The library also supports concurrent construction of execution trace tables. The [performance](#Performance) section showcases the benefits of multi-threading.
 
-**Configurable fields.** Both the base and the extension field for proof generation can be chosen dynamically. This simplifies fine-tuning of proof generation for specific performance and security targets. See [math crate](math) for description of currently available fields.
-
-**Configurable hash functions.** The library allows dynamic selection of hash functions used in the STARK protocol. Currently, BLAKE3 and SHA3 hash functions are supported, and support for arithmetization-friendly hash function (e.g. Rescue) is planned.
+**Configurable fields and hash functions.** The library is generic over the selection of fields (both base field and extension field) and hash functions (including arithmetization-friendly hashes). This simplifies fine-tuning of proof generation for specific performance and security targets. Some options for both are provided in the [math](math) and [crypto](crypto) crates, but the library can work with any implementation that complies with the specified interfaces.
 
 **WebAssembly support.** The library is written in pure Rust and can be compiled to WebAssembly. The `std` standard library is enabled as feature by default for both prover and verifier crates. For WASM targets, one can compile with default features disabled by using `--no-default-features` flag.
 
 #### Planned features
 
 Over time, we hope extend the library with additional features:
-
-**Distributed prover.** Distributed proof generation is the main priority of this project, and we hope to release an update containing it soon.
 
 **Perfect zero-knowledge.** The current implementation provides succinct proofs but NOT perfect zero-knowledge. This means that, in its current form, the library may not be suitable for use cases where proofs must not leak any info about secret inputs. 
 
