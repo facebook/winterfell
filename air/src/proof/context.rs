@@ -224,7 +224,7 @@ fn bytes_to_element<B: StarkField>(bytes: &[u8]) -> B {
 
     let mut buf = bytes.to_vec();
     buf.resize(B::ELEMENT_BYTES, 0);
-    let element = match B::try_from(&buf) {
+    let element = match B::try_from(buf.as_slice()) {
         Ok(element) => element,
         Err(_) => panic!("element deserialization failed"),
     };

@@ -455,6 +455,20 @@ impl TryFrom<u64> for BaseElement {
     }
 }
 
+impl TryFrom<u128> for BaseElement {
+    type Error = String;
+
+    fn try_from(value: u128) -> Result<Self, Self::Error> {
+        if value >= M as u128 {
+            Err(format!(
+                "invalid field element: value {value} is greater than or equal to the field modulus"
+            ))
+        } else {
+            Ok(Self::new(value as u64))
+        }
+    }
+}
+
 impl TryFrom<[u8; 8]> for BaseElement {
     type Error = String;
 

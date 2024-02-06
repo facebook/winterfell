@@ -11,8 +11,10 @@ use core::{
     slice,
 };
 use utils::{
-    collections::Vec, string::ToString, AsBytes, ByteReader, ByteWriter, Deserializable,
-    DeserializationError, Randomizable, Serializable, SliceReader,
+    collections::Vec,
+    string::{String, ToString},
+    AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Randomizable,
+    Serializable, SliceReader,
 };
 
 #[cfg(feature = "serde")]
@@ -316,6 +318,32 @@ impl<B: ExtensibleField<3>> From<u16> for CubeExtension<B> {
 impl<B: ExtensibleField<3>> From<u8> for CubeExtension<B> {
     fn from(value: u8) -> Self {
         Self(B::from(value), B::ZERO, B::ZERO)
+    }
+}
+
+impl<B: ExtensibleField<3>> TryFrom<u64> for CubeExtension<B> {
+    type Error = String;
+
+    fn try_from(value: u64) -> Result<Self, Self::Error> {
+        match B::try_from(value) {
+            Ok(elem) => Ok(Self::from(elem)),
+            Err(_) => Err(format!(
+                "invalid field element: value {value} is greater than or equal to the field modulus"
+            )),
+        }
+    }
+}
+
+impl<B: ExtensibleField<3>> TryFrom<u128> for CubeExtension<B> {
+    type Error = String;
+
+    fn try_from(value: u128) -> Result<Self, Self::Error> {
+        match B::try_from(value) {
+            Ok(elem) => Ok(Self::from(elem)),
+            Err(_) => Err(format!(
+                "invalid field element: value {value} is greater than or equal to the field modulus"
+            )),
+        }
     }
 }
 
