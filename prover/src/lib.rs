@@ -47,7 +47,7 @@ pub use air::{
     proof, proof::StarkProof, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
     BoundaryConstraintGroup, ConstraintCompositionCoefficients, ConstraintDivisor,
     DeepCompositionCoefficients, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo,
-    TraceLayout, TransitionConstraintDegree,
+    TransitionConstraintDegree,
 };
 use tracing::{event, info_span, Level};
 pub use utils::{

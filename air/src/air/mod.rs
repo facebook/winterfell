@@ -9,7 +9,7 @@ use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElemen
 use utils::collections::{BTreeMap, Vec};
 
 mod trace_info;
-pub use trace_info::{TraceInfo, TraceLayout};
+pub use trace_info::TraceInfo;
 
 mod context;
 pub use context::AirContext;
