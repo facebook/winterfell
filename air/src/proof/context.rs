@@ -192,7 +192,7 @@ mod tests {
                 [aux_width],
                 [aux_rands],
                 trace_length,
-                Vec::new(),
+                vec![],
             );
 
             let mut expected = trace_info.to_elements();
