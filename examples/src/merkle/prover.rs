@@ -38,7 +38,7 @@ impl<H: ElementHasher> MerkleProver<H> {
     ) -> TraceTable<BaseElement> {
         // allocate memory to hold the trace table
         let trace_length = branch.len() * HASH_CYCLE_LEN;
-        let mut trace = TraceTable::new(TRACE_WIDTH, trace_length);
+        let mut trace = TraceTable::new_empty(TRACE_WIDTH, trace_length);
 
         // skip the first node of the branch because it will be computed in the trace as hash(value)
         let branch = &branch[1..];
@@ -113,7 +113,7 @@ where
         DefaultConstraintEvaluator<'a, Self::Air, E>;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
-        let last_step = trace.length() - 1;
+        let last_step = trace.get_info().length() - 1;
         PublicInputs {
             tree_root: [trace.get(0, last_step), trace.get(1, last_step)],
         }

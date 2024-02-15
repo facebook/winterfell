@@ -36,7 +36,7 @@ impl<H: ElementHasher> RescueProver<H> {
     ) -> TraceTable<BaseElement> {
         // allocate memory to hold the trace table
         let trace_length = iterations * CYCLE_LENGTH;
-        let mut trace = TraceTable::new(4, trace_length);
+        let mut trace = TraceTable::new_empty(4, trace_length);
 
         trace.fill(
             |state| {
@@ -79,7 +79,7 @@ where
         DefaultConstraintEvaluator<'a, Self::Air, E>;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
-        let last_step = trace.length() - 1;
+        let last_step = trace.get_info().length() - 1;
         PublicInputs {
             seed: [trace.get(0, 0), trace.get(1, 0)],
             result: [trace.get(0, last_step), trace.get(1, last_step)],

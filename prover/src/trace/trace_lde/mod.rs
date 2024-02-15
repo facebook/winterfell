@@ -5,7 +5,7 @@
 
 use super::{ColMatrix, EvaluationFrame, FieldElement, TracePolyTable};
 use crate::StarkDomain;
-use air::{proof::Queries, TraceInfo, TraceLayout};
+use air::{proof::Queries, TraceInfo};
 use crypto::{ElementHasher, Hasher};
 use utils::collections::Vec;
 
@@ -67,5 +67,5 @@ pub trait TraceLde<E: FieldElement>: Sync {
     fn blowup(&self) -> usize;
 
     /// Returns the trace layout of the execution trace.
-    fn trace_layout(&self) -> &TraceLayout;
+    fn trace_info(&self) -> &TraceInfo;
 }
