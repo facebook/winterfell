@@ -191,6 +191,7 @@ mod tests {
                 main_width,
                 [aux_width],
                 [aux_rands],
+                None,
                 trace_length,
                 vec![],
             );
@@ -220,6 +221,7 @@ mod tests {
             main_width as usize,
             [aux_width as usize],
             [aux_rands as usize],
+            None,
             trace_length,
             vec![],
         );

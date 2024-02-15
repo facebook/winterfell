@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use math::{bytes_to_element_with_padding, StarkField, ToElements};
+use math::{bytes_to_element_with_padding, log2, StarkField, ToElements};
 use utils::{
     collections::Vec, string::ToString, ByteReader, ByteWriter, Deserializable,
     DeserializationError, Serializable,
@@ -28,6 +28,7 @@ pub struct TraceInfo {
     main_segment_width: usize,
     aux_segment_widths: [usize; NUM_AUX_SEGMENTS],
     aux_segment_rands: [usize; NUM_AUX_SEGMENTS],
+    lagrange_kernel_aux_column_idx: Option<usize>,
     num_aux_segments: usize,
     trace_length: usize,
     trace_meta: Vec<u8>,
@@ -69,7 +70,7 @@ impl TraceInfo {
     /// * Length of `meta` is greater than 65535;
     pub fn with_meta(width: usize, length: usize, meta: Vec<u8>) -> Self {
         assert!(width > 0, "trace width must be greater than 0");
-        Self::new_multi_segment(width, [0], [0], length, meta)
+        Self::new_multi_segment(width, [0], [0], None, length, meta)
     }
 
     /// Creates a new [TraceInfo] from the specified trace segment widths, length, and metadata.
@@ -83,6 +84,7 @@ impl TraceInfo {
         main_segment_width: usize,
         aux_segment_widths: [usize; NUM_AUX_SEGMENTS],
         aux_segment_rands: [usize; NUM_AUX_SEGMENTS],
+        lagrange_kernel_aux_column_idx: Option<usize>,
         trace_length: usize,
         trace_meta: Vec<u8>,
     ) -> Self {
@@ -143,10 +145,19 @@ impl TraceInfo {
             );
         }
 
+        // validate Lagrange kernel aux column, if any
+        if let Some(lagrange_kernel_aux_column_idx) = lagrange_kernel_aux_column_idx {
+            assert!(lagrange_kernel_aux_column_idx < aux_segment_widths[0], "Lagrange kernel column index out of bounds: index={}, but only {} columns in segment", lagrange_kernel_aux_column_idx, aux_segment_widths[0]);
+
+            let min_aux_segment_rands = log2(trace_length);
+            assert!(aux_segment_rands[0] >= min_aux_segment_rands as usize, "Lagrange kernel column requires log(trace_length) random elements. Got: {}, but need at least {}", aux_segment_rands[0], min_aux_segment_rands);
+        }
+
         TraceInfo {
             main_segment_width,
             aux_segment_widths,
             aux_segment_rands,
+            lagrange_kernel_aux_column_idx,
             num_aux_segments,
             trace_length,
             trace_meta,
@@ -275,6 +286,12 @@ impl Serializable for TraceInfo {
             target.write_u8(rc as u8);
         }
 
+        // store lagrange kernel column idx
+        target.write_bool(self.lagrange_kernel_aux_column_idx.is_some());
+        if let Some(lagrange_kernel_aux_column_idx) = self.lagrange_kernel_aux_column_idx {
+            target.write_u32(lagrange_kernel_aux_column_idx as u32);
+        }
+
         // store trace length as power of two
         target.write_u8(self.trace_length.ilog2() as u8);
 
@@ -347,6 +364,14 @@ impl Deserializable for TraceInfo {
             }
         }
 
+        // read Lagrange kernel column index
+        let has_lagrange_kernel_column_idx = source.read_bool()?;
+        let lagrange_kernel_aux_column_idx = if has_lagrange_kernel_column_idx {
+            Some(source.read_u32()? as usize)
+        } else {
+            None
+        };
+
         // read and validate trace length (which was stored as a power of two)
         let trace_length = source.read_u8()?;
         if trace_length < TraceInfo::MIN_TRACE_LENGTH.ilog2() as u8 {
@@ -370,6 +395,7 @@ impl Deserializable for TraceInfo {
             main_segment_width,
             aux_segment_widths,
             aux_segment_rands,
+            lagrange_kernel_aux_column_idx,
             trace_length,
             trace_meta,
         ))
@@ -424,6 +450,7 @@ mod tests {
             main_width as usize,
             [aux_width as usize],
             [aux_rands as usize],
+            None,
             trace_length as usize,
             trace_meta,
         );
