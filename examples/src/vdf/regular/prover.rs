@@ -57,7 +57,7 @@ where
         DefaultConstraintEvaluator<'a, Self::Air, E>;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> VdfInputs {
-        let last_step = trace.length() - 1;
+        let last_step = trace.get_info().length() - 1;
         VdfInputs {
             seed: trace.get(0, 0),
             result: trace.get(0, last_step),

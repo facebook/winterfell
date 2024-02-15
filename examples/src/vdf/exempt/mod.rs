@@ -97,7 +97,7 @@ where
             info_span!("generate_execution_trace", num_cols = TRACE_WIDTH, steps = field::Empty)
                 .in_scope(|| {
                     let trace = VdfProver::<H>::build_trace(self.seed, self.num_steps + 1);
-                    tracing::Span::current().record("steps", trace.length());
+                    tracing::Span::current().record("steps", trace.get_info().length());
                     trace
                 });
 

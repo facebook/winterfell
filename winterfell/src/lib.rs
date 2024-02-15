@@ -349,7 +349,7 @@
 //!     
 //!     // Our public inputs consist of the first and last value in the execution trace.
 //!     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
-//!         let last_step = trace.length() - 1;
+//!         let last_step = trace.get_info().length() - 1;
 //!         PublicInputs {
 //!             start: trace.get(0, 0),
 //!             result: trace.get(0, last_step),
@@ -488,7 +488,7 @@
 //! #        DefaultConstraintEvaluator<'a, Self::Air, E>;
 //! #
 //! #    fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
-//! #        let last_step = trace.length() - 1;
+//! #        let last_step = trace.get_info().length() - 1;
 //! #        PublicInputs {
 //! #            start: trace.get(0, 0),
 //! #            result: trace.get(0, last_step),
@@ -586,8 +586,8 @@ pub use prover::{
     ConstraintCompositionCoefficients, ConstraintDivisor, ConstraintEvaluator,
     DeepCompositionCoefficients, DefaultConstraintEvaluator, DefaultTraceLde, Deserializable,
     DeserializationError, EvaluationFrame, FieldExtension, ProofOptions, Prover, ProverError,
-    Serializable, SliceReader, StarkDomain, StarkProof, Trace, TraceInfo, TraceLayout, TraceLde,
-    TracePolyTable, TraceTable, TraceTableFragment, TransitionConstraintDegree,
+    Serializable, SliceReader, StarkDomain, StarkProof, Trace, TraceInfo, TraceLde, TracePolyTable,
+    TraceTable, TraceTableFragment, TransitionConstraintDegree,
 };
 pub use verifier::{verify, AcceptableOptions, VerifierError};
 

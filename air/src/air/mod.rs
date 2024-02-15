@@ -9,7 +9,7 @@ use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElemen
 use utils::collections::{BTreeMap, Vec};
 
 mod trace_info;
-pub use trace_info::{TraceInfo, TraceLayout};
+pub use trace_info::TraceInfo;
 
 mod context;
 pub use context::AirContext;
@@ -396,12 +396,6 @@ pub trait Air: Send + Sync {
         self.context().trace_info.length()
     }
 
-    /// Returns a description of how execution trace columns are arranged into segments for
-    /// an instance of a computation described by this AIR.
-    fn trace_layout(&self) -> &TraceLayout {
-        self.context().trace_info.layout()
-    }
-
     /// Returns degree of trace polynomials for an instance of the computation described by
     /// this AIR.
     ///
@@ -482,8 +476,7 @@ pub trait Air: Send + Sync {
         E: FieldElement<BaseField = Self::BaseField>,
         R: RandomCoin<BaseField = Self::BaseField>,
     {
-        let num_elements =
-            self.trace_info().layout().get_aux_segment_rand_elements(aux_segment_idx);
+        let num_elements = self.trace_info().get_aux_segment_rand_elements(aux_segment_idx);
         let mut result = Vec::with_capacity(num_elements);
         for _ in 0..num_elements {
             result.push(public_coin.draw()?);

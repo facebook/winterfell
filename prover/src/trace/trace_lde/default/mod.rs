@@ -5,7 +5,7 @@
 
 use super::{
     ColMatrix, ElementHasher, EvaluationFrame, FieldElement, Hasher, Queries, StarkDomain,
-    TraceInfo, TraceLayout, TraceLde, TracePolyTable, Vec,
+    TraceInfo, TraceLde, TracePolyTable, Vec,
 };
 use crate::{RowMatrix, DEFAULT_SEGMENT_WIDTH};
 use crypto::MerkleTree;
@@ -127,7 +127,7 @@ where
 
         // check errors
         assert!(
-            self.aux_segment_ldes.len() < self.trace_info.layout().num_aux_segments(),
+            self.aux_segment_ldes.len() < self.trace_info.num_aux_segments(),
             "the specified number of auxiliary segments has already been added"
         );
         assert_eq!(
@@ -203,8 +203,8 @@ where
     }
 
     /// Returns the trace layout of the execution trace.
-    fn trace_layout(&self) -> &TraceLayout {
-        self.trace_info.layout()
+    fn trace_info(&self) -> &TraceInfo {
+        &self.trace_info
     }
 }
 

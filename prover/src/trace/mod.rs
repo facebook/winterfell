@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{matrix::MultiColumnIter, ColMatrix};
-use air::{Air, AuxTraceRandElements, EvaluationFrame, TraceInfo, TraceLayout};
+use air::{Air, AuxTraceRandElements, EvaluationFrame, TraceInfo};
 use math::{polynom, FieldElement, StarkField};
 
 mod trace_lde;
@@ -43,15 +43,8 @@ pub trait Trace: Sized {
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
-
-    /// Returns a description of how columns of this trace are arranged into trace segments.
-    fn layout(&self) -> &TraceLayout;
-
-    /// Returns the number of rows in this trace.
-    fn length(&self) -> usize;
-
-    /// Returns metadata associated with this trace.
-    fn meta(&self) -> &[u8];
+    /// Returns trace info for this trace.
+    fn get_info(&self) -> &TraceInfo;
 
     /// Returns a reference to a [Matrix] describing the main segment of this trace.
     fn main_segment(&self) -> &ColMatrix<Self::BaseField>;
@@ -72,24 +65,6 @@ pub trait Trace: Sized {
     /// Reads an evaluation frame from the main trace segment at the specified row.
     fn read_main_frame(&self, row_idx: usize, frame: &mut EvaluationFrame<Self::BaseField>);
 
-    // PROVIDED METHODS
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns trace info for this trace.
-    fn get_info(&self) -> TraceInfo {
-        TraceInfo::new_multi_segment(self.layout().clone(), self.length(), self.meta().to_vec())
-    }
-
-    /// Returns the number of columns in the main segment of this trace.
-    fn main_trace_width(&self) -> usize {
-        self.layout().main_trace_width()
-    }
-
-    /// Returns the number of columns in all auxiliary trace segments.
-    fn aux_trace_width(&self) -> usize {
-        self.layout().aux_trace_width()
-    }
-
     // VALIDATION
     // --------------------------------------------------------------------------------------------
     /// Checks if this trace is valid against the specified AIR, and panics if not.
@@ -106,18 +81,18 @@ pub trait Trace: Sized {
     {
         // make sure the width align; if they don't something went terribly wrong
         assert_eq!(
-            self.main_trace_width(),
-            air.trace_layout().main_trace_width(),
+            self.get_info().main_trace_width(),
+            air.trace_info().main_trace_width(),
             "inconsistent trace width: expected {}, but was {}",
-            self.main_trace_width(),
-            air.trace_layout().main_trace_width(),
+            self.get_info().main_trace_width(),
+            air.trace_info().main_trace_width(),
         );
 
         // --- 1. make sure the assertions are valid ----------------------------------------------
 
         // first, check assertions against the main segment of the execution trace
         for assertion in air.get_assertions() {
-            assertion.apply(self.length(), |step, value| {
+            assertion.apply(self.get_info().length(), |step, value| {
                 assert!(
                     value == self.main_segment().get(assertion.column(), step),
                     "trace does not satisfy assertion main_trace({}, {}) == {}",
@@ -134,8 +109,8 @@ pub trait Trace: Sized {
             // column index in the context of this segment
             let mut column_idx = assertion.column();
             let mut segment_idx = 0;
-            for i in 0..self.layout().num_aux_segments() {
-                let segment_width = self.layout().get_aux_segment_width(i);
+            for i in 0..self.get_info().num_aux_segments() {
+                let segment_width = self.get_info().get_aux_segment_width(i);
                 if column_idx < segment_width {
                     segment_idx = i;
                     break;
@@ -144,7 +119,7 @@ pub trait Trace: Sized {
             }
 
             // get the matrix and verify the assertion against it
-            assertion.apply(self.length(), |step, value| {
+            assertion.apply(self.get_info().length(), |step, value| {
                 assert!(
                     value == aux_segments[segment_idx].get(column_idx, step),
                     "trace does not satisfy assertion aux_trace({}, {}) == {}",
@@ -164,9 +139,9 @@ pub trait Trace: Sized {
 
         // initialize buffers to hold evaluation frames and results of constraint evaluations
         let mut x = Self::BaseField::ONE;
-        let mut main_frame = EvaluationFrame::new(self.main_trace_width());
+        let mut main_frame = EvaluationFrame::new(self.get_info().main_trace_width());
         let mut aux_frame = if air.trace_info().is_multi_segment() {
-            Some(EvaluationFrame::<E>::new(self.aux_trace_width()))
+            Some(EvaluationFrame::<E>::new(self.get_info().aux_trace_width()))
         } else {
             None
         };
@@ -176,7 +151,7 @@ pub trait Trace: Sized {
 
         // we check transition constraints on all steps except the last k steps, where k is the
         // number of steps exempt from transition constraints (guaranteed to be at least 1)
-        for step in 0..self.length() - air.context().num_transition_exemptions() {
+        for step in 0..self.get_info().length() - air.context().num_transition_exemptions() {
             // build periodic values
             for (p, v) in periodic_values_polys.iter().zip(periodic_values.iter_mut()) {
                 let num_cycles = air.trace_length() / p.len();

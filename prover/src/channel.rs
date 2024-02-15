@@ -49,7 +49,7 @@ where
     // --------------------------------------------------------------------------------------------
     /// Creates a new prover channel for the specified `air` and public inputs.
     pub fn new(air: &'a A, mut pub_inputs_elements: Vec<A::BaseField>) -> Self {
-        let context = Context::new::<A::BaseField>(air.trace_info(), air.options().clone());
+        let context = Context::new::<A::BaseField>(air.trace_info().clone(), air.options().clone());
 
         // build a seed for the public coin; the initial seed is a hash of the proof context and
         // the public inputs, but as the protocol progresses, the coin will be reseeded with the

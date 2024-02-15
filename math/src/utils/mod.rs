@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{field::FieldElement, ExtensionOf};
+use crate::{field::FieldElement, ExtensionOf, StarkField};
 use utils::{batch_iter_mut, collections::Vec, iter_mut, uninit_vector};
 
 #[cfg(feature = "concurrent")]
@@ -197,6 +197,25 @@ where
 pub fn log2(n: usize) -> u32 {
     assert!(n.is_power_of_two(), "n must be a power of two");
     n.trailing_zeros()
+}
+
+// CONVERSION FUNCTIONS
+// ================================================================================================
+
+/// Converts a slice of bytes into a field element. Pads the slice if it is smaller than the number
+/// of bytes needed to represent an element.
+///
+/// # Panics
+/// Panics if the length of `bytes` is smaller than the number of bytes needed to encode an element.
+pub fn bytes_to_element_with_padding<B: StarkField>(mut bytes: Vec<u8>) -> B {
+    assert!(bytes.len() < B::ELEMENT_BYTES);
+
+    bytes.resize(B::ELEMENT_BYTES, 0);
+
+    match B::try_from(bytes.as_slice()) {
+        Ok(element) => element,
+        Err(_) => panic!("element deserialization failed"),
+    }
 }
 
 // HELPER FUNCTIONS

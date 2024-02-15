@@ -7,7 +7,7 @@ use core_utils::{collections::Vec, uninit_vector};
 use winterfell::{
     math::{FieldElement, StarkField},
     matrix::ColMatrix,
-    EvaluationFrame, Trace, TraceInfo, TraceLayout,
+    EvaluationFrame, Trace, TraceInfo,
 };
 
 // RAP TRACE TABLE
@@ -29,9 +29,8 @@ use winterfell::{
 /// This function work just like [RapTraceTable::new()] function, but also takes a metadata
 /// parameter which can be an arbitrary sequence of bytes up to 64KB in size.
 pub struct RapTraceTable<B: StarkField> {
-    layout: TraceLayout,
+    info: TraceInfo,
     trace: ColMatrix<B>,
-    meta: Vec<u8>,
 }
 
 impl<B: StarkField> RapTraceTable<B> {
@@ -94,9 +93,8 @@ impl<B: StarkField> RapTraceTable<B> {
 
         let columns = unsafe { (0..width).map(|_| uninit_vector(length)).collect() };
         Self {
-            layout: TraceLayout::new(width, [3], [3]),
+            info: TraceInfo::new_multi_segment(width, [3], [3], length, meta),
             trace: ColMatrix::new(columns),
-            meta,
         }
     }
 
@@ -119,11 +117,11 @@ impl<B: StarkField> RapTraceTable<B> {
         I: Fn(&mut [B]),
         U: Fn(usize, &mut [B]),
     {
-        let mut state = vec![B::ZERO; self.main_trace_width()];
+        let mut state = vec![B::ZERO; self.info.main_trace_width()];
         init(&mut state);
         self.update_row(0, &state);
 
-        for i in 0..self.length() - 1 {
+        for i in 0..self.info.length() - 1 {
             update(i, &mut state);
             self.update_row(i + 1, &state);
         }
@@ -139,7 +137,7 @@ impl<B: StarkField> RapTraceTable<B> {
 
     /// Returns the number of columns in this execution trace.
     pub fn width(&self) -> usize {
-        self.main_trace_width()
+        self.info.main_trace_width()
     }
 
     /// Returns value of the cell in the specified column at the specified row of this trace.
@@ -159,20 +157,12 @@ impl<B: StarkField> RapTraceTable<B> {
 impl<B: StarkField> Trace for RapTraceTable<B> {
     type BaseField = B;
 
-    fn layout(&self) -> &TraceLayout {
-        &self.layout
-    }
-
-    fn length(&self) -> usize {
-        self.trace.num_rows()
-    }
-
-    fn meta(&self) -> &[u8] {
-        &self.meta
+    fn get_info(&self) -> &TraceInfo {
+        &self.info
     }
 
     fn read_main_frame(&self, row_idx: usize, frame: &mut EvaluationFrame<Self::BaseField>) {
-        let next_row_idx = (row_idx + 1) % self.length();
+        let next_row_idx = (row_idx + 1) % self.info.length();
         self.trace.read_row_into(row_idx, frame.current_mut());
         self.trace.read_row_into(next_row_idx, frame.next_mut());
     }
@@ -197,7 +187,7 @@ impl<B: StarkField> Trace for RapTraceTable<B> {
         let mut current_row = unsafe { uninit_vector(self.width()) };
         let mut next_row = unsafe { uninit_vector(self.width()) };
         self.read_row_into(0, &mut current_row);
-        let mut aux_columns = vec![vec![E::ZERO; self.length()]; self.aux_trace_width()];
+        let mut aux_columns = vec![vec![E::ZERO; self.info.length()]; self.info.aux_trace_width()];
 
         // Columns storing the copied values for the permutation argument are not necessary, but
         // help understanding the construction of RAPs and are kept for illustrative purposes.
@@ -209,7 +199,7 @@ impl<B: StarkField> Trace for RapTraceTable<B> {
         // Permutation argument column
         aux_columns[2][0] = E::ONE;
 
-        for index in 1..self.length() {
+        for index in 1..self.info.length() {
             // At every last step before a new hash iteration,
             // copy the permuted values into the auxiliary columns
             if (index % super::CYCLE_LENGTH) == super::NUM_HASH_ROUNDS {

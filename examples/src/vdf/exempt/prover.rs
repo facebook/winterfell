@@ -62,7 +62,7 @@ where
     fn get_pub_inputs(&self, trace: &Self::Trace) -> VdfInputs {
         // the result is read from the second to last step because the last last step contains
         // garbage
-        let second_to_last_step = trace.length() - 2;
+        let second_to_last_step = trace.get_info().length() - 2;
         VdfInputs {
             seed: trace.get(0, 0),
             result: trace.get(0, second_to_last_step),
