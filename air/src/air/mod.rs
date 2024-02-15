@@ -282,6 +282,12 @@ pub trait Air: Send + Sync {
         Vec::new()
     }
 
+    /// Returns the index of the column in the auxiliary trace on which Lagrange kernel constraints
+    /// should be enforced.
+    fn lagrange_kernel_aux_column(&self) -> Option<usize> {
+        None
+    }
+
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
 
