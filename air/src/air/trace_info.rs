@@ -203,6 +203,11 @@ impl TraceInfo {
         self.aux_segment_widths.iter().sum()
     }
 
+    /// Returns the index of the auxiliary column which implements the Lagrange kernel, if any
+    pub fn lagrange_kernel_aux_column_idx(&self) -> Option<usize> {
+        self.lagrange_kernel_aux_column_idx
+    }
+
     /// Returns the total number of segments in an execution trace.
     pub fn num_segments(&self) -> usize {
         self.num_aux_segments + 1
