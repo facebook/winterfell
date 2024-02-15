@@ -6,11 +6,18 @@ use prover::{
 };
 
 #[test]
-fn test_air() {
-    // - Create trace with aux column lagrange (my own struct)
-    // - Create prover (my own struct)
-    // - Call prove() to generate `StarkProof`
-    // - call `verify()` on the proof, and assert ok
+fn test_lagrange_kernel_air() {
+    let trace = LagrangeMockTrace::new();
+    let prover = LagrangeProver::new();
+
+    let proof = prover.prove(trace).unwrap();
+
+    assert!(verify::<
+        LagrangeKernelMockAir,
+        Blake3_256<BaseElement>,
+        DefaultRandomCoin<Blake3_256<BaseElement>>,
+    >(proof, (), &AcceptableOptions::MinConjecturedSecurity(0))
+    .is_ok());
 }
 
 // LagrangeMockTrace
@@ -99,7 +106,7 @@ impl Air for LagrangeKernelMockAir {
                 trace_info,
                 vec![TransitionConstraintDegree::new(1)],
                 Vec::new(),
-                0,
+                1,
                 0,
                 options,
             ),
@@ -120,7 +127,7 @@ impl Air for LagrangeKernelMockAir {
     }
 
     fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>> {
-        Vec::new()
+        vec![Assertion::single(0, 0, BaseElement::ZERO)]
     }
 
     fn lagrange_kernel_aux_column_idx(&self) -> Option<usize> {
