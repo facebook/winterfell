@@ -44,7 +44,7 @@ impl Air for LagrangeKernelMockAir {
         Vec::new()
     }
 
-    fn lagrange_kernel_aux_column(&self) -> Option<usize> {
+    fn lagrange_kernel_aux_column_idx(&self) -> Option<usize> {
         // apply the lagrange kernel constraints to first column
         Some(0)
     }
