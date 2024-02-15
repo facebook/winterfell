@@ -266,7 +266,7 @@ pub trait Prover {
             // extend the main execution trace and build a Merkle tree from the extended trace
             let span = info_span!("commit_to_main_trace_segment").entered();
             let (trace_lde, trace_polys) =
-                self.new_trace_lde(&trace.get_info(), trace.main_segment(), &domain);
+                self.new_trace_lde(trace.get_info(), trace.main_segment(), &domain);
 
             // get the commitment to the main trace segment LDE
             let main_trace_root = trace_lde.get_main_trace_commitment();
