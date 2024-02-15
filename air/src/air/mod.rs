@@ -470,8 +470,7 @@ pub trait Air: Send + Sync {
         E: FieldElement<BaseField = Self::BaseField>,
         R: RandomCoin<BaseField = Self::BaseField>,
     {
-        let num_elements =
-            self.trace_info().get_aux_segment_rand_elements(aux_segment_idx);
+        let num_elements = self.trace_info().get_aux_segment_rand_elements(aux_segment_idx);
         let mut result = Vec::with_capacity(num_elements);
         for _ in 0..num_elements {
             result.push(public_coin.draw()?);
