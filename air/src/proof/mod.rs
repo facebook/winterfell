@@ -5,7 +5,7 @@
 
 //! Contains STARK proof struct and associated components.
 
-use crate::{ProofOptions, TraceInfo, TraceLayout};
+use crate::{ProofOptions, TraceInfo};
 use core::cmp;
 use crypto::Hasher;
 use fri::FriProof;
@@ -81,19 +81,8 @@ impl StarkProof {
         self.context.options()
     }
 
-    /// Returns a layout describing how columns of the execution trace described by this context
-    /// are arranged into segments.
-    pub fn trace_layout(&self) -> &TraceLayout {
-        self.context.trace_layout()
-    }
-
-    /// Returns trace length for the computation described by this proof.
-    pub fn trace_length(&self) -> usize {
-        self.context.trace_length()
-    }
-
     /// Returns trace info for the computation described by this proof.
-    pub fn get_trace_info(&self) -> TraceInfo {
+    pub fn get_trace_info(&self) -> &TraceInfo {
         self.context.get_trace_info()
     }
 
@@ -115,14 +104,14 @@ impl StarkProof {
             get_conjectured_security(
                 self.context.options(),
                 self.context.num_modulus_bits(),
-                self.trace_length(),
+                self.get_trace_info().length(),
                 H::COLLISION_RESISTANCE,
             )
         } else {
             get_proven_security(
                 self.context.options(),
                 self.context.num_modulus_bits(),
-                self.trace_length(),
+                self.get_trace_info().length(),
                 H::COLLISION_RESISTANCE,
             )
         }
@@ -153,7 +142,7 @@ impl StarkProof {
 
         Self {
             context: Context::new::<DummyField>(
-                &TraceInfo::new(1, 8),
+                TraceInfo::new(1, 8),
                 ProofOptions::new(1, 2, 2, FieldExtension::None, 8, 1),
             ),
             num_unique_queries: 0,
@@ -195,7 +184,7 @@ impl Deserializable for StarkProof {
         let context = Context::read_from(source)?;
         let num_unique_queries = source.read_u8()?;
         let commitments = Commitments::read_from(source)?;
-        let num_trace_segments = context.trace_layout().num_segments();
+        let num_trace_segments = context.get_trace_info().num_segments();
         let mut trace_queries = Vec::with_capacity(num_trace_segments);
         for _ in 0..num_trace_segments {
             trace_queries.push(Queries::read_from(source)?);
