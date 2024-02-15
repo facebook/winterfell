@@ -21,7 +21,7 @@ impl Air for LagrangeKernelMockAir {
                 vec![TransitionConstraintDegree::new(1)],
                 Vec::new(),
                 0,
-                1,
+                0,
                 options,
             ),
         }

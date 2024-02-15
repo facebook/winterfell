@@ -100,14 +100,20 @@ impl<B: StarkField> AirContext<B> {
         assert!(num_main_assertions > 0, "at least one assertion must be specified");
 
         if trace_info.is_multi_segment() {
-            assert!(
+            // If the only auxiliary column is the Lagrange kernel one, then we don't require any
+            // other boundary/transition constraints
+            if trace_info.lagrange_kernel_aux_column_idx().is_none()
+                || has_only_lagrange_kernel_aux_column(&trace_info)
+            {
+                assert!(
                 !aux_transition_constraint_degrees.is_empty(),
                 "at least one transition constraint degree must be specified for auxiliary trace segments"
-            );
-            assert!(
-                num_aux_assertions > 0,
-                "at least one assertion must be specified against auxiliary trace segments"
-            );
+                );
+                assert!(
+                    num_aux_assertions > 0,
+                    "at least one assertion must be specified against auxiliary trace segments"
+                );
+            }
         } else {
             assert!(
                 aux_transition_constraint_degrees.is_empty(),
@@ -315,5 +321,18 @@ impl<B: StarkField> AirContext<B> {
 
         self.num_transition_exemptions = n;
         self
+    }
+}
+
+// HELPERS
+// =================================================================================================
+
+/// Returns true if there is only one auxiliary column, and that column is the Lagrange kernel
+fn has_only_lagrange_kernel_aux_column(trace_info: &TraceInfo) -> bool {
+    match trace_info.lagrange_kernel_aux_column_idx() {
+        // Note that if `aux_trace_width == 1`, then `_idx` is guaranteed to be 0
+        // (so we don't need to check it)
+        Some(_idx) => trace_info.aux_trace_width() == 1,
+        None => false,
     }
 }
