@@ -590,3 +590,6 @@ pub use prover::{
     TracePolyTable, TraceTable, TraceTableFragment, TransitionConstraintDegree,
 };
 pub use verifier::{verify, AcceptableOptions, VerifierError};
+
+#[cfg(test)]
+mod tests;
