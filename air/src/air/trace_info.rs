@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use math::{StarkField, ToElements};
+use math::{bytes_to_element_with_padding, StarkField, ToElements};
 use utils::{
     collections::Vec, string::ToString, ByteReader, ByteWriter, Deserializable,
     DeserializationError, Serializable,
@@ -250,7 +250,7 @@ impl<E: StarkField> ToElements<E> for TraceInfo {
         // element, and then converting these chunks into field elements.
         if !self.trace_meta.is_empty() {
             for chunk in self.trace_meta.chunks(E::ELEMENT_BYTES - 1) {
-                result.push(bytes_to_element(chunk));
+                result.push(bytes_to_element_with_padding(chunk.to_vec()));
             }
         }
 
@@ -374,25 +374,6 @@ impl Deserializable for TraceInfo {
             trace_meta,
         ))
     }
-}
-
-// TODO: MERGE WITH `air::proof::context::bytes_to_elements`
-
-/// Converts a slice of bytes into a field element.
-///
-/// Assumes that the length of `bytes` is smaller than the number of bytes needed to encode an
-/// element.
-#[allow(clippy::let_and_return)]
-fn bytes_to_element<B: StarkField>(bytes: &[u8]) -> B {
-    debug_assert!(bytes.len() < B::ELEMENT_BYTES);
-
-    let mut buf = bytes.to_vec();
-    buf.resize(B::ELEMENT_BYTES, 0);
-    let element = match B::try_from(buf.as_slice()) {
-        Ok(element) => element,
-        Err(_) => panic!("element deserialization failed"),
-    };
-    element
 }
 
 // TESTS

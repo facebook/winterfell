@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{ProofOptions, TraceInfo};
-use math::{StarkField, ToElements};
+use math::{bytes_to_element_with_padding, StarkField, ToElements};
 use utils::{
     collections::Vec, string::ToString, ByteReader, ByteWriter, Deserializable,
     DeserializationError, Serializable,
@@ -103,8 +103,8 @@ impl<E: StarkField> ToElements<E> for Context {
         // convert field modulus bytes into 2 elements
         let num_modulus_bytes = self.field_modulus_bytes.len();
         let (m1, m2) = self.field_modulus_bytes.split_at(num_modulus_bytes / 2);
-        result.push(bytes_to_element(m1));
-        result.push(bytes_to_element(m2));
+        result.push(bytes_to_element_with_padding(m1.to_vec()));
+        result.push(bytes_to_element_with_padding(m2.to_vec()));
 
         // convert proof options to elements
         result.append(&mut self.options.to_elements());
@@ -154,26 +154,6 @@ impl Deserializable for Context {
             options,
         })
     }
-}
-
-// HELPER FUNCTIONS
-// ================================================================================================
-
-/// Converts a slice of bytes into a field element.
-///
-/// Assumes that the length of `bytes` is smaller than the number of bytes needed to encode an
-/// element.
-#[allow(clippy::let_and_return)]
-fn bytes_to_element<B: StarkField>(bytes: &[u8]) -> B {
-    debug_assert!(bytes.len() < B::ELEMENT_BYTES);
-
-    let mut buf = bytes.to_vec();
-    buf.resize(B::ELEMENT_BYTES, 0);
-    let element = match B::try_from(buf.as_slice()) {
-        Ok(element) => element,
-        Err(_) => panic!("element deserialization failed"),
-    };
-    element
 }
 
 // TESTS
