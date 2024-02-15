@@ -79,8 +79,8 @@ impl<B: StarkField> TraceTable<B> {
     /// * `width` is zero or greater than 255.
     /// * `length` is smaller than 8, greater than biggest multiplicative subgroup in the field
     ///   `B`, or is not a power of two.
-    pub fn new_empty(width: usize, length: usize) -> Self {
-        Self::new_empty_with_meta(width, length, vec![])
+    pub fn new(width: usize, length: usize) -> Self {
+        Self::with_meta(width, length, vec![])
     }
 
     /// Creates a new execution trace of the specified width and length, and with the specified
@@ -95,7 +95,7 @@ impl<B: StarkField> TraceTable<B> {
     /// * `length` is smaller than 8, greater than the biggest multiplicative subgroup in the
     ///   field `B`, or is not a power of two.
     /// * Length of `meta` is greater than 65535;
-    pub fn new_empty_with_meta(width: usize, length: usize, meta: Vec<u8>) -> Self {
+    pub fn with_meta(width: usize, length: usize, meta: Vec<u8>) -> Self {
         let info = TraceInfo::with_meta(width, length, meta);
         assert!(
             length.ilog2() <= B::TWO_ADICITY,

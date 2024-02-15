@@ -33,7 +33,7 @@ impl<H: ElementHasher> FibSmallProver<H> {
     pub fn build_trace(&self, sequence_length: usize) -> TraceTable<BaseElement> {
         assert!(sequence_length.is_power_of_two(), "sequence length must be a power of 2");
 
-        let mut trace = TraceTable::new_empty(TRACE_WIDTH, sequence_length / 2);
+        let mut trace = TraceTable::new(TRACE_WIDTH, sequence_length / 2);
         trace.fill(
             |state| {
                 state[0] = BaseElement::ONE;

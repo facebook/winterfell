@@ -36,7 +36,7 @@ impl<H: ElementHasher> RescueProver<H> {
     ) -> TraceTable<BaseElement> {
         // allocate memory to hold the trace table
         let trace_length = iterations * CYCLE_LENGTH;
-        let mut trace = TraceTable::new_empty(4, trace_length);
+        let mut trace = TraceTable::new(4, trace_length);
 
         trace.fill(
             |state| {
