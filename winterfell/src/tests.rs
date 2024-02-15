@@ -2,6 +2,7 @@ use super::*;
 use prover::{
     crypto::{hashers::Blake3_256, DefaultRandomCoin},
     math::{fields::f64::BaseElement, FieldElement},
+    matrix::ColMatrix,
 };
 
 #[test]
@@ -15,29 +16,67 @@ fn test_air() {
 // LagrangeMockTrace
 // ================================================================================================
 
-struct LagrangeMockTrace {}
+struct LagrangeMockTrace {
+    // dummy main trace
+    main_trace: ColMatrix<BaseElement>,
+    info: TraceInfo,
+}
+
+impl LagrangeMockTrace {
+    const TRACE_LENGTH: usize = 8;
+
+    fn new() -> Self {
+        let col = vec![BaseElement::ZERO; Self::TRACE_LENGTH];
+
+        Self {
+            main_trace: ColMatrix::new(vec![col]),
+            info: TraceInfo::new_multi_segment(1, [1], [3], Some(0), Self::TRACE_LENGTH, vec![]),
+        }
+    }
+}
 
 impl Trace for LagrangeMockTrace {
     type BaseField = BaseElement;
 
     fn get_info(&self) -> &TraceInfo {
-        todo!()
+        &self.info
     }
 
-    fn main_segment(&self) -> &matrix::ColMatrix<Self::BaseField> {
-        todo!()
+    fn main_segment(&self) -> &ColMatrix<BaseElement> {
+        &self.main_trace
     }
 
-    fn build_aux_segment<E: FieldElement<BaseField = Self::BaseField>>(
+    fn build_aux_segment<E: FieldElement<BaseField = BaseElement>>(
         &mut self,
-        aux_segments: &[matrix::ColMatrix<E>],
+        aux_segments: &[ColMatrix<E>],
         rand_elements: &[E],
-    ) -> Option<matrix::ColMatrix<E>> {
-        todo!()
+    ) -> Option<ColMatrix<E>> {
+        assert!(aux_segments.is_empty());
+
+        let r0 = rand_elements[0];
+        let r1 = rand_elements[1];
+        let r2 = rand_elements[2];
+
+        let col = vec![
+            (E::ONE - r2) * (E::ONE - r1) * (E::ONE - r0),
+            (E::ONE - r2) * (E::ONE - r1) * r0,
+            (E::ONE - r2) * r1 * (E::ONE - r0),
+            (E::ONE - r2) * r1 * r0,
+            r2 * (E::ONE - r1) * (E::ONE - r0),
+            r2 * (E::ONE - r1) * r0,
+            r2 * r1 * (E::ONE - r0),
+            r2 * r1 * r0,
+        ];
+
+        Some(ColMatrix::new(vec![col]))
     }
 
-    fn read_main_frame(&self, row_idx: usize, frame: &mut EvaluationFrame<Self::BaseField>) {
-        todo!()
+    fn read_main_frame(&self, row_idx: usize, frame: &mut EvaluationFrame<BaseElement>) {
+        let next_row_idx = row_idx + 1;
+        assert_ne!(next_row_idx, Self::TRACE_LENGTH);
+
+        self.main_trace.read_row_into(row_idx, frame.current_mut());
+        self.main_trace.read_row_into(next_row_idx, frame.next_mut());
     }
 }
 
@@ -126,7 +165,7 @@ impl Prover for LagrangeProver {
     fn new_trace_lde<E>(
         &self,
         trace_info: &TraceInfo,
-        main_trace: &matrix::ColMatrix<Self::BaseField>,
+        main_trace: &ColMatrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>)
     where
