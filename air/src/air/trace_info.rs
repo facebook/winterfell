@@ -639,32 +639,53 @@ fn bytes_to_element<B: StarkField>(bytes: &[u8]) -> B {
 
 #[cfg(test)]
 mod tests {
-    use super::{ToElements, TraceLayout};
-    use math::fields::f64::BaseElement;
+    use super::{ToElements, TraceInfo};
+    use math::{fields::f64::BaseElement, FieldElement};
 
     #[test]
-    fn trace_layout_to_elements() {
+    fn trace_info_to_elements() {
         // --- test trace with only main segment ------------------------------
         let main_width = 20;
+        let trace_length = 64_u32;
         let num_aux_segments = 0;
 
-        let expected = u32::from_le_bytes([num_aux_segments, main_width as u8, 0, 0]);
-        let expected = vec![BaseElement::from(expected)];
+        let expected = {
+            let first_ele = u32::from_le_bytes([num_aux_segments, main_width as u8, 0, 0]);
 
-        let layout = TraceLayout::new(main_width, [0], [0]);
-        assert_eq!(expected, layout.to_elements());
+            vec![BaseElement::from(first_ele), BaseElement::from(trace_length)]
+        };
+
+        let info = TraceInfo::new(main_width, trace_length as usize);
+        assert_eq!(expected, info.to_elements());
 
         // --- test trace with one auxiliary segment --------------------------
         let main_width = 20;
+        let trace_length = 64_u32;
         let num_aux_segments = 1;
         let aux_width = 9;
         let aux_rands = 12;
+        let trace_meta = vec![1_u8, 2, 3, 4];
 
-        let expected = u32::from_le_bytes([aux_rands, aux_width, num_aux_segments, main_width]);
-        let expected = vec![BaseElement::from(expected)];
+        let expected = {
+            let first_ele =
+                u32::from_le_bytes([aux_rands as u8, aux_width, num_aux_segments, main_width]);
 
-        let layout =
-            TraceLayout::new(main_width as usize, [aux_width as usize], [aux_rands as usize]);
-        assert_eq!(expected, layout.to_elements());
+            // `trace_meta` is 4 bytes, so fits into a single element
+            let mut meta_bytes = trace_meta.clone();
+            meta_bytes.resize(BaseElement::ELEMENT_BYTES, 0);
+            let meta_ele = BaseElement::try_from(meta_bytes.as_slice()).unwrap();
+
+            vec![BaseElement::from(first_ele), BaseElement::from(trace_length), meta_ele]
+        };
+
+        let info = TraceInfo::new_multi_segment(
+            main_width as usize,
+            [aux_width as usize],
+            [aux_rands as usize],
+            trace_length as usize,
+            trace_meta,
+        );
+
+        assert_eq!(expected, info.to_elements());
     }
 }
