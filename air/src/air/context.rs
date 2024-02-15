@@ -103,7 +103,7 @@ impl<B: StarkField> AirContext<B> {
             // If the only auxiliary column is the Lagrange kernel one, then we don't require any
             // other boundary/transition constraints
             if trace_info.lagrange_kernel_aux_column_idx().is_none()
-                || has_only_lagrange_kernel_aux_column(&trace_info)
+                || !has_only_lagrange_kernel_aux_column(&trace_info)
             {
                 assert!(
                 !aux_transition_constraint_degrees.is_empty(),
