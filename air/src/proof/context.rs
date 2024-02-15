@@ -197,7 +197,6 @@ mod tests {
         let num_queries = 30;
 
         let main_width = 20;
-        let num_aux_segments = 1;
         let aux_width = 9;
         let aux_rands = 12;
         let trace_length = 4096;
@@ -209,18 +208,27 @@ mod tests {
             0,
         ]);
 
-        let layout_info = u32::from_le_bytes([aux_rands, aux_width, num_aux_segments, main_width]);
+        let expected = {
+            let trace_info = TraceInfo::new_multi_segment(
+                main_width,
+                [aux_width],
+                [aux_rands],
+                trace_length,
+                Vec::new(),
+            );
 
-        let expected = vec![
-            BaseElement::from(layout_info),
-            BaseElement::from(1_u32),    // lower bits of field modulus
-            BaseElement::from(u32::MAX), // upper bits of field modulus
-            BaseElement::from(ext_fri),
-            BaseElement::from(grinding_factor),
-            BaseElement::from(blowup_factor as u32),
-            BaseElement::from(num_queries as u32),
-            BaseElement::from(trace_length as u32),
-        ];
+            let mut expected = trace_info.to_elements();
+            expected.extend(vec![
+                BaseElement::from(1_u32),    // lower bits of field modulus
+                BaseElement::from(u32::MAX), // upper bits of field modulus
+                BaseElement::from(ext_fri),
+                BaseElement::from(grinding_factor),
+                BaseElement::from(blowup_factor as u32),
+                BaseElement::from(num_queries as u32),
+            ]);
+
+            expected
+        };
 
         let options = ProofOptions::new(
             num_queries,
