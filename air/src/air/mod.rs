@@ -5,7 +5,7 @@
 
 use crate::ProofOptions;
 use crypto::{RandomCoin, RandomCoinError};
-use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElements};
+use math::{fft, log2, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElements};
 use utils::collections::{BTreeMap, Vec};
 
 mod trace_info;
@@ -518,6 +518,13 @@ pub trait Air: Send + Sync {
         for _ in 0..self.context().num_transition_constraints() {
             t_coefficients.push(public_coin.draw()?);
         }
+        
+        let mut lagrange_kernel_t_coefficients = Vec::new();
+        if self.context().lagrange_kernel_aux_column_idx().is_some() {
+            for _ in 0..log2(self.context().trace_len()) {
+                lagrange_kernel_t_coefficients.push(public_coin.draw()?);
+            }
+        }
 
         let mut b_coefficients = Vec::new();
         for _ in 0..self.context().num_assertions() {
@@ -526,6 +533,7 @@ pub trait Air: Send + Sync {
 
         Ok(ConstraintCompositionCoefficients {
             transition: t_coefficients,
+            lagrange_kernel_transition: lagrange_kernel_t_coefficients,
             boundary: b_coefficients,
         })
     }

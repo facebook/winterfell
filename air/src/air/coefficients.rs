@@ -65,7 +65,9 @@ impl<E: FieldElement> Default for AuxTraceRandElements<E> {
 #[derive(Debug, Clone)]
 pub struct ConstraintCompositionCoefficients<E: FieldElement> {
     pub transition: Vec<E>,
+    pub lagrange_kernel_transition: Vec<E>,
     pub boundary: Vec<E>,
+    // TODO: Add one for lagrange kernel boundary constraint
 }
 
 // DEEP COMPOSITION COEFFICIENTS
