@@ -195,6 +195,12 @@ impl<B: StarkField> AirContext<B> {
         self.trace_info.length() * self.options.blowup_factor()
     }
 
+    /// Returns the index of the column in the auxiliary trace on which Lagrange kernel constraints
+    /// should be enforced.
+    pub fn lagrange_kernel_aux_column_idx(&self) -> Option<usize> {
+        self.trace_info.lagrange_kernel_aux_column_idx()
+    }
+
     /// Returns the number of transition constraints for a computation.
     ///
     /// The number of transition constraints is defined by the total number of transition

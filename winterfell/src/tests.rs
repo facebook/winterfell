@@ -129,11 +129,6 @@ impl Air for LagrangeKernelMockAir {
     fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>> {
         vec![Assertion::single(0, 0, BaseElement::ZERO)]
     }
-
-    fn lagrange_kernel_aux_column_idx(&self) -> Option<usize> {
-        // apply the lagrange kernel constraints to first column
-        Some(0)
-    }
 }
 
 // LagrangeProver
