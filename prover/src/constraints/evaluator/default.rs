@@ -95,7 +95,9 @@ where
         // for the main segment.
         let mut fragments = evaluation_table.fragments(num_fragments);
         iter_mut!(fragments).for_each(|fragment| {
-            if self.air.trace_info().is_multi_segment() {
+            if self.air.trace_info().is_multi_segment()
+                && !self.air.trace_info().aux_segment_has_only_lagrange_kernel_column()
+            {
                 self.evaluate_fragment_full(trace, domain, fragment);
             } else {
                 self.evaluate_fragment_main(trace, domain, fragment);
