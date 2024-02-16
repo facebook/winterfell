@@ -48,12 +48,12 @@ impl OodFrame {
 
         // save the evaluations with the current and next evaluations interleaved for each polynomial
         let frame_size = trace_states.len();
-        let width = trace_states[0].len();
+        let num_columns = trace_states[0].len();
 
         let mut result = vec![];
-        for i in 0..width {
+        for col in 0..num_columns {
             for row in trace_states.iter() {
-                result.push(row[i]);
+                result.push(row[col]);
             }
         }
         debug_assert!(frame_size <= u8::MAX as usize);
