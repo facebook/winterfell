@@ -16,6 +16,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     composition_coefficients: ConstraintCompositionCoefficients<E>,
     main_trace_frame: &EvaluationFrame<E>,
     aux_trace_frame: &Option<EvaluationFrame<E>>,
+    lagrange_kernel_evaluations: Option<&[E]>,
     aux_rand_elements: AuxTraceRandElements<E>,
     x: E,
 ) -> E {
@@ -42,13 +43,17 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     // evaluate transition constraints for auxiliary trace segments (if any)
     let mut t_evaluations2 = E::zeroed_vector(t_constraints.num_aux_constraints());
     if let Some(aux_trace_frame) = aux_trace_frame {
-        air.evaluate_aux_transition(
-            main_trace_frame,
-            aux_trace_frame,
-            &periodic_values,
-            &aux_rand_elements,
-            &mut t_evaluations2,
-        );
+        // `t_evaluations_2` would be empty here if there is only 1 auxiliary column, and that
+        // column is the Lagrange kernel column
+        if !t_evaluations2.is_empty() {
+            air.evaluate_aux_transition(
+                main_trace_frame,
+                aux_trace_frame,
+                &periodic_values,
+                &aux_rand_elements,
+                &mut t_evaluations2,
+            );
+        }
     }
 
     // merge all constraint evaluations into a single value by computing their random linear
@@ -56,7 +61,11 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     // by the divisor of transition constraints.
     let mut result = t_constraints.combine_evaluations::<E>(&t_evaluations1, &t_evaluations2, x);
 
-    // 2 ----- evaluate boundary constraints ------------------------------------------------------
+    // 2 ----- evaluate Lagrange kernel transition constraints ------------------------------------
+
+    // TODO
+
+    // 3 ----- evaluate boundary constraints ------------------------------------------------------
 
     // get boundary constraints grouped by common divisor from the AIR
     let b_constraints =

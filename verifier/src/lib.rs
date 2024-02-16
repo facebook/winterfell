@@ -196,11 +196,13 @@ where
     let ood_trace_frame = channel.read_ood_trace_frame();
     let ood_main_trace_frame = ood_trace_frame.main_frame();
     let ood_aux_trace_frame = ood_trace_frame.aux_frame();
+    let ood_lagrange_kernel_evaluations = ood_trace_frame.lagrange_kernel_constraints_evaluations();
     let ood_constraint_evaluation_1 = evaluate_constraints(
         &air,
         constraint_coeffs,
         &ood_main_trace_frame,
         &ood_aux_trace_frame,
+        ood_lagrange_kernel_evaluations,
         aux_trace_rand_elements,
         z,
     );
