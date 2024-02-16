@@ -10,14 +10,16 @@ pub use frame::EvaluationFrame;
 
 mod degree;
 pub use degree::TransitionConstraintDegree;
+use math::log2;
 
 // CONSTANTS
 // ================================================================================================
 
 const MIN_CYCLE_LENGTH: usize = 2;
 
-// TRANSITION CONSTRAINT INFO
+// TRANSITION CONSTRAINTS INFO
 // ================================================================================================
+
 /// Metadata for transition constraints of a computation.
 ///
 /// This metadata includes:
@@ -168,5 +170,59 @@ impl<E: FieldElement> TransitionConstraints<E> {
         let z = E::from(self.divisor.evaluate_at(x));
 
         result / z
+    }
+}
+
+// LAGRANGE KERNEL TRANSITION CONSTRAINTS INFO
+// ================================================================================================
+
+pub struct LagrangeKernelTransitionConstraints<E: FieldElement> {
+    lagrange_constraint_coefficients: Vec<E>,
+    divisors: Vec<ConstraintDivisor<E::BaseField>>,
+}
+
+impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
+    /// TODO: Document
+    pub fn new(
+        context: &AirContext<E::BaseField>,
+        lagrange_constraint_coefficients: Vec<E>,
+    ) -> Self {
+        assert_eq!(log2(context.trace_len()), lagrange_constraint_coefficients.len() as u32);
+
+        let num_lagrange_kernel_transition_constraints = lagrange_constraint_coefficients.len();
+
+        let divisors = {
+            let mut divisors = Vec::with_capacity(num_lagrange_kernel_transition_constraints);
+            for i in 0..num_lagrange_kernel_transition_constraints {
+                let constraint_domain_size = 2_usize.pow(i as u32);
+                let divisor = ConstraintDivisor::from_transition(constraint_domain_size, 0);
+
+                divisors.push(divisor);
+            }
+            divisors
+        };
+
+        Self {
+            lagrange_constraint_coefficients,
+            divisors,
+        }
+    }
+
+    /// TODO: Document
+    pub fn combine_evaluations<F>(&self, lagrange_kernel_column_evaluations: &[E], x: F) -> E
+    where
+        F: FieldElement<BaseField = E::BaseField>,
+        E: ExtensionOf<F>,
+    {
+        lagrange_kernel_column_evaluations
+            .iter()
+            .zip(self.lagrange_constraint_coefficients.iter())
+            .zip(self.divisors.iter())
+            .fold(E::ZERO, |acc, ((&const_eval, &coef), divisor)| {
+                let z = divisor.evaluate_at(x);
+
+                // FIXME: Is this the right way to do it (specifically how we deal with the extension field)
+                acc + (coef.mul_base(const_eval) / z.into())
+            })
     }
 }
