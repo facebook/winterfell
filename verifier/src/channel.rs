@@ -437,7 +437,7 @@ impl<E: FieldElement> TraceOodFrame<E> {
     /// TODO: Make this clearer
     /// Returns the Lagrange kernel evaluation constraints c(z), c(gz), c(g^2z), c(g^4z), ...
     /// This should log(trace_length).
-    pub fn lagrange_kernel_constraints_evaluations(&self) -> Option<&[E]> {
+    pub fn lagrange_kernel_column_frame(&self) -> Option<&[E]> {
         if self.num_lagrange_kernel_constraints_evaluations == 0 {
             None
         } else {

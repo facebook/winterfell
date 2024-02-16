@@ -31,6 +31,8 @@ pub use coefficients::{
 mod divisor;
 pub use divisor::ConstraintDivisor;
 
+use self::transition::LagrangeKernelTransitionConstraints;
+
 #[cfg(test)]
 mod tests;
 
@@ -289,17 +291,17 @@ pub trait Air: Send + Sync {
     /// lagrange_kernel_evaluations: c(z), c(gz), c(g^2z), ...
     fn evaluate_lagrange_kernel_transition<F, E>(
         &self,
-        lagrange_kernel_column_evaluations: &[E],
+        lagrange_kernel_column_frame: &[E],
         aux_rand_elements: &AuxTraceRandElements<E>,
         result: &mut [E],
     ) where
         F: FieldElement<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
     {
-        assert_eq!(lagrange_kernel_column_evaluations.len(), result.len());
+        assert_eq!(lagrange_kernel_column_frame.len(), result.len());
 
-        let v = lagrange_kernel_column_evaluations.len();
-        let c = lagrange_kernel_column_evaluations;
+        let v = lagrange_kernel_column_frame.len();
+        let c = lagrange_kernel_column_frame;
         let r = aux_rand_elements.get_segment_elements(0);
 
         for k in 1..v + 1 {
@@ -369,6 +371,13 @@ pub trait Air: Send + Sync {
         composition_coefficients: &[E],
     ) -> TransitionConstraints<E> {
         TransitionConstraints::new(self.context(), composition_coefficients)
+    }
+
+    fn get_lagrange_kernel_transition_constraints<E: FieldElement<BaseField = Self::BaseField>>(
+        &self,
+        lagrange_constraint_coefficients: Vec<E>,
+    ) -> LagrangeKernelTransitionConstraints<E> {
+        LagrangeKernelTransitionConstraints::new(self.context(), lagrange_constraint_coefficients)
     }
 
     /// Convert assertions returned from [get_assertions()](Air::get_assertions) and

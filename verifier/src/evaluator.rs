@@ -16,7 +16,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     composition_coefficients: ConstraintCompositionCoefficients<E>,
     main_trace_frame: &EvaluationFrame<E>,
     aux_trace_frame: &Option<EvaluationFrame<E>>,
-    lagrange_kernel_evaluations: Option<&[E]>,
+    lagrange_kernel_column_frame: Option<&[E]>,
     aux_rand_elements: AuxTraceRandElements<E>,
     x: E,
 ) -> E {
@@ -63,7 +63,20 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
 
     // 2 ----- evaluate Lagrange kernel transition constraints ------------------------------------
 
-    // TODO
+    if let Some(lagrange_kernel_column_frame) = lagrange_kernel_column_frame {
+        let mut lagrange_t_evaluations = E::zeroed_vector(lagrange_kernel_column_frame.len());
+        air.evaluate_lagrange_kernel_transition(
+            lagrange_kernel_column_frame,
+            &aux_rand_elements,
+            &mut lagrange_t_evaluations,
+        );
+
+        let lagrange_t_constraints = air.get_lagrange_kernel_transition_constraints(
+            composition_coefficients.lagrange_kernel_transition,
+        );
+
+        result += lagrange_t_constraints.combine_evaluations::<E>(&lagrange_t_evaluations, x);
+    }
 
     // 3 ----- evaluate boundary constraints ------------------------------------------------------
 
@@ -86,6 +99,8 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
             result += group.evaluate_at(aux_trace_frame.current(), x);
         }
     }
+
+    // TODO: Evaluate lagrange kernel boundary constraint
 
     result
 }
