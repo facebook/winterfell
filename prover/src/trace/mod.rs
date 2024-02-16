@@ -140,7 +140,9 @@ pub trait Trace: Sized {
         // initialize buffers to hold evaluation frames and results of constraint evaluations
         let mut x = Self::BaseField::ONE;
         let mut main_frame = EvaluationFrame::new(self.get_info().main_trace_width());
-        let mut aux_frame = if air.trace_info().is_multi_segment() {
+        let mut aux_frame = if air.trace_info().is_multi_segment()
+            && !air.trace_info().aux_segment_has_only_lagrange_kernel_column()
+        {
             Some(EvaluationFrame::<E>::new(self.get_info().aux_trace_width()))
         } else {
             None
@@ -192,6 +194,8 @@ pub trait Trace: Sized {
             // update x coordinate of the domain
             x *= g;
         }
+
+        // TODO: Validate lagrange kernel column
     }
 }
 
