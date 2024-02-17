@@ -37,6 +37,8 @@ mod tests;
 pub struct BoundaryConstraints<E: FieldElement> {
     main_constraints: Vec<BoundaryConstraintGroup<E::BaseField, E>>,
     aux_constraints: Vec<BoundaryConstraintGroup<E, E>>,
+    // TODO: FIX API
+    lagrange_kernel_constraint: Option<(BoundaryConstraint<E, E>, ConstraintDivisor<E::BaseField>)>,
 }
 
 impl<E: FieldElement> BoundaryConstraints<E> {
@@ -57,7 +59,9 @@ impl<E: FieldElement> BoundaryConstraints<E> {
         context: &AirContext<E::BaseField>,
         main_assertions: Vec<Assertion<E::BaseField>>,
         aux_assertions: Vec<Assertion<E>>,
+        lagrange_kernel_assertion: Option<Assertion<E>>,
         composition_coefficients: &[E],
+        lagrange_kernel_boundary_coefficient: Option<E>,
     ) -> Self {
         // make sure the provided assertions are consistent with the specified context
         assert_eq!(
@@ -122,9 +126,21 @@ impl<E: FieldElement> BoundaryConstraints<E> {
             &mut twiddle_map,
         );
 
+        let lagrange_kernel_constraint = lagrange_kernel_assertion.map(|assertion| {
+            let lagrange_kernel_boundary_coefficient =
+                lagrange_kernel_boundary_coefficient.expect("TODO: message");
+
+            let divisor = ConstraintDivisor::from_assertion(&assertion, trace_length);
+            let constraint =
+                BoundaryConstraint::new_single(assertion, lagrange_kernel_boundary_coefficient);
+
+            (constraint, divisor)
+        });
+
         Self {
             main_constraints,
             aux_constraints,
+            lagrange_kernel_constraint,
         }
     }
 
@@ -141,6 +157,12 @@ impl<E: FieldElement> BoundaryConstraints<E> {
     /// trace. The constraints are grouped by their divisors.
     pub fn aux_constraints(&self) -> &[BoundaryConstraintGroup<E, E>] {
         &self.aux_constraints
+    }
+
+    pub fn lagrange_kernel_constraint(
+        &self,
+    ) -> Option<&(BoundaryConstraint<E, E>, ConstraintDivisor<E::BaseField>)> {
+        self.lagrange_kernel_constraint.as_ref()
     }
 }
 

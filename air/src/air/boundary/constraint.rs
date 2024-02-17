@@ -44,8 +44,9 @@ where
     F: FieldElement,
     E: FieldElement<BaseField = F::BaseField> + ExtensionOf<F>,
 {
-    // CONSTRUCTOR
+    // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
+
     /// Creates a new boundary constraint from the specified assertion.
     pub(super) fn new(
         assertion: Assertion<F>,
@@ -81,6 +82,22 @@ where
             column: assertion.column,
             poly,
             poly_offset,
+            cc: composition_coefficient,
+        }
+    }
+
+    /// Creates a new boundary constraint from the specified single assertion.
+    ///
+    /// # Panics
+    /// Panics if the assertion is not a single assertion (i.e. `assertion.values` has more than 1
+    /// value)
+    pub fn new_single(assertion: Assertion<F>, composition_coefficient: E) -> Self {
+        assert_eq!(assertion.values.len(), 1);
+
+        BoundaryConstraint {
+            column: assertion.column,
+            poly: assertion.values,
+            poly_offset: (0, F::BaseField::ONE),
             cc: composition_coefficient,
         }
     }

@@ -201,12 +201,13 @@ impl<B: StarkField> AirContext<B> {
         self.trace_info.lagrange_kernel_aux_column_idx()
     }
 
-    /// Returns the number of transition constraints for a computation.
+    /// Returns the number of transition constraints for a computation, excluding the Lagrange
+    /// kernel transition constraints, which are managed separately.
     ///
-    /// The number of transition constraints is defined by the total number of transition
-    /// constraint degree descriptors (for both the main and the auxiliary trace constraints).
-    /// This number is used to determine how many transition constraint coefficients need to be
-    /// generated for merging transition constraints into a composition polynomial.
+    /// The number of transition constraints is defined by the total number of transition constraint
+    /// degree descriptors (for both the main and the auxiliary trace constraints). This number is
+    /// used to determine how many transition constraint coefficients need to be generated for
+    /// merging transition constraints into a composition polynomial.
     pub fn num_transition_constraints(&self) -> usize {
         self.main_transition_constraint_degrees.len() + self.aux_transition_constraint_degrees.len()
     }
@@ -221,7 +222,8 @@ impl<B: StarkField> AirContext<B> {
         self.aux_transition_constraint_degrees.len()
     }
 
-    /// Returns the total number of assertions defined for a computation.
+    /// Returns the total number of assertions defined for a computation, excluding the Lagrange
+    /// kernel assertion, which is managed separately.
     ///
     /// The number of assertions consists of the assertions placed against the main segment of an
     /// execution trace as well as assertions placed against all auxiliary trace segments.

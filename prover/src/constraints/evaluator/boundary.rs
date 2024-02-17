@@ -37,7 +37,8 @@ impl<E: FieldElement> BoundaryConstraints<E> {
         composition_coefficients: &[E],
     ) -> Self {
         // get constraints from the AIR instance
-        let source = air.get_boundary_constraints(aux_rand_elements, composition_coefficients);
+        let source =
+            air.get_boundary_constraints(aux_rand_elements, composition_coefficients, None);
 
         // initialize a map of twiddles here so that we can keep track of already computed
         // twiddles; this helps us avoid building twiddles over and over again for constraints

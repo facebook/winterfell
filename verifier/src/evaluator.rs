@@ -81,8 +81,11 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     // 3 ----- evaluate boundary constraints ------------------------------------------------------
 
     // get boundary constraints grouped by common divisor from the AIR
-    let b_constraints =
-        air.get_boundary_constraints(&aux_rand_elements, &composition_coefficients.boundary);
+    let b_constraints = air.get_boundary_constraints(
+        &aux_rand_elements,
+        &composition_coefficients.boundary,
+        composition_coefficients.lagrange_kernel_boundary,
+    );
 
     // iterate over boundary constraint groups for the main trace segment (each group has a
     // distinct divisor), evaluate constraints in each group and add their combination to the
@@ -100,7 +103,17 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
         }
     }
 
-    // TODO: Evaluate lagrange kernel boundary constraint
+    if let Some(lagrange_kernel_column_frame) = lagrange_kernel_column_frame {
+        let (constraint, divisor) = b_constraints.lagrange_kernel_constraint().expect("TODO");
+
+        let c0 = lagrange_kernel_column_frame[0];
+
+        // TODO: This logic is very similar to `BoundaryConstraintGroup::evaluate_at`
+        let numerator = constraint.evaluate_at(x, c0) * *constraint.cc();
+        let denominator = divisor.evaluate_at(x);
+
+        result += numerator / denominator;
+    }
 
     result
 }

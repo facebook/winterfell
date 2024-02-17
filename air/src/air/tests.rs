@@ -102,7 +102,8 @@ fn get_boundary_constraints() {
     // is stable; the original order is just by degree_adjustment
     let mut prng = build_prng();
     let coefficients = (0..8).map(|_| prng.draw().unwrap()).collect::<Vec<BaseElement>>();
-    let constraints = air.get_boundary_constraints(&AuxTraceRandElements::new(), &coefficients);
+    let constraints =
+        air.get_boundary_constraints(&AuxTraceRandElements::new(), &coefficients, None);
     let groups = constraints.main_constraints().to_vec();
 
     assert_eq!(5, groups.len());

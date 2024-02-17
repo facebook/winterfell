@@ -310,6 +310,14 @@ pub trait Air: Send + Sync {
         }
     }
 
+    /// TODO: Document
+    fn get_lagrange_kernel_assertion<E: FieldElement<BaseField = Self::BaseField>>(
+        &self,
+        aux_rand_elements: &AuxTraceRandElements<E>,
+    ) -> Option<Assertion<E>> {
+        todo!()
+    }
+
     /// Returns values for all periodic columns used in the computation.
     ///
     /// These values will be used to compute column values at specific states of the computation
@@ -389,13 +397,16 @@ pub trait Air: Send + Sync {
     fn get_boundary_constraints<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         aux_rand_elements: &AuxTraceRandElements<E>,
-        composition_coefficients: &[E],
+        boundary_composition_coefficients: &[E],
+        lagrange_kernel_boundary_coefficient: Option<E>,
     ) -> BoundaryConstraints<E> {
         BoundaryConstraints::new(
             self.context(),
             self.get_assertions(),
             self.get_aux_assertions(aux_rand_elements),
-            composition_coefficients,
+            self.get_lagrange_kernel_assertion(aux_rand_elements),
+            boundary_composition_coefficients,
+            lagrange_kernel_boundary_coefficient,
         )
     }
 
@@ -527,7 +538,7 @@ pub trait Air: Send + Sync {
         for _ in 0..self.context().num_transition_constraints() {
             t_coefficients.push(public_coin.draw()?);
         }
-        
+
         let mut lagrange_kernel_t_coefficients = Vec::new();
         if self.context().lagrange_kernel_aux_column_idx().is_some() {
             for _ in 0..log2(self.context().trace_len()) {
@@ -540,10 +551,18 @@ pub trait Air: Send + Sync {
             b_coefficients.push(public_coin.draw()?);
         }
 
+        let lagrange_kernel_boundary = {
+            match self.context().lagrange_kernel_aux_column_idx() {
+                Some(_) => Some(public_coin.draw()?),
+                None => None,
+            }
+        };
+
         Ok(ConstraintCompositionCoefficients {
             transition: t_coefficients,
             lagrange_kernel_transition: lagrange_kernel_t_coefficients,
             boundary: b_coefficients,
+            lagrange_kernel_boundary,
         })
     }
 

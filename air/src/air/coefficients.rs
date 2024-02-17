@@ -67,7 +67,7 @@ pub struct ConstraintCompositionCoefficients<E: FieldElement> {
     pub transition: Vec<E>,
     pub lagrange_kernel_transition: Vec<E>,
     pub boundary: Vec<E>,
-    // TODO: Add one for lagrange kernel boundary constraint
+    pub lagrange_kernel_boundary: Option<E>,
 }
 
 // DEEP COMPOSITION COEFFICIENTS
