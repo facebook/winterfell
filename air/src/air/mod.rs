@@ -289,7 +289,7 @@ pub trait Air: Send + Sync {
 
     /// TODO: document properly
     /// lagrange_kernel_evaluations: c(z), c(gz), c(g^2z), ...
-    fn evaluate_lagrange_kernel_transition<F, E>(
+    fn evaluate_lagrange_kernel_aux_transition<F, E>(
         &self,
         lagrange_kernel_column_frame: &[E],
         aux_rand_elements: &AuxTraceRandElements<E>,
@@ -311,7 +311,7 @@ pub trait Air: Send + Sync {
     }
 
     /// TODO: Document
-    fn get_lagrange_kernel_assertion<E: FieldElement<BaseField = Self::BaseField>>(
+    fn get_lagrange_kernel_aux_assertion<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         aux_rand_elements: &AuxTraceRandElements<E>,
     ) -> Option<Assertion<E>> {
@@ -404,7 +404,7 @@ pub trait Air: Send + Sync {
             self.context(),
             self.get_assertions(),
             self.get_aux_assertions(aux_rand_elements),
-            self.get_lagrange_kernel_assertion(aux_rand_elements),
+            self.get_lagrange_kernel_aux_assertion(aux_rand_elements),
             boundary_composition_coefficients,
             lagrange_kernel_boundary_coefficient,
         )
