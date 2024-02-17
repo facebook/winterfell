@@ -310,12 +310,19 @@ pub trait Air: Send + Sync {
         }
     }
 
-    /// TODO: Document
+    /// TODO: Document and refactor (use more descriptive var names)
     fn get_lagrange_kernel_aux_assertion<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         aux_rand_elements: &AuxTraceRandElements<E>,
     ) -> Option<Assertion<E>> {
-        todo!()
+        let lagrange_column_idx = self.context().lagrange_kernel_aux_column_idx()?;
+
+        let v = log2(self.context().trace_len());
+        let r = aux_rand_elements.get_segment_elements(0);
+
+        let value = (0..v).fold(E::ONE, |acc, idx| acc * (E::ONE - r[idx as usize]));
+
+        Some(Assertion::single(lagrange_column_idx, 0, value))
     }
 
     /// Returns values for all periodic columns used in the computation.
