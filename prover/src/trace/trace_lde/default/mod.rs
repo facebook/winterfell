@@ -202,7 +202,7 @@ where
         self.blowup
     }
 
-    /// Returns the trace layout of the execution trace.
+    /// Returns the trace info of the execution trace.
     fn trace_info(&self) -> &TraceInfo {
         &self.trace_info
     }
