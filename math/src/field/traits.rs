@@ -273,6 +273,21 @@ pub trait StarkField: FieldElement<BaseField = Self> {
         Self::TWO_ADIC_ROOT_OF_UNITY.exp(power)
     }
 
+    /// Converts a slice of bytes into a field element. Pads the slice if it is smaller than the number
+    /// of bytes needed to represent an element.
+    ///
+    /// # Panics
+    /// Panics if the length of `bytes` is smaller than the number of bytes needed to encode an element.
+    fn from_byte_vec_with_padding(mut bytes: Vec<u8>) -> Self {
+        assert!(bytes.len() < Self::ELEMENT_BYTES);
+
+        bytes.resize(Self::ELEMENT_BYTES, 0);
+
+        match Self::try_from(bytes.as_slice()) {
+            Ok(element) => element,
+            Err(_) => panic!("element deserialization failed"),
+        }
+    }
 }
 
 // EXTENSIBLE FIELD
