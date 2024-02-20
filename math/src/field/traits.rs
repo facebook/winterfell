@@ -230,6 +230,9 @@ pub trait FieldElement:
 /// the modulus of the field should be a prime number of the form `k` * 2^`n` + 1 (a Proth prime),
 /// where `n` is relatively large (e.g., greater than 32).
 pub trait StarkField: FieldElement<BaseField = Self> {
+    // CONSTANTS
+    // =============================================================================================
+
     /// Prime modulus of the field. Must be of the form `k` * 2^`n` + 1 (a Proth prime).
     /// This ensures that the field has high 2-adicity.
     const MODULUS: Self::PositiveInteger;
@@ -247,6 +250,18 @@ pub trait StarkField: FieldElement<BaseField = Self> {
     /// computed as Self::GENERATOR^`k`.
     const TWO_ADIC_ROOT_OF_UNITY: Self;
 
+    // REQUIRED METHODS
+    // =============================================================================================
+
+    /// Returns byte representation of the field modulus in little-endian byte order.
+    fn get_modulus_le_bytes() -> Vec<u8>;
+
+    /// Returns a canonical integer representation of this field element.
+    fn as_int(&self) -> Self::PositiveInteger;
+
+    // PROVIDED METHODS
+    // =============================================================================================
+
     /// Returns the root of unity of order 2^`n`.
     ///
     /// # Panics
@@ -258,11 +273,6 @@ pub trait StarkField: FieldElement<BaseField = Self> {
         Self::TWO_ADIC_ROOT_OF_UNITY.exp(power)
     }
 
-    /// Returns byte representation of the field modulus in little-endian byte order.
-    fn get_modulus_le_bytes() -> Vec<u8>;
-
-    /// Returns a canonical integer representation of this field element.
-    fn as_int(&self) -> Self::PositiveInteger;
 }
 
 // EXTENSIBLE FIELD
