@@ -230,6 +230,9 @@ pub trait FieldElement:
 /// the modulus of the field should be a prime number of the form `k` * 2^`n` + 1 (a Proth prime),
 /// where `n` is relatively large (e.g., greater than 32).
 pub trait StarkField: FieldElement<BaseField = Self> {
+    // CONSTANTS
+    // =============================================================================================
+
     /// Prime modulus of the field. Must be of the form `k` * 2^`n` + 1 (a Proth prime).
     /// This ensures that the field has high 2-adicity.
     const MODULUS: Self::PositiveInteger;
@@ -247,6 +250,18 @@ pub trait StarkField: FieldElement<BaseField = Self> {
     /// computed as Self::GENERATOR^`k`.
     const TWO_ADIC_ROOT_OF_UNITY: Self;
 
+    // REQUIRED METHODS
+    // =============================================================================================
+
+    /// Returns byte representation of the field modulus in little-endian byte order.
+    fn get_modulus_le_bytes() -> Vec<u8>;
+
+    /// Returns a canonical integer representation of this field element.
+    fn as_int(&self) -> Self::PositiveInteger;
+
+    // PROVIDED METHODS
+    // =============================================================================================
+
     /// Returns the root of unity of order 2^`n`.
     ///
     /// # Panics
@@ -258,11 +273,21 @@ pub trait StarkField: FieldElement<BaseField = Self> {
         Self::TWO_ADIC_ROOT_OF_UNITY.exp(power)
     }
 
-    /// Returns byte representation of the field modulus in little-endian byte order.
-    fn get_modulus_le_bytes() -> Vec<u8>;
+    /// Converts a slice of bytes into a field element. Pads the slice if it is smaller than the number
+    /// of bytes needed to represent an element.
+    ///
+    /// # Panics
+    /// Panics if the length of `bytes` is smaller than the number of bytes needed to encode an element.
+    fn from_byte_vec_with_padding(mut bytes: Vec<u8>) -> Self {
+        assert!(bytes.len() < Self::ELEMENT_BYTES);
 
-    /// Returns a canonical integer representation of this field element.
-    fn as_int(&self) -> Self::PositiveInteger;
+        bytes.resize(Self::ELEMENT_BYTES, 0);
+
+        match Self::try_from(bytes.as_slice()) {
+            Ok(element) => element,
+            Err(_) => panic!("element deserialization failed"),
+        }
+    }
 }
 
 // EXTENSIBLE FIELD

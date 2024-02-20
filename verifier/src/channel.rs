@@ -98,7 +98,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
         let ood_trace_frame = {
             let num_lagrange_kernel_constraints_evaluations =
                 match air.context().lagrange_kernel_aux_column_idx() {
-                    Some(_) => log2(context.get_trace_info().length()),
+                    Some(_) => log2(context.trace_info().length()),
                     None => 0,
                 };
 

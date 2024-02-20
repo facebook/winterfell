@@ -45,7 +45,7 @@ impl LagrangeMockTrace {
 impl Trace for LagrangeMockTrace {
     type BaseField = BaseElement;
 
-    fn get_info(&self) -> &TraceInfo {
+    fn info(&self) -> &TraceInfo {
         &self.info
     }
 

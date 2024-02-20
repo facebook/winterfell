@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use math::{bytes_to_element_with_padding, log2, StarkField, ToElements};
+use math::{log2, StarkField, ToElements};
 use utils::{
     collections::Vec, string::ToString, ByteReader, ByteWriter, Deserializable,
     DeserializationError, Serializable,
@@ -73,13 +73,17 @@ impl TraceInfo {
         Self::new_multi_segment(width, [0], [0], None, length, meta)
     }
 
-    /// Creates a new [TraceInfo] from the specified trace segment widths, length, and metadata.
+    /// Creates a new [TraceInfo] with main and auxiliary segments.
     ///
     /// # Panics
     /// Panics if:
     /// * The width of the first trace segment is zero.
     /// * Total width of all trace segments is greater than 255.
     /// * Trace length is smaller than 8 or is not a power of two.
+    /// * A zero entry in auxiliary segment width array is followed by a non-zero entry.
+    /// * Number of random elements for an auxiliary trace segment of non-zero width is set to zero.
+    /// * Number of random elements for an auxiliary trace segment of zero width is set to non-zero.
+    /// * Number of random elements for any auxiliary trace segment is greater than 255.
     pub fn new_multi_segment(
         main_segment_width: usize,
         aux_segment_widths: [usize; NUM_AUX_SEGMENTS],
@@ -275,7 +279,7 @@ impl<E: StarkField> ToElements<E> for TraceInfo {
         // element, and then converting these chunks into field elements.
         if !self.trace_meta.is_empty() {
             for chunk in self.trace_meta.chunks(E::ELEMENT_BYTES - 1) {
-                result.push(bytes_to_element_with_padding(chunk.to_vec()));
+                result.push(E::from_byte_vec_with_padding(chunk.to_vec()));
             }
         }
 

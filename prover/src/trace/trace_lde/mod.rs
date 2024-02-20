@@ -66,6 +66,6 @@ pub trait TraceLde<E: FieldElement>: Sync {
     /// Returns blowup factor which was used to extend original execution trace into trace LDE.
     fn blowup(&self) -> usize;
 
-    /// Returns the trace layout of the execution trace.
+    /// Returns the trace info of the execution trace.
     fn trace_info(&self) -> &TraceInfo;
 }

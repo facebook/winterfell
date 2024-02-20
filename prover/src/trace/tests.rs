@@ -12,8 +12,8 @@ fn new_trace_table() {
     let trace_length = 8;
     let trace = build_fib_trace(trace_length * 2);
 
-    assert_eq!(2, trace.get_info().main_trace_width());
-    assert_eq!(8, trace.get_info().length());
+    assert_eq!(2, trace.main_trace_width());
+    assert_eq!(8, trace.length());
 
     let expected: Vec<BaseElement> = vec![1u32, 2, 5, 13, 34, 89, 233, 610]
         .into_iter()

@@ -67,7 +67,7 @@ pub fn print_trace<E: StarkField>(
     let trace_width = trace.width();
 
     let mut state = vec![E::ZERO; trace_width];
-    for i in 0..trace.get_info().length() {
+    for i in 0..trace.length() {
         if (i.wrapping_sub(offset)) % multiples_of != 0 {
             continue;
         }

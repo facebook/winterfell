@@ -107,7 +107,7 @@ where
         DefaultConstraintEvaluator<'a, Self::Air, E>;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
-        let last_step = trace.get_info().length() - 1;
+        let last_step = trace.length() - 1;
         PublicInputs {
             result: [
                 [trace.get(0, last_step), trace.get(1, last_step)],
