@@ -49,7 +49,7 @@ impl Context {
     // --------------------------------------------------------------------------------------------
 
     /// Returns execution trace info for the computation described by this context.
-    pub fn get_trace_info(&self) -> &TraceInfo {
+    pub fn trace_info(&self) -> &TraceInfo {
         &self.trace_info
     }
 

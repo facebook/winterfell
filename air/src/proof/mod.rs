@@ -82,8 +82,8 @@ impl StarkProof {
     }
 
     /// Returns trace info for the computation described by this proof.
-    pub fn get_trace_info(&self) -> &TraceInfo {
-        self.context.get_trace_info()
+    pub fn trace_info(&self) -> &TraceInfo {
+        self.context.trace_info()
     }
 
     /// Returns the size of the LDE domain for the computation described by this proof.
@@ -104,14 +104,14 @@ impl StarkProof {
             get_conjectured_security(
                 self.context.options(),
                 self.context.num_modulus_bits(),
-                self.get_trace_info().length(),
+                self.trace_info().length(),
                 H::COLLISION_RESISTANCE,
             )
         } else {
             get_proven_security(
                 self.context.options(),
                 self.context.num_modulus_bits(),
-                self.get_trace_info().length(),
+                self.trace_info().length(),
                 H::COLLISION_RESISTANCE,
             )
         }
@@ -184,7 +184,7 @@ impl Deserializable for StarkProof {
         let context = Context::read_from(source)?;
         let num_unique_queries = source.read_u8()?;
         let commitments = Commitments::read_from(source)?;
-        let num_trace_segments = context.get_trace_info().num_segments();
+        let num_trace_segments = context.trace_info().num_segments();
         let mut trace_queries = Vec::with_capacity(num_trace_segments);
         for _ in 0..num_trace_segments {
             trace_queries.push(Queries::read_from(source)?);
