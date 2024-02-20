@@ -65,8 +65,14 @@ pub trait Trace: Sized {
     /// Reads an evaluation frame from the main trace segment at the specified row.
     fn read_main_frame(&self, row_idx: usize, frame: &mut EvaluationFrame<Self::BaseField>);
 
-    // VALIDATION
+    // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
+
+    /// Returns the number of rows in this trace.
+    fn length(&self) -> usize {
+        self.info().length()
+    }
+
     /// Checks if this trace is valid against the specified AIR, and panics if not.
     ///
     /// NOTE: this is a very expensive operation and is intended for use only in debug mode.
