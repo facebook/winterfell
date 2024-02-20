@@ -98,7 +98,7 @@ pub trait Trace: Sized {
 
         // first, check assertions against the main segment of the execution trace
         for assertion in air.get_assertions() {
-            assertion.apply(self.info().length(), |step, value| {
+            assertion.apply(self.length(), |step, value| {
                 assert!(
                     value == self.main_segment().get(assertion.column(), step),
                     "trace does not satisfy assertion main_trace({}, {}) == {}",
@@ -125,7 +125,7 @@ pub trait Trace: Sized {
             }
 
             // get the matrix and verify the assertion against it
-            assertion.apply(self.info().length(), |step, value| {
+            assertion.apply(self.length(), |step, value| {
                 assert!(
                     value == aux_segments[segment_idx].get(column_idx, step),
                     "trace does not satisfy assertion aux_trace({}, {}) == {}",
@@ -157,7 +157,7 @@ pub trait Trace: Sized {
 
         // we check transition constraints on all steps except the last k steps, where k is the
         // number of steps exempt from transition constraints (guaranteed to be at least 1)
-        for step in 0..self.info().length() - air.context().num_transition_exemptions() {
+        for step in 0..self.length() - air.context().num_transition_exemptions() {
             // build periodic values
             for (p, v) in periodic_values_polys.iter().zip(periodic_values.iter_mut()) {
                 let num_cycles = air.trace_length() / p.len();

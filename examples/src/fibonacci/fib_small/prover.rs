@@ -63,7 +63,7 @@ where
         DefaultConstraintEvaluator<'a, Self::Air, E>;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> BaseElement {
-        let last_step = trace.info().length() - 1;
+        let last_step = trace.length() - 1;
         trace.get(1, last_step)
     }
 
