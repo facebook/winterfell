@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{ProofOptions, TraceInfo};
-use math::{bytes_to_element_with_padding, StarkField, ToElements};
+use math::{StarkField, ToElements};
 use utils::{
     collections::Vec, string::ToString, ByteReader, ByteWriter, Deserializable,
     DeserializationError, Serializable,
@@ -103,8 +103,8 @@ impl<E: StarkField> ToElements<E> for Context {
         // convert field modulus bytes into 2 elements
         let num_modulus_bytes = self.field_modulus_bytes.len();
         let (m1, m2) = self.field_modulus_bytes.split_at(num_modulus_bytes / 2);
-        result.push(bytes_to_element_with_padding(m1.to_vec()));
-        result.push(bytes_to_element_with_padding(m2.to_vec()));
+        result.push(E::from_byte_vec_with_padding(m1.to_vec()));
+        result.push(E::from_byte_vec_with_padding(m2.to_vec()));
 
         // convert proof options to elements
         result.append(&mut self.options.to_elements());

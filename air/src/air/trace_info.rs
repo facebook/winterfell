@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use math::{bytes_to_element_with_padding, StarkField, ToElements};
+use math::{StarkField, ToElements};
 use utils::{
     collections::Vec, string::ToString, ByteReader, ByteWriter, Deserializable,
     DeserializationError, Serializable,
@@ -254,7 +254,7 @@ impl<E: StarkField> ToElements<E> for TraceInfo {
         // element, and then converting these chunks into field elements.
         if !self.trace_meta.is_empty() {
             for chunk in self.trace_meta.chunks(E::ELEMENT_BYTES - 1) {
-                result.push(bytes_to_element_with_padding(chunk.to_vec()));
+                result.push(E::from_byte_vec_with_padding(chunk.to_vec()));
             }
         }
 
