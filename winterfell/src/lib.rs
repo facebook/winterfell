@@ -349,7 +349,7 @@
 //!     
 //!     // Our public inputs consist of the first and last value in the execution trace.
 //!     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
-//!         let last_step = trace.get_info().length() - 1;
+//!         let last_step = trace.info().length() - 1;
 //!         PublicInputs {
 //!             start: trace.get(0, 0),
 //!             result: trace.get(0, last_step),
@@ -488,7 +488,7 @@
 //! #        DefaultConstraintEvaluator<'a, Self::Air, E>;
 //! #
 //! #    fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
-//! #        let last_step = trace.get_info().length() - 1;
+//! #        let last_step = trace.info().length() - 1;
 //! #        PublicInputs {
 //! #            start: trace.get(0, 0),
 //! #            result: trace.get(0, last_step),
