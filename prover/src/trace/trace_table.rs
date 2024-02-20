@@ -284,7 +284,7 @@ impl<B: StarkField> TraceTable<B> {
 impl<B: StarkField> Trace for TraceTable<B> {
     type BaseField = B;
 
-    fn get_info(&self) -> &TraceInfo {
+    fn info(&self) -> &TraceInfo {
         &self.info
     }
 

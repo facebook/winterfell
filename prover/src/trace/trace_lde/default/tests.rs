@@ -26,7 +26,7 @@ fn extend_trace_table() {
 
     // build the trace polynomials, extended trace, and commitment using the default TraceLde impl
     let (trace_lde, trace_polys) = DefaultTraceLde::<BaseElement, Blake3>::new(
-        &trace.get_info(),
+        &trace.info(),
         trace.main_segment(),
         &domain,
     );
@@ -76,7 +76,7 @@ fn commit_trace_table() {
 
     // build the trace polynomials, extended trace, and commitment using the default TraceLde impl
     let (trace_lde, _) = DefaultTraceLde::<BaseElement, Blake3>::new(
-        &trace.get_info(),
+        &trace.info(),
         trace.main_segment(),
         &domain,
     );
