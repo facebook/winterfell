@@ -73,6 +73,16 @@ pub trait Trace: Sized {
         self.info().length()
     }
 
+    /// Returns the number of columns in the main segment of this trace.
+    fn main_trace_width(&self) -> usize {
+        self.info().main_trace_width()
+    }
+
+    /// Returns the number of columns in all auxiliary trace segments.
+    fn aux_trace_width(&self) -> usize {
+        self.info().aux_trace_width()
+    }
+
     /// Checks if this trace is valid against the specified AIR, and panics if not.
     ///
     /// NOTE: this is a very expensive operation and is intended for use only in debug mode.
@@ -87,10 +97,10 @@ pub trait Trace: Sized {
     {
         // make sure the width align; if they don't something went terribly wrong
         assert_eq!(
-            self.info().main_trace_width(),
+            self.main_trace_width(),
             air.trace_info().main_trace_width(),
             "inconsistent trace width: expected {}, but was {}",
-            self.info().main_trace_width(),
+            self.main_trace_width(),
             air.trace_info().main_trace_width(),
         );
 
@@ -145,9 +155,9 @@ pub trait Trace: Sized {
 
         // initialize buffers to hold evaluation frames and results of constraint evaluations
         let mut x = Self::BaseField::ONE;
-        let mut main_frame = EvaluationFrame::new(self.info().main_trace_width());
+        let mut main_frame = EvaluationFrame::new(self.main_trace_width());
         let mut aux_frame = if air.trace_info().is_multi_segment() {
-            Some(EvaluationFrame::<E>::new(self.info().aux_trace_width()))
+            Some(EvaluationFrame::<E>::new(self.aux_trace_width()))
         } else {
             None
         };
