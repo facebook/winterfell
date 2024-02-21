@@ -11,7 +11,7 @@ use crypto::Hasher;
 use fri::FriProof;
 use math::FieldElement;
 use utils::{
-    collections::Vec, ByteReader, Deserializable, DeserializationError, Serializable, SliceReader,
+    collections::*, ByteReader, Deserializable, DeserializationError, Serializable, SliceReader,
 };
 
 mod context;

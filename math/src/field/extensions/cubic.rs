@@ -10,10 +10,8 @@ use core::{
     slice,
 };
 use utils::{
-    collections::Vec,
-    string::{String, ToString},
-    AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Randomizable,
-    Serializable, SliceReader,
+    collections::*, string::*, AsBytes, ByteReader, ByteWriter, Deserializable,
+    DeserializationError, Randomizable, Serializable, SliceReader,
 };
 
 #[cfg(feature = "serde")]

@@ -5,7 +5,7 @@
 
 use crate::{tests::build_fib_trace, Trace};
 use math::fields::f128::BaseElement;
-use utils::collections::Vec;
+use utils::collections::*;
 
 #[test]
 fn new_trace_table() {

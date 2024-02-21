@@ -11,7 +11,7 @@ use core::{
     },
 };
 use utils::{
-    collections::Vec, AsBytes, Deserializable, DeserializationError, Randomizable, Serializable,
+    collections::*, AsBytes, Deserializable, DeserializationError, Randomizable, Serializable,
 };
 
 // FIELD ELEMENT

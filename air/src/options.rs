@@ -6,7 +6,7 @@
 use fri::FriOptions;
 use math::{StarkField, ToElements};
 use utils::{
-    collections::Vec, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+    collections::*, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
 
 // CONSTANTS

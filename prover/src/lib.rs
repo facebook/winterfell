@@ -56,7 +56,7 @@ pub use utils::{
 };
 
 use fri::FriProver;
-use utils::collections::Vec;
+use utils::collections::*;
 
 pub use math;
 use math::{

@@ -3,7 +3,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{Serializable, Vec};
+use super::Serializable;
+use crate::collections::*;
 
 // BYTE WRITER TRAIT
 // ================================================================================================

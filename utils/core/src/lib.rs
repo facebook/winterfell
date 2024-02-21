@@ -16,7 +16,7 @@ pub mod collections;
 pub mod iterators;
 pub mod string;
 
-use collections::Vec;
+use collections::*;
 use core::{mem, slice};
 
 mod serde;

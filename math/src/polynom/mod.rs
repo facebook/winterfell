@@ -26,7 +26,7 @@
 
 use crate::{field::FieldElement, utils::batch_inversion};
 use core::mem;
-use utils::{collections::Vec, group_vector_elements};
+use utils::{collections::*, group_vector_elements};
 
 #[cfg(test)]
 mod tests;

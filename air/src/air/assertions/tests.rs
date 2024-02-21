@@ -6,7 +6,7 @@
 use super::{Assertion, AssertionError};
 use math::{fields::f128::BaseElement, FieldElement};
 use rand_utils::{rand_value, rand_vector};
-use utils::collections::Vec;
+use utils::collections::*;
 
 // SINGLE ASSERTIONS
 // ================================================================================================

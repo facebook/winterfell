@@ -5,7 +5,7 @@
 
 use crate::{errors::RandomCoinError, Digest, ElementHasher, RandomCoin};
 use math::{FieldElement, StarkField};
-use utils::collections::Vec;
+use utils::collections::*;
 
 // DEFAULT RANDOM COIN IMPLEMENTATION
 // ================================================================================================

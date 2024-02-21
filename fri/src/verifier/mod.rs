@@ -9,7 +9,7 @@ use crate::{folding::fold_positions, utils::map_positions_to_indexes, FriOptions
 use core::{marker::PhantomData, mem};
 use crypto::{ElementHasher, RandomCoin};
 use math::{polynom, FieldElement, StarkField};
-use utils::collections::Vec;
+use utils::collections::*;
 
 mod channel;
 pub use channel::{DefaultVerifierChannel, VerifierChannel};

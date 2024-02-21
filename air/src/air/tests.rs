@@ -10,7 +10,7 @@ use super::{
 use crate::{AuxTraceRandElements, FieldExtension};
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin};
 use math::{fields::f64::BaseElement, get_power_series, polynom, FieldElement, StarkField};
-use utils::collections::{BTreeMap, Vec};
+use utils::collections::*;
 
 // PERIODIC COLUMNS
 // ================================================================================================
