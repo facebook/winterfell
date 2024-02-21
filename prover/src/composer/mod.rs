@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{constraints::CompositionPoly, StarkDomain, TracePolyTable};
-use air::DeepCompositionCoefficients;
+use air::{proof::OodFrameTraceStates, DeepCompositionCoefficients};
 use math::{add_in_place, fft, mul_acc, polynom, ExtensionOf, FieldElement, StarkField};
 use utils::{collections::Vec, iter_mut};
 
@@ -63,7 +63,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
     pub fn add_trace_polys(
         &mut self,
         trace_polys: TracePolyTable<E>,
-        ood_trace_states: Vec<Vec<E>>,
+        ood_trace_states: OodFrameTraceStates<E>,
     ) {
         assert!(self.coefficients.is_empty());
 
@@ -88,7 +88,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
             acc_trace_poly::<E::BaseField, E>(
                 &mut t1_composition,
                 poly,
-                ood_trace_states[0][i],
+                ood_trace_states.current_frame()[i],
                 self.cc.trace[i],
             );
 
@@ -97,7 +97,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
             acc_trace_poly::<E::BaseField, E>(
                 &mut t2_composition,
                 poly,
-                ood_trace_states[1][i],
+                ood_trace_states.next_frame()[i],
                 self.cc.trace[i],
             );
 
@@ -111,7 +111,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
             acc_trace_poly::<E, E>(
                 &mut t1_composition,
                 poly,
-                ood_trace_states[0][i],
+                ood_trace_states.current_frame()[i],
                 self.cc.trace[i],
             );
 
@@ -120,7 +120,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
             acc_trace_poly::<E, E>(
                 &mut t2_composition,
                 poly,
-                ood_trace_states[1][i],
+                ood_trace_states.next_frame()[i],
                 self.cc.trace[i],
             );
 

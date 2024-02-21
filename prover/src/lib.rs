@@ -317,10 +317,8 @@ pub trait Prover {
                 aux_segment_polys
             };
 
-            trace_polys.add_aux_segment(
-                aux_segment_polys,
-                trace.info().lagrange_kernel_aux_column_idx().is_some(),
-            );
+            trace_polys
+                .add_aux_segment(aux_segment_polys, trace.info().lagrange_kernel_aux_column_idx());
             aux_trace_rand_elements.add_segment_elements(rand_elements);
             aux_trace_segments.push(aux_segment);
         }

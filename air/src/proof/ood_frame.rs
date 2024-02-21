@@ -43,21 +43,24 @@ impl OodFrame {
     ///
     /// # Panics
     /// Panics if evaluation frame has already been set.
-    pub fn set_trace_states<E: FieldElement>(&mut self, trace_states: &[Vec<E>]) -> Vec<E> {
+    pub fn set_trace_states<E: FieldElement>(
+        &mut self,
+        trace_states: &OodFrameTraceStates<E>,
+    ) -> Vec<E> {
         assert!(self.trace_states.is_empty(), "trace sates have already been set");
 
         // save the evaluations with the current and next evaluations interleaved for each polynomial
-        let frame_size = trace_states.len();
-        let num_columns = trace_states[0].len();
 
         let mut result = vec![];
-        for col in 0..num_columns {
-            for row in trace_states.iter() {
-                result.push(row[col]);
-            }
+        for col in 0..trace_states.num_columns() {
+            result.push(trace_states.current_frame[col]);
+            result.push(trace_states.next_frame[col]);
         }
-        debug_assert!(frame_size <= u8::MAX as usize);
-        self.trace_states.write_u8(frame_size as u8);
+
+        // there are 2 frames: current and next
+        let frame_size: u8 = 2;
+
+        self.trace_states.write_u8(frame_size);
         self.trace_states.write_many(&result);
 
         result
@@ -157,5 +160,51 @@ impl Deserializable for OodFrame {
             trace_states,
             evaluations,
         })
+    }
+}
+
+// OOD FRAME TRACE STATES
+// ================================================================================================
+
+/// Stores the trace evaluations evaluated at `z` and `gz`, where `z` is a random Field element. If
+/// the Air contains a Lagrange kernel auxiliary column, then that column interpolated polynomial
+/// will be evaluated at `z`, `gz`, ... `TODO`, and stored in `lagrange_kernel_frame`.
+pub struct OodFrameTraceStates<E: FieldElement> {
+    current_frame: Vec<E>,
+    next_frame: Vec<E>,
+    lagrange_kernel_frame: Option<Vec<E>>,
+}
+
+impl<E: FieldElement> OodFrameTraceStates<E> {
+    /// TODO: Document all methods
+    pub fn new(
+        current_frame: Vec<E>,
+        next_frame: Vec<E>,
+        lagrange_kernel_frame: Option<Vec<E>>,
+    ) -> Self {
+        assert_eq!(current_frame.len(), next_frame.len());
+
+        Self {
+            current_frame,
+            next_frame,
+            lagrange_kernel_frame,
+        }
+    }
+
+    /// Returns the number of columns that each frame
+    pub fn num_columns(&self) -> usize {
+        self.current_frame.len()
+    }
+
+    pub fn current_frame(&self) -> &[E] {
+        &self.current_frame
+    }
+
+    pub fn next_frame(&self) -> &[E] {
+        &self.next_frame
+    }
+
+    pub fn lagrange_kernel_frame(&self) -> Option<&[E]> {
+        self.lagrange_kernel_frame.as_ref().map(|frame| frame.as_ref())
     }
 }

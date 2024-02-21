@@ -7,7 +7,8 @@ use crate::{
     matrix::{ColumnIter, MultiColumnIter},
     ColMatrix,
 };
-use math::{FieldElement, StarkField};
+use air::proof::OodFrameTraceStates;
+use math::{polynom, FieldElement, StarkField};
 use utils::collections::Vec;
 
 // TRACE POLYNOMIAL TABLE
@@ -21,7 +22,7 @@ use utils::collections::Vec;
 pub struct TracePolyTable<E: FieldElement> {
     main_segment_polys: ColMatrix<E::BaseField>,
     aux_segment_polys: Vec<ColMatrix<E>>,
-    aux_segment_has_lagrange_kernel_column: bool,
+    lagrange_kernel_column_idx: Option<usize>,
 }
 
 impl<E: FieldElement> TracePolyTable<E> {
@@ -32,7 +33,7 @@ impl<E: FieldElement> TracePolyTable<E> {
         Self {
             main_segment_polys: main_trace_polys,
             aux_segment_polys: Vec::new(),
-            aux_segment_has_lagrange_kernel_column: false,
+            lagrange_kernel_column_idx: None,
         }
     }
 
@@ -43,7 +44,7 @@ impl<E: FieldElement> TracePolyTable<E> {
     pub fn add_aux_segment(
         &mut self,
         aux_segment_polys: ColMatrix<E>,
-        aux_segment_has_lagrange_kernel_column: bool,
+        lagrange_kernel_column_idx: Option<usize>,
     ) {
         assert_eq!(
             self.main_segment_polys.num_rows(),
@@ -51,7 +52,7 @@ impl<E: FieldElement> TracePolyTable<E> {
             "polynomials in auxiliary segment must be of the same size as in the main segment"
         );
         self.aux_segment_polys.push(aux_segment_polys);
-        self.aux_segment_has_lagrange_kernel_column = aux_segment_has_lagrange_kernel_column;
+        self.lagrange_kernel_column_idx = lagrange_kernel_column_idx;
     }
 
     // PUBLIC ACCESSORS
@@ -73,9 +74,28 @@ impl<E: FieldElement> TracePolyTable<E> {
 
     /// Returns an out-of-domain evaluation frame constructed by evaluating trace polynomials
     /// for all columns at points z and z * g, where g is the generator of the trace domain.
-    pub fn get_ood_frame(&self, z: E) -> Vec<Vec<E>> {
-        let g = E::from(E::BaseField::get_root_of_unity(self.poly_size().ilog2()));
-        vec![self.evaluate_at(z), self.evaluate_at(z * g)]
+    pub fn get_ood_frame(&self, z: E) -> OodFrameTraceStates<E> {
+        let log_trace_len = self.poly_size().ilog2();
+        let g = E::from(E::BaseField::get_root_of_unity(log_trace_len));
+        let current_frame = self.evaluate_at(z);
+        let next_frame = self.evaluate_at(z * g);
+
+        let lagrange_kernel_frame = match self.lagrange_kernel_column_idx {
+            Some(col_idx) => {
+                let lagrange_kernel_col_poly = self.aux_segment_polys[0].get_column(col_idx);
+
+                let mut lagrange_kernel_frame = Vec::with_capacity(log_trace_len as usize);
+                for i in 0..log_trace_len {
+                    let x = g.exp_vartime(2_u32.pow(log_trace_len - (i + 1)).into()) * z;
+                    lagrange_kernel_frame[i as usize] = polynom::eval(lagrange_kernel_col_poly, x);
+                }
+
+                Some(lagrange_kernel_frame)
+            }
+            None => None,
+        };
+
+        OodFrameTraceStates::new(current_frame, next_frame, lagrange_kernel_frame)
     }
 
     /// Returns an iterator over the polynomials of the main trace segment.
@@ -102,14 +122,4 @@ impl<E: FieldElement> TracePolyTable<E> {
     pub fn get_main_trace_poly(&self, idx: usize) -> &[E::BaseField] {
         self.main_segment_polys.get_column(idx)
     }
-}
-
-// OOD FRAME TRACE STATES
-// ================================================================================================
-
-/// Stores the trace evaluations
-pub struct OodFrameTraceStates<E: FieldElement> {
-    pub current_frame: Vec<E>,
-    pub next_frame: Vec<E>,
-    pub lagrange_kernel_frame: Option<Vec<E>>,
 }
