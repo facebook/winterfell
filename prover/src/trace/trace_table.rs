@@ -6,10 +6,7 @@
 use super::{ColMatrix, Trace};
 use air::{EvaluationFrame, TraceInfo, TraceLayout};
 use math::{FieldElement, StarkField};
-use utils::{collections::Vec, uninit_vector};
-
-#[cfg(not(feature = "concurrent"))]
-use utils::collections::vec;
+use utils::{collections::*, uninit_vector};
 
 #[cfg(feature = "concurrent")]
 use utils::{iterators::*, rayon};

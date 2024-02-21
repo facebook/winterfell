@@ -6,7 +6,7 @@
 use super::ColMatrix;
 use core::ops::Deref;
 use math::{fft::fft_inputs::FftInputs, FieldElement, StarkField};
-use utils::{collections::Vec, group_vector_elements, uninit_vector};
+use utils::{collections::*, group_vector_elements, uninit_vector};
 
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;

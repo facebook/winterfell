@@ -6,7 +6,7 @@
 use crate::ProofOptions;
 use crypto::{RandomCoin, RandomCoinError};
 use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElements};
-use utils::collections::{BTreeMap, Vec};
+use utils::collections::*;
 
 mod trace_info;
 pub use trace_info::{TraceInfo, TraceLayout};

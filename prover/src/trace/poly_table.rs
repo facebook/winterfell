@@ -8,7 +8,7 @@ use crate::{
     ColMatrix,
 };
 use math::{FieldElement, StarkField};
-use utils::collections::Vec;
+use utils::collections::*;
 
 // TRACE POLYNOMIAL TABLE
 // ================================================================================================

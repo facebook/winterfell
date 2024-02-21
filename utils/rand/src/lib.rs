@@ -12,7 +12,7 @@ pub use internal::*;
 
 #[cfg(not(target_family = "wasm"))]
 mod internal {
-    use core::{convert::TryInto, fmt::Debug};
+    use core::fmt::Debug;
     use rand::prelude::*;
     use utils::Randomizable;
 

@@ -7,7 +7,7 @@ use super::{ColMatrix, Segment};
 use crate::StarkDomain;
 use crypto::{ElementHasher, MerkleTree};
 use math::{fft, FieldElement, StarkField};
-use utils::collections::Vec;
+use utils::collections::*;
 use utils::{batch_iter_mut, flatten_vector_elements, uninit_vector};
 
 #[cfg(feature = "concurrent")]

@@ -5,7 +5,7 @@
 
 use super::{CompositionPolyTrace, ConstraintDivisor, StarkDomain};
 use math::{batch_inversion, FieldElement, StarkField};
-use utils::{batch_iter_mut, collections::Vec, iter_mut, uninit_vector};
+use utils::{batch_iter_mut, collections::*, iter_mut, uninit_vector};
 
 #[cfg(debug_assertions)]
 use math::fft;

@@ -6,7 +6,7 @@
 //! Contains common error types for prover and verifier.
 
 use core::fmt;
-use utils::string::String;
+use utils::string::*;
 
 // VERIFIER ERROR
 // ================================================================================================

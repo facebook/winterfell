@@ -10,7 +10,7 @@ use crate::{
 };
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, Hasher, RandomCoin};
 use math::{fft, fields::f128::BaseElement, FieldElement};
-use utils::{collections::Vec, Deserializable, Serializable, SliceReader};
+use utils::{collections::*, Deserializable, Serializable, SliceReader};
 
 type Blake3 = Blake3_256<BaseElement>;
 

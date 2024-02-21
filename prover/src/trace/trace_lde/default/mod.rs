@@ -5,11 +5,12 @@
 
 use super::{
     ColMatrix, ElementHasher, EvaluationFrame, FieldElement, Hasher, Queries, StarkDomain,
-    TraceInfo, TraceLayout, TraceLde, TracePolyTable, Vec,
+    TraceInfo, TraceLayout, TraceLde, TracePolyTable,
 };
 use crate::{RowMatrix, DEFAULT_SEGMENT_WIDTH};
 use crypto::MerkleTree;
 use tracing::info_span;
+use utils::collections::*;
 
 #[cfg(test)]
 mod tests;

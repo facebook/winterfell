@@ -5,7 +5,7 @@
 
 use super::rescue::Rescue128;
 use rand_utils::prng_vector;
-use std::{cmp::Ordering, convert::TryInto};
+use std::cmp::Ordering;
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement, StarkField},
     Serializable,

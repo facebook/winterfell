@@ -8,7 +8,7 @@ use crate::{
     ColMatrix, RowMatrix,
 };
 use rand_utils::rand_vector;
-use utils::collections::Vec;
+use utils::collections::*;
 
 #[test]
 fn test_eval_poly_with_offset_matrix() {

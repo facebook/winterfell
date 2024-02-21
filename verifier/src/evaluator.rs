@@ -5,7 +5,7 @@
 
 use air::{Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame};
 use math::{polynom, FieldElement};
-use utils::collections::Vec;
+use utils::collections::*;
 
 // CONSTRAINT EVALUATION
 // ================================================================================================

@@ -5,7 +5,7 @@
 
 use air::Air;
 use math::{fft, get_power_series, StarkField};
-use utils::collections::Vec;
+use utils::collections::*;
 
 // TYPES AND INTERFACES
 // ================================================================================================

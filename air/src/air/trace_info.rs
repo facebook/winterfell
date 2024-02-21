@@ -5,8 +5,8 @@
 
 use math::{StarkField, ToElements};
 use utils::{
-    collections::Vec, string::ToString, ByteReader, ByteWriter, Deserializable,
-    DeserializationError, Serializable,
+    collections::*, string::*, ByteReader, ByteWriter, Deserializable, DeserializationError,
+    Serializable,
 };
 
 // CONSTANTS

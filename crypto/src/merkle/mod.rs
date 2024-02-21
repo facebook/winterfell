@@ -5,7 +5,7 @@
 
 use crate::{errors::MerkleTreeError, hash::Hasher};
 use core::slice;
-use utils::collections::{BTreeMap, BTreeSet, Vec};
+use utils::collections::*;
 
 mod proofs;
 pub use proofs::BatchMerkleProof;

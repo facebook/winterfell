@@ -11,7 +11,7 @@ use air::{
 use crypto::{BatchMerkleProof, ElementHasher, MerkleTree};
 use fri::VerifierChannel as FriVerifierChannel;
 use math::{FieldElement, StarkField};
-use utils::{collections::Vec, string::ToString};
+use utils::{collections::*, string::*};
 
 // VERIFIER CHANNEL
 // ================================================================================================

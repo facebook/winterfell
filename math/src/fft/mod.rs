@@ -24,7 +24,7 @@ mod serial;
 #[cfg(feature = "concurrent")]
 mod concurrent;
 
-use utils::collections::Vec;
+use utils::collections::*;
 
 #[cfg(test)]
 mod tests;

@@ -5,7 +5,7 @@
 
 use air::{proof::Table, Air, DeepCompositionCoefficients, EvaluationFrame};
 use math::{batch_inversion, FieldElement};
-use utils::collections::Vec;
+use utils::collections::*;
 
 // DEEP COMPOSER
 // ================================================================================================

@@ -12,12 +12,14 @@
 #[macro_use]
 extern crate alloc;
 
+pub mod boxed;
 pub mod collections;
 pub mod iterators;
 pub mod string;
 
-use collections::Vec;
-use core::{convert::TryInto, mem, slice};
+pub use boxed::*;
+use collections::*;
+use core::{mem, slice};
 
 mod serde;
 pub use serde::{ByteReader, ByteWriter, Deserializable, Serializable, SliceReader};
@@ -36,12 +38,6 @@ use iterators::*;
 
 #[cfg(feature = "concurrent")]
 pub use rayon;
-
-#[cfg(not(feature = "std"))]
-pub use alloc::boxed::Box;
-
-#[cfg(feature = "std")]
-pub use std::boxed::Box;
 
 // AS BYTES
 // ================================================================================================

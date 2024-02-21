@@ -10,7 +10,7 @@ use super::{
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin};
 use math::{fields::f64::BaseElement, polynom, FieldElement, StarkField};
 use rand_utils::{rand_value, rand_vector, shuffle};
-use utils::collections::{BTreeMap, Vec};
+use utils::collections::*;
 
 // BOUNDARY CONSTRAINT TESTS
 // ================================================================================================

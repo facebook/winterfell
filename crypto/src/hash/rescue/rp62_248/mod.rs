@@ -4,7 +4,6 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{exp_acc, Digest, ElementHasher, Hasher};
-use core::convert::TryInto;
 use math::{fields::f62::BaseElement, FieldElement, StarkField};
 
 mod digest;

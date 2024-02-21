@@ -46,7 +46,7 @@ use math::{
 };
 
 pub use utils::{
-    collections::Vec, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+    collections::*, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
     SliceReader,
 };
 
@@ -71,7 +71,7 @@ pub use errors::VerifierError;
 // ================================================================================================
 /// Verifies that the specified computation was executed correctly against the specified inputs.
 ///
-/// Specifically, for a computation specified by `AIR` and `HashFn` type parameter, verifies that 
+/// Specifically, for a computation specified by `AIR` and `HashFn` type parameter, verifies that
 /// the provided `proof` attests to the correct execution of the computation against public inputs
 /// specified by `pub_inputs`. If the verification is successful, `Ok(())` is returned.
 ///
@@ -86,9 +86,9 @@ pub fn verify<AIR, HashFn, RandCoin>(
     proof: StarkProof,
     pub_inputs: AIR::PublicInputs,
     acceptable_options: &AcceptableOptions,
-) -> Result<(), VerifierError> 
-where 
-    AIR: Air, 
+) -> Result<(), VerifierError>
+where
+    AIR: Air,
     HashFn: ElementHasher<BaseField = AIR::BaseField>,
     RandCoin: RandomCoin<BaseField = AIR::BaseField, Hasher = HashFn>,
 {
@@ -101,7 +101,7 @@ where
     // received from the prover
     let mut public_coin_seed = proof.context.to_elements();
     public_coin_seed.append(&mut pub_inputs.to_elements());
-    
+
     // create AIR instance for the computation specified in the proof
     let air = AIR::new(proof.get_trace_info(), pub_inputs, proof.options().clone());
 

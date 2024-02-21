@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{ByteDigest, ElementHasher, Hasher};
-use core::{convert::TryInto, fmt::Debug, marker::PhantomData};
+use core::{fmt::Debug, marker::PhantomData};
 use math::{FieldElement, StarkField};
 use utils::ByteWriter;
 
