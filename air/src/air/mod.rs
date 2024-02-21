@@ -21,7 +21,10 @@ mod boundary;
 pub use boundary::{BoundaryConstraint, BoundaryConstraintGroup, BoundaryConstraints};
 
 mod transition;
-pub use transition::{EvaluationFrame, TransitionConstraintDegree, TransitionConstraints};
+pub use transition::{
+    EvaluationFrame, LagrangeKernelTransitionConstraints, TransitionConstraintDegree,
+    TransitionConstraints,
+};
 
 mod coefficients;
 pub use coefficients::{
@@ -30,8 +33,6 @@ pub use coefficients::{
 
 mod divisor;
 pub use divisor::ConstraintDivisor;
-
-use self::transition::LagrangeKernelTransitionConstraints;
 
 #[cfg(test)]
 mod tests;
