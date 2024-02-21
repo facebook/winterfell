@@ -107,7 +107,7 @@ where
     public_coin_seed.append(&mut pub_inputs.to_elements());
 
     // create AIR instance for the computation specified in the proof
-    let air = AIR::new(proof.get_trace_info(), pub_inputs, proof.options().clone());
+    let air = AIR::new(proof.trace_info().clone(), pub_inputs, proof.options().clone());
 
     // figure out which version of the generic proof verification procedure to run. this is a sort
     // of static dispatch for selecting two generic parameter: extension field and hash function.

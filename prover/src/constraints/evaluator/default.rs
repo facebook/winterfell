@@ -161,7 +161,7 @@ where
         fragment: &mut EvaluationTableFragment<E>,
     ) {
         // initialize buffers to hold trace values and evaluation results at each step;
-        let mut main_frame = EvaluationFrame::new(trace.trace_layout().main_trace_width());
+        let mut main_frame = EvaluationFrame::new(trace.trace_info().main_trace_width());
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
         let mut t_evaluations = vec![E::BaseField::ZERO; self.num_main_transition_constraints()];
 
@@ -212,8 +212,8 @@ where
         fragment: &mut EvaluationTableFragment<E>,
     ) {
         // initialize buffers to hold trace values and evaluation results at each step
-        let mut main_frame = EvaluationFrame::new(trace.trace_layout().main_trace_width());
-        let mut aux_frame = EvaluationFrame::new(trace.trace_layout().aux_trace_width());
+        let mut main_frame = EvaluationFrame::new(trace.trace_info().main_trace_width());
+        let mut aux_frame = EvaluationFrame::new(trace.trace_info().aux_trace_width());
         let mut tm_evaluations = vec![E::BaseField::ZERO; self.num_main_transition_constraints()];
         let mut ta_evaluations = vec![E::ZERO; self.num_aux_transition_constraints()];
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
