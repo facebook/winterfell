@@ -255,7 +255,7 @@ impl<E: StarkField> ToElements<E> for TraceInfo {
         // element, and then converting these chunks into field elements.
         if !self.trace_meta.is_empty() {
             for chunk in self.trace_meta.chunks(E::ELEMENT_BYTES - 1) {
-                result.push(E::from_byte_vec_with_padding(chunk.to_vec()));
+                result.push(E::from_byte_vec_with_padding(chunk));
             }
         }
 
