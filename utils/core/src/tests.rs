@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{collections::Vec, ByteReader, ByteWriter, Serializable, SliceReader};
+use super::{collections::*, ByteReader, ByteWriter, Serializable, SliceReader};
 use proptest::prelude::{any, proptest};
 
 // VECTOR UTILS TESTS

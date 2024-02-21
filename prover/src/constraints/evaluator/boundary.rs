@@ -6,7 +6,7 @@
 use super::StarkDomain;
 use air::{Air, AuxTraceRandElements, ConstraintDivisor};
 use math::{fft, ExtensionOf, FieldElement};
-use utils::collections::{BTreeMap, Vec};
+use utils::collections::*;
 
 // CONSTANTS
 // ================================================================================================

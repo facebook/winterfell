@@ -7,7 +7,7 @@ use super::RowMatrix;
 use air::proof::Queries;
 use crypto::{ElementHasher, MerkleTree};
 use math::FieldElement;
-use utils::collections::Vec;
+use utils::collections::*;
 
 // CONSTRAINT COMMITMENT
 // ================================================================================================

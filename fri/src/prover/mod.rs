@@ -12,7 +12,7 @@ use crate::{
 use core::marker::PhantomData;
 use crypto::{ElementHasher, Hasher, MerkleTree};
 use math::{fft, FieldElement, StarkField};
-use utils::{collections::Vec, flatten_vector_elements, group_slice_elements, transpose_slice};
+use utils::{collections::*, flatten_vector_elements, group_slice_elements, transpose_slice};
 
 mod channel;
 pub use channel::{DefaultProverChannel, ProverChannel};

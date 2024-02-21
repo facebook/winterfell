@@ -5,7 +5,7 @@
 
 use crypto::ElementHasher;
 use math::FieldElement;
-use utils::{collections::Vec, iter_mut, uninit_vector};
+use utils::{collections::*, iter_mut, uninit_vector};
 
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;

@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use math::FieldElement;
-use utils::collections::Vec;
+use utils::collections::*;
 
 // AUXILIARY TRACE SEGMENT RANDOMNESS
 // ================================================================================================

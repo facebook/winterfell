@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.8.1 (2024-02-21)
+* Refactored util module re-exports to comply with latest clippy updates (#250).
+
 ## 0.8.0 (2024-02-06)
 * Added variable-length serialization and deserialization for `usize` type (#238).
 * [BREAKING] Removed `Serializable` and `Deserializable` implementations from slices and vectors (#239).

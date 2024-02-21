@@ -9,7 +9,7 @@ use crate::{
 };
 use air::proof::OodFrameTraceStates;
 use math::{polynom, FieldElement, StarkField};
-use utils::collections::Vec;
+use utils::collections::*;
 
 // TRACE POLYNOMIAL TABLE
 // ================================================================================================

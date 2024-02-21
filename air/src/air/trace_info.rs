@@ -5,8 +5,8 @@
 
 use math::{log2, StarkField, ToElements};
 use utils::{
-    collections::Vec, string::ToString, ByteReader, ByteWriter, Deserializable,
-    DeserializationError, Serializable,
+    collections::*, string::*, ByteReader, ByteWriter, Deserializable, DeserializationError,
+    Serializable,
 };
 
 // CONSTANTS

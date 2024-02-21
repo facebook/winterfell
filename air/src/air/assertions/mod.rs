@@ -5,11 +5,11 @@
 
 use crate::errors::AssertionError;
 use core::{
-    cmp::{Ord, Ordering, PartialOrd},
+    cmp::Ordering,
     fmt::{Display, Formatter},
 };
 use math::FieldElement;
-use utils::collections::Vec;
+use utils::collections::*;
 
 #[cfg(test)]
 mod tests;

@@ -9,9 +9,9 @@ use air::{
 };
 use core::marker::PhantomData;
 use crypto::{ElementHasher, RandomCoin};
-use fri::{self, FriProof};
+use fri::FriProof;
 use math::{FieldElement, ToElements};
-use utils::collections::Vec;
+use utils::collections::*;
 
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;

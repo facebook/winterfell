@@ -1,6 +1,6 @@
 [package]
 name = "examples"
-version = "0.8.0"
+version = "0.8.1"
 description = "Examples of using Winterfell STARK prover/verifier"
 authors = ["winterfell contributors"]
 readme = "README.md"

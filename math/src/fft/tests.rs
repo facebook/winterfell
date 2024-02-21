@@ -10,7 +10,7 @@ use crate::{
     utils::get_power_series,
 };
 use rand_utils::rand_vector;
-use utils::collections::Vec;
+use utils::collections::*;
 
 // CORE ALGORITHMS
 // ================================================================================================

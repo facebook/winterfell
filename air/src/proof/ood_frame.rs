@@ -5,7 +5,7 @@
 
 use math::FieldElement;
 use utils::{
-    collections::Vec, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+    collections::*, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
     SliceReader,
 };
 

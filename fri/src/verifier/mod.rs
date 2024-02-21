@@ -6,10 +6,10 @@
 //! Contains an implementation of FRI verifier and associated components.
 
 use crate::{folding::fold_positions, utils::map_positions_to_indexes, FriOptions, VerifierError};
-use core::{convert::TryInto, marker::PhantomData, mem};
+use core::{marker::PhantomData, mem};
 use crypto::{ElementHasher, RandomCoin};
 use math::{polynom, FieldElement, StarkField};
-use utils::collections::Vec;
+use utils::collections::*;
 
 mod channel;
 pub use channel::{DefaultVerifierChannel, VerifierChannel};
