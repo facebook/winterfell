@@ -6,7 +6,7 @@
 use crate::air::Assertion;
 use core::fmt::{Display, Formatter};
 use math::{FieldElement, StarkField};
-use utils::collections::Vec;
+use utils::collections::*;
 
 // CONSTRAINT DIVISOR
 // ================================================================================================

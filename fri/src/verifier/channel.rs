@@ -6,7 +6,7 @@
 use crate::{FriProof, VerifierError};
 use crypto::{BatchMerkleProof, ElementHasher, Hasher, MerkleTree};
 use math::FieldElement;
-use utils::{collections::Vec, group_vector_elements, DeserializationError};
+use utils::{collections::*, group_vector_elements, DeserializationError};
 
 // VERIFIER CHANNEL TRAIT
 // ================================================================================================

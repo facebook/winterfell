@@ -5,7 +5,6 @@
 
 use super::{AsBytes, BaseElement, DeserializationError, FieldElement, Serializable, StarkField};
 use crate::field::{CubeExtension, ExtensionOf, QuadExtension};
-use core::convert::TryFrom;
 use num_bigint::BigUint;
 use proptest::prelude::*;
 use rand_utils::rand_value;

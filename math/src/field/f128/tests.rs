@@ -3,12 +3,11 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{
-    AsBytes, BaseElement, ByteReader, DeserializationError, FieldElement, StarkField, Vec, M,
-};
+use super::{AsBytes, BaseElement, ByteReader, DeserializationError, FieldElement, StarkField, M};
 use crate::field::{ExtensionOf, QuadExtension};
 use num_bigint::BigUint;
 use rand_utils::{rand_value, rand_vector};
+use utils::collections::*;
 use utils::SliceReader;
 
 // BASIC ALGEBRA

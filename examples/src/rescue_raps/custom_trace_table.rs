@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use core_utils::{collections::Vec, uninit_vector};
+use core_utils::{collections::*, uninit_vector};
 use winterfell::{
     math::{FieldElement, StarkField},
     matrix::ColMatrix,

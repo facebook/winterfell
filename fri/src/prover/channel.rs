@@ -6,7 +6,7 @@
 use core::marker::PhantomData;
 use crypto::{ElementHasher, Hasher, RandomCoin};
 use math::FieldElement;
-use utils::collections::Vec;
+use utils::collections::*;
 
 // PROVER CHANNEL TRAIT
 // ================================================================================================

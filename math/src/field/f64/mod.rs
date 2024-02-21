@@ -16,17 +16,14 @@
 
 use super::{ExtensibleField, FieldElement, StarkField};
 use core::{
-    convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter},
     mem,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
     slice,
 };
 use utils::{
-    collections::Vec,
-    string::{String, ToString},
-    AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Randomizable,
-    Serializable,
+    collections::*, string::*, AsBytes, ByteReader, ByteWriter, Deserializable,
+    DeserializationError, Randomizable, Serializable,
 };
 
 #[cfg(feature = "serde")]

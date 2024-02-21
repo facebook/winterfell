@@ -3,9 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{DeserializationError, SliceReader, Vec};
+use super::{DeserializationError, SliceReader};
 use core::iter::FusedIterator;
 use math::FieldElement;
+use utils::collections::*;
 use utils::ByteReader;
 
 // CONSTANTS

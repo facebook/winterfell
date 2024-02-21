@@ -5,7 +5,7 @@
 
 use super::{ColMatrix, StarkDomain};
 use math::{fft, polynom::degree_of, FieldElement};
-use utils::collections::Vec;
+use utils::collections::*;
 
 // CONSTRAINT COMPOSITION POLYNOMIAL TRACE
 // ================================================================================================
@@ -139,7 +139,7 @@ fn segment<E: FieldElement>(
 mod tests {
 
     use math::fields::f128::BaseElement;
-    use utils::collections::Vec;
+    use utils::collections::*;
 
     #[test]
     fn segment() {

@@ -5,7 +5,7 @@
 
 use super::{AirContext, Assertion, ConstraintDivisor};
 use math::{ExtensionOf, FieldElement};
-use utils::collections::{BTreeMap, BTreeSet, Vec};
+use utils::collections::*;
 
 mod constraint;
 pub use constraint::BoundaryConstraint;

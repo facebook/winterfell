@@ -4,11 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{errors::MerkleTreeError, Hasher};
-use utils::{
-    collections::{BTreeMap, Vec},
-    string::ToString,
-    ByteReader, DeserializationError, Serializable,
-};
+use utils::{collections::*, string::*, ByteReader, DeserializationError, Serializable};
 
 // CONSTANTS
 // ================================================================================================

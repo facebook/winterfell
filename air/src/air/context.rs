@@ -6,7 +6,7 @@
 use crate::{air::TransitionConstraintDegree, ProofOptions, TraceInfo};
 use core::cmp;
 use math::StarkField;
-use utils::collections::Vec;
+use utils::collections::*;
 
 // AIR CONTEXT
 // ================================================================================================
