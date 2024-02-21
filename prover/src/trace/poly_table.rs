@@ -21,6 +21,7 @@ use utils::collections::Vec;
 pub struct TracePolyTable<E: FieldElement> {
     main_segment_polys: ColMatrix<E::BaseField>,
     aux_segment_polys: Vec<ColMatrix<E>>,
+    aux_segment_has_lagrange_kernel_column: bool,
 }
 
 impl<E: FieldElement> TracePolyTable<E> {
@@ -31,6 +32,7 @@ impl<E: FieldElement> TracePolyTable<E> {
         Self {
             main_segment_polys: main_trace_polys,
             aux_segment_polys: Vec::new(),
+            aux_segment_has_lagrange_kernel_column: false,
         }
     }
 
@@ -38,13 +40,18 @@ impl<E: FieldElement> TracePolyTable<E> {
     // --------------------------------------------------------------------------------------------
 
     /// Adds the provided auxiliary segment polynomials to this polynomial table.
-    pub fn add_aux_segment(&mut self, aux_segment_polys: ColMatrix<E>) {
+    pub fn add_aux_segment(
+        &mut self,
+        aux_segment_polys: ColMatrix<E>,
+        aux_segment_has_lagrange_kernel_column: bool,
+    ) {
         assert_eq!(
             self.main_segment_polys.num_rows(),
             aux_segment_polys.num_rows(),
             "polynomials in auxiliary segment must be of the same size as in the main segment"
         );
         self.aux_segment_polys.push(aux_segment_polys);
+        self.aux_segment_has_lagrange_kernel_column = aux_segment_has_lagrange_kernel_column;
     }
 
     // PUBLIC ACCESSORS
@@ -95,4 +102,14 @@ impl<E: FieldElement> TracePolyTable<E> {
     pub fn get_main_trace_poly(&self, idx: usize) -> &[E::BaseField] {
         self.main_segment_polys.get_column(idx)
     }
+}
+
+// OOD FRAME TRACE STATES
+// ================================================================================================
+
+/// Stores the trace evaluations
+pub struct OodFrameTraceStates<E: FieldElement> {
+    pub current_frame: Vec<E>,
+    pub next_frame: Vec<E>,
+    pub lagrange_kernel_frame: Option<Vec<E>>,
 }
