@@ -95,9 +95,7 @@ where
         // for the main segment.
         let mut fragments = evaluation_table.fragments(num_fragments);
         iter_mut!(fragments).for_each(|fragment| {
-            if self.air.trace_info().is_multi_segment()
-                && !self.air.trace_info().aux_segment_has_only_lagrange_kernel_column()
-            {
+            if self.air.trace_info().is_multi_segment() {
                 self.evaluate_fragment_full(trace, domain, fragment);
             } else {
                 self.evaluate_fragment_main(trace, domain, fragment);
@@ -235,10 +233,19 @@ where
             // evaluations buffer; we evaluate and compose constraints in the same function, we
             // can just add up the results of evaluating main and auxiliary constraints.
             evaluations[0] = self.evaluate_main_transition(&main_frame, step, &mut tm_evaluations);
-            evaluations[0] +=
-                self.evaluate_aux_transition(&main_frame, &aux_frame, step, &mut ta_evaluations);
+
+            // Make sure to only evaluate the aux transition if the user actually defined one
+            if !self.air.trace_info().aux_segment_has_only_lagrange_kernel_column() {
+                evaluations[0] += self.evaluate_aux_transition(
+                    &main_frame,
+                    &aux_frame,
+                    step,
+                    &mut ta_evaluations,
+                );
+            }
 
             // when in debug mode, save transition constraint evaluations
+            // TODO: Add lagrange kernel evaluations
             #[cfg(debug_assertions)]
             fragment.update_transition_evaluations(i, &tm_evaluations, &ta_evaluations);
 
