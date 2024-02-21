@@ -279,7 +279,7 @@ pub trait StarkField: FieldElement<BaseField = Self> {
     /// Panics if
     /// - the length of `bytes` is greater than the number of bytes needed to encode an element.
     /// - the value of the bytes is not a valid field element after padding
-    fn from_byte_vec_with_padding(bytes: &[u8]) -> Self {
+    fn from_bytes_with_padding(bytes: &[u8]) -> Self {
         assert!(bytes.len() < Self::ELEMENT_BYTES);
 
         let mut buf = bytes.to_vec();

@@ -103,8 +103,8 @@ impl<E: StarkField> ToElements<E> for Context {
         // convert field modulus bytes into 2 elements
         let num_modulus_bytes = self.field_modulus_bytes.len();
         let (m1, m2) = self.field_modulus_bytes.split_at(num_modulus_bytes / 2);
-        result.push(E::from_byte_vec_with_padding(m1));
-        result.push(E::from_byte_vec_with_padding(m2));
+        result.push(E::from_bytes_with_padding(m1));
+        result.push(E::from_bytes_with_padding(m2));
 
         // convert proof options to elements
         result.append(&mut self.options.to_elements());
