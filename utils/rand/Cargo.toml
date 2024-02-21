@@ -1,12 +1,12 @@
 [package]
 name = "winter-rand-utils"
-version = "0.8.0"
+version = "0.8.1"
 description = "Random value generation utilities for Winterfell crates"
 authors = ["winterfell contributors"]
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/novifinancial/winterfell"
-documentation = "https://docs.rs/winter-rand-utils/0.8.0"
+documentation = "https://docs.rs/winter-rand-utils/0.8.1"
 categories = ["cryptography"]
 keywords = ["rand"]
 edition = "2021"
