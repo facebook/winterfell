@@ -66,9 +66,9 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
         }
         let constraint_frame_width = air.context().num_constraint_composition_columns();
 
-        let num_trace_segments = air.trace_layout().num_segments();
-        let main_trace_width = air.trace_layout().main_trace_width();
-        let aux_trace_width = air.trace_layout().aux_trace_width();
+        let num_trace_segments = air.trace_info().num_segments();
+        let main_trace_width = air.trace_info().main_trace_width();
+        let aux_trace_width = air.trace_info().aux_trace_width();
         let lde_domain_size = air.lde_domain_size();
         let fri_options = air.options().to_fri_options();
 
@@ -248,15 +248,15 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> TraceQueries<E
     ) -> Result<Self, VerifierError> {
         assert_eq!(
             queries.len(),
-            air.trace_layout().num_segments(),
+            air.trace_info().num_segments(),
             "expected {} trace segment queries, but received {}",
-            air.trace_layout().num_segments(),
+            air.trace_info().num_segments(),
             queries.len()
         );
 
         // parse main trace segment queries; parsing also validates that hashes of each table row
         // form the leaves of Merkle authentication paths in the proofs
-        let main_segment_width = air.trace_layout().main_trace_width();
+        let main_segment_width = air.trace_info().main_trace_width();
         let main_segment_queries = queries.remove(0);
         let (main_segment_query_proofs, main_segment_states) = main_segment_queries
             .parse::<H, E::BaseField>(air.lde_domain_size(), num_queries, main_segment_width)
@@ -275,7 +275,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> TraceQueries<E
         let aux_trace_states = if air.trace_info().is_multi_segment() {
             let mut aux_trace_states = Vec::new();
             for (i, segment_queries) in queries.into_iter().enumerate() {
-                let segment_width = air.trace_layout().get_aux_segment_width(i);
+                let segment_width = air.trace_info().get_aux_segment_width(i);
                 let (segment_query_proof, segment_trace_states) = segment_queries
                     .parse::<H, E>(air.lde_domain_size(), num_queries, segment_width)
                     .map_err(|err| {

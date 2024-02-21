@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{ProofOptions, TraceInfo, TraceLayout};
+use crate::{ProofOptions, TraceInfo};
 use math::{StarkField, ToElements};
 use utils::{
     collections::*, string::*, ByteReader, ByteWriter, Deserializable, DeserializationError,
@@ -15,9 +15,7 @@ use utils::{
 /// Basic metadata about a specific execution of a computation.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Context {
-    trace_layout: TraceLayout,
-    trace_length: usize,
-    trace_meta: Vec<u8>,
+    trace_info: TraceInfo,
     field_modulus_bytes: Vec<u8>,
     options: ProofOptions,
 }
@@ -31,7 +29,7 @@ impl Context {
     /// # Panics
     /// Panics if either trace length or the LDE domain size implied by the trace length and the
     /// blowup factor is greater then [u32::MAX].
-    pub fn new<B: StarkField>(trace_info: &TraceInfo, options: ProofOptions) -> Self {
+    pub fn new<B: StarkField>(trace_info: TraceInfo, options: ProofOptions) -> Self {
         // TODO: return errors instead of panicking?
 
         let trace_length = trace_info.length();
@@ -41,9 +39,7 @@ impl Context {
         assert!(lde_domain_size <= u32::MAX as usize, "LDE domain size too big");
 
         Context {
-            trace_layout: trace_info.layout().clone(),
-            trace_length,
-            trace_meta: trace_info.meta().to_vec(),
+            trace_info,
             field_modulus_bytes: B::get_modulus_le_bytes(),
             options,
         }
@@ -52,29 +48,14 @@ impl Context {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a layout describing how columns of the execution trace described by this context
-    /// are arranged into segments.
-    pub fn trace_layout(&self) -> &TraceLayout {
-        &self.trace_layout
-    }
-
-    /// Returns execution trace length of the computation described by this context.
-    pub fn trace_length(&self) -> usize {
-        self.trace_length
-    }
-
     /// Returns execution trace info for the computation described by this context.
-    pub fn get_trace_info(&self) -> TraceInfo {
-        TraceInfo::new_multi_segment(
-            self.trace_layout.clone(),
-            self.trace_length(),
-            self.trace_meta.clone(),
-        )
+    pub fn trace_info(&self) -> &TraceInfo {
+        &self.trace_info
     }
 
     /// Returns the size of the LDE domain for the computation described by this context.
     pub fn lde_domain_size(&self) -> usize {
-        self.trace_length() * self.options.blowup_factor()
+        self.trace_info.length() * self.options.blowup_factor()
     }
 
     /// Returns modulus of the field for the computation described by this context.
@@ -109,36 +90,24 @@ impl<E: StarkField> ToElements<E> for Context {
     /// Converts this [Context] into a vector of field elements.
     ///
     /// The elements are laid out as follows:
-    /// - trace layout info [1 or more elements].
+    /// - trace info [2 or more elements].
     /// - field modulus bytes [2 field elements].
     /// - field extension and FRI parameters [1 element].
     /// - grinding factor [1 element].
     /// - blowup factor [1 element].
     /// - number of queries [1 element].
-    /// - trace length [1 element].
-    /// - trace metadata [0 or more elements].
     fn to_elements(&self) -> Vec<E> {
         // convert trace layout
-        let mut result = self.trace_layout.to_elements();
+        let mut result = self.trace_info.to_elements();
 
         // convert field modulus bytes into 2 elements
         let num_modulus_bytes = self.field_modulus_bytes.len();
         let (m1, m2) = self.field_modulus_bytes.split_at(num_modulus_bytes / 2);
-        result.push(bytes_to_element(m1));
-        result.push(bytes_to_element(m2));
+        result.push(E::from_bytes_with_padding(m1));
+        result.push(E::from_bytes_with_padding(m2));
 
-        // convert proof options and trace length to elements
+        // convert proof options to elements
         result.append(&mut self.options.to_elements());
-        result.push(E::from(self.trace_length as u32));
-
-        // convert trace metadata to elements; this is done by breaking trace metadata into chunks
-        // of bytes which are slightly smaller than the number of bytes needed to encode a field
-        // element, and then converting these chunks into field elements.
-        if !self.trace_meta.is_empty() {
-            for chunk in self.trace_meta.chunks(E::ELEMENT_BYTES - 1) {
-                result.push(bytes_to_element(chunk));
-            }
-        }
 
         result
     }
@@ -150,10 +119,7 @@ impl<E: StarkField> ToElements<E> for Context {
 impl Serializable for Context {
     /// Serializes `self` and writes the resulting bytes into the `target`.
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.trace_layout.write_into(target);
-        target.write_u8(self.trace_length.ilog2() as u8); // store as power of two
-        target.write_u16(self.trace_meta.len() as u16);
-        target.write_bytes(&self.trace_meta);
+        self.trace_info.write_into(target);
         assert!(self.field_modulus_bytes.len() < u8::MAX as usize);
         target.write_u8(self.field_modulus_bytes.len() as u8);
         target.write_bytes(&self.field_modulus_bytes);
@@ -167,27 +133,8 @@ impl Deserializable for Context {
     /// # Errors
     /// Returns an error of a valid Context struct could not be read from the specified `source`.
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        // read and validate trace layout info
-        let trace_layout = TraceLayout::read_from(source)?;
-
-        // read and validate trace length (which was stored as a power of two)
-        let trace_length = source.read_u8()?;
-        if trace_length < TraceInfo::MIN_TRACE_LENGTH.ilog2() as u8 {
-            return Err(DeserializationError::InvalidValue(format!(
-                "trace length cannot be smaller than 2^{}, but was 2^{}",
-                TraceInfo::MIN_TRACE_LENGTH.ilog2(),
-                trace_length
-            )));
-        }
-        let trace_length = 2_usize.pow(trace_length as u32);
-
-        // read trace metadata
-        let num_meta_bytes = source.read_u16()? as usize;
-        let trace_meta = if num_meta_bytes != 0 {
-            source.read_vec(num_meta_bytes)?
-        } else {
-            vec![]
-        };
+        // read and validate trace info
+        let trace_info = TraceInfo::read_from(source)?;
 
         // read and validate field modulus bytes
         let num_modulus_bytes = source.read_u8()? as usize;
@@ -202,33 +149,11 @@ impl Deserializable for Context {
         let options = ProofOptions::read_from(source)?;
 
         Ok(Context {
-            trace_layout,
-            trace_length,
-            trace_meta,
+            trace_info,
             field_modulus_bytes,
             options,
         })
     }
-}
-
-// HELPER FUNCTIONS
-// ================================================================================================
-
-/// Converts a slice of bytes into a field element.
-///
-/// Assumes that the length of `bytes` is smaller than the number of bytes needed to encode an
-/// element.
-#[allow(clippy::let_and_return)]
-fn bytes_to_element<B: StarkField>(bytes: &[u8]) -> B {
-    debug_assert!(bytes.len() < B::ELEMENT_BYTES);
-
-    let mut buf = bytes.to_vec();
-    buf.resize(B::ELEMENT_BYTES, 0);
-    let element = match B::try_from(buf.as_slice()) {
-        Ok(element) => element,
-        Err(_) => panic!("element deserialization failed"),
-    };
-    element
 }
 
 // TESTS
@@ -237,7 +162,7 @@ fn bytes_to_element<B: StarkField>(bytes: &[u8]) -> B {
 #[cfg(test)]
 mod tests {
     use super::{Context, ProofOptions, ToElements, TraceInfo};
-    use crate::{FieldExtension, TraceLayout};
+    use crate::FieldExtension;
     use math::fields::f64::BaseElement;
 
     #[test]
@@ -250,7 +175,6 @@ mod tests {
         let num_queries = 30;
 
         let main_width = 20;
-        let num_aux_segments = 1;
         let aux_width = 9;
         let aux_rands = 12;
         let trace_length = 4096;
@@ -262,18 +186,27 @@ mod tests {
             0,
         ]);
 
-        let layout_info = u32::from_le_bytes([aux_rands, aux_width, num_aux_segments, main_width]);
+        let expected = {
+            let trace_info = TraceInfo::new_multi_segment(
+                main_width,
+                [aux_width],
+                [aux_rands],
+                trace_length,
+                vec![],
+            );
 
-        let expected = vec![
-            BaseElement::from(layout_info),
-            BaseElement::from(1_u32),    // lower bits of field modulus
-            BaseElement::from(u32::MAX), // upper bits of field modulus
-            BaseElement::from(ext_fri),
-            BaseElement::from(grinding_factor),
-            BaseElement::from(blowup_factor as u32),
-            BaseElement::from(num_queries as u32),
-            BaseElement::from(trace_length as u32),
-        ];
+            let mut expected = trace_info.to_elements();
+            expected.extend(vec![
+                BaseElement::from(1_u32),    // lower bits of field modulus
+                BaseElement::from(u32::MAX), // upper bits of field modulus
+                BaseElement::from(ext_fri),
+                BaseElement::from(grinding_factor),
+                BaseElement::from(blowup_factor as u32),
+                BaseElement::from(num_queries as u32),
+            ]);
+
+            expected
+        };
 
         let options = ProofOptions::new(
             num_queries,
@@ -283,10 +216,14 @@ mod tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
         );
-        let layout =
-            TraceLayout::new(main_width as usize, [aux_width as usize], [aux_rands as usize]);
-        let trace_info = TraceInfo::new_multi_segment(layout, trace_length, vec![]);
-        let context = Context::new::<BaseElement>(&trace_info, options);
+        let trace_info = TraceInfo::new_multi_segment(
+            main_width as usize,
+            [aux_width as usize],
+            [aux_rands as usize],
+            trace_length,
+            vec![],
+        );
+        let context = Context::new::<BaseElement>(trace_info, options);
         assert_eq!(expected, context.to_elements());
     }
 }

@@ -47,7 +47,7 @@ pub use air::{
     proof, proof::StarkProof, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
     BoundaryConstraintGroup, ConstraintCompositionCoefficients, ConstraintDivisor,
     DeepCompositionCoefficients, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo,
-    TraceLayout, TransitionConstraintDegree,
+    TransitionConstraintDegree,
 };
 use tracing::{event, info_span, Level};
 pub use utils::{
@@ -241,7 +241,7 @@ pub trait Prover {
         // create an instance of AIR for the provided parameters. this takes a generic description
         // of the computation (provided via AIR type), and creates a description of a specific
         // execution of the computation for the provided public inputs.
-        let air = Self::Air::new(trace.get_info(), pub_inputs, self.options().clone());
+        let air = Self::Air::new(trace.info().clone(), pub_inputs, self.options().clone());
 
         // create a channel which is used to simulate interaction between the prover and the
         // verifier; the channel will be used to commit to values and to draw randomness that
@@ -266,7 +266,7 @@ pub trait Prover {
             // extend the main execution trace and build a Merkle tree from the extended trace
             let span = info_span!("commit_to_main_trace_segment").entered();
             let (trace_lde, trace_polys) =
-                self.new_trace_lde(&trace.get_info(), trace.main_segment(), &domain);
+                self.new_trace_lde(trace.info(), trace.main_segment(), &domain);
 
             // get the commitment to the main trace segment LDE
             let main_trace_root = trace_lde.get_main_trace_commitment();
@@ -283,8 +283,8 @@ pub trait Prover {
         // commitment and trace polynomial table structs
         let mut aux_trace_segments = Vec::new();
         let mut aux_trace_rand_elements = AuxTraceRandElements::new();
-        for i in 0..trace.layout().num_aux_segments() {
-            let num_columns = trace.layout().get_aux_segment_width(i);
+        for i in 0..trace.info().num_aux_segments() {
+            let num_columns = trace.info().get_aux_segment_width(i);
             let (aux_segment, rand_elements) = {
                 let _ = info_span!("build_aux_trace_segment", num_columns).entered();
 

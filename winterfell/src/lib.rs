@@ -586,7 +586,7 @@ pub use prover::{
     ConstraintCompositionCoefficients, ConstraintDivisor, ConstraintEvaluator,
     DeepCompositionCoefficients, DefaultConstraintEvaluator, DefaultTraceLde, Deserializable,
     DeserializationError, EvaluationFrame, FieldExtension, ProofOptions, Prover, ProverError,
-    Serializable, SliceReader, StarkDomain, StarkProof, Trace, TraceInfo, TraceLayout, TraceLde,
-    TracePolyTable, TraceTable, TraceTableFragment, TransitionConstraintDegree,
+    Serializable, SliceReader, StarkDomain, StarkProof, Trace, TraceInfo, TraceLde, TracePolyTable,
+    TraceTable, TraceTableFragment, TransitionConstraintDegree,
 };
 pub use verifier::{verify, AcceptableOptions, VerifierError};
