@@ -280,15 +280,18 @@ pub trait StarkField: FieldElement<BaseField = Self> {
     /// Panics if
     /// - the length of `bytes` is greater than the number of bytes needed to encode an element.
     /// - the value of the bytes is not a valid field element after padding
-    fn from_byte_vec_with_padding(mut bytes: Vec<u8>) -> Self {
+    fn from_byte_vec_with_padding(bytes: &[u8]) -> Self {
         assert!(bytes.len() < Self::ELEMENT_BYTES);
 
-        bytes.resize(Self::ELEMENT_BYTES, 0);
+        let mut buf = bytes.to_vec();
+        buf.resize(Self::ELEMENT_BYTES, 0);
 
-        match Self::try_from(bytes.as_slice()) {
+        let element = match Self::try_from(buf.as_slice()) {
             Ok(element) => element,
             Err(_) => panic!("element deserialization failed"),
-        }
+        };
+
+        element
     }
 }
 
