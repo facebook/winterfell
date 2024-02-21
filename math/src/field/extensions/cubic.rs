@@ -5,7 +5,6 @@
 
 use super::{ExtensibleField, ExtensionOf, FieldElement};
 use core::{
-    convert::TryFrom,
     fmt,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
     slice,

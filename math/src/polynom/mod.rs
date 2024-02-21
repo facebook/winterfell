@@ -149,7 +149,6 @@ where
 ///
 /// # Examples
 /// ```
-/// # use core::convert::TryInto;
 /// # use winter_math::polynom::*;
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
 /// # use rand_utils::rand_array;
@@ -164,7 +163,7 @@ where
 ///
 /// let polys = interpolate_batch(&x_batches, &y_batches);
 /// for ((p, xs), ys) in polys.iter().zip(x_batches).zip(y_batches) {
-///     assert_eq!(ys.to_vec(), eval_many(p, &xs));   
+///     assert_eq!(ys.to_vec(), eval_many(p, &xs));
 /// }
 /// ```
 pub fn interpolate_batch<E, const N: usize>(xs: &[[E; N]], ys: &[[E; N]]) -> Vec<[E; N]>

@@ -4,7 +4,6 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{errors::RandomCoinError, Digest, ElementHasher, RandomCoin};
-use core::convert::TryInto;
 use math::{FieldElement, StarkField};
 use utils::collections::Vec;
 

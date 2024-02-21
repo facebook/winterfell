@@ -5,7 +5,6 @@
 
 use super::super::mds::mds_f64_8x8::mds_multiply;
 use super::{exp_acc, Digest, ElementHasher, Hasher};
-use core::convert::TryInto;
 use core::ops::Range;
 use math::{fields::f64::BaseElement, FieldElement, StarkField};
 

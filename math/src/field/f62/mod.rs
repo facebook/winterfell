@@ -11,7 +11,6 @@
 
 use super::{ExtensibleField, FieldElement, StarkField};
 use core::{
-    convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter},
     mem,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},

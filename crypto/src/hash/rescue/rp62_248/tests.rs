@@ -7,7 +7,6 @@ use super::{
     BaseElement, ElementDigest, ElementHasher, FieldElement, Hasher, Rp62_248, ALPHA, INV_ALPHA,
     STATE_WIDTH,
 };
-use core::convert::TryInto;
 use math::StarkField;
 use rand_utils::{rand_array, rand_value};
 

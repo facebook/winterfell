@@ -7,7 +7,6 @@ use super::{
     BaseElement, ElementDigest, ElementHasher, FieldElement, GriffinJive64_256, Hasher, StarkField,
     INV_MDS, MDS, STATE_WIDTH,
 };
-use core::convert::TryInto;
 use proptest::prelude::*;
 
 use rand_utils::{rand_array, rand_value};

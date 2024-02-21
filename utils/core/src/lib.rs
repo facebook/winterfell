@@ -17,7 +17,7 @@ pub mod iterators;
 pub mod string;
 
 use collections::Vec;
-use core::{convert::TryInto, mem, slice};
+use core::{mem, slice};
 
 mod serde;
 pub use serde::{ByteReader, ByteWriter, Deserializable, Serializable, SliceReader};
