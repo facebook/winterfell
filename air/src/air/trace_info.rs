@@ -272,6 +272,7 @@ impl<E: StarkField> ToElements<E> for TraceInfo {
             result.push(E::from(buf));
         }
 
+        // We assume here that the trace length is never greater than 2^32.
         result.push(E::from(self.trace_length as u32));
 
         // convert trace metadata to elements; this is done by breaking trace metadata into chunks
