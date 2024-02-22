@@ -176,7 +176,7 @@ where
     }
 
     /// Returns the Lagrange kernel frame starting at the current row (as defined by `lde_step`).
-    /// 
+    ///
     /// Note that unlike [`EvaluationFrame`], the Lagrange kernel frame includes only the Lagrange
     /// kernel column (as opposed to all columns).
     ///

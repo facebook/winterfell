@@ -11,7 +11,7 @@ use air::{
     Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
     LagrangeKernelTransitionConstraints, TransitionConstraints,
 };
-use math::FieldElement;
+use math::{log2, FieldElement};
 use utils::iter_mut;
 
 #[cfg(feature = "concurrent")]
@@ -112,9 +112,21 @@ where
         let combined_evaluations =
             if self.air.trace_info().lagrange_kernel_aux_column_idx().is_some() {
                 // if present, linearly combine the lagrange kernel evaluations too
-                let mut combined_evaluations = evaluation_table.combine();
+                let combined_evaluations = evaluation_table.combine();
 
-                todo!()
+                let lagrange_kernel_column_combined_evals =
+                    self.evaluate_lagrange_kernel_transitions(trace, domain);
+
+                debug_assert_eq!(
+                    combined_evaluations.len(),
+                    lagrange_kernel_column_combined_evals.len()
+                );
+
+                combined_evaluations
+                    .into_iter()
+                    .zip(lagrange_kernel_column_combined_evals)
+                    .map(|(eval_1, eval_2)| eval_1 + eval_2)
+                    .collect()
             } else {
                 evaluation_table.combine()
             };
@@ -285,6 +297,40 @@ where
         }
     }
 
+    fn evaluate_lagrange_kernel_transitions<T: TraceLde<E>>(
+        &self,
+        trace: &T,
+        domain: &StarkDomain<A::BaseField>,
+    ) -> Vec<E> {
+        let mut combined_evaluations = Vec::with_capacity(domain.ce_domain_size());
+        let lagrange_kernel_transition_constraints = self
+            .lagrange_kernel_transition_constraints
+            .as_ref()
+            .expect("expected Lagrange kernel transition constraints to be present");
+
+        // this will be used to convert steps in constraint evaluation domain to steps in
+        // LDE domain
+        let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
+        for step in 0..domain.ce_domain_size() {
+            let lagrange_kernel_column_frame =
+                trace.get_lagrange_kernel_column_frame(step << lde_shift);
+
+            let mut row_evals = E::zeroed_vector(log2(domain.trace_length()) as usize);
+            self.air.evaluate_lagrange_kernel_aux_transition(
+                &lagrange_kernel_column_frame,
+                &self.aux_rand_elements,
+                &mut row_evals,
+            );
+
+            let combined_row_evals = lagrange_kernel_transition_constraints
+                .combine_evaluations(&row_evals, domain.get_ce_x_at(step));
+
+            combined_evaluations.push(combined_row_evals);
+        }
+
+        combined_evaluations
+    }
+
     // TRANSITION CONSTRAINT EVALUATORS
     // --------------------------------------------------------------------------------------------
 
@@ -351,12 +397,6 @@ where
             .iter()
             .zip(self.transition_constraints.aux_constraint_coef().iter())
             .fold(E::ZERO, |acc, (&const_eval, &coef)| acc + coef * const_eval)
-    }
-
-    /// Evaluates all Lagrange kernel transition constraints at every step of the constraint
-    /// evaluation domain.
-    fn evaluate_lagrange_kernel_transitions(&self, lagrange_kernel_frame: &[E]) -> Vec<E> {
-        todo!()
     }
 
     // ACCESSORS

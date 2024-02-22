@@ -57,7 +57,7 @@ pub trait TraceLde<E: FieldElement>: Sync {
     fn read_aux_trace_frame_into(&self, lde_step: usize, frame: &mut EvaluationFrame<E>);
 
     /// Returns the Lagrange kernel frame starting at the current row (as defined by `lde_step`).
-    /// 
+    ///
     /// Note that unlike [`EvaluationFrame`], the Lagrange kernel frame includes only the Lagrange
     /// kernel column (as opposed to all columns).
     fn get_lagrange_kernel_column_frame(&self, lde_step: usize) -> Vec<E>;
