@@ -112,17 +112,17 @@ where
         let combined_evaluations =
             if self.air.trace_info().lagrange_kernel_aux_column_idx().is_some() {
                 // if present, linearly combine the lagrange kernel evaluations too
-                let combined_evaluations = evaluation_table.combine();
+                let main_and_aux_evaluations = evaluation_table.combine();
 
                 let lagrange_kernel_column_combined_evals =
                     self.evaluate_lagrange_kernel_transitions(trace, domain);
 
                 debug_assert_eq!(
-                    combined_evaluations.len(),
+                    main_and_aux_evaluations.len(),
                     lagrange_kernel_column_combined_evals.len()
                 );
 
-                combined_evaluations
+                main_and_aux_evaluations
                     .into_iter()
                     .zip(lagrange_kernel_column_combined_evals)
                     .map(|(eval_1, eval_2)| eval_1 + eval_2)
