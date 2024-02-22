@@ -108,7 +108,9 @@ where
         evaluation_table.validate_transition_degrees();
 
         // combine all evaluations into a single column and return
-        evaluation_table.combine()
+        let combined_evaluations = evaluation_table.combine();
+
+        CompositionPolyTrace::new(combined_evaluations)
     }
 }
 

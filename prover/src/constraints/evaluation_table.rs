@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{CompositionPolyTrace, ConstraintDivisor, StarkDomain};
+use super::{ConstraintDivisor, StarkDomain};
 use math::{batch_inversion, FieldElement, StarkField};
 use utils::{batch_iter_mut, collections::*, iter_mut, uninit_vector};
 
@@ -160,7 +160,7 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
     // --------------------------------------------------------------------------------------------
     /// Divides constraint evaluation columns by their respective divisor (in evaluation form) and
     /// combines the results into a single column.
-    pub fn combine(self) -> CompositionPolyTrace<E> {
+    pub fn combine(self) -> Vec<E> {
         // allocate memory for the combined polynomial
         let mut combined_poly = E::zeroed_vector(self.num_rows());
 
@@ -172,7 +172,7 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
             acc_column(column, divisor, self.domain, &mut combined_poly);
         }
 
-        CompositionPolyTrace::new(combined_poly)
+        combined_poly
     }
 
     // DEBUG HELPERS
