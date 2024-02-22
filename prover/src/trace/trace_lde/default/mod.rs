@@ -9,6 +9,7 @@ use super::{
 };
 use crate::{RowMatrix, DEFAULT_SEGMENT_WIDTH};
 use crypto::MerkleTree;
+use math::log2;
 use tracing::info_span;
 use utils::collections::*;
 
@@ -172,6 +173,33 @@ where
         let segment = &self.aux_segment_ldes[0];
         frame.current_mut().copy_from_slice(segment.row(lde_step));
         frame.next_mut().copy_from_slice(segment.row(next_lde_step));
+    }
+
+    /// Returns the Lagrange kernel frame starting at the current row (as defined by `lde_step`).
+    /// 
+    /// Note that unlike [`EvaluationFrame`], the Lagrange kernel frame includes only the Lagrange
+    /// kernel column (as opposed to all columns).
+    ///
+    /// # Panics
+    /// - if there is no auxiliary trace segment
+    /// - if there is no Lagrange kernel column
+    fn get_lagrange_kernel_column_frame(&self, lde_step: usize) -> Vec<E> {
+        let frame_length = log2(self.trace_info.length()) as usize;
+        let mut frame: Vec<E> = Vec::with_capacity(frame_length);
+
+        let aux_segment = &self.aux_segment_ldes[0];
+        let lagrange_kernel_col_idx = self
+            .trace_info
+            .lagrange_kernel_aux_column_idx()
+            .expect("expected a Lagrange kernel column to be present");
+
+        for i in 0..frame_length {
+            let next_lde_step = (lde_step + i * self.blowup()) % self.trace_len();
+
+            frame.push(aux_segment.row(next_lde_step)[lagrange_kernel_col_idx]);
+        }
+
+        frame
     }
 
     /// Returns trace table rows at the specified positions along with Merkle authentication paths
