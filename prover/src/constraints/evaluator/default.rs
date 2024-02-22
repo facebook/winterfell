@@ -9,7 +9,7 @@ use super::{
 };
 use air::{
     Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
-    TransitionConstraints,
+    LagrangeKernelTransitionConstraints, TransitionConstraints,
 };
 use math::FieldElement;
 use utils::iter_mut;
@@ -39,6 +39,7 @@ pub struct DefaultConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A:
     air: &'a A,
     boundary_constraints: BoundaryConstraints<E>,
     transition_constraints: TransitionConstraints<E>,
+    lagrange_kernel_transition_constraints: Option<LagrangeKernelTransitionConstraints<E>>,
     aux_rand_elements: AuxTraceRandElements<E>,
     periodic_values: PeriodicValueTable<E::BaseField>,
 }
@@ -107,8 +108,16 @@ where
         #[cfg(debug_assertions)]
         evaluation_table.validate_transition_degrees();
 
-        // combine all evaluations into a single column and return
-        let combined_evaluations = evaluation_table.combine();
+        // combine all evaluations into a single column
+        let combined_evaluations =
+            if self.air.trace_info().lagrange_kernel_aux_column_idx().is_some() {
+                // if present, linearly combine the lagrange kernel evaluations too
+                let mut combined_evaluations = evaluation_table.combine();
+
+                todo!()
+            } else {
+                evaluation_table.combine()
+            };
 
         CompositionPolyTrace::new(combined_evaluations)
     }
@@ -133,6 +142,13 @@ where
         let transition_constraints =
             air.get_transition_constraints(&composition_coefficients.transition);
 
+        let lagrange_kernel_transition_constraints =
+            air.trace_info().lagrange_kernel_aux_column_idx().map(|_| {
+                air.get_lagrange_kernel_transition_constraints(
+                    composition_coefficients.lagrange_kernel_transition,
+                )
+            });
+
         // build periodic value table
         let periodic_values = PeriodicValueTable::new(air);
 
@@ -145,6 +161,7 @@ where
             air,
             boundary_constraints,
             transition_constraints,
+            lagrange_kernel_transition_constraints,
             aux_rand_elements,
             periodic_values,
         }
@@ -334,6 +351,12 @@ where
             .iter()
             .zip(self.transition_constraints.aux_constraint_coef().iter())
             .fold(E::ZERO, |acc, (&const_eval, &coef)| acc + coef * const_eval)
+    }
+
+    /// Evaluates all Lagrange kernel transition constraints at every step of the constraint
+    /// evaluation domain.
+    fn evaluate_lagrange_kernel_transitions(&self, lagrange_kernel_frame: &[E]) -> Vec<E> {
+        todo!()
     }
 
     // ACCESSORS
