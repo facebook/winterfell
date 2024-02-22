@@ -116,19 +116,17 @@ where
                 // if present, linearly combine the lagrange kernel evaluations too
                 let main_and_aux_evaluations = evaluation_table.combine();
 
-                let lagrange_kernel_column_combined_evals =
-                    self.evaluate_lagrange_kernel_transitions(trace, domain);
+                let lagrange_kernel_combined_evals =
+                    self.evaluate_lagrange_kernel_constraints(trace, domain);
 
                 debug_assert_eq!(
                     main_and_aux_evaluations.len(),
-                    lagrange_kernel_column_combined_evals.len()
+                    lagrange_kernel_combined_evals.len()
                 );
-
-                // TODO: eval boundary constraint too
 
                 main_and_aux_evaluations
                     .into_iter()
-                    .zip(lagrange_kernel_column_combined_evals)
+                    .zip(lagrange_kernel_combined_evals)
                     .map(|(eval_1, eval_2)| eval_1 + eval_2)
                     .collect()
             } else {
@@ -315,7 +313,7 @@ where
         }
     }
 
-    fn evaluate_lagrange_kernel_transitions<T: TraceLde<E>>(
+    fn evaluate_lagrange_kernel_constraints<T: TraceLde<E>>(
         &self,
         trace: &T,
         domain: &StarkDomain<A::BaseField>,
@@ -333,17 +331,19 @@ where
             let lagrange_kernel_column_frame =
                 trace.get_lagrange_kernel_column_frame(step << lde_shift);
 
-            let mut row_evals = E::zeroed_vector(log2(domain.trace_length()) as usize);
-            self.air.evaluate_lagrange_kernel_aux_transition(
-                &lagrange_kernel_column_frame,
-                &self.aux_rand_elements,
-                &mut row_evals,
-            );
+            let transition_constraints_combined = {
+                let mut transition_evals = E::zeroed_vector(log2(domain.trace_length()) as usize);
+                self.air.evaluate_lagrange_kernel_aux_transition(
+                    &lagrange_kernel_column_frame,
+                    &self.aux_rand_elements,
+                    &mut transition_evals,
+                );
 
-            let combined_row_evals = lagrange_kernel_transition_constraints
-                .combine_evaluations(&row_evals, domain.get_ce_x_at(step));
+                lagrange_kernel_transition_constraints
+                    .combine_evaluations(&transition_evals, domain.get_ce_x_at(step))
+            };
 
-            combined_evaluations.push(combined_row_evals);
+            combined_evaluations.push(transition_constraints_combined);
         }
 
         combined_evaluations
