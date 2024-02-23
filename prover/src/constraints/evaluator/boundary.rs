@@ -34,11 +34,12 @@ impl<E: FieldElement> BoundaryConstraints<E> {
     pub fn new<A: Air<BaseField = E::BaseField>>(
         air: &A,
         aux_rand_elements: &AuxTraceRandElements<E>,
-        composition_coefficients: &[E],
+        boundary_composition_coefficients: &[E],
+        lagrange_kernel_composition_coefficient: Option<E>
     ) -> Self {
         // get constraints from the AIR instance
         let source =
-            air.get_boundary_constraints(aux_rand_elements, composition_coefficients, None);
+            air.get_boundary_constraints(aux_rand_elements, boundary_composition_coefficients, lagrange_kernel_composition_coefficient);
 
         // initialize a map of twiddles here so that we can keep track of already computed
         // twiddles; this helps us avoid building twiddles over and over again for constraints

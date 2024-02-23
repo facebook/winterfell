@@ -169,7 +169,7 @@ where
         // build boundary constraint groups; these will be used to evaluate and compose boundary
         // constraint evaluations.
         let boundary_constraints =
-            BoundaryConstraints::new(air, &aux_rand_elements, &composition_coefficients.boundary);
+            BoundaryConstraints::new(air, &aux_rand_elements, &composition_coefficients.boundary, composition_coefficients.lagrange_kernel_boundary);
 
         // FIXME: This is almost copy/paste from `air::boundary::BoundaryConstraints::new()`
         let lagrange_kernel_boundary_constraint =
