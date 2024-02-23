@@ -54,10 +54,6 @@ impl<B: StarkField> ConstraintDivisor<B> {
     /// The above divisor specifies that transition constraints must hold on all steps of the
     /// execution trace except for the last $k$ steps.
     pub fn from_transition(trace_length: usize, num_exemptions: usize) -> Self {
-        assert!(
-            num_exemptions > 0,
-            "invalid number of transition exemptions: must be greater than zero"
-        );
         let exemptions = (trace_length - num_exemptions..trace_length)
             .map(|step| get_trace_domain_value_at::<B>(trace_length, step))
             .collect();
