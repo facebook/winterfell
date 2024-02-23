@@ -16,7 +16,7 @@ pub use byte_writer::ByteWriter;
 // ================================================================================================
 
 /// Defines how to serialize `Self` into bytes.
-pub trait Serializable: Sized {
+pub trait Serializable {
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
     /// Serializes `self` into bytes and writes these bytes into the `target`.
@@ -37,6 +37,12 @@ pub trait Serializable: Sized {
     /// The default implementation returns zero.
     fn get_size_hint(&self) -> usize {
         0
+    }
+}
+
+impl<T: Serializable> Serializable for &T {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        (*self).write_into(target)
     }
 }
 
@@ -165,18 +171,6 @@ impl Serializable for usize {
 }
 
 impl<T: Serializable> Serializable for Option<T> {
-    fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        match self {
-            Some(v) => {
-                target.write_bool(true);
-                v.write_into(target);
-            }
-            None => target.write_bool(false),
-        }
-    }
-}
-
-impl<T: Serializable> Serializable for &Option<T> {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         match self {
             Some(v) => {
