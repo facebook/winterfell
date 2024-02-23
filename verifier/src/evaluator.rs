@@ -108,7 +108,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
 
         let c0 = lagrange_kernel_column_frame[0];
 
-        // TODO: This logic is very similar to `BoundaryConstraintGroup::evaluate_at`
+        // TODO: This logic is very similar to `BoundaryConstraintGroup::evaluate_at` and `DefaultConstraintEvaluator::evaluate_lagrange_kernel_constraints`
         let numerator = constraint.evaluate_at(x, c0) * *constraint.cc();
         let denominator = divisor.evaluate_at(x);
 

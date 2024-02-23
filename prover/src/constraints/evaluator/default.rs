@@ -331,7 +331,9 @@ where
             let lagrange_kernel_column_frame =
                 trace.get_lagrange_kernel_column_frame(step << lde_shift);
 
-            let transition_constraints_combined = {
+            let domain_point = domain.get_ce_x_at(step);
+
+            let transition_constraints_combined_evals = {
                 let mut transition_evals = E::zeroed_vector(log2(domain.trace_length()) as usize);
                 self.air.evaluate_lagrange_kernel_aux_transition(
                     &lagrange_kernel_column_frame,
@@ -340,10 +342,25 @@ where
                 );
 
                 lagrange_kernel_transition_constraints
-                    .combine_evaluations(&transition_evals, domain.get_ce_x_at(step))
+                    .combine_evaluations(&transition_evals, domain_point)
             };
 
-            combined_evaluations.push(transition_constraints_combined);
+            let boundary_constraint_eval = {
+                let (constraint, divisor) =
+                    self.lagrange_kernel_boundary_constraint.as_ref().expect("TODO");
+
+                let c0 = lagrange_kernel_column_frame[0];
+
+                let numerator = constraint.evaluate_at(domain_point.into(), c0) * *constraint.cc();
+                let denominator = divisor.evaluate_at(domain_point.into());
+
+                numerator / denominator
+            };
+
+            let all_constraints_combined =
+                transition_constraints_combined_evals + boundary_constraint_eval;
+
+            combined_evaluations.push(all_constraints_combined);
         }
 
         combined_evaluations
