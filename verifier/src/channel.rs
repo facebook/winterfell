@@ -371,8 +371,16 @@ impl<E: FieldElement> TraceOodFrame<E> {
         }
     }
 
-    pub fn values(&self) -> &[E] {
-        &self.main_and_aux_evaluations
+    pub fn values(&self) -> Vec<E> {
+        match self.lagrange_kernel_evaluations {
+            Some(ref lagrange_kernel_evaluations) => self
+                .main_and_aux_evaluations
+                .clone()
+                .into_iter()
+                .chain(lagrange_kernel_evaluations.clone())
+                .collect(),
+            None => self.main_and_aux_evaluations.clone(),
+        }
     }
 
     // The out-of-domain frame is stored as one vector of interleaved values, one from the

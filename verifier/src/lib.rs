@@ -206,7 +206,7 @@ where
         aux_trace_rand_elements,
         z,
     );
-    public_coin.reseed(H::hash_elements(ood_trace_frame.values()));
+    public_coin.reseed(H::hash_elements(&ood_trace_frame.values()));
 
     // read evaluations of composition polynomial columns sent by the prover, and reduce them into
     // a single value by computing \sum_{i=0}^{m-1}(z^(i * l) * value_i), where value_i is the
