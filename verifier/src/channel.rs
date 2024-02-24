@@ -10,7 +10,7 @@ use air::{
 };
 use crypto::{BatchMerkleProof, ElementHasher, MerkleTree};
 use fri::VerifierChannel as FriVerifierChannel;
-use math::{log2, FieldElement, StarkField};
+use math::{FieldElement, StarkField};
 use utils::{collections::*, string::*};
 
 // VERIFIER CHANNEL
@@ -92,23 +92,19 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         // --- parse out-of-domain evaluation frame -----------------------------------------------
-        let (ood_trace_evaluations, ood_constraint_evaluations) = ood_frame
+        let (
+            ood_trace_evaluations,
+            ood_lagrange_kernel_trace_evaluations,
+            ood_constraint_evaluations,
+        ) = ood_frame
             .parse(main_trace_width, aux_trace_width, constraint_frame_width)
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
-        let ood_trace_frame = {
-            let num_lagrange_kernel_constraints_evaluations =
-                match air.context().lagrange_kernel_aux_column_idx() {
-                    Some(_) => log2(context.trace_info().length()),
-                    None => 0,
-                };
-
-            TraceOodFrame::new(
-                ood_trace_evaluations,
-                main_trace_width,
-                aux_trace_width,
-                num_lagrange_kernel_constraints_evaluations as usize,
-            )
-        };
+        let ood_trace_frame = TraceOodFrame::new(
+            ood_trace_evaluations,
+            main_trace_width,
+            aux_trace_width,
+            ood_lagrange_kernel_trace_evaluations,
+        );
 
         Ok(VerifierChannel {
             // trace queries
@@ -354,29 +350,29 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> ConstraintQuer
 // ================================================================================================
 
 pub struct TraceOodFrame<E: FieldElement> {
-    values: Vec<E>,
+    main_and_aux_evaluations: Vec<E>,
     main_trace_width: usize,
     aux_trace_width: usize,
-    num_lagrange_kernel_constraints_evaluations: usize,
+    lagrange_kernel_evaluations: Option<Vec<E>>,
 }
 
 impl<E: FieldElement> TraceOodFrame<E> {
     pub fn new(
-        values: Vec<E>,
+        main_and_aux_evaluations: Vec<E>,
         main_trace_width: usize,
         aux_trace_width: usize,
-        num_lagrange_kernel_constraints_evaluations: usize,
+        lagrange_kernel_evaluations: Option<Vec<E>>,
     ) -> Self {
         Self {
-            values,
+            main_and_aux_evaluations,
             main_trace_width,
             aux_trace_width,
-            num_lagrange_kernel_constraints_evaluations,
+            lagrange_kernel_evaluations,
         }
     }
 
     pub fn values(&self) -> &[E] {
-        &self.values
+        &self.main_and_aux_evaluations
     }
 
     // The out-of-domain frame is stored as one vector of interleaved values, one from the
@@ -398,7 +394,9 @@ impl<E: FieldElement> TraceOodFrame<E> {
         let mut current = vec![E::ZERO; self.main_trace_width];
         let mut next = vec![E::ZERO; self.main_trace_width];
 
-        for (i, a) in self.values.chunks(2).take(self.main_trace_width).enumerate() {
+        for (i, a) in
+            self.main_and_aux_evaluations.chunks(2).take(self.main_trace_width).enumerate()
+        {
             current[i] = a[0];
             next[i] = a[1];
         }
@@ -426,7 +424,9 @@ impl<E: FieldElement> TraceOodFrame<E> {
             let mut current_aux = vec![E::ZERO; self.aux_trace_width];
             let mut next_aux = vec![E::ZERO; self.aux_trace_width];
 
-            for (i, a) in self.values.chunks(2).skip(self.main_trace_width).enumerate() {
+            for (i, a) in
+                self.main_and_aux_evaluations.chunks(2).skip(self.main_trace_width).enumerate()
+            {
                 current_aux[i] = a[0];
                 next_aux[i] = a[1];
             }
@@ -438,13 +438,6 @@ impl<E: FieldElement> TraceOodFrame<E> {
     /// Returns the Lagrange kernel evaluation constraints c(z), c(gz), c(g^2z), c(g^4z), ...
     /// This should log(trace_length).
     pub fn lagrange_kernel_column_frame(&self) -> Option<&[E]> {
-        if self.num_lagrange_kernel_constraints_evaluations == 0 {
-            None
-        } else {
-            let start = self.main_trace_width + self.aux_trace_width;
-            let end = start + self.num_lagrange_kernel_constraints_evaluations;
-
-            Some(&self.values[start..end])
-        }
+        self.lagrange_kernel_evaluations.as_deref()
     }
 }

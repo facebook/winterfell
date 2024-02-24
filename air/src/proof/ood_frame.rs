@@ -12,10 +12,12 @@ use utils::{
 // TYPE ALIASES
 // ================================================================================================
 
-type ParsedOodFrame<E> = (Vec<E>, Vec<E>);
+// TODO: Make newtype
+type ParsedOodFrame<E> = (Vec<E>, Option<Vec<E>>, Vec<E>);
 
 // OUT-OF-DOMAIN FRAME
 // ================================================================================================
+/// TODO: UPDATE DOC
 /// Trace and constraint polynomial evaluations at an out-of-domain point.
 ///
 /// This struct contains the following evaluations:
@@ -30,6 +32,7 @@ type ParsedOodFrame<E> = (Vec<E>, Vec<E>);
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct OodFrame {
     trace_states: Vec<u8>,
+    lagrange_kernel_trace_states: Vec<u8>,
     evaluations: Vec<u8>,
 }
 
@@ -37,6 +40,7 @@ impl OodFrame {
     // UPDATERS
     // --------------------------------------------------------------------------------------------
 
+    /// TODO: UPDATE DOCS
     /// Updates the trace state portion of this out-of-domain frame. This also returns a compacted
     /// version of the out-of-domain frame with the rows interleaved. This is done so that reseeding
     /// of the random coin needs to be done only once as opposed to once per each row.
@@ -63,7 +67,22 @@ impl OodFrame {
         self.trace_states.write_u8(frame_size);
         self.trace_states.write_many(&result);
 
-        result
+        // save the Lagrange kernel evaluation frame (if any)
+        let lagrange_trace_states = {
+            let lagrange_trace_states = match trace_states.lagrange_kernel_frame {
+                Some(ref lagrange_trace_states) => lagrange_trace_states.clone(),
+                None => Vec::new(),
+            };
+
+            // trace states length will be smaller than u8::MAX, since it is `== log2(trace_len)`
+            debug_assert!(lagrange_trace_states.len() < u8::MAX.into());
+            self.lagrange_kernel_trace_states.write_u8(lagrange_trace_states.len() as u8);
+            self.lagrange_kernel_trace_states.write_many(&lagrange_trace_states);
+
+            lagrange_trace_states
+        };
+
+        result.into_iter().chain(lagrange_trace_states).collect()
     }
 
     /// Updates constraint evaluation portion of this out-of-domain frame.
@@ -106,9 +125,19 @@ impl OodFrame {
         let mut reader = SliceReader::new(&self.trace_states);
         let frame_size = reader.read_u8()? as usize;
         let trace = reader.read_many((main_trace_width + aux_trace_width) * frame_size)?;
+
         if reader.has_more_bytes() {
             return Err(DeserializationError::UnconsumedBytes);
         }
+
+        // parse Lagrange kernel column trace
+        let mut reader = SliceReader::new(&self.lagrange_kernel_trace_states);
+        let frame_size = reader.read_u8()? as usize;
+        let lagrange_kernel_trace = if frame_size > 0 {
+            Some(reader.read_many(frame_size)?)
+        } else {
+            None
+        };
 
         // parse the constraint evaluations
         let mut reader = SliceReader::new(&self.evaluations);
@@ -117,7 +146,7 @@ impl OodFrame {
             return Err(DeserializationError::UnconsumedBytes);
         }
 
-        Ok((trace, evaluations))
+        Ok((trace, lagrange_kernel_trace, evaluations))
     }
 }
 
@@ -130,6 +159,10 @@ impl Serializable for OodFrame {
         // write trace rows
         target.write_u16(self.trace_states.len() as u16);
         target.write_bytes(&self.trace_states);
+
+        // write lagrange kernel column trace rows
+        target.write_u16(self.lagrange_kernel_trace_states.len() as u16);
+        target.write_bytes(&self.lagrange_kernel_trace_states);
 
         // write constraint evaluations row
         target.write_u16(self.evaluations.len() as u16);
@@ -152,12 +185,17 @@ impl Deserializable for OodFrame {
         let num_trace_state_bytes = source.read_u16()? as usize;
         let trace_states = source.read_vec(num_trace_state_bytes)?;
 
+        // read lagrange kernel column trace rows
+        let num_lagrange_state_bytes = source.read_u16()? as usize;
+        let lagrange_kernel_trace_states = source.read_vec(num_lagrange_state_bytes)?;
+
         // read constraint evaluations row
         let num_constraint_evaluation_bytes = source.read_u16()? as usize;
         let evaluations = source.read_vec(num_constraint_evaluation_bytes)?;
 
         Ok(OodFrame {
             trace_states,
+            lagrange_kernel_trace_states,
             evaluations,
         })
     }
