@@ -12,12 +12,12 @@ fn test_lagrange_kernel_air() {
 
     let proof = prover.prove(trace).unwrap();
 
-    assert!(verify::<
+    verify::<
         LagrangeKernelMockAir,
         Blake3_256<BaseElement>,
         DefaultRandomCoin<Blake3_256<BaseElement>>,
     >(proof, (), &AcceptableOptions::MinConjecturedSecurity(0))
-    .is_ok());
+    .unwrap()
 }
 
 // LagrangeMockTrace
