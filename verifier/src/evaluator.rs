@@ -61,24 +61,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     // by the divisor of transition constraints.
     let mut result = t_constraints.combine_evaluations::<E>(&t_evaluations1, &t_evaluations2, x);
 
-    // 2 ----- evaluate Lagrange kernel transition constraints ------------------------------------
-
-    if let Some(lagrange_kernel_column_frame) = lagrange_kernel_column_frame {
-        let mut lagrange_t_evaluations = E::zeroed_vector(lagrange_kernel_column_frame.len());
-        air.evaluate_lagrange_kernel_aux_transition(
-            lagrange_kernel_column_frame,
-            &aux_rand_elements,
-            &mut lagrange_t_evaluations,
-        );
-
-        let lagrange_t_constraints = air.get_lagrange_kernel_transition_constraints(
-            composition_coefficients.lagrange_kernel_transition,
-        );
-
-        result += lagrange_t_constraints.combine_evaluations::<E>(&lagrange_t_evaluations, x);
-    }
-
-    // 3 ----- evaluate boundary constraints ------------------------------------------------------
+    // 2 ----- evaluate boundary constraints ------------------------------------------------------
 
     // get boundary constraints grouped by common divisor from the AIR
     let b_constraints = air.get_boundary_constraints(
@@ -102,6 +85,25 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
             result += group.evaluate_at(aux_trace_frame.current(), x);
         }
     }
+
+    // 3 ----- evaluate Lagrange kernel transition constraints ------------------------------------
+
+    if let Some(lagrange_kernel_column_frame) = lagrange_kernel_column_frame {
+        let mut lagrange_t_evaluations = E::zeroed_vector(lagrange_kernel_column_frame.len());
+        air.evaluate_lagrange_kernel_aux_transition(
+            lagrange_kernel_column_frame,
+            &aux_rand_elements,
+            &mut lagrange_t_evaluations,
+        );
+
+        let lagrange_t_constraints = air.get_lagrange_kernel_transition_constraints(
+            composition_coefficients.lagrange_kernel_transition,
+        );
+
+        result += lagrange_t_constraints.combine_evaluations::<E>(&lagrange_t_evaluations, x);
+    }
+
+    // 4 ----- evaluate Lagrange kernel boundary constraints ------------------------------------
 
     if let Some(lagrange_kernel_column_frame) = lagrange_kernel_column_frame {
         let (constraint, divisor) = b_constraints.lagrange_kernel_constraint().expect("TODO");
