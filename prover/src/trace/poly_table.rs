@@ -90,7 +90,9 @@ impl<E: FieldElement> TracePolyTable<E> {
                 let mut lagrange_kernel_frame = Vec::with_capacity(log_trace_len as usize);
                 for i in 0..log_trace_len {
                     let x = g.exp_vartime(2_u32.pow(log_trace_len - (i + 1)).into()) * z;
-                    lagrange_kernel_frame[i as usize] = polynom::eval(lagrange_kernel_col_poly, x);
+                    let lagrange_poly_at_x = polynom::eval(lagrange_kernel_col_poly, x);
+
+                    lagrange_kernel_frame.push(lagrange_poly_at_x);
                 }
 
                 Some(lagrange_kernel_frame)
