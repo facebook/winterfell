@@ -299,15 +299,14 @@ pub trait Air: Send + Sync {
         F: FieldElement<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
     {
-        assert_eq!(lagrange_kernel_column_frame.len(), result.len());
+        assert_eq!(lagrange_kernel_column_frame.len() - 1, result.len());
 
-        let v = lagrange_kernel_column_frame.len();
+        let v = lagrange_kernel_column_frame.len() - 1;
         let c = lagrange_kernel_column_frame;
         let r = aux_rand_elements.get_segment_elements(0);
 
         for k in 1..v + 1 {
-            // Note: c[i] = c(g^(2^i) * x)
-            result[k - 1] = (r[v - k] * c[0]) - ((E::ONE - r[v - k]) * c[v - k]);
+            result[k - 1] = (r[v - k] * c[0]) - ((E::ONE - r[v - k]) * c[v - k + 1]);
         }
     }
 
