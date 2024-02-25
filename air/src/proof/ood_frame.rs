@@ -132,9 +132,9 @@ impl OodFrame {
 
         // parse Lagrange kernel column trace
         let mut reader = SliceReader::new(&self.lagrange_kernel_trace_states);
-        let frame_size = reader.read_u8()? as usize;
-        let lagrange_kernel_trace = if frame_size > 0 {
-            Some(reader.read_many(frame_size)?)
+        let lagrange_kernel_frame_size = reader.read_u8()? as usize;
+        let lagrange_kernel_trace = if lagrange_kernel_frame_size > 0 {
+            Some(reader.read_many(lagrange_kernel_frame_size)?)
         } else {
             None
         };
