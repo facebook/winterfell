@@ -74,7 +74,7 @@ impl OodFrame {
                 None => Vec::new(),
             };
 
-            // trace states length will be smaller than u8::MAX, since it is `== log2(trace_len)`
+            // trace states length will be smaller than u8::MAX, since it is `== log2(trace_len) + 1`
             debug_assert!(lagrange_trace_states.len() < u8::MAX.into());
             self.lagrange_kernel_trace_states.write_u8(lagrange_trace_states.len() as u8);
             self.lagrange_kernel_trace_states.write_many(&lagrange_trace_states);
