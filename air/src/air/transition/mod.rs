@@ -210,6 +210,7 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
     }
 
     /// TODO: Document
+    /// FIXME: Why use `E` and `F` instead of `E` and `E::BaseField`?
     pub fn combine_evaluations<F>(&self, lagrange_kernel_column_evaluations: &[E], x: F) -> E
     where
         F: FieldElement<BaseField = E::BaseField>,
@@ -222,7 +223,6 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
             .fold(E::ZERO, |acc, ((&const_eval, &coef), divisor)| {
                 let z = divisor.evaluate_at(x);
 
-                // FIXME: Is this the right way to do it (specifically how we deal with the extension field)
                 acc + (coef.mul_base(const_eval) / z.into())
             })
     }
