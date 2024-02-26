@@ -134,7 +134,7 @@ impl Air for LagrangeKernelMockAir {
     ) {
         let current = frame.current()[0];
         let next = frame.next()[0];
-        
+
         // increments by 1
         result[0] = next - current - E::ONE;
     }

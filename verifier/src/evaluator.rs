@@ -89,7 +89,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     // 3 ----- evaluate Lagrange kernel transition constraints ------------------------------------
 
     if let Some(lagrange_kernel_column_frame) = lagrange_kernel_column_frame {
-        let mut lagrange_t_evaluations = E::zeroed_vector(lagrange_kernel_column_frame.len());
+        let mut lagrange_t_evaluations = E::zeroed_vector(lagrange_kernel_column_frame.len() - 1);
         air.evaluate_lagrange_kernel_aux_transition(
             lagrange_kernel_column_frame,
             &aux_rand_elements,

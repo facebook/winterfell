@@ -87,7 +87,7 @@ impl<E: FieldElement> TracePolyTable<E> {
             Some(col_idx) => {
                 let lagrange_kernel_col_poly = self.aux_segment_polys[0].get_column(col_idx);
 
-                let mut lagrange_kernel_frame = Vec::with_capacity(log_trace_len as usize);
+                let mut lagrange_kernel_frame = Vec::with_capacity(log_trace_len as usize + 1);
                 lagrange_kernel_frame.push(polynom::eval(lagrange_kernel_col_poly, z));
 
                 for i in 0..log_trace_len {
