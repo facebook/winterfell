@@ -33,7 +33,16 @@ impl LagrangeMockTrace {
     const TRACE_LENGTH: usize = 8;
 
     fn new() -> Self {
-        let col = vec![BaseElement::ZERO; Self::TRACE_LENGTH];
+        let col = vec![
+            BaseElement::ZERO,
+            BaseElement::from(1_u32),
+            BaseElement::from(2_u32),
+            BaseElement::from(3_u32),
+            BaseElement::from(4_u32),
+            BaseElement::from(5_u32),
+            BaseElement::from(6_u32),
+            BaseElement::from(7_u32),
+        ];
 
         Self {
             main_trace: ColMatrix::new(vec![col]),
@@ -119,11 +128,15 @@ impl Air for LagrangeKernelMockAir {
 
     fn evaluate_transition<E: math::FieldElement<BaseField = Self::BaseField>>(
         &self,
-        _frame: &EvaluationFrame<E>,
+        frame: &EvaluationFrame<E>,
         _periodic_values: &[E],
-        _result: &mut [E],
+        result: &mut [E],
     ) {
-        // do nothing
+        let current = frame.current()[0];
+        let next = frame.next()[0];
+        
+        // increments by 1
+        result[0] = next - current - E::ONE;
     }
 
     fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>> {
