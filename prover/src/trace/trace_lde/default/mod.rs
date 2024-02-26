@@ -184,7 +184,7 @@ where
     /// - if there is no auxiliary trace segment
     /// - if there is no Lagrange kernel column
     fn get_lagrange_kernel_column_frame(&self, lde_step: usize) -> Vec<E> {
-        let frame_length = log2(self.trace_info.length()) as usize;
+        let frame_length = log2(self.trace_info.length()) as usize + 1;
         let mut frame: Vec<E> = Vec::with_capacity(frame_length);
 
         let aux_segment = &self.aux_segment_ldes[0];
@@ -193,8 +193,11 @@ where
             .lagrange_kernel_aux_column_idx()
             .expect("expected a Lagrange kernel column to be present");
 
-        for i in 0..frame_length {
-            let next_lde_step = (lde_step + i * self.blowup()) % self.trace_len();
+        frame.push(aux_segment.row(lde_step)[lagrange_kernel_col_idx]);
+
+        for i in 0..frame_length - 1 {
+            let shift = self.blowup() * 2_u32.pow(i as u32) as usize;
+            let next_lde_step = (lde_step + shift) % self.trace_len();
 
             frame.push(aux_segment.row(next_lde_step)[lagrange_kernel_col_idx]);
         }
