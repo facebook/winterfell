@@ -9,6 +9,8 @@ use utils::{
     SliceReader,
 };
 
+use crate::LagrangeKernelEvaluationFrame;
+
 // TYPE ALIASES
 // ================================================================================================
 
@@ -70,7 +72,7 @@ impl OodFrame {
         // save the Lagrange kernel evaluation frame (if any)
         let lagrange_trace_states = {
             let lagrange_trace_states = match trace_states.lagrange_kernel_frame {
-                Some(ref lagrange_trace_states) => lagrange_trace_states.clone(),
+                Some(ref lagrange_trace_states) => lagrange_trace_states.inner().to_vec(),
                 None => Vec::new(),
             };
 
@@ -210,7 +212,7 @@ impl Deserializable for OodFrame {
 pub struct OodFrameTraceStates<E: FieldElement> {
     current_frame: Vec<E>,
     next_frame: Vec<E>,
-    lagrange_kernel_frame: Option<Vec<E>>,
+    lagrange_kernel_frame: Option<LagrangeKernelEvaluationFrame<E>>,
 }
 
 impl<E: FieldElement> OodFrameTraceStates<E> {
@@ -218,7 +220,7 @@ impl<E: FieldElement> OodFrameTraceStates<E> {
     pub fn new(
         current_frame: Vec<E>,
         next_frame: Vec<E>,
-        lagrange_kernel_frame: Option<Vec<E>>,
+        lagrange_kernel_frame: Option<LagrangeKernelEvaluationFrame<E>>,
     ) -> Self {
         assert_eq!(current_frame.len(), next_frame.len());
 
@@ -242,7 +244,7 @@ impl<E: FieldElement> OodFrameTraceStates<E> {
         &self.next_frame
     }
 
-    pub fn lagrange_kernel_frame(&self) -> Option<&[E]> {
-        self.lagrange_kernel_frame.as_ref().map(|frame| frame.as_ref())
+    pub fn lagrange_kernel_frame(&self) -> Option<&LagrangeKernelEvaluationFrame<E>> {
+        self.lagrange_kernel_frame.as_ref()
     }
 }

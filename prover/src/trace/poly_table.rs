@@ -7,8 +7,8 @@ use crate::{
     matrix::{ColumnIter, MultiColumnIter},
     ColMatrix,
 };
-use air::proof::OodFrameTraceStates;
-use math::{polynom, FieldElement, StarkField};
+use air::{proof::OodFrameTraceStates, LagrangeKernelEvaluationFrame};
+use math::{FieldElement, StarkField};
 use utils::collections::*;
 
 // TRACE POLYNOMIAL TABLE
@@ -87,17 +87,10 @@ impl<E: FieldElement> TracePolyTable<E> {
             Some(col_idx) => {
                 let lagrange_kernel_col_poly = self.aux_segment_polys[0].get_column(col_idx);
 
-                let mut lagrange_kernel_frame = Vec::with_capacity(log_trace_len as usize + 1);
-                lagrange_kernel_frame.push(polynom::eval(lagrange_kernel_col_poly, z));
-
-                for i in 0..log_trace_len {
-                    let x = g.exp_vartime(2_u32.pow(i).into()) * z;
-                    let lagrange_poly_at_x = polynom::eval(lagrange_kernel_col_poly, x);
-
-                    lagrange_kernel_frame.push(lagrange_poly_at_x);
-                }
-
-                Some(lagrange_kernel_frame)
+                Some(LagrangeKernelEvaluationFrame::from_lagrange_kernel_column_poly(
+                    lagrange_kernel_col_poly,
+                    z,
+                ))
             }
             None => None,
         };
