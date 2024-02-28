@@ -188,6 +188,27 @@ impl<T: Serializable, const C: usize> Serializable for [T; C] {
     }
 }
 
+impl<T: Serializable> Serializable for Vec<T> {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_usize(self.len());
+        target.write_many(self);
+    }
+}
+
+impl<K: Serializable, V: Serializable> Serializable for BTreeMap<K, V> {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_usize(self.len());
+        target.write_many(self);
+    }
+}
+
+impl<T: Serializable> Serializable for BTreeSet<T> {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_usize(self.len());
+        target.write_many(self);
+    }
+}
+
 // DESERIALIZABLE
 // ================================================================================================
 
@@ -376,5 +397,28 @@ impl<T: Deserializable, const C: usize> Deserializable for [T; C] {
         });
 
         Ok(res)
+    }
+}
+
+impl<T: Deserializable> Deserializable for Vec<T> {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let len = source.read_usize()?;
+        source.read_many(len)
+    }
+}
+
+impl<K: Deserializable + Ord, V: Deserializable> Deserializable for BTreeMap<K, V> {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let len = source.read_usize()?;
+        let data = source.read_many(len)?;
+        Ok(BTreeMap::from_iter(data))
+    }
+}
+
+impl<T: Deserializable + Ord> Deserializable for BTreeSet<T> {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let len = source.read_usize()?;
+        let data = source.read_many(len)?;
+        Ok(BTreeSet::from_iter(data))
     }
 }
