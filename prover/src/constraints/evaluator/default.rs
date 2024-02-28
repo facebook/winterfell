@@ -12,7 +12,7 @@ use air::{
     ConstraintDivisor, EvaluationFrame, LagrangeKernelTransitionConstraints, TransitionConstraints,
 };
 use math::{log2, FieldElement};
-use utils::iter_mut;
+use utils::{collections::Vec, iter_mut};
 
 #[cfg(feature = "concurrent")]
 use utils::{iterators::*, rayon};
