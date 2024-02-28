@@ -13,7 +13,7 @@ use air::{
     TransitionConstraints,
 };
 use math::{log2, FieldElement};
-use utils::{collections::Vec, iter_mut};
+use utils::{collections::*, iter_mut};
 
 #[cfg(feature = "concurrent")]
 use utils::{iterators::*, rayon};
