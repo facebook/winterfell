@@ -8,6 +8,7 @@ use super::{
     TraceInfo, TraceLde, TracePolyTable,
 };
 use crate::{RowMatrix, DEFAULT_SEGMENT_WIDTH};
+use air::LagrangeKernelEvaluationFrame;
 use crypto::MerkleTree;
 use math::log2;
 use tracing::info_span;
@@ -183,7 +184,10 @@ where
     /// # Panics
     /// - if there is no auxiliary trace segment
     /// - if there is no Lagrange kernel column
-    fn get_lagrange_kernel_column_frame(&self, lde_step: usize) -> Vec<E> {
+    fn get_lagrange_kernel_column_frame(
+        &self,
+        lde_step: usize,
+    ) -> LagrangeKernelEvaluationFrame<E> {
         let frame_length = log2(self.trace_info.length()) as usize + 1;
         let mut frame: Vec<E> = Vec::with_capacity(frame_length);
 
@@ -202,7 +206,7 @@ where
             frame.push(aux_segment.row(next_lde_step)[lagrange_kernel_col_idx]);
         }
 
-        frame
+        LagrangeKernelEvaluationFrame::new(frame)
     }
 
     /// Returns trace table rows at the specified positions along with Merkle authentication paths

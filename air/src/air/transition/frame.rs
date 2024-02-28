@@ -123,7 +123,16 @@ impl<E: FieldElement> LagrangeKernelEvaluationFrame<E> {
 
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
+
+    /// Returns a reference to the inner frame
     pub fn inner(&self) -> &[E] {
         &self.frame
+    }
+
+    /// Returns the number of rows in the frame.
+    ///
+    /// This is equal to `log(trace_length) + 1`.
+    pub fn num_rows(&self) -> usize {
+        self.frame.len()
     }
 }

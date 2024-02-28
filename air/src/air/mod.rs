@@ -289,20 +289,19 @@ pub trait Air: Send + Sync {
     // --------------------------------------------------------------------------------------------
 
     /// TODO: document properly
-    /// lagrange_kernel_evaluations: c(z), c(gz), c(g^2z), ...
     fn evaluate_lagrange_kernel_aux_transition<F, E>(
         &self,
-        lagrange_kernel_column_frame: &[E],
+        lagrange_kernel_column_frame: &LagrangeKernelEvaluationFrame<E>,
         aux_rand_elements: &AuxTraceRandElements<E>,
         result: &mut [E],
     ) where
         F: FieldElement<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
     {
-        assert_eq!(lagrange_kernel_column_frame.len() - 1, result.len());
+        debug_assert_eq!(lagrange_kernel_column_frame.num_rows() - 1, result.len());
 
-        let v = lagrange_kernel_column_frame.len() - 1;
-        let c = lagrange_kernel_column_frame;
+        let c = lagrange_kernel_column_frame.inner();
+        let v = c.len() - 1;
         let r = aux_rand_elements.get_segment_elements(0);
 
         for k in 1..v + 1 {

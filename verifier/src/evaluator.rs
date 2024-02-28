@@ -3,8 +3,11 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use air::{Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame};
-use math::{polynom, FieldElement};
+use air::{
+    Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
+    LagrangeKernelEvaluationFrame,
+};
+use math::{log2, polynom, FieldElement};
 use utils::collections::*;
 
 // CONSTRAINT EVALUATION
@@ -16,7 +19,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     composition_coefficients: ConstraintCompositionCoefficients<E>,
     main_trace_frame: &EvaluationFrame<E>,
     aux_trace_frame: &Option<EvaluationFrame<E>>,
-    lagrange_kernel_column_frame: Option<&[E]>,
+    lagrange_kernel_column_frame: Option<&LagrangeKernelEvaluationFrame<E>>,
     aux_rand_elements: AuxTraceRandElements<E>,
     x: E,
 ) -> E {
@@ -89,7 +92,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     // 3 ----- evaluate Lagrange kernel transition constraints ------------------------------------
 
     if let Some(lagrange_kernel_column_frame) = lagrange_kernel_column_frame {
-        let mut lagrange_t_evaluations = E::zeroed_vector(lagrange_kernel_column_frame.len() - 1);
+        let mut lagrange_t_evaluations = E::zeroed_vector(log2(air.trace_length()) as usize);
         air.evaluate_lagrange_kernel_aux_transition(
             lagrange_kernel_column_frame,
             &aux_rand_elements,
@@ -108,7 +111,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     if let Some(lagrange_kernel_column_frame) = lagrange_kernel_column_frame {
         let (constraint, divisor) = b_constraints.lagrange_kernel_constraint().expect("TODO");
 
-        let c0 = lagrange_kernel_column_frame[0];
+        let c0 = lagrange_kernel_column_frame.inner()[0];
 
         // TODO: This logic is very similar to `BoundaryConstraintGroup::evaluate_at` and `DefaultConstraintEvaluator::evaluate_lagrange_kernel_constraints`
         let numerator = constraint.evaluate_at(x, c0) * *constraint.cc();

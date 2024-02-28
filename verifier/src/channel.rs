@@ -6,7 +6,7 @@
 use crate::VerifierError;
 use air::{
     proof::{Queries, StarkProof, Table},
-    Air, EvaluationFrame,
+    Air, EvaluationFrame, LagrangeKernelEvaluationFrame,
 };
 use crypto::{BatchMerkleProof, ElementHasher, MerkleTree};
 use fri::VerifierChannel as FriVerifierChannel;
@@ -353,7 +353,7 @@ pub struct TraceOodFrame<E: FieldElement> {
     main_and_aux_evaluations: Vec<E>,
     main_trace_width: usize,
     aux_trace_width: usize,
-    lagrange_kernel_evaluations: Option<Vec<E>>,
+    lagrange_kernel_frame: Option<LagrangeKernelEvaluationFrame<E>>,
 }
 
 impl<E: FieldElement> TraceOodFrame<E> {
@@ -367,17 +367,18 @@ impl<E: FieldElement> TraceOodFrame<E> {
             main_and_aux_evaluations,
             main_trace_width,
             aux_trace_width,
-            lagrange_kernel_evaluations,
+            lagrange_kernel_frame: lagrange_kernel_evaluations
+                .map(|evals| LagrangeKernelEvaluationFrame::new(evals)),
         }
     }
 
     pub fn values(&self) -> Vec<E> {
-        match self.lagrange_kernel_evaluations {
-            Some(ref lagrange_kernel_evaluations) => self
+        match self.lagrange_kernel_frame {
+            Some(ref lagrange_kernel_frame) => self
                 .main_and_aux_evaluations
                 .clone()
                 .into_iter()
-                .chain(lagrange_kernel_evaluations.clone())
+                .chain(lagrange_kernel_frame.inner().iter().cloned())
                 .collect(),
             None => self.main_and_aux_evaluations.clone(),
         }
@@ -442,10 +443,8 @@ impl<E: FieldElement> TraceOodFrame<E> {
         }
     }
 
-    /// TODO: Make this clearer
-    /// Returns the Lagrange kernel evaluation constraints c(z), c(gz), c(g^2z), c(g^4z), ...
-    /// This should log(trace_length).
-    pub fn lagrange_kernel_column_frame(&self) -> Option<&[E]> {
-        self.lagrange_kernel_evaluations.as_deref()
+    /// Returns the Lagrange kernel evaluation frame, if any.
+    pub fn lagrange_kernel_column_frame(&self) -> Option<&LagrangeKernelEvaluationFrame<E>> {
+        self.lagrange_kernel_frame.as_ref()
     }
 }

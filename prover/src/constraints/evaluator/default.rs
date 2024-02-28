@@ -353,7 +353,7 @@ where
                 let (constraint, divisor) =
                     self.lagrange_kernel_boundary_constraint.as_ref().expect("TODO");
 
-                let c0 = lagrange_kernel_column_frame[0];
+                let c0 = lagrange_kernel_column_frame.inner()[0];
 
                 let numerator = constraint.evaluate_at(domain_point.into(), c0) * *constraint.cc();
                 let denominator = divisor.evaluate_at(domain_point.into());
