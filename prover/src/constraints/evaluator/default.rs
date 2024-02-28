@@ -8,8 +8,9 @@ use super::{
     ConstraintEvaluationTable, ConstraintEvaluator, PeriodicValueTable, StarkDomain, TraceLde,
 };
 use air::{
-    Air, AuxTraceRandElements, BoundaryConstraint, ConstraintCompositionCoefficients,
-    ConstraintDivisor, EvaluationFrame, LagrangeKernelTransitionConstraints, TransitionConstraints,
+    Air, AuxTraceRandElements, ConstraintCompositionCoefficients, ConstraintDivisor,
+    EvaluationFrame, LagrangeKernelBoundaryConstraint, LagrangeKernelTransitionConstraints,
+    TransitionConstraints,
 };
 use math::{log2, FieldElement};
 use utils::{collections::Vec, iter_mut};
@@ -39,8 +40,7 @@ pub struct DefaultConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A:
     air: &'a A,
     boundary_constraints: BoundaryConstraints<E>,
     transition_constraints: TransitionConstraints<E>,
-    lagrange_kernel_boundary_constraint:
-        Option<(BoundaryConstraint<E, E>, ConstraintDivisor<E::BaseField>)>,
+    lagrange_kernel_boundary_constraint: Option<LagrangeKernelBoundaryConstraint<E, E>>,
     lagrange_kernel_transition_constraints: Option<LagrangeKernelTransitionConstraints<E>>,
     aux_rand_elements: AuxTraceRandElements<E>,
     periodic_values: PeriodicValueTable<E::BaseField>,
@@ -175,17 +175,17 @@ where
             composition_coefficients.lagrange_kernel_boundary,
         );
 
-        // FIXME: This is almost copy/paste from `air::boundary::BoundaryConstraints::new()`
         let lagrange_kernel_boundary_constraint =
             air.get_lagrange_kernel_aux_assertion(&aux_rand_elements).map(|assertion| {
                 let lagrange_kernel_boundary_coefficient =
                     composition_coefficients.lagrange_kernel_boundary.expect("TODO: message");
-
                 let divisor = ConstraintDivisor::from_assertion(&assertion, air.trace_length());
-                let constraint =
-                    BoundaryConstraint::new_single(assertion, lagrange_kernel_boundary_coefficient);
 
-                (constraint, divisor)
+                LagrangeKernelBoundaryConstraint::new(
+                    assertion,
+                    lagrange_kernel_boundary_coefficient,
+                    divisor,
+                )
             });
 
         DefaultConstraintEvaluator {
@@ -350,15 +350,9 @@ where
             };
 
             let boundary_constraint_eval = {
-                let (constraint, divisor) =
-                    self.lagrange_kernel_boundary_constraint.as_ref().expect("TODO");
+                let constraint = self.lagrange_kernel_boundary_constraint.as_ref().expect("TODO");
 
-                let c0 = lagrange_kernel_column_frame.inner()[0];
-
-                let numerator = constraint.evaluate_at(domain_point.into(), c0) * *constraint.cc();
-                let denominator = divisor.evaluate_at(domain_point.into());
-
-                numerator / denominator
+                constraint.evaluate_at(domain_point.into(), &lagrange_kernel_column_frame)
             };
 
             let all_constraints_combined =
