@@ -37,7 +37,7 @@ mod tests;
 pub struct BoundaryConstraints<E: FieldElement> {
     main_constraints: Vec<BoundaryConstraintGroup<E::BaseField, E>>,
     aux_constraints: Vec<BoundaryConstraintGroup<E, E>>,
-    lagrange_kernel_constraint: Option<(BoundaryConstraint<E, E>, ConstraintDivisor<E::BaseField>)>,
+    lagrange_kernel_constraint: Option<LagrangeKernelBoundaryConstraint<E, E>>,
 }
 
 impl<E: FieldElement> BoundaryConstraints<E> {
@@ -128,12 +128,13 @@ impl<E: FieldElement> BoundaryConstraints<E> {
         let lagrange_kernel_constraint = lagrange_kernel_assertion.map(|assertion| {
             let lagrange_kernel_boundary_coefficient =
                 lagrange_kernel_boundary_coefficient.expect("TODO: message");
-
             let divisor = ConstraintDivisor::from_assertion(&assertion, trace_length);
-            let constraint =
-                BoundaryConstraint::new_single(assertion, lagrange_kernel_boundary_coefficient);
 
-            (constraint, divisor)
+            LagrangeKernelBoundaryConstraint::new(
+                assertion,
+                lagrange_kernel_boundary_coefficient,
+                divisor,
+            )
         });
 
         Self {
@@ -158,9 +159,7 @@ impl<E: FieldElement> BoundaryConstraints<E> {
         &self.aux_constraints
     }
 
-    pub fn lagrange_kernel_constraint(
-        &self,
-    ) -> Option<&(BoundaryConstraint<E, E>, ConstraintDivisor<E::BaseField>)> {
+    pub fn lagrange_kernel_constraint(&self) -> Option<&LagrangeKernelBoundaryConstraint<E, E>> {
         self.lagrange_kernel_constraint.as_ref()
     }
 }
