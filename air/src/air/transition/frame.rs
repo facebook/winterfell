@@ -4,10 +4,12 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::FieldElement;
+use math::{polynom, StarkField};
 use utils::collections::*;
 
 // EVALUATION FRAME
 // ================================================================================================
+
 /// A set of execution trace rows required for evaluation of transition constraints.
 ///
 /// In the current implementation, an evaluation frame always contains two consecutive rows of the
@@ -75,5 +77,45 @@ impl<E: FieldElement> EvaluationFrame<E> {
     #[inline(always)]
     pub fn next_mut(&mut self) -> &mut [E] {
         &mut self.next
+    }
+}
+
+// LAGRANGE KERNEL EVALUATION FRAME
+// ================================================================================================
+
+/// The evaluation frame for the Lagrange kernel.
+///
+/// TODO: document
+pub struct LagrangeKernelEvaluationFrame<E: FieldElement> {
+    frame: Vec<E>,
+}
+
+impl<E: FieldElement> LagrangeKernelEvaluationFrame<E> {
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
+    pub fn new(frame: Vec<E>) -> Self {
+        Self { frame }
+    }
+
+    /// Constructs the frame from the Lagrange kernel trace column polynomial coefficients, and an evaluation point.
+    pub fn from_lagrange_kernel_column_poly(lagrange_kernel_col_poly: &[E], z: E) -> Self {
+        let log_trace_len = lagrange_kernel_col_poly.len().ilog2();
+        let g = E::from(E::BaseField::get_root_of_unity(log_trace_len));
+
+        let mut frame = Vec::with_capacity(log_trace_len as usize + 1);
+
+        // push c(z)
+        frame.push(polynom::eval(lagrange_kernel_col_poly, z));
+
+        // push `c(gz)`, `c(z * g^2)`, `c(z * g^4)`, ..., `c(z * g^(2^(v-1)))`
+        for i in 0..log_trace_len {
+            let x = g.exp_vartime(2_u32.pow(i).into()) * z;
+            let lagrange_poly_at_x = polynom::eval(lagrange_kernel_col_poly, x);
+
+            frame.push(lagrange_poly_at_x);
+        }
+
+        Self { frame }
     }
 }

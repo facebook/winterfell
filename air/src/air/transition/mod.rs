@@ -7,7 +7,7 @@ use super::{AirContext, ConstraintDivisor, ExtensionOf, FieldElement};
 use utils::collections::*;
 
 mod frame;
-pub use frame::EvaluationFrame;
+pub use frame::{EvaluationFrame, LagrangeKernelEvaluationFrame};
 
 mod degree;
 pub use degree::TransitionConstraintDegree;

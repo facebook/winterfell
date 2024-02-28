@@ -22,8 +22,8 @@ pub use boundary::{BoundaryConstraint, BoundaryConstraintGroup, BoundaryConstrai
 
 mod transition;
 pub use transition::{
-    EvaluationFrame, LagrangeKernelTransitionConstraints, TransitionConstraintDegree,
-    TransitionConstraints,
+    EvaluationFrame, LagrangeKernelEvaluationFrame, LagrangeKernelTransitionConstraints,
+    TransitionConstraintDegree, TransitionConstraints,
 };
 
 mod coefficients;
