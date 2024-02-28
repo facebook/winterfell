@@ -100,7 +100,11 @@ pub trait ByteWriter: Sized {
     /// Serializes all `elements` and writes the resulting bytes into `self`.
     ///
     /// This method does not write any metadata (e.g. number of serialized elements) into `self`.
-    fn write_many<S: Serializable>(&mut self, elements: &[S]) {
+    fn write_many<S, T>(&mut self, elements: T)
+    where
+        T: IntoIterator<Item = S>,
+        S: Serializable,
+    {
         for element in elements {
             element.write_into(self);
         }
