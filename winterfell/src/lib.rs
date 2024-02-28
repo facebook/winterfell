@@ -579,6 +579,8 @@
 //! * [A Framework for Efficient STARKs](https://medium.com/starkware/a-framework-for-efficient-starks-19608ba06fbe)
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#[cfg(not(feature = "std"))]
+extern crate alloc;
 
 pub use prover::{
     crypto, iterators, math, matrix, Air, AirContext, Assertion, AuxTraceRandElements,

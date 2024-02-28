@@ -5,6 +5,9 @@ use prover::{
     matrix::ColMatrix,
 };
 
+#[cfg(not(feature = "std"))]
+use alloc::{vec, vec::Vec};
+
 #[test]
 fn test_lagrange_kernel_air() {
     let trace = LagrangeMockTrace::new();
