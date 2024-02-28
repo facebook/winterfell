@@ -18,7 +18,10 @@ mod assertions;
 pub use assertions::Assertion;
 
 mod boundary;
-pub use boundary::{BoundaryConstraint, BoundaryConstraintGroup, BoundaryConstraints};
+pub use boundary::{
+    BoundaryConstraint, BoundaryConstraintGroup, BoundaryConstraints,
+    LagrangeKernelBoundaryConstraint,
+};
 
 mod transition;
 pub use transition::{

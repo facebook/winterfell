@@ -8,7 +8,7 @@ use math::{ExtensionOf, FieldElement};
 use utils::collections::*;
 
 mod constraint;
-pub use constraint::BoundaryConstraint;
+pub use constraint::{BoundaryConstraint, LagrangeKernelBoundaryConstraint};
 
 mod constraint_group;
 pub use constraint_group::BoundaryConstraintGroup;
@@ -37,7 +37,6 @@ mod tests;
 pub struct BoundaryConstraints<E: FieldElement> {
     main_constraints: Vec<BoundaryConstraintGroup<E::BaseField, E>>,
     aux_constraints: Vec<BoundaryConstraintGroup<E, E>>,
-    // TODO: FIX API
     lagrange_kernel_constraint: Option<(BoundaryConstraint<E, E>, ConstraintDivisor<E::BaseField>)>,
 }
 
