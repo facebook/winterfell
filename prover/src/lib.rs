@@ -286,7 +286,7 @@ pub trait Prover {
         for i in 0..trace.layout().num_aux_segments() {
             let num_columns = trace.layout().get_aux_segment_width(i);
             let (aux_segment, rand_elements) = {
-                let _ = info_span!("build_aux_trace_segment", num_columns).entered();
+                let span = info_span!("build_aux_trace_segment", num_columns).entered();
 
                 // draw a set of random elements required to build an auxiliary trace segment
                 let rand_elements = channel.get_aux_trace_segment_rand_elements(i);
@@ -296,6 +296,7 @@ pub trait Prover {
                     .build_aux_segment(&aux_trace_segments, &rand_elements)
                     .expect("failed build auxiliary trace segment");
 
+                drop(span);
                 (aux_segment, rand_elements)
             };
             assert_eq!(aux_segment.num_cols(), num_columns);
