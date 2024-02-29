@@ -177,13 +177,20 @@ impl<E: FieldElement> TransitionConstraints<E> {
 // LAGRANGE KERNEL TRANSITION CONSTRAINTS INFO
 // ================================================================================================
 
+/// Represents the transition constraints for the Lagrange kernel column, as well as the random
+/// coefficients used to linearly combine all the constraints.
+///
+/// There are `log(trace_len)` constraints, each with their own divisor, as described in 
+/// [this issue](https://github.com/facebook/winterfell/issues/240).
 pub struct LagrangeKernelTransitionConstraints<E: FieldElement> {
     lagrange_constraint_coefficients: Vec<E>,
     divisors: Vec<ConstraintDivisor<E::BaseField>>,
 }
 
 impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
-    /// TODO: Document
+    /// Creates a new [`LagrangeKernelTransitionConstraints`], which represents the Lagrange kernel
+    /// transition constraints as well as the random coefficients necessary to combine the
+    /// constraints together.
     pub fn new(
         context: &AirContext<E::BaseField>,
         lagrange_constraint_coefficients: Vec<E>,
@@ -209,8 +216,8 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
         }
     }
 
-    /// TODO: Document
-    /// FIXME: Why use `E` and `F` instead of `E` and `E::BaseField`?
+    /// Computes a linear combination of all transition constraint evaluations, dividing each
+    /// transition constraint by its corresponding divisor.
     pub fn combine_evaluations<F>(&self, lagrange_kernel_column_evaluations: &[E], x: F) -> E
     where
         F: FieldElement<BaseField = E::BaseField>,
