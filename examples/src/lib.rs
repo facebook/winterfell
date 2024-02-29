@@ -5,7 +5,7 @@
 
 use structopt::StructOpt;
 use winterfell::{
-    crypto::hashers::{GriffinJive64_256, Rp64_256, RpJive64_256},
+    crypto::hashers::{Rp64_256, RpJive64_256},
     math::fields::f128::BaseElement,
     FieldExtension, ProofOptions, StarkProof, VerifierError,
 };
@@ -88,7 +88,6 @@ impl ExampleOptions {
             "sha3_256" => HashFunction::Sha3_256,
             "rp64_256" => HashFunction::Rp64_256,
             "rp_jive64_256" => HashFunction::RpJive64_256,
-            "griffin_jive64_256" => HashFunction::GriffinJive64_256,
             val => panic!("'{val}' is not a valid hash function option"),
         };
 
@@ -113,7 +112,6 @@ impl ExampleOptions {
             "sha3_256" => proof.security_level::<Sha3_256>(conjectured),
             "rp64_256" => proof.security_level::<Rp64_256>(conjectured),
             "rp_jive64_256" => proof.security_level::<RpJive64_256>(conjectured),
-            "griffin_jive64_256" => proof.security_level::<GriffinJive64_256>(conjectured),
             val => panic!("'{val}' is not a valid hash function option"),
         };
 
@@ -236,10 +234,4 @@ pub enum HashFunction {
     ///
     /// When this function is used in the STARK protocol, proof security cannot exceed 128 bits.
     RpJive64_256,
-
-    /// Griffin hash function with 256 bit output. It only works in `f64` field.
-    /// This instance uses the Jive compression mode in Merkle trees.
-    ///
-    /// When this function is used in the STARK protocol, proof security cannot exceed 128 bits.
-    GriffinJive64_256,
 }
