@@ -109,7 +109,9 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     // 4 ----- evaluate Lagrange kernel boundary constraints ------------------------------------
 
     if let Some(lagrange_kernel_column_frame) = lagrange_kernel_column_frame {
-        let constraint = b_constraints.lagrange_kernel_constraint().expect("TODO");
+        let constraint = b_constraints
+            .lagrange_kernel_constraint()
+            .expect("expected Lagrange boundary constraint to be present");
 
         result += constraint.evaluate_at(x, lagrange_kernel_column_frame);
     }

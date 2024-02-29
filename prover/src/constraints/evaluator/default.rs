@@ -177,8 +177,9 @@ where
 
         let lagrange_kernel_boundary_constraint =
             air.get_lagrange_kernel_aux_assertion(&aux_rand_elements).map(|assertion| {
-                let lagrange_kernel_boundary_coefficient =
-                    composition_coefficients.lagrange_kernel_boundary.expect("TODO: message");
+                let lagrange_kernel_boundary_coefficient = composition_coefficients
+                    .lagrange_kernel_boundary
+                    .expect("expected Lagrange boundary coefficient to be present");
                 let divisor = ConstraintDivisor::from_assertion(&assertion, air.trace_length());
 
                 LagrangeKernelBoundaryConstraint::new(
@@ -350,7 +351,10 @@ where
             };
 
             let boundary_constraint_eval = {
-                let constraint = self.lagrange_kernel_boundary_constraint.as_ref().expect("TODO");
+                let constraint = self
+                    .lagrange_kernel_boundary_constraint
+                    .as_ref()
+                    .expect("expected Lagrange boundary constraint to be present");
 
                 constraint.evaluate_at(domain_point.into(), &lagrange_kernel_column_frame)
             };

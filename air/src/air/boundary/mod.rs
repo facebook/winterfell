@@ -126,8 +126,8 @@ impl<E: FieldElement> BoundaryConstraints<E> {
         );
 
         let lagrange_kernel_constraint = lagrange_kernel_assertion.map(|assertion| {
-            let lagrange_kernel_boundary_coefficient =
-                lagrange_kernel_boundary_coefficient.expect("TODO: message");
+            let lagrange_kernel_boundary_coefficient = lagrange_kernel_boundary_coefficient
+                .expect("expected Lagrange boundary coefficient to be present");
             let divisor = ConstraintDivisor::from_assertion(&assertion, trace_length);
 
             LagrangeKernelBoundaryConstraint::new(
