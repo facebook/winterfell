@@ -83,17 +83,14 @@ impl<E: FieldElement> TracePolyTable<E> {
         let current_frame = self.evaluate_at(z);
         let next_frame = self.evaluate_at(z * g);
 
-        let lagrange_kernel_frame = match self.lagrange_kernel_column_idx {
-            Some(col_idx) => {
-                let lagrange_kernel_col_poly = self.aux_segment_polys[0].get_column(col_idx);
+        let lagrange_kernel_frame = self.lagrange_kernel_column_idx.map(|col_idx| {
+            let lagrange_kernel_col_poly = self.aux_segment_polys[0].get_column(col_idx);
 
-                Some(LagrangeKernelEvaluationFrame::from_lagrange_kernel_column_poly(
-                    lagrange_kernel_col_poly,
-                    z,
-                ))
-            }
-            None => None,
-        };
+            LagrangeKernelEvaluationFrame::from_lagrange_kernel_column_poly(
+                lagrange_kernel_col_poly,
+                z,
+            )
+        });
 
         OodFrameTraceStates::new(current_frame, next_frame, lagrange_kernel_frame)
     }
