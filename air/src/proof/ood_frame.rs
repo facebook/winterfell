@@ -11,14 +11,16 @@ use utils::{
 
 use crate::LagrangeKernelEvaluationFrame;
 
-// TYPE ALIASES
-// ================================================================================================
-
-// TODO: Make newtype
-type ParsedOodFrame<E> = (Vec<E>, Option<Vec<E>>, Vec<E>);
-
 // OUT-OF-DOMAIN FRAME
 // ================================================================================================
+
+/// Represents an [`OodFrame`] where the trace and constraint evaluations have been parsed out.
+pub struct ParsedOodFrame<E> {
+    pub ood_trace_evaluations: Vec<E>,
+    pub ood_lagrange_kernel_trace_evaluations: Option<Vec<E>>,
+    pub ood_constraint_evaluations: Vec<E>,
+}
+
 /// TODO: UPDATE DOC
 /// Trace and constraint polynomial evaluations at an out-of-domain point.
 ///
@@ -148,7 +150,11 @@ impl OodFrame {
             return Err(DeserializationError::UnconsumedBytes);
         }
 
-        Ok((trace, lagrange_kernel_trace, evaluations))
+        Ok(ParsedOodFrame {
+            ood_trace_evaluations: trace,
+            ood_lagrange_kernel_trace_evaluations: lagrange_kernel_trace,
+            ood_constraint_evaluations: evaluations,
+        })
     }
 }
 
