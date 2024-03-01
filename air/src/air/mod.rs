@@ -291,7 +291,8 @@ pub trait Air: Send + Sync {
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
 
-    /// TODO: document properly
+    /// Evaluates the Lagrange kernel transition constraints over the specified Lagrange kernel
+    /// evaluation frame and stores them in `result`.
     fn evaluate_lagrange_kernel_aux_transition<F, E>(
         &self,
         lagrange_kernel_column_frame: &LagrangeKernelEvaluationFrame<E>,
@@ -312,19 +313,26 @@ pub trait Air: Send + Sync {
         }
     }
 
-    /// TODO: Document and refactor (use more descriptive var names)
+    /// Evaluates and returns the Lagrange kernel boundary constraint
     fn get_lagrange_kernel_aux_assertion<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         aux_rand_elements: &AuxTraceRandElements<E>,
     ) -> Option<Assertion<E>> {
         let lagrange_column_idx = self.context().lagrange_kernel_aux_column_idx()?;
 
-        let v = log2(self.context().trace_len());
-        let r = aux_rand_elements.get_segment_elements(0);
+        let assertion_value = {
+            let r = aux_rand_elements.get_segment_elements(0);
+            let r_len = log2(self.context().trace_len());
 
-        let value = (0..v).fold(E::ONE, |acc, idx| acc * (E::ONE - r[idx as usize]));
+            let mut assertion_value = E::ONE;
+            for idx in 0..r_len {
+                assertion_value *= E::ONE - r[idx as usize];
+            }
 
-        Some(Assertion::single(lagrange_column_idx, 0, value))
+            assertion_value
+        };
+
+        Some(Assertion::single(lagrange_column_idx, 0, assertion_value))
     }
 
     /// Returns values for all periodic columns used in the computation.
