@@ -21,12 +21,13 @@ pub struct ParsedOodFrame<E> {
     pub ood_constraint_evaluations: Vec<E>,
 }
 
-/// TODO: UPDATE DOC
 /// Trace and constraint polynomial evaluations at an out-of-domain point.
 ///
 /// This struct contains the following evaluations:
 /// * Evaluations of all trace polynomials at *z*.
 /// * Evaluations of all trace polynomials at *z * g*.
+/// * Evaluations of Lagrange kernel trace polynomial (if any) at *z*, *z * g*, *z * g^2*, ...,
+///   *z * g^(2^(v-1))*, where `v == log(trace_len)`
 /// * Evaluations of constraint composition column polynomials at *z*.
 ///
 /// where *z* is an out-of-domain point and *g* is the generator of the trace domain.
@@ -44,10 +45,10 @@ impl OodFrame {
     // UPDATERS
     // --------------------------------------------------------------------------------------------
 
-    /// TODO: UPDATE DOCS
     /// Updates the trace state portion of this out-of-domain frame. This also returns a compacted
-    /// version of the out-of-domain frame with the rows interleaved. This is done so that reseeding
-    /// of the random coin needs to be done only once as opposed to once per each row.
+    /// version of the out-of-domain frame (including the Lagrange kernel frame, if any) with the
+    /// rows interleaved. This is done so that reseeding of the random coin needs to be done only
+    /// once as opposed to once per each row.
     ///
     /// # Panics
     /// Panics if evaluation frame has already been set.
@@ -214,7 +215,8 @@ impl Deserializable for OodFrame {
 
 /// Stores the trace evaluations evaluated at `z` and `gz`, where `z` is a random Field element. If
 /// the Air contains a Lagrange kernel auxiliary column, then that column interpolated polynomial
-/// will be evaluated at `z`, `gz`, ... `TODO`, and stored in `lagrange_kernel_frame`.
+/// will be evaluated at `z`, `gz`, `g^2 z`, ... `g^(2^(v-1)) z`, where `v == log(trace_len)`, and
+/// stored in `lagrange_kernel_frame`.
 pub struct OodFrameTraceStates<E: FieldElement> {
     current_frame: Vec<E>,
     next_frame: Vec<E>,
@@ -222,7 +224,7 @@ pub struct OodFrameTraceStates<E: FieldElement> {
 }
 
 impl<E: FieldElement> OodFrameTraceStates<E> {
-    /// TODO: Document all methods
+    /// Creates a new [`OodFrameTraceStates`] from current, next and optionally Lagrange kernel frames.
     pub fn new(
         current_frame: Vec<E>,
         next_frame: Vec<E>,
@@ -237,19 +239,22 @@ impl<E: FieldElement> OodFrameTraceStates<E> {
         }
     }
 
-    /// Returns the number of columns that each frame
+    /// Returns the number of columns for the current and next frames.
     pub fn num_columns(&self) -> usize {
         self.current_frame.len()
     }
 
+    /// Returns the current frame.
     pub fn current_frame(&self) -> &[E] {
         &self.current_frame
     }
 
+    /// Returns the next frame.
     pub fn next_frame(&self) -> &[E] {
         &self.next_frame
     }
 
+    /// Returns the Lagrange kernel frame, if any.
     pub fn lagrange_kernel_frame(&self) -> Option<&LagrangeKernelEvaluationFrame<E>> {
         self.lagrange_kernel_frame.as_ref()
     }
