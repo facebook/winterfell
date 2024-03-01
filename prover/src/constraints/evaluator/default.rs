@@ -297,7 +297,6 @@ where
             }
 
             // when in debug mode, save transition constraint evaluations
-            // TODO: Add lagrange kernel evaluations
             #[cfg(debug_assertions)]
             fragment.update_transition_evaluations(i, &tm_evaluations, &ta_evaluations);
 
