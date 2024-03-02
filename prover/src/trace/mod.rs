@@ -236,13 +236,16 @@ pub trait Trace: Sized {
             let v = log2(self.length()) as usize;
             let r = aux_rand_elements.get_segment_elements(0);
 
+            // Loop over every constraint
             for constraint_idx in 1..v + 1 {
-                let domain_step = (v - constraint_idx) as u32;
-                let enforcement_dom_len = self.length() / 2_usize.pow(domain_step + 1);
+                let domain_step = 2_usize.pow((v - constraint_idx + 1) as u32);
+                let domain_half_step = 2_usize.pow((v - constraint_idx) as u32);
 
-                for domain_shift in 0..enforcement_dom_len {
-                    let x_current = domain_shift * 2_usize.pow(domain_step + 1);
-                    let x_next = x_current + 2_usize.pow(domain_step);
+                // Every transition constraint has a different enforcement domain (i.e. the rows to which it applies).
+                let enforcement_dom_len = self.length() / domain_step;
+                for dom_idx in 0..enforcement_dom_len {
+                    let x_current = dom_idx * domain_step;
+                    let x_next = x_current + domain_half_step;
 
                     let evaluation = (r[v - constraint_idx] * c[x_current])
                         - ((E::ONE - r[v - constraint_idx]) * c[x_next]);
