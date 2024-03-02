@@ -5,7 +5,7 @@
 
 use super::{matrix::MultiColumnIter, ColMatrix};
 use air::{Air, AuxTraceRandElements, EvaluationFrame, TraceInfo};
-use math::{polynom, FieldElement, StarkField};
+use math::{log2, polynom, FieldElement, StarkField};
 
 mod trace_lde;
 pub use trace_lde::{DefaultTraceLde, TraceLde};
@@ -229,7 +229,31 @@ pub trait Trace: Sized {
             x *= g;
         }
 
-        // TODO: Validate lagrange kernel column
+        // evaluate transition constraints for Lagrange kernel column (if any) and make sure
+        // they all evaluate to zeros
+        if let Some(col_idx) = self.info().lagrange_kernel_aux_column_idx() {
+            let c = aux_segments[0].get_column(col_idx);
+            let v = log2(self.length()) as usize;
+            let r = aux_rand_elements.get_segment_elements(0);
+
+            for constraint_idx in 1..v + 1 {
+                let domain_step = (v - constraint_idx) as u32;
+                let enforcement_dom_len = self.length() / 2_usize.pow(domain_step + 1);
+
+                for domain_shift in 0..enforcement_dom_len {
+                    let x_current = domain_shift * 2_usize.pow(domain_step + 1);
+                    let x_next = x_current + 2_usize.pow(domain_step);
+
+                    let evaluation = (r[v - constraint_idx] * c[x_current])
+                        - ((E::ONE - r[v - constraint_idx]) * c[x_next]);
+
+                    assert!(
+                        evaluation == E::ZERO,
+                        "Lagrange transition constraint {constraint_idx} did not evaluate to ZERO at step {x_current}"
+                    );
+                }
+            }
+        }
     }
 }
 
