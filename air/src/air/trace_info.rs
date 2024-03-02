@@ -428,6 +428,7 @@ impl Deserializable for TraceInfo {
 mod tests {
     use super::{ToElements, TraceInfo};
     use math::{fields::f64::BaseElement, FieldElement};
+    use utils::{Deserializable, Serializable};
 
     #[test]
     fn trace_info_to_elements() {
@@ -475,5 +476,29 @@ mod tests {
         );
 
         assert_eq!(expected, info.to_elements());
+    }
+
+    /// Tests the serialization/deserialization of [`TraceInfo`] when there is a Lagrange kernel column
+    #[test]
+    fn trace_info_lagrange_kernel_serialization() {
+        let main_width = 20;
+        let trace_length = 64_u32;
+        let aux_width = 9;
+        let aux_rands = 12;
+        let trace_meta = vec![1_u8, 2, 3, 4];
+
+        let info = TraceInfo::new_multi_segment(
+            main_width as usize,
+            [aux_width as usize],
+            [aux_rands as usize],
+            Some(1),
+            trace_length as usize,
+            trace_meta,
+        );
+
+        let serialized_info = info.to_bytes();
+        let deserialized_info = TraceInfo::read_from_bytes(&serialized_info).unwrap();
+
+        assert_eq!(info, deserialized_info);
     }
 }
