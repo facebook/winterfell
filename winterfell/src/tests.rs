@@ -68,13 +68,16 @@ impl Trace for LagrangeMockTrace {
     fn build_aux_segment<E: FieldElement<BaseField = BaseElement>>(
         &mut self,
         aux_segments: &[ColMatrix<E>],
-        rand_elements: &[E],
+        _rand_elements: &[E],
+        lagrange_rand_elements: Option<&[E]>,
     ) -> Option<ColMatrix<E>> {
         assert!(aux_segments.is_empty());
 
-        let r0 = rand_elements[0];
-        let r1 = rand_elements[1];
-        let r2 = rand_elements[2];
+        let lagrange_rand_elements = lagrange_rand_elements.unwrap();
+
+        let r0 = lagrange_rand_elements[0];
+        let r1 = lagrange_rand_elements[1];
+        let r2 = lagrange_rand_elements[2];
 
         let col = vec![
             (E::ONE - r2) * (E::ONE - r1) * (E::ONE - r0),

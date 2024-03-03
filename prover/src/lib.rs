@@ -290,10 +290,15 @@ pub trait Prover {
 
                 // draw a set of random elements required to build an auxiliary trace segment
                 let rand_elements = channel.get_aux_trace_segment_rand_elements(i);
+                let lagrange_rand_elements = if air.trace_info().has_lagrange_kernel_aux_column() {
+                    Some(air.lagrange_kernel_rand_elements(&rand_elements))
+                } else {
+                    None
+                };
 
                 // build the trace segment
                 let aux_segment = trace
-                    .build_aux_segment(&aux_trace_segments, &rand_elements)
+                    .build_aux_segment(&aux_trace_segments, &rand_elements, lagrange_rand_elements)
                     .expect("failed build auxiliary trace segment");
 
                 (aux_segment, rand_elements)

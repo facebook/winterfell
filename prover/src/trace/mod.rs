@@ -49,17 +49,22 @@ pub trait Trace: Sized {
     /// Returns a reference to a [Matrix] describing the main segment of this trace.
     fn main_segment(&self) -> &ColMatrix<Self::BaseField>;
 
-    /// Builds and returns the next auxiliary trace segment. If there are no more segments to
-    /// build (i.e., the trace is complete), None is returned.
+    /// Builds and returns the next auxiliary trace segment. If there are no more segments to build
+    /// (i.e., the trace is complete), None is returned.
     ///
-    /// The `aux_segments` slice contains a list of auxiliary trace segments built as a result
-    /// of prior invocations of this function. Thus, for example, on the first invocation,
-    /// `aux_segments` will be empty; on the second invocation, it will contain a single matrix
-    /// (the one built during the first invocation) etc.
+    /// The `aux_segments` slice contains a list of auxiliary trace segments built as a result of
+    /// prior invocations of this function. Thus, for example, on the first invocation,
+    /// `aux_segments` will be empty; on the second invocation, it will contain a single matrix (the
+    /// one built during the first invocation) etc.
+    ///
+    /// The `rand_elements` slice contains the random elements to use to build the aux segment. If a
+    /// Lagrange kernel column is present, the `lagrange_kernel_rand_elements` should be used. See
+    /// [`Air::lagrange_kernel_rand_elements`] for more details.
     fn build_aux_segment<E: FieldElement<BaseField = Self::BaseField>>(
         &mut self,
         aux_segments: &[ColMatrix<E>],
         rand_elements: &[E],
+        lagrange_kernel_rand_elements: Option<&[E]>,
     ) -> Option<ColMatrix<E>>;
 
     /// Reads an evaluation frame from the main trace segment at the specified row.

@@ -306,11 +306,30 @@ pub trait Air: Send + Sync {
 
         let c = lagrange_kernel_column_frame.inner();
         let v = c.len() - 1;
-        let r = aux_rand_elements.get_segment_elements(0);
+        let r =
+            self.lagrange_kernel_rand_elements::<F, E>(aux_rand_elements.get_segment_elements(0));
 
         for k in 1..v + 1 {
             result[k - 1] = (r[v - k] * c[0]) - ((E::ONE - r[v - k]) * c[v - k + 1]);
         }
+    }
+
+    /// Returns the random elements to use in the lagrange kernel.
+    ///
+    /// The return slice stores the least significant random element first. For example, for a trace
+    /// length of 8, there will be 3 random elements, such that
+    /// - return[0] = r0
+    /// - return[1] = r1
+    /// - return[2] = r2
+    /// where `return` is the returned slice, and r = (r2, r1, r0).
+    fn lagrange_kernel_rand_elements<'r, F, E>(&self, aux_rand_elements: &'r [E]) -> &'r [E]
+    where
+        F: FieldElement<BaseField = Self::BaseField>,
+        E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
+    {
+        let num_rand_elements = log2(self.trace_length()) as usize;
+
+        &aux_rand_elements[0..num_rand_elements]
     }
 
     /// Evaluates and returns the Lagrange kernel boundary constraint
