@@ -212,12 +212,17 @@ impl TraceInfo {
         self.lagrange_kernel_aux_column_idx
     }
 
+    /// Returns true if the auxiliary trace segment contains a Lagrange kernel column
+    pub fn has_lagrange_kernel_aux_column(&self) -> bool {
+        self.lagrange_kernel_aux_column_idx.is_some()
+    }
+
     /// Returns true if there is only one auxiliary column, and that column is the Lagrange kernel column
     pub fn aux_segment_has_only_lagrange_kernel_column(&self) -> bool {
-        match self.lagrange_kernel_aux_column_idx() {
-            // Note that if `aux_trace_width == 1`, then `_idx` is guaranteed to be 0
-            Some(_idx) => self.aux_trace_width() == 1,
-            None => false,
+        if self.has_lagrange_kernel_aux_column() {
+            self.aux_trace_width() == 1
+        } else {
+            false
         }
     }
 

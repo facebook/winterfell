@@ -111,27 +111,23 @@ where
         evaluation_table.validate_transition_degrees();
 
         // combine all evaluations into a single column
-        let combined_evaluations =
-            if self.air.trace_info().lagrange_kernel_aux_column_idx().is_some() {
-                // if present, linearly combine the lagrange kernel evaluations too
-                let main_and_aux_evaluations = evaluation_table.combine();
+        let combined_evaluations = if self.air.trace_info().has_lagrange_kernel_aux_column() {
+            // if present, linearly combine the lagrange kernel evaluations too
+            let main_and_aux_evaluations = evaluation_table.combine();
 
-                let lagrange_kernel_combined_evals =
-                    self.evaluate_lagrange_kernel_constraints(trace, domain);
+            let lagrange_kernel_combined_evals =
+                self.evaluate_lagrange_kernel_constraints(trace, domain);
 
-                debug_assert_eq!(
-                    main_and_aux_evaluations.len(),
-                    lagrange_kernel_combined_evals.len()
-                );
+            debug_assert_eq!(main_and_aux_evaluations.len(), lagrange_kernel_combined_evals.len());
 
-                main_and_aux_evaluations
-                    .into_iter()
-                    .zip(lagrange_kernel_combined_evals)
-                    .map(|(eval_1, eval_2)| eval_1 + eval_2)
-                    .collect()
-            } else {
-                evaluation_table.combine()
-            };
+            main_and_aux_evaluations
+                .into_iter()
+                .zip(lagrange_kernel_combined_evals)
+                .map(|(eval_1, eval_2)| eval_1 + eval_2)
+                .collect()
+        } else {
+            evaluation_table.combine()
+        };
 
         CompositionPolyTrace::new(combined_evaluations)
     }

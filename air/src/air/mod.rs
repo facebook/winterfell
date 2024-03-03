@@ -318,7 +318,7 @@ pub trait Air: Send + Sync {
         &self,
         aux_rand_elements: &AuxTraceRandElements<E>,
     ) -> Option<Assertion<E>> {
-        let lagrange_column_idx = self.context().lagrange_kernel_aux_column_idx()?;
+        let lagrange_column_idx = self.context().trace_info().lagrange_kernel_aux_column_idx()?;
 
         let assertion_value = {
             let r = aux_rand_elements.get_segment_elements(0);
@@ -557,7 +557,7 @@ pub trait Air: Send + Sync {
         }
 
         let mut lagrange_kernel_t_coefficients = Vec::new();
-        if self.context().lagrange_kernel_aux_column_idx().is_some() {
+        if self.context().trace_info().has_lagrange_kernel_aux_column() {
             for _ in 0..log2(self.context().trace_len()) {
                 lagrange_kernel_t_coefficients.push(public_coin.draw()?);
             }
@@ -569,9 +569,10 @@ pub trait Air: Send + Sync {
         }
 
         let lagrange_kernel_boundary = {
-            match self.context().lagrange_kernel_aux_column_idx() {
-                Some(_) => Some(public_coin.draw()?),
-                None => None,
+            if self.context().trace_info().has_lagrange_kernel_aux_column() {
+                Some(public_coin.draw()?)
+            } else {
+                None
             }
         };
 

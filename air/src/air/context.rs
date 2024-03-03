@@ -102,9 +102,7 @@ impl<B: StarkField> AirContext<B> {
         if trace_info.is_multi_segment() {
             // If the only auxiliary column is the Lagrange kernel one, then we don't require any
             // other boundary/transition constraints
-            if trace_info.lagrange_kernel_aux_column_idx().is_none()
-                || !trace_info.aux_segment_has_only_lagrange_kernel_column()
-            {
+            if !trace_info.aux_segment_has_only_lagrange_kernel_column() {
                 assert!(
                 !aux_transition_constraint_degrees.is_empty(),
                 "at least one transition constraint degree must be specified for auxiliary trace segments"
@@ -167,6 +165,11 @@ impl<B: StarkField> AirContext<B> {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
+    /// Returns the trace info for an instance of a computation.
+    pub fn trace_info(&self) -> &TraceInfo {
+        &self.trace_info
+    }
+
     /// Returns length of the execution trace for an instance of a computation.
     ///
     // This is guaranteed to be a power of two greater than or equal to 8.
@@ -193,12 +196,6 @@ impl<B: StarkField> AirContext<B> {
     /// This is guaranteed to be a power of two, and is equal to `trace_length * lde_blowup_factor`.
     pub fn lde_domain_size(&self) -> usize {
         self.trace_info.length() * self.options.blowup_factor()
-    }
-
-    /// Returns the index of the column in the auxiliary trace on which Lagrange kernel constraints
-    /// should be enforced.
-    pub fn lagrange_kernel_aux_column_idx(&self) -> Option<usize> {
-        self.trace_info.lagrange_kernel_aux_column_idx()
     }
 
     /// Returns the number of transition constraints for a computation, excluding the Lagrange
