@@ -169,7 +169,7 @@ impl Serializable for OodFrame {
         target.write_u16(self.trace_states.len() as u16);
         target.write_bytes(&self.trace_states);
 
-        // write lagrange kernel column trace rows
+        // write Lagrange kernel column trace rows
         target.write_u16(self.lagrange_kernel_trace_states.len() as u16);
         target.write_bytes(&self.lagrange_kernel_trace_states);
 
@@ -194,7 +194,7 @@ impl Deserializable for OodFrame {
         let num_trace_state_bytes = source.read_u16()? as usize;
         let trace_states = source.read_vec(num_trace_state_bytes)?;
 
-        // read lagrange kernel column trace rows
+        // read Lagrange kernel column trace rows
         let num_lagrange_state_bytes = source.read_u16()? as usize;
         let lagrange_kernel_trace_states = source.read_vec(num_lagrange_state_bytes)?;
 
