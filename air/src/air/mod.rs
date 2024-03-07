@@ -332,7 +332,7 @@ pub trait Air: Send + Sync {
         &aux_rand_elements[0..num_rand_elements]
     }
 
-    /// Evaluates and returns the Lagrange kernel boundary constraint
+    /// Evaluates and returns the Lagrange kernel boundary constraint.
     fn get_lagrange_kernel_aux_assertion<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         aux_rand_elements: &AuxTraceRandElements<E>,
