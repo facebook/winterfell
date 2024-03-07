@@ -257,7 +257,7 @@ impl<B: StarkField> AirContext<B> {
     /// require four columns and if the highest constraint degree is equal to `7`, it will require
     /// six columns to store.
     ///
-    /// Note that the Lagrange kernel constraints all require only 1 column, since the degree of the
+    /// Note that the Lagrange kernel constraints require only 1 column, since the degree of the
     /// numerator is `trace_len - 1` for all transition constraints (i.e. the base degree is 1).
     /// Hence, no matter what the degree of the divisor is for each, it can only bring this degree
     /// down, which is already less than `trace_len`.
