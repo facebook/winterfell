@@ -112,7 +112,7 @@ where
 
         // combine all evaluations into a single column
         let combined_evaluations = if self.air.trace_info().has_lagrange_kernel_aux_column() {
-            // if present, linearly combine the lagrange kernel evaluations too
+            // if present, linearly combine the Lagrange kernel evaluations too
             let main_and_aux_evaluations = evaluation_table.combine();
 
             let lagrange_kernel_combined_evals =
