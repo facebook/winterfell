@@ -213,7 +213,7 @@ impl Deserializable for OodFrame {
 // OOD FRAME TRACE STATES
 // ================================================================================================
 
-/// Stores the trace evaluations evaluated at `z` and `gz`, where `z` is a random Field element. If
+/// Stores the trace evaluations at `z` and `gz`, where `z` is a random Field element. If
 /// the Air contains a Lagrange kernel auxiliary column, then that column interpolated polynomial
 /// will be evaluated at `z`, `gz`, `g^2 z`, ... `g^(2^(v-1)) z`, where `v == log(trace_len)`, and
 /// stored in `lagrange_kernel_frame`.
