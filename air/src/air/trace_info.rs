@@ -310,7 +310,7 @@ impl Serializable for TraceInfo {
             target.write_u8(rc as u8);
         }
 
-        // store lagrange kernel column idx
+        // store Lagrange kernel column index
         target.write_bool(self.lagrange_kernel_aux_column_idx.is_some());
         if let Some(lagrange_kernel_aux_column_idx) = self.lagrange_kernel_aux_column_idx {
             target.write_u32(lagrange_kernel_aux_column_idx as u32);
