@@ -259,8 +259,8 @@ impl<B: StarkField> AirContext<B> {
     ///
     /// Note that the Lagrange kernel constraints require only 1 column, since the degree of the
     /// numerator is `trace_len - 1` for all transition constraints (i.e. the base degree is 1).
-    /// Hence, no matter what the degree of the divisor is for each, it can only bring this degree
-    /// down, which is already less than `trace_len`.
+    /// Hence, no matter what the degree of the divisor is for each, the degree of the fraction will
+    /// be at most `trace_len - 1`.
     pub fn num_constraint_composition_columns(&self) -> usize {
         let mut highest_constraint_degree = 0_usize;
         for degree in self
