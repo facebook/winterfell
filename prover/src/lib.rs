@@ -387,8 +387,10 @@ pub trait Prover {
             let z = channel.get_ood_point();
 
             // evaluate trace and constraint polynomials at the OOD point z, and send the results to
-            // the verifier. the trace polynomials are actually evaluated over two points: z and
-            // z * g, where g is the generator of the trace domain. Additionally, if the Lagrange kernel auxiliary column is present, we also evaluate that column over the points: z, z * g, z * g^2, z * g^4, ..., z * g^(2^(v-1)), where v = log(trace_len).
+            // the verifier. the trace polynomials are actually evaluated over two points: z and z *
+            // g, where g is the generator of the trace domain. Additionally, if the Lagrange kernel
+            // auxiliary column is present, we also evaluate that column over the points: z, z * g,
+            // z * g^2, z * g^4, ..., z * g^(2^(v-1)), where v = log(trace_len).
             let ood_trace_states = trace_polys.get_ood_frame(z);
             channel.send_ood_trace_states(&ood_trace_states);
 
