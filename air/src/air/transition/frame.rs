@@ -99,7 +99,7 @@ impl<E: FieldElement> LagrangeKernelEvaluationFrame<E> {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Constructs a Lagrange kernel evaluation frame from the raw column polynomial evaluations
+    /// Constructs a Lagrange kernel evaluation frame from the raw column polynomial evaluations.
     pub fn new(frame: Vec<E>) -> Self {
         Self { frame }
     }
