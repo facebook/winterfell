@@ -129,7 +129,7 @@ impl<E: FieldElement> LagrangeKernelEvaluationFrame<E> {
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a reference to the inner frame
+    /// Returns a reference to the inner frame.
     pub fn inner(&self) -> &[E] {
         &self.frame
     }
