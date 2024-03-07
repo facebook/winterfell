@@ -180,7 +180,7 @@ impl<E: FieldElement> TransitionConstraints<E> {
 /// Represents the transition constraints for the Lagrange kernel column, as well as the random
 /// coefficients used to linearly combine all the constraints.
 ///
-/// There are `log(trace_len)` constraints, each with their own divisor, as described in
+/// There are `log(trace_len)` constraints, each with its own divisor, as described in
 /// [this issue](https://github.com/facebook/winterfell/issues/240).
 pub struct LagrangeKernelTransitionConstraints<E: FieldElement> {
     lagrange_constraint_coefficients: Vec<E>,
