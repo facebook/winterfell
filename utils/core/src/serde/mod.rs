@@ -209,6 +209,13 @@ impl<T: Serializable> Serializable for BTreeSet<T> {
     }
 }
 
+impl Serializable for String {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_usize(self.len());
+        target.write_many(self.as_bytes());
+    }
+}
+
 // DESERIALIZABLE
 // ================================================================================================
 
@@ -420,5 +427,15 @@ impl<T: Deserializable + Ord> Deserializable for BTreeSet<T> {
         let len = source.read_usize()?;
         let data = source.read_many(len)?;
         Ok(BTreeSet::from_iter(data))
+    }
+}
+
+impl Deserializable for String {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let len = source.read_usize()?;
+        let data = source.read_many(len)?;
+
+        String::from_utf8(data)
+            .map_err(|err| DeserializationError::InvalidValue(format!("{}", err)))
     }
 }
