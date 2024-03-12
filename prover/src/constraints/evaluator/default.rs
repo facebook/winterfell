@@ -111,7 +111,7 @@ where
         evaluation_table.validate_transition_degrees();
 
         // combine all evaluations into a single column
-        let combined_evaluations = if self.air.trace_info().has_lagrange_kernel_aux_column() {
+        let combined_evaluations = if self.air.context().has_lagrange_kernel_aux_column() {
             // if present, linearly combine the Lagrange kernel evaluations too
             let main_and_aux_evaluations = evaluation_table.combine();
 

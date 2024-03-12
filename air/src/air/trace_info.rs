@@ -212,11 +212,6 @@ impl TraceInfo {
         self.lagrange_kernel_aux_column_idx
     }
 
-    /// Returns true if the auxiliary trace segment contains a Lagrange kernel column
-    pub fn has_lagrange_kernel_aux_column(&self) -> bool {
-        self.lagrange_kernel_aux_column_idx.is_some()
-    }
-
     /// Returns the total number of segments in an execution trace.
     pub fn num_segments(&self) -> usize {
         self.num_aux_segments + 1

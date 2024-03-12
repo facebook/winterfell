@@ -576,7 +576,7 @@ pub trait Air: Send + Sync {
         }
 
         let mut lagrange_kernel_t_coefficients = Vec::new();
-        if self.context().trace_info().has_lagrange_kernel_aux_column() {
+        if self.context().has_lagrange_kernel_aux_column() {
             for _ in 0..log2(self.context().trace_len()) {
                 lagrange_kernel_t_coefficients.push(public_coin.draw()?);
             }
@@ -588,7 +588,7 @@ pub trait Air: Send + Sync {
         }
 
         let lagrange_kernel_boundary = {
-            if self.context().trace_info().has_lagrange_kernel_aux_column() {
+            if self.context().has_lagrange_kernel_aux_column() {
                 Some(public_coin.draw()?)
             } else {
                 None
