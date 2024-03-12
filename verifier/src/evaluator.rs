@@ -5,7 +5,7 @@
 
 use air::{
     Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
-    LagrangeKernelEvaluationFrame,
+    LagrangeKernelEvaluationFrame, LagrangeKernelTransitionConstraints,
 };
 use math::{polynom, FieldElement};
 use utils::collections::*;
@@ -92,10 +92,10 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     // 3 ----- evaluate Lagrange kernel transition constraints ------------------------------------
 
     if let Some(lagrange_kernel_column_frame) = lagrange_kernel_column_frame {
-        let lagrange_kernel_transition_constraints = air
-            .get_lagrange_kernel_transition_constraints(
-                composition_coefficients.lagrange_kernel_transition,
-            );
+        let lagrange_kernel_transition_constraints = LagrangeKernelTransitionConstraints::new(
+            air.context(),
+            composition_coefficients.lagrange_kernel_transition,
+        );
         let lagrange_kernel_column_rand_elements =
             air.lagrange_kernel_rand_elements(aux_rand_elements.get_segment_elements(0));
 

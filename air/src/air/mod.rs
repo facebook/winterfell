@@ -394,13 +394,6 @@ pub trait Air: Send + Sync {
         TransitionConstraints::new(self.context(), composition_coefficients)
     }
 
-    fn get_lagrange_kernel_transition_constraints<E: FieldElement<BaseField = Self::BaseField>>(
-        &self,
-        lagrange_constraint_coefficients: Vec<E>,
-    ) -> LagrangeKernelTransitionConstraints<E> {
-        LagrangeKernelTransitionConstraints::new(self.context(), lagrange_constraint_coefficients)
-    }
-
     /// Convert assertions returned from [get_assertions()](Air::get_assertions) and
     /// [get_aux_assertions()](Air::get_aux_assertions) methods into boundary constraints.
     ///

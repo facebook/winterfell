@@ -154,7 +154,8 @@ where
 
         let lagrange_kernel_transition_constraints =
             air.context().lagrange_kernel_aux_column_idx().map(|_| {
-                air.get_lagrange_kernel_transition_constraints(
+                LagrangeKernelTransitionConstraints::new(
+                    air.context(),
                     composition_coefficients.lagrange_kernel_transition,
                 )
             });
