@@ -288,8 +288,18 @@ pub trait Air: Send + Sync {
         Vec::new()
     }
 
+    /// Returns the index of the auxiliary column which implements the Lagrange kernel, if any
+    fn lagrange_kernel_aux_column_idx(&self) -> Option<usize> {
+        None
+    }
+
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
+
+    /// Returns true if the auxiliary trace segment contains a Lagrange kernel column
+    fn has_lagrange_kernel_aux_column(&self) -> bool {
+        self.lagrange_kernel_aux_column_idx().is_some()
+    }
 
     /// Evaluates the Lagrange kernel transition constraints over the specified Lagrange kernel
     /// evaluation frame and stores them in `result`.
@@ -627,5 +637,20 @@ pub trait Air: Send + Sync {
             trace: t_coefficients,
             constraints: c_coefficients,
         })
+    }
+}
+
+// UTILS
+// ================================================================================================
+
+/// Returns true if there is only one auxiliary column, and that column is the Lagrange kernel column
+pub fn trace_aux_segment_has_only_lagrange_kernel_column(
+    lagrange_kernel_aux_column_idx: Option<usize>,
+    trace_info: &TraceInfo,
+) -> bool {
+    if lagrange_kernel_aux_column_idx.is_some() {
+        trace_info.aux_trace_width() == 1
+    } else {
+        false
     }
 }

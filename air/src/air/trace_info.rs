@@ -217,15 +217,6 @@ impl TraceInfo {
         self.lagrange_kernel_aux_column_idx.is_some()
     }
 
-    /// Returns true if there is only one auxiliary column, and that column is the Lagrange kernel column
-    pub fn aux_segment_has_only_lagrange_kernel_column(&self) -> bool {
-        if self.has_lagrange_kernel_aux_column() {
-            self.aux_trace_width() == 1
-        } else {
-            false
-        }
-    }
-
     /// Returns the total number of segments in an execution trace.
     pub fn num_segments(&self) -> usize {
         self.num_aux_segments + 1

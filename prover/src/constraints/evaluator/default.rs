@@ -8,9 +8,9 @@ use super::{
     ConstraintEvaluationTable, ConstraintEvaluator, PeriodicValueTable, StarkDomain, TraceLde,
 };
 use air::{
-    Air, AuxTraceRandElements, ConstraintCompositionCoefficients, ConstraintDivisor,
-    EvaluationFrame, LagrangeKernelBoundaryConstraint, LagrangeKernelTransitionConstraints,
-    TransitionConstraints,
+    trace_aux_segment_has_only_lagrange_kernel_column, Air, AuxTraceRandElements,
+    ConstraintCompositionCoefficients, ConstraintDivisor, EvaluationFrame,
+    LagrangeKernelBoundaryConstraint, LagrangeKernelTransitionConstraints, TransitionConstraints,
 };
 use math::{log2, FieldElement};
 use utils::{collections::*, iter_mut};
@@ -283,7 +283,10 @@ where
             evaluations[0] = self.evaluate_main_transition(&main_frame, step, &mut tm_evaluations);
 
             // Make sure to only evaluate the aux transition if the user actually defined one
-            if !self.air.trace_info().aux_segment_has_only_lagrange_kernel_column() {
+            if !trace_aux_segment_has_only_lagrange_kernel_column(
+                self.air.lagrange_kernel_aux_column_idx(),
+                self.air.trace_info(),
+            ) {
                 evaluations[0] += self.evaluate_aux_transition(
                     &main_frame,
                     &aux_frame,

@@ -123,6 +123,7 @@ impl Air for LagrangeKernelMockAir {
                 Vec::new(),
                 1,
                 0,
+                Some(0),
                 options,
             ),
         }

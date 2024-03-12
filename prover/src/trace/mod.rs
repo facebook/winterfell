@@ -4,7 +4,10 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{matrix::MultiColumnIter, ColMatrix};
-use air::{Air, AuxTraceRandElements, EvaluationFrame, TraceInfo};
+use air::{
+    trace_aux_segment_has_only_lagrange_kernel_column, Air, AuxTraceRandElements, EvaluationFrame,
+    TraceInfo,
+};
 use math::{log2, polynom, FieldElement, StarkField};
 
 mod trace_lde;
@@ -180,8 +183,10 @@ pub trait Trace: Sized {
         let mut x = Self::BaseField::ONE;
         let mut main_frame = EvaluationFrame::new(self.main_trace_width());
         let mut aux_frame = if air.trace_info().is_multi_segment()
-            && !air.trace_info().aux_segment_has_only_lagrange_kernel_column()
-        {
+            && !trace_aux_segment_has_only_lagrange_kernel_column(
+                air.lagrange_kernel_aux_column_idx(),
+                air.trace_info(),
+            ) {
             Some(EvaluationFrame::<E>::new(self.aux_trace_width()))
         } else {
             None
