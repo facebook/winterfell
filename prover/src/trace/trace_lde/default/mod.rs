@@ -193,7 +193,7 @@ where
 
         let aux_segment = &self.aux_segment_ldes[0];
 
-        frame.push(aux_segment.row(lde_step)[lagrange_kernel_aux_column_idx]);
+        frame.push(aux_segment.get(lagrange_kernel_aux_column_idx, lde_step));
 
         for i in 0..frame_length - 1 {
             let shift = self.blowup() * 2_u32.pow(i as u32) as usize;
