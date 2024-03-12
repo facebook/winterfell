@@ -88,8 +88,8 @@ impl<E: FieldElement> EvaluationFrame<E> {
 /// The Lagrange kernel's evaluation frame is different from [`EvaluationFrame`]. Specifically,
 /// - it only contains evaluations from the Lagrange kernel column
 ///   (compared to all columns in the case of [`EvaluationFrame`])
-/// - The column is evaluated at points `z`, `gz`, `g^2 z`, ..., `g^(2^(v-1)) z`,
-///   where `z` is an arbitrary point, and `g` is the trace domain generator
+/// - The column is evaluated at points `x`, `gx`, `g^2 x`, ..., `g^(2^(v-1)) x`,
+///   where `x` is an arbitrary point, and `g` is the trace domain generator
 #[derive(Debug, Clone)]
 pub struct LagrangeKernelEvaluationFrame<E: FieldElement> {
     frame: Vec<E>,
