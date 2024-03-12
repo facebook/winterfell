@@ -284,7 +284,7 @@ where
 
             // Make sure to only evaluate the aux transition if the user actually defined one
             if !trace_aux_segment_has_only_lagrange_kernel_column(
-                self.air.lagrange_kernel_aux_column_idx(),
+                self.air.context().lagrange_kernel_aux_column_idx(),
                 self.air.trace_info(),
             ) {
                 evaluations[0] += self.evaluate_aux_transition(

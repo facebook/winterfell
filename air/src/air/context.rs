@@ -22,6 +22,7 @@ pub struct AirContext<B: StarkField> {
     pub(super) aux_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
     pub(super) num_main_assertions: usize,
     pub(super) num_aux_assertions: usize,
+    pub(super) lagrange_kernel_aux_column_idx: Option<usize>,
     pub(super) ce_blowup_factor: usize,
     pub(super) trace_domain_generator: B,
     pub(super) lde_domain_generator: B,
@@ -163,6 +164,7 @@ impl<B: StarkField> AirContext<B> {
             aux_transition_constraint_degrees,
             num_main_assertions,
             num_aux_assertions,
+            lagrange_kernel_aux_column_idx,
             ce_blowup_factor,
             trace_domain_generator: B::get_root_of_unity(trace_length.ilog2()),
             lde_domain_generator: B::get_root_of_unity(lde_domain_size.ilog2()),
@@ -225,6 +227,16 @@ impl<B: StarkField> AirContext<B> {
     /// Returns the number of transition constraints placed against all auxiliary trace segments.
     pub fn num_aux_transition_constraints(&self) -> usize {
         self.aux_transition_constraint_degrees.len()
+    }
+
+    /// Returns the index of the auxiliary column which implements the Lagrange kernel, if any
+    pub fn lagrange_kernel_aux_column_idx(&self) -> Option<usize> {
+        self.lagrange_kernel_aux_column_idx
+    }
+
+    /// Returns true if the auxiliary trace segment contains a Lagrange kernel column
+    pub fn has_lagrange_kernel_aux_column(&self) -> bool {
+        self.lagrange_kernel_aux_column_idx().is_some()
     }
 
     /// Returns the total number of assertions defined for a computation, excluding the Lagrange

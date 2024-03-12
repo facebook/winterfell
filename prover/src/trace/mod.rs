@@ -184,7 +184,7 @@ pub trait Trace: Sized {
         let mut main_frame = EvaluationFrame::new(self.main_trace_width());
         let mut aux_frame = if air.trace_info().is_multi_segment()
             && !trace_aux_segment_has_only_lagrange_kernel_column(
-                air.lagrange_kernel_aux_column_idx(),
+                air.context().lagrange_kernel_aux_column_idx(),
                 air.trace_info(),
             ) {
             Some(EvaluationFrame::<E>::new(self.aux_trace_width()))
