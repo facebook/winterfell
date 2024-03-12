@@ -93,9 +93,9 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
 
         // --- parse out-of-domain evaluation frame -----------------------------------------------
         let ParsedOodFrame {
-            ood_trace_evaluations,
-            ood_lagrange_kernel_trace_evaluations,
-            ood_constraint_evaluations,
+            trace_evaluations: ood_trace_evaluations,
+            lagrange_kernel_trace_evaluations: ood_lagrange_kernel_trace_evaluations,
+            constraint_evaluations: ood_constraint_evaluations,
         } = ood_frame
             .parse(main_trace_width, aux_trace_width, constraint_frame_width)
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;

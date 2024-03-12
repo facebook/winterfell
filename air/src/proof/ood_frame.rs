@@ -16,9 +16,9 @@ use crate::LagrangeKernelEvaluationFrame;
 
 /// Represents an [`OodFrame`] where the trace and constraint evaluations have been parsed out.
 pub struct ParsedOodFrame<E> {
-    pub ood_trace_evaluations: Vec<E>,
-    pub ood_lagrange_kernel_trace_evaluations: Option<Vec<E>>,
-    pub ood_constraint_evaluations: Vec<E>,
+    pub trace_evaluations: Vec<E>,
+    pub lagrange_kernel_trace_evaluations: Option<Vec<E>>,
+    pub constraint_evaluations: Vec<E>,
 }
 
 /// Trace and constraint polynomial evaluations at an out-of-domain point.
@@ -152,9 +152,9 @@ impl OodFrame {
         }
 
         Ok(ParsedOodFrame {
-            ood_trace_evaluations: trace,
-            ood_lagrange_kernel_trace_evaluations: lagrange_kernel_trace,
-            ood_constraint_evaluations: evaluations,
+            trace_evaluations: trace,
+            lagrange_kernel_trace_evaluations: lagrange_kernel_trace,
+            constraint_evaluations: evaluations,
         })
     }
 }
