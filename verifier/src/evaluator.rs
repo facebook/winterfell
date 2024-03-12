@@ -92,18 +92,18 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     // 3 ----- evaluate Lagrange kernel transition constraints ------------------------------------
 
     if let Some(lagrange_kernel_column_frame) = lagrange_kernel_column_frame {
-        let mut lagrange_t_evaluations = E::zeroed_vector(air.trace_length().ilog2() as usize);
-        air.evaluate_lagrange_kernel_aux_transition(
-            lagrange_kernel_column_frame,
-            &aux_rand_elements,
-            &mut lagrange_t_evaluations,
-        );
+        let lagrange_kernel_transition_constraints = air
+            .get_lagrange_kernel_transition_constraints(
+                composition_coefficients.lagrange_kernel_transition,
+            );
+        let lagrange_kernel_column_rand_elements =
+            air.lagrange_kernel_rand_elements(aux_rand_elements.get_segment_elements(0));
 
-        let lagrange_t_constraints = air.get_lagrange_kernel_transition_constraints(
-            composition_coefficients.lagrange_kernel_transition,
+        result += lagrange_kernel_transition_constraints.evaluate_and_combine::<E>(
+            &lagrange_kernel_column_frame,
+            lagrange_kernel_column_rand_elements,
+            x,
         );
-
-        result += lagrange_t_constraints.combine_evaluations::<E>(&lagrange_t_evaluations, x);
     }
 
     // 4 ----- evaluate Lagrange kernel boundary constraints ------------------------------------

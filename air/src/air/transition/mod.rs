@@ -215,7 +215,8 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
         }
     }
 
-    /// Evaluates the transition constraints, and combines them.
+    /// Evaluates the transition constraints over the specificed Lagrange kernel evaluation frame,
+    /// and combines them.
     ///
     /// By "combining transition constraints evaluations", we mean computing a linear combination of
     /// all transition constraint evaluations, where each transition evaluation is divided by its
@@ -246,24 +247,6 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
         };
 
         transition_evaluations
-            .iter()
-            .zip(self.lagrange_constraint_coefficients.iter())
-            .zip(self.divisors.iter())
-            .fold(E::ZERO, |acc, ((&const_eval, &coef), divisor)| {
-                let z = divisor.evaluate_at(x);
-
-                acc + (coef.mul_base(const_eval) / z.into())
-            })
-    }
-
-    /// Computes a linear combination of all transition constraint evaluations, dividing each
-    /// transition constraint by its corresponding divisor.
-    pub fn combine_evaluations<F>(&self, lagrange_kernel_column_evaluations: &[E], x: F) -> E
-    where
-        F: FieldElement<BaseField = E::BaseField>,
-        E: ExtensionOf<F>,
-    {
-        lagrange_kernel_column_evaluations
             .iter()
             .zip(self.lagrange_constraint_coefficients.iter())
             .zip(self.divisors.iter())

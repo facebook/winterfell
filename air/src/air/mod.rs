@@ -291,29 +291,6 @@ pub trait Air: Send + Sync {
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
 
-    /// Evaluates the Lagrange kernel transition constraints over the specified Lagrange kernel
-    /// evaluation frame and stores them in `result`.
-    fn evaluate_lagrange_kernel_aux_transition<F, E>(
-        &self,
-        lagrange_kernel_column_frame: &LagrangeKernelEvaluationFrame<E>,
-        aux_rand_elements: &AuxTraceRandElements<E>,
-        result: &mut [E],
-    ) where
-        F: FieldElement<BaseField = Self::BaseField>,
-        E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
-    {
-        debug_assert_eq!(lagrange_kernel_column_frame.num_rows() - 1, result.len());
-
-        let c = lagrange_kernel_column_frame.inner();
-        let v = c.len() - 1;
-        let r =
-            self.lagrange_kernel_rand_elements::<F, E>(aux_rand_elements.get_segment_elements(0));
-
-        for k in 1..v + 1 {
-            result[k - 1] = (r[v - k] * c[0]) - ((E::ONE - r[v - k]) * c[v - k + 1]);
-        }
-    }
-
     /// Returns the random elements to use in the lagrange kernel.
     ///
     /// The return slice stores the least significant random element first. For example, for a trace
