@@ -199,7 +199,7 @@ where
             let shift = self.blowup() * 2_u32.pow(i as u32) as usize;
             let next_lde_step = (lde_step + shift) % self.trace_len();
 
-            frame.push(aux_segment.row(next_lde_step)[lagrange_kernel_aux_column_idx]);
+            frame.push(aux_segment.get(lagrange_kernel_aux_column_idx, next_lde_step));
         }
 
         LagrangeKernelEvaluationFrame::new(frame)
