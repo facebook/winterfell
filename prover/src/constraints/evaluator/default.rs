@@ -336,6 +336,10 @@ where
         // this will be used to convert steps in constraint evaluation domain to steps in
         // LDE domain
         let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
+        let lagrange_kernel_column_rand_elements = self
+            .air
+            .lagrange_kernel_rand_elements(self.aux_rand_elements.get_segment_elements(0));
+
         for step in 0..domain.ce_domain_size() {
             let lagrange_kernel_column_frame = trace.get_lagrange_kernel_column_frame(
                 step << lde_shift,
@@ -344,17 +348,12 @@ where
 
             let domain_point = domain.get_ce_x_at(step);
 
-            let transition_constraints_combined_evals = {
-                let mut transition_evals = E::zeroed_vector(domain.trace_length().ilog2() as usize);
-                self.air.evaluate_lagrange_kernel_aux_transition(
+            let transition_constraints_combined_evals = lagrange_kernel_transition_constraints
+                .evaluate_and_combine(
                     &lagrange_kernel_column_frame,
-                    &self.aux_rand_elements,
-                    &mut transition_evals,
+                    lagrange_kernel_column_rand_elements,
+                    domain_point,
                 );
-
-                lagrange_kernel_transition_constraints
-                    .combine_evaluations(&transition_evals, domain_point)
-            };
 
             let boundary_constraint_eval = {
                 let constraint = self
