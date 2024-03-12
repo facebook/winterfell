@@ -12,7 +12,7 @@ use air::{
     ConstraintCompositionCoefficients, ConstraintDivisor, EvaluationFrame,
     LagrangeKernelBoundaryConstraint, LagrangeKernelTransitionConstraints, TransitionConstraints,
 };
-use math::{log2, FieldElement};
+use math::FieldElement;
 use utils::{collections::*, iter_mut};
 
 #[cfg(feature = "concurrent")]
@@ -345,7 +345,7 @@ where
             let domain_point = domain.get_ce_x_at(step);
 
             let transition_constraints_combined_evals = {
-                let mut transition_evals = E::zeroed_vector(log2(domain.trace_length()) as usize);
+                let mut transition_evals = E::zeroed_vector(domain.trace_length().ilog2() as usize);
                 self.air.evaluate_lagrange_kernel_aux_transition(
                     &lagrange_kernel_column_frame,
                     &self.aux_rand_elements,

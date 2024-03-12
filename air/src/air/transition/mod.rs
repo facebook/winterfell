@@ -11,7 +11,6 @@ pub use frame::{EvaluationFrame, LagrangeKernelEvaluationFrame};
 
 mod degree;
 pub use degree::TransitionConstraintDegree;
-use math::log2;
 
 // CONSTANTS
 // ================================================================================================
@@ -195,7 +194,7 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
         context: &AirContext<E::BaseField>,
         lagrange_constraint_coefficients: Vec<E>,
     ) -> Self {
-        assert_eq!(log2(context.trace_len()), lagrange_constraint_coefficients.len() as u32);
+        assert_eq!(context.trace_len().ilog2(), lagrange_constraint_coefficients.len() as u32);
 
         let num_lagrange_kernel_transition_constraints = lagrange_constraint_coefficients.len();
 

@@ -10,7 +10,6 @@ use super::{
 use crate::{RowMatrix, DEFAULT_SEGMENT_WIDTH};
 use air::LagrangeKernelEvaluationFrame;
 use crypto::MerkleTree;
-use math::log2;
 use tracing::info_span;
 use utils::collections::*;
 
@@ -189,7 +188,7 @@ where
         lde_step: usize,
         lagrange_kernel_aux_column_idx: usize,
     ) -> LagrangeKernelEvaluationFrame<E> {
-        let frame_length = log2(self.trace_info.length()) as usize + 1;
+        let frame_length = self.trace_info.length().ilog2() as usize + 1;
         let mut frame: Vec<E> = Vec::with_capacity(frame_length);
 
         let aux_segment = &self.aux_segment_ldes[0];

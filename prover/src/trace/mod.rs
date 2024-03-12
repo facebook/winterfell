@@ -8,7 +8,7 @@ use air::{
     trace_aux_segment_has_only_lagrange_kernel_column, Air, AuxTraceRandElements, EvaluationFrame,
     TraceInfo,
 };
-use math::{log2, polynom, FieldElement, StarkField};
+use math::{polynom, FieldElement, StarkField};
 
 mod trace_lde;
 pub use trace_lde::{DefaultTraceLde, TraceLde};
@@ -243,7 +243,7 @@ pub trait Trace: Sized {
         // they all evaluate to zeros
         if let Some(col_idx) = air.context().lagrange_kernel_aux_column_idx() {
             let c = aux_segments[0].get_column(col_idx);
-            let v = log2(self.length()) as usize;
+            let v = self.length().ilog2() as usize;
             let r = aux_rand_elements.get_segment_elements(0);
 
             // Loop over every constraint

@@ -181,24 +181,6 @@ where
     result
 }
 
-/// Returns base 2 logarithm of `n`, where `n` is a power of two.
-///
-/// # Panics
-/// Panics if `n` is not a power of two.
-///
-/// # Examples
-/// ```
-/// # use winter_math::log2;
-/// assert_eq!(log2(1), 0);
-/// assert_eq!(log2(16), 4);
-/// assert_eq!(log2(1 << 20), 20);
-/// assert_eq!(log2(2usize.pow(20)), 20);
-/// ```
-pub fn log2(n: usize) -> u32 {
-    assert!(n.is_power_of_two(), "n must be a power of two");
-    n.trailing_zeros()
-}
-
 // HELPER FUNCTIONS
 // ------------------------------------------------------------------------------------------------
 

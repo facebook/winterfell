@@ -7,7 +7,7 @@ use air::{
     Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
     LagrangeKernelEvaluationFrame,
 };
-use math::{log2, polynom, FieldElement};
+use math::{polynom, FieldElement};
 use utils::collections::*;
 
 // CONSTRAINT EVALUATION
@@ -92,7 +92,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     // 3 ----- evaluate Lagrange kernel transition constraints ------------------------------------
 
     if let Some(lagrange_kernel_column_frame) = lagrange_kernel_column_frame {
-        let mut lagrange_t_evaluations = E::zeroed_vector(log2(air.trace_length()) as usize);
+        let mut lagrange_t_evaluations = E::zeroed_vector(air.trace_length().ilog2() as usize);
         air.evaluate_lagrange_kernel_aux_transition(
             lagrange_kernel_column_frame,
             &aux_rand_elements,

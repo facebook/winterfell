@@ -5,7 +5,7 @@
 
 use crate::ProofOptions;
 use crypto::{RandomCoin, RandomCoinError};
-use math::{fft, log2, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElements};
+use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElements};
 use utils::collections::*;
 
 mod trace_info;
@@ -327,7 +327,7 @@ pub trait Air: Send + Sync {
         F: FieldElement<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
     {
-        let num_rand_elements = log2(self.trace_length()) as usize;
+        let num_rand_elements = self.trace_length().ilog2() as usize;
 
         &aux_rand_elements[0..num_rand_elements]
     }
@@ -341,7 +341,7 @@ pub trait Air: Send + Sync {
 
         let assertion_value = {
             let r = aux_rand_elements.get_segment_elements(0);
-            let r_len = log2(self.context().trace_len());
+            let r_len = self.context().trace_len().ilog2();
 
             let mut assertion_value = E::ONE;
             for idx in 0..r_len {
@@ -577,7 +577,7 @@ pub trait Air: Send + Sync {
 
         let mut lagrange_kernel_t_coefficients = Vec::new();
         if self.context().has_lagrange_kernel_aux_column() {
-            for _ in 0..log2(self.context().trace_len()) {
+            for _ in 0..self.context().trace_len().ilog2() {
                 lagrange_kernel_t_coefficients.push(public_coin.draw()?);
             }
         }
