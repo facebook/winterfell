@@ -323,7 +323,7 @@ pub trait Prover {
             };
 
             trace_polys
-                .add_aux_segment(aux_segment_polys, trace.info().lagrange_kernel_aux_column_idx());
+                .add_aux_segment(aux_segment_polys, air.context().lagrange_kernel_aux_column_idx());
             aux_trace_rand_elements.add_segment_elements(rand_elements);
             aux_trace_segments.push(aux_segment);
         }

@@ -49,7 +49,7 @@ impl LagrangeMockTrace {
 
         Self {
             main_trace: ColMatrix::new(vec![col]),
-            info: TraceInfo::new_multi_segment(1, [1], [3], Some(0), Self::TRACE_LENGTH, vec![]),
+            info: TraceInfo::new_multi_segment(1, [1], [3], Self::TRACE_LENGTH, vec![]),
         }
     }
 }

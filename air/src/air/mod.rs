@@ -337,7 +337,7 @@ pub trait Air: Send + Sync {
         &self,
         aux_rand_elements: &AuxTraceRandElements<E>,
     ) -> Option<Assertion<E>> {
-        let lagrange_column_idx = self.context().trace_info().lagrange_kernel_aux_column_idx()?;
+        let lagrange_column_idx = self.context().lagrange_kernel_aux_column_idx()?;
 
         let assertion_value = {
             let r = aux_rand_elements.get_segment_elements(0);

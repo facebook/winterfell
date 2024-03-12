@@ -153,7 +153,7 @@ where
             air.get_transition_constraints(&composition_coefficients.transition);
 
         let lagrange_kernel_transition_constraints =
-            air.trace_info().lagrange_kernel_aux_column_idx().map(|_| {
+            air.context().lagrange_kernel_aux_column_idx().map(|_| {
                 air.get_lagrange_kernel_transition_constraints(
                     composition_coefficients.lagrange_kernel_transition,
                 )
@@ -327,12 +327,20 @@ where
             .as_ref()
             .expect("expected Lagrange kernel transition constraints to be present");
 
+        let lagrange_kernel_aux_column_idx = self
+            .air
+            .context()
+            .lagrange_kernel_aux_column_idx()
+            .expect("expected Lagrange kernel aux column index to be present");
+
         // this will be used to convert steps in constraint evaluation domain to steps in
         // LDE domain
         let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
         for step in 0..domain.ce_domain_size() {
-            let lagrange_kernel_column_frame =
-                trace.get_lagrange_kernel_column_frame(step << lde_shift);
+            let lagrange_kernel_column_frame = trace.get_lagrange_kernel_column_frame(
+                step << lde_shift,
+                lagrange_kernel_aux_column_idx,
+            );
 
             let domain_point = domain.get_ce_x_at(step);
 

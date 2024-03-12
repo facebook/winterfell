@@ -60,8 +60,11 @@ pub trait TraceLde<E: FieldElement>: Sync {
     ///
     /// Note that unlike [`EvaluationFrame`], the Lagrange kernel frame includes only the Lagrange
     /// kernel column (as opposed to all columns).
-    fn get_lagrange_kernel_column_frame(&self, lde_step: usize)
-        -> LagrangeKernelEvaluationFrame<E>;
+    fn get_lagrange_kernel_column_frame(
+        &self,
+        lde_step: usize,
+        lagrange_kernel_aux_column_idx: usize,
+    ) -> LagrangeKernelEvaluationFrame<E>;
 
     /// Returns trace table rows at the specified positions along with Merkle authentication paths
     /// from the commitment root to these rows.

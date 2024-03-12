@@ -93,7 +93,7 @@ impl<B: StarkField> RapTraceTable<B> {
 
         let columns = unsafe { (0..width).map(|_| uninit_vector(length)).collect() };
         Self {
-            info: TraceInfo::new_multi_segment(width, [3], [3], None, length, meta),
+            info: TraceInfo::new_multi_segment(width, [3], [3], length, meta),
             trace: ColMatrix::new(columns),
         }
     }

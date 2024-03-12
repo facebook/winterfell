@@ -157,7 +157,7 @@ pub trait Trace: Sized {
         // then, check the Lagrange kernel assertion, if any
         if let Some(assertion) = air.get_lagrange_kernel_aux_assertion(aux_rand_elements) {
             let lagrange_kernel_col_idx = air
-                .trace_info()
+                .context()
                 .lagrange_kernel_aux_column_idx()
                 .expect("Lagranged kernel column idx expected to be present");
             assertion.apply(self.length(), |step, value| {
@@ -241,7 +241,7 @@ pub trait Trace: Sized {
 
         // evaluate transition constraints for Lagrange kernel column (if any) and make sure
         // they all evaluate to zeros
-        if let Some(col_idx) = self.info().lagrange_kernel_aux_column_idx() {
+        if let Some(col_idx) = air.context().lagrange_kernel_aux_column_idx() {
             let c = aux_segments[0].get_column(col_idx);
             let v = log2(self.length()) as usize;
             let r = aux_rand_elements.get_segment_elements(0);

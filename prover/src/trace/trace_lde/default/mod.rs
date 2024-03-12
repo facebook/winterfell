@@ -187,23 +187,20 @@ where
     fn get_lagrange_kernel_column_frame(
         &self,
         lde_step: usize,
+        lagrange_kernel_aux_column_idx: usize,
     ) -> LagrangeKernelEvaluationFrame<E> {
         let frame_length = log2(self.trace_info.length()) as usize + 1;
         let mut frame: Vec<E> = Vec::with_capacity(frame_length);
 
         let aux_segment = &self.aux_segment_ldes[0];
-        let lagrange_kernel_col_idx = self
-            .trace_info
-            .lagrange_kernel_aux_column_idx()
-            .expect("expected a Lagrange kernel column to be present");
 
-        frame.push(aux_segment.row(lde_step)[lagrange_kernel_col_idx]);
+        frame.push(aux_segment.row(lde_step)[lagrange_kernel_aux_column_idx]);
 
         for i in 0..frame_length - 1 {
             let shift = self.blowup() * 2_u32.pow(i as u32) as usize;
             let next_lde_step = (lde_step + shift) % self.trace_len();
 
-            frame.push(aux_segment.row(next_lde_step)[lagrange_kernel_col_idx]);
+            frame.push(aux_segment.row(next_lde_step)[lagrange_kernel_aux_column_idx]);
         }
 
         LagrangeKernelEvaluationFrame::new(frame)
