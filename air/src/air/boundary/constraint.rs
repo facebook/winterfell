@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{ConstraintDivisor, LagrangeKernelEvaluationFrame};
+use crate::LagrangeKernelEvaluationFrame;
 
 use super::{Assertion, ExtensionOf, FieldElement};
 use math::{fft, polynom};
@@ -167,37 +167,23 @@ where
 // ================================================================================================
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct LagrangeKernelBoundaryConstraint<F, E>
+pub struct LagrangeKernelBoundaryConstraint<E>
 where
-    F: FieldElement,
-    E: FieldElement<BaseField = F::BaseField> + ExtensionOf<F>,
+    E: FieldElement,
 {
-    assertion_value: F,
+    assertion_value: E,
     composition_coefficient: E,
-    divisor: ConstraintDivisor<F::BaseField>,
 }
 
-impl<F, E> LagrangeKernelBoundaryConstraint<F, E>
+impl<E> LagrangeKernelBoundaryConstraint<E>
 where
-    F: FieldElement,
-    E: FieldElement<BaseField = F::BaseField> + ExtensionOf<F>,
+    E: FieldElement,
 {
     /// Creates a new Lagrange kernel boundary constraint from the specified single assertion.
-    ///
-    /// # Panics
-    /// Panics if the assertion is not a single assertion (i.e. `assertion.values` has more than 1
-    /// value)
-    pub fn new(
-        assertion: Assertion<F>,
-        composition_coefficient: E,
-        divisor: ConstraintDivisor<F::BaseField>,
-    ) -> Self {
-        assert_eq!(assertion.values.len(), 1);
-
+    pub fn new(composition_coefficient: E, lagrange_kernel_rand_elements: &[E]) -> Self {
         Self {
-            assertion_value: assertion.values[0],
+            assertion_value: Self::assertion_value(lagrange_kernel_rand_elements),
             composition_coefficient,
-            divisor,
         }
     }
 
@@ -207,13 +193,23 @@ where
     pub fn evaluate_at(&self, x: E, frame: &LagrangeKernelEvaluationFrame<E>) -> E {
         let numerator = {
             let trace_value = frame.inner()[0];
-            let constraint_evaluation = trace_value - E::from(self.assertion_value);
+            let constraint_evaluation = trace_value - self.assertion_value;
 
             constraint_evaluation * self.composition_coefficient
         };
 
-        let denominator = self.divisor.evaluate_at(x);
+        let denominator = x - E::ONE;
 
         numerator / denominator
+    }
+
+    /// Computes the assertion value given the provided random elements.
+    pub fn assertion_value(lagrange_kernel_rand_elements: &[E]) -> E {
+        let mut assertion_value = E::ONE;
+        for &rand_ele in lagrange_kernel_rand_elements {
+            assertion_value *= E::ONE - rand_ele;
+        }
+
+        assertion_value
     }
 }

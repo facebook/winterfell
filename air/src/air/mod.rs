@@ -309,28 +309,6 @@ pub trait Air: Send + Sync {
         &aux_rand_elements[0..num_rand_elements]
     }
 
-    /// Evaluates and returns the Lagrange kernel boundary constraint.
-    fn get_lagrange_kernel_aux_assertion<E: FieldElement<BaseField = Self::BaseField>>(
-        &self,
-        aux_rand_elements: &AuxTraceRandElements<E>,
-    ) -> Option<Assertion<E>> {
-        let lagrange_column_idx = self.context().lagrange_kernel_aux_column_idx()?;
-
-        let assertion_value = {
-            let r = aux_rand_elements.get_segment_elements(0);
-            let r_len = self.context().trace_len().ilog2();
-
-            let mut assertion_value = E::ONE;
-            for idx in 0..r_len {
-                assertion_value *= E::ONE - r[idx as usize];
-            }
-
-            assertion_value
-        };
-
-        Some(Assertion::single(lagrange_column_idx, 0, assertion_value))
-    }
-
     /// Returns values for all periodic columns used in the computation.
     ///
     /// These values will be used to compute column values at specific states of the computation
@@ -406,13 +384,19 @@ pub trait Air: Send + Sync {
         boundary_composition_coefficients: &[E],
         lagrange_kernel_boundary_coefficient: Option<E>,
     ) -> BoundaryConstraints<E> {
+        let lagrange_kernel_aux_rand_elements = if self.context().has_lagrange_kernel_aux_column() {
+            self.lagrange_kernel_rand_elements(aux_rand_elements.get_segment_elements(0))
+        } else {
+            &[]
+        };
+
         BoundaryConstraints::new(
             self.context(),
             self.get_assertions(),
             self.get_aux_assertions(aux_rand_elements),
-            self.get_lagrange_kernel_aux_assertion(aux_rand_elements),
             boundary_composition_coefficients,
             lagrange_kernel_boundary_coefficient,
+            lagrange_kernel_aux_rand_elements,
         )
     }
 

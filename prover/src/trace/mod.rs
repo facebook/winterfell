@@ -6,7 +6,7 @@
 use super::{matrix::MultiColumnIter, ColMatrix};
 use air::{
     trace_aux_segment_has_only_lagrange_kernel_column, Air, AuxTraceRandElements, EvaluationFrame,
-    TraceInfo,
+    LagrangeKernelBoundaryConstraint, TraceInfo,
 };
 use math::{polynom, FieldElement, StarkField};
 
@@ -155,21 +155,19 @@ pub trait Trace: Sized {
         }
 
         // then, check the Lagrange kernel assertion, if any
-        if let Some(assertion) = air.get_lagrange_kernel_aux_assertion(aux_rand_elements) {
-            let lagrange_kernel_col_idx = air
-                .context()
-                .lagrange_kernel_aux_column_idx()
-                .expect("Lagranged kernel column idx expected to be present");
-            assertion.apply(self.length(), |step, value| {
-                assert_eq!(
-                    value,
-                    aux_segments[0].get(lagrange_kernel_col_idx, step),
-                    "trace does not satisfy assertion aux_trace({}, {}) == {}",
-                    lagrange_kernel_col_idx,
-                    step,
-                    value
-                )
-            })
+        if let Some(lagrange_kernel_col_idx) = air.context().lagrange_kernel_aux_column_idx() {
+            let lagrange_kernel_aux_rand_elements =
+                air.lagrange_kernel_rand_elements(aux_rand_elements.get_segment_elements(0));
+
+            let boundary_constraint_assertion_value =
+                LagrangeKernelBoundaryConstraint::assertion_value(
+                    lagrange_kernel_aux_rand_elements,
+                );
+
+            assert_eq!(
+                boundary_constraint_assertion_value,
+                aux_segments[0].get(lagrange_kernel_col_idx, 0)
+            );
         }
 
         // --- 2. make sure this trace satisfies all transition constraints -----------------------

@@ -100,7 +100,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
             air.lagrange_kernel_rand_elements(aux_rand_elements.get_segment_elements(0));
 
         result += lagrange_kernel_transition_constraints.evaluate_and_combine::<E>(
-            &lagrange_kernel_column_frame,
+            lagrange_kernel_column_frame,
             lagrange_kernel_column_rand_elements,
             x,
         );

@@ -9,8 +9,8 @@ use super::{
 };
 use air::{
     trace_aux_segment_has_only_lagrange_kernel_column, Air, AuxTraceRandElements,
-    ConstraintCompositionCoefficients, ConstraintDivisor, EvaluationFrame,
-    LagrangeKernelBoundaryConstraint, LagrangeKernelTransitionConstraints, TransitionConstraints,
+    ConstraintCompositionCoefficients, EvaluationFrame, LagrangeKernelBoundaryConstraint,
+    LagrangeKernelTransitionConstraints, TransitionConstraints,
 };
 use math::FieldElement;
 use utils::{collections::*, iter_mut};
@@ -40,7 +40,7 @@ pub struct DefaultConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A:
     air: &'a A,
     boundary_constraints: BoundaryConstraints<E>,
     transition_constraints: TransitionConstraints<E>,
-    lagrange_kernel_boundary_constraint: Option<LagrangeKernelBoundaryConstraint<E, E>>,
+    lagrange_kernel_boundary_constraint: Option<LagrangeKernelBoundaryConstraint<E>>,
     lagrange_kernel_transition_constraints: Option<LagrangeKernelTransitionConstraints<E>>,
     aux_rand_elements: AuxTraceRandElements<E>,
     periodic_values: PeriodicValueTable<E::BaseField>,
@@ -172,17 +172,15 @@ where
             composition_coefficients.lagrange_kernel_boundary,
         );
 
-        let lagrange_kernel_boundary_constraint =
-            air.get_lagrange_kernel_aux_assertion(&aux_rand_elements).map(|assertion| {
-                let lagrange_kernel_boundary_coefficient = composition_coefficients
-                    .lagrange_kernel_boundary
-                    .expect("expected Lagrange boundary coefficient to be present");
-                let divisor = ConstraintDivisor::from_assertion(&assertion, air.trace_length());
+        let lagrange_kernel_boundary_constraint = composition_coefficients
+            .lagrange_kernel_boundary
+            .map(|lagrange_kernel_boundary_coefficient| {
+                let lagrange_kernel_aux_rand_elements =
+                    air.lagrange_kernel_rand_elements(aux_rand_elements.get_segment_elements(0));
 
                 LagrangeKernelBoundaryConstraint::new(
-                    assertion,
                     lagrange_kernel_boundary_coefficient,
-                    divisor,
+                    lagrange_kernel_aux_rand_elements,
                 )
             });
 

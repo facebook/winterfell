@@ -37,7 +37,7 @@ mod tests;
 pub struct BoundaryConstraints<E: FieldElement> {
     main_constraints: Vec<BoundaryConstraintGroup<E::BaseField, E>>,
     aux_constraints: Vec<BoundaryConstraintGroup<E, E>>,
-    lagrange_kernel_constraint: Option<LagrangeKernelBoundaryConstraint<E, E>>,
+    lagrange_kernel_constraint: Option<LagrangeKernelBoundaryConstraint<E>>,
 }
 
 impl<E: FieldElement> BoundaryConstraints<E> {
@@ -58,9 +58,9 @@ impl<E: FieldElement> BoundaryConstraints<E> {
         context: &AirContext<E::BaseField>,
         main_assertions: Vec<Assertion<E::BaseField>>,
         aux_assertions: Vec<Assertion<E>>,
-        lagrange_kernel_assertion: Option<Assertion<E>>,
         composition_coefficients: &[E],
         lagrange_kernel_boundary_coefficient: Option<E>,
+        lagrange_kernel_aux_rand_elements: &[E],
     ) -> Self {
         // make sure the provided assertions are consistent with the specified context
         assert_eq!(
@@ -125,17 +125,13 @@ impl<E: FieldElement> BoundaryConstraints<E> {
             &mut twiddle_map,
         );
 
-        let lagrange_kernel_constraint = lagrange_kernel_assertion.map(|assertion| {
-            let lagrange_kernel_boundary_coefficient = lagrange_kernel_boundary_coefficient
-                .expect("expected Lagrange boundary coefficient to be present");
-            let divisor = ConstraintDivisor::from_assertion(&assertion, trace_length);
-
-            LagrangeKernelBoundaryConstraint::new(
-                assertion,
-                lagrange_kernel_boundary_coefficient,
-                divisor,
-            )
-        });
+        let lagrange_kernel_constraint =
+            lagrange_kernel_boundary_coefficient.map(|lagrange_kernel_boundary_coefficient| {
+                LagrangeKernelBoundaryConstraint::new(
+                    lagrange_kernel_boundary_coefficient,
+                    lagrange_kernel_aux_rand_elements,
+                )
+            });
 
         Self {
             main_constraints,
@@ -159,7 +155,7 @@ impl<E: FieldElement> BoundaryConstraints<E> {
         &self.aux_constraints
     }
 
-    pub fn lagrange_kernel_constraint(&self) -> Option<&LagrangeKernelBoundaryConstraint<E, E>> {
+    pub fn lagrange_kernel_constraint(&self) -> Option<&LagrangeKernelBoundaryConstraint<E>> {
         self.lagrange_kernel_constraint.as_ref()
     }
 }
