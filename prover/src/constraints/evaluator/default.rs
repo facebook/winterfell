@@ -175,8 +175,7 @@ where
         let lagrange_kernel_boundary_constraint = composition_coefficients
             .lagrange_kernel_boundary
             .map(|lagrange_kernel_boundary_coefficient| {
-                let lagrange_kernel_aux_rand_elements =
-                    air.lagrange_kernel_rand_elements(aux_rand_elements.get_segment_elements(0));
+                let lagrange_kernel_aux_rand_elements = aux_rand_elements.get_segment_elements(0);
 
                 LagrangeKernelBoundaryConstraint::new(
                     lagrange_kernel_boundary_coefficient,
@@ -324,9 +323,6 @@ where
         // this will be used to convert steps in constraint evaluation domain to steps in
         // LDE domain
         let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
-        let lagrange_kernel_column_rand_elements = self
-            .air
-            .lagrange_kernel_rand_elements(self.aux_rand_elements.get_segment_elements(0));
 
         let mut transition_constraint_combined_evaluations =
             Vec::with_capacity(domain.ce_domain_size());
@@ -346,7 +342,7 @@ where
             {
                 let transition_evals = lagrange_kernel_transition_constraints.evaluate_and_combine(
                     &lagrange_kernel_column_frame,
-                    lagrange_kernel_column_rand_elements,
+                    self.aux_rand_elements.get_segment_elements(0),
                     domain_point,
                 );
                 transition_constraint_combined_evaluations.push(transition_evals);

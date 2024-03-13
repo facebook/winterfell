@@ -291,24 +291,6 @@ pub trait Air: Send + Sync {
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the random elements to use in the lagrange kernel.
-    ///
-    /// The return slice stores the least significant random element first. For example, for a trace
-    /// length of 8, there will be 3 random elements, such that
-    /// - return[0] = r0
-    /// - return[1] = r1
-    /// - return[2] = r2
-    /// where `return` is the returned slice, and r = (r2, r1, r0).
-    fn lagrange_kernel_rand_elements<'r, F, E>(&self, aux_rand_elements: &'r [E]) -> &'r [E]
-    where
-        F: FieldElement<BaseField = Self::BaseField>,
-        E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
-    {
-        let num_rand_elements = self.trace_length().ilog2() as usize;
-
-        &aux_rand_elements[0..num_rand_elements]
-    }
-
     /// Returns values for all periodic columns used in the computation.
     ///
     /// These values will be used to compute column values at specific states of the computation
@@ -385,7 +367,7 @@ pub trait Air: Send + Sync {
         lagrange_kernel_boundary_coefficient: Option<E>,
     ) -> BoundaryConstraints<E> {
         let lagrange_kernel_aux_rand_elements = if self.context().has_lagrange_kernel_aux_column() {
-            self.lagrange_kernel_rand_elements(aux_rand_elements.get_segment_elements(0))
+            aux_rand_elements.get_segment_elements(0)
         } else {
             &[]
         };
