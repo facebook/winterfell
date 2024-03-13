@@ -12,7 +12,7 @@ use air::{
     LagrangeKernelBoundaryConstraint, LagrangeKernelEvaluationFrame,
     LagrangeKernelTransitionConstraints, TransitionConstraints,
 };
-use math::FieldElement;
+use math::{batch_inversion, FieldElement};
 use utils::{collections::*, iter_mut};
 
 #[cfg(feature = "concurrent")]
@@ -310,7 +310,6 @@ where
         trace: &T,
         domain: &StarkDomain<A::BaseField>,
     ) -> Vec<E> {
-        let mut combined_evaluations = Vec::with_capacity(domain.ce_domain_size());
         let lagrange_kernel_transition_constraints = self
             .lagrange_kernel_transition_constraints
             .as_ref()
@@ -329,6 +328,11 @@ where
             .air
             .lagrange_kernel_rand_elements(self.aux_rand_elements.get_segment_elements(0));
 
+        let mut transition_constraint_combined_evaluations =
+            Vec::with_capacity(domain.ce_domain_size());
+        let mut boundary_numerator_evals = Vec::with_capacity(domain.ce_domain_size());
+        let mut boundary_denominator_evals = Vec::with_capacity(domain.ce_domain_size());
+
         let mut lagrange_kernel_column_frame = LagrangeKernelEvaluationFrame::new_empty();
         for step in 0..domain.ce_domain_size() {
             trace.read_lagrange_kernel_frame_into(
@@ -339,29 +343,49 @@ where
 
             let domain_point = domain.get_ce_x_at(step);
 
-            let transition_constraints_combined_evals = lagrange_kernel_transition_constraints
-                .evaluate_and_combine(
+            {
+                let transition_evals = lagrange_kernel_transition_constraints.evaluate_and_combine(
                     &lagrange_kernel_column_frame,
                     lagrange_kernel_column_rand_elements,
                     domain_point,
                 );
+                transition_constraint_combined_evaluations.push(transition_evals);
+            }
 
-            let boundary_constraint_eval = {
+            {
                 let constraint = self
                     .lagrange_kernel_boundary_constraint
                     .as_ref()
                     .expect("expected Lagrange boundary constraint to be present");
 
-                constraint.evaluate_at(domain_point.into(), &lagrange_kernel_column_frame)
-            };
+                let boundary_numerator =
+                    constraint.evaluate_numerator_at(&lagrange_kernel_column_frame);
+                boundary_numerator_evals.push(boundary_numerator);
 
-            let all_constraints_combined =
-                transition_constraints_combined_evals + boundary_constraint_eval;
-
-            combined_evaluations.push(all_constraints_combined);
+                let boundary_denominator = constraint.evaluate_denominator_at(domain_point.into());
+                boundary_denominator_evals.push(boundary_denominator);
+            }
         }
 
-        combined_evaluations
+        // Evaluate inverse denominators
+        let boundary_constraint_combined_evaluations: Vec<E> = {
+            let boundary_denominators_inv = batch_inversion(&boundary_denominator_evals);
+
+            boundary_numerator_evals
+                .into_iter()
+                .zip(boundary_denominators_inv)
+                .map(|(numerator, denom_inv)| numerator * denom_inv)
+                .collect()
+        };
+
+        // combine boundary and transition constraint combined evaluations
+        transition_constraint_combined_evaluations
+            .into_iter()
+            .zip(boundary_constraint_combined_evaluations)
+            .map(|(transitions_combined, boundaries_combined)| {
+                transitions_combined + boundaries_combined
+            })
+            .collect()
     }
 
     // TRANSITION CONSTRAINT EVALUATORS
