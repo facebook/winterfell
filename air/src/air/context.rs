@@ -127,9 +127,6 @@ impl<B: StarkField> AirContext<B> {
         // validate Lagrange kernel aux column, if any
         if let Some(lagrange_kernel_aux_column_idx) = lagrange_kernel_aux_column_idx {
             assert!(lagrange_kernel_aux_column_idx < trace_info.get_aux_segment_width(0), "Lagrange kernel column index out of bounds: index={}, but only {} columns in segment", lagrange_kernel_aux_column_idx, trace_info.get_aux_segment_width(0));
-
-            let min_aux_segment_rands = trace_info.length().ilog2();
-            assert!(trace_info.get_aux_segment_rand_elements(0) >= min_aux_segment_rands as usize, "Lagrange kernel column requires log(trace_length) random elements. Got: {}, but need at least {}", trace_info.get_aux_segment_rand_elements(0), min_aux_segment_rands);
         }
 
         // determine minimum blowup factor needed to evaluate transition constraints by taking
