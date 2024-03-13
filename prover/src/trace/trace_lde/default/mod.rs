@@ -175,34 +175,26 @@ where
         frame.next_mut().copy_from_slice(segment.row(next_lde_step));
     }
 
-    /// Returns the Lagrange kernel frame starting at the current row (as defined by `lde_step`).
-    ///
-    /// Note that unlike [`EvaluationFrame`], the Lagrange kernel frame includes only the Lagrange
-    /// kernel column (as opposed to all columns).
-    ///
-    /// # Panics
-    /// - if there is no auxiliary trace segment
-    /// - if there is no Lagrange kernel column
-    fn get_lagrange_kernel_column_frame(
+    fn read_lagrange_kernel_frame_into(
         &self,
         lde_step: usize,
         lagrange_kernel_aux_column_idx: usize,
-    ) -> LagrangeKernelEvaluationFrame<E> {
-        let frame_length = self.trace_info.length().ilog2() as usize + 1;
-        let mut frame: Vec<E> = Vec::with_capacity(frame_length);
+        frame: &mut LagrangeKernelEvaluationFrame<E>,
+    ) {
+        let frame = frame.frame_mut();
+        frame.truncate(0);
 
         let aux_segment = &self.aux_segment_ldes[0];
 
         frame.push(aux_segment.get(lagrange_kernel_aux_column_idx, lde_step));
 
+        let frame_length = self.trace_info.length().ilog2() as usize + 1;
         for i in 0..frame_length - 1 {
             let shift = self.blowup() * 2_u32.pow(i as u32) as usize;
             let next_lde_step = (lde_step + shift) % self.trace_len();
 
             frame.push(aux_segment.get(lagrange_kernel_aux_column_idx, next_lde_step));
         }
-
-        LagrangeKernelEvaluationFrame::new(frame)
     }
 
     /// Returns trace table rows at the specified positions along with Merkle authentication paths

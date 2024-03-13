@@ -9,7 +9,8 @@ use super::{
 };
 use air::{
     Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
-    LagrangeKernelBoundaryConstraint, LagrangeKernelTransitionConstraints, TransitionConstraints,
+    LagrangeKernelBoundaryConstraint, LagrangeKernelEvaluationFrame,
+    LagrangeKernelTransitionConstraints, TransitionConstraints,
 };
 use math::FieldElement;
 use utils::{collections::*, iter_mut};
@@ -328,10 +329,12 @@ where
             .air
             .lagrange_kernel_rand_elements(self.aux_rand_elements.get_segment_elements(0));
 
+        let mut lagrange_kernel_column_frame = LagrangeKernelEvaluationFrame::new_empty();
         for step in 0..domain.ce_domain_size() {
-            let lagrange_kernel_column_frame = trace.get_lagrange_kernel_column_frame(
+            trace.read_lagrange_kernel_frame_into(
                 step << lde_shift,
                 lagrange_kernel_aux_column_idx,
+                &mut lagrange_kernel_column_frame,
             );
 
             let domain_point = domain.get_ce_x_at(step);

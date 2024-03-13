@@ -104,6 +104,11 @@ impl<E: FieldElement> LagrangeKernelEvaluationFrame<E> {
         Self { frame }
     }
 
+    /// Constructs an empty Lagrange kernel evaluation frame from the raw column polynomial evaluations. The frame can subsequently be filled using [`Self::frame_mut`].
+    pub fn new_empty() -> Self {
+        Self { frame: Vec::new() }
+    }
+
     /// Constructs the frame from the Lagrange kernel trace column polynomial coefficients for an
     /// evaluation point.
     pub fn from_lagrange_kernel_column_poly(lagrange_kernel_col_poly: &[E], z: E) -> Self {
@@ -128,6 +133,12 @@ impl<E: FieldElement> LagrangeKernelEvaluationFrame<E> {
         }
 
         Self { frame }
+    }
+
+    // MUTATORS
+    // --------------------------------------------------------------------------------------------
+    pub fn frame_mut(&mut self) -> &mut Vec<E> {
+        &mut self.frame
     }
 
     // ACCESSORS
