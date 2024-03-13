@@ -115,12 +115,16 @@ impl<E: FieldElement> LagrangeKernelEvaluationFrame<E> {
         // push c(x)
         frame.push(polynom::eval(lagrange_kernel_col_poly, z));
 
-        // push `c(gx)`, `c(x * g^2)`, `c(x * g^4)`, ..., `c(x * g^(2^(v-1)))`
-        for i in 0..log_trace_len {
-            let x = g.exp_vartime(2_u32.pow(i).into()) * z;
+        // push c(z * g), c(z * g^2), c(z * g^4), ..., c(z * g^(2^(v-1)))
+        let mut g_exp = g;
+        for _ in 0..log_trace_len {
+            let x = g_exp * z;
             let lagrange_poly_at_x = polynom::eval(lagrange_kernel_col_poly, x);
 
             frame.push(lagrange_poly_at_x);
+
+            // takes on the values `g`, `g^2`, `g^4`, `g^8`, ...
+            g_exp *= g_exp;
         }
 
         Self { frame }
