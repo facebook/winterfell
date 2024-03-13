@@ -8,9 +8,8 @@ use super::{
     ConstraintEvaluationTable, ConstraintEvaluator, PeriodicValueTable, StarkDomain, TraceLde,
 };
 use air::{
-    trace_aux_segment_has_only_lagrange_kernel_column, Air, AuxTraceRandElements,
-    ConstraintCompositionCoefficients, EvaluationFrame, LagrangeKernelBoundaryConstraint,
-    LagrangeKernelTransitionConstraints, TransitionConstraints,
+    Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
+    LagrangeKernelBoundaryConstraint, LagrangeKernelTransitionConstraints, TransitionConstraints,
 };
 use math::FieldElement;
 use utils::{collections::*, iter_mut};
@@ -281,18 +280,8 @@ where
             // can just add up the results of evaluating main and auxiliary constraints.
             evaluations[0] = self.evaluate_main_transition(&main_frame, step, &mut tm_evaluations);
 
-            // Make sure to only evaluate the aux transition if the user actually defined one
-            if !trace_aux_segment_has_only_lagrange_kernel_column(
-                self.air.context().lagrange_kernel_aux_column_idx(),
-                self.air.trace_info(),
-            ) {
-                evaluations[0] += self.evaluate_aux_transition(
-                    &main_frame,
-                    &aux_frame,
-                    step,
-                    &mut ta_evaluations,
-                );
-            }
+            evaluations[0] +=
+                self.evaluate_aux_transition(&main_frame, &aux_frame, step, &mut ta_evaluations);
 
             // when in debug mode, save transition constraint evaluations
             #[cfg(debug_assertions)]

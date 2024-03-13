@@ -3,10 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{
-    air::{trace_aux_segment_has_only_lagrange_kernel_column, TransitionConstraintDegree},
-    ProofOptions, TraceInfo,
-};
+use crate::{air::TransitionConstraintDegree, ProofOptions, TraceInfo};
 use core::cmp;
 use math::StarkField;
 use utils::collections::*;
@@ -108,19 +105,14 @@ impl<B: StarkField> AirContext<B> {
         if trace_info.is_multi_segment() {
             // If the only auxiliary column is the Lagrange kernel one, then we don't require any
             // other boundary/transition constraints
-            if !trace_aux_segment_has_only_lagrange_kernel_column(
-                lagrange_kernel_aux_column_idx,
-                &trace_info,
-            ) {
-                assert!(
+            assert!(
                 !aux_transition_constraint_degrees.is_empty(),
                 "at least one transition constraint degree must be specified for auxiliary trace segments"
                 );
-                assert!(
-                    num_aux_assertions > 0,
-                    "at least one assertion must be specified against auxiliary trace segments"
-                );
-            }
+            assert!(
+                num_aux_assertions > 0,
+                "at least one assertion must be specified against auxiliary trace segments"
+            );
         } else {
             assert!(
                 aux_transition_constraint_degrees.is_empty(),

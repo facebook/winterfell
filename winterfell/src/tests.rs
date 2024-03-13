@@ -1,7 +1,7 @@
 use super::*;
 use prover::{
     crypto::{hashers::Blake3_256, DefaultRandomCoin},
-    math::{fields::f64::BaseElement, FieldElement},
+    math::{fields::f64::BaseElement, ExtensionOf, FieldElement},
     matrix::ColMatrix,
 };
 
@@ -49,7 +49,7 @@ impl LagrangeMockTrace {
 
         Self {
             main_trace: ColMatrix::new(vec![col]),
-            info: TraceInfo::new_multi_segment(1, [1], [3], Self::TRACE_LENGTH, vec![]),
+            info: TraceInfo::new_multi_segment(1, [2], [3], Self::TRACE_LENGTH, vec![]),
         }
     }
 }
@@ -79,7 +79,7 @@ impl Trace for LagrangeMockTrace {
         let r1 = lagrange_rand_elements[1];
         let r2 = lagrange_rand_elements[2];
 
-        let col = vec![
+        let lagrange_col = vec![
             (E::ONE - r2) * (E::ONE - r1) * (E::ONE - r0),
             (E::ONE - r2) * (E::ONE - r1) * r0,
             (E::ONE - r2) * r1 * (E::ONE - r0),
@@ -90,7 +90,9 @@ impl Trace for LagrangeMockTrace {
             r2 * r1 * r0,
         ];
 
-        Some(ColMatrix::new(vec![col]))
+        let dummy_col = vec![E::ZERO; 8];
+
+        Some(ColMatrix::new(vec![lagrange_col, dummy_col]))
     }
 
     fn read_main_frame(&self, row_idx: usize, frame: &mut EvaluationFrame<BaseElement>) {
@@ -120,9 +122,9 @@ impl Air for LagrangeKernelMockAir {
             context: AirContext::new_multi_segment(
                 trace_info,
                 vec![TransitionConstraintDegree::new(1)],
-                Vec::new(),
+                vec![TransitionConstraintDegree::new(1)],
                 1,
-                0,
+                1,
                 Some(0),
                 options,
             ),
@@ -148,6 +150,27 @@ impl Air for LagrangeKernelMockAir {
 
     fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>> {
         vec![Assertion::single(0, 0, BaseElement::ZERO)]
+    }
+
+    fn evaluate_aux_transition<F, E>(
+        &self,
+        _main_frame: &EvaluationFrame<F>,
+        _aux_frame: &EvaluationFrame<E>,
+        _periodic_values: &[F],
+        _aux_rand_elements: &AuxTraceRandElements<E>,
+        _result: &mut [E],
+    ) where
+        F: FieldElement<BaseField = Self::BaseField>,
+        E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
+    {
+        // do nothing
+    }
+
+    fn get_aux_assertions<E: FieldElement<BaseField = Self::BaseField>>(
+        &self,
+        _aux_rand_elements: &AuxTraceRandElements<E>,
+    ) -> Vec<Assertion<E>> {
+        vec![Assertion::single(1, 0, E::ZERO)]
     }
 }
 

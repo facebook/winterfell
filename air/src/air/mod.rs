@@ -583,18 +583,3 @@ pub trait Air: Send + Sync {
         })
     }
 }
-
-// UTILS
-// ================================================================================================
-
-/// Returns true if there is only one auxiliary column, and that column is the Lagrange kernel column
-pub fn trace_aux_segment_has_only_lagrange_kernel_column(
-    lagrange_kernel_aux_column_idx: Option<usize>,
-    trace_info: &TraceInfo,
-) -> bool {
-    if lagrange_kernel_aux_column_idx.is_some() {
-        trace_info.aux_trace_width() == 1
-    } else {
-        false
-    }
-}

@@ -43,10 +43,9 @@ pub use options::{FieldExtension, ProofOptions};
 
 mod air;
 pub use air::{
-    trace_aux_segment_has_only_lagrange_kernel_column, Air, AirContext, Assertion,
-    AuxTraceRandElements, BoundaryConstraint, BoundaryConstraintGroup, BoundaryConstraints,
-    ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
-    EvaluationFrame, LagrangeKernelBoundaryConstraint, LagrangeKernelEvaluationFrame,
-    LagrangeKernelTransitionConstraints, TraceInfo, TransitionConstraintDegree,
-    TransitionConstraints,
+    Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint, BoundaryConstraintGroup,
+    BoundaryConstraints, ConstraintCompositionCoefficients, ConstraintDivisor,
+    DeepCompositionCoefficients, EvaluationFrame, LagrangeKernelBoundaryConstraint,
+    LagrangeKernelEvaluationFrame, LagrangeKernelTransitionConstraints, TraceInfo,
+    TransitionConstraintDegree, TransitionConstraints,
 };
