@@ -5,20 +5,21 @@
 
 //! This crate contains utility traits, functions, and macros used by other crates of Winterfell
 //! STARK prover and verifier.
+#![no_std]
 
-#![cfg_attr(not(feature = "std"), no_std)]
-
-#[cfg(not(feature = "std"))]
 #[macro_use]
 extern crate alloc;
+
+#[cfg(feature = "std")]
+extern crate std;
 
 pub mod boxed;
 pub mod collections;
 pub mod iterators;
 pub mod string;
 
+use alloc::vec::Vec;
 pub use boxed::*;
-use collections::*;
 use core::{mem, slice};
 
 mod serde;

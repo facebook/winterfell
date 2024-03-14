@@ -3,9 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use alloc::{
+    string::{String, ToString},
+    vec::Vec,
+};
+
 use super::{Deserializable, DeserializationError};
-use crate::collections::*;
-use crate::string::*;
 
 // BYTE READER TRAIT
 // ================================================================================================

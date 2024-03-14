@@ -4,7 +4,6 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::Serializable;
-use crate::collections::*;
 
 // BYTE WRITER TRAIT
 // ================================================================================================
@@ -114,7 +113,7 @@ pub trait ByteWriter: Sized {
 // BYTE WRITER IMPLEMENTATIONS
 // ================================================================================================
 
-impl ByteWriter for Vec<u8> {
+impl ByteWriter for alloc::vec::Vec<u8> {
     fn write_u8(&mut self, value: u8) {
         self.push(value);
     }
