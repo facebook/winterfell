@@ -14,6 +14,9 @@ use super::DeserializationError;
 mod byte_reader;
 pub use byte_reader::{ByteReader, SliceReader};
 
+#[cfg(feature = "std")]
+pub use byte_reader::ReadAdapter;
+
 mod byte_writer;
 pub use byte_writer::ByteWriter;
 

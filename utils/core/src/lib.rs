@@ -23,6 +23,8 @@ pub use boxed::*;
 use core::{mem, slice};
 
 mod serde;
+#[cfg(feature = "std")]
+pub use serde::ReadAdapter;
 pub use serde::{ByteReader, ByteWriter, Deserializable, Serializable, SliceReader};
 
 mod errors;

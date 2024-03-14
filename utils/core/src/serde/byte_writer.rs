@@ -113,6 +113,19 @@ pub trait ByteWriter: Sized {
 // BYTE WRITER IMPLEMENTATIONS
 // ================================================================================================
 
+#[cfg(feature = "std")]
+impl<W: std::io::Write> ByteWriter for W {
+    #[inline(always)]
+    fn write_u8(&mut self, byte: u8) {
+        <W as std::io::Write>::write_all(self, &[byte]).expect("write failed")
+    }
+    #[inline(always)]
+    fn write_bytes(&mut self, bytes: &[u8]) {
+        <W as std::io::Write>::write_all(self, bytes).expect("write failed")
+    }
+}
+
+#[cfg(not(feature = "std"))]
 impl ByteWriter for alloc::vec::Vec<u8> {
     fn write_u8(&mut self, value: u8) {
         self.push(value);
@@ -131,4 +144,25 @@ fn encoded_len(value: usize) -> usize {
     let zeros = value.leading_zeros() as usize;
     let len = zeros.saturating_sub(1) / 7;
     9 - core::cmp::min(len, 8)
+}
+
+#[cfg(all(test, feature = "std"))]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+
+    #[test]
+    fn write_adapter_passthrough() {
+        let mut writer = Cursor::new([0u8; 128]);
+        writer.write_bytes(b"nope");
+        let buf = writer.get_ref();
+        assert_eq!(&buf[..4], b"nope");
+    }
+
+    #[test]
+    #[should_panic]
+    fn write_adapter_writer_out_of_capacity() {
+        let mut writer = Cursor::new([0; 2]);
+        writer.write_bytes(b"nope");
+    }
 }
