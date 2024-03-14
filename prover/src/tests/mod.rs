@@ -8,8 +8,8 @@ use air::{
     Air, AirContext, Assertion, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
+use alloc::vec::Vec;
 use math::{fields::f128::BaseElement, FieldElement, StarkField};
-use utils::collections::*;
 
 // FIBONACCI TRACE BUILDER
 // ================================================================================================

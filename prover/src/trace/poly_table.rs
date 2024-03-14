@@ -7,8 +7,8 @@ use crate::{
     matrix::{ColumnIter, MultiColumnIter},
     ColMatrix,
 };
+use alloc::vec::Vec;
 use math::{FieldElement, StarkField};
-use utils::collections::*;
 
 // TRACE POLYNOMIAL TABLE
 // ================================================================================================

@@ -3,11 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use alloc::{string::ToString, vec::Vec};
 use math::{StarkField, ToElements};
-use utils::{
-    collections::*, string::*, ByteReader, ByteWriter, Deserializable, DeserializationError,
-    Serializable,
-};
+use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 // CONSTANTS
 // ================================================================================================

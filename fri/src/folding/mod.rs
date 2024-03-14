@@ -11,11 +11,12 @@
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
 
+use alloc::vec::Vec;
 use math::{
     fft::{get_inv_twiddles, serial_fft},
     get_power_series_with_offset, polynom, FieldElement, StarkField,
 };
-use utils::{collections::*, iter_mut, uninit_vector};
+use utils::{iter_mut, uninit_vector};
 
 // DEGREE-RESPECTING PROJECTION
 // ================================================================================================

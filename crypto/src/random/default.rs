@@ -4,8 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{errors::RandomCoinError, Digest, ElementHasher, RandomCoin};
+use alloc::vec::Vec;
 use math::{FieldElement, StarkField};
-use utils::collections::*;
 
 // DEFAULT RANDOM COIN IMPLEMENTATION
 // ================================================================================================

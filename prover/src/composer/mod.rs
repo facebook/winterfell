@@ -5,8 +5,9 @@
 
 use super::{constraints::CompositionPoly, StarkDomain, TracePolyTable};
 use air::DeepCompositionCoefficients;
+use alloc::vec::Vec;
 use math::{add_in_place, fft, mul_acc, polynom, ExtensionOf, FieldElement, StarkField};
-use utils::{collections::*, iter_mut};
+use utils::iter_mut;
 
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;

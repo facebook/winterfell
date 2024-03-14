@@ -4,9 +4,10 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{FriProof, VerifierError};
+use alloc::vec::Vec;
 use crypto::{BatchMerkleProof, ElementHasher, Hasher, MerkleTree};
 use math::FieldElement;
-use utils::{collections::*, group_vector_elements, DeserializationError};
+use utils::{group_vector_elements, DeserializationError};
 
 // VERIFIER CHANNEL TRAIT
 // ================================================================================================

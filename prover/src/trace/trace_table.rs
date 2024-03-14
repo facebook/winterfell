@@ -5,8 +5,9 @@
 
 use super::{ColMatrix, Trace};
 use air::{EvaluationFrame, TraceInfo, TraceLayout};
+use alloc::vec::Vec;
 use math::{FieldElement, StarkField};
-use utils::{collections::*, uninit_vector};
+use utils::uninit_vector;
 
 #[cfg(feature = "concurrent")]
 use utils::{iterators::*, rayon};
@@ -241,7 +242,10 @@ impl<B: StarkField> TraceTable<B> {
     /// Panics if `fragment_length` is smaller than 2, greater than the length of the trace,
     /// or is not a power of two.
     #[cfg(not(feature = "concurrent"))]
-    pub fn fragments(&mut self, fragment_length: usize) -> vec::IntoIter<TraceTableFragment<B>> {
+    pub fn fragments(
+        &mut self,
+        fragment_length: usize,
+    ) -> alloc::vec::IntoIter<TraceTableFragment<B>> {
         self.build_fragments(fragment_length).into_iter()
     }
 

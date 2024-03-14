@@ -4,8 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use air::{Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame};
+use alloc::vec::Vec;
 use math::{polynom, FieldElement};
-use utils::collections::*;
 
 // CONSTRAINT EVALUATION
 // ================================================================================================

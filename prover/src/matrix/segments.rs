@@ -4,9 +4,10 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::ColMatrix;
+use alloc::vec::Vec;
 use core::ops::Deref;
 use math::{fft::fft_inputs::FftInputs, FieldElement, StarkField};
-use utils::{collections::*, group_vector_elements, uninit_vector};
+use utils::{group_vector_elements, uninit_vector};
 
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;

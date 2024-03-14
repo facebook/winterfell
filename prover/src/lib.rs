@@ -37,9 +37,8 @@
 //! also depends on the capabilities of the machine used to generate the proofs (i.e. on number
 //! of CPU cores and memory bandwidth).
 
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 
-#[cfg(not(feature = "std"))]
 #[macro_use]
 extern crate alloc;
 
@@ -55,8 +54,8 @@ pub use utils::{
     SliceReader,
 };
 
+use alloc::vec::Vec;
 use fri::FriProver;
-use utils::collections::*;
 
 pub use math;
 use math::{

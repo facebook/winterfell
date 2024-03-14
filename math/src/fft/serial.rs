@@ -5,7 +5,8 @@
 
 use super::fft_inputs::FftInputs;
 use crate::{field::StarkField, FieldElement};
-use utils::{collections::*, uninit_vector};
+use alloc::vec::Vec;
+use utils::uninit_vector;
 
 // POLYNOMIAL EVALUATION
 // ================================================================================================

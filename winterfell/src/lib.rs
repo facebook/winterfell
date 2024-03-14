@@ -346,7 +346,7 @@
 //!     type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
 //!     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
 //!         DefaultConstraintEvaluator<'a, Self::Air, E>;
-//!     
+//!
 //!     // Our public inputs consist of the first and last value in the execution trace.
 //!     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
 //!         let last_step = trace.length() - 1;
@@ -367,7 +367,7 @@
 //!         domain: &StarkDomain<Self::BaseField>,
 //!     ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
 //!         DefaultTraceLde::new(trace_info, main_trace, domain)
-//!     }    
+//!     }
 //!
 //!     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
 //!         &self,
@@ -507,7 +507,7 @@
 //! #    ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
 //! #        DefaultTraceLde::new(trace_info, main_trace, domain)
 //! #    }
-//! #  
+//! #
 //! #    fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
 //! #        &self,
 //! #        air: &'a Self::Air,
@@ -578,7 +578,7 @@
 //! * [Low Degree Testing](https://medium.com/starkware/low-degree-testing-f7614f5172db)
 //! * [A Framework for Efficient STARKs](https://medium.com/starkware/a-framework-for-efficient-starks-19608ba06fbe)
 
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 
 pub use prover::{
     crypto, iterators, math, matrix, Air, AirContext, Assertion, AuxTraceRandElements,
