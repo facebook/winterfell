@@ -37,6 +37,8 @@ pub use coefficients::{
 mod divisor;
 pub use divisor::ConstraintDivisor;
 
+use self::coefficients::LagrangeConstraintsCompositionCoefficients;
+
 #[cfg(test)]
 mod tests;
 
@@ -533,9 +535,11 @@ pub trait Air: Send + Sync {
 
         Ok(ConstraintCompositionCoefficients {
             transition: t_coefficients,
-            lagrange_kernel_transition: lagrange_kernel_t_coefficients,
             boundary: b_coefficients,
-            lagrange_kernel_boundary,
+            lagrange: LagrangeConstraintsCompositionCoefficients {
+                transition: lagrange_kernel_t_coefficients,
+                boundary: lagrange_kernel_boundary,
+            },
         })
     }
 

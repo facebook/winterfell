@@ -156,7 +156,7 @@ where
             air.context().lagrange_kernel_aux_column_idx().map(|_| {
                 LagrangeKernelTransitionConstraints::new(
                     air.context(),
-                    composition_coefficients.lagrange_kernel_transition,
+                    composition_coefficients.lagrange.transition,
                 )
             });
 
@@ -169,19 +169,19 @@ where
             air,
             &aux_rand_elements,
             &composition_coefficients.boundary,
-            composition_coefficients.lagrange_kernel_boundary,
+            composition_coefficients.lagrange.boundary,
         );
 
-        let lagrange_kernel_boundary_constraint = composition_coefficients
-            .lagrange_kernel_boundary
-            .map(|lagrange_kernel_boundary_coefficient| {
+        let lagrange_kernel_boundary_constraint = composition_coefficients.lagrange.boundary.map(
+            |lagrange_kernel_boundary_coefficient| {
                 let lagrange_kernel_aux_rand_elements = aux_rand_elements.get_segment_elements(0);
 
                 LagrangeKernelBoundaryConstraint::new(
                     lagrange_kernel_boundary_coefficient,
                     lagrange_kernel_aux_rand_elements,
                 )
-            });
+            },
+        );
 
         DefaultConstraintEvaluator {
             air,

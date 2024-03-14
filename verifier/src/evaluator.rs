@@ -70,7 +70,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     let b_constraints = air.get_boundary_constraints(
         &aux_rand_elements,
         &composition_coefficients.boundary,
-        composition_coefficients.lagrange_kernel_boundary,
+        composition_coefficients.lagrange.boundary,
     );
 
     // iterate over boundary constraint groups for the main trace segment (each group has a
@@ -94,7 +94,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     if let Some(lagrange_kernel_column_frame) = lagrange_kernel_column_frame {
         let lagrange_kernel_transition_constraints = LagrangeKernelTransitionConstraints::new(
             air.context(),
-            composition_coefficients.lagrange_kernel_transition,
+            composition_coefficients.lagrange.transition,
         );
 
         result += lagrange_kernel_transition_constraints.evaluate_and_combine::<E>(
