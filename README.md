@@ -326,7 +326,7 @@ pub fn prove_work() -> (BaseElement, StarkProof) {
         0,  // grinding factor
         FieldExtension::None,
         8,   // FRI folding factor
-        128, // FRI max remainder length
+        127, // FRI remainder max degree
     );
 
     // Instantiate the prover and generate the proof.
