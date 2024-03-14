@@ -3,11 +3,13 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use std::time::Duration;
+
 use air::{
     Air, AirContext, Assertion, AuxTraceRandElements, ConstraintCompositionCoefficients,
     EvaluationFrame, FieldExtension, ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use crypto::{hashers::Blake3_256, DefaultRandomCoin};
 use math::{fields::f64::BaseElement, ExtensionOf, FieldElement};
 use winter_prover::{
@@ -15,7 +17,25 @@ use winter_prover::{
     TracePolyTable,
 };
 
-fn prove_with_lagrange_kernel(c: &mut Criterion) {}
+const TRACE_LENS: [usize; 3] = [2_usize.pow(14), 2_usize.pow(15), 2_usize.pow(16)];
+
+fn prove_with_lagrange_kernel(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Lagrange kernel column");
+    group.sample_size(10);
+    group.measurement_time(Duration::from_secs(20));
+
+    for &trace_len in TRACE_LENS.iter() {
+        group.bench_function(BenchmarkId::new("prover", trace_len), |b| {
+            let trace = LagrangeTrace::new(trace_len, 2);
+            let prover = LagrangeProver::new();
+            b.iter_batched(
+                || trace.clone(),
+                |trace| prover.prove(trace).unwrap(),
+                BatchSize::SmallInput,
+            )
+        });
+    }
+}
 
 criterion_group!(lagrange_kernel_group, prove_with_lagrange_kernel);
 criterion_main!(lagrange_kernel_group);
@@ -23,6 +43,7 @@ criterion_main!(lagrange_kernel_group);
 // TRACE
 // =================================================================================================
 
+#[derive(Clone, Debug)]
 struct LagrangeTrace {
     // dummy main trace
     main_trace: ColMatrix<BaseElement>,
