@@ -306,11 +306,11 @@ where
         let mut lagrange_kernel_column_frames =
             vec![LagrangeKernelEvaluationFrame::<E>::new_empty(); domain.ce_domain_size()];
 
-        for step in 0..domain.ce_domain_size() {
+        for (step, frame) in lagrange_kernel_column_frames.iter_mut().enumerate() {
             trace.read_lagrange_kernel_frame_into(
                 step << lde_shift,
                 lagrange_kernel_aux_column_idx,
-                &mut lagrange_kernel_column_frames[step],
+                frame,
             );
         }
 
@@ -505,7 +505,7 @@ impl<E: FieldElement> LagrangeConstraintsBatchEvaluator<E> {
     /// i=2: each 1/4th of the buffer are equal
     /// i=3: each 1/8th of the buffer are equal
     /// ...
-    /// Therefore, we only compute the non-repeating section of the buffer in each iteration, and index 
+    /// Therefore, we only compute the non-repeating section of the buffer in each iteration, and index
     /// into it accordingly.
     fn evaluate_combined_transition_constraints<A>(
         &self,
@@ -567,7 +567,7 @@ impl<E: FieldElement> LagrangeConstraintsBatchEvaluator<E> {
         let mut boundary_numerator_evals = Vec::with_capacity(domain.ce_domain_size());
         let mut boundary_denominator_evals = Vec::with_capacity(domain.ce_domain_size());
 
-        for step in 0..domain.ce_domain_size() {
+        for (step, frame) in lagrange_kernel_column_frames.iter().enumerate() {
             let domain_point = domain.get_ce_x_at(step);
 
             {
@@ -576,8 +576,7 @@ impl<E: FieldElement> LagrangeConstraintsBatchEvaluator<E> {
                     .as_ref()
                     .expect("expected Lagrange boundary constraint to be present");
 
-                let boundary_numerator =
-                    constraint.evaluate_numerator_at(&lagrange_kernel_column_frames[step]);
+                let boundary_numerator = constraint.evaluate_numerator_at(frame);
                 boundary_numerator_evals.push(boundary_numerator);
 
                 let boundary_denominator = constraint.evaluate_denominator_at(domain_point.into());
