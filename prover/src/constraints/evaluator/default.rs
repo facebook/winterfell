@@ -309,11 +309,6 @@ where
         trace: &T,
         domain: &StarkDomain<A::BaseField>,
     ) -> Vec<E> {
-        let lagrange_kernel_transition_constraints = self
-            .lagrange_kernel_transition_constraints
-            .as_ref()
-            .expect("expected Lagrange kernel transition constraints to be present");
-
         let lagrange_kernel_aux_column_idx = self
             .air
             .context()
@@ -323,9 +318,6 @@ where
         // this will be used to convert steps in constraint evaluation domain to steps in
         // LDE domain
         let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
-
-        let mut boundary_numerator_evals = Vec::with_capacity(domain.ce_domain_size());
-        let mut boundary_denominator_evals = Vec::with_capacity(domain.ce_domain_size());
 
         let mut lagrange_kernel_column_frames =
             vec![LagrangeKernelEvaluationFrame::<E>::new_empty(); domain.ce_domain_size()];
@@ -339,6 +331,11 @@ where
         }
 
         let transition_constraint_combined_evaluations = {
+            let lagrange_kernel_transition_constraints = self
+                .lagrange_kernel_transition_constraints
+                .as_ref()
+                .expect("expected Lagrange kernel transition constraints to be present");
+
             let mut combined_evaluations_acc = E::zeroed_vector(domain.ce_domain_size());
             let mut denominators: Vec<E> = Vec::with_capacity(domain.ce_domain_size());
 
@@ -371,26 +368,30 @@ where
             combined_evaluations_acc
         };
 
-        for step in 0..domain.ce_domain_size() {
-            let domain_point = domain.get_ce_x_at(step);
-
-            {
-                let constraint = self
-                    .lagrange_kernel_boundary_constraint
-                    .as_ref()
-                    .expect("expected Lagrange boundary constraint to be present");
-
-                let boundary_numerator =
-                    constraint.evaluate_numerator_at(&lagrange_kernel_column_frames[step]);
-                boundary_numerator_evals.push(boundary_numerator);
-
-                let boundary_denominator = constraint.evaluate_denominator_at(domain_point.into());
-                boundary_denominator_evals.push(boundary_denominator);
-            }
-        }
-
         // Evaluate inverse boundary constraint denominators
         let boundary_constraint_combined_evaluations: Vec<E> = {
+            let mut boundary_numerator_evals = Vec::with_capacity(domain.ce_domain_size());
+            let mut boundary_denominator_evals = Vec::with_capacity(domain.ce_domain_size());
+
+            for step in 0..domain.ce_domain_size() {
+                let domain_point = domain.get_ce_x_at(step);
+
+                {
+                    let constraint = self
+                        .lagrange_kernel_boundary_constraint
+                        .as_ref()
+                        .expect("expected Lagrange boundary constraint to be present");
+
+                    let boundary_numerator =
+                        constraint.evaluate_numerator_at(&lagrange_kernel_column_frames[step]);
+                    boundary_numerator_evals.push(boundary_numerator);
+
+                    let boundary_denominator =
+                        constraint.evaluate_denominator_at(domain_point.into());
+                    boundary_denominator_evals.push(boundary_denominator);
+                }
+            }
+
             let boundary_denominators_inv = batch_inversion(&boundary_denominator_evals);
 
             boundary_numerator_evals
