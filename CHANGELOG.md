@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.3 (2024-03-15)
+* Implemented `Serializable` and `Deserializable` on `String` (#258).
+* Extended range of possible implementations of `ByteReader` and `ByteWriter`. (#262).
+
 ## 0.8.2 (2024-02-27) - `utils/core` crate only
 * Extend `write_many` to support `IntoIterator` (#251)
 
