@@ -406,6 +406,13 @@ where
     }
 }
 
+// LAGRANGE CONSTRAINTS BATCH EVALUATOR
+// ================================================================================================
+
+/// Contains a specific strategy for evaluating the Lagrange kernel boundary and transition
+/// constraints where the divisors' evaluation is batched.
+///
+/// Specifically, [`batch_inversion`] is used to reduce the number of divisions performed.
 struct LagrangeConstraintsBatchEvaluator<E: FieldElement> {
     lagrange_kernel_boundary_constraint: Option<LagrangeKernelBoundaryConstraint<E>>,
     lagrange_kernel_transition_constraints: Option<LagrangeKernelTransitionConstraints<E>>,
@@ -413,6 +420,7 @@ struct LagrangeConstraintsBatchEvaluator<E: FieldElement> {
 }
 
 impl<E: FieldElement> LagrangeConstraintsBatchEvaluator<E> {
+    /// Constructs a new [`LagrangeConstraintsBatchEvaluator`].
     pub fn new<A: Air>(
         air: &A,
         aux_rand_elements: AuxTraceRandElements<E>,
@@ -446,7 +454,13 @@ impl<E: FieldElement> LagrangeConstraintsBatchEvaluator<E> {
         }
     }
 
-    fn evaluate_lagrange_kernel_constraints<A>(
+    /// Evaluates the transition and boundary constraints. Specifically, the constraint evaluations
+    /// are divided by their corresponding divisors, and the resulting terms are linearly combined
+    /// using the composition coefficients.
+    ///
+    /// Returns a buffer with the same length as the CE domain, where each element contains the
+    /// constraint evaluations (as explained above) at the corresponding domain point.
+    pub fn evaluate_lagrange_kernel_constraints<A>(
         &self,
         num_trans_constraints: usize,
         lagrange_kernel_column_frames: Vec<LagrangeKernelEvaluationFrame<E>>,
@@ -476,6 +490,23 @@ impl<E: FieldElement> LagrangeConstraintsBatchEvaluator<E> {
             .collect()
     }
 
+    // HELPERS
+    // ---------------------------------------------------------------------------------------------
+
+    /// Evaluate the transition constraints where the divisors' evaluations are batched to reduce
+    /// the number of divisions performed (which has a big effect on performance).
+    ///
+    /// This algorithm takes advantage of some structure in the divisors' evaluations. Recall that
+    /// the divisor for the i'th transition constraint is `x^(2^i) - 1`. When substituting `x` for
+    /// each value of the constraint evaluation domain, for constraints `i>0`, the divisor
+    /// evaluations "wrap-around" such that some values repeat. For example,
+    /// i=0: no repetitions
+    /// i=1: the first half of the buffer is equal to the second half
+    /// i=2: each 1/4th of the buffer are equal
+    /// i=3: each 1/8th of the buffer are equal
+    /// ...
+    /// Therefore, we only compute the non-repeating section of the buffer in each iteration, and index 
+    /// into it accordingly.
     fn evaluate_combined_transition_constraints<A>(
         &self,
         num_trans_constraints: usize,
@@ -495,9 +526,9 @@ impl<E: FieldElement> LagrangeConstraintsBatchEvaluator<E> {
         let mut denominators: Vec<E> = Vec::with_capacity(domain.ce_domain_size());
 
         for trans_constraint_idx in 0..num_trans_constraints {
-            // compute denominators
             let num_non_repeating_denoms =
                 domain.ce_domain_size() / 2_usize.pow(trans_constraint_idx as u32);
+
             for step in 0..num_non_repeating_denoms {
                 let domain_point = domain.get_ce_x_at(step);
                 let denominator = lagrange_kernel_transition_constraints
@@ -522,6 +553,8 @@ impl<E: FieldElement> LagrangeConstraintsBatchEvaluator<E> {
         combined_evaluations_acc
     }
 
+    /// Evaluate the boundary constraint where the divisors' evaluations are batched to reduce the
+    /// number of divisions performed (which has a big effect on performance).
     fn evaluate_combined_boundary_constraints<A>(
         &self,
         lagrange_kernel_column_frames: &[LagrangeKernelEvaluationFrame<E>],
