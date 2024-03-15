@@ -327,7 +327,16 @@ where
         let mut boundary_numerator_evals = Vec::with_capacity(domain.ce_domain_size());
         let mut boundary_denominator_evals = Vec::with_capacity(domain.ce_domain_size());
 
-        let mut lagrange_kernel_column_frame = LagrangeKernelEvaluationFrame::new_empty();
+        let mut lagrange_kernel_column_frames =
+            vec![LagrangeKernelEvaluationFrame::<E>::new_empty(); domain.ce_domain_size()];
+
+        for step in 0..domain.ce_domain_size() {
+            trace.read_lagrange_kernel_frame_into(
+                step << lde_shift,
+                lagrange_kernel_aux_column_idx,
+                &mut lagrange_kernel_column_frames[step],
+            );
+        }
 
         let transition_constraint_combined_evaluations = {
             let mut combined_evaluations_acc = E::zeroed_vector(domain.ce_domain_size());
@@ -347,14 +356,8 @@ where
                 let denominators_inv = batch_inversion(&denominators);
 
                 for step in 0..domain.ce_domain_size() {
-                    trace.read_lagrange_kernel_frame_into(
-                        step << lde_shift,
-                        lagrange_kernel_aux_column_idx,
-                        &mut lagrange_kernel_column_frame,
-                    );
-
                     let numerator = lagrange_kernel_transition_constraints.evaluate_ith_numerator(
-                        &lagrange_kernel_column_frame,
+                        &lagrange_kernel_column_frames[step],
                         self.aux_rand_elements.get_segment_elements(0),
                         trans_constraint_idx,
                     );
@@ -369,12 +372,6 @@ where
         };
 
         for step in 0..domain.ce_domain_size() {
-            trace.read_lagrange_kernel_frame_into(
-                step << lde_shift,
-                lagrange_kernel_aux_column_idx,
-                &mut lagrange_kernel_column_frame,
-            );
-
             let domain_point = domain.get_ce_x_at(step);
 
             {
@@ -384,7 +381,7 @@ where
                     .expect("expected Lagrange boundary constraint to be present");
 
                 let boundary_numerator =
-                    constraint.evaluate_numerator_at(&lagrange_kernel_column_frame);
+                    constraint.evaluate_numerator_at(&lagrange_kernel_column_frames[step]);
                 boundary_numerator_evals.push(boundary_numerator);
 
                 let boundary_denominator = constraint.evaluate_denominator_at(domain_point.into());
