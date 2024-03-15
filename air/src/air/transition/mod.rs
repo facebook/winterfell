@@ -215,6 +215,7 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
         }
     }
 
+    /// Evaluates the numerator of the `constraint_idx`th transition constraint.
     pub fn evaluate_ith_numerator<F>(
         &self,
         lagrange_kernel_column_frame: &LagrangeKernelEvaluationFrame<E>,
@@ -235,6 +236,7 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
         self.lagrange_constraint_coefficients[constraint_idx].mul_base(eval)
     }
 
+    /// Evaluates the divisor of the `constraint_idx`th transition constraint.
     pub fn evaluate_ith_divisor<F>(&self, constraint_idx: usize, x: F) -> E
     where
         F: FieldElement<BaseField = E::BaseField>,
