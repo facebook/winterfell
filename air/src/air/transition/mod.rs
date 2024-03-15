@@ -215,35 +215,6 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
         }
     }
 
-    /// Evaluates the transition constraints' numerators over the specificed Lagrange kernel
-    /// evaluation frame.
-    pub fn evaluate_numerators<F>(
-        &self,
-        lagrange_kernel_column_frame: &LagrangeKernelEvaluationFrame<E>,
-        lagrange_kernel_rand_elements: &[E],
-    ) -> Vec<E>
-    where
-        F: FieldElement<BaseField = E::BaseField>,
-        E: ExtensionOf<F>,
-    {
-        let log2_trace_len = lagrange_kernel_column_frame.num_rows() - 1;
-        let mut transition_evals = E::zeroed_vector(log2_trace_len);
-
-        let c = lagrange_kernel_column_frame.inner();
-        let v = c.len() - 1;
-        let r = lagrange_kernel_rand_elements;
-
-        for k in 1..v + 1 {
-            transition_evals[k - 1] = (r[v - k] * c[0]) - ((E::ONE - r[v - k]) * c[v - k + 1]);
-        }
-
-        transition_evals
-            .into_iter()
-            .zip(self.lagrange_constraint_coefficients.iter())
-            .map(|(transition_eval, &coeff)| coeff.mul_base(transition_eval))
-            .collect()
-    }
-
     pub fn evaluate_ith_numerator<F>(
         &self,
         lagrange_kernel_column_frame: &LagrangeKernelEvaluationFrame<E>,
@@ -299,5 +270,37 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
 
                 acc + (numerator / z.into())
             })
+    }
+
+    // HELPERS
+    // ---------------------------------------------------------------------------------------------
+
+    /// Evaluates the transition constraints' numerators over the specificed Lagrange kernel
+    /// evaluation frame.
+    fn evaluate_numerators<F>(
+        &self,
+        lagrange_kernel_column_frame: &LagrangeKernelEvaluationFrame<E>,
+        lagrange_kernel_rand_elements: &[E],
+    ) -> Vec<E>
+    where
+        F: FieldElement<BaseField = E::BaseField>,
+        E: ExtensionOf<F>,
+    {
+        let log2_trace_len = lagrange_kernel_column_frame.num_rows() - 1;
+        let mut transition_evals = E::zeroed_vector(log2_trace_len);
+
+        let c = lagrange_kernel_column_frame.inner();
+        let v = c.len() - 1;
+        let r = lagrange_kernel_rand_elements;
+
+        for k in 1..v + 1 {
+            transition_evals[k - 1] = (r[v - k] * c[0]) - ((E::ONE - r[v - k]) * c[v - k + 1]);
+        }
+
+        transition_evals
+            .into_iter()
+            .zip(self.lagrange_constraint_coefficients.iter())
+            .map(|(transition_eval, &coeff)| coeff.mul_base(transition_eval))
+            .collect()
     }
 }
