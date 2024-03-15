@@ -331,12 +331,21 @@ where
 
         let transition_constraint_combined_evaluations = {
             let mut combined_evaluations_acc = E::zeroed_vector(domain.ce_domain_size());
-            let mut numerators: Vec<E> = Vec::with_capacity(domain.ce_domain_size());
             let mut denominators: Vec<E> = Vec::with_capacity(domain.ce_domain_size());
 
             let num_trans_constraints = self.air.context().trace_len().ilog2() as usize;
-
             for trans_constraint_idx in 0..num_trans_constraints {
+                // compute denominators
+                let num_non_repeating_denoms =
+                    domain.ce_domain_size() / 2_usize.pow(trans_constraint_idx as u32);
+                for step in 0..num_non_repeating_denoms {
+                    let domain_point = domain.get_ce_x_at(step);
+                    let denominator = lagrange_kernel_transition_constraints
+                        .evaluate_ith_divisor(trans_constraint_idx, domain_point);
+                    denominators.push(denominator);
+                }
+                let denominators_inv = batch_inversion(&denominators);
+
                 for step in 0..domain.ce_domain_size() {
                     trace.read_lagrange_kernel_frame_into(
                         step << lde_shift,
@@ -349,21 +358,10 @@ where
                         self.aux_rand_elements.get_segment_elements(0),
                         trans_constraint_idx,
                     );
-                    numerators.push(numerator);
-
-                    let domain_point = domain.get_ce_x_at(step);
-                    let denominator = lagrange_kernel_transition_constraints
-                        .evaluate_ith_divisor(trans_constraint_idx, domain_point);
-                    denominators.push(denominator);
+                    combined_evaluations_acc[step] +=
+                        numerator * denominators_inv[step % denominators_inv.len()];
                 }
 
-                let denominators_inv = batch_inversion(&denominators);
-
-                for step in 0..domain.ce_domain_size() {
-                    combined_evaluations_acc[step] += numerators[step] * denominators_inv[step];
-                }
-
-                numerators.truncate(0);
                 denominators.truncate(0);
             }
 
