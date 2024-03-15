@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{Assertion, BoundaryConstraint, ConstraintDivisor, ExtensionOf, FieldElement};
-use utils::collections::*;
+use alloc::{collections::BTreeMap, vec::Vec};
 
 // BOUNDARY CONSTRAINT GROUP
 // ================================================================================================

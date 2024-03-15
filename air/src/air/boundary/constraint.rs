@@ -4,8 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{Assertion, ExtensionOf, FieldElement};
+use alloc::{collections::BTreeMap, vec::Vec};
 use math::{fft, polynom};
-use utils::collections::*;
 
 // BOUNDARY CONSTRAINT
 // ================================================================================================

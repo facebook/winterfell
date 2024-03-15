@@ -6,13 +6,12 @@
 //! Contains STARK proof struct and associated components.
 
 use crate::{ProofOptions, TraceInfo, TraceLayout};
+use alloc::vec::Vec;
 use core::cmp;
 use crypto::Hasher;
 use fri::FriProof;
 use math::FieldElement;
-use utils::{
-    collections::*, ByteReader, Deserializable, DeserializationError, Serializable, SliceReader,
-};
+use utils::{ByteReader, Deserializable, DeserializationError, Serializable, SliceReader};
 
 mod context;
 pub use context::Context;

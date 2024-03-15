@@ -3,8 +3,4 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-#[cfg(not(feature = "std"))]
 pub use alloc::boxed::Box;
-
-#[cfg(feature = "std")]
-pub use std::boxed::Box;

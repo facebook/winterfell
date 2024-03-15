@@ -8,9 +8,9 @@ use super::{
     TraceInfo, TraceLayout, TraceLde, TracePolyTable,
 };
 use crate::{RowMatrix, DEFAULT_SEGMENT_WIDTH};
+use alloc::vec::Vec;
 use crypto::MerkleTree;
 use tracing::info_span;
-use utils::collections::*;
 
 #[cfg(test)]
 mod tests;

@@ -4,8 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{super::super::ProofOptions, MIN_CYCLE_LENGTH};
+use alloc::vec::Vec;
 use core::cmp;
-use utils::collections::*;
 
 // TRANSITION CONSTRAINT DEGREE
 // ================================================================================================

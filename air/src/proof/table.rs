@@ -4,9 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{DeserializationError, SliceReader};
+use alloc::vec::Vec;
 use core::iter::FusedIterator;
 use math::FieldElement;
-use utils::collections::*;
 use utils::ByteReader;
 
 // CONSTANTS

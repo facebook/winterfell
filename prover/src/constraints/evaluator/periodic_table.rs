@@ -4,8 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use air::Air;
+use alloc::{collections::BTreeMap, vec::Vec};
 use math::{fft, StarkField};
-use utils::{collections::*, uninit_vector};
+use utils::uninit_vector;
 
 pub struct PeriodicValueTable<B: StarkField> {
     values: Vec<B>,
@@ -94,10 +95,10 @@ impl<B: StarkField> PeriodicValueTable<B> {
 mod tests {
     use crate::tests::MockAir;
     use air::Air;
+    use alloc::vec::Vec;
     use math::{
         fields::f128::BaseElement, get_power_series_with_offset, polynom, FieldElement, StarkField,
     };
-    use utils::collections::*;
 
     #[test]
     fn periodic_value_table() {

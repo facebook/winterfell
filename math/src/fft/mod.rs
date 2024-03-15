@@ -16,6 +16,7 @@ use crate::{
     field::{FieldElement, StarkField},
     utils::get_power_series,
 };
+use alloc::vec::Vec;
 
 pub mod fft_inputs;
 pub mod real_u64;
@@ -23,8 +24,6 @@ mod serial;
 
 #[cfg(feature = "concurrent")]
 mod concurrent;
-
-use utils::collections::*;
 
 #[cfg(test)]
 mod tests;

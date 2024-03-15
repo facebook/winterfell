@@ -7,8 +7,8 @@ use crate::{
     math::{fields::f64::BaseElement, get_power_series, polynom, StarkField},
     ColMatrix, RowMatrix,
 };
+use alloc::vec::Vec;
 use rand_utils::rand_vector;
-use utils::collections::*;
 
 #[test]
 fn test_eval_poly_with_offset_matrix() {

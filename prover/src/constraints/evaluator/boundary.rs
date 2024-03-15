@@ -5,8 +5,8 @@
 
 use super::StarkDomain;
 use air::{Air, AuxTraceRandElements, ConstraintDivisor};
+use alloc::{collections::BTreeMap, vec::Vec};
 use math::{fft, ExtensionOf, FieldElement};
-use utils::collections::*;
 
 // CONSTANTS
 // ================================================================================================

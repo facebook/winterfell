@@ -3,7 +3,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{collections::*, ByteReader, ByteWriter, Serializable, SliceReader};
+use super::{ByteReader, ByteWriter, Serializable, SliceReader};
+use alloc::vec::Vec;
 use proptest::prelude::{any, proptest};
 
 // VECTOR UTILS TESTS
@@ -139,7 +140,7 @@ fn write_serializable_batch() {
     assert_eq!(64, target.len());
 
     let batch2 = [5u128, 6, 7, 8];
-    target.write_many(&batch2);
+    target.write_many(batch2);
     assert_eq!(128, target.len());
 
     let mut reader = SliceReader::new(&target);
@@ -157,7 +158,7 @@ fn write_serializable_array_batch() {
     assert_eq!(64, target.len());
 
     let batch2 = [[5u128, 6], [7, 8]];
-    target.write_many(&batch2);
+    target.write_many(batch2);
     assert_eq!(128, target.len());
 
     let mut reader = SliceReader::new(&target);

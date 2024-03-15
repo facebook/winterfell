@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::FieldElement;
-use utils::collections::*;
+use alloc::vec::Vec;
 
 // EVALUATION FRAME
 // ================================================================================================

@@ -4,11 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{ProofOptions, TraceInfo, TraceLayout};
+use alloc::{string::ToString, vec::Vec};
 use math::{StarkField, ToElements};
-use utils::{
-    collections::*, string::*, ByteReader, ByteWriter, Deserializable, DeserializationError,
-    Serializable,
-};
+use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 // PROOF CONTEXT
 // ================================================================================================

@@ -4,9 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{Assertion, AssertionError};
+use alloc::vec::Vec;
 use math::{fields::f128::BaseElement, FieldElement};
 use rand_utils::{rand_value, rand_vector};
-use utils::collections::*;
 
 // SINGLE ASSERTIONS
 // ================================================================================================

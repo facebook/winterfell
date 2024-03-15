@@ -5,9 +5,9 @@
 
 use super::{AsBytes, BaseElement, ByteReader, DeserializationError, FieldElement, StarkField, M};
 use crate::field::{ExtensionOf, QuadExtension};
+use alloc::vec::Vec;
 use num_bigint::BigUint;
 use rand_utils::{rand_value, rand_vector};
-use utils::collections::*;
 use utils::SliceReader;
 
 // BASIC ALGEBRA

@@ -4,8 +4,11 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{errors::MerkleTreeError, hash::Hasher};
+use alloc::{
+    collections::{BTreeMap, BTreeSet},
+    vec::Vec,
+};
 use core::slice;
-use utils::collections::*;
 
 mod proofs;
 pub use proofs::BatchMerkleProof;

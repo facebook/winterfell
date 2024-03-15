@@ -3,6 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use alloc::vec::Vec;
 use core::{
     fmt::{Debug, Display},
     ops::{
@@ -10,9 +11,7 @@ use core::{
         SubAssign,
     },
 };
-use utils::{
-    collections::*, AsBytes, Deserializable, DeserializationError, Randomizable, Serializable,
-};
+use utils::{AsBytes, Deserializable, DeserializationError, Randomizable, Serializable};
 
 // FIELD ELEMENT
 // ================================================================================================

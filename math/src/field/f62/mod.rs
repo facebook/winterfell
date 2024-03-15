@@ -10,6 +10,10 @@
 //! stored in the Montgomery form using `u64` as the backing type.
 
 use super::{ExtensibleField, FieldElement, StarkField};
+use alloc::{
+    string::{String, ToString},
+    vec::Vec,
+};
 use core::{
     fmt::{Debug, Display, Formatter},
     mem,
@@ -17,8 +21,8 @@ use core::{
     slice,
 };
 use utils::{
-    collections::*, string::*, AsBytes, ByteReader, ByteWriter, Deserializable,
-    DeserializationError, Randomizable, Serializable,
+    AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Randomizable,
+    Serializable,
 };
 
 #[cfg(feature = "serde")]

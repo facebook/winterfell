@@ -4,9 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::air::Assertion;
+use alloc::vec::Vec;
 use core::fmt::{Display, Formatter};
 use math::{FieldElement, StarkField};
-use utils::collections::*;
 
 // CONSTRAINT DIVISOR
 // ================================================================================================

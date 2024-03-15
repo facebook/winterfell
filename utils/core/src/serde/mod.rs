@@ -3,11 +3,19 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use alloc::{
+    collections::{BTreeMap, BTreeSet},
+    string::String,
+    vec::Vec,
+};
+
 use super::DeserializationError;
-use crate::collections::*;
 
 mod byte_reader;
 pub use byte_reader::{ByteReader, SliceReader};
+
+#[cfg(feature = "std")]
+pub use byte_reader::ReadAdapter;
 
 mod byte_writer;
 pub use byte_writer::ByteWriter;
@@ -188,6 +196,15 @@ impl<T: Serializable, const C: usize> Serializable for [T; C] {
     }
 }
 
+impl<T: Serializable> Serializable for [T] {
+    fn write_into<W: ?Sized + ByteWriter>(&self, target: &mut W) {
+        target.write_usize(self.len());
+        for element in self.iter() {
+            element.write_into(target);
+        }
+    }
+}
+
 impl<T: Serializable> Serializable for Vec<T> {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_usize(self.len());
@@ -206,6 +223,13 @@ impl<T: Serializable> Serializable for BTreeSet<T> {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_usize(self.len());
         target.write_many(self);
+    }
+}
+
+impl Serializable for str {
+    fn write_into<W: ?Sized + ByteWriter>(&self, target: &mut W) {
+        target.write_usize(self.len());
+        target.write_many(self.as_bytes());
     }
 }
 

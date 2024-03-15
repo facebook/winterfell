@@ -4,11 +4,11 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::Table;
+use alloc::vec::Vec;
 use crypto::{BatchMerkleProof, ElementHasher, Hasher};
 use math::FieldElement;
 use utils::{
-    collections::*, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
-    SliceReader,
+    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
 };
 
 // QUERIES

@@ -3,11 +3,11 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use alloc::{string::ToString, vec::Vec};
 use crypto::{BatchMerkleProof, ElementHasher, Hasher};
 use math::FieldElement;
 use utils::{
-    collections::*, string::*, ByteReader, ByteWriter, Deserializable, DeserializationError,
-    Serializable, SliceReader,
+    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
 };
 
 // FRI PROOF

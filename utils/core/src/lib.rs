@@ -5,23 +5,35 @@
 
 //! This crate contains utility traits, functions, and macros used by other crates of Winterfell
 //! STARK prover and verifier.
+#![no_std]
 
-#![cfg_attr(not(feature = "std"), no_std)]
-
-#[cfg(not(feature = "std"))]
 #[macro_use]
 extern crate alloc;
 
+#[cfg(feature = "std")]
+extern crate std;
+
+#[deprecated(since = "0.8.2", note = "You should prefer to import from `alloc::boxed::*`")]
 pub mod boxed;
+// TODO: Remove this when deprecation period for `boxed` module is over
+#[allow(deprecated)]
+pub use boxed::*;
+
+#[deprecated(
+    since = "0.8.2",
+    note = "You should prefer to import from `alloc::collections::*`"
+)]
 pub mod collections;
 pub mod iterators;
+#[deprecated(since = "0.8.2", note = "You should prefer to import from `alloc::string::*`")]
 pub mod string;
 
-pub use boxed::*;
-use collections::*;
+use alloc::vec::Vec;
 use core::{mem, slice};
 
 mod serde;
+#[cfg(feature = "std")]
+pub use serde::ReadAdapter;
 pub use serde::{ByteReader, ByteWriter, Deserializable, Serializable, SliceReader};
 
 mod errors;

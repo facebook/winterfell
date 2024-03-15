@@ -4,19 +4,6 @@
 // LICENSE file in the root directory of this source tree.
 
 //! Feature-based re-export of common collection components.
-//!
-//! When `std` feature is enabled, this module exports collections from the Rust standard library.
-//! When `alloc` feature is enabled, same collected are provided without relying on the Rust
-//! standard library.
 
-#[cfg(not(feature = "std"))]
 pub use alloc::collections::{btree_map, btree_set, BTreeMap, BTreeSet};
-
-#[cfg(not(feature = "std"))]
 pub use alloc::vec::{self as vec, Vec};
-
-#[cfg(feature = "std")]
-pub use std::collections::{btree_map, btree_set, BTreeMap, BTreeSet};
-
-#[cfg(feature = "std")]
-pub use std::vec::{self as vec, Vec};

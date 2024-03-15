@@ -8,9 +8,9 @@ use super::{
     TransitionConstraintDegree,
 };
 use crate::{AuxTraceRandElements, FieldExtension};
+use alloc::{collections::BTreeMap, vec::Vec};
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin};
 use math::{fields::f64::BaseElement, get_power_series, polynom, FieldElement, StarkField};
-use utils::collections::*;
 
 // PERIODIC COLUMNS
 // ================================================================================================
