@@ -240,7 +240,7 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
         transition_evals
             .into_iter()
             .zip(self.lagrange_constraint_coefficients.iter())
-            .map(|(transition_eval, coeff)| coeff.mul_base(transition_eval))
+            .map(|(transition_eval, &coeff)| coeff.mul_base(transition_eval))
             .collect()
     }
 
