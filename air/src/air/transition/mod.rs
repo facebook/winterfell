@@ -244,6 +244,34 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
             .collect()
     }
 
+    pub fn evaluate_ith_numerator<F>(
+        &self,
+        lagrange_kernel_column_frame: &LagrangeKernelEvaluationFrame<E>,
+        lagrange_kernel_rand_elements: &[E],
+        constraint_idx: usize,
+    ) -> E
+    where
+        F: FieldElement<BaseField = E::BaseField>,
+        E: ExtensionOf<F>,
+    {
+        let c = lagrange_kernel_column_frame.inner();
+        let v = c.len() - 1;
+        let r = lagrange_kernel_rand_elements;
+        let k = constraint_idx + 1;
+
+        let eval = (r[v - k] * c[0]) - ((E::ONE - r[v - k]) * c[v - k + 1]);
+
+        self.lagrange_constraint_coefficients[constraint_idx].mul_base(eval)
+    }
+
+    pub fn evaluate_ith_divisor<F>(&self, constraint_idx: usize, x: F) -> E
+    where
+        F: FieldElement<BaseField = E::BaseField>,
+        E: ExtensionOf<F>,
+    {
+        self.divisors[constraint_idx].evaluate_at(x.into())
+    }
+
     /// Evaluates the transition constraints over the specificed Lagrange kernel evaluation frame,
     /// and combines them.
     ///

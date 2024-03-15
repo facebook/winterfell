@@ -324,12 +324,52 @@ where
         // LDE domain
         let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
 
-        let mut transition_constraint_combined_evaluations =
-            Vec::with_capacity(domain.ce_domain_size());
         let mut boundary_numerator_evals = Vec::with_capacity(domain.ce_domain_size());
         let mut boundary_denominator_evals = Vec::with_capacity(domain.ce_domain_size());
 
         let mut lagrange_kernel_column_frame = LagrangeKernelEvaluationFrame::new_empty();
+
+        let transition_constraint_combined_evaluations = {
+            let mut combined_evaluations_acc = E::zeroed_vector(domain.ce_domain_size());
+            let mut numerators: Vec<E> = Vec::with_capacity(domain.ce_domain_size());
+            let mut denominators: Vec<E> = Vec::with_capacity(domain.ce_domain_size());
+
+            let num_trans_constraints = self.air.context().trace_len().ilog2() as usize;
+
+            for trans_constraint_idx in 0..num_trans_constraints {
+                for step in 0..domain.ce_domain_size() {
+                    trace.read_lagrange_kernel_frame_into(
+                        step << lde_shift,
+                        lagrange_kernel_aux_column_idx,
+                        &mut lagrange_kernel_column_frame,
+                    );
+
+                    let numerator = lagrange_kernel_transition_constraints.evaluate_ith_numerator(
+                        &lagrange_kernel_column_frame,
+                        self.aux_rand_elements.get_segment_elements(0),
+                        trans_constraint_idx,
+                    );
+                    numerators.push(numerator);
+
+                    let domain_point = domain.get_ce_x_at(step);
+                    let denominator = lagrange_kernel_transition_constraints
+                        .evaluate_ith_divisor(trans_constraint_idx, domain_point);
+                    denominators.push(denominator);
+                }
+
+                let denominators_inv = batch_inversion(&denominators);
+
+                for step in 0..domain.ce_domain_size() {
+                    combined_evaluations_acc[step] += numerators[step] * denominators_inv[step];
+                }
+
+                numerators.truncate(0);
+                denominators.truncate(0);
+            }
+
+            combined_evaluations_acc
+        };
+
         for step in 0..domain.ce_domain_size() {
             trace.read_lagrange_kernel_frame_into(
                 step << lde_shift,
@@ -338,15 +378,6 @@ where
             );
 
             let domain_point = domain.get_ce_x_at(step);
-
-            {
-                let transition_evals = lagrange_kernel_transition_constraints.evaluate_and_combine(
-                    &lagrange_kernel_column_frame,
-                    self.aux_rand_elements.get_segment_elements(0),
-                    domain_point,
-                );
-                transition_constraint_combined_evaluations.push(transition_evals);
-            }
 
             {
                 let constraint = self
@@ -363,7 +394,7 @@ where
             }
         }
 
-        // Evaluate inverse denominators
+        // Evaluate inverse boundary constraint denominators
         let boundary_constraint_combined_evaluations: Vec<E> = {
             let boundary_denominators_inv = batch_inversion(&boundary_denominator_evals);
 
