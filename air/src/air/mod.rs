@@ -21,13 +21,13 @@ mod boundary;
 pub use boundary::{BoundaryConstraint, BoundaryConstraintGroup, BoundaryConstraints};
 
 mod transition;
-pub use transition::{
-    EvaluationFrame, LagrangeKernelEvaluationFrame, TransitionConstraintDegree,
-    TransitionConstraints,
-};
+pub use transition::{EvaluationFrame, TransitionConstraintDegree, TransitionConstraints};
 
 mod lagrange;
-pub use lagrange::{LagrangeKernelBoundaryConstraint, LagrangeKernelTransitionConstraints};
+pub use lagrange::{
+    LagrangeKernelBoundaryConstraint, LagrangeKernelEvaluationFrame,
+    LagrangeKernelTransitionConstraints,
+};
 
 mod coefficients;
 pub use coefficients::{

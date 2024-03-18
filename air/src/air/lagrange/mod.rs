@@ -2,7 +2,10 @@ use alloc::vec::Vec;
 
 use math::{ExtensionOf, FieldElement};
 
-use crate::{AirContext, ConstraintDivisor, LagrangeKernelEvaluationFrame};
+use crate::{AirContext, ConstraintDivisor};
+
+mod frame;
+pub use frame::LagrangeKernelEvaluationFrame;
 
 // LAGRANGE KERNEL TRANSITION CONSTRAINTS
 // ================================================================================================

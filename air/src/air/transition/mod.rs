@@ -7,7 +7,7 @@ use super::{AirContext, ConstraintDivisor, ExtensionOf, FieldElement};
 use alloc::vec::Vec;
 
 mod frame;
-pub use frame::{EvaluationFrame, LagrangeKernelEvaluationFrame};
+pub use frame::EvaluationFrame;
 
 mod degree;
 pub use degree::TransitionConstraintDegree;
