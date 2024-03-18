@@ -1,6 +1,6 @@
 use air::{
-    Air, LagrangeConstraintsCompositionCoefficients, LagrangeKernelBoundaryConstraint,
-    LagrangeKernelEvaluationFrame, LagrangeKernelTransitionConstraints,
+    Air, LagrangeConstraintsCompositionCoefficients, LagrangeKernelConstraints,
+    LagrangeKernelEvaluationFrame,
 };
 use alloc::vec::Vec;
 use math::{batch_inversion, FieldElement};
@@ -12,8 +12,7 @@ use crate::StarkDomain;
 ///
 /// Specifically, [`batch_inversion`] is used to reduce the number of divisions performed.
 pub struct LagrangeKernelConstraintsBatchEvaluator<E: FieldElement> {
-    boundary_constraint: LagrangeKernelBoundaryConstraint<E>,
-    transition_constraints: LagrangeKernelTransitionConstraints<E>,
+    lagrange_kernel_constraints: LagrangeKernelConstraints<E>,
     rand_elements: Vec<E>,
 }
 
@@ -27,18 +26,12 @@ impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
     where
         E: FieldElement<BaseField = A::BaseField>,
     {
-        let lagrange_kernel_transition_constraints = LagrangeKernelTransitionConstraints::new(
-            air.context(),
-            lagrange_composition_coefficients.transition,
-        );
-        let lagrange_kernel_boundary_constraint = LagrangeKernelBoundaryConstraint::new(
-            lagrange_composition_coefficients.boundary,
-            &lagrange_kernel_rand_elements,
-        );
-
         Self {
-            boundary_constraint: lagrange_kernel_boundary_constraint,
-            transition_constraints: lagrange_kernel_transition_constraints,
+            lagrange_kernel_constraints: LagrangeKernelConstraints::new(
+                air.context(),
+                lagrange_composition_coefficients,
+                &lagrange_kernel_rand_elements,
+            ),
             rand_elements: lagrange_kernel_rand_elements,
         }
     }
@@ -116,14 +109,15 @@ impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
             for step in 0..num_non_repeating_denoms {
                 let domain_point = domain.get_ce_x_at(step);
                 let denominator = self
-                    .transition_constraints
+                    .lagrange_kernel_constraints
+                    .transition
                     .evaluate_ith_divisor(trans_constraint_idx, domain_point);
                 denominators.push(denominator);
             }
             let denominators_inv = batch_inversion(&denominators);
 
             for step in 0..domain.ce_domain_size() {
-                let numerator = self.transition_constraints.evaluate_ith_numerator(
+                let numerator = self.lagrange_kernel_constraints.transition.evaluate_ith_numerator(
                     &lagrange_kernel_column_frames[step],
                     &self.rand_elements,
                     trans_constraint_idx,
@@ -156,13 +150,16 @@ impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
             let domain_point = domain.get_ce_x_at(step);
 
             {
-                let boundary_numerator = self.boundary_constraint.evaluate_numerator_at(frame);
+                let boundary_numerator =
+                    self.lagrange_kernel_constraints.boundary.evaluate_numerator_at(frame);
                 boundary_numerator_evals.push(boundary_numerator);
             }
 
             {
-                let boundary_denominator =
-                    self.boundary_constraint.evaluate_denominator_at(domain_point.into());
+                let boundary_denominator = self
+                    .lagrange_kernel_constraints
+                    .boundary
+                    .evaluate_denominator_at(domain_point.into());
                 boundary_denominator_evals.push(boundary_denominator);
             }
         }

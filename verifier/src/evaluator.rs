@@ -5,8 +5,7 @@
 
 use air::{
     Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
-    LagrangeKernelBoundaryConstraint, LagrangeKernelEvaluationFrame,
-    LagrangeKernelTransitionConstraints,
+    LagrangeKernelEvaluationFrame,
 };
 use alloc::vec::Vec;
 use math::{polynom, FieldElement};
@@ -87,31 +86,32 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
         }
     }
 
-    if let Some(lagrange_kernel_column_frame) = lagrange_kernel_column_frame {
-        // 3 ----- evaluate Lagrange kernel transition constraints ------------------------------------
+    // 3 ----- evaluate Lagrange kernel constraints ------------------------------------
 
+    if let Some(lagrange_kernel_column_frame) = lagrange_kernel_column_frame {
         let lagrange_coefficients = composition_coefficients
             .lagrange
             .expect("expected Lagrange kernel composition coefficients to be present");
-        let lagrange_kernel_aux_rand_elements = aux_rand_elements.get_segment_elements(0);
+        let lagrange_kernel_aux_rand_elements = {
+            let num_rand_elements = air.context().trace_len().ilog2() as usize;
 
-        let lagrange_kernel_transition_constraints = LagrangeKernelTransitionConstraints::new(
-            air.context(),
-            lagrange_coefficients.transition,
-        );
+            &aux_rand_elements.get_segment_elements(0)[0..num_rand_elements]
+        };
 
-        result += lagrange_kernel_transition_constraints.evaluate_and_combine::<E>(
+        let lagrange_constraints = air
+            .get_lagrange_kernel_constraints(
+                lagrange_coefficients,
+                lagrange_kernel_aux_rand_elements,
+            )
+            .expect("expected Lagrange kernel constraints to be present");
+
+        result += lagrange_constraints.transition.evaluate_and_combine::<E>(
             lagrange_kernel_column_frame,
             lagrange_kernel_aux_rand_elements,
             x,
         );
 
-        // 4 ----- evaluate Lagrange kernel boundary constraints ------------------------------------
-        let constraint = LagrangeKernelBoundaryConstraint::new(
-            lagrange_coefficients.boundary,
-            lagrange_kernel_aux_rand_elements,
-        );
-        result += constraint.evaluate_at(x, lagrange_kernel_column_frame);
+        result += lagrange_constraints.boundary.evaluate_at(x, lagrange_kernel_column_frame);
     }
 
     result

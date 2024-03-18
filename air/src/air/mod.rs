@@ -25,7 +25,7 @@ pub use transition::{EvaluationFrame, TransitionConstraintDegree, TransitionCons
 
 mod lagrange;
 pub use lagrange::{
-    LagrangeKernelBoundaryConstraint, LagrangeKernelEvaluationFrame,
+    LagrangeKernelBoundaryConstraint, LagrangeKernelConstraints, LagrangeKernelEvaluationFrame,
     LagrangeKernelTransitionConstraints,
 };
 
@@ -291,6 +291,24 @@ pub trait Air: Send + Sync {
 
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
+
+    /// Returns a new [`LagrangeKernelConstraints`] if a Lagrange kernel auxiliary column is present
+    /// in the trace, or `None` otherwise.
+    fn get_lagrange_kernel_constraints<E: FieldElement<BaseField = Self::BaseField>>(
+        &self,
+        lagrange_composition_coefficients: LagrangeConstraintsCompositionCoefficients<E>,
+        lagrange_kernel_rand_elements: &[E],
+    ) -> Option<LagrangeKernelConstraints<E>> {
+        if self.context().has_lagrange_kernel_aux_column() {
+            Some(LagrangeKernelConstraints::new(
+                self.context(),
+                lagrange_composition_coefficients,
+                lagrange_kernel_rand_elements,
+            ))
+        } else {
+            None
+        }
+    }
 
     /// Returns values for all periodic columns used in the computation.
     ///
