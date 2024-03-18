@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.8.4 (2024-03-18) - `utils/core` crate only
+* Re-added unintentionally removed re-exported liballoc macros (#263).
+
 ## 0.8.3 (2024-03-15)
 * Implemented `Serializable` and `Deserializable` on `String` (#258).
 * Extended range of possible implementations of `ByteReader` and `ByteWriter`. (#262).
