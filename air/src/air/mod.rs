@@ -366,21 +366,12 @@ pub trait Air: Send + Sync {
         &self,
         aux_rand_elements: &AuxTraceRandElements<E>,
         boundary_composition_coefficients: &[E],
-        lagrange_kernel_boundary_coefficient: Option<E>,
     ) -> BoundaryConstraints<E> {
-        let lagrange_kernel_aux_rand_elements = if self.context().has_lagrange_kernel_aux_column() {
-            aux_rand_elements.get_segment_elements(0)
-        } else {
-            &[]
-        };
-
         BoundaryConstraints::new(
             self.context(),
             self.get_assertions(),
             self.get_aux_assertions(aux_rand_elements),
             boundary_composition_coefficients,
-            lagrange_kernel_boundary_coefficient,
-            lagrange_kernel_aux_rand_elements,
         )
     }
 

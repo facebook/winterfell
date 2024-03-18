@@ -156,12 +156,8 @@ where
 
         // build boundary constraint groups; these will be used to evaluate and compose boundary
         // constraint evaluations.
-        let boundary_constraints = BoundaryConstraints::new(
-            air,
-            &aux_rand_elements,
-            &composition_coefficients.boundary,
-            composition_coefficients.lagrange.boundary,
-        );
+        let boundary_constraints =
+            BoundaryConstraints::new(air, &aux_rand_elements, &composition_coefficients.boundary);
 
         let lagrange_constraints_evaluator = LagrangeConstraintsBatchEvaluator::new(
             air,

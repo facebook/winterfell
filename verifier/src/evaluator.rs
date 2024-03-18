@@ -5,7 +5,8 @@
 
 use air::{
     Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
-    LagrangeKernelEvaluationFrame, LagrangeKernelTransitionConstraints,
+    LagrangeKernelBoundaryConstraint, LagrangeKernelEvaluationFrame,
+    LagrangeKernelTransitionConstraints,
 };
 use alloc::vec::Vec;
 use math::{polynom, FieldElement};
@@ -67,11 +68,8 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     // 2 ----- evaluate boundary constraints ------------------------------------------------------
 
     // get boundary constraints grouped by common divisor from the AIR
-    let b_constraints = air.get_boundary_constraints(
-        &aux_rand_elements,
-        &composition_coefficients.boundary,
-        composition_coefficients.lagrange.boundary,
-    );
+    let b_constraints =
+        air.get_boundary_constraints(&aux_rand_elements, &composition_coefficients.boundary);
 
     // iterate over boundary constraint groups for the main trace segment (each group has a
     // distinct divisor), evaluate constraints in each group and add their combination to the
@@ -107,10 +105,14 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     // 4 ----- evaluate Lagrange kernel boundary constraints ------------------------------------
 
     if let Some(lagrange_kernel_column_frame) = lagrange_kernel_column_frame {
-        let constraint = b_constraints
-            .lagrange_kernel_constraint()
-            .expect("expected Lagrange boundary constraint to be present");
-
+        let lagrange_kernel_aux_rand_elements = aux_rand_elements.get_segment_elements(0);
+        let constraint = LagrangeKernelBoundaryConstraint::new(
+            composition_coefficients
+                .lagrange
+                .boundary
+                .expect("expected Lagrange boundary coefficient to be present"),
+            lagrange_kernel_aux_rand_elements,
+        );
         result += constraint.evaluate_at(x, lagrange_kernel_column_frame);
     }
 
