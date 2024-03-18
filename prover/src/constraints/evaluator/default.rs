@@ -162,9 +162,11 @@ where
             BoundaryConstraints::new(air, &aux_rand_elements, &composition_coefficients.boundary);
 
         let lagrange_constraints_evaluator = if air.context().has_lagrange_kernel_aux_column() {
+            let num_rand_elements = air.context().trace_len().ilog2() as usize;
+
             Some(LagrangeConstraintsBatchEvaluator::new(
                 air,
-                aux_rand_elements.clone(),
+                aux_rand_elements.get_segment_elements(0)[0..num_rand_elements].to_vec(),
                 composition_coefficients
                     .lagrange
                     .expect("expected Lagrange kernel composition coefficients to be present"),
@@ -422,14 +424,14 @@ where
 struct LagrangeConstraintsBatchEvaluator<E: FieldElement> {
     lagrange_kernel_boundary_constraint: LagrangeKernelBoundaryConstraint<E>,
     lagrange_kernel_transition_constraints: LagrangeKernelTransitionConstraints<E>,
-    aux_rand_elements: AuxTraceRandElements<E>,
+    rand_elements: Vec<E>,
 }
 
 impl<E: FieldElement> LagrangeConstraintsBatchEvaluator<E> {
     /// Constructs a new [`LagrangeConstraintsBatchEvaluator`].
     pub fn new<A: Air>(
         air: &A,
-        aux_rand_elements: AuxTraceRandElements<E>,
+        lagrange_kernel_rand_elements: Vec<E>,
         lagrange_composition_coefficients: LagrangeConstraintsCompositionCoefficients<E>,
     ) -> Self
     where
@@ -439,19 +441,15 @@ impl<E: FieldElement> LagrangeConstraintsBatchEvaluator<E> {
             air.context(),
             lagrange_composition_coefficients.transition,
         );
-        let lagrange_kernel_boundary_constraint = {
-            let lagrange_kernel_aux_rand_elements = aux_rand_elements.get_segment_elements(0);
-
-            LagrangeKernelBoundaryConstraint::new(
-                lagrange_composition_coefficients.boundary,
-                lagrange_kernel_aux_rand_elements,
-            )
-        };
+        let lagrange_kernel_boundary_constraint = LagrangeKernelBoundaryConstraint::new(
+            lagrange_composition_coefficients.boundary,
+            &lagrange_kernel_rand_elements,
+        );
 
         Self {
             lagrange_kernel_boundary_constraint,
             lagrange_kernel_transition_constraints,
-            aux_rand_elements,
+            rand_elements: lagrange_kernel_rand_elements,
         }
     }
 
@@ -537,7 +535,7 @@ impl<E: FieldElement> LagrangeConstraintsBatchEvaluator<E> {
             for step in 0..domain.ce_domain_size() {
                 let numerator = self.lagrange_kernel_transition_constraints.evaluate_ith_numerator(
                     &lagrange_kernel_column_frames[step],
-                    self.aux_rand_elements.get_segment_elements(0),
+                    &self.rand_elements,
                     trans_constraint_idx,
                 );
                 combined_evaluations_acc[step] +=
