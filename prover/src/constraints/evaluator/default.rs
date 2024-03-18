@@ -41,7 +41,7 @@ pub struct DefaultConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A:
     air: &'a A,
     boundary_constraints: BoundaryConstraints<E>,
     transition_constraints: TransitionConstraints<E>,
-    lagrange_constraints_evaluator: Option<LagrangeConstraintsBatchEvaluator<E>>,
+    lagrange_constraints_evaluator: Option<LagrangeKernelConstraintsBatchEvaluator<E>>,
     aux_rand_elements: AuxTraceRandElements<E>,
     periodic_values: PeriodicValueTable<E::BaseField>,
 }
@@ -164,7 +164,7 @@ where
         let lagrange_constraints_evaluator = if air.context().has_lagrange_kernel_aux_column() {
             let num_rand_elements = air.context().trace_len().ilog2() as usize;
 
-            Some(LagrangeConstraintsBatchEvaluator::new(
+            Some(LagrangeKernelConstraintsBatchEvaluator::new(
                 air,
                 aux_rand_elements.get_segment_elements(0)[0..num_rand_elements].to_vec(),
                 composition_coefficients
@@ -421,13 +421,13 @@ where
 /// constraints where the divisors' evaluation is batched.
 ///
 /// Specifically, [`batch_inversion`] is used to reduce the number of divisions performed.
-struct LagrangeConstraintsBatchEvaluator<E: FieldElement> {
-    lagrange_kernel_boundary_constraint: LagrangeKernelBoundaryConstraint<E>,
-    lagrange_kernel_transition_constraints: LagrangeKernelTransitionConstraints<E>,
+struct LagrangeKernelConstraintsBatchEvaluator<E: FieldElement> {
+    boundary_constraint: LagrangeKernelBoundaryConstraint<E>,
+    transition_constraints: LagrangeKernelTransitionConstraints<E>,
     rand_elements: Vec<E>,
 }
 
-impl<E: FieldElement> LagrangeConstraintsBatchEvaluator<E> {
+impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
     /// Constructs a new [`LagrangeConstraintsBatchEvaluator`].
     pub fn new<A: Air>(
         air: &A,
@@ -447,8 +447,8 @@ impl<E: FieldElement> LagrangeConstraintsBatchEvaluator<E> {
         );
 
         Self {
-            lagrange_kernel_boundary_constraint,
-            lagrange_kernel_transition_constraints,
+            boundary_constraint: lagrange_kernel_boundary_constraint,
+            transition_constraints: lagrange_kernel_transition_constraints,
             rand_elements: lagrange_kernel_rand_elements,
         }
     }
@@ -526,14 +526,14 @@ impl<E: FieldElement> LagrangeConstraintsBatchEvaluator<E> {
             for step in 0..num_non_repeating_denoms {
                 let domain_point = domain.get_ce_x_at(step);
                 let denominator = self
-                    .lagrange_kernel_transition_constraints
+                    .transition_constraints
                     .evaluate_ith_divisor(trans_constraint_idx, domain_point);
                 denominators.push(denominator);
             }
             let denominators_inv = batch_inversion(&denominators);
 
             for step in 0..domain.ce_domain_size() {
-                let numerator = self.lagrange_kernel_transition_constraints.evaluate_ith_numerator(
+                let numerator = self.transition_constraints.evaluate_ith_numerator(
                     &lagrange_kernel_column_frames[step],
                     &self.rand_elements,
                     trans_constraint_idx,
@@ -566,15 +566,13 @@ impl<E: FieldElement> LagrangeConstraintsBatchEvaluator<E> {
             let domain_point = domain.get_ce_x_at(step);
 
             {
-                let boundary_numerator =
-                    self.lagrange_kernel_boundary_constraint.evaluate_numerator_at(frame);
+                let boundary_numerator = self.boundary_constraint.evaluate_numerator_at(frame);
                 boundary_numerator_evals.push(boundary_numerator);
             }
 
             {
-                let boundary_denominator = self
-                    .lagrange_kernel_boundary_constraint
-                    .evaluate_denominator_at(domain_point.into());
+                let boundary_denominator =
+                    self.boundary_constraint.evaluate_denominator_at(domain_point.into());
                 boundary_denominator_evals.push(boundary_denominator);
             }
         }
