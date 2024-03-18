@@ -26,9 +26,8 @@
 //! need to be in tens of thousands. And even for hundreds of thousands of asserted values, the
 //! verification time should not exceed 50 ms.
 
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 
-#[cfg(not(feature = "std"))]
 #[macro_use]
 extern crate alloc;
 
@@ -45,9 +44,14 @@ use math::{
     FieldElement, ToElements,
 };
 
+#[deprecated(
+    since = "0.8.2",
+    note = "You should prefer the types from libstd/liballoc instead"
+)]
+#[allow(deprecated)]
+pub use utils::collections::*;
 pub use utils::{
-    collections::*, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
-    SliceReader,
+    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
 };
 
 pub use crypto;

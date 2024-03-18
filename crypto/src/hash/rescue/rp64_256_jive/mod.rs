@@ -152,7 +152,7 @@ impl Hasher for RpJive64_256 {
             }
 
             // convert the bytes into a field element and absorb it into the rate portion of the
-            // state; if the rate is filled up, apply the Griffin permutation and start absorbing
+            // state; if the rate is filled up, apply the Rescue-Prime permutation and start absorbing
             // again from zero index.
             state[RATE_RANGE.start + i] += BaseElement::new(u64::from_le_bytes(buf));
             i += 1;
@@ -237,7 +237,7 @@ impl ElementHasher for RpJive64_256 {
         }
 
         // absorb elements into the state one by one until the rate portion of the state is filled
-        // up; then apply the Griffin permutation and start absorbing again; repeat until all
+        // up; then apply the Rescue-Prime permutation and start absorbing again; repeat until all
         // elements have been absorbed
         let mut i = 0;
         for &element in elements.iter() {

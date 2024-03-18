@@ -18,12 +18,12 @@
 //! 1. Define an *algebraic intermediate representation* (AIR) for your computation. This can
 //!    be done by implementing [Air] trait.
 //! 2. Define an execution trace for your computation. This can be done by implementing [Trace]
-//!    trait. Alternatively, you can use [TraceTable] struct which already implements [Trace]
+//!    trait. Alternatively, you can use the [TraceTable] struct which already implements [Trace]
 //!    trait in cases when this generic implementation works for your use case.
 //! 3. Execute your computation and record its execution trace.
 //! 4. Define your prover by implementing [Prover] trait. Then execute [Prover::prove()] function
 //!    passing the trace generated in the previous step into it as a parameter. The function will
-//!    return a instance of [StarkProof].
+//!    return an instance of [StarkProof].
 //!
 //! This `StarkProof` can be serialized and sent to a STARK verifier for verification. The size
 //! of proof depends on the specifics of a given computation, but for most computations it should
@@ -31,10 +31,10 @@
 //! computations).
 //!
 //! Proof generation time is also highly dependent on the specifics of a given computation, but
-//! also depends on the capabilities of the machine used to generate the proofs (i.e. on number
+//! also depends on the capabilities of the machine used to generate the proofs (i.e. on the number
 //! of CPU cores and memory bandwidth).
 //!
-//! When the crate is compiled with `concurrent` feature enabled, proof generation will be
+//! When the crate is compiled with the `concurrent` feature enabled, proof generation will be
 //! performed in multiple threads (usually, as many threads as there are logical cores on the
 //! machine). The number of threads can be configured via `RAYON_NUM_THREADS` environment
 //! variable.
@@ -44,18 +44,18 @@
 //! do the following:
 //!
 //! 1. Define an *algebraic intermediate representation* (AIR) for you computation. This AIR
-//!    must be the same as the one used during proof generation process.
+//!    must be the same as the one used during the proof generation process.
 //! 2. Execute [verify()] function and supply the AIR of your computation together with the
 //!    [StarkProof] and related public inputs as parameters.
 //!
 //! Proof verification is extremely fast and is nearly independent of the complexity of the
-//! computation being verified. In vast majority of cases proofs can be verified in 3 - 5 ms
+//! computation being verified. In the vast majority of cases, proofs can be verified in 3 - 5 ms
 //! on a modern mid-range laptop CPU (using a single core).
 //!
 //! There is one exception, however: if a computation requires a lot of `sequence` assertions
 //! (see [Assertion] for more info), the verification time will grow linearly in the number of
 //! asserted values. But for the impact to be noticeable, the number of asserted values would
-//! need to be in tens of thousands. And even for hundreds of thousands of asserted values, the
+//! need to be in tens of thousands. And even for hundreds of thousands of assorted values, the
 //! verification time should not exceed 50 ms.
 //!
 //! # Examples
@@ -77,10 +77,10 @@
 //! ```
 //!
 //! This computation starts with an element in a finite field and then, for the specified number
-//! of steps, cubes the element and adds value `42` to it.
+//! of steps, cubes the element, and adds value `42` to it.
 //!
 //! Suppose, we run this computation for a million steps and get some result. Using STARKs we can
-//! prove that we did the work correctly without requiring any verifying party to re-execute the
+//! Prove that we did the work correctly without requiring any verifying party to re-execute the
 //! computation. Here is how to do it:
 //!
 //! First, we need to define an *execution trace* for our computation. This trace should capture
@@ -99,7 +99,7 @@
 //! | ...       |
 //! | 1,048,575 | 247770943907079986105389697876176586605 |
 //!
-//! To record the trace, we'll use the [TraceTable] struct. The function below, is just a
+//! To record the trace, we'll use the [TraceTable] struct. The function below is just a
 //! modified version of the `do_work()` function which records every intermediate state of the
 //! computation in the [TraceTable] struct:
 //!
@@ -346,7 +346,7 @@
 //!     type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
 //!     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
 //!         DefaultConstraintEvaluator<'a, Self::Air, E>;
-//!     
+//!
 //!     // Our public inputs consist of the first and last value in the execution trace.
 //!     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
 //!         let last_step = trace.length() - 1;
@@ -367,7 +367,7 @@
 //!         domain: &StarkDomain<Self::BaseField>,
 //!     ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
 //!         DefaultTraceLde::new(trace_info, main_trace, domain)
-//!     }    
+//!     }
 //!
 //!     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
 //!         &self,
@@ -384,7 +384,7 @@
 //!
 //! In the code below, we will execute our computation and get the result together with the proof
 //! that the computation was executed correctly. Then, we will use this proof (together with the
-//! public inputs) to verify that we did in fact execute the computation and got the claimed
+//! public inputs) to verify that we did execute the computation and got the claimed
 //! result.
 //!
 //! ```
@@ -507,7 +507,7 @@
 //! #    ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
 //! #        DefaultTraceLde::new(trace_info, main_trace, domain)
 //! #    }
-//! #  
+//! #
 //! #    fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
 //! #        &self,
 //! #        air: &'a Self::Air,
@@ -567,9 +567,9 @@
 //! * STARKs vs. SNARKs: [A Cambrian Explosion of Crypto Proofs](https://nakamoto.com/cambrian-explosion-of-crypto-proofs/)
 //!
 //! Vitalik Buterin's blog series on zk-STARKs:
-//! * [STARKs, part 1: Proofs with Polynomials](https://vitalik.ca/general/2017/11/09/starks_part_1.html)
-//! * [STARKs, part 2: Thank Goodness it's FRI-day](https://vitalik.ca/general/2017/11/22/starks_part_2.html)
-//! * [STARKs, part 3: Into the Weeds](https://vitalik.ca/general/2018/07/21/starks_part_3.html)
+//! * [STARKs, part 1: Proofs with Polynomials](https://vitalik.eth.limo/general/2017/11/09/starks_part_1.html)
+//! * [STARKs, part 2: Thank Goodness it's FRI-day](https://vitalik.eth.limo/general/2017/11/22/starks_part_2.html)
+//! * [STARKs, part 3: Into the Weeds](https://vitalik.eth.limo/general/2018/07/21/starks_part_3.html)
 //!
 //! StarkWare's STARK Math blog series:
 //! * [STARK Math: The Journey Begins](https://medium.com/starkware/stark-math-the-journey-begins-51bd2b063c71)
@@ -578,8 +578,9 @@
 //! * [Low Degree Testing](https://medium.com/starkware/low-degree-testing-f7614f5172db)
 //! * [A Framework for Efficient STARKs](https://medium.com/starkware/a-framework-for-efficient-starks-19608ba06fbe)
 
-#![cfg_attr(not(feature = "std"), no_std)]
-#[cfg(not(feature = "std"))]
+#![no_std]
+
+#[cfg(test)]
 extern crate alloc;
 
 pub use prover::{

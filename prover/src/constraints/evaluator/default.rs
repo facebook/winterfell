@@ -12,8 +12,9 @@ use air::{
     LagrangeKernelBoundaryConstraint, LagrangeKernelEvaluationFrame,
     LagrangeKernelTransitionConstraints, TransitionConstraints,
 };
+use alloc::vec::Vec;
 use math::{batch_inversion, FieldElement};
-use utils::{collections::*, iter_mut};
+use utils::iter_mut;
 
 #[cfg(feature = "concurrent")]
 use utils::{iterators::*, rayon};

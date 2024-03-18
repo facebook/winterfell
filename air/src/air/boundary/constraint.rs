@@ -6,8 +6,8 @@
 use crate::LagrangeKernelEvaluationFrame;
 
 use super::{Assertion, ExtensionOf, FieldElement};
+use alloc::{collections::BTreeMap, vec::Vec};
 use math::{fft, polynom};
-use utils::collections::*;
 
 // BOUNDARY CONSTRAINT
 // ================================================================================================

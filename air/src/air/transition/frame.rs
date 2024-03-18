@@ -4,8 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::FieldElement;
+use alloc::vec::Vec;
 use math::{polynom, StarkField};
-use utils::collections::*;
 
 // EVALUATION FRAME
 // ================================================================================================

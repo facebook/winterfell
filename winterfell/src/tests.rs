@@ -1,12 +1,11 @@
 use super::*;
+use alloc::vec;
+use alloc::vec::Vec;
 use prover::{
     crypto::{hashers::Blake3_256, DefaultRandomCoin},
     math::{fields::f64::BaseElement, ExtensionOf, FieldElement},
     matrix::ColMatrix,
 };
-
-#[cfg(not(feature = "std"))]
-use alloc::{vec, vec::Vec};
 
 #[test]
 fn test_lagrange_kernel_air() {

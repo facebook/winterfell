@@ -7,11 +7,11 @@ use air::{
     proof::{Commitments, Context, OodFrame, OodFrameTraceStates, Queries, StarkProof},
     Air, ConstraintCompositionCoefficients, DeepCompositionCoefficients,
 };
+use alloc::vec::Vec;
 use core::marker::PhantomData;
 use crypto::{ElementHasher, RandomCoin};
 use fri::FriProof;
 use math::{FieldElement, ToElements};
-use utils::collections::*;
 
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;

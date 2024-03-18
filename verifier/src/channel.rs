@@ -8,10 +8,10 @@ use air::{
     proof::{ParsedOodFrame, Queries, StarkProof, Table},
     Air, EvaluationFrame, LagrangeKernelEvaluationFrame,
 };
+use alloc::{string::ToString, vec::Vec};
 use crypto::{BatchMerkleProof, ElementHasher, MerkleTree};
 use fri::VerifierChannel as FriVerifierChannel;
 use math::{FieldElement, StarkField};
-use utils::{collections::*, string::*};
 
 // VERIFIER CHANNEL
 // ================================================================================================

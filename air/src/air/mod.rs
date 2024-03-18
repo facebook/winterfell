@@ -4,9 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::ProofOptions;
+use alloc::{collections::BTreeMap, vec::Vec};
 use crypto::{RandomCoin, RandomCoinError};
 use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElements};
-use utils::collections::*;
 
 mod trace_info;
 pub use trace_info::TraceInfo;

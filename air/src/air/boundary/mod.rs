@@ -4,8 +4,11 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{AirContext, Assertion, ConstraintDivisor};
+use alloc::{
+    collections::{BTreeMap, BTreeSet},
+    vec::Vec,
+};
 use math::{ExtensionOf, FieldElement};
-use utils::collections::*;
 
 mod constraint;
 pub use constraint::{BoundaryConstraint, LagrangeKernelBoundaryConstraint};

@@ -4,10 +4,11 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::StarkDomain;
+use alloc::vec::Vec;
 use core::{iter::FusedIterator, slice};
 use crypto::{ElementHasher, MerkleTree};
 use math::{fft, polynom, FieldElement};
-use utils::{batch_iter_mut, collections::*, iter, iter_mut, uninit_vector};
+use utils::{batch_iter_mut, iter, iter_mut, uninit_vector};
 
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;

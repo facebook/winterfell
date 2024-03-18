@@ -4,9 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{air::TransitionConstraintDegree, ProofOptions, TraceInfo};
+use alloc::vec::Vec;
 use core::cmp;
 use math::StarkField;
-use utils::collections::*;
 
 // AIR CONTEXT
 // ================================================================================================

@@ -4,8 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use air::Air;
+use alloc::vec::Vec;
 use math::{fft, get_power_series, StarkField};
-use utils::collections::*;
 
 // TYPES AND INTERFACES
 // ================================================================================================

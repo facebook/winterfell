@@ -3,11 +3,19 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use alloc::{
+    collections::{BTreeMap, BTreeSet},
+    string::String,
+    vec::Vec,
+};
+
 use super::DeserializationError;
-use crate::collections::*;
 
 mod byte_reader;
 pub use byte_reader::{ByteReader, SliceReader};
+
+#[cfg(feature = "std")]
+pub use byte_reader::ReadAdapter;
 
 mod byte_writer;
 pub use byte_writer::ByteWriter;
@@ -16,7 +24,7 @@ pub use byte_writer::ByteWriter;
 // ================================================================================================
 
 /// Defines how to serialize `Self` into bytes.
-pub trait Serializable: Sized {
+pub trait Serializable {
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
     /// Serializes `self` into bytes and writes these bytes into the `target`.
@@ -37,6 +45,12 @@ pub trait Serializable: Sized {
     /// The default implementation returns zero.
     fn get_size_hint(&self) -> usize {
         0
+    }
+}
+
+impl<T: Serializable> Serializable for &T {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        (*self).write_into(target)
     }
 }
 
@@ -176,21 +190,53 @@ impl<T: Serializable> Serializable for Option<T> {
     }
 }
 
-impl<T: Serializable> Serializable for &Option<T> {
+impl<T: Serializable, const C: usize> Serializable for [T; C] {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        match self {
-            Some(v) => {
-                target.write_bool(true);
-                v.write_into(target);
-            }
-            None => target.write_bool(false),
+        target.write_many(self)
+    }
+}
+
+impl<T: Serializable> Serializable for [T] {
+    fn write_into<W: ?Sized + ByteWriter>(&self, target: &mut W) {
+        target.write_usize(self.len());
+        for element in self.iter() {
+            element.write_into(target);
         }
     }
 }
 
-impl<T: Serializable, const C: usize> Serializable for [T; C] {
+impl<T: Serializable> Serializable for Vec<T> {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        target.write_many(self)
+        target.write_usize(self.len());
+        target.write_many(self);
+    }
+}
+
+impl<K: Serializable, V: Serializable> Serializable for BTreeMap<K, V> {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_usize(self.len());
+        target.write_many(self);
+    }
+}
+
+impl<T: Serializable> Serializable for BTreeSet<T> {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_usize(self.len());
+        target.write_many(self);
+    }
+}
+
+impl Serializable for str {
+    fn write_into<W: ?Sized + ByteWriter>(&self, target: &mut W) {
+        target.write_usize(self.len());
+        target.write_many(self.as_bytes());
+    }
+}
+
+impl Serializable for String {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_usize(self.len());
+        target.write_many(self.as_bytes());
     }
 }
 
@@ -382,5 +428,38 @@ impl<T: Deserializable, const C: usize> Deserializable for [T; C] {
         });
 
         Ok(res)
+    }
+}
+
+impl<T: Deserializable> Deserializable for Vec<T> {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let len = source.read_usize()?;
+        source.read_many(len)
+    }
+}
+
+impl<K: Deserializable + Ord, V: Deserializable> Deserializable for BTreeMap<K, V> {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let len = source.read_usize()?;
+        let data = source.read_many(len)?;
+        Ok(BTreeMap::from_iter(data))
+    }
+}
+
+impl<T: Deserializable + Ord> Deserializable for BTreeSet<T> {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let len = source.read_usize()?;
+        let data = source.read_many(len)?;
+        Ok(BTreeSet::from_iter(data))
+    }
+}
+
+impl Deserializable for String {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let len = source.read_usize()?;
+        let data = source.read_many(len)?;
+
+        String::from_utf8(data)
+            .map_err(|err| DeserializationError::InvalidValue(format!("{}", err)))
     }
 }

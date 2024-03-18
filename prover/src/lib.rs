@@ -37,9 +37,8 @@
 //! also depends on the capabilities of the machine used to generate the proofs (i.e. on number
 //! of CPU cores and memory bandwidth).
 
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 
-#[cfg(not(feature = "std"))]
 #[macro_use]
 extern crate alloc;
 
@@ -55,8 +54,8 @@ pub use utils::{
     SliceReader,
 };
 
+use alloc::vec::Vec;
 use fri::FriProver;
-use utils::collections::*;
 
 pub use math;
 use math::{
@@ -286,7 +285,7 @@ pub trait Prover {
         for i in 0..trace.info().num_aux_segments() {
             let num_columns = trace.info().get_aux_segment_width(i);
             let (aux_segment, rand_elements) = {
-                let _ = info_span!("build_aux_trace_segment", num_columns).entered();
+                let span = info_span!("build_aux_trace_segment", num_columns).entered();
 
                 // draw a set of random elements required to build an auxiliary trace segment
                 let rand_elements = channel.get_aux_trace_segment_rand_elements(i);
@@ -301,6 +300,7 @@ pub trait Prover {
                     .build_aux_segment(&aux_trace_segments, &rand_elements, lagrange_rand_elements)
                     .expect("failed build auxiliary trace segment");
 
+                drop(span);
                 (aux_segment, rand_elements)
             };
             assert_eq!(aux_segment.num_cols(), num_columns);

@@ -4,8 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{ColMatrix, StarkDomain};
+use alloc::vec::Vec;
 use math::{fft, polynom::degree_of, FieldElement};
-use utils::collections::*;
 
 // CONSTRAINT COMPOSITION POLYNOMIAL TRACE
 // ================================================================================================
@@ -138,8 +138,8 @@ fn segment<E: FieldElement>(
 #[cfg(test)]
 mod tests {
 
+    use alloc::vec::Vec;
     use math::fields::f128::BaseElement;
-    use utils::collections::*;
 
     #[test]
     fn segment() {

@@ -4,8 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::{tests::build_fib_trace, Trace};
+use alloc::vec::Vec;
 use math::fields::f128::BaseElement;
-use utils::collections::*;
 
 #[test]
 fn new_trace_table() {

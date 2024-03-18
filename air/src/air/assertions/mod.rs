@@ -4,12 +4,12 @@
 // LICENSE file in the root directory of this source tree.
 
 use crate::errors::AssertionError;
+use alloc::vec::Vec;
 use core::{
     cmp::Ordering,
     fmt::{Display, Formatter},
 };
 use math::FieldElement;
-use utils::collections::*;
 
 #[cfg(test)]
 mod tests;

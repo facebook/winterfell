@@ -6,8 +6,8 @@
 use super::{ColMatrix, EvaluationFrame, FieldElement, TracePolyTable};
 use crate::StarkDomain;
 use air::{proof::Queries, LagrangeKernelEvaluationFrame, TraceInfo};
+use alloc::vec::Vec;
 use crypto::{ElementHasher, Hasher};
-use utils::collections::*;
 
 mod default;
 pub use default::DefaultTraceLde;

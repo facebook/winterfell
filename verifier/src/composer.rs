@@ -4,8 +4,8 @@
 // LICENSE file in the root directory of this source tree.
 
 use air::{proof::Table, Air, DeepCompositionCoefficients, EvaluationFrame};
+use alloc::vec::Vec;
 use math::{batch_inversion, FieldElement};
-use utils::collections::*;
 
 // DEEP COMPOSER
 // ================================================================================================

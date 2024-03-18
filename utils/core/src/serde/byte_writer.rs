@@ -4,7 +4,6 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::Serializable;
-use crate::collections::*;
 
 // BYTE WRITER TRAIT
 // ================================================================================================
@@ -100,7 +99,11 @@ pub trait ByteWriter: Sized {
     /// Serializes all `elements` and writes the resulting bytes into `self`.
     ///
     /// This method does not write any metadata (e.g. number of serialized elements) into `self`.
-    fn write_many<S: Serializable>(&mut self, elements: &[S]) {
+    fn write_many<S, T>(&mut self, elements: T)
+    where
+        T: IntoIterator<Item = S>,
+        S: Serializable,
+    {
         for element in elements {
             element.write_into(self);
         }
@@ -110,7 +113,20 @@ pub trait ByteWriter: Sized {
 // BYTE WRITER IMPLEMENTATIONS
 // ================================================================================================
 
-impl ByteWriter for Vec<u8> {
+#[cfg(feature = "std")]
+impl<W: std::io::Write> ByteWriter for W {
+    #[inline(always)]
+    fn write_u8(&mut self, byte: u8) {
+        <W as std::io::Write>::write_all(self, &[byte]).expect("write failed")
+    }
+    #[inline(always)]
+    fn write_bytes(&mut self, bytes: &[u8]) {
+        <W as std::io::Write>::write_all(self, bytes).expect("write failed")
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl ByteWriter for alloc::vec::Vec<u8> {
     fn write_u8(&mut self, value: u8) {
         self.push(value);
     }
@@ -128,4 +144,25 @@ fn encoded_len(value: usize) -> usize {
     let zeros = value.leading_zeros() as usize;
     let len = zeros.saturating_sub(1) / 7;
     9 - core::cmp::min(len, 8)
+}
+
+#[cfg(all(test, feature = "std"))]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+
+    #[test]
+    fn write_adapter_passthrough() {
+        let mut writer = Cursor::new([0u8; 128]);
+        writer.write_bytes(b"nope");
+        let buf = writer.get_ref();
+        assert_eq!(&buf[..4], b"nope");
+    }
+
+    #[test]
+    #[should_panic]
+    fn write_adapter_writer_out_of_capacity() {
+        let mut writer = Cursor::new([0; 2]);
+        writer.write_bytes(b"nope");
+    }
 }

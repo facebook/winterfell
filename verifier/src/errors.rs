@@ -5,8 +5,8 @@
 
 //! Contains common error types for prover and verifier.
 
+use alloc::string::String;
 use core::fmt;
-use utils::string::*;
 
 // VERIFIER ERROR
 // ================================================================================================

@@ -3,10 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use alloc::vec::Vec;
 use core::marker::PhantomData;
 use crypto::{ElementHasher, Hasher, RandomCoin};
 use math::FieldElement;
-use utils::collections::*;
 
 // PROVER CHANNEL TRAIT
 // ================================================================================================

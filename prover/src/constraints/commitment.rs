@@ -5,9 +5,9 @@
 
 use super::RowMatrix;
 use air::proof::Queries;
+use alloc::vec::Vec;
 use crypto::{ElementHasher, MerkleTree};
 use math::FieldElement;
-use utils::collections::*;
 
 // CONSTRAINT COMMITMENT
 // ================================================================================================

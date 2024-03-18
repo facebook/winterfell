@@ -8,8 +8,8 @@ use crate::{
     ColMatrix,
 };
 use air::{proof::OodFrameTraceStates, LagrangeKernelEvaluationFrame};
+use alloc::vec::Vec;
 use math::{FieldElement, StarkField};
-use utils::collections::*;
 
 // TRACE POLYNOMIAL TABLE
 // ================================================================================================

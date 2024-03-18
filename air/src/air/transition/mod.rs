@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{AirContext, ConstraintDivisor, ExtensionOf, FieldElement};
-use utils::collections::*;
+use alloc::vec::Vec;
 
 mod frame;
 pub use frame::{EvaluationFrame, LagrangeKernelEvaluationFrame};

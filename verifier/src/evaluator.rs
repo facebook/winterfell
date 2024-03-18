@@ -7,8 +7,8 @@ use air::{
     Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
     LagrangeKernelEvaluationFrame, LagrangeKernelTransitionConstraints,
 };
+use alloc::vec::Vec;
 use math::{polynom, FieldElement};
-use utils::collections::*;
 
 // CONSTRAINT EVALUATION
 // ================================================================================================

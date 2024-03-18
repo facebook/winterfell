@@ -9,8 +9,8 @@ use crate::{
     polynom,
     utils::get_power_series,
 };
+use alloc::vec::Vec;
 use rand_utils::rand_vector;
-use utils::collections::*;
 
 // CORE ALGORITHMS
 // ================================================================================================

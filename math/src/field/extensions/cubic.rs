@@ -4,14 +4,18 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{ExtensibleField, ExtensionOf, FieldElement};
+use alloc::{
+    string::{String, ToString},
+    vec::Vec,
+};
 use core::{
     fmt,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
     slice,
 };
 use utils::{
-    collections::*, string::*, AsBytes, ByteReader, ByteWriter, Deserializable,
-    DeserializationError, Randomizable, Serializable, SliceReader,
+    AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Randomizable,
+    Serializable, SliceReader,
 };
 
 #[cfg(feature = "serde")]

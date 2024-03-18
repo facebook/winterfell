@@ -18,9 +18,6 @@ mod mds;
 mod rescue;
 pub use rescue::{Rp62_248, Rp64_256, RpJive64_256};
 
-mod griffin;
-pub use griffin::GriffinJive64_256;
-
 // HASHER TRAITS
 // ================================================================================================
 

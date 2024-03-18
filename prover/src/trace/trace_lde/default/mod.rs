@@ -9,9 +9,9 @@ use super::{
 };
 use crate::{RowMatrix, DEFAULT_SEGMENT_WIDTH};
 use air::LagrangeKernelEvaluationFrame;
+use alloc::vec::Vec;
 use crypto::MerkleTree;
 use tracing::info_span;
-use utils::collections::*;
 
 #[cfg(test)]
 mod tests;
