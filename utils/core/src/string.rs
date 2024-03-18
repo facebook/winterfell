@@ -5,4 +5,7 @@
 
 //! Feature-based re-export of common string components.
 
-pub use alloc::string::{String, ToString};
+pub use alloc::{
+    format,
+    string::{String, ToString},
+};

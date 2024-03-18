@@ -6,4 +6,4 @@
 //! Feature-based re-export of common collection components.
 
 pub use alloc::collections::{btree_map, btree_set, BTreeMap, BTreeSet};
-pub use alloc::vec::{self as vec, Vec};
+pub use alloc::{vec, vec::Vec};
