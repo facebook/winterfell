@@ -25,9 +25,12 @@ pub use boundary::{
 
 mod transition;
 pub use transition::{
-    EvaluationFrame, LagrangeKernelEvaluationFrame, LagrangeKernelTransitionConstraints,
+    EvaluationFrame, LagrangeKernelEvaluationFrame,
     TransitionConstraintDegree, TransitionConstraints,
 };
+
+mod lagrange;
+pub use lagrange::LagrangeKernelTransitionConstraints;
 
 mod coefficients;
 pub use coefficients::{
