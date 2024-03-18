@@ -87,30 +87,28 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
         }
     }
 
-    // 3 ----- evaluate Lagrange kernel transition constraints ------------------------------------
-
     if let Some(lagrange_kernel_column_frame) = lagrange_kernel_column_frame {
+        // 3 ----- evaluate Lagrange kernel transition constraints ------------------------------------
+
+        let lagrange_coefficients = composition_coefficients
+            .lagrange
+            .expect("expected Lagrange kernel composition coefficients to be present");
+        let lagrange_kernel_aux_rand_elements = aux_rand_elements.get_segment_elements(0);
+
         let lagrange_kernel_transition_constraints = LagrangeKernelTransitionConstraints::new(
             air.context(),
-            composition_coefficients.lagrange.transition,
+            lagrange_coefficients.transition,
         );
 
         result += lagrange_kernel_transition_constraints.evaluate_and_combine::<E>(
             lagrange_kernel_column_frame,
-            aux_rand_elements.get_segment_elements(0),
+            lagrange_kernel_aux_rand_elements,
             x,
         );
-    }
 
-    // 4 ----- evaluate Lagrange kernel boundary constraints ------------------------------------
-
-    if let Some(lagrange_kernel_column_frame) = lagrange_kernel_column_frame {
-        let lagrange_kernel_aux_rand_elements = aux_rand_elements.get_segment_elements(0);
+        // 4 ----- evaluate Lagrange kernel boundary constraints ------------------------------------
         let constraint = LagrangeKernelBoundaryConstraint::new(
-            composition_coefficients
-                .lagrange
-                .boundary
-                .expect("expected Lagrange boundary coefficient to be present"),
+            lagrange_coefficients.boundary,
             lagrange_kernel_aux_rand_elements,
         );
         result += constraint.evaluate_at(x, lagrange_kernel_column_frame);

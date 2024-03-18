@@ -9,8 +9,8 @@ use super::{
 };
 use air::{
     Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
-    LagrangeKernelBoundaryConstraint, LagrangeKernelEvaluationFrame,
-    LagrangeKernelTransitionConstraints, TransitionConstraints,
+    LagrangeConstraintsCompositionCoefficients, LagrangeKernelBoundaryConstraint,
+    LagrangeKernelEvaluationFrame, LagrangeKernelTransitionConstraints, TransitionConstraints,
 };
 use alloc::vec::Vec;
 use math::{batch_inversion, FieldElement};
@@ -41,7 +41,7 @@ pub struct DefaultConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A:
     air: &'a A,
     boundary_constraints: BoundaryConstraints<E>,
     transition_constraints: TransitionConstraints<E>,
-    lagrange_constraints_evaluator: LagrangeConstraintsBatchEvaluator<E>,
+    lagrange_constraints_evaluator: Option<LagrangeConstraintsBatchEvaluator<E>>,
     aux_rand_elements: AuxTraceRandElements<E>,
     periodic_values: PeriodicValueTable<E::BaseField>,
 }
@@ -111,22 +111,24 @@ where
         evaluation_table.validate_transition_degrees();
 
         // combine all evaluations into a single column
-        let combined_evaluations = if self.air.context().has_lagrange_kernel_aux_column() {
-            // if present, linearly combine the Lagrange kernel evaluations too
+        let combined_evaluations = {
             let main_and_aux_evaluations = evaluation_table.combine();
 
-            let lagrange_kernel_combined_evals =
-                self.evaluate_lagrange_kernel_constraints(trace, domain);
-
-            debug_assert_eq!(main_and_aux_evaluations.len(), lagrange_kernel_combined_evals.len());
-
-            main_and_aux_evaluations
-                .into_iter()
-                .zip(lagrange_kernel_combined_evals)
-                .map(|(eval_1, eval_2)| eval_1 + eval_2)
-                .collect()
-        } else {
-            evaluation_table.combine()
+            match self.evaluate_lagrange_kernel_constraints(trace, domain) {
+                Some(lagrange_kernel_combined_evals) => {
+                    // if present, linearly combine the Lagrange kernel evaluations too
+                    debug_assert_eq!(
+                        main_and_aux_evaluations.len(),
+                        lagrange_kernel_combined_evals.len()
+                    );
+                    main_and_aux_evaluations
+                        .into_iter()
+                        .zip(lagrange_kernel_combined_evals)
+                        .map(|(eval_1, eval_2)| eval_1 + eval_2)
+                        .collect()
+                }
+                None => main_and_aux_evaluations,
+            }
         };
 
         CompositionPolyTrace::new(combined_evaluations)
@@ -159,11 +161,17 @@ where
         let boundary_constraints =
             BoundaryConstraints::new(air, &aux_rand_elements, &composition_coefficients.boundary);
 
-        let lagrange_constraints_evaluator = LagrangeConstraintsBatchEvaluator::new(
-            air,
-            aux_rand_elements.clone(),
-            composition_coefficients,
-        );
+        let lagrange_constraints_evaluator = if air.context().has_lagrange_kernel_aux_column() {
+            Some(LagrangeConstraintsBatchEvaluator::new(
+                air,
+                aux_rand_elements.clone(),
+                composition_coefficients
+                    .lagrange
+                    .expect("expected Lagrange kernel composition coefficients to be present"),
+            ))
+        } else {
+            None
+        };
 
         DefaultConstraintEvaluator {
             air,
@@ -289,35 +297,36 @@ where
         &self,
         trace: &T,
         domain: &StarkDomain<A::BaseField>,
-    ) -> Vec<E> {
-        let lagrange_kernel_aux_column_idx = self
-            .air
-            .context()
-            .lagrange_kernel_aux_column_idx()
-            .expect("expected Lagrange kernel aux column index to be present");
+    ) -> Option<Vec<E>> {
+        self.lagrange_constraints_evaluator.as_ref().map(|evaluator| {
+            let lagrange_kernel_aux_column_idx = self
+                .air
+                .context()
+                .lagrange_kernel_aux_column_idx()
+                .expect("expected Lagrange kernel aux column index to be present");
 
-        // this will be used to convert steps in constraint evaluation domain to steps in
-        // LDE domain
-        let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
+            // this will be used to convert steps in constraint evaluation domain to steps in
+            // LDE domain
+            let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
 
-        let mut lagrange_kernel_column_frames =
-            vec![LagrangeKernelEvaluationFrame::<E>::new_empty(); domain.ce_domain_size()];
+            let mut lagrange_kernel_column_frames =
+                vec![LagrangeKernelEvaluationFrame::<E>::new_empty(); domain.ce_domain_size()];
 
-        for (step, frame) in lagrange_kernel_column_frames.iter_mut().enumerate() {
-            trace.read_lagrange_kernel_frame_into(
-                step << lde_shift,
-                lagrange_kernel_aux_column_idx,
-                frame,
-            );
-        }
+            for (step, frame) in lagrange_kernel_column_frames.iter_mut().enumerate() {
+                trace.read_lagrange_kernel_frame_into(
+                    step << lde_shift,
+                    lagrange_kernel_aux_column_idx,
+                    frame,
+                );
+            }
 
-        let num_trans_constraints = self.air.context().trace_len().ilog2() as usize;
-
-        self.lagrange_constraints_evaluator.evaluate_lagrange_kernel_constraints::<A>(
-            num_trans_constraints,
-            lagrange_kernel_column_frames,
-            domain,
-        )
+            let num_trans_constraints = self.air.context().trace_len().ilog2() as usize;
+            evaluator.evaluate_lagrange_kernel_constraints::<A>(
+                num_trans_constraints,
+                lagrange_kernel_column_frames,
+                domain,
+            )
+        })
     }
 
     // TRANSITION CONSTRAINT EVALUATORS
@@ -411,8 +420,8 @@ where
 ///
 /// Specifically, [`batch_inversion`] is used to reduce the number of divisions performed.
 struct LagrangeConstraintsBatchEvaluator<E: FieldElement> {
-    lagrange_kernel_boundary_constraint: Option<LagrangeKernelBoundaryConstraint<E>>,
-    lagrange_kernel_transition_constraints: Option<LagrangeKernelTransitionConstraints<E>>,
+    lagrange_kernel_boundary_constraint: LagrangeKernelBoundaryConstraint<E>,
+    lagrange_kernel_transition_constraints: LagrangeKernelTransitionConstraints<E>,
     aux_rand_elements: AuxTraceRandElements<E>,
 }
 
@@ -421,28 +430,23 @@ impl<E: FieldElement> LagrangeConstraintsBatchEvaluator<E> {
     pub fn new<A: Air>(
         air: &A,
         aux_rand_elements: AuxTraceRandElements<E>,
-        composition_coefficients: ConstraintCompositionCoefficients<E>,
+        lagrange_composition_coefficients: LagrangeConstraintsCompositionCoefficients<E>,
     ) -> Self
     where
         E: FieldElement<BaseField = A::BaseField>,
     {
-        let lagrange_kernel_transition_constraints =
-            air.context().lagrange_kernel_aux_column_idx().map(|_| {
-                LagrangeKernelTransitionConstraints::new(
-                    air.context(),
-                    composition_coefficients.lagrange.transition,
-                )
-            });
-        let lagrange_kernel_boundary_constraint = composition_coefficients.lagrange.boundary.map(
-            |lagrange_kernel_boundary_coefficient| {
-                let lagrange_kernel_aux_rand_elements = aux_rand_elements.get_segment_elements(0);
-
-                LagrangeKernelBoundaryConstraint::new(
-                    lagrange_kernel_boundary_coefficient,
-                    lagrange_kernel_aux_rand_elements,
-                )
-            },
+        let lagrange_kernel_transition_constraints = LagrangeKernelTransitionConstraints::new(
+            air.context(),
+            lagrange_composition_coefficients.transition,
         );
+        let lagrange_kernel_boundary_constraint = {
+            let lagrange_kernel_aux_rand_elements = aux_rand_elements.get_segment_elements(0);
+
+            LagrangeKernelBoundaryConstraint::new(
+                lagrange_composition_coefficients.boundary,
+                lagrange_kernel_aux_rand_elements,
+            )
+        };
 
         Self {
             lagrange_kernel_boundary_constraint,
@@ -514,11 +518,6 @@ impl<E: FieldElement> LagrangeConstraintsBatchEvaluator<E> {
         A: Air,
         E: FieldElement<BaseField = A::BaseField>,
     {
-        let lagrange_kernel_transition_constraints = self
-            .lagrange_kernel_transition_constraints
-            .as_ref()
-            .expect("expected Lagrange kernel transition constraints to be present");
-
         let mut combined_evaluations_acc = E::zeroed_vector(domain.ce_domain_size());
         let mut denominators: Vec<E> = Vec::with_capacity(domain.ce_domain_size());
 
@@ -528,14 +527,15 @@ impl<E: FieldElement> LagrangeConstraintsBatchEvaluator<E> {
 
             for step in 0..num_non_repeating_denoms {
                 let domain_point = domain.get_ce_x_at(step);
-                let denominator = lagrange_kernel_transition_constraints
+                let denominator = self
+                    .lagrange_kernel_transition_constraints
                     .evaluate_ith_divisor(trans_constraint_idx, domain_point);
                 denominators.push(denominator);
             }
             let denominators_inv = batch_inversion(&denominators);
 
             for step in 0..domain.ce_domain_size() {
-                let numerator = lagrange_kernel_transition_constraints.evaluate_ith_numerator(
+                let numerator = self.lagrange_kernel_transition_constraints.evaluate_ith_numerator(
                     &lagrange_kernel_column_frames[step],
                     self.aux_rand_elements.get_segment_elements(0),
                     trans_constraint_idx,
@@ -568,15 +568,15 @@ impl<E: FieldElement> LagrangeConstraintsBatchEvaluator<E> {
             let domain_point = domain.get_ce_x_at(step);
 
             {
-                let constraint = self
-                    .lagrange_kernel_boundary_constraint
-                    .as_ref()
-                    .expect("expected Lagrange boundary constraint to be present");
-
-                let boundary_numerator = constraint.evaluate_numerator_at(frame);
+                let boundary_numerator =
+                    self.lagrange_kernel_boundary_constraint.evaluate_numerator_at(frame);
                 boundary_numerator_evals.push(boundary_numerator);
+            }
 
-                let boundary_denominator = constraint.evaluate_denominator_at(domain_point.into());
+            {
+                let boundary_denominator = self
+                    .lagrange_kernel_boundary_constraint
+                    .evaluate_denominator_at(domain_point.into());
                 boundary_denominator_evals.push(boundary_denominator);
             }
         }

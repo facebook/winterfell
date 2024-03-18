@@ -32,12 +32,11 @@ pub use lagrange::{
 mod coefficients;
 pub use coefficients::{
     AuxTraceRandElements, ConstraintCompositionCoefficients, DeepCompositionCoefficients,
+    LagrangeConstraintsCompositionCoefficients,
 };
 
 mod divisor;
 pub use divisor::ConstraintDivisor;
-
-use self::coefficients::LagrangeConstraintsCompositionCoefficients;
 
 #[cfg(test)]
 mod tests;
@@ -504,33 +503,33 @@ pub trait Air: Send + Sync {
             t_coefficients.push(public_coin.draw()?);
         }
 
-        let mut lagrange_kernel_t_coefficients = Vec::new();
-        if self.context().has_lagrange_kernel_aux_column() {
-            for _ in 0..self.context().trace_len().ilog2() {
-                lagrange_kernel_t_coefficients.push(public_coin.draw()?);
-            }
-        }
-
         let mut b_coefficients = Vec::new();
         for _ in 0..self.context().num_assertions() {
             b_coefficients.push(public_coin.draw()?);
         }
 
-        let lagrange_kernel_boundary = {
+        let lagrange = if self.context().has_lagrange_kernel_aux_column() {
+            let mut lagrange_kernel_t_coefficients = Vec::new();
             if self.context().has_lagrange_kernel_aux_column() {
-                Some(public_coin.draw()?)
-            } else {
-                None
+                for _ in 0..self.context().trace_len().ilog2() {
+                    lagrange_kernel_t_coefficients.push(public_coin.draw()?);
+                }
             }
+
+            let lagrange_kernel_boundary = public_coin.draw()?;
+
+            Some(LagrangeConstraintsCompositionCoefficients {
+                transition: lagrange_kernel_t_coefficients,
+                boundary: lagrange_kernel_boundary,
+            })
+        } else {
+            None
         };
 
         Ok(ConstraintCompositionCoefficients {
             transition: t_coefficients,
             boundary: b_coefficients,
-            lagrange: LagrangeConstraintsCompositionCoefficients {
-                transition: lagrange_kernel_t_coefficients,
-                boundary: lagrange_kernel_boundary,
-            },
+            lagrange,
         })
     }
 
