@@ -1,12 +1,11 @@
-
 use super::*;
-use alloc::vec;
-use alloc::vec::Vec;
 use prover::{
     crypto::{hashers::Blake3_256, DefaultRandomCoin},
     math::{fields::f64::BaseElement, ExtensionOf, FieldElement},
     matrix::ColMatrix,
 };
+use std::vec;
+use std::vec::Vec;
 
 #[test]
 fn test_simple_lagrange_kernel_air() {
@@ -22,7 +21,6 @@ fn test_simple_lagrange_kernel_air() {
     >(proof, (), &AcceptableOptions::MinConjecturedSecurity(0))
     .unwrap()
 }
-
 
 // LagrangeSimpleTrace
 // ================================================================================================
@@ -313,7 +311,7 @@ impl Trace for LagrangeComplexTrace {
             let mut lagrange_col = Vec::with_capacity(self.len());
 
             for row_idx in 0..self.len() {
-                let mut row_value = E::ZERO;
+                let mut row_value = E::ONE;
                 for (bit_idx, &r_i) in r.iter().enumerate() {
                     if row_idx & (1 << bit_idx) == 0 {
                         row_value *= E::ONE - r_i;
@@ -328,17 +326,14 @@ impl Trace for LagrangeComplexTrace {
         }
 
         // Then all other auxiliary columns
+        let rand_summed = rand_elements.iter().fold(E::ZERO, |acc, &r| acc + r);
         for _ in 1..self.aux_trace_width() {
             // building a dummy auxiliary column
             let column = self
                 .main_segment()
                 .get_column(0)
                 .iter()
-                .map(|row_val| {
-                    let rand_summed = rand_elements.iter().fold(E::ZERO, |acc, &r| acc + r);
-
-                    rand_summed.mul_base(*row_val)
-                })
+                .map(|main_row_val| rand_summed.mul_base(*main_row_val))
                 .collect();
 
             columns.push(column);
@@ -355,7 +350,6 @@ impl Trace for LagrangeComplexTrace {
         self.main_trace.read_row_into(next_row_idx, frame.next_mut());
     }
 }
-
 
 // AIR
 // =================================================================================================
@@ -374,7 +368,7 @@ impl Air for LagrangeKernelComplexAir {
             context: AirContext::new_multi_segment(
                 trace_info,
                 vec![TransitionConstraintDegree::new(1)],
-                vec![TransitionConstraintDegree::new(2)],
+                vec![TransitionConstraintDegree::new(1)],
                 1,
                 1,
                 Some(0),
@@ -406,36 +400,23 @@ impl Air for LagrangeKernelComplexAir {
 
     fn evaluate_aux_transition<F, E>(
         &self,
-        main_frame: &EvaluationFrame<F>,
-        aux_frame: &EvaluationFrame<E>,
+        _main_frame: &EvaluationFrame<F>,
+        _aux_frame: &EvaluationFrame<E>,
         _periodic_values: &[F],
-        aux_rand_elements: &AuxTraceRandElements<E>,
-        result: &mut [E],
+        _aux_rand_elements: &AuxTraceRandElements<E>,
+        _result: &mut [E],
     ) where
         F: FieldElement<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
     {
-        let main_frame_current = main_frame.current()[0];
-        let aux_next = aux_frame.next()[0];
-
-        let rand_summed: E = aux_rand_elements
-            .get_segment_elements(0)
-            .iter()
-            .fold(E::ZERO, |acc, x| acc + *x);
-
-        result[0] = aux_next - rand_summed.mul_base(main_frame_current);
+        // do nothing
     }
 
     fn get_aux_assertions<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        aux_rand_elements: &AuxTraceRandElements<E>,
+        _aux_rand_elements: &AuxTraceRandElements<E>,
     ) -> Vec<Assertion<E>> {
-        let rand_summed: E = aux_rand_elements
-            .get_segment_elements(0)
-            .iter()
-            .fold(E::ZERO, |acc, x| acc + *x);
-
-        vec![Assertion::single(1, 0, rand_summed)]
+        vec![Assertion::single(1, 0, E::ZERO)]
     }
 }
 

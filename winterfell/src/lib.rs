@@ -581,7 +581,7 @@
 #![no_std]
 
 #[cfg(test)]
-extern crate alloc;
+extern crate std;
 
 pub use prover::{
     crypto, iterators, math, matrix, Air, AirContext, Assertion, AuxTraceRandElements,
