@@ -17,7 +17,7 @@ use winter_prover::{
     TracePolyTable,
 };
 
-const TRACE_LENS: [usize; 3] = [2_usize.pow(14), 2_usize.pow(15), 2_usize.pow(16)];
+const TRACE_LENS: [usize; 2] = [2_usize.pow(16), 2_usize.pow(20)];
 
 fn prove_with_lagrange_kernel(c: &mut Criterion) {
     let mut group = c.benchmark_group("Lagrange kernel column");
