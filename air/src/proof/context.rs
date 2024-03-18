@@ -215,9 +215,9 @@ mod tests {
             fri_remainder_max_degree as usize,
         );
         let trace_info = TraceInfo::new_multi_segment(
-            main_width as usize,
-            [aux_width as usize],
-            [aux_rands as usize],
+            main_width,
+            [aux_width],
+            [aux_rands],
             trace_length,
             vec![],
         );
