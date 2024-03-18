@@ -3,6 +3,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use crate::LagrangeKernelBoundaryConstraint;
+
 use super::{AirContext, Assertion, ConstraintDivisor};
 use alloc::{
     collections::{BTreeMap, BTreeSet},
@@ -11,7 +13,7 @@ use alloc::{
 use math::{ExtensionOf, FieldElement};
 
 mod constraint;
-pub use constraint::{BoundaryConstraint, LagrangeKernelBoundaryConstraint};
+pub use constraint::BoundaryConstraint;
 
 mod constraint_group;
 pub use constraint_group::BoundaryConstraintGroup;

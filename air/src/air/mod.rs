@@ -18,19 +18,16 @@ mod assertions;
 pub use assertions::Assertion;
 
 mod boundary;
-pub use boundary::{
-    BoundaryConstraint, BoundaryConstraintGroup, BoundaryConstraints,
-    LagrangeKernelBoundaryConstraint,
-};
+pub use boundary::{BoundaryConstraint, BoundaryConstraintGroup, BoundaryConstraints};
 
 mod transition;
 pub use transition::{
-    EvaluationFrame, LagrangeKernelEvaluationFrame,
-    TransitionConstraintDegree, TransitionConstraints,
+    EvaluationFrame, LagrangeKernelEvaluationFrame, TransitionConstraintDegree,
+    TransitionConstraints,
 };
 
 mod lagrange;
-pub use lagrange::LagrangeKernelTransitionConstraints;
+pub use lagrange::{LagrangeKernelBoundaryConstraint, LagrangeKernelTransitionConstraints};
 
 mod coefficients;
 pub use coefficients::{
