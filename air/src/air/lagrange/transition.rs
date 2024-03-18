@@ -102,6 +102,11 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
             })
     }
 
+    /// Returns the number of constraints
+    pub fn len(&self) -> usize {
+        self.lagrange_constraint_coefficients.len()
+    }
+
     // HELPERS
     // ---------------------------------------------------------------------------------------------
 
