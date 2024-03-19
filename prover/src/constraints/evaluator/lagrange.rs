@@ -233,11 +233,34 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraintsDivisor<E> {
     }
 }
 
+/// Encapsulates the efficient evaluation of the Lagrange kernel transition constraints divisors.
+/// 
+/// `s` stands for the domain offset (i.e. coset shift element). The key concept in this
+/// optimization is to realize that the computation of the first transition constraint divisor can
+/// be reused for all the other divisors (call the evaluations `d`).
+/// 
+/// Specifically, each subsequent transition constraint divisor evaluation is equivalent to
+/// multiplying an element `d` by a fixed number. For example, the multiplier for the transition
+/// constraints are:
+/// 
+/// - transition constraint 1's multiplier: s
+/// - transition constraint 2's multiplier: s^3
+/// - transition constraint 3's multiplier: s^7
+/// - transition constraint 4's multiplier: s^15
+/// - ...
+/// 
+/// This is what `s_precomputes` stores.
+/// 
+/// Finally, recall that the ith Lagrange kernel divisor is `x^(2^i) - 1`.
+/// [`TransitionDivisorEvaluator`] is only concerned with values of `x` in the constraint evaluation
+/// domain, where the j'th element is `s * g^j`, where `g` is the group generator. To understand the
+/// implementation of [`Self::evaluate_ith_divisor`], plug in `x = s * g^j` into `x^(2^i) - 1`.
 pub struct TransitionDivisorEvaluator<E: FieldElement> {
     s_precomputes: Vec<E::BaseField>,
 }
 
 impl<E: FieldElement> TransitionDivisorEvaluator<E> {
+    /// Constructs a new [`TransitionDivisorEvaluator`]
     pub fn new(num_lagrange_transition_constraints: usize, domain_offset: E::BaseField) -> Self {
         let s_precomputes = (0..num_lagrange_transition_constraints)
             .map(|trans_idx| {
@@ -250,6 +273,8 @@ impl<E: FieldElement> TransitionDivisorEvaluator<E> {
         Self { s_precomputes }
     }
 
+    /// Evaluates the divisor of the `trans_constraint_idx`'th transition constraint. See
+    /// [`TransitionDivisorEvaluator`] for a more in-depth description of the algorithm.
     pub fn evaluate_ith_divisor(
         &self,
         trans_constraint_idx: usize,
