@@ -234,23 +234,23 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraintsDivisor<E> {
 }
 
 /// Encapsulates the efficient evaluation of the Lagrange kernel transition constraints divisors.
-/// 
+///
 /// `s` stands for the domain offset (i.e. coset shift element). The key concept in this
 /// optimization is to realize that the computation of the first transition constraint divisor can
 /// be reused for all the other divisors (call the evaluations `d`).
-/// 
+///
 /// Specifically, each subsequent transition constraint divisor evaluation is equivalent to
 /// multiplying an element `d` by a fixed number. For example, the multiplier for the transition
 /// constraints are:
-/// 
+///
 /// - transition constraint 1's multiplier: s
 /// - transition constraint 2's multiplier: s^3
 /// - transition constraint 3's multiplier: s^7
 /// - transition constraint 4's multiplier: s^15
 /// - ...
-/// 
+///
 /// This is what `s_precomputes` stores.
-/// 
+///
 /// Finally, recall that the ith Lagrange kernel divisor is `x^(2^i) - 1`.
 /// [`TransitionDivisorEvaluator`] is only concerned with values of `x` in the constraint evaluation
 /// domain, where the j'th element is `s * g^j`, where `g` is the group generator. To understand the
@@ -283,6 +283,7 @@ impl<E: FieldElement> TransitionDivisorEvaluator<E> {
     ) -> E::BaseField {
         let domain_idx = ((1 << trans_constraint_idx) * ce_domain_step) % domain.ce_domain_size();
 
-        self.s_precomputes[trans_constraint_idx] * domain.get_ce_x_at(domain_idx) - E::BaseField::ONE
+        self.s_precomputes[trans_constraint_idx] * domain.get_ce_x_at(domain_idx)
+            - E::BaseField::ONE
     }
 }
