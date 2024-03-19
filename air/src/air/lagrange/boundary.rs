@@ -15,7 +15,7 @@ impl<E> LagrangeKernelBoundaryConstraint<E>
 where
     E: FieldElement,
 {
-    /// Creates a new Lagrange kernel boundary constraint from the specified single assertion.
+    /// Creates a new Lagrange kernel boundary constraint.
     pub fn new(composition_coefficient: E, lagrange_kernel_rand_elements: &[E]) -> Self {
         Self {
             assertion_value: Self::assertion_value(lagrange_kernel_rand_elements),
