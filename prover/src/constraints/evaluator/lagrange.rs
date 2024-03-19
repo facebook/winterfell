@@ -1,6 +1,6 @@
 use air::{
     Air, LagrangeConstraintsCompositionCoefficients, LagrangeKernelConstraints,
-    LagrangeKernelEvaluationFrame, LagrangeKernelTransitionConstraints,
+    LagrangeKernelEvaluationFrame,
 };
 use alloc::vec::Vec;
 use math::{batch_inversion, FieldElement};
@@ -53,7 +53,7 @@ impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
     {
         let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
         let trans_constraints_divisors = LagrangeKernelTransitionConstraintsDivisor::new(
-            &self.lagrange_kernel_constraints.transition,
+            self.lagrange_kernel_constraints.transition.num_constraints(),
             domain,
         );
         let boundary_divisors_inv = self.compute_boundary_divisors_inv(domain);
@@ -159,26 +159,29 @@ struct LagrangeKernelTransitionConstraintsDivisor<E: FieldElement> {
 
 impl<E: FieldElement> LagrangeKernelTransitionConstraintsDivisor<E> {
     pub fn new(
-        lagrange_kernel_transition_constraints: &LagrangeKernelTransitionConstraints<E>,
+        num_lagrange_transition_constraints: usize,
         domain: &StarkDomain<E::BaseField>,
     ) -> Self {
         let divisor_evals_inv = {
+            let divisor_evaluator = TransitionDivisorEvaluator::<E>::new(
+                num_lagrange_transition_constraints,
+                domain.offset(),
+            );
+
             // The number of divisor evaluations is
             // `ce_domain_size + ce_domain_size/2 + ce_domain_size/4 + ... + ce_domain_size/(log(ce_domain_size)-1)`,
             // which is slightly smaller than `ce_domain_size * 2`
             let mut divisor_evals: Vec<E> = Vec::with_capacity(domain.ce_domain_size() * 2);
 
-            for trans_constraint_idx in 0..lagrange_kernel_transition_constraints.num_constraints()
-            {
+            for trans_constraint_idx in 0..num_lagrange_transition_constraints {
                 let num_non_repeating_denoms =
                     domain.ce_domain_size() / 2_usize.pow(trans_constraint_idx as u32);
 
                 for step in 0..num_non_repeating_denoms {
-                    let domain_point = domain.get_ce_x_at(step);
-                    let divisor_eval = lagrange_kernel_transition_constraints
-                        .evaluate_ith_divisor(trans_constraint_idx, domain_point);
+                    let divisor_eval =
+                        divisor_evaluator.evaluate_ith_divisor(trans_constraint_idx, domain, step);
 
-                    divisor_evals.push(divisor_eval);
+                    divisor_evals.push(divisor_eval.into());
                 }
             }
 
@@ -186,7 +189,7 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraintsDivisor<E> {
         };
 
         let slice_indices_precomputes = {
-            let num_indices = lagrange_kernel_transition_constraints.num_constraints() + 1;
+            let num_indices = num_lagrange_transition_constraints + 1;
             let mut slice_indices_precomputes = Vec::with_capacity(num_indices);
 
             slice_indices_precomputes.push(0);
@@ -227,5 +230,34 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraintsDivisor<E> {
         let end = self.slice_indices_precomputes[trans_constraint_idx + 1];
 
         &self.divisor_evals_inv[start..end]
+    }
+}
+
+pub struct TransitionDivisorEvaluator<E: FieldElement> {
+    s_precomputes: Vec<E::BaseField>,
+}
+
+impl<E: FieldElement> TransitionDivisorEvaluator<E> {
+    pub fn new(num_lagrange_transition_constraints: usize, domain_offset: E::BaseField) -> Self {
+        let s_precomputes = (0..num_lagrange_transition_constraints)
+            .map(|trans_idx| {
+                let exponent: u64 = (1_u64 << trans_idx) - 1;
+
+                domain_offset.exp(exponent.into())
+            })
+            .collect();
+
+        Self { s_precomputes }
+    }
+
+    pub fn evaluate_ith_divisor(
+        &self,
+        trans_constraint_idx: usize,
+        domain: &StarkDomain<E::BaseField>,
+        ce_domain_step: usize,
+    ) -> E::BaseField {
+        let domain_idx = (1 << trans_constraint_idx) * ce_domain_step;
+
+        self.s_precomputes[trans_constraint_idx] * domain.get_ce_x_at(domain_idx)
     }
 }
