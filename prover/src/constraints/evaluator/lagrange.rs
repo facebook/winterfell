@@ -169,7 +169,9 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraintsDivisor<E> {
         domain: &StarkDomain<E::BaseField>,
     ) -> Self {
         let divisor_evals_inv = {
-            // TODO: Explain why `* 2`
+            // The number of divisor evaluations is 
+            // `ce_domain_size + ce_domain_size/2 + ce_domain_size/4 + ... + ce_domain_size/(log(ce_domain_size)-1)`, 
+            // which is slightly smaller than `ce_domain_size * 2`
             let mut divisor_evals: Vec<E> = Vec::with_capacity(domain.ce_domain_size() * 2);
 
             for trans_constraint_idx in 0..lagrange_kernel_transition_constraints.len() {
