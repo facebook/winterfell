@@ -382,13 +382,13 @@ pub trait Air: Send + Sync {
     fn get_boundary_constraints<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         aux_rand_elements: &AuxTraceRandElements<E>,
-        boundary_composition_coefficients: &[E],
+        composition_coefficients: &[E],
     ) -> BoundaryConstraints<E> {
         BoundaryConstraints::new(
             self.context(),
             self.get_assertions(),
             self.get_aux_assertions(aux_rand_elements),
-            boundary_composition_coefficients,
+            composition_coefficients,
         )
     }
 
