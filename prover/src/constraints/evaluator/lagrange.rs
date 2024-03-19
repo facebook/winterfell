@@ -58,22 +58,18 @@ impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
         );
         let boundary_divisors_inv = self.compute_boundary_divisors_inv(domain);
 
+        let mut frame = LagrangeKernelEvaluationFrame::new_empty();
         let mut combined_evaluations_acc = Vec::with_capacity(domain.ce_domain_size());
 
         for (step, boundary_divisor_inv) in
             boundary_divisors_inv.into_iter().enumerate().take(domain.ce_domain_size())
         {
             // compute Lagrange kernel frame
-            let frame = {
-                let mut frame = LagrangeKernelEvaluationFrame::new_empty();
-                trace.read_lagrange_kernel_frame_into(
-                    step << lde_shift,
-                    lagrange_kernel_column_idx,
-                    &mut frame,
-                );
-
-                frame
-            };
+            trace.read_lagrange_kernel_frame_into(
+                step << lde_shift,
+                lagrange_kernel_column_idx,
+                &mut frame,
+            );
 
             // Compute the combined transition and boundary constraints evaluations for this row
             let combined_evaluations = {
