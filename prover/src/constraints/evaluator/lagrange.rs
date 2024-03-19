@@ -180,7 +180,6 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraintsDivisor<E> {
 
                 for step in 0..num_non_repeating_denoms {
                     let domain_point = domain.get_ce_x_at(step);
-                    // TODO: Are we using precomputed evals in `StarkDomain` as much as we could?
                     let divisor_eval = lagrange_kernel_transition_constraints
                         .evaluate_ith_divisor(trans_constraint_idx, domain_point);
 
