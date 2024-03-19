@@ -88,22 +88,6 @@ where
         }
     }
 
-    /// Creates a new boundary constraint from the specified single assertion.
-    ///
-    /// # Panics
-    /// Panics if the assertion is not a single assertion (i.e. `assertion.values` has more than 1
-    /// value)
-    pub fn new_single(assertion: Assertion<F>, composition_coefficient: E) -> Self {
-        assert_eq!(assertion.values.len(), 1);
-
-        BoundaryConstraint {
-            column: assertion.column,
-            poly: assertion.values,
-            poly_offset: (0, F::BaseField::ONE),
-            cc: composition_coefficient,
-        }
-    }
-
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
