@@ -68,7 +68,7 @@ impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
             batch_inversion(&boundary_denominator_evals)
         };
 
-        let mut combined_evaluations_acc = E::zeroed_vector(domain.ce_domain_size());
+        let mut combined_evaluations_acc = Vec::with_capacity(domain.ce_domain_size());
 
         for step in 0..domain.ce_domain_size() {
             let mut frame = LagrangeKernelEvaluationFrame::new_empty();
