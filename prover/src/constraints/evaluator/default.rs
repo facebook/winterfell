@@ -10,7 +10,7 @@ use super::{
 };
 use air::{
     Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
-    LagrangeKernelEvaluationFrame, TransitionConstraints,
+    TransitionConstraints,
 };
 use alloc::vec::Vec;
 use math::FieldElement;
@@ -306,21 +306,6 @@ where
                 .context()
                 .lagrange_kernel_aux_column_idx()
                 .expect("expected Lagrange kernel aux column index to be present");
-
-            // this will be used to convert steps in constraint evaluation domain to steps in
-            // LDE domain
-            let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
-
-            let mut lagrange_kernel_column_frames =
-                vec![LagrangeKernelEvaluationFrame::<E>::new_empty(); domain.ce_domain_size()];
-
-            for (step, frame) in lagrange_kernel_column_frames.iter_mut().enumerate() {
-                trace.read_lagrange_kernel_frame_into(
-                    step << lde_shift,
-                    lagrange_kernel_aux_column_idx,
-                    frame,
-                );
-            }
 
             evaluator.evaluate_lagrange_kernel_constraints(
                 trace,
