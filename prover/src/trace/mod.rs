@@ -60,8 +60,7 @@ pub trait Trace: Sized {
     /// one built during the first invocation) etc.
     ///
     /// The `rand_elements` slice contains the random elements to use to build the aux segment. If a
-    /// Lagrange kernel column is present, the `lagrange_kernel_rand_elements` should be used. See
-    /// [`Air::lagrange_kernel_rand_elements`] for more details.
+    /// Lagrange kernel column is present, the `lagrange_kernel_rand_elements` should be used.
     fn build_aux_segment<E: FieldElement<BaseField = Self::BaseField>>(
         &mut self,
         aux_segments: &[ColMatrix<E>],

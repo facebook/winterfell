@@ -112,7 +112,7 @@ impl OodFrame {
     ///
     /// # Errors
     /// Returns an error if:
-    /// * Valid [EvaluationFrame]s for the specified `main_trace_width` and `aux_trace_width`
+    /// * Valid [`crate::EvaluationFrame`]s for the specified `main_trace_width` and `aux_trace_width`
     ///   could not be parsed from the internal bytes.
     /// * A vector of evaluations specified by `num_evaluations` could not be parsed from the
     ///   internal bytes.

@@ -170,7 +170,7 @@ const MIN_CYCLE_LENGTH: usize = 2;
 /// trait:
 /// * The [AirContext] struct returned from [Air::context()] method must be instantiated using
 ///   [AirContext::new_multi_segment()] constructor. When building AIR context in this way, you
-///   will need to provide a [TraceLayout] which describes the shape of a multi-segment execution
+///   will need to provide a [`crate::TraceInfo`] which describes the shape of a multi-segment execution
 ///   trace.
 /// * Override [Air::evaluate_aux_transition()] method. This method is similar to the
 ///   [Air::evaluate_transition()] method but it also accepts two extra parameters:

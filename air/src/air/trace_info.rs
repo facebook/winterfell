@@ -288,10 +288,10 @@ impl Serializable for TraceInfo {
 }
 
 impl Deserializable for TraceInfo {
-    /// Reads [TraceLayout] from the specified `source` and returns the result.
+    /// Reads [`TraceInfo`] from the specified `source` and returns the result.
     ///
     /// # Errors
-    /// Returns an error of a valid [TraceLayout] struct could not be read from the specified
+    /// Returns an error of a valid [`TraceInfo`] struct could not be read from the specified
     /// `source`.
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let main_segment_width = source.read_u8()? as usize;
