@@ -42,15 +42,13 @@ impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
     ///
     /// Returns a buffer with the same length as the CE domain, where each element contains the
     /// constraint evaluations (as explained above) at the corresponding domain point.
-    pub fn evaluate_lagrange_kernel_constraints<A, T>(
+    pub fn evaluate_lagrange_kernel_constraints<T>(
         &self,
         trace: &T,
         lagrange_kernel_column_idx: usize,
-        domain: &StarkDomain<A::BaseField>,
+        domain: &StarkDomain<E::BaseField>,
     ) -> Vec<E>
     where
-        A: Air,
-        E: FieldElement<BaseField = A::BaseField>,
         T: TraceLde<E>,
     {
         let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
@@ -58,7 +56,7 @@ impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
             &self.lagrange_kernel_constraints.transition,
             domain,
         );
-        let boundary_divisors_inv = self.compute_boundary_divisors_inv::<A>(domain);
+        let boundary_divisors_inv = self.compute_boundary_divisors_inv(domain);
 
         let mut combined_evaluations_acc = Vec::with_capacity(domain.ce_domain_size());
 
@@ -115,11 +113,7 @@ impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
     /// That is, returns a vector of the form `[1 / div_0, ..., 1 / div_n]`, where `div_i` is the
     /// divisor for the Lagrange kernel boundary constraint at the i'th row of the constraint
     /// evaluation domain.
-    fn compute_boundary_divisors_inv<A>(&self, domain: &StarkDomain<A::BaseField>) -> Vec<E>
-    where
-        A: Air,
-        E: FieldElement<BaseField = A::BaseField>,
-    {
+    fn compute_boundary_divisors_inv(&self, domain: &StarkDomain<E::BaseField>) -> Vec<E> {
         let mut boundary_denominator_evals = Vec::with_capacity(domain.ce_domain_size());
         for step in 0..domain.ce_domain_size() {
             let domain_point = domain.get_ce_x_at(step);
@@ -169,8 +163,8 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraintsDivisor<E> {
         domain: &StarkDomain<E::BaseField>,
     ) -> Self {
         let divisor_evals_inv = {
-            // The number of divisor evaluations is 
-            // `ce_domain_size + ce_domain_size/2 + ce_domain_size/4 + ... + ce_domain_size/(log(ce_domain_size)-1)`, 
+            // The number of divisor evaluations is
+            // `ce_domain_size + ce_domain_size/2 + ce_domain_size/4 + ... + ce_domain_size/(log(ce_domain_size)-1)`,
             // which is slightly smaller than `ce_domain_size * 2`
             let mut divisor_evals: Vec<E> = Vec::with_capacity(domain.ce_domain_size() * 2);
 

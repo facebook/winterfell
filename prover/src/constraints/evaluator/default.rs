@@ -322,7 +322,7 @@ where
                 );
             }
 
-            evaluator.evaluate_lagrange_kernel_constraints::<A, T>(
+            evaluator.evaluate_lagrange_kernel_constraints(
                 trace,
                 lagrange_kernel_aux_column_idx,
                 domain,
