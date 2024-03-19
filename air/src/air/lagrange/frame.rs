@@ -22,7 +22,8 @@ impl<E: FieldElement> LagrangeKernelEvaluationFrame<E> {
         Self { frame }
     }
 
-    /// Constructs an empty Lagrange kernel evaluation frame from the raw column polynomial evaluations. The frame can subsequently be filled using [`Self::frame_mut`].
+    /// Constructs an empty Lagrange kernel evaluation frame from the raw column polynomial
+    /// evaluations. The frame can subsequently be filled using [`Self::frame_mut`].
     pub fn new_empty() -> Self {
         Self { frame: Vec::new() }
     }
