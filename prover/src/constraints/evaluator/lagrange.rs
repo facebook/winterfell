@@ -60,7 +60,9 @@ impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
 
         let mut combined_evaluations_acc = Vec::with_capacity(domain.ce_domain_size());
 
-        for step in 0..domain.ce_domain_size() {
+        for (step, boundary_divisor_inv) in
+            boundary_divisors_inv.into_iter().enumerate().take(domain.ce_domain_size())
+        {
             // compute Lagrange kernel frame
             let frame = {
                 let mut frame = LagrangeKernelEvaluationFrame::new_empty();
@@ -78,7 +80,9 @@ impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
                 let mut combined_evaluations = E::ZERO;
 
                 // combine transition constraints
-                for trans_constraint_idx in 0..self.lagrange_kernel_constraints.transition.len() {
+                for trans_constraint_idx in
+                    0..self.lagrange_kernel_constraints.transition.num_constraints()
+                {
                     let numerator = self
                         .lagrange_kernel_constraints
                         .transition
@@ -94,7 +98,7 @@ impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
                     let boundary_numerator =
                         self.lagrange_kernel_constraints.boundary.evaluate_numerator_at(&frame);
 
-                    combined_evaluations += boundary_numerator * boundary_divisors_inv[step];
+                    combined_evaluations += boundary_numerator * boundary_divisor_inv;
                 }
 
                 combined_evaluations
@@ -168,7 +172,8 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraintsDivisor<E> {
             // which is slightly smaller than `ce_domain_size * 2`
             let mut divisor_evals: Vec<E> = Vec::with_capacity(domain.ce_domain_size() * 2);
 
-            for trans_constraint_idx in 0..lagrange_kernel_transition_constraints.len() {
+            for trans_constraint_idx in 0..lagrange_kernel_transition_constraints.num_constraints()
+            {
                 let num_non_repeating_denoms =
                     domain.ce_domain_size() / 2_usize.pow(trans_constraint_idx as u32);
 
@@ -185,7 +190,7 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraintsDivisor<E> {
         };
 
         let slice_indices_precomputes = {
-            let num_indices = lagrange_kernel_transition_constraints.len() + 1;
+            let num_indices = lagrange_kernel_transition_constraints.num_constraints() + 1;
             let mut slice_indices_precomputes = Vec::with_capacity(num_indices);
 
             slice_indices_precomputes.push(0);
