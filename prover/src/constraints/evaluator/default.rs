@@ -322,10 +322,9 @@ where
                 );
             }
 
-            let num_trans_constraints = self.air.context().trace_len().ilog2() as usize;
-            evaluator.evaluate_lagrange_kernel_constraints::<A>(
-                num_trans_constraints,
-                lagrange_kernel_column_frames,
+            evaluator.evaluate_lagrange_kernel_constraints_2::<A, T>(
+                trace,
+                lagrange_kernel_aux_column_idx,
                 domain,
             )
         })

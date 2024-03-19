@@ -5,7 +5,7 @@ use air::{
 use alloc::vec::Vec;
 use math::{batch_inversion, FieldElement};
 
-use crate::StarkDomain;
+use crate::{StarkDomain, TraceLde};
 
 /// Contains a specific strategy for evaluating the Lagrange kernel boundary and transition
 /// constraints where the divisors' evaluation is batched.
@@ -34,6 +34,78 @@ impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
             ),
             rand_elements: lagrange_kernel_rand_elements,
         }
+    }
+
+    pub fn evaluate_lagrange_kernel_constraints_2<A, T>(
+        &self,
+        trace: &T,
+        lagrange_kernel_column_idx: usize,
+        domain: &StarkDomain<A::BaseField>,
+    ) -> Vec<E>
+    where
+        A: Air,
+        E: FieldElement<BaseField = A::BaseField>,
+        T: TraceLde<E>,
+    {
+        let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
+        let trans_constraints_divisors = LagrangeKernelTransitionConstraintsDivisor::new(
+            &self.lagrange_kernel_constraints.transition,
+            domain,
+        );
+
+        // boundary divisors
+        let boundary_divisors_inv = {
+            let mut boundary_denominator_evals = Vec::with_capacity(domain.ce_domain_size());
+            for step in 0..domain.ce_domain_size() {
+                let domain_point = domain.get_ce_x_at(step);
+                let boundary_denominator = self
+                    .lagrange_kernel_constraints
+                    .boundary
+                    .evaluate_denominator_at(domain_point.into());
+                boundary_denominator_evals.push(boundary_denominator);
+            }
+
+            batch_inversion(&boundary_denominator_evals)
+        };
+
+        let mut combined_evaluations_acc = E::zeroed_vector(domain.ce_domain_size());
+
+        for step in 0..domain.ce_domain_size() {
+            let mut frame = LagrangeKernelEvaluationFrame::new_empty();
+
+            trace.read_lagrange_kernel_frame_into(
+                step << lde_shift,
+                lagrange_kernel_column_idx,
+                &mut frame,
+            );
+
+            let mut combined_evaluations = E::ZERO;
+
+            // combine transition constraints
+            for trans_constraint_idx in 0..self.lagrange_kernel_constraints.transition.len() {
+                let numerator = self.lagrange_kernel_constraints.transition.evaluate_ith_numerator(
+                    &frame,
+                    &self.rand_elements,
+                    trans_constraint_idx,
+                );
+                let inv_divisor =
+                    trans_constraints_divisors.get_inverse_divisor_eval(trans_constraint_idx, step);
+
+                combined_evaluations += numerator * inv_divisor;
+            }
+
+            // combine boundary constraints
+            {
+                let boundary_numerator =
+                    self.lagrange_kernel_constraints.boundary.evaluate_numerator_at(&frame);
+
+                combined_evaluations += boundary_numerator * boundary_divisors_inv[step];
+            }
+
+            combined_evaluations_acc.push(combined_evaluations);
+        }
+
+        combined_evaluations_acc
     }
 
     /// Evaluates the transition and boundary constraints. Specifically, the constraint evaluations
@@ -191,7 +263,7 @@ struct LagrangeKernelTransitionConstraintsDivisor<E: FieldElement> {
 
 impl<E: FieldElement> LagrangeKernelTransitionConstraintsDivisor<E> {
     pub fn new(
-        lagrange_kernel_transition_constraints: LagrangeKernelTransitionConstraints<E>,
+        lagrange_kernel_transition_constraints: &LagrangeKernelTransitionConstraints<E>,
         domain: &StarkDomain<E::BaseField>,
     ) -> Self {
         let divisor_evals_inv = {
