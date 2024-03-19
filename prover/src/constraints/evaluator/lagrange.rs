@@ -291,11 +291,12 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraintsDivisor<E> {
             let num_indices = lagrange_kernel_transition_constraints.len() + 1;
             let mut slice_indices_precomputes = Vec::with_capacity(num_indices);
 
-            slice_indices_precomputes[0] = 0;
+            slice_indices_precomputes.push(0);
 
             let mut current_slice_len = domain.ce_domain_size();
             for i in 1..num_indices {
-                slice_indices_precomputes[i] = slice_indices_precomputes[i - 1] + current_slice_len;
+                let next_precompute_index = slice_indices_precomputes[i - 1] + current_slice_len;
+                slice_indices_precomputes.push(next_precompute_index);
 
                 current_slice_len /= 2;
             }
