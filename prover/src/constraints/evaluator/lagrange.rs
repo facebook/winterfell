@@ -58,60 +58,79 @@ impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
             &self.lagrange_kernel_constraints.transition,
             domain,
         );
-
-        // boundary divisors
-        let boundary_divisors_inv = {
-            let mut boundary_denominator_evals = Vec::with_capacity(domain.ce_domain_size());
-            for step in 0..domain.ce_domain_size() {
-                let domain_point = domain.get_ce_x_at(step);
-                let boundary_denominator = self
-                    .lagrange_kernel_constraints
-                    .boundary
-                    .evaluate_denominator_at(domain_point.into());
-                boundary_denominator_evals.push(boundary_denominator);
-            }
-
-            batch_inversion(&boundary_denominator_evals)
-        };
+        let boundary_divisors_inv = self.compute_boundary_divisors_inv::<A>(domain);
 
         let mut combined_evaluations_acc = Vec::with_capacity(domain.ce_domain_size());
 
         for step in 0..domain.ce_domain_size() {
-            let mut frame = LagrangeKernelEvaluationFrame::new_empty();
-
-            trace.read_lagrange_kernel_frame_into(
-                step << lde_shift,
-                lagrange_kernel_column_idx,
-                &mut frame,
-            );
-
-            let mut combined_evaluations = E::ZERO;
-
-            // combine transition constraints
-            for trans_constraint_idx in 0..self.lagrange_kernel_constraints.transition.len() {
-                let numerator = self.lagrange_kernel_constraints.transition.evaluate_ith_numerator(
-                    &frame,
-                    &self.rand_elements,
-                    trans_constraint_idx,
+            // compute Lagrange kernel frame
+            let frame = {
+                let mut frame = LagrangeKernelEvaluationFrame::new_empty();
+                trace.read_lagrange_kernel_frame_into(
+                    step << lde_shift,
+                    lagrange_kernel_column_idx,
+                    &mut frame,
                 );
-                let inv_divisor =
-                    trans_constraints_divisors.get_inverse_divisor_eval(trans_constraint_idx, step);
 
-                combined_evaluations += numerator * inv_divisor;
-            }
+                frame
+            };
 
-            // combine boundary constraints
-            {
-                let boundary_numerator =
-                    self.lagrange_kernel_constraints.boundary.evaluate_numerator_at(&frame);
+            // Compute the combined transition and boundary constraints evaluations for this row
+            let combined_evaluations = {
+                let mut combined_evaluations = E::ZERO;
 
-                combined_evaluations += boundary_numerator * boundary_divisors_inv[step];
-            }
+                // combine transition constraints
+                for trans_constraint_idx in 0..self.lagrange_kernel_constraints.transition.len() {
+                    let numerator = self
+                        .lagrange_kernel_constraints
+                        .transition
+                        .evaluate_ith_numerator(&frame, &self.rand_elements, trans_constraint_idx);
+                    let inv_divisor = trans_constraints_divisors
+                        .get_inverse_divisor_eval(trans_constraint_idx, step);
+
+                    combined_evaluations += numerator * inv_divisor;
+                }
+
+                // combine boundary constraints
+                {
+                    let boundary_numerator =
+                        self.lagrange_kernel_constraints.boundary.evaluate_numerator_at(&frame);
+
+                    combined_evaluations += boundary_numerator * boundary_divisors_inv[step];
+                }
+
+                combined_evaluations
+            };
 
             combined_evaluations_acc.push(combined_evaluations);
         }
 
         combined_evaluations_acc
+    }
+
+    // HELPERS
+    // ---------------------------------------------------------------------------------------------
+
+    /// Computes the inverse boundary divisor at every point of the constraint evaluation domain.
+    /// That is, returns a vector of the form `[1 / div_0, ..., 1 / div_n]`, where `div_i` is the
+    /// divisor for the Lagrange kernel boundary constraint at the i'th row of the constraint
+    /// evaluation domain.
+    fn compute_boundary_divisors_inv<A>(&self, domain: &StarkDomain<A::BaseField>) -> Vec<E>
+    where
+        A: Air,
+        E: FieldElement<BaseField = A::BaseField>,
+    {
+        let mut boundary_denominator_evals = Vec::with_capacity(domain.ce_domain_size());
+        for step in 0..domain.ce_domain_size() {
+            let domain_point = domain.get_ce_x_at(step);
+            let boundary_denominator = self
+                .lagrange_kernel_constraints
+                .boundary
+                .evaluate_denominator_at(domain_point.into());
+            boundary_denominator_evals.push(boundary_denominator);
+        }
+
+        batch_inversion(&boundary_denominator_evals)
     }
 }
 
