@@ -258,6 +258,6 @@ impl<E: FieldElement> TransitionDivisorEvaluator<E> {
     ) -> E::BaseField {
         let domain_idx = ((1 << trans_constraint_idx) * ce_domain_step) % domain.ce_domain_size();
 
-        self.s_precomputes[trans_constraint_idx] * domain.get_ce_x_at(domain_idx)
+        self.s_precomputes[trans_constraint_idx] * domain.get_ce_x_at(domain_idx) - E::BaseField::ONE
     }
 }
