@@ -257,13 +257,18 @@ pub struct TransitionDivisorEvaluator<E: FieldElement> {
 impl<E: FieldElement> TransitionDivisorEvaluator<E> {
     /// Constructs a new [`TransitionDivisorEvaluator`]
     pub fn new(num_lagrange_transition_constraints: usize, domain_offset: E::BaseField) -> Self {
-        let s_precomputes = (0..num_lagrange_transition_constraints)
-            .map(|trans_idx| {
-                let exponent: u64 = (1_u64 << trans_idx) - 1;
+        let s_precomputes = {
+            // s_precomputes = [1, s, s^3, s^7, s^15, ...] (where s = domain_offset)
+            let mut s_precomputes = Vec::with_capacity(num_lagrange_transition_constraints);
 
-                domain_offset.exp(exponent.into())
-            })
-            .collect();
+            let mut s_exp = E::BaseField::ONE;
+            for _ in 0..num_lagrange_transition_constraints {
+                s_precomputes.push(s_exp);
+                s_exp = s_exp * s_exp * domain_offset;
+            }
+
+            s_precomputes
+        };
 
         Self { s_precomputes }
     }
