@@ -46,17 +46,13 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     // evaluate transition constraints for auxiliary trace segments (if any)
     let mut t_evaluations2 = E::zeroed_vector(t_constraints.num_aux_constraints());
     if let Some(aux_trace_frame) = aux_trace_frame {
-        // `t_evaluations_2` would be empty here if there is only 1 auxiliary column, and that
-        // column is the Lagrange kernel column
-        if !t_evaluations2.is_empty() {
-            air.evaluate_aux_transition(
-                main_trace_frame,
-                aux_trace_frame,
-                &periodic_values,
-                &aux_rand_elements,
-                &mut t_evaluations2,
-            );
-        }
+        air.evaluate_aux_transition(
+            main_trace_frame,
+            aux_trace_frame,
+            &periodic_values,
+            &aux_rand_elements,
+            &mut t_evaluations2,
+        );
     }
 
     // merge all constraint evaluations into a single value by computing their random linear
