@@ -41,14 +41,14 @@ impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
     /// are divided by their corresponding divisors, and the resulting terms are linearly combined
     /// using the composition coefficients.
     ///
-    /// Returns a buffer with the same length as the CE domain, where each element contains the
-    /// constraint evaluations (as explained above) at the corresponding domain point.
+    /// Writes the evaluations in `combined_evaluations_acc` at the corresponding (constraint
+    /// evaluation) domain index.
     pub fn evaluate_lagrange_kernel_constraints<T>(
         &self,
         trace: &T,
         domain: &StarkDomain<E::BaseField>,
-    ) -> Vec<E>
-    where
+        combined_evaluations_acc: &mut [E],
+    ) where
         T: TraceLde<E>,
     {
         let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
@@ -59,11 +59,8 @@ impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
         let boundary_divisors_inv = self.compute_boundary_divisors_inv(domain);
 
         let mut frame = LagrangeKernelEvaluationFrame::new_empty();
-        let mut combined_evaluations_acc = Vec::with_capacity(domain.ce_domain_size());
 
-        for (step, boundary_divisor_inv) in
-            boundary_divisors_inv.into_iter().enumerate().take(domain.ce_domain_size())
-        {
+        for step in 0..domain.ce_domain_size() {
             // compute Lagrange kernel frame
             trace.read_lagrange_kernel_frame_into(
                 step << lde_shift,
@@ -94,16 +91,14 @@ impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
                     let boundary_numerator =
                         self.lagrange_kernel_constraints.boundary.evaluate_numerator_at(&frame);
 
-                    combined_evaluations += boundary_numerator * boundary_divisor_inv;
+                    combined_evaluations += boundary_numerator * boundary_divisors_inv[step];
                 }
 
                 combined_evaluations
             };
 
-            combined_evaluations_acc.push(combined_evaluations);
+            combined_evaluations_acc[step] += combined_evaluations;
         }
-
-        combined_evaluations_acc
     }
 
     // HELPERS

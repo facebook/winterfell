@@ -12,7 +12,6 @@ use air::{
     Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
     TransitionConstraints,
 };
-use alloc::vec::Vec;
 use math::FieldElement;
 use utils::iter_mut;
 
@@ -112,23 +111,11 @@ where
 
         // combine all evaluations into a single column
         let combined_evaluations = {
-            let main_and_aux_evaluations = evaluation_table.combine();
+            let mut main_and_aux_evaluations = evaluation_table.combine();
 
-            match self.evaluate_lagrange_kernel_constraints(trace, domain) {
-                Some(lagrange_kernel_combined_evals) => {
-                    // if present, linearly combine the Lagrange kernel evaluations too
-                    debug_assert_eq!(
-                        main_and_aux_evaluations.len(),
-                        lagrange_kernel_combined_evals.len()
-                    );
-                    main_and_aux_evaluations
-                        .into_iter()
-                        .zip(lagrange_kernel_combined_evals)
-                        .map(|(eval_1, eval_2)| eval_1 + eval_2)
-                        .collect()
-                }
-                None => main_and_aux_evaluations,
-            }
+            self.evaluate_lagrange_kernel_constraints(trace, domain, &mut main_and_aux_evaluations);
+
+            main_and_aux_evaluations
         };
 
         CompositionPolyTrace::new(combined_evaluations)
@@ -299,10 +286,11 @@ where
         &self,
         trace: &T,
         domain: &StarkDomain<A::BaseField>,
-    ) -> Option<Vec<E>> {
-        self.lagrange_constraints_evaluator
-            .as_ref()
-            .map(|evaluator| evaluator.evaluate_lagrange_kernel_constraints(trace, domain))
+        accumulator: &mut [E],
+    ) {
+        if let Some(ref evaluator) = self.lagrange_constraints_evaluator {
+            evaluator.evaluate_lagrange_kernel_constraints(trace, domain, accumulator)
+        }
     }
 
     // TRANSITION CONSTRAINT EVALUATORS
