@@ -23,7 +23,7 @@ where
         }
     }
 
-    /// Returns the evaluation of the boundary constraint at `x`.
+    /// Returns the evaluation of the boundary constraint at `x`, multiplied by the composition coefficient.
     ///
     /// `frame` is the evaluation frame of the Lagrange kernel column `c`, starting at `c(x)`
     pub fn evaluate_at(&self, x: E, frame: &LagrangeKernelEvaluationFrame<E>) -> E {
