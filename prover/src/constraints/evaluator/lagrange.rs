@@ -27,11 +27,12 @@ impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
         E: FieldElement<BaseField = A::BaseField>,
     {
         Self {
-            lagrange_kernel_constraints: LagrangeKernelConstraints::new(
-                air.context(),
-                lagrange_composition_coefficients,
-                &lagrange_kernel_rand_elements,
-            ),
+            lagrange_kernel_constraints: air
+                .get_lagrange_kernel_constraints(
+                    lagrange_composition_coefficients,
+                    &lagrange_kernel_rand_elements,
+                )
+                .expect("expected Lagrange kernel constraints to be present"),
             rand_elements: lagrange_kernel_rand_elements,
         }
     }
