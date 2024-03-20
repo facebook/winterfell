@@ -46,7 +46,6 @@ impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
     pub fn evaluate_lagrange_kernel_constraints<T>(
         &self,
         trace: &T,
-        lagrange_kernel_column_idx: usize,
         domain: &StarkDomain<E::BaseField>,
     ) -> Vec<E>
     where
@@ -68,7 +67,7 @@ impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
             // compute Lagrange kernel frame
             trace.read_lagrange_kernel_frame_into(
                 step << lde_shift,
-                lagrange_kernel_column_idx,
+                self.lagrange_kernel_constraints.lagrange_kernel_col_idx,
                 &mut frame,
             );
 

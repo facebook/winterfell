@@ -299,15 +299,14 @@ pub trait Air: Send + Sync {
         lagrange_composition_coefficients: LagrangeConstraintsCompositionCoefficients<E>,
         lagrange_kernel_rand_elements: &[E],
     ) -> Option<LagrangeKernelConstraints<E>> {
-        if self.context().has_lagrange_kernel_aux_column() {
-            Some(LagrangeKernelConstraints::new(
+        self.context().lagrange_kernel_aux_column_idx().map(|col_idx| {
+            LagrangeKernelConstraints::new(
                 self.context(),
                 lagrange_composition_coefficients,
                 lagrange_kernel_rand_elements,
-            ))
-        } else {
-            None
-        }
+                col_idx,
+            )
+        })
     }
 
     /// Returns values for all periodic columns used in the computation.

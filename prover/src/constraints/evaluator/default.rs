@@ -300,19 +300,9 @@ where
         trace: &T,
         domain: &StarkDomain<A::BaseField>,
     ) -> Option<Vec<E>> {
-        self.lagrange_constraints_evaluator.as_ref().map(|evaluator| {
-            let lagrange_kernel_aux_column_idx = self
-                .air
-                .context()
-                .lagrange_kernel_aux_column_idx()
-                .expect("expected Lagrange kernel aux column index to be present");
-
-            evaluator.evaluate_lagrange_kernel_constraints(
-                trace,
-                lagrange_kernel_aux_column_idx,
-                domain,
-            )
-        })
+        self.lagrange_constraints_evaluator
+            .as_ref()
+            .map(|evaluator| evaluator.evaluate_lagrange_kernel_constraints(trace, domain))
     }
 
     // TRANSITION CONSTRAINT EVALUATORS
