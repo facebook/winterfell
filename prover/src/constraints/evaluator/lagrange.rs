@@ -4,6 +4,7 @@ use air::{
 };
 use alloc::vec::Vec;
 use math::{batch_inversion, FieldElement};
+use utils::uninit_vector;
 
 use crate::{StarkDomain, TraceLde};
 
@@ -109,14 +110,14 @@ impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
     /// divisor for the Lagrange kernel boundary constraint at the i'th row of the constraint
     /// evaluation domain.
     fn compute_boundary_divisors_inv(&self, domain: &StarkDomain<E::BaseField>) -> Vec<E> {
-        let mut boundary_denominator_evals = Vec::with_capacity(domain.ce_domain_size());
+        let mut boundary_denominator_evals = unsafe { uninit_vector(domain.ce_domain_size()) };
         for step in 0..domain.ce_domain_size() {
             let domain_point = domain.get_ce_x_at(step);
             let boundary_denominator = self
                 .lagrange_kernel_constraints
                 .boundary
                 .evaluate_denominator_at(domain_point.into());
-            boundary_denominator_evals.push(boundary_denominator);
+            boundary_denominator_evals[step] = boundary_denominator;
         }
 
         batch_inversion(&boundary_denominator_evals)
