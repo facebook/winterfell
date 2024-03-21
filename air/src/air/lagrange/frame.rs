@@ -1,6 +1,5 @@
 use alloc::vec::Vec;
 use math::{polynom, FieldElement, StarkField};
-use utils::uninit_vector;
 
 /// The evaluation frame for the Lagrange kernel.
 ///
@@ -36,19 +35,18 @@ impl<E: FieldElement> LagrangeKernelEvaluationFrame<E> {
         let log_trace_len = lagrange_kernel_col_poly.len().ilog2();
         let g = E::from(E::BaseField::get_root_of_unity(log_trace_len));
 
-        let frame_len = log_trace_len as usize + 1;
-        let mut frame = unsafe { uninit_vector(frame_len) };
+        let mut frame = Vec::with_capacity(log_trace_len as usize + 1);
 
         // push c(x)
-        frame[0] = polynom::eval(lagrange_kernel_col_poly, z);
+        frame.push(polynom::eval(lagrange_kernel_col_poly, z));
 
         // push c(z * g), c(z * g^2), c(z * g^4), ..., c(z * g^(2^(v-1)))
         let mut g_exp = g;
-        for idx in 1..frame_len {
+        for _ in 0..log_trace_len {
             let x = g_exp * z;
             let lagrange_poly_at_x = polynom::eval(lagrange_kernel_col_poly, x);
 
-            frame[idx] = lagrange_poly_at_x;
+            frame.push(lagrange_poly_at_x);
 
             // takes on the values `g`, `g^2`, `g^4`, `g^8`, ...
             g_exp *= g_exp;
