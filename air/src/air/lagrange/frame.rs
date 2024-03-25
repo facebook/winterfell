@@ -29,7 +29,7 @@ impl<E: FieldElement> LagrangeKernelEvaluationFrame<E> {
         Self { frame: Vec::new() }
     }
 
-    /// Constructs the frame from the Lagrange kernel trace column polynomial coefficients for an
+    /// Constructs the frame from the Lagrange kernel column trace polynomial coefficients for an
     /// evaluation point.
     pub fn from_lagrange_kernel_column_poly(lagrange_kernel_col_poly: &[E], z: E) -> Self {
         let log_trace_len = lagrange_kernel_col_poly.len().ilog2();
