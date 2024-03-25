@@ -109,13 +109,13 @@ where
         #[cfg(debug_assertions)]
         evaluation_table.validate_transition_degrees();
 
-        // combine all evaluations into a single column
+        // combine all constraint evaluations into a single column, including the evaluations of the
+        // Lagrange kernel constraints (if present)
         let combined_evaluations = {
-            let mut main_and_aux_evaluations = evaluation_table.combine();
+            let mut constraints_evaluations = evaluation_table.combine();
+            self.evaluate_lagrange_kernel_constraints(trace, domain, &mut constraints_evaluations);
 
-            self.evaluate_lagrange_kernel_constraints(trace, domain, &mut main_and_aux_evaluations);
-
-            main_and_aux_evaluations
+            constraints_evaluations
         };
 
         CompositionPolyTrace::new(combined_evaluations)
