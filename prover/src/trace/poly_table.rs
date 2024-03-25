@@ -73,9 +73,9 @@ impl<E: FieldElement> TracePolyTable<E> {
     }
 
     /// Returns an out-of-domain evaluation frame constructed by evaluating trace polynomials for
-    /// all columns at points z and z * g, where g is the generator of the trace
-    /// domain. Additionally, if the Lagrange kernel auxiliary column is present, we also evaluate
-    /// that column over the points: z, z * g, z * g^2, z * g^4, ..., z * g^(2^(v-1)), where v =
+    /// all columns at points z and z * g, where g is the generator of the trace domain.
+    /// Additionally, if the Lagrange kernel auxiliary column is present, we also evaluate that
+    /// column over the points: z, z * g, z * g^2, z * g^4, ..., z * g^(2^(v-1)), where v =
     /// log(trace_len).
     pub fn get_ood_frame(&self, z: E) -> OodFrameTraceStates<E> {
         let log_trace_len = self.poly_size().ilog2();
