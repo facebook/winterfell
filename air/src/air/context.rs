@@ -209,7 +209,7 @@ impl<B: StarkField> AirContext<B> {
     /// The number of transition constraints is defined by the total number of transition constraint
     /// degree descriptors (for both the main and the auxiliary trace constraints). This number is
     /// used to determine how many transition constraint coefficients need to be generated for
-    /// merging transition constraints into a composition polynomial.
+    /// merging transition constraints into a constraint composition polynomial.
     pub fn num_transition_constraints(&self) -> usize {
         self.main_transition_constraint_degrees.len() + self.aux_transition_constraint_degrees.len()
     }
