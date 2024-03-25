@@ -190,7 +190,7 @@ where
 
         let frame_length = self.trace_info.length().ilog2() as usize + 1;
         for i in 0..frame_length - 1 {
-            let shift = self.blowup() * 2_u32.pow(i as u32) as usize;
+            let shift = self.blowup() * (1 << i);
             let next_lde_step = (lde_step + shift) % self.trace_len();
 
             frame.push(aux_segment.get(lagrange_kernel_aux_column_idx, next_lde_step));
