@@ -103,8 +103,6 @@ impl<B: StarkField> AirContext<B> {
         assert!(num_main_assertions > 0, "at least one assertion must be specified");
 
         if trace_info.is_multi_segment() {
-            // If the only auxiliary column is the Lagrange kernel one, then we don't require any
-            // other boundary/transition constraints
             assert!(
                 !aux_transition_constraint_degrees.is_empty(),
                 "at least one transition constraint degree must be specified for auxiliary trace segments"
