@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 
 use math::{ExtensionOf, FieldElement};
 
-use crate::{AirContext, ConstraintDivisor, LagrangeKernelEvaluationFrame};
+use crate::{ConstraintDivisor, LagrangeKernelEvaluationFrame};
 
 /// Represents the transition constraints for the Lagrange kernel column, as well as the random
 /// coefficients used to linearly combine all the constraints.
@@ -18,12 +18,7 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
     /// Creates a new [`LagrangeKernelTransitionConstraints`], which represents the Lagrange kernel
     /// transition constraints as well as the random coefficients necessary to combine the
     /// constraints together.
-    pub fn new(
-        context: &AirContext<E::BaseField>,
-        lagrange_constraint_coefficients: Vec<E>,
-    ) -> Self {
-        assert_eq!(context.trace_len().ilog2(), lagrange_constraint_coefficients.len() as u32);
-
+    pub fn new(lagrange_constraint_coefficients: Vec<E>) -> Self {
         let num_lagrange_kernel_transition_constraints = lagrange_constraint_coefficients.len();
 
         let divisors = {

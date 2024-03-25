@@ -301,7 +301,6 @@ pub trait Air: Send + Sync {
     ) -> Option<LagrangeKernelConstraints<E>> {
         self.context().lagrange_kernel_aux_column_idx().map(|col_idx| {
             LagrangeKernelConstraints::new(
-                self.context(),
                 lagrange_composition_coefficients,
                 lagrange_kernel_rand_elements,
                 col_idx,
