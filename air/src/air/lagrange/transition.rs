@@ -72,7 +72,7 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
     /// and combines them.
     ///
     /// By "combining transition constraints evaluations", we mean computing a linear combination of
-    /// all transition constraint evaluations, where each transition evaluation is divided by its
+    /// each transition constraint evaluation, where each transition evaluation is divided by its
     /// corresponding divisor.
     pub fn evaluate_and_combine<F>(
         &self,
@@ -97,7 +97,7 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
             })
     }
 
-    /// Returns the number of constraints
+    /// Returns the number of constraints.
     pub fn num_constraints(&self) -> usize {
         self.lagrange_constraint_coefficients.len()
     }
