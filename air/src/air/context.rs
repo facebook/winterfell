@@ -177,7 +177,7 @@ impl<B: StarkField> AirContext<B> {
 
     /// Returns length of the execution trace for an instance of a computation.
     ///
-    // This is guaranteed to be a power of two greater than or equal to 8.
+    /// This is guaranteed to be a power of two greater than or equal to 8.
     pub fn trace_len(&self) -> usize {
         self.trace_info.length()
     }
