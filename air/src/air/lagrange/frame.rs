@@ -57,6 +57,8 @@ impl<E: FieldElement> LagrangeKernelEvaluationFrame<E> {
 
     // MUTATORS
     // --------------------------------------------------------------------------------------------
+    
+    /// Returns a mutable reference to the inner frame.
     pub fn frame_mut(&mut self) -> &mut Vec<E> {
         &mut self.frame
     }
