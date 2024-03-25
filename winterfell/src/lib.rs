@@ -580,6 +580,9 @@
 
 #![no_std]
 
+#[cfg(test)]
+extern crate std;
+
 pub use prover::{
     crypto, iterators, math, matrix, Air, AirContext, Assertion, AuxTraceRandElements,
     BoundaryConstraint, BoundaryConstraintGroup, ByteReader, ByteWriter, CompositionPolyTrace,
@@ -590,3 +593,6 @@ pub use prover::{
     TraceTable, TraceTableFragment, TransitionConstraintDegree,
 };
 pub use verifier::{verify, AcceptableOptions, VerifierError};
+
+#[cfg(test)]
+mod tests;

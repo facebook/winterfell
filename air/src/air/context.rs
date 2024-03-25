@@ -19,6 +19,7 @@ pub struct AirContext<B: StarkField> {
     pub(super) aux_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
     pub(super) num_main_assertions: usize,
     pub(super) num_aux_assertions: usize,
+    pub(super) lagrange_kernel_aux_column_idx: Option<usize>,
     pub(super) ce_blowup_factor: usize,
     pub(super) trace_domain_generator: B,
     pub(super) lde_domain_generator: B,
@@ -59,6 +60,7 @@ impl<B: StarkField> AirContext<B> {
             Vec::new(),
             num_assertions,
             0,
+            None,
             options,
         )
     }
@@ -91,6 +93,7 @@ impl<B: StarkField> AirContext<B> {
         aux_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
         num_main_assertions: usize,
         num_aux_assertions: usize,
+        lagrange_kernel_aux_column_idx: Option<usize>,
         options: ProofOptions,
     ) -> Self {
         assert!(
@@ -103,7 +106,7 @@ impl<B: StarkField> AirContext<B> {
             assert!(
                 !aux_transition_constraint_degrees.is_empty(),
                 "at least one transition constraint degree must be specified for auxiliary trace segments"
-            );
+                );
             assert!(
                 num_aux_assertions > 0,
                 "at least one assertion must be specified against auxiliary trace segments"
@@ -117,6 +120,11 @@ impl<B: StarkField> AirContext<B> {
                 num_aux_assertions == 0,
                 "auxiliary assertions specified for a single-segment trace"
             );
+        }
+
+        // validate Lagrange kernel aux column, if any
+        if let Some(lagrange_kernel_aux_column_idx) = lagrange_kernel_aux_column_idx {
+            assert!(lagrange_kernel_aux_column_idx < trace_info.get_aux_segment_width(0), "Lagrange kernel column index out of bounds: index={}, but only {} columns in segment", lagrange_kernel_aux_column_idx, trace_info.get_aux_segment_width(0));
         }
 
         // determine minimum blowup factor needed to evaluate transition constraints by taking
@@ -151,6 +159,7 @@ impl<B: StarkField> AirContext<B> {
             aux_transition_constraint_degrees,
             num_main_assertions,
             num_aux_assertions,
+            lagrange_kernel_aux_column_idx,
             ce_blowup_factor,
             trace_domain_generator: B::get_root_of_unity(trace_length.ilog2()),
             lde_domain_generator: B::get_root_of_unity(lde_domain_size.ilog2()),
@@ -161,9 +170,14 @@ impl<B: StarkField> AirContext<B> {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
+    /// Returns the trace info for an instance of a computation.
+    pub fn trace_info(&self) -> &TraceInfo {
+        &self.trace_info
+    }
+
     /// Returns length of the execution trace for an instance of a computation.
     ///
-    // This is guaranteed to be a power of two greater than or equal to 8.
+    /// This is guaranteed to be a power of two greater than or equal to 8.
     pub fn trace_len(&self) -> usize {
         self.trace_info.length()
     }
@@ -189,12 +203,13 @@ impl<B: StarkField> AirContext<B> {
         self.trace_info.length() * self.options.blowup_factor()
     }
 
-    /// Returns the number of transition constraints for a computation.
+    /// Returns the number of transition constraints for a computation, excluding the Lagrange
+    /// kernel transition constraints, which are managed separately.
     ///
-    /// The number of transition constraints is defined by the total number of transition
-    /// constraint degree descriptors (for both the main and the auxiliary trace constraints).
-    /// This number is used to determine how many transition constraint coefficients need to be
-    /// generated for merging transition constraints into a composition polynomial.
+    /// The number of transition constraints is defined by the total number of transition constraint
+    /// degree descriptors (for both the main and the auxiliary trace constraints). This number is
+    /// used to determine how many transition constraint coefficients need to be generated for
+    /// merging transition constraints into a constraint composition polynomial.
     pub fn num_transition_constraints(&self) -> usize {
         self.main_transition_constraint_degrees.len() + self.aux_transition_constraint_degrees.len()
     }
@@ -209,7 +224,18 @@ impl<B: StarkField> AirContext<B> {
         self.aux_transition_constraint_degrees.len()
     }
 
-    /// Returns the total number of assertions defined for a computation.
+    /// Returns the index of the auxiliary column which implements the Lagrange kernel, if any
+    pub fn lagrange_kernel_aux_column_idx(&self) -> Option<usize> {
+        self.lagrange_kernel_aux_column_idx
+    }
+
+    /// Returns true if the auxiliary trace segment contains a Lagrange kernel column
+    pub fn has_lagrange_kernel_aux_column(&self) -> bool {
+        self.lagrange_kernel_aux_column_idx().is_some()
+    }
+
+    /// Returns the total number of assertions defined for a computation, excluding the Lagrange
+    /// kernel assertion, which is managed separately.
     ///
     /// The number of assertions consists of the assertions placed against the main segment of an
     /// execution trace as well as assertions placed against all auxiliary trace segments.
@@ -230,24 +256,26 @@ impl<B: StarkField> AirContext<B> {
     /// Returns the number of columns needed to store the constraint composition polynomial.
     ///
     /// This is the maximum of:
-    /// 1. The maximum evaluation degree over all transition constraints minus the degree
-    /// of the transition constraint divisor divided by trace length.
+    /// 1. The maximum evaluation degree over all transition constraints minus the degree of the
+    /// transition constraint divisor divided by trace length.
     /// 2. `1`, because the constraint composition polynomial requires at least one column.
     ///
-    /// Since the degree of a constraint `C(x)` can be well approximated by
-    /// `[constraint.base + constraint.cycles.len()] * [trace_length - 1]` the degree of the
-    /// constraint composition polynomial can be approximated by:
-    /// `([constraint.base + constraint.cycles.len()] * [trace_length - 1] - [trace_length - n])`
-    /// where `constraint` is the constraint attaining the maximum and `n` is the number of
-    /// exemption points.
-    /// In the case `n = 1`, the expression simplifies to:
-    /// `[constraint.base + constraint.cycles.len() - 1] * [trace_length - 1]`
-    /// Thus, if each column is of length `trace_length`, we would need
-    /// `[constraint.base + constraint.cycles.len() - 1]` columns to store the coefficients of
-    /// the constraint composition polynomial.
-    /// This means that if the highest constraint degree is equal to `5`, the constraint
-    /// composition polynomial will require four columns and if the highest constraint degree is
-    /// equal to `7`, it will require six columns to store.
+    /// Since the degree of a constraint `C(x)` can be computed as `[constraint.base +
+    /// constraint.cycles.len()] * [trace_length - 1]` the degree of the constraint composition
+    /// polynomial can be computed as: `([constraint.base + constraint.cycles.len()] * [trace_length
+    /// - 1] - [trace_length - n])` where `constraint` is the constraint attaining the maximum and
+    /// `n` is the number of exemption points. In the case `n = 1`, the expression simplifies to:
+    /// `[constraint.base + constraint.cycles.len() - 1] * [trace_length - 1]` Thus, if each column
+    /// is of length `trace_length`, we would need `[constraint.base + constraint.cycles.len() - 1]`
+    /// columns to store the coefficients of the constraint composition polynomial. This means that
+    /// if the highest constraint degree is equal to `5`, the constraint composition polynomial will
+    /// require four columns and if the highest constraint degree is equal to `7`, it will require
+    /// six columns to store.
+    ///
+    /// Note that the Lagrange kernel constraints require only 1 column, since the degree of the
+    /// numerator is `trace_len - 1` for all transition constraints (i.e. the base degree is 1).
+    /// Hence, no matter what the degree of the divisor is for each, the degree of the fraction will
+    /// be at most `trace_len - 1`.
     pub fn num_constraint_composition_columns(&self) -> usize {
         let mut highest_constraint_degree = 0_usize;
         for degree in self

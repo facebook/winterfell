@@ -289,10 +289,15 @@ pub trait Prover {
 
                 // draw a set of random elements required to build an auxiliary trace segment
                 let rand_elements = channel.get_aux_trace_segment_rand_elements(i);
+                let lagrange_rand_elements = if air.context().has_lagrange_kernel_aux_column() {
+                    Some(rand_elements.as_ref())
+                } else {
+                    None
+                };
 
                 // build the trace segment
                 let aux_segment = trace
-                    .build_aux_segment(&aux_trace_segments, &rand_elements)
+                    .build_aux_segment(&aux_trace_segments, &rand_elements, lagrange_rand_elements)
                     .expect("failed build auxiliary trace segment");
 
                 drop(span);
@@ -317,7 +322,8 @@ pub trait Prover {
                 aux_segment_polys
             };
 
-            trace_polys.add_aux_segment(aux_segment_polys);
+            trace_polys
+                .add_aux_segment(aux_segment_polys, air.context().lagrange_kernel_aux_column_idx());
             aux_trace_rand_elements.add_segment_elements(rand_elements);
             aux_trace_segments.push(aux_segment);
         }
@@ -381,8 +387,10 @@ pub trait Prover {
             let z = channel.get_ood_point();
 
             // evaluate trace and constraint polynomials at the OOD point z, and send the results to
-            // the verifier. the trace polynomials are actually evaluated over two points: z and
-            // z * g, where g is the generator of the trace domain.
+            // the verifier. the trace polynomials are actually evaluated over two points: z and z *
+            // g, where g is the generator of the trace domain. Additionally, if the Lagrange kernel
+            // auxiliary column is present, we also evaluate that column over the points: z, z * g,
+            // z * g^2, z * g^4, ..., z * g^(2^(v-1)), where v = log(trace_len).
             let ood_trace_states = trace_polys.get_ood_frame(z);
             channel.send_ood_trace_states(&ood_trace_states);
 

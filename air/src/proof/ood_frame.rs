@@ -9,18 +9,25 @@ use utils::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
 };
 
-// TYPE ALIASES
-// ================================================================================================
-
-type ParsedOodFrame<E> = (Vec<E>, Vec<E>);
+use crate::LagrangeKernelEvaluationFrame;
 
 // OUT-OF-DOMAIN FRAME
 // ================================================================================================
+
+/// Represents an [`OodFrame`] where the trace and constraint evaluations have been parsed out.
+pub struct ParsedOodFrame<E> {
+    pub trace_evaluations: Vec<E>,
+    pub lagrange_kernel_trace_evaluations: Option<Vec<E>>,
+    pub constraint_evaluations: Vec<E>,
+}
+
 /// Trace and constraint polynomial evaluations at an out-of-domain point.
 ///
 /// This struct contains the following evaluations:
 /// * Evaluations of all trace polynomials at *z*.
 /// * Evaluations of all trace polynomials at *z * g*.
+/// * Evaluations of Lagrange kernel trace polynomial (if any) at *z*, *z * g*, *z * g^2*, ...,
+///   *z * g^(2^(v-1))*, where `v == log(trace_len)`
 /// * Evaluations of constraint composition column polynomials at *z*.
 ///
 /// where *z* is an out-of-domain point and *g* is the generator of the trace domain.
@@ -30,6 +37,7 @@ type ParsedOodFrame<E> = (Vec<E>, Vec<E>);
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct OodFrame {
     trace_states: Vec<u8>,
+    lagrange_kernel_trace_states: Vec<u8>,
     evaluations: Vec<u8>,
 }
 
@@ -38,29 +46,48 @@ impl OodFrame {
     // --------------------------------------------------------------------------------------------
 
     /// Updates the trace state portion of this out-of-domain frame. This also returns a compacted
-    /// version of the out-of-domain frame with the rows interleaved. This is done so that reseeding
-    /// of the random coin needs to be done only once as opposed to once per each row.
+    /// version of the out-of-domain frame (including the Lagrange kernel frame, if any) with the
+    /// rows interleaved. This is done so that reseeding of the random coin needs to be done only
+    /// once as opposed to once per each row.
     ///
     /// # Panics
     /// Panics if evaluation frame has already been set.
-    pub fn set_trace_states<E: FieldElement>(&mut self, trace_states: &[Vec<E>]) -> Vec<E> {
+    pub fn set_trace_states<E: FieldElement>(
+        &mut self,
+        trace_states: &OodFrameTraceStates<E>,
+    ) -> Vec<E> {
         assert!(self.trace_states.is_empty(), "trace sates have already been set");
 
         // save the evaluations with the current and next evaluations interleaved for each polynomial
-        let frame_size = trace_states.len();
-        let width = trace_states[0].len();
 
         let mut result = vec![];
-        for i in 0..width {
-            for row in trace_states.iter() {
-                result.push(row[i]);
-            }
+        for col in 0..trace_states.num_columns() {
+            result.push(trace_states.current_row[col]);
+            result.push(trace_states.next_row[col]);
         }
-        debug_assert!(frame_size <= u8::MAX as usize);
-        self.trace_states.write_u8(frame_size as u8);
+
+        // there are 2 frames: current and next
+        let frame_size: u8 = 2;
+
+        self.trace_states.write_u8(frame_size);
         self.trace_states.write_many(&result);
 
-        result
+        // save the Lagrange kernel evaluation frame (if any)
+        let lagrange_trace_states = {
+            let lagrange_trace_states = match trace_states.lagrange_kernel_frame {
+                Some(ref lagrange_trace_states) => lagrange_trace_states.inner().to_vec(),
+                None => Vec::new(),
+            };
+
+            // trace states length will be smaller than u8::MAX, since it is `== log2(trace_len) + 1`
+            debug_assert!(lagrange_trace_states.len() < u8::MAX.into());
+            self.lagrange_kernel_trace_states.write_u8(lagrange_trace_states.len() as u8);
+            self.lagrange_kernel_trace_states.write_many(&lagrange_trace_states);
+
+            lagrange_trace_states
+        };
+
+        result.into_iter().chain(lagrange_trace_states).collect()
     }
 
     /// Updates constraint evaluation portion of this out-of-domain frame.
@@ -85,7 +112,7 @@ impl OodFrame {
     ///
     /// # Errors
     /// Returns an error if:
-    /// * Valid [EvaluationFrame]s for the specified `main_trace_width` and `aux_trace_width`
+    /// * Valid [`crate::EvaluationFrame`]s for the specified `main_trace_width` and `aux_trace_width`
     ///   could not be parsed from the internal bytes.
     /// * A vector of evaluations specified by `num_evaluations` could not be parsed from the
     ///   internal bytes.
@@ -103,9 +130,19 @@ impl OodFrame {
         let mut reader = SliceReader::new(&self.trace_states);
         let frame_size = reader.read_u8()? as usize;
         let trace = reader.read_many((main_trace_width + aux_trace_width) * frame_size)?;
+
         if reader.has_more_bytes() {
             return Err(DeserializationError::UnconsumedBytes);
         }
+
+        // parse Lagrange kernel column trace
+        let mut reader = SliceReader::new(&self.lagrange_kernel_trace_states);
+        let lagrange_kernel_frame_size = reader.read_u8()? as usize;
+        let lagrange_kernel_trace = if lagrange_kernel_frame_size > 0 {
+            Some(reader.read_many(lagrange_kernel_frame_size)?)
+        } else {
+            None
+        };
 
         // parse the constraint evaluations
         let mut reader = SliceReader::new(&self.evaluations);
@@ -114,7 +151,11 @@ impl OodFrame {
             return Err(DeserializationError::UnconsumedBytes);
         }
 
-        Ok((trace, evaluations))
+        Ok(ParsedOodFrame {
+            trace_evaluations: trace,
+            lagrange_kernel_trace_evaluations: lagrange_kernel_trace,
+            constraint_evaluations: evaluations,
+        })
     }
 }
 
@@ -127,6 +168,10 @@ impl Serializable for OodFrame {
         // write trace rows
         target.write_u16(self.trace_states.len() as u16);
         target.write_bytes(&self.trace_states);
+
+        // write Lagrange kernel column trace rows
+        target.write_u16(self.lagrange_kernel_trace_states.len() as u16);
+        target.write_bytes(&self.lagrange_kernel_trace_states);
 
         // write constraint evaluations row
         target.write_u16(self.evaluations.len() as u16);
@@ -149,13 +194,68 @@ impl Deserializable for OodFrame {
         let num_trace_state_bytes = source.read_u16()? as usize;
         let trace_states = source.read_vec(num_trace_state_bytes)?;
 
+        // read Lagrange kernel column trace rows
+        let num_lagrange_state_bytes = source.read_u16()? as usize;
+        let lagrange_kernel_trace_states = source.read_vec(num_lagrange_state_bytes)?;
+
         // read constraint evaluations row
         let num_constraint_evaluation_bytes = source.read_u16()? as usize;
         let evaluations = source.read_vec(num_constraint_evaluation_bytes)?;
 
         Ok(OodFrame {
             trace_states,
+            lagrange_kernel_trace_states,
             evaluations,
         })
+    }
+}
+
+// OOD FRAME TRACE STATES
+// ================================================================================================
+
+/// Stores the trace evaluations at `z` and `gz`, where `z` is a random Field element. If
+/// the Air contains a Lagrange kernel auxiliary column, then that column interpolated polynomial
+/// will be evaluated at `z`, `gz`, `g^2 z`, ... `g^(2^(v-1)) z`, where `v == log(trace_len)`, and
+/// stored in `lagrange_kernel_frame`.
+pub struct OodFrameTraceStates<E: FieldElement> {
+    current_row: Vec<E>,
+    next_row: Vec<E>,
+    lagrange_kernel_frame: Option<LagrangeKernelEvaluationFrame<E>>,
+}
+
+impl<E: FieldElement> OodFrameTraceStates<E> {
+    /// Creates a new [`OodFrameTraceStates`] from current, next and optionally Lagrange kernel frames.
+    pub fn new(
+        current_frame: Vec<E>,
+        next_frame: Vec<E>,
+        lagrange_kernel_frame: Option<LagrangeKernelEvaluationFrame<E>>,
+    ) -> Self {
+        assert_eq!(current_frame.len(), next_frame.len());
+
+        Self {
+            current_row: current_frame,
+            next_row: next_frame,
+            lagrange_kernel_frame,
+        }
+    }
+
+    /// Returns the number of columns for the current and next frames.
+    pub fn num_columns(&self) -> usize {
+        self.current_row.len()
+    }
+
+    /// Returns the current frame.
+    pub fn current_frame(&self) -> &[E] {
+        &self.current_row
+    }
+
+    /// Returns the next frame.
+    pub fn next_frame(&self) -> &[E] {
+        &self.next_row
+    }
+
+    /// Returns the Lagrange kernel frame, if any.
+    pub fn lagrange_kernel_frame(&self) -> Option<&LagrangeKernelEvaluationFrame<E>> {
+        self.lagrange_kernel_frame.as_ref()
     }
 }

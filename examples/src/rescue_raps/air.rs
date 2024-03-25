@@ -77,6 +77,7 @@ impl Air for RescueRapsAir {
                 aux_degrees,
                 8,
                 2,
+                None,
                 options,
             ),
             result: pub_inputs.result,

@@ -66,8 +66,16 @@ impl<E: FieldElement> Default for AuxTraceRandElements<E> {
 pub struct ConstraintCompositionCoefficients<E: FieldElement> {
     pub transition: Vec<E>,
     pub boundary: Vec<E>,
+    pub lagrange: Option<LagrangeConstraintsCompositionCoefficients<E>>,
 }
 
+/// Stores the constraint composition coefficients for the Lagrange kernel transition and boundary
+/// constraints.
+#[derive(Debug, Clone)]
+pub struct LagrangeConstraintsCompositionCoefficients<E: FieldElement> {
+    pub transition: Vec<E>,
+    pub boundary: E,
+}
 // DEEP COMPOSITION COEFFICIENTS
 // ================================================================================================
 /// Coefficients used in construction of DEEP composition polynomial.

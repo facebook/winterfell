@@ -17,8 +17,9 @@ pub use degree::TransitionConstraintDegree;
 
 const MIN_CYCLE_LENGTH: usize = 2;
 
-// TRANSITION CONSTRAINT INFO
+// TRANSITION CONSTRAINTS INFO
 // ================================================================================================
+
 /// Metadata for transition constraints of a computation.
 ///
 /// This metadata includes:

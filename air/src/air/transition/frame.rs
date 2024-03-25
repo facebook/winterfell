@@ -8,6 +8,7 @@ use alloc::vec::Vec;
 
 // EVALUATION FRAME
 // ================================================================================================
+
 /// A set of execution trace rows required for evaluation of transition constraints.
 ///
 /// In the current implementation, an evaluation frame always contains two consecutive rows of the

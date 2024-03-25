@@ -44,24 +44,24 @@ impl<B: StarkField> ConstraintDivisor<B> {
     ///
     /// For transition constraints, the divisor polynomial $z(x)$ is always the same:
     ///
-    /// $$
-    /// z(x) = \frac{x^n - 1}{ \prod_{i=1}^k (x - g^{n-i})}
-    /// $$
+    /// $$ z(x) = \frac{x^n - 1}{ \prod_{i=1}^k (x - g^{n-i})} $$
     ///
-    /// where, $n$ is the length of the execution trace, $g$ is the generator of the trace
-    /// domain, and $k$ is the number of exemption points. The default value for $k$ is $1$.
+    /// where, $n$ is the length of the execution trace, $g$ is the generator of the trace domain,
+    /// and $k$ is the number of exemption points. The default value for $k$ is $1$.
     ///
     /// The above divisor specifies that transition constraints must hold on all steps of the
-    /// execution trace except for the last $k$ steps.
-    pub fn from_transition(trace_length: usize, num_exemptions: usize) -> Self {
-        assert!(
-            num_exemptions > 0,
-            "invalid number of transition exemptions: must be greater than zero"
-        );
-        let exemptions = (trace_length - num_exemptions..trace_length)
-            .map(|step| get_trace_domain_value_at::<B>(trace_length, step))
+    /// constraint enforcement domain except for the last $k$ steps. The constraint enforcement
+    /// domain is the entire trace in the case of transition constraints, but only a subset of the
+    /// trace for Lagrange kernel transition constraints.
+    pub fn from_transition(
+        constraint_enforcement_domain_size: usize,
+        num_exemptions: usize,
+    ) -> Self {
+        let exemptions = (constraint_enforcement_domain_size - num_exemptions
+            ..constraint_enforcement_domain_size)
+            .map(|step| get_trace_domain_value_at::<B>(constraint_enforcement_domain_size, step))
             .collect();
-        Self::new(vec![(trace_length, B::ONE)], exemptions)
+        Self::new(vec![(constraint_enforcement_domain_size, B::ONE)], exemptions)
     }
 
     /// Builds a divisor for a boundary constraint described by the assertion.
