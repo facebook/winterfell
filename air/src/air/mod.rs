@@ -526,10 +526,8 @@ pub trait Air: Send + Sync {
 
         let lagrange = if self.context().has_lagrange_kernel_aux_column() {
             let mut lagrange_kernel_t_coefficients = Vec::new();
-            if self.context().has_lagrange_kernel_aux_column() {
-                for _ in 0..self.context().trace_len().ilog2() {
-                    lagrange_kernel_t_coefficients.push(public_coin.draw()?);
-                }
+            for _ in 0..self.context().trace_len().ilog2() {
+                lagrange_kernel_t_coefficients.push(public_coin.draw()?);
             }
 
             let lagrange_kernel_boundary = public_coin.draw()?;
