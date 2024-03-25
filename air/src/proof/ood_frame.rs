@@ -62,8 +62,8 @@ impl OodFrame {
 
         let mut result = vec![];
         for col in 0..trace_states.num_columns() {
-            result.push(trace_states.current_frame[col]);
-            result.push(trace_states.next_frame[col]);
+            result.push(trace_states.current_row[col]);
+            result.push(trace_states.next_row[col]);
         }
 
         // there are 2 frames: current and next
@@ -218,8 +218,8 @@ impl Deserializable for OodFrame {
 /// will be evaluated at `z`, `gz`, `g^2 z`, ... `g^(2^(v-1)) z`, where `v == log(trace_len)`, and
 /// stored in `lagrange_kernel_frame`.
 pub struct OodFrameTraceStates<E: FieldElement> {
-    current_frame: Vec<E>,
-    next_frame: Vec<E>,
+    current_row: Vec<E>,
+    next_row: Vec<E>,
     lagrange_kernel_frame: Option<LagrangeKernelEvaluationFrame<E>>,
 }
 
@@ -233,25 +233,25 @@ impl<E: FieldElement> OodFrameTraceStates<E> {
         assert_eq!(current_frame.len(), next_frame.len());
 
         Self {
-            current_frame,
-            next_frame,
+            current_row: current_frame,
+            next_row: next_frame,
             lagrange_kernel_frame,
         }
     }
 
     /// Returns the number of columns for the current and next frames.
     pub fn num_columns(&self) -> usize {
-        self.current_frame.len()
+        self.current_row.len()
     }
 
     /// Returns the current frame.
     pub fn current_frame(&self) -> &[E] {
-        &self.current_frame
+        &self.current_row
     }
 
     /// Returns the next frame.
     pub fn next_frame(&self) -> &[E] {
-        &self.next_frame
+        &self.next_row
     }
 
     /// Returns the Lagrange kernel frame, if any.
