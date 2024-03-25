@@ -296,8 +296,8 @@ where
         domain: &StarkDomain<A::BaseField>,
         combined_evaluations_accumulator: &mut [E],
     ) {
-        if let Some(ref evaluator) = self.lagrange_constraints_evaluator {
-            evaluator.evaluate_lagrange_kernel_constraints(
+        if let Some(ref lagrange_constraints_evaluator) = self.lagrange_constraints_evaluator {
+            lagrange_constraints_evaluator.evaluate_constraints(
                 trace,
                 domain,
                 combined_evaluations_accumulator,

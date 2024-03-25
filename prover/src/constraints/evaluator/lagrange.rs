@@ -43,7 +43,7 @@ impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
     ///
     /// Writes the evaluations in `combined_evaluations_acc` at the corresponding (constraint
     /// evaluation) domain index.
-    pub fn evaluate_lagrange_kernel_constraints<T>(
+    pub fn evaluate_constraints<T>(
         &self,
         trace: &T,
         domain: &StarkDomain<E::BaseField>,
