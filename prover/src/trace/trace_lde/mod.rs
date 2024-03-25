@@ -56,7 +56,7 @@ pub trait TraceLde<E: FieldElement>: Sync {
     /// Reads current and next rows from the auxiliary trace segment into the specified frame.
     fn read_aux_trace_frame_into(&self, lde_step: usize, frame: &mut EvaluationFrame<E>);
 
-    /// Populated the provided Lagrange kernel frame starting at the current row (as defined by
+    /// Populates the provided Lagrange kernel frame starting at the current row (as defined by
     /// `lde_step`).
     ///
     /// Note that unlike [`EvaluationFrame`], the Lagrange kernel frame includes only the Lagrange
