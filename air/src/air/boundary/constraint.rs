@@ -9,6 +9,7 @@ use math::{fft, polynom};
 
 // BOUNDARY CONSTRAINT
 // ================================================================================================
+
 /// The numerator portion of a boundary constraint.
 ///
 /// A boundary constraint is described by a rational function $\frac{f(x) - b(x)}{z(x)}$, where:
@@ -45,8 +46,9 @@ where
     F: FieldElement,
     E: FieldElement<BaseField = F::BaseField> + ExtensionOf<F>,
 {
-    // CONSTRUCTOR
+    // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
+
     /// Creates a new boundary constraint from the specified assertion.
     pub(super) fn new(
         assertion: Assertion<F>,

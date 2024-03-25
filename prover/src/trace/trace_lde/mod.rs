@@ -5,7 +5,7 @@
 
 use super::{ColMatrix, EvaluationFrame, FieldElement, TracePolyTable};
 use crate::StarkDomain;
-use air::{proof::Queries, TraceInfo};
+use air::{proof::Queries, LagrangeKernelEvaluationFrame, TraceInfo};
 use alloc::vec::Vec;
 use crypto::{ElementHasher, Hasher};
 
@@ -55,6 +55,18 @@ pub trait TraceLde<E: FieldElement>: Sync {
 
     /// Reads current and next rows from the auxiliary trace segment into the specified frame.
     fn read_aux_trace_frame_into(&self, lde_step: usize, frame: &mut EvaluationFrame<E>);
+
+    /// Populates the provided Lagrange kernel frame starting at the current row (as defined by
+    /// `lde_step`).
+    ///
+    /// Note that unlike [`EvaluationFrame`], the Lagrange kernel frame includes only the Lagrange
+    /// kernel column (as opposed to all columns).
+    fn read_lagrange_kernel_frame_into(
+        &self,
+        lde_step: usize,
+        col_idx: usize,
+        frame: &mut LagrangeKernelEvaluationFrame<E>,
+    );
 
     /// Returns trace table rows at the specified positions along with Merkle authentication paths
     /// from the commitment root to these rows.

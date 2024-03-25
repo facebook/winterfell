@@ -303,6 +303,7 @@ impl<B: StarkField> Trace for TraceTable<B> {
         &mut self,
         _aux_segments: &[ColMatrix<E>],
         _rand_elements: &[E],
+        _lagrange_rand_elements: Option<&[E]>,
     ) -> Option<ColMatrix<E>>
     where
         E: FieldElement<BaseField = Self::BaseField>,

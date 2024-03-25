@@ -4,7 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{matrix::MultiColumnIter, ColMatrix};
-use air::{Air, AuxTraceRandElements, EvaluationFrame, TraceInfo};
+use air::{
+    Air, AuxTraceRandElements, EvaluationFrame, LagrangeKernelBoundaryConstraint, TraceInfo,
+};
 use math::{polynom, FieldElement, StarkField};
 
 mod trace_lde;
@@ -49,17 +51,21 @@ pub trait Trace: Sized {
     /// Returns a reference to a [Matrix] describing the main segment of this trace.
     fn main_segment(&self) -> &ColMatrix<Self::BaseField>;
 
-    /// Builds and returns the next auxiliary trace segment. If there are no more segments to
-    /// build (i.e., the trace is complete), None is returned.
+    /// Builds and returns the next auxiliary trace segment. If there are no more segments to build
+    /// (i.e., the trace is complete), None is returned.
     ///
-    /// The `aux_segments` slice contains a list of auxiliary trace segments built as a result
-    /// of prior invocations of this function. Thus, for example, on the first invocation,
-    /// `aux_segments` will be empty; on the second invocation, it will contain a single matrix
-    /// (the one built during the first invocation) etc.
+    /// The `aux_segments` slice contains a list of auxiliary trace segments built as a result of
+    /// prior invocations of this function. Thus, for example, on the first invocation,
+    /// `aux_segments` will be empty; on the second invocation, it will contain a single matrix (the
+    /// one built during the first invocation) etc.
+    ///
+    /// The `rand_elements` slice contains the random elements to use to build the aux segment. If a
+    /// Lagrange kernel column is present, the `lagrange_kernel_rand_elements` should be used.
     fn build_aux_segment<E: FieldElement<BaseField = Self::BaseField>>(
         &mut self,
         aux_segments: &[ColMatrix<E>],
         rand_elements: &[E],
+        lagrange_kernel_rand_elements: Option<&[E]>,
     ) -> Option<ColMatrix<E>>;
 
     /// Reads an evaluation frame from the main trace segment at the specified row.
@@ -146,6 +152,19 @@ pub trait Trace: Sized {
             });
         }
 
+        // then, check the Lagrange kernel assertion, if any
+        if let Some(lagrange_kernel_col_idx) = air.context().lagrange_kernel_aux_column_idx() {
+            let boundary_constraint_assertion_value =
+                LagrangeKernelBoundaryConstraint::assertion_value(
+                    aux_rand_elements.get_segment_elements(0),
+                );
+
+            assert_eq!(
+                boundary_constraint_assertion_value,
+                aux_segments[0].get(lagrange_kernel_col_idx, 0)
+            );
+        }
+
         // --- 2. make sure this trace satisfies all transition constraints -----------------------
 
         // collect the info needed to build periodic values for a specific step
@@ -207,6 +226,35 @@ pub trait Trace: Sized {
 
             // update x coordinate of the domain
             x *= g;
+        }
+
+        // evaluate transition constraints for Lagrange kernel column (if any) and make sure
+        // they all evaluate to zeros
+        if let Some(col_idx) = air.context().lagrange_kernel_aux_column_idx() {
+            let c = aux_segments[0].get_column(col_idx);
+            let v = self.length().ilog2() as usize;
+            let r = aux_rand_elements.get_segment_elements(0);
+
+            // Loop over every constraint
+            for constraint_idx in 1..v + 1 {
+                let domain_step = 2_usize.pow((v - constraint_idx + 1) as u32);
+                let domain_half_step = 2_usize.pow((v - constraint_idx) as u32);
+
+                // Every transition constraint has a different enforcement domain (i.e. the rows to which it applies).
+                let enforcement_dom_len = self.length() / domain_step;
+                for dom_idx in 0..enforcement_dom_len {
+                    let x_current = dom_idx * domain_step;
+                    let x_next = x_current + domain_half_step;
+
+                    let evaluation = (r[v - constraint_idx] * c[x_current])
+                        - ((E::ONE - r[v - constraint_idx]) * c[x_next]);
+
+                    assert!(
+                        evaluation == E::ZERO,
+                        "Lagrange transition constraint {constraint_idx} did not evaluate to ZERO at step {x_current}"
+                    );
+                }
+            }
         }
     }
 }

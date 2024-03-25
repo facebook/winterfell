@@ -3,7 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use air::{Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame};
+use air::{
+    Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
+    LagrangeKernelEvaluationFrame,
+};
 use alloc::vec::Vec;
 use math::{polynom, FieldElement};
 
@@ -16,6 +19,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     composition_coefficients: ConstraintCompositionCoefficients<E>,
     main_trace_frame: &EvaluationFrame<E>,
     aux_trace_frame: &Option<EvaluationFrame<E>>,
+    lagrange_kernel_frame: Option<&LagrangeKernelEvaluationFrame<E>>,
     aux_rand_elements: AuxTraceRandElements<E>,
     x: E,
 ) -> E {
@@ -76,6 +80,34 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
         for group in b_constraints.aux_constraints().iter() {
             result += group.evaluate_at(aux_trace_frame.current(), x);
         }
+    }
+
+    // 3 ----- evaluate Lagrange kernel constraints ------------------------------------
+
+    if let Some(lagrange_kernel_column_frame) = lagrange_kernel_frame {
+        let lagrange_coefficients = composition_coefficients
+            .lagrange
+            .expect("expected Lagrange kernel composition coefficients to be present");
+        let lagrange_kernel_aux_rand_elements = {
+            let num_rand_elements = air.context().trace_len().ilog2() as usize;
+
+            &aux_rand_elements.get_segment_elements(0)[0..num_rand_elements]
+        };
+
+        let lagrange_constraints = air
+            .get_lagrange_kernel_constraints(
+                lagrange_coefficients,
+                lagrange_kernel_aux_rand_elements,
+            )
+            .expect("expected Lagrange kernel constraints to be present");
+
+        result += lagrange_constraints.transition.evaluate_and_combine::<E>(
+            lagrange_kernel_column_frame,
+            lagrange_kernel_aux_rand_elements,
+            x,
+        );
+
+        result += lagrange_constraints.boundary.evaluate_at(x, lagrange_kernel_column_frame);
     }
 
     result
