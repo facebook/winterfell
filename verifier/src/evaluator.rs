@@ -19,7 +19,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     composition_coefficients: ConstraintCompositionCoefficients<E>,
     main_trace_frame: &EvaluationFrame<E>,
     aux_trace_frame: &Option<EvaluationFrame<E>>,
-    lagrange_kernel_column_frame: Option<&LagrangeKernelEvaluationFrame<E>>,
+    lagrange_kernel_frame: Option<&LagrangeKernelEvaluationFrame<E>>,
     aux_rand_elements: AuxTraceRandElements<E>,
     x: E,
 ) -> E {
@@ -84,7 +84,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
 
     // 3 ----- evaluate Lagrange kernel constraints ------------------------------------
 
-    if let Some(lagrange_kernel_column_frame) = lagrange_kernel_column_frame {
+    if let Some(lagrange_kernel_column_frame) = lagrange_kernel_frame {
         let lagrange_coefficients = composition_coefficients
             .lagrange
             .expect("expected Lagrange kernel composition coefficients to be present");
