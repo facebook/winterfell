@@ -5,8 +5,8 @@
 
 use crate::VerifierError;
 use air::{
-    proof::{Queries, StarkProof, Table},
-    Air, EvaluationFrame,
+    proof::{ParsedOodFrame, Queries, StarkProof, Table},
+    Air, EvaluationFrame, LagrangeKernelEvaluationFrame,
 };
 use alloc::{string::ToString, vec::Vec};
 use crypto::{BatchMerkleProof, ElementHasher, MerkleTree};
@@ -92,11 +92,19 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         // --- parse out-of-domain evaluation frame -----------------------------------------------
-        let (ood_trace_evaluations, ood_constraint_evaluations) = ood_frame
+        let ParsedOodFrame {
+            trace_evaluations: ood_trace_evaluations,
+            lagrange_kernel_trace_evaluations: ood_lagrange_kernel_trace_evaluations,
+            constraint_evaluations: ood_constraint_evaluations,
+        } = ood_frame
             .parse(main_trace_width, aux_trace_width, constraint_frame_width)
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
-        let ood_trace_frame =
-            TraceOodFrame::new(ood_trace_evaluations, main_trace_width, aux_trace_width);
+        let ood_trace_frame = TraceOodFrame::new(
+            ood_trace_evaluations,
+            main_trace_width,
+            aux_trace_width,
+            ood_lagrange_kernel_trace_evaluations,
+        );
 
         Ok(VerifierChannel {
             // trace queries
@@ -342,22 +350,38 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> ConstraintQuer
 // ================================================================================================
 
 pub struct TraceOodFrame<E: FieldElement> {
-    values: Vec<E>,
+    main_and_aux_evaluations: Vec<E>,
     main_trace_width: usize,
     aux_trace_width: usize,
+    lagrange_kernel_frame: Option<LagrangeKernelEvaluationFrame<E>>,
 }
 
 impl<E: FieldElement> TraceOodFrame<E> {
-    pub fn new(values: Vec<E>, main_trace_width: usize, aux_trace_width: usize) -> Self {
+    pub fn new(
+        main_and_aux_evaluations: Vec<E>,
+        main_trace_width: usize,
+        aux_trace_width: usize,
+        lagrange_kernel_evaluations: Option<Vec<E>>,
+    ) -> Self {
         Self {
-            values,
+            main_and_aux_evaluations,
             main_trace_width,
             aux_trace_width,
+            lagrange_kernel_frame: lagrange_kernel_evaluations
+                .map(|evals| LagrangeKernelEvaluationFrame::new(evals)),
         }
     }
 
-    pub fn values(&self) -> &[E] {
-        &self.values
+    pub fn values(&self) -> Vec<E> {
+        match self.lagrange_kernel_frame {
+            Some(ref lagrange_kernel_frame) => self
+                .main_and_aux_evaluations
+                .clone()
+                .into_iter()
+                .chain(lagrange_kernel_frame.inner().iter().cloned())
+                .collect(),
+            None => self.main_and_aux_evaluations.clone(),
+        }
     }
 
     // The out-of-domain frame is stored as one vector of interleaved values, one from the
@@ -379,7 +403,9 @@ impl<E: FieldElement> TraceOodFrame<E> {
         let mut current = vec![E::ZERO; self.main_trace_width];
         let mut next = vec![E::ZERO; self.main_trace_width];
 
-        for (i, a) in self.values.chunks(2).take(self.main_trace_width).enumerate() {
+        for (i, a) in
+            self.main_and_aux_evaluations.chunks(2).take(self.main_trace_width).enumerate()
+        {
             current[i] = a[0];
             next[i] = a[1];
         }
@@ -407,11 +433,18 @@ impl<E: FieldElement> TraceOodFrame<E> {
             let mut current_aux = vec![E::ZERO; self.aux_trace_width];
             let mut next_aux = vec![E::ZERO; self.aux_trace_width];
 
-            for (i, a) in self.values.chunks(2).skip(self.main_trace_width).enumerate() {
+            for (i, a) in
+                self.main_and_aux_evaluations.chunks(2).skip(self.main_trace_width).enumerate()
+            {
                 current_aux[i] = a[0];
                 next_aux[i] = a[1];
             }
             Some(EvaluationFrame::from_rows(current_aux, next_aux))
         }
+    }
+
+    /// Returns the Lagrange kernel evaluation frame, if any.
+    pub fn lagrange_kernel_frame(&self) -> Option<&LagrangeKernelEvaluationFrame<E>> {
+        self.lagrange_kernel_frame.as_ref()
     }
 }

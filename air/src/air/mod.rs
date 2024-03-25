@@ -23,9 +23,16 @@ pub use boundary::{BoundaryConstraint, BoundaryConstraintGroup, BoundaryConstrai
 mod transition;
 pub use transition::{EvaluationFrame, TransitionConstraintDegree, TransitionConstraints};
 
+mod lagrange;
+pub use lagrange::{
+    LagrangeKernelBoundaryConstraint, LagrangeKernelConstraints, LagrangeKernelEvaluationFrame,
+    LagrangeKernelTransitionConstraints,
+};
+
 mod coefficients;
 pub use coefficients::{
     AuxTraceRandElements, ConstraintCompositionCoefficients, DeepCompositionCoefficients,
+    LagrangeConstraintsCompositionCoefficients,
 };
 
 mod divisor;
@@ -163,7 +170,7 @@ const MIN_CYCLE_LENGTH: usize = 2;
 /// trait:
 /// * The [AirContext] struct returned from [Air::context()] method must be instantiated using
 ///   [AirContext::new_multi_segment()] constructor. When building AIR context in this way, you
-///   will need to provide a [TraceLayout] which describes the shape of a multi-segment execution
+///   will need to provide a [`crate::TraceInfo`] which describes the shape of a multi-segment execution
 ///   trace.
 /// * Override [Air::evaluate_aux_transition()] method. This method is similar to the
 ///   [Air::evaluate_transition()] method but it also accepts two extra parameters:
@@ -284,6 +291,22 @@ pub trait Air: Send + Sync {
 
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
+
+    /// Returns a new [`LagrangeKernelConstraints`] if a Lagrange kernel auxiliary column is present
+    /// in the trace, or `None` otherwise.
+    fn get_lagrange_kernel_constraints<E: FieldElement<BaseField = Self::BaseField>>(
+        &self,
+        lagrange_composition_coefficients: LagrangeConstraintsCompositionCoefficients<E>,
+        lagrange_kernel_rand_elements: &[E],
+    ) -> Option<LagrangeKernelConstraints<E>> {
+        self.context().lagrange_kernel_aux_column_idx().map(|col_idx| {
+            LagrangeKernelConstraints::new(
+                lagrange_composition_coefficients,
+                lagrange_kernel_rand_elements,
+                col_idx,
+            )
+        })
+    }
 
     /// Returns values for all periodic columns used in the computation.
     ///
@@ -501,9 +524,26 @@ pub trait Air: Send + Sync {
             b_coefficients.push(public_coin.draw()?);
         }
 
+        let lagrange = if self.context().has_lagrange_kernel_aux_column() {
+            let mut lagrange_kernel_t_coefficients = Vec::new();
+            for _ in 0..self.context().trace_len().ilog2() {
+                lagrange_kernel_t_coefficients.push(public_coin.draw()?);
+            }
+
+            let lagrange_kernel_boundary = public_coin.draw()?;
+
+            Some(LagrangeConstraintsCompositionCoefficients {
+                transition: lagrange_kernel_t_coefficients,
+                boundary: lagrange_kernel_boundary,
+            })
+        } else {
+            None
+        };
+
         Ok(ConstraintCompositionCoefficients {
             transition: t_coefficients,
             boundary: b_coefficients,
+            lagrange,
         })
     }
 

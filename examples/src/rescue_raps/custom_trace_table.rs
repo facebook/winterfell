@@ -175,6 +175,7 @@ impl<B: StarkField> Trace for RapTraceTable<B> {
         &mut self,
         aux_segments: &[ColMatrix<E>],
         rand_elements: &[E],
+        _lagrange_rand_elements: Option<&[E]>,
     ) -> Option<ColMatrix<E>>
     where
         E: FieldElement<BaseField = Self::BaseField>,
