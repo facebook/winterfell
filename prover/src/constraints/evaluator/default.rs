@@ -282,14 +282,26 @@ where
         }
     }
 
+    /// If present, evaluates the Lagrange kernel constraints over the constraint evaluation domain.
+    /// The evaluation of each constraint (both boundary and transition) is divided by its divisor,
+    /// multiplied by its composition coefficient, the result of which is added to
+    /// `combined_evaluations_accumulator`.
+    ///
+    /// Specifically, `combined_evaluations_accumulator` is a buffer whose length is the size of the
+    /// constraint evaluation domain, where each index contains combined evaluations of other
+    /// constraints in the system.
     fn evaluate_lagrange_kernel_constraints<T: TraceLde<E>>(
         &self,
         trace: &T,
         domain: &StarkDomain<A::BaseField>,
-        accumulator: &mut [E],
+        combined_evaluations_accumulator: &mut [E],
     ) {
         if let Some(ref evaluator) = self.lagrange_constraints_evaluator {
-            evaluator.evaluate_lagrange_kernel_constraints(trace, domain, accumulator)
+            evaluator.evaluate_lagrange_kernel_constraints(
+                trace,
+                domain,
+                combined_evaluations_accumulator,
+            )
         }
     }
 
