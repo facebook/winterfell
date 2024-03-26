@@ -58,7 +58,7 @@ impl OodFrame {
     /// [a1, b1, a2, b2, ..., an, bn, c1, d1, c2, d2, ..., cm, dm]
     ///
     /// into `Self::trace_states` (as byte values).
-    /// 
+    ///
     /// Returns the hash of the trace states.
     ///
     /// # Panics
