@@ -80,8 +80,8 @@ impl<E: FieldElement> TracePolyTable<E> {
     pub fn get_ood_frame(&self, z: E) -> OodFrameTraceStates<E> {
         let log_trace_len = self.poly_size().ilog2();
         let g = E::from(E::BaseField::get_root_of_unity(log_trace_len));
-        let current_frame = self.evaluate_at(z);
-        let next_frame = self.evaluate_at(z * g);
+        let current_row = self.evaluate_at(z);
+        let next_row = self.evaluate_at(z * g);
 
         let lagrange_kernel_frame = self.lagrange_kernel_column_idx.map(|col_idx| {
             let lagrange_kernel_col_poly = self.aux_segment_polys[0].get_column(col_idx);
@@ -92,7 +92,7 @@ impl<E: FieldElement> TracePolyTable<E> {
             )
         });
 
-        OodFrameTraceStates::new(current_frame, next_frame, lagrange_kernel_frame)
+        OodFrameTraceStates::new(current_row, next_row, lagrange_kernel_frame)
     }
 
     /// Returns an iterator over the polynomials of the main trace segment.

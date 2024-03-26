@@ -5,7 +5,7 @@
 
 use crate::VerifierError;
 use air::{
-    proof::{ParsedOodFrame, Queries, StarkProof, Table},
+    proof::{OodFrameTraceStates, Queries, StarkProof, Table},
     Air, EvaluationFrame, LagrangeKernelEvaluationFrame,
 };
 use alloc::{string::ToString, vec::Vec};
@@ -35,7 +35,7 @@ pub struct VerifierChannel<E: FieldElement, H: ElementHasher<BaseField = E::Base
     fri_remainder: Option<Vec<E>>,
     fri_num_partitions: usize,
     // out-of-domain frame
-    ood_trace_frame: Option<TraceOodFrame<E>>,
+    ood_trace_frame: Option<OodFrameTraceStates<E>>,
     ood_constraint_evaluations: Option<Vec<E>>,
     // query proof-of-work
     pow_nonce: u64,
@@ -92,19 +92,9 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         // --- parse out-of-domain evaluation frame -----------------------------------------------
-        let ParsedOodFrame {
-            trace_evaluations: ood_trace_evaluations,
-            lagrange_kernel_trace_evaluations: ood_lagrange_kernel_trace_evaluations,
-            constraint_evaluations: ood_constraint_evaluations,
-        } = ood_frame
+        let (ood_trace_frame, ood_constraint_evaluations) = ood_frame
             .parse(main_trace_width, aux_trace_width, constraint_frame_width)
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
-        let ood_trace_frame = TraceOodFrame::new(
-            ood_trace_evaluations,
-            main_trace_width,
-            aux_trace_width,
-            ood_lagrange_kernel_trace_evaluations,
-        );
 
         Ok(VerifierChannel {
             // trace queries
@@ -148,7 +138,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
     ///
     /// For computations requiring multiple trace segments, evaluations of auxiliary trace
     /// polynomials are also included.
-    pub fn read_ood_trace_frame(&mut self) -> TraceOodFrame<E> {
+    pub fn read_ood_trace_frame(&mut self) -> OodFrameTraceStates<E> {
         self.ood_trace_frame.take().expect("already read")
     }
 

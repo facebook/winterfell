@@ -4,22 +4,14 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::vec::Vec;
+use crypto::ElementHasher;
 use math::FieldElement;
-use utils::{
-    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
-};
+use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
-use crate::LagrangeKernelEvaluationFrame;
+use crate::{EvaluationFrame, LagrangeKernelEvaluationFrame};
 
 // OUT-OF-DOMAIN FRAME
 // ================================================================================================
-
-/// Represents an [`OodFrame`] where the trace and constraint evaluations have been parsed out.
-pub struct ParsedOodFrame<E> {
-    pub trace_evaluations: Vec<E>,
-    pub lagrange_kernel_trace_evaluations: Option<Vec<E>>,
-    pub constraint_evaluations: Vec<E>,
-}
 
 /// Trace and constraint polynomial evaluations at an out-of-domain point.
 ///
@@ -104,16 +96,16 @@ impl OodFrame {
 
     // PARSER
     // --------------------------------------------------------------------------------------------
-    /// Returns main and auxiliary (if any) trace evaluation frames and a vector of out-of-domain
-    /// constraint evaluations contained in `self`.
+    /// Returns an out-of-domain trace frame and a vector of out-of-domain constraint evaluations
+    /// contained in `self`.
     ///
     /// # Panics
     /// Panics if either `main_trace_width` or `num_evaluations` are equal to zero.
     ///
     /// # Errors
     /// Returns an error if:
-    /// * Valid [`crate::EvaluationFrame`]s for the specified `main_trace_width` and `aux_trace_width`
-    ///   could not be parsed from the internal bytes.
+    /// * Valid [`crate::EvaluationFrame`]s for the specified `main_trace_width` and
+    ///   `aux_trace_width` could not be parsed from the internal bytes.
     /// * A vector of evaluations specified by `num_evaluations` could not be parsed from the
     ///   internal bytes.
     /// * Any unconsumed bytes remained after the parsing was complete.
@@ -122,40 +114,8 @@ impl OodFrame {
         main_trace_width: usize,
         aux_trace_width: usize,
         num_evaluations: usize,
-    ) -> Result<ParsedOodFrame<E>, DeserializationError> {
-        assert!(main_trace_width > 0, "trace width cannot be zero");
-        assert!(num_evaluations > 0, "number of evaluations cannot be zero");
-
-        // parse main and auxiliary trace evaluation frames
-        let mut reader = SliceReader::new(&self.trace_states);
-        let frame_size = reader.read_u8()? as usize;
-        let trace = reader.read_many((main_trace_width + aux_trace_width) * frame_size)?;
-
-        if reader.has_more_bytes() {
-            return Err(DeserializationError::UnconsumedBytes);
-        }
-
-        // parse Lagrange kernel column trace
-        let mut reader = SliceReader::new(&self.lagrange_kernel_trace_states);
-        let lagrange_kernel_frame_size = reader.read_u8()? as usize;
-        let lagrange_kernel_trace = if lagrange_kernel_frame_size > 0 {
-            Some(reader.read_many(lagrange_kernel_frame_size)?)
-        } else {
-            None
-        };
-
-        // parse the constraint evaluations
-        let mut reader = SliceReader::new(&self.evaluations);
-        let evaluations = reader.read_many(num_evaluations)?;
-        if reader.has_more_bytes() {
-            return Err(DeserializationError::UnconsumedBytes);
-        }
-
-        Ok(ParsedOodFrame {
-            trace_evaluations: trace,
-            lagrange_kernel_trace_evaluations: lagrange_kernel_trace,
-            constraint_evaluations: evaluations,
-        })
+    ) -> Result<(OodFrameTraceStates<E>, Vec<E>), DeserializationError> {
+        todo!()
     }
 }
 
@@ -226,15 +186,15 @@ pub struct OodFrameTraceStates<E: FieldElement> {
 impl<E: FieldElement> OodFrameTraceStates<E> {
     /// Creates a new [`OodFrameTraceStates`] from current, next and optionally Lagrange kernel frames.
     pub fn new(
-        current_frame: Vec<E>,
-        next_frame: Vec<E>,
+        current_row: Vec<E>,
+        next_row: Vec<E>,
         lagrange_kernel_frame: Option<LagrangeKernelEvaluationFrame<E>>,
     ) -> Self {
-        assert_eq!(current_frame.len(), next_frame.len());
+        assert_eq!(current_row.len(), next_row.len());
 
         Self {
-            current_row: current_frame,
-            next_row: next_frame,
+            current_row,
+            next_row,
             lagrange_kernel_frame,
         }
     }
@@ -244,14 +204,26 @@ impl<E: FieldElement> OodFrameTraceStates<E> {
         self.current_row.len()
     }
 
-    /// Returns the current frame.
-    pub fn current_frame(&self) -> &[E] {
+    /// Returns the current row, consisting of both main and auxiliary columns.
+    pub fn current_row(&self) -> &[E] {
         &self.current_row
     }
 
-    /// Returns the next frame.
-    pub fn next_frame(&self) -> &[E] {
+    /// Returns the next frame, consisting of both main and auxiliary columns.
+    pub fn next_row(&self) -> &[E] {
         &self.next_row
+    }
+
+    pub fn main_frame(&self) -> EvaluationFrame<E> {
+        todo!()
+    }
+
+    pub fn aux_frame(&self) -> Option<EvaluationFrame<E>> {
+        todo!()
+    }
+
+    pub fn hash<H: ElementHasher<BaseField = E::BaseField>>(&self) -> H::Digest {
+        todo!()
     }
 
     /// Returns the Lagrange kernel frame, if any.

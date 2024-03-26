@@ -89,7 +89,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
             acc_trace_poly::<E::BaseField, E>(
                 &mut t1_composition,
                 poly,
-                ood_trace_states.current_frame()[i],
+                ood_trace_states.current_row()[i],
                 self.cc.trace[i],
             );
 
@@ -98,7 +98,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
             acc_trace_poly::<E::BaseField, E>(
                 &mut t2_composition,
                 poly,
-                ood_trace_states.next_frame()[i],
+                ood_trace_states.next_row()[i],
                 self.cc.trace[i],
             );
 
@@ -112,7 +112,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
             acc_trace_poly::<E, E>(
                 &mut t1_composition,
                 poly,
-                ood_trace_states.current_frame()[i],
+                ood_trace_states.current_row()[i],
                 self.cc.trace[i],
             );
 
@@ -121,7 +121,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
             acc_trace_poly::<E, E>(
                 &mut t2_composition,
                 poly,
-                ood_trace_states.next_frame()[i],
+                ood_trace_states.next_row()[i],
                 self.cc.trace[i],
             );
 
