@@ -92,7 +92,9 @@ impl<E: FieldElement> TracePolyTable<E> {
             )
         });
 
-        OodFrameTraceStates::new(current_row, next_row, lagrange_kernel_frame)
+        let main_trace_width = self.main_segment_polys.num_cols();
+
+        OodFrameTraceStates::new(current_row, next_row, main_trace_width, lagrange_kernel_frame)
     }
 
     /// Returns an iterator over the polynomials of the main trace segment.

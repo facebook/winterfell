@@ -6,7 +6,9 @@
 use alloc::vec::Vec;
 use crypto::ElementHasher;
 use math::FieldElement;
-use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+use utils::{
+    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
+};
 
 use crate::{EvaluationFrame, LagrangeKernelEvaluationFrame};
 
@@ -115,7 +117,57 @@ impl OodFrame {
         aux_trace_width: usize,
         num_evaluations: usize,
     ) -> Result<(OodFrameTraceStates<E>, Vec<E>), DeserializationError> {
-        todo!()
+        assert!(main_trace_width > 0, "trace width cannot be zero");
+        assert!(num_evaluations > 0, "number of evaluations cannot be zero");
+
+        // parse main and auxiliary trace evaluation frames
+        let (current_row, next_row) = {
+            let mut reader = SliceReader::new(&self.trace_states);
+            let frame_size = reader.read_u8()? as usize;
+            let mut trace = reader.read_many((main_trace_width + aux_trace_width) * frame_size)?;
+
+            if reader.has_more_bytes() {
+                return Err(DeserializationError::UnconsumedBytes);
+            }
+
+            let mut current_row = Vec::with_capacity(main_trace_width);
+            let mut next_row = Vec::with_capacity(main_trace_width);
+
+            while !trace.is_empty() {
+                current_row.push(trace.pop().expect(""));
+                next_row.push(trace.pop().expect(""));
+            }
+
+            (current_row, next_row)
+        };
+
+        // parse Lagrange kernel column trace
+        let mut reader = SliceReader::new(&self.lagrange_kernel_trace_states);
+        let lagrange_kernel_frame_size = reader.read_u8()? as usize;
+        let lagrange_kernel_frame = if lagrange_kernel_frame_size > 0 {
+            let lagrange_kernel_trace = reader.read_many(lagrange_kernel_frame_size)?;
+
+            Some(LagrangeKernelEvaluationFrame::new(lagrange_kernel_trace))
+        } else {
+            None
+        };
+
+        // parse the constraint evaluations
+        let mut reader = SliceReader::new(&self.evaluations);
+        let evaluations = reader.read_many(num_evaluations)?;
+        if reader.has_more_bytes() {
+            return Err(DeserializationError::UnconsumedBytes);
+        }
+
+        Ok((
+            OodFrameTraceStates::new(
+                current_row,
+                next_row,
+                main_trace_width,
+                lagrange_kernel_frame,
+            ),
+            evaluations,
+        ))
     }
 }
 
@@ -180,6 +232,7 @@ impl Deserializable for OodFrame {
 pub struct OodFrameTraceStates<E: FieldElement> {
     current_row: Vec<E>,
     next_row: Vec<E>,
+    main_trace_width: usize,
     lagrange_kernel_frame: Option<LagrangeKernelEvaluationFrame<E>>,
 }
 
@@ -188,6 +241,7 @@ impl<E: FieldElement> OodFrameTraceStates<E> {
     pub fn new(
         current_row: Vec<E>,
         next_row: Vec<E>,
+        main_trace_width: usize,
         lagrange_kernel_frame: Option<LagrangeKernelEvaluationFrame<E>>,
     ) -> Self {
         assert_eq!(current_row.len(), next_row.len());
@@ -195,6 +249,7 @@ impl<E: FieldElement> OodFrameTraceStates<E> {
         Self {
             current_row,
             next_row,
+            main_trace_width,
             lagrange_kernel_frame,
         }
     }
@@ -223,6 +278,8 @@ impl<E: FieldElement> OodFrameTraceStates<E> {
     }
 
     pub fn hash<H: ElementHasher<BaseField = E::BaseField>>(&self) -> H::Digest {
+        // TODO: This has to be the interleaved strategy to correspond with
+        // `OodFrame::set_trace_states()`
         todo!()
     }
 

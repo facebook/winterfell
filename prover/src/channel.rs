@@ -86,8 +86,8 @@ where
     /// Saves the evaluations of trace polynomials over the out-of-domain evaluation frame. This
     /// also reseeds the public coin with the hashes of the evaluation frame states.
     pub fn send_ood_trace_states(&mut self, trace_states: &OodFrameTraceStates<E>) {
-        let result = self.ood_frame.set_trace_states(trace_states);
-        self.public_coin.reseed(H::hash_elements(&result));
+        self.ood_frame.set_trace_states(trace_states);
+        self.public_coin.reseed(trace_states.hash::<H>());
     }
 
     /// Saves the evaluations of constraint composition polynomial columns at the out-of-domain
