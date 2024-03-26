@@ -233,10 +233,10 @@ impl Deserializable for OodFrame {
 // OOD FRAME TRACE STATES
 // ================================================================================================
 
-/// Stores the trace evaluations at `z` and `gz`, where `z` is a random Field element. If
-/// the Air contains a Lagrange kernel auxiliary column, then that column interpolated polynomial
-/// will be evaluated at `z`, `gz`, `g^2 z`, ... `g^(2^(v-1)) z`, where `v == log(trace_len)`, and
-/// stored in `lagrange_kernel_frame`.
+/// Stores the trace evaluations at `z` and `gz`, where `z` is a random Field element in
+/// `current_row` and `next_row`, respectively. If the Air contains a Lagrange kernel auxiliary
+/// column, then that column interpolated polynomial will be evaluated at `z`, `gz`, `g^2 z`, ...
+/// `g^(2^(v-1)) z`, where `v == log(trace_len)`, and stored in `lagrange_kernel_frame`.
 pub struct TraceOodFrame<E: FieldElement> {
     current_row: Vec<E>,
     next_row: Vec<E>,
@@ -245,7 +245,7 @@ pub struct TraceOodFrame<E: FieldElement> {
 }
 
 impl<E: FieldElement> TraceOodFrame<E> {
-    /// Creates a new [`OodFrameTraceStates`] from current, next and optionally Lagrange kernel frames.
+    /// Creates a new [`TraceOodFrame`] from current, next and optionally Lagrange kernel frames.
     pub fn new(
         current_row: Vec<E>,
         next_row: Vec<E>,
@@ -277,6 +277,7 @@ impl<E: FieldElement> TraceOodFrame<E> {
         &self.next_row
     }
 
+    /// Returns the evaluation frame for the main trace
     pub fn main_frame(&self) -> EvaluationFrame<E> {
         let current = self.current_row[0..self.main_trace_width].to_vec();
         let next = self.next_row[0..self.main_trace_width].to_vec();
@@ -284,6 +285,7 @@ impl<E: FieldElement> TraceOodFrame<E> {
         EvaluationFrame::from_rows(current, next)
     }
 
+    /// Returns the evaluation frame for the auxiliary trace
     pub fn aux_frame(&self) -> Option<EvaluationFrame<E>> {
         if self.has_aux_frame() {
             let current = self.current_row[self.main_trace_width..].to_vec();
@@ -295,6 +297,8 @@ impl<E: FieldElement> TraceOodFrame<E> {
         }
     }
 
+    /// Hashes the main, auxiliary and Lagrange kernel frame in a manner consistent with
+    /// [`OodFrame::set_trace_states`], with the purpose of reseeding the public coin.
     pub fn hash<H: ElementHasher<BaseField = E::BaseField>>(&self) -> H::Digest {
         let mut elements_to_hash = vec![];
         for col in 0..self.current_row.len() {
