@@ -120,11 +120,12 @@ impl OodFrame {
         assert!(main_trace_width > 0, "trace width cannot be zero");
         assert!(num_evaluations > 0, "number of evaluations cannot be zero");
 
-        // parse main and auxiliary trace evaluation frames
+        // Parse main and auxiliary trace evaluation frames. This does the reverse operation done in
+        // `set_trace_states()`.
         let (current_row, next_row) = {
             let mut reader = SliceReader::new(&self.trace_states);
             let frame_size = reader.read_u8()? as usize;
-            let mut trace = reader.read_many((main_trace_width + aux_trace_width) * frame_size)?;
+            let trace = reader.read_many((main_trace_width + aux_trace_width) * frame_size)?;
 
             if reader.has_more_bytes() {
                 return Err(DeserializationError::UnconsumedBytes);
@@ -133,9 +134,9 @@ impl OodFrame {
             let mut current_row = Vec::with_capacity(main_trace_width);
             let mut next_row = Vec::with_capacity(main_trace_width);
 
-            while !trace.is_empty() {
-                current_row.push(trace.pop().expect(""));
-                next_row.push(trace.pop().expect(""));
+            for col in trace.chunks_exact(2) {
+                current_row.push(col[0]);
+                next_row.push(col[1]);
             }
 
             (current_row, next_row)
