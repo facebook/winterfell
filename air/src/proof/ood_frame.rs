@@ -61,39 +61,26 @@ impl OodFrame {
     ///
     /// # Panics
     /// Panics if evaluation frame has already been set.
-    pub fn set_trace_states<E: FieldElement>(&mut self, trace_states: &TraceOodFrame<E>) -> Vec<E> {
+    pub fn set_trace_states<E: FieldElement>(&mut self, trace_ood_frame: &TraceOodFrame<E>) -> Vec<E> {
         assert!(self.trace_states.is_empty(), "trace sates have already been set");
 
         // save the evaluations with the current and next evaluations interleaved for each polynomial
-
-        let mut result = vec![];
-        for col in 0..trace_states.num_columns() {
-            result.push(trace_states.current_row[col]);
-            result.push(trace_states.next_row[col]);
-        }
+        let (main_and_aux_trace_states, lagrange_trace_states) = trace_ood_frame.to_trace_states();
 
         // there are 2 frames: current and next
         let frame_size: u8 = 2;
-
         self.trace_states.write_u8(frame_size);
-        self.trace_states.write_many(&result);
+        self.trace_states.write_many(&main_and_aux_trace_states);
 
         // save the Lagrange kernel evaluation frame (if any)
-        let lagrange_trace_states = {
-            let lagrange_trace_states = match trace_states.lagrange_kernel_frame {
-                Some(ref lagrange_trace_states) => lagrange_trace_states.inner().to_vec(),
-                None => Vec::new(),
-            };
-
+        {
             // trace states length will be smaller than u8::MAX, since it is `== log2(trace_len) + 1`
             debug_assert!(lagrange_trace_states.len() < u8::MAX.into());
             self.lagrange_kernel_trace_states.write_u8(lagrange_trace_states.len() as u8);
             self.lagrange_kernel_trace_states.write_many(&lagrange_trace_states);
-
-            lagrange_trace_states
         };
 
-        result.into_iter().chain(lagrange_trace_states).collect()
+        main_and_aux_trace_states.into_iter().chain(lagrange_trace_states).collect()
     }
 
     /// Updates constraint evaluation portion of this out-of-domain frame.
@@ -300,7 +287,7 @@ impl<E: FieldElement> TraceOodFrame<E> {
     /// Hashes the main, auxiliary and Lagrange kernel frame in a manner consistent with
     /// [`OodFrame::set_trace_states`], with the purpose of reseeding the public coin.
     pub fn hash<H: ElementHasher<BaseField = E::BaseField>>(&self) -> H::Digest {
-        let (mut trace_states, mut lagrange_trace_states) = self.to_frame_states();
+        let (mut trace_states, mut lagrange_trace_states) = self.to_trace_states();
         trace_states.append(&mut lagrange_trace_states);
 
         H::hash_elements(&trace_states)
@@ -318,7 +305,7 @@ impl<E: FieldElement> TraceOodFrame<E> {
 
     /// Returns the main/aux frame and Lagrange kernel frame as element vectors. Specifically, the
     /// main and auxiliary frames are interleaved, as described in [`OodFrame::set_trace_states`].
-    fn to_frame_states(&self) -> (Vec<E>, Vec<E>) {
+    fn to_trace_states(&self) -> (Vec<E>, Vec<E>) {
         let mut main_and_aux_frame_states = Vec::new();
         for col in 0..self.current_row.len() {
             main_and_aux_frame_states.push(self.current_row[col]);
