@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use air::{
-    proof::{Commitments, Context, OodFrame, OodFrameTraceStates, Queries, StarkProof},
+    proof::{Commitments, Context, OodFrame, Queries, StarkProof, TraceOodFrame},
     Air, ConstraintCompositionCoefficients, DeepCompositionCoefficients,
 };
 use alloc::vec::Vec;
@@ -85,7 +85,7 @@ where
 
     /// Saves the evaluations of trace polynomials over the out-of-domain evaluation frame. This
     /// also reseeds the public coin with the hashes of the evaluation frame states.
-    pub fn send_ood_trace_states(&mut self, trace_states: &OodFrameTraceStates<E>) {
+    pub fn send_ood_trace_states(&mut self, trace_states: &TraceOodFrame<E>) {
         let elements_to_hash = self.ood_frame.set_trace_states(trace_states);
         self.public_coin.reseed(H::hash_elements(&elements_to_hash));
     }

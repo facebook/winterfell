@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{constraints::CompositionPoly, StarkDomain, TracePolyTable};
-use air::{proof::OodFrameTraceStates, DeepCompositionCoefficients};
+use air::{proof::TraceOodFrame, DeepCompositionCoefficients};
 use alloc::vec::Vec;
 use math::{add_in_place, fft, mul_acc, polynom, ExtensionOf, FieldElement, StarkField};
 use utils::iter_mut;
@@ -64,7 +64,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
     pub fn add_trace_polys(
         &mut self,
         trace_polys: TracePolyTable<E>,
-        ood_trace_states: OodFrameTraceStates<E>,
+        ood_trace_states: TraceOodFrame<E>,
     ) {
         assert!(self.coefficients.is_empty());
 

@@ -5,7 +5,7 @@
 
 use crate::VerifierError;
 use air::{
-    proof::{OodFrameTraceStates, Queries, StarkProof, Table},
+    proof::{Queries, StarkProof, Table, TraceOodFrame},
     Air,
 };
 use alloc::{string::ToString, vec::Vec};
@@ -35,7 +35,7 @@ pub struct VerifierChannel<E: FieldElement, H: ElementHasher<BaseField = E::Base
     fri_remainder: Option<Vec<E>>,
     fri_num_partitions: usize,
     // out-of-domain frame
-    ood_trace_frame: Option<OodFrameTraceStates<E>>,
+    ood_trace_frame: Option<TraceOodFrame<E>>,
     ood_constraint_evaluations: Option<Vec<E>>,
     // query proof-of-work
     pow_nonce: u64,
@@ -138,7 +138,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
     ///
     /// For computations requiring multiple trace segments, evaluations of auxiliary trace
     /// polynomials are also included.
-    pub fn read_ood_trace_frame(&mut self) -> OodFrameTraceStates<E> {
+    pub fn read_ood_trace_frame(&mut self) -> TraceOodFrame<E> {
         self.ood_trace_frame.take().expect("already read")
     }
 

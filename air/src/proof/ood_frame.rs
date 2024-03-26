@@ -61,10 +61,7 @@ impl OodFrame {
     ///
     /// # Panics
     /// Panics if evaluation frame has already been set.
-    pub fn set_trace_states<E: FieldElement>(
-        &mut self,
-        trace_states: &OodFrameTraceStates<E>,
-    ) -> Vec<E> {
+    pub fn set_trace_states<E: FieldElement>(&mut self, trace_states: &TraceOodFrame<E>) -> Vec<E> {
         assert!(self.trace_states.is_empty(), "trace sates have already been set");
 
         // save the evaluations with the current and next evaluations interleaved for each polynomial
@@ -131,7 +128,7 @@ impl OodFrame {
         main_trace_width: usize,
         aux_trace_width: usize,
         num_evaluations: usize,
-    ) -> Result<(OodFrameTraceStates<E>, Vec<E>), DeserializationError> {
+    ) -> Result<(TraceOodFrame<E>, Vec<E>), DeserializationError> {
         assert!(main_trace_width > 0, "trace width cannot be zero");
         assert!(num_evaluations > 0, "number of evaluations cannot be zero");
 
@@ -176,12 +173,7 @@ impl OodFrame {
         }
 
         Ok((
-            OodFrameTraceStates::new(
-                current_row,
-                next_row,
-                main_trace_width,
-                lagrange_kernel_frame,
-            ),
+            TraceOodFrame::new(current_row, next_row, main_trace_width, lagrange_kernel_frame),
             evaluations,
         ))
     }
@@ -245,14 +237,14 @@ impl Deserializable for OodFrame {
 /// the Air contains a Lagrange kernel auxiliary column, then that column interpolated polynomial
 /// will be evaluated at `z`, `gz`, `g^2 z`, ... `g^(2^(v-1)) z`, where `v == log(trace_len)`, and
 /// stored in `lagrange_kernel_frame`.
-pub struct OodFrameTraceStates<E: FieldElement> {
+pub struct TraceOodFrame<E: FieldElement> {
     current_row: Vec<E>,
     next_row: Vec<E>,
     main_trace_width: usize,
     lagrange_kernel_frame: Option<LagrangeKernelEvaluationFrame<E>>,
 }
 
-impl<E: FieldElement> OodFrameTraceStates<E> {
+impl<E: FieldElement> TraceOodFrame<E> {
     /// Creates a new [`OodFrameTraceStates`] from current, next and optionally Lagrange kernel frames.
     pub fn new(
         current_row: Vec<E>,

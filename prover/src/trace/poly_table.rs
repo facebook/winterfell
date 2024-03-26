@@ -7,7 +7,7 @@ use crate::{
     matrix::{ColumnIter, MultiColumnIter},
     ColMatrix,
 };
-use air::{proof::OodFrameTraceStates, LagrangeKernelEvaluationFrame};
+use air::{proof::TraceOodFrame, LagrangeKernelEvaluationFrame};
 use alloc::vec::Vec;
 use math::{FieldElement, StarkField};
 
@@ -77,7 +77,7 @@ impl<E: FieldElement> TracePolyTable<E> {
     /// Additionally, if the Lagrange kernel auxiliary column is present, we also evaluate that
     /// column over the points: z, z * g, z * g^2, z * g^4, ..., z * g^(2^(v-1)), where v =
     /// log(trace_len).
-    pub fn get_ood_frame(&self, z: E) -> OodFrameTraceStates<E> {
+    pub fn get_ood_frame(&self, z: E) -> TraceOodFrame<E> {
         let log_trace_len = self.poly_size().ilog2();
         let g = E::from(E::BaseField::get_root_of_unity(log_trace_len));
         let current_row = self.evaluate_at(z);
@@ -94,7 +94,7 @@ impl<E: FieldElement> TracePolyTable<E> {
 
         let main_trace_width = self.main_segment_polys.num_cols();
 
-        OodFrameTraceStates::new(current_row, next_row, main_trace_width, lagrange_kernel_frame)
+        TraceOodFrame::new(current_row, next_row, main_trace_width, lagrange_kernel_frame)
     }
 
     /// Returns an iterator over the polynomials of the main trace segment.
