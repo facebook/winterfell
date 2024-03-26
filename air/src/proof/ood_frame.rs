@@ -58,10 +58,16 @@ impl OodFrame {
     /// [a1, b1, a2, b2, ..., an, bn, c1, d1, c2, d2, ..., cm, dm]
     ///
     /// into `Self::trace_states` (as byte values).
+    /// 
+    /// Returns the hash of the trace states.
     ///
     /// # Panics
     /// Panics if evaluation frame has already been set.
-    pub fn set_trace_states<E: FieldElement>(&mut self, trace_ood_frame: &TraceOodFrame<E>) -> Vec<E> {
+    pub fn set_trace_states<E, H>(&mut self, trace_ood_frame: &TraceOodFrame<E>) -> H::Digest
+    where
+        E: FieldElement,
+        H: ElementHasher<BaseField = E::BaseField>,
+    {
         assert!(self.trace_states.is_empty(), "trace sates have already been set");
 
         // save the evaluations with the current and next evaluations interleaved for each polynomial
@@ -80,7 +86,10 @@ impl OodFrame {
             self.lagrange_kernel_trace_states.write_many(&lagrange_trace_states);
         };
 
-        main_and_aux_trace_states.into_iter().chain(lagrange_trace_states).collect()
+        let elements_to_hash: Vec<E> =
+            main_and_aux_trace_states.into_iter().chain(lagrange_trace_states).collect();
+
+        H::hash_elements(&elements_to_hash)
     }
 
     /// Updates constraint evaluation portion of this out-of-domain frame.
