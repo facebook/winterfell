@@ -270,11 +270,21 @@ impl<E: FieldElement> OodFrameTraceStates<E> {
     }
 
     pub fn main_frame(&self) -> EvaluationFrame<E> {
-        todo!()
+        let current = self.current_row[0..self.main_trace_width].to_vec();
+        let next = self.next_row[0..self.main_trace_width].to_vec();
+
+        EvaluationFrame::from_rows(current, next)
     }
 
     pub fn aux_frame(&self) -> Option<EvaluationFrame<E>> {
-        todo!()
+        if self.has_aux_frame() {
+            let current = self.current_row[self.main_trace_width..].to_vec();
+            let next = self.next_row[self.main_trace_width..].to_vec();
+
+            Some(EvaluationFrame::from_rows(current, next))
+        } else {
+            None
+        }
     }
 
     pub fn hash<H: ElementHasher<BaseField = E::BaseField>>(&self) -> H::Digest {
@@ -286,5 +296,9 @@ impl<E: FieldElement> OodFrameTraceStates<E> {
     /// Returns the Lagrange kernel frame, if any.
     pub fn lagrange_kernel_frame(&self) -> Option<&LagrangeKernelEvaluationFrame<E>> {
         self.lagrange_kernel_frame.as_ref()
+    }
+
+    fn has_aux_frame(&self) -> bool {
+        self.current_row.len() > self.main_trace_width
     }
 }
