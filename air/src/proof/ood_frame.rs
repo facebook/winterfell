@@ -288,9 +288,17 @@ impl<E: FieldElement> OodFrameTraceStates<E> {
     }
 
     pub fn hash<H: ElementHasher<BaseField = E::BaseField>>(&self) -> H::Digest {
-        // TODO: This has to be the interleaved strategy to correspond with
-        // `OodFrame::set_trace_states()`
-        todo!()
+        let mut elements_to_hash = vec![];
+        for col in 0..self.current_row.len() {
+            elements_to_hash.push(self.current_row[col]);
+            elements_to_hash.push(self.next_row[col]);
+        }
+
+        if let Some(ref frame) = self.lagrange_kernel_frame {
+            elements_to_hash.extend(frame.inner());
+        }
+
+        H::hash_elements(&elements_to_hash)
     }
 
     /// Returns the Lagrange kernel frame, if any.
