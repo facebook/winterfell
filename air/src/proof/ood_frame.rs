@@ -300,17 +300,10 @@ impl<E: FieldElement> TraceOodFrame<E> {
     /// Hashes the main, auxiliary and Lagrange kernel frame in a manner consistent with
     /// [`OodFrame::set_trace_states`], with the purpose of reseeding the public coin.
     pub fn hash<H: ElementHasher<BaseField = E::BaseField>>(&self) -> H::Digest {
-        let mut elements_to_hash = vec![];
-        for col in 0..self.current_row.len() {
-            elements_to_hash.push(self.current_row[col]);
-            elements_to_hash.push(self.next_row[col]);
-        }
+        let (mut trace_states, mut lagrange_trace_states) = self.to_frame_states();
+        trace_states.append(&mut lagrange_trace_states);
 
-        if let Some(ref frame) = self.lagrange_kernel_frame {
-            elements_to_hash.extend(frame.inner());
-        }
-
-        H::hash_elements(&elements_to_hash)
+        H::hash_elements(&trace_states)
     }
 
     /// Returns the Lagrange kernel frame, if any.
@@ -318,7 +311,25 @@ impl<E: FieldElement> TraceOodFrame<E> {
         self.lagrange_kernel_frame.as_ref()
     }
 
+    /// Returns true if an auxiliary frame is present
     fn has_aux_frame(&self) -> bool {
         self.current_row.len() > self.main_trace_width
+    }
+
+    /// Returns the main/aux frame and Lagrange kernel frame as element vectors. Specifically, the
+    /// main and auxiliary frames are interleaved, as described in [`OodFrame::set_trace_states`].
+    fn to_frame_states(&self) -> (Vec<E>, Vec<E>) {
+        let mut main_and_aux_frame_states = Vec::new();
+        for col in 0..self.current_row.len() {
+            main_and_aux_frame_states.push(self.current_row[col]);
+            main_and_aux_frame_states.push(self.next_row[col]);
+        }
+
+        let lagrange_frame_states = match self.lagrange_kernel_frame {
+            Some(ref lagrange_kernel_frame) => lagrange_kernel_frame.inner().to_vec(),
+            None => Vec::new(),
+        };
+
+        (main_and_aux_frame_states, lagrange_frame_states)
     }
 }
