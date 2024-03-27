@@ -54,7 +54,6 @@ pub use utils::{
     SliceReader,
 };
 
-use alloc::vec::Vec;
 use fri::FriProver;
 
 pub use math;
@@ -280,15 +279,15 @@ pub trait Prover {
 
         // build auxiliary trace segments (if any), and append the resulting segments to trace
         // commitment and trace polynomial table structs
-        let mut aux_trace_segments = Vec::new();
+        let mut aux_trace_segment: Option<ColMatrix<E>> = None;
         let mut aux_trace_rand_elements = AuxTraceRandElements::new();
-        for i in 0..trace.info().num_aux_segments() {
-            let num_columns = trace.info().get_aux_segment_width(i);
+        if trace.info().is_multi_segment() {
+            let num_columns = trace.info().get_aux_segment_width();
             let (aux_segment, rand_elements) = {
                 let span = info_span!("build_aux_trace_segment", num_columns).entered();
 
                 // draw a set of random elements required to build an auxiliary trace segment
-                let rand_elements = channel.get_aux_trace_segment_rand_elements(i);
+                let rand_elements = channel.get_aux_trace_segment_rand_elements();
                 let lagrange_rand_elements = if air.context().has_lagrange_kernel_aux_column() {
                     Some(rand_elements.as_ref())
                 } else {
@@ -297,7 +296,7 @@ pub trait Prover {
 
                 // build the trace segment
                 let aux_segment = trace
-                    .build_aux_segment(&aux_trace_segments, &rand_elements, lagrange_rand_elements)
+                    .build_aux_segment(&rand_elements, lagrange_rand_elements)
                     .expect("failed build auxiliary trace segment");
 
                 drop(span);
@@ -325,18 +324,18 @@ pub trait Prover {
             trace_polys
                 .add_aux_segment(aux_segment_polys, air.context().lagrange_kernel_aux_column_idx());
             aux_trace_rand_elements.add_segment_elements(rand_elements);
-            aux_trace_segments.push(aux_segment);
+            aux_trace_segment = Some(aux_segment);
         }
 
         // make sure the specified trace (including auxiliary segments) is valid against the AIR.
         // This checks validity of both, assertions and state transitions. We do this in debug
         // mode only because this is a very expensive operation.
         #[cfg(debug_assertions)]
-        trace.validate(&air, &aux_trace_segments, &aux_trace_rand_elements);
+        trace.validate(&air, aux_trace_segment.as_ref(), &aux_trace_rand_elements);
 
         // drop the main trace and aux trace segments as they are no longer needed
         drop(trace);
-        drop(aux_trace_segments);
+        drop(aux_trace_segment);
 
         // 2 ----- evaluate constraints -----------------------------------------------------------
         // evaluate constraints specified by the AIR over the constraint evaluation domain, and

@@ -486,14 +486,13 @@ pub trait Air: Send + Sync {
     /// The elements are drawn uniformly at random from the provided public coin.
     fn get_aux_trace_segment_random_elements<E, R>(
         &self,
-        aux_segment_idx: usize,
         public_coin: &mut R,
     ) -> Result<Vec<E>, RandomCoinError>
     where
         E: FieldElement<BaseField = Self::BaseField>,
         R: RandomCoin<BaseField = Self::BaseField>,
     {
-        let num_elements = self.trace_info().get_aux_segment_rand_elements(aux_segment_idx);
+        let num_elements = self.trace_info().get_aux_segment_rand_elements();
         let mut result = Vec::with_capacity(num_elements);
         for _ in 0..num_elements {
             result.push(public_coin.draw()?);

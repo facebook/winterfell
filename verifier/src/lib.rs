@@ -167,9 +167,9 @@ where
 
     // process auxiliary trace segments (if any), to build a set of random elements for each segment
     let mut aux_trace_rand_elements = AuxTraceRandElements::<E>::new();
-    for (i, commitment) in trace_commitments.iter().skip(1).enumerate() {
+    for commitment in trace_commitments.iter().skip(1) {
         let rand_elements = air
-            .get_aux_trace_segment_random_elements(i, &mut public_coin)
+            .get_aux_trace_segment_random_elements(&mut public_coin)
             .map_err(|_| VerifierError::RandomCoinError)?;
         aux_trace_rand_elements.add_segment_elements(rand_elements);
         public_coin.reseed(*commitment);

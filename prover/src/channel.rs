@@ -104,9 +104,9 @@ where
     /// the specified index.
     ///
     /// The elements are drawn from the public coin uniformly at random.
-    pub fn get_aux_trace_segment_rand_elements(&mut self, aux_segment_idx: usize) -> Vec<E> {
+    pub fn get_aux_trace_segment_rand_elements(&mut self) -> Vec<E> {
         self.air
-            .get_aux_trace_segment_random_elements(aux_segment_idx, &mut self.public_coin)
+            .get_aux_trace_segment_random_elements(&mut self.public_coin)
             .expect("failed to draw random elements for an auxiliary trace segment")
     }
 
