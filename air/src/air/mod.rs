@@ -163,7 +163,7 @@ const MIN_CYCLE_LENGTH: usize = 2;
 /// built for regular AIR. In the subsequent stages, the *auxiliary trace segment* is built. When
 /// building the auxiliary trace segment, the prover has access to extra randomness sent by the
 /// verifier (in the non-interactive version of the protocol, this randomness is derived from the
-/// previous trace segment commitments). 
+/// previous trace segment commitments).
 ///
 /// To describe Randomized AIR, you will need to do the following when implementing the [Air]
 /// trait:
