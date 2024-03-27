@@ -20,7 +20,7 @@ const SMALL_POLY_DEGREE: usize = 63;
 
 /// Contains all boundary constraints defined for an instance of a computation. This includes
 /// constraints against the main segment of the execution trace as well as constraints against
-/// auxiliary trace segments (if any).
+/// the auxiliary trace segment (if any).
 ///
 /// We transform the constraints defined in the [air] crate into specialized constraints here
 /// to make evaluation of these constraints more efficient in the prover context.
@@ -55,7 +55,7 @@ impl<E: FieldElement> BoundaryConstraints<E> {
             })
             .collect::<Vec<BoundaryConstraintGroup<E>>>();
 
-        // transform constraints against auxiliary trace segments (if any) into specialized
+        // transform constraints against the auxiliary trace segment (if any) into specialized
         // constraints. this also checks if a group with the same divisor has already been
         // transformed (when processing constraints against the main trace above), and if so,
         // appends constraints to that group rather than creating a new group. this ensures

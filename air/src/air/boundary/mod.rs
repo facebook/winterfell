@@ -25,7 +25,7 @@ mod tests;
 /// Boundary constraints for a computation.
 ///
 /// Boundary constraints are arranged into two categories: constraints against columns of the main
-/// trace segment, and constraints against columns of auxiliary trace segments. Within each
+/// trace segment, and constraints against columns of the auxiliary trace segment. Within each
 /// category, the constraints are grouped by their divisor (see [BoundaryConstraintGroup] for
 /// more info on boundary constraint structure).
 ///
@@ -74,7 +74,7 @@ impl<E: FieldElement> BoundaryConstraints<E> {
         assert_eq!(
             aux_assertions.len(),
             context.num_aux_assertions,
-            "expected {} assertions against auxiliary trace segments, but received {}",
+            "expected {} assertions against the auxiliary trace segment, but received {}",
             context.num_aux_assertions,
             aux_assertions.len(),
         );
@@ -87,7 +87,7 @@ impl<E: FieldElement> BoundaryConstraints<E> {
 
         let trace_length = context.trace_info.length();
         let main_trace_width = context.trace_info.main_trace_width();
-        let aux_trace_width = context.trace_info.aux_trace_width();
+        let aux_trace_width = context.trace_info.aux_segment_width();
 
         // make sure the assertions are valid in the context of their respective trace segments;
         // also, sort the assertions in the deterministic order so that changing the order of
@@ -116,7 +116,7 @@ impl<E: FieldElement> BoundaryConstraints<E> {
             &mut twiddle_map,
         );
 
-        // build constraints for the assertions against auxiliary trace segments
+        // build constraints for the assertions against the auxiliary trace segment
         let aux_constraints = group_constraints(
             aux_assertions,
             context,

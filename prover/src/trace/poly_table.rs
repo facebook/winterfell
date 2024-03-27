@@ -7,7 +7,7 @@ use crate::{
     matrix::{ColumnIter, MultiColumnIter},
     ColMatrix,
 };
-use air::{proof::OodFrameTraceStates, LagrangeKernelEvaluationFrame};
+use air::{proof::TraceOodFrame, LagrangeKernelEvaluationFrame};
 use alloc::vec::Vec;
 use math::{FieldElement, StarkField};
 
@@ -17,11 +17,11 @@ use math::{FieldElement, StarkField};
 /// Trace polynomials in coefficient from for all segments of the execution trace.
 ///
 /// Coefficients of the polynomials for the main trace segment are always in the base field.
-/// However, coefficients of the polynomials for the auxiliary trace segments may be either in the
+/// However, coefficients of the polynomials for the auxiliary trace segment may be either in the
 /// base field, or in the extension field, depending on whether extension field is being used.
 pub struct TracePolyTable<E: FieldElement> {
     main_segment_polys: ColMatrix<E::BaseField>,
-    aux_segment_polys: Vec<ColMatrix<E>>,
+    aux_segment_polys: Option<ColMatrix<E>>,
     lagrange_kernel_column_idx: Option<usize>,
 }
 
@@ -32,7 +32,7 @@ impl<E: FieldElement> TracePolyTable<E> {
     pub fn new(main_trace_polys: ColMatrix<E::BaseField>) -> Self {
         Self {
             main_segment_polys: main_trace_polys,
-            aux_segment_polys: Vec::new(),
+            aux_segment_polys: None,
             lagrange_kernel_column_idx: None,
         }
     }
@@ -43,15 +43,16 @@ impl<E: FieldElement> TracePolyTable<E> {
     /// Adds the provided auxiliary segment polynomials to this polynomial table.
     pub fn add_aux_segment(
         &mut self,
-        aux_segment_polys: ColMatrix<E>,
+        aux_segment_poly: ColMatrix<E>,
         lagrange_kernel_column_idx: Option<usize>,
     ) {
+        assert!(self.aux_segment_polys.is_none());
         assert_eq!(
             self.main_segment_polys.num_rows(),
-            aux_segment_polys.num_rows(),
+            aux_segment_poly.num_rows(),
             "polynomials in auxiliary segment must be of the same size as in the main segment"
         );
-        self.aux_segment_polys.push(aux_segment_polys);
+        self.aux_segment_polys = Some(aux_segment_poly);
         self.lagrange_kernel_column_idx = lagrange_kernel_column_idx;
     }
 
@@ -77,14 +78,18 @@ impl<E: FieldElement> TracePolyTable<E> {
     /// Additionally, if the Lagrange kernel auxiliary column is present, we also evaluate that
     /// column over the points: z, z * g, z * g^2, z * g^4, ..., z * g^(2^(v-1)), where v =
     /// log(trace_len).
-    pub fn get_ood_frame(&self, z: E) -> OodFrameTraceStates<E> {
+    pub fn get_ood_frame(&self, z: E) -> TraceOodFrame<E> {
         let log_trace_len = self.poly_size().ilog2();
         let g = E::from(E::BaseField::get_root_of_unity(log_trace_len));
-        let current_frame = self.evaluate_at(z);
-        let next_frame = self.evaluate_at(z * g);
+        let current_row = self.evaluate_at(z);
+        let next_row = self.evaluate_at(z * g);
 
         let lagrange_kernel_frame = self.lagrange_kernel_column_idx.map(|col_idx| {
-            let lagrange_kernel_col_poly = self.aux_segment_polys[0].get_column(col_idx);
+            let aux_segment_poly = self
+                .aux_segment_polys
+                .as_ref()
+                .expect("aux segment poly and lagrange kernel column idx are set together");
+            let lagrange_kernel_col_poly = aux_segment_poly.get_column(col_idx);
 
             LagrangeKernelEvaluationFrame::from_lagrange_kernel_column_poly(
                 lagrange_kernel_col_poly,
@@ -92,7 +97,9 @@ impl<E: FieldElement> TracePolyTable<E> {
             )
         });
 
-        OodFrameTraceStates::new(current_frame, next_frame, lagrange_kernel_frame)
+        let main_trace_width = self.main_segment_polys.num_cols();
+
+        TraceOodFrame::new(current_row, next_row, main_trace_width, lagrange_kernel_frame)
     }
 
     /// Returns an iterator over the polynomials of the main trace segment.
@@ -100,8 +107,8 @@ impl<E: FieldElement> TracePolyTable<E> {
         self.main_segment_polys.columns()
     }
 
-    /// Returns an iterator over the polynomials of all auxiliary trace segments.
-    pub fn aux_trace_polys(&self) -> MultiColumnIter<E> {
+    /// Returns an iterator over the polynomials of the auxiliary trace segment.
+    pub fn aux_segment_polys(&self) -> MultiColumnIter<E> {
         MultiColumnIter::new(self.aux_segment_polys.as_slice())
     }
 

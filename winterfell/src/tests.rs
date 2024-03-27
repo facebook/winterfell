@@ -53,7 +53,7 @@ impl LagrangeSimpleTrace {
 
         Self {
             main_trace: ColMatrix::new(vec![col]),
-            info: TraceInfo::new_multi_segment(1, [2], [3], Self::TRACE_LENGTH, vec![]),
+            info: TraceInfo::new_multi_segment(1, 2, 3, Self::TRACE_LENGTH, vec![]),
         }
     }
 }
@@ -71,12 +71,9 @@ impl Trace for LagrangeSimpleTrace {
 
     fn build_aux_segment<E: FieldElement<BaseField = BaseElement>>(
         &mut self,
-        aux_segments: &[ColMatrix<E>],
         _rand_elements: &[E],
         lagrange_rand_elements: Option<&[E]>,
     ) -> Option<ColMatrix<E>> {
-        assert!(aux_segments.is_empty());
-
         let lagrange_rand_elements = lagrange_rand_elements.unwrap();
 
         let r0 = lagrange_rand_elements[0];
@@ -273,8 +270,8 @@ impl LagrangeComplexTrace {
             main_trace: ColMatrix::new(vec![main_trace_col]),
             info: TraceInfo::new_multi_segment(
                 1,
-                [aux_segment_width],
-                [num_aux_segment_rands],
+                aux_segment_width,
+                num_aux_segment_rands,
                 trace_len,
                 vec![],
             ),
@@ -301,12 +298,9 @@ impl Trace for LagrangeComplexTrace {
     /// by the main column
     fn build_aux_segment<E: FieldElement<BaseField = Self::BaseField>>(
         &mut self,
-        aux_segments: &[ColMatrix<E>],
         rand_elements: &[E],
         lagrange_kernel_rand_elements: Option<&[E]>,
     ) -> Option<ColMatrix<E>> {
-        assert!(aux_segments.is_empty());
-
         let mut columns = Vec::new();
 
         // first build the Lagrange kernel column

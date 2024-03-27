@@ -204,7 +204,7 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
             max_degree = core::cmp::max(max_degree, degree);
         }
 
-        // then process transition constraint evaluations for auxiliary trace segments
+        // then process transition constraint evaluations for the auxiliary trace segment
         for evaluations in self.aux_transition_evaluations.iter() {
             let degree = get_transition_poly_degree(evaluations, &inv_twiddles, &div_values);
             actual_degrees.push(degree);

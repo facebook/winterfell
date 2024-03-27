@@ -207,7 +207,7 @@ where
             positions,
         )];
 
-        // build queries for auxiliary trace segments
+        // build queries for the auxiliary trace segment
         for (i, segment_tree) in self.aux_segment_trees.iter().enumerate() {
             let segment_lde = &self.aux_segment_ldes[i];
             result.push(build_segment_queries(segment_lde, segment_tree, positions));
