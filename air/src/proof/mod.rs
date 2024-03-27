@@ -23,7 +23,7 @@ mod queries;
 pub use queries::Queries;
 
 mod ood_frame;
-pub use ood_frame::{OodFrame, OodFrameTraceStates, ParsedOodFrame};
+pub use ood_frame::{OodFrame, TraceOodFrame};
 
 mod table;
 pub use table::Table;
