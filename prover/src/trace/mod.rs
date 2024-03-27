@@ -248,8 +248,7 @@ pub trait Trace: Sized {
 // HELPER FUNCTIONS
 // ================================================================================================
 
-/// Reads an evaluation frame from the set of provided auxiliary segments. This expects that
-/// `aux_segments` contains at least one entry.
+/// Reads an evaluation frame from the provided auxiliary segment.
 ///
 /// This is probably not the most efficient implementation, but since we call this function only
 /// for trace validation purposes (which is done in debug mode only), we don't care all that much
@@ -258,8 +257,15 @@ fn read_aux_frame<E>(aux_segment: &ColMatrix<E>, row_idx: usize, frame: &mut Eva
 where
     E: FieldElement,
 {
-    frame.current_mut()[0] = aux_segment.get_column(0)[row_idx];
+    for (current_frame_cell, aux_segment_col) in
+        frame.current_mut().iter_mut().zip(aux_segment.columns())
+    {
+        *current_frame_cell = aux_segment_col[row_idx];
+    }
 
     let next_row_idx = (row_idx + 1) % aux_segment.num_rows();
-    frame.next_mut()[0] = aux_segment.get_column(0)[next_row_idx];
+    for (next_frame_cell, aux_segment_col) in frame.next_mut().iter_mut().zip(aux_segment.columns())
+    {
+        *next_frame_cell = aux_segment_col[next_row_idx];
+    }
 }
