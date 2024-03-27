@@ -74,8 +74,8 @@ impl TraceInfo {
     /// * Total width of all trace segments is greater than 255.
     /// * Trace length is smaller than 8 or is not a power of two.
     /// * A zero entry in auxiliary segment width array is followed by a non-zero entry.
-    /// * Number of random elements for an auxiliary trace segment of non-zero width is set to zero.
-    /// * Number of random elements for an auxiliary trace segment of zero width is set to non-zero.
+    /// * Number of random elements for the auxiliary trace segment of non-zero width is set to zero.
+    /// * Number of random elements for the auxiliary trace segment of zero width is set to non-zero.
     /// * Number of random elements for any auxiliary trace segment is greater than 255.
     pub fn new_multi_segment(
         main_segment_width: usize,
@@ -161,7 +161,7 @@ impl TraceInfo {
         &self.trace_meta
     }
 
-    /// Returns true if an execution trace contains an auxiliary trace segment.
+    /// Returns true if an execution trace contains the auxiliary trace segment.
     pub fn is_multi_segment(&self) -> bool {
         self.aux_segment_width > 0
     }

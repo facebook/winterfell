@@ -17,7 +17,7 @@ use math::{FieldElement, StarkField};
 /// Trace polynomials in coefficient from for all segments of the execution trace.
 ///
 /// Coefficients of the polynomials for the main trace segment are always in the base field.
-/// However, coefficients of the polynomials for the auxiliary trace segments may be either in the
+/// However, coefficients of the polynomials for the auxiliary trace segment may be either in the
 /// base field, or in the extension field, depending on whether extension field is being used.
 pub struct TracePolyTable<E: FieldElement> {
     main_segment_polys: ColMatrix<E::BaseField>,
@@ -102,7 +102,7 @@ impl<E: FieldElement> TracePolyTable<E> {
         self.main_segment_polys.columns()
     }
 
-    /// Returns an iterator over the polynomials of all auxiliary trace segments.
+    /// Returns an iterator over the polynomials of the auxiliary trace segment.
     pub fn aux_trace_polys(&self) -> MultiColumnIter<E> {
         MultiColumnIter::new(self.aux_segment_polys.as_slice())
     }

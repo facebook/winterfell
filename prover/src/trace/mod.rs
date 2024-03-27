@@ -78,7 +78,7 @@ pub trait Trace: Sized {
         self.info().main_trace_width()
     }
 
-    /// Returns the number of columns in all auxiliary trace segments.
+    /// Returns the number of columns in the auxiliary trace segment.
     fn aux_trace_width(&self) -> usize {
         self.info().aux_segment_width()
     }
@@ -119,7 +119,7 @@ pub trait Trace: Sized {
             });
         }
 
-        // then, check assertions against auxiliary trace segments
+        // then, check assertions against the auxiliary trace segment
         if let Some(aux_segment) = aux_segment {
             for assertion in air.get_aux_assertions(aux_rand_elements) {
                 // get the matrix and verify the assertion against it
@@ -188,7 +188,7 @@ pub trait Trace: Sized {
                 );
             }
 
-            // evaluate transition constraints for auxiliary trace segments (if any) and make
+            // evaluate transition constraints for the auxiliary trace segment (if any) and make
             // sure they all evaluate to zeros
             if let Some(ref mut aux_frame) = aux_frame {
                 let aux_segment = aux_segment.expect("expected aux segment to be present");

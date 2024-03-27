@@ -277,7 +277,7 @@ pub trait Prover {
             (trace_lde, trace_polys)
         };
 
-        // build auxiliary trace segments (if any), and append the resulting segments to trace
+        // build the auxiliary trace segment (if any), and append the resulting segments to trace
         // commitment and trace polynomial table structs
         let mut aux_trace_segment: Option<ColMatrix<E>> = None;
         let mut aux_trace_rand_elements = AuxTraceRandElements::new();
@@ -286,7 +286,7 @@ pub trait Prover {
             let (aux_segment, rand_elements) = {
                 let span = info_span!("build_aux_trace_segment", num_columns).entered();
 
-                // draw a set of random elements required to build an auxiliary trace segment
+                // draw a set of random elements required to build the auxiliary trace segment
                 let rand_elements = channel.get_aux_trace_segment_rand_elements();
                 let lagrange_rand_elements = if air.context().has_lagrange_kernel_aux_column() {
                     Some(rand_elements.as_ref())

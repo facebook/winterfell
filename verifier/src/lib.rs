@@ -165,7 +165,7 @@ where
     // reseed the coin with the commitment to the main trace segment
     public_coin.reseed(trace_commitments[0]);
 
-    // process auxiliary trace segments (if any), to build a set of random elements for each segment
+    // process the auxiliary trace segment (if any), to build a set of random elements for each segment
     let mut aux_trace_rand_elements = AuxTraceRandElements::<E>::new();
     for commitment in trace_commitments.iter().skip(1) {
         let rand_elements = air

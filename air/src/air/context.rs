@@ -105,11 +105,11 @@ impl<B: StarkField> AirContext<B> {
         if trace_info.is_multi_segment() {
             assert!(
                 !aux_transition_constraint_degrees.is_empty(),
-                "at least one transition constraint degree must be specified for auxiliary trace segments"
+                "at least one transition constraint degree must be specified for the auxiliary trace segment"
                 );
             assert!(
                 num_aux_assertions > 0,
-                "at least one assertion must be specified against auxiliary trace segments"
+                "at least one assertion must be specified against the auxiliary trace segment"
             );
         } else {
             assert!(
@@ -219,7 +219,7 @@ impl<B: StarkField> AirContext<B> {
         self.main_transition_constraint_degrees.len()
     }
 
-    /// Returns the number of transition constraints placed against all auxiliary trace segments.
+    /// Returns the number of transition constraints placed against the auxiliary trace segment.
     pub fn num_aux_transition_constraints(&self) -> usize {
         self.aux_transition_constraint_degrees.len()
     }
@@ -238,7 +238,7 @@ impl<B: StarkField> AirContext<B> {
     /// kernel assertion, which is managed separately.
     ///
     /// The number of assertions consists of the assertions placed against the main segment of an
-    /// execution trace as well as assertions placed against all auxiliary trace segments.
+    /// execution trace as well as assertions placed against the auxiliary trace segment.
     pub fn num_assertions(&self) -> usize {
         self.num_main_assertions + self.num_aux_assertions
     }
