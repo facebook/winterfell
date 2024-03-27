@@ -39,18 +39,16 @@ impl OodFrame {
     // UPDATERS
     // --------------------------------------------------------------------------------------------
 
-    /// Updates the trace state portion of this out-of-domain frame. This also returns a compacted
-    /// version of the out-of-domain frame (including the Lagrange kernel frame, if any) with the
-    /// rows interleaved. This is done so that reseeding of the random coin needs to be done only
-    /// once as opposed to once per each row.
+    /// Updates the trace state portion of this out-of-domain frame, and returns the hash of the
+    /// trace states.
     ///
-    /// The out-of-domain frame is stored as one vector of interleaved values, one from the
-    /// current row and the other from the next row. Given the input frame
+    /// The out-of-domain frame is stored as one vector of interleaved values, one from the current
+    /// row and the other from the next row. Given the input frame
     ///
-    ///    +-------+-------+-------+-------+-------+-------+-------+-------+
-    ///    |  a1   |   a2  |  ...  |   an  |  c1   |  c2   |  ...  |  cm   |
-    ///    +-------+-------+-------+-------+-------+-------+-------+-------+
-    ///    |  b1   |   b2  |  ...  |   bn  |  d1   |  d2   |  ...  |  dm   |
+    ///    +-------+-------+-------+-------+-------+-------+-------+-------+ |  a1   |   a2  |  ...
+    ///    |   an  |  c1   |  c2   |  ...  |  cm   |
+    ///    +-------+-------+-------+-------+-------+-------+-------+-------+ |  b1   |   b2  |  ...
+    ///    |   bn  |  d1   |  d2   |  ...  |  dm   |
     ///    +-------+-------+-------+-------+-------+-------+-------+-------+
     ///
     /// with n being the main trace width and m the auxiliary trace width, the values are stored as
@@ -58,8 +56,6 @@ impl OodFrame {
     /// [a1, b1, a2, b2, ..., an, bn, c1, d1, c2, d2, ..., cm, dm]
     ///
     /// into `Self::trace_states` (as byte values).
-    ///
-    /// Returns the hash of the trace states.
     ///
     /// # Panics
     /// Panics if evaluation frame has already been set.
