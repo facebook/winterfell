@@ -537,6 +537,13 @@ impl From<u8> for BaseElement {
     }
 }
 
+impl From<bool> for BaseElement {
+    /// Converts an bool value into a field element.
+    fn from(value: bool) -> Self {
+        Self::new(value as u64)
+    }
+}
+
 impl TryFrom<u64> for BaseElement {
     type Error = String;
 
@@ -609,6 +616,42 @@ impl From<BaseElement> for u128 {
 impl From<BaseElement> for u64 {
     fn from(value: BaseElement) -> Self {
         value.as_int()
+    }
+}
+
+impl TryFrom<BaseElement> for u32 {
+    type Error = String;
+
+    fn try_from(value: BaseElement) -> Result<Self, Self::Error> {
+        value.as_int().try_into().map_err(|e| format!("{}", e))
+    }
+}
+
+impl TryFrom<BaseElement> for u16 {
+    type Error = String;
+
+    fn try_from(value: BaseElement) -> Result<Self, Self::Error> {
+        value.as_int().try_into().map_err(|e| format!("{}", e))
+    }
+}
+
+impl TryFrom<BaseElement> for u8 {
+    type Error = String;
+
+    fn try_from(value: BaseElement) -> Result<Self, Self::Error> {
+        value.as_int().try_into().map_err(|e| format!("{}", e))
+    }
+}
+
+impl TryFrom<BaseElement> for bool {
+    type Error = String;
+
+    fn try_from(value: BaseElement) -> Result<Self, Self::Error> {
+        match value.as_int() {
+            0 => Ok(false),
+            1 => Ok(true),
+            v => Err(format!("Field element does not represent a boolean, got {}", v)),
+        }
     }
 }
 
