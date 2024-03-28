@@ -165,14 +165,15 @@ where
     // reseed the coin with the commitment to the main trace segment
     public_coin.reseed(trace_commitments[0]);
 
-    // process the auxiliary trace segment (if any), to build a set of random elements for each segment
+    // process the auxiliary trace segment (if any), to build a set of random elements
     let mut aux_trace_rand_elements = AuxTraceRandElements::<E>::new();
-    for commitment in trace_commitments.iter().skip(1) {
+    if trace_commitments.len() > 1 {
+        let aux_segment_commitment = trace_commitments[1];
         let rand_elements = air
             .get_aux_trace_segment_random_elements(&mut public_coin)
             .map_err(|_| VerifierError::RandomCoinError)?;
         aux_trace_rand_elements.add_segment_elements(rand_elements);
-        public_coin.reseed(*commitment);
+        public_coin.reseed(aux_segment_commitment);
     }
 
     // build random coefficients for the composition polynomial
