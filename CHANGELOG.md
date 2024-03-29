@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.8.4 (2024-03-28) - `math` crate only
+* Added more to/from conversions for `f64` field (#268).
+
 ## 0.8.4 (2024-03-18) - `utils/core` crate only
 * Re-added unintentionally removed re-exported liballoc macros (#263).
 
