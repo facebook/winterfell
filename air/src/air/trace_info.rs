@@ -202,7 +202,7 @@ impl TraceInfo {
     }
 
     /// Returns the number of random elements required by the auxiliary trace segment.
-    pub fn get_aux_segment_num_rand_elements(&self) -> usize {
+    pub fn get_num_aux_segment_rand_elements(&self) -> usize {
         self.num_aux_segment_rands
     }
 }
