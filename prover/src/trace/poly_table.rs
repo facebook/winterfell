@@ -3,10 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{
-    matrix::{ColumnIter, MultiColumnIter},
-    ColMatrix,
-};
+use crate::{matrix::ColumnIter, ColMatrix};
 use air::{proof::TraceOodFrame, LagrangeKernelEvaluationFrame};
 use alloc::vec::Vec;
 use math::{FieldElement, StarkField};
@@ -108,8 +105,11 @@ impl<E: FieldElement> TracePolyTable<E> {
     }
 
     /// Returns an iterator over the polynomials of the auxiliary trace segment.
-    pub fn aux_segment_polys(&self) -> MultiColumnIter<E> {
-        MultiColumnIter::new(self.aux_segment_polys.as_slice())
+    pub fn aux_segment_polys(&self) -> impl Iterator<Item = &[E]> {
+        match self.aux_segment_polys {
+            Some(ref aux_segment_polys) => aux_segment_polys.columns(),
+            None => ColumnIter::empty(),
+        }
     }
 
     // TEST HELPERS
