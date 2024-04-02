@@ -43,16 +43,16 @@ impl<E: FieldElement> TracePolyTable<E> {
     /// Adds the provided auxiliary segment polynomials to this polynomial table.
     pub fn add_aux_segment(
         &mut self,
-        aux_segment_poly: ColMatrix<E>,
+        aux_segment_polys: ColMatrix<E>,
         lagrange_kernel_column_idx: Option<usize>,
     ) {
         assert!(self.aux_segment_polys.is_none());
         assert_eq!(
             self.main_segment_polys.num_rows(),
-            aux_segment_poly.num_rows(),
+            aux_segment_polys.num_rows(),
             "polynomials in auxiliary segment must be of the same size as in the main segment"
         );
-        self.aux_segment_polys = Some(aux_segment_poly);
+        self.aux_segment_polys = Some(aux_segment_polys);
         self.lagrange_kernel_column_idx = lagrange_kernel_column_idx;
     }
 
