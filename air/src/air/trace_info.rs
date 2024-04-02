@@ -22,7 +22,7 @@ use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serial
 pub struct TraceInfo {
     main_segment_width: usize,
     aux_segment_width: usize,
-    aux_segment_rand: usize,
+    num_aux_segment_rands: usize,
     trace_length: usize,
     trace_meta: Vec<u8>,
 }
@@ -133,7 +133,7 @@ impl TraceInfo {
         TraceInfo {
             main_segment_width,
             aux_segment_width,
-            aux_segment_rand: num_aux_segment_rands,
+            num_aux_segment_rands,
             trace_length,
             trace_meta,
         }
@@ -202,8 +202,8 @@ impl TraceInfo {
     }
 
     /// Returns the number of random elements required by the auxiliary trace segment.
-    pub fn get_aux_segment_rand_elements(&self) -> usize {
-        self.aux_segment_rand
+    pub fn get_aux_segment_num_rand_elements(&self) -> usize {
+        self.num_aux_segment_rands
     }
 }
 
@@ -218,7 +218,7 @@ impl<E: StarkField> ToElements<E> for TraceInfo {
         buf = (buf << 8) | self.num_aux_segments() as u32;
         if self.num_aux_segments() == 1 {
             buf = (buf << 8) | self.aux_segment_width as u32;
-            buf = (buf << 8) | self.aux_segment_rand as u32;
+            buf = (buf << 8) | self.num_aux_segment_rands as u32;
         }
         result.push(E::from(buf));
 
@@ -250,10 +250,10 @@ impl Serializable for TraceInfo {
         );
         target.write_u8(self.aux_segment_width as u8);
         debug_assert!(
-            self.aux_segment_rand <= u8::MAX as usize,
+            self.num_aux_segment_rands <= u8::MAX as usize,
             "aux segment random element count does not fit into u8 value"
         );
-        target.write_u8(self.aux_segment_rand as u8);
+        target.write_u8(self.num_aux_segment_rands as u8);
 
         // store trace length as power of two
         target.write_u8(self.trace_length.ilog2() as u8);
