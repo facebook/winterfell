@@ -100,7 +100,7 @@ impl<E: FieldElement> TracePolyTable<E> {
     }
 
     /// Returns an iterator over the polynomials of the main trace segment.
-    pub fn main_trace_polys(&self) -> ColumnIter<E::BaseField> {
+    pub fn main_trace_polys(&self) -> impl Iterator<Item = &[E::BaseField]> {
         self.main_segment_polys.columns()
     }
 
