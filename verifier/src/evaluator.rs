@@ -91,7 +91,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
         let lagrange_kernel_aux_rand_elements = {
             let num_rand_elements = air.context().trace_len().ilog2() as usize;
 
-            &aux_rand_elements.get_segment_elements(0)[0..num_rand_elements]
+            &aux_rand_elements.get_segment_elements()[0..num_rand_elements]
         };
 
         let lagrange_constraints = air

@@ -153,7 +153,7 @@ where
 
             Some(LagrangeKernelConstraintsBatchEvaluator::new(
                 air,
-                aux_rand_elements.get_segment_elements(0)[0..num_rand_elements].to_vec(),
+                aux_rand_elements.get_segment_elements()[0..num_rand_elements].to_vec(),
                 composition_coefficients
                     .lagrange
                     .expect("expected Lagrange kernel composition coefficients to be present"),

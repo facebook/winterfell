@@ -138,7 +138,7 @@ pub trait Trace: Sized {
             if let Some(lagrange_kernel_col_idx) = air.context().lagrange_kernel_aux_column_idx() {
                 let boundary_constraint_assertion_value =
                     LagrangeKernelBoundaryConstraint::assertion_value(
-                        aux_rand_elements.get_segment_elements(0),
+                        aux_rand_elements.get_segment_elements(),
                     );
 
                 assert_eq!(
@@ -219,7 +219,7 @@ pub trait Trace: Sized {
                 .expect("expected aux segment to be present when the Lagrange kernel column is");
             let c = aux_segment.get_column(col_idx);
             let v = self.length().ilog2() as usize;
-            let r = aux_rand_elements.get_segment_elements(0);
+            let r = aux_rand_elements.get_segment_elements();
 
             // Loop over every constraint
             for constraint_idx in 1..v + 1 {

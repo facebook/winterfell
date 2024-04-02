@@ -172,7 +172,7 @@ where
         let rand_elements = air
             .get_aux_trace_segment_random_elements(&mut public_coin)
             .map_err(|_| VerifierError::RandomCoinError)?;
-        aux_trace_rand_elements.add_segment_elements(rand_elements);
+        aux_trace_rand_elements.set_segment_elements(rand_elements);
         public_coin.reseed(aux_segment_commitment);
     }
 
