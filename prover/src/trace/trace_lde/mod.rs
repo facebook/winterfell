@@ -40,7 +40,7 @@ pub trait TraceLde<E: FieldElement>: Sync {
     /// This function is expected to panic if any of the following are true:
     /// - the number of rows in the provided `aux_trace` does not match the main trace.
     /// - this segment would exceed the number of segments specified by the trace layout.
-    fn add_aux_segment(
+    fn set_aux_trace(
         &mut self,
         aux_trace: &ColMatrix<E>,
         domain: &StarkDomain<E::BaseField>,

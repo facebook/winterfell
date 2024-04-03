@@ -301,7 +301,6 @@ impl<B: StarkField> Trace for TraceTable<B> {
 
     fn build_aux_segment<E>(
         &mut self,
-        _aux_segments: &[ColMatrix<E>],
         _rand_elements: &[E],
         _lagrange_rand_elements: Option<&[E]>,
     ) -> Option<ColMatrix<E>>

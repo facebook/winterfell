@@ -100,14 +100,13 @@ where
     // PUBLIC COIN METHODS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a set of random elements required for constructing an auxiliary trace segment with
-    /// the specified index.
+    /// Returns a set of random elements required for constructing the auxiliary trace segment.
     ///
     /// The elements are drawn from the public coin uniformly at random.
-    pub fn get_aux_trace_segment_rand_elements(&mut self, aux_segment_idx: usize) -> Vec<E> {
+    pub fn get_aux_trace_segment_rand_elements(&mut self) -> Vec<E> {
         self.air
-            .get_aux_trace_segment_random_elements(aux_segment_idx, &mut self.public_coin)
-            .expect("failed to draw random elements for an auxiliary trace segment")
+            .get_aux_trace_segment_random_elements(&mut self.public_coin)
+            .expect("failed to draw random elements for the auxiliary trace segment")
     }
 
     /// Returns a set of coefficients for constructing a constraint composition polynomial.

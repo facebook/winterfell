@@ -93,7 +93,7 @@ impl<B: StarkField> RapTraceTable<B> {
 
         let columns = unsafe { (0..width).map(|_| uninit_vector(length)).collect() };
         Self {
-            info: TraceInfo::new_multi_segment(width, [3], [3], length, meta),
+            info: TraceInfo::new_multi_segment(width, 3, 3, length, meta),
             trace: ColMatrix::new(columns),
         }
     }
@@ -173,22 +173,17 @@ impl<B: StarkField> Trace for RapTraceTable<B> {
 
     fn build_aux_segment<E>(
         &mut self,
-        aux_segments: &[ColMatrix<E>],
         rand_elements: &[E],
         _lagrange_rand_elements: Option<&[E]>,
     ) -> Option<ColMatrix<E>>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
-        // We only have one auxiliary segment for this example
-        if !aux_segments.is_empty() {
-            return None;
-        }
-
         let mut current_row = unsafe { uninit_vector(self.width()) };
         let mut next_row = unsafe { uninit_vector(self.width()) };
         self.read_row_into(0, &mut current_row);
-        let mut aux_columns = vec![vec![E::ZERO; self.info.length()]; self.info.aux_trace_width()];
+        let mut aux_columns =
+            vec![vec![E::ZERO; self.info.length()]; self.info.aux_segment_width()];
 
         // Columns storing the copied values for the permutation argument are not necessary, but
         // help understanding the construction of RAPs and are kept for illustrative purposes.

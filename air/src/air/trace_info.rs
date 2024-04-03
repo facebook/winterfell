@@ -10,23 +10,19 @@ use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serial
 // CONSTANTS
 // ================================================================================================
 
-/// Number of allowed auxiliary trace segments.
-const NUM_AUX_SEGMENTS: usize = 1;
-
 // TRACE INFO
 // ================================================================================================
 /// Information about a specific execution trace.
 ///
-/// Trace info consists of trace layout info, length, and optional custom metadata. Trace layout
-/// specifies the number of columns for all trace segments. Currently, a trace can consist of at
-/// most two segments. Metadata is just a vector of bytes and can store any values up to 64KB in
+/// Trace info consists of the number of columns for all trace segments, trace length, and optional
+/// custom metadata. Currently, a trace can consist of at most two segments: the main segment and
+/// one auxiliary segment. Metadata is just a vector of bytes and can store any values up to 64KB in
 /// size.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TraceInfo {
     main_segment_width: usize,
-    aux_segment_widths: [usize; NUM_AUX_SEGMENTS],
-    aux_segment_rands: [usize; NUM_AUX_SEGMENTS],
-    num_aux_segments: usize,
+    aux_segment_width: usize,
+    num_aux_segment_rands: usize,
     trace_length: usize,
     trace_meta: Vec<u8>,
 }
@@ -38,7 +34,7 @@ impl TraceInfo {
     pub const MAX_TRACE_WIDTH: usize = 255;
     /// Maximum number of bytes in trace metadata; currently set at 65535.
     pub const MAX_META_LENGTH: usize = 65535;
-    /// Maximum number of random elements per auxiliary trace segment; currently set to 255.
+    /// Maximum number of random elements in the auxiliary trace segment; currently set to 255.
     pub const MAX_RAND_SEGMENT_ELEMENTS: usize = 255;
 
     // CONSTRUCTORS
@@ -67,7 +63,7 @@ impl TraceInfo {
     /// * Length of `meta` is greater than 65535;
     pub fn with_meta(width: usize, length: usize, meta: Vec<u8>) -> Self {
         assert!(width > 0, "trace width must be greater than 0");
-        Self::new_multi_segment(width, [0], [0], length, meta)
+        Self::new_multi_segment(width, 0, 0, length, meta)
     }
 
     /// Creates a new [TraceInfo] with main and auxiliary segments.
@@ -78,13 +74,13 @@ impl TraceInfo {
     /// * Total width of all trace segments is greater than 255.
     /// * Trace length is smaller than 8 or is not a power of two.
     /// * A zero entry in auxiliary segment width array is followed by a non-zero entry.
-    /// * Number of random elements for an auxiliary trace segment of non-zero width is set to zero.
-    /// * Number of random elements for an auxiliary trace segment of zero width is set to non-zero.
+    /// * Number of random elements for the auxiliary trace segment of non-zero width is set to zero.
+    /// * Number of random elements for the auxiliary trace segment of zero width is set to non-zero.
     /// * Number of random elements for any auxiliary trace segment is greater than 255.
     pub fn new_multi_segment(
         main_segment_width: usize,
-        aux_segment_widths: [usize; NUM_AUX_SEGMENTS],
-        aux_segment_rands: [usize; NUM_AUX_SEGMENTS],
+        aux_segment_width: usize,
+        num_aux_segment_rands: usize,
         trace_length: usize,
         trace_meta: Vec<u8>,
     ) -> Self {
@@ -107,7 +103,7 @@ impl TraceInfo {
 
         // validate trace segment widths
         assert!(main_segment_width > 0, "main trace segment must consist of at least one column");
-        let full_width = main_segment_width + aux_segment_widths.iter().sum::<usize>();
+        let full_width = main_segment_width + aux_segment_width;
         assert!(
             full_width <= TraceInfo::MAX_TRACE_WIDTH,
             "total number of columns in the trace cannot be greater than {}, but was {}",
@@ -115,41 +111,29 @@ impl TraceInfo {
             full_width
         );
 
-        // validate number of random elements required by each segment
-        let mut was_zero_width = false;
-        let mut num_aux_segments = 0;
-        for (&width, &num_rand_elements) in aux_segment_widths.iter().zip(aux_segment_rands.iter())
-        {
-            if width != 0 {
-                assert!(
-                    !was_zero_width,
-                    "a non-empty trace segment cannot follow an empty segment"
-                );
-                assert!(
-                    num_rand_elements > 0,
-                    "number of random elements for a non-empty trace segment must be greater than zero"
-                );
-                num_aux_segments += 1;
-            } else {
-                assert!(
-                    num_rand_elements == 0,
-                    "number of random elements for an empty trace segment must be zero"
-                );
-                was_zero_width = true;
-            }
+        // validate number of random elements required by the auxiliary segment
+        if aux_segment_width != 0 {
             assert!(
-                num_rand_elements <= TraceInfo::MAX_RAND_SEGMENT_ELEMENTS,
-                "number of random elements required by a segment cannot exceed {}, but was {}",
-                TraceInfo::MAX_RAND_SEGMENT_ELEMENTS,
-                num_rand_elements
+                num_aux_segment_rands > 0,
+                "number of random elements for a non-empty auxiliary trace segment must be greater than zero"
+            );
+        } else {
+            assert!(
+                num_aux_segment_rands == 0,
+                "number of random elements for an empty auxiliary trace segment must be zero"
             );
         }
+        assert!(
+            num_aux_segment_rands <= TraceInfo::MAX_RAND_SEGMENT_ELEMENTS,
+            "number of random elements required by a segment cannot exceed {}, but was {}",
+            TraceInfo::MAX_RAND_SEGMENT_ELEMENTS,
+            num_aux_segment_rands
+        );
 
         TraceInfo {
             main_segment_width,
-            aux_segment_widths,
-            aux_segment_rands,
-            num_aux_segments,
+            aux_segment_width,
+            num_aux_segment_rands,
             trace_length,
             trace_meta,
         }
@@ -162,7 +146,7 @@ impl TraceInfo {
     ///
     /// This is guaranteed to be between 1 and 255.
     pub fn width(&self) -> usize {
-        self.main_segment_width + self.aux_segment_widths[0]
+        self.main_segment_width + self.aux_segment_width
     }
 
     /// Returns execution trace length.
@@ -177,9 +161,9 @@ impl TraceInfo {
         &self.trace_meta
     }
 
-    /// Returns true if an execution trace contains more than one segment.
+    /// Returns true if an execution trace contains the auxiliary trace segment.
     pub fn is_multi_segment(&self) -> bool {
-        self.num_aux_segments > 0
+        self.aux_segment_width > 0
     }
 
     /// Returns the number of columns in the main segment of an execution trace.
@@ -189,37 +173,37 @@ impl TraceInfo {
         self.main_segment_width
     }
 
-    /// Returns the number of columns in all auxiliary segments of an execution trace.
-    pub fn aux_trace_width(&self) -> usize {
-        self.aux_segment_widths.iter().sum()
+    /// Returns the number of columns in the auxiliary segment of an execution trace.
+    pub fn aux_segment_width(&self) -> usize {
+        self.aux_segment_width
     }
 
     /// Returns the total number of segments in an execution trace.
     pub fn num_segments(&self) -> usize {
-        self.num_aux_segments + 1
+        if self.is_multi_segment() {
+            2
+        } else {
+            1
+        }
     }
 
     /// Returns the number of auxiliary trace segments in an execution trace.
     pub fn num_aux_segments(&self) -> usize {
-        self.num_aux_segments
+        if self.is_multi_segment() {
+            1
+        } else {
+            0
+        }
     }
 
-    /// Returns the number of columns in the auxiliary trace segment at the specified index.
-    pub fn get_aux_segment_width(&self, segment_idx: usize) -> usize {
-        assert!(
-            segment_idx < self.num_aux_segments,
-            "attempted to access segment index {segment_idx}, but there are only {} segments",
-            self.num_aux_segments
-        );
-
-        self.aux_segment_widths[segment_idx]
+    /// Returns the number of columns in the auxiliary trace segment.
+    pub fn get_aux_segment_width(&self) -> usize {
+        self.aux_segment_width
     }
 
-    /// Returns the number of random elements required by the auxiliary trace segment at the
-    /// specified index.
-    pub fn get_aux_segment_rand_elements(&self, segment_idx: usize) -> usize {
-        // TODO: panic if segment_idx is not within num_aux_segments
-        self.aux_segment_rands[segment_idx]
+    /// Returns the number of random elements required by the auxiliary trace segment.
+    pub fn get_num_aux_segment_rand_elements(&self) -> usize {
+        self.num_aux_segment_rands
     }
 }
 
@@ -231,19 +215,12 @@ impl<E: StarkField> ToElements<E> for TraceInfo {
         // segment (if present) go into the first field element; we assume that each parameter can
         // be encoded in 8 bits (which is enforced by the constructor)
         let mut buf = self.main_segment_width as u32;
-        buf = (buf << 8) | self.num_aux_segments as u32;
-        if self.num_aux_segments == 1 {
-            buf = (buf << 8) | self.aux_segment_widths[0] as u32;
-            buf = (buf << 8) | self.aux_segment_rands[0] as u32;
+        buf = (buf << 8) | self.num_aux_segments() as u32;
+        if self.num_aux_segments() == 1 {
+            buf = (buf << 8) | self.aux_segment_width as u32;
+            buf = (buf << 8) | self.num_aux_segment_rands as u32;
         }
         result.push(E::from(buf));
-
-        // parameters of all subsequent auxiliary segments go into additional elements
-        for i in 1..self.num_aux_segments {
-            buf = self.aux_segment_widths[i] as u32;
-            buf = (buf << 8) | self.aux_segment_rands[i] as u32;
-            result.push(E::from(buf));
-        }
 
         // We assume here that the trace length is never greater than 2^32.
         result.push(E::from(self.trace_length as u32));
@@ -266,17 +243,17 @@ impl Serializable for TraceInfo {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         // store segments
         target.write_u8(self.main_segment_width as u8);
-        for &w in self.aux_segment_widths.iter() {
-            debug_assert!(w <= u8::MAX as usize, "aux segment width does not fit into u8 value");
-            target.write_u8(w as u8);
-        }
-        for &rc in self.aux_segment_rands.iter() {
-            debug_assert!(
-                rc <= u8::MAX as usize,
-                "aux segment random element count does not fit into u8 value"
-            );
-            target.write_u8(rc as u8);
-        }
+
+        debug_assert!(
+            self.aux_segment_width <= u8::MAX as usize,
+            "aux segment width does not fit into u8 value"
+        );
+        target.write_u8(self.aux_segment_width as u8);
+        debug_assert!(
+            self.num_aux_segment_rands <= u8::MAX as usize,
+            "aux segment random element count does not fit into u8 value"
+        );
+        target.write_u8(self.num_aux_segment_rands as u8);
 
         // store trace length as power of two
         target.write_u8(self.trace_length.ilog2() as u8);
@@ -301,23 +278,10 @@ impl Deserializable for TraceInfo {
             ));
         }
 
-        // read and validate auxiliary trace segment widths
-        let mut was_zero_width = false;
-        let mut aux_segment_widths = [0; NUM_AUX_SEGMENTS];
-        for width in aux_segment_widths.iter_mut() {
-            *width = source.read_u8()? as usize;
-            if *width != 0 {
-                if was_zero_width {
-                    return Err(DeserializationError::InvalidValue(
-                        "a non-empty trace segment cannot follow an empty segment".to_string(),
-                    ));
-                }
-            } else {
-                was_zero_width = true;
-            }
-        }
+        // read auxiliary trace segment width
+        let aux_segment_width = source.read_u8()? as usize;
 
-        let full_trace_width = main_segment_width + aux_segment_widths.iter().sum::<usize>();
+        let full_trace_width = main_segment_width + aux_segment_width;
         if full_trace_width >= TraceInfo::MAX_TRACE_WIDTH {
             return Err(DeserializationError::InvalidValue(format!(
                 "full trace width cannot be greater than {}, but was {}",
@@ -326,28 +290,18 @@ impl Deserializable for TraceInfo {
             )));
         }
 
-        // read and validate number of random elements for each auxiliary trace segment
-        let mut aux_segment_rands = [0; NUM_AUX_SEGMENTS];
-        for (num_rand_elements, &width) in
-            aux_segment_rands.iter_mut().zip(aux_segment_widths.iter())
-        {
-            *num_rand_elements = source.read_u8()? as usize;
-            if width == 0 && *num_rand_elements != 0 {
-                return Err(DeserializationError::InvalidValue(
-                    "an empty trace segment cannot require random elements".to_string(),
-                ));
-            } else if width != 0 && *num_rand_elements == 0 {
-                return Err(DeserializationError::InvalidValue(
-                    "a non-empty trace segment must require at least one random element"
-                        .to_string(),
-                ));
-            } else if *num_rand_elements > TraceInfo::MAX_RAND_SEGMENT_ELEMENTS {
-                return Err(DeserializationError::InvalidValue(format!(
-                    "number of random elements required by a segment cannot exceed {}, but was {}",
-                    TraceInfo::MAX_RAND_SEGMENT_ELEMENTS,
-                    *num_rand_elements
-                )));
-            }
+        // read and validate number of random elements for the auxiliary trace segment
+        let num_aux_segment_rands = source.read_u8()? as usize;
+        if aux_segment_width != 0 && num_aux_segment_rands == 0 {
+            return Err(DeserializationError::InvalidValue(
+                "a non-empty trace segment must require at least one random element".to_string(),
+            ));
+        } else if num_aux_segment_rands > TraceInfo::MAX_RAND_SEGMENT_ELEMENTS {
+            return Err(DeserializationError::InvalidValue(format!(
+                "number of random elements required by a segment cannot exceed {}, but was {}",
+                TraceInfo::MAX_RAND_SEGMENT_ELEMENTS,
+                num_aux_segment_rands
+            )));
         }
 
         // read and validate trace length (which was stored as a power of two)
@@ -371,8 +325,8 @@ impl Deserializable for TraceInfo {
 
         Ok(Self::new_multi_segment(
             main_segment_width,
-            aux_segment_widths,
-            aux_segment_rands,
+            aux_segment_width,
+            num_aux_segment_rands,
             trace_length,
             trace_meta,
         ))
@@ -425,8 +379,8 @@ mod tests {
 
         let info = TraceInfo::new_multi_segment(
             main_width as usize,
-            [aux_width as usize],
-            [aux_rands as usize],
+            aux_width as usize,
+            aux_rands,
             trace_length as usize,
             trace_meta,
         );

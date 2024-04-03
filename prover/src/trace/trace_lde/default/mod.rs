@@ -31,10 +31,10 @@ pub struct DefaultTraceLde<E: FieldElement, H: ElementHasher<BaseField = E::Base
     main_segment_lde: RowMatrix<E::BaseField>,
     // commitment to the main segment of the trace
     main_segment_tree: MerkleTree<H>,
-    // low-degree extensions of the auxiliary segments of the trace
-    aux_segment_ldes: Vec<RowMatrix<E>>,
-    // commitment to the auxiliary segments of the trace
-    aux_segment_trees: Vec<MerkleTree<H>>,
+    // low-degree extensions of the auxiliary segment of the trace
+    aux_segment_lde: Option<RowMatrix<E>>,
+    // commitment to the auxiliary segment of the trace
+    aux_segment_tree: Option<MerkleTree<H>>,
     blowup: usize,
     trace_info: TraceInfo,
 }
@@ -60,8 +60,8 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> DefaultTraceLd
         let trace_lde = DefaultTraceLde {
             main_segment_lde,
             main_segment_tree,
-            aux_segment_ldes: Vec::new(),
-            aux_segment_trees: Vec::new(),
+            aux_segment_lde: None,
+            aux_segment_tree: None,
             blowup: domain.trace_to_lde_blowup(),
             trace_info: trace_info.clone(),
         };
@@ -117,8 +117,8 @@ where
     ///
     /// This function will panic if any of the following are true:
     /// - the number of rows in the provided `aux_trace` does not match the main trace.
-    /// - this segment would exceed the number of segments specified by the trace layout.
-    fn add_aux_segment(
+    /// - the auxiliary trace has been previously set already.
+    fn set_aux_trace(
         &mut self,
         aux_trace: &ColMatrix<E>,
         domain: &StarkDomain<E::BaseField>,
@@ -129,8 +129,8 @@ where
 
         // check errors
         assert!(
-            self.aux_segment_ldes.len() < self.trace_info.num_aux_segments(),
-            "the specified number of auxiliary segments has already been added"
+            usize::from(self.aux_segment_lde.is_some()) < self.trace_info.num_aux_segments(),
+            "the auxiliary trace has already been added"
         );
         assert_eq!(
             self.main_segment_lde.num_rows(),
@@ -139,9 +139,9 @@ where
         );
 
         // save the lde and commitment
-        self.aux_segment_ldes.push(aux_segment_lde);
+        self.aux_segment_lde = Some(aux_segment_lde);
         let root_hash = *aux_segment_tree.root();
-        self.aux_segment_trees.push(aux_segment_tree);
+        self.aux_segment_tree = Some(aux_segment_tree);
 
         (aux_segment_polys, root_hash)
     }
@@ -170,7 +170,7 @@ where
         let next_lde_step = (lde_step + self.blowup()) % self.trace_len();
 
         // copy auxiliary trace segment values into the frame
-        let segment = &self.aux_segment_ldes[0];
+        let segment = self.aux_segment_lde.as_ref().expect("expected aux segment to be present");
         frame.current_mut().copy_from_slice(segment.row(lde_step));
         frame.next_mut().copy_from_slice(segment.row(next_lde_step));
     }
@@ -184,7 +184,8 @@ where
         let frame = frame.frame_mut();
         frame.truncate(0);
 
-        let aux_segment = &self.aux_segment_ldes[0];
+        let aux_segment =
+            self.aux_segment_lde.as_ref().expect("expected aux segment to be present");
 
         frame.push(aux_segment.get(lagrange_kernel_aux_column_idx, lde_step));
 
@@ -207,9 +208,10 @@ where
             positions,
         )];
 
-        // build queries for auxiliary trace segments
-        for (i, segment_tree) in self.aux_segment_trees.iter().enumerate() {
-            let segment_lde = &self.aux_segment_ldes[i];
+        // build queries for the auxiliary trace segment
+        if let Some(ref segment_tree) = self.aux_segment_tree {
+            let segment_lde =
+                self.aux_segment_lde.as_ref().expect("expected aux segment to be present");
             result.push(build_segment_queries(segment_lde, segment_tree, positions));
         }
 

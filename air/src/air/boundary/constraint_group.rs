@@ -30,7 +30,7 @@ use alloc::{collections::BTreeMap, vec::Vec};
 /// segments of the execution trace. Specifically:
 /// * For the constraints against columns of the main execution trace, `F` is set to the base field
 ///   of the protocol, and `E` is set to the extension field.
-/// * For the constraints against columns of auxiliary trace segments, both `F` and `E` are set to
+/// * For the constraints against columns of the auxiliary trace segment, both `F` and `E` are set to
 ///   the extension field.
 #[derive(Debug, Clone)]
 pub struct BoundaryConstraintGroup<F, E>
