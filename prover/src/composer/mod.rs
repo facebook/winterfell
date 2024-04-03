@@ -106,7 +106,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
         }
 
         // --- merge polynomials of the auxiliary trace segment ----------------------------------
-        for poly in trace_polys.aux_segment_polys() {
+        for poly in trace_polys.aux_trace_polys() {
             // compute T'(x) = T(x) - T(z), multiply it by a pseudo-random coefficient,
             // and add the result into composition polynomial
             acc_trace_poly::<E, E>(
