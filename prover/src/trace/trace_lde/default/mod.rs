@@ -117,8 +117,8 @@ where
     ///
     /// This function will panic if any of the following are true:
     /// - the number of rows in the provided `aux_trace` does not match the main trace.
-    /// - this segment would exceed the number of segments specified by the trace layout.
-    fn set_aux_segment(
+    /// - the auxiliary trace has been previously set already.
+    fn set_aux_trace(
         &mut self,
         aux_trace: &ColMatrix<E>,
         domain: &StarkDomain<E::BaseField>,
@@ -130,7 +130,7 @@ where
         // check errors
         assert!(
             usize::from(self.aux_segment_lde.is_some()) < self.trace_info.num_aux_segments(),
-            "the auxiliary segment has already been added"
+            "the auxiliary trace has already been added"
         );
         assert_eq!(
             self.main_segment_lde.num_rows(),
