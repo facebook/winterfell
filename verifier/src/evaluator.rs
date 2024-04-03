@@ -43,7 +43,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     let mut t_evaluations1 = E::zeroed_vector(t_constraints.num_main_constraints());
     air.evaluate_transition(main_trace_frame, &periodic_values, &mut t_evaluations1);
 
-    // evaluate transition constraints for auxiliary trace segments (if any)
+    // evaluate transition constraints for the auxiliary trace segment (if any)
     let mut t_evaluations2 = E::zeroed_vector(t_constraints.num_aux_constraints());
     if let Some(aux_trace_frame) = aux_trace_frame {
         air.evaluate_aux_transition(
@@ -73,7 +73,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
         result += group.evaluate_at(main_trace_frame.current(), x);
     }
 
-    // iterate over boundary constraint groups for auxiliary trace segments (each group has a
+    // iterate over boundary constraint groups for the auxiliary trace segment (each group has a
     // distinct divisor), evaluate constraints in each group and add their combination to the
     // result
     if let Some(aux_trace_frame) = aux_trace_frame {
@@ -91,7 +91,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
         let lagrange_kernel_aux_rand_elements = {
             let num_rand_elements = air.context().trace_len().ilog2() as usize;
 
-            &aux_rand_elements.get_segment_elements(0)[0..num_rand_elements]
+            &aux_rand_elements.get_segment_elements()[0..num_rand_elements]
         };
 
         let lagrange_constraints = air

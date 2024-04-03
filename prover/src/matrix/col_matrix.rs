@@ -292,13 +292,23 @@ impl<E: FieldElement> ColMatrix<E> {
 
 /// Iterator over columns of [ColMatrix].
 pub struct ColumnIter<'a, E: FieldElement> {
-    matrix: &'a ColMatrix<E>,
+    matrix: Option<&'a ColMatrix<E>>,
     cursor: usize,
 }
 
 impl<'a, E: FieldElement> ColumnIter<'a, E> {
     pub fn new(matrix: &'a ColMatrix<E>) -> Self {
-        Self { matrix, cursor: 0 }
+        Self {
+            matrix: Some(matrix),
+            cursor: 0,
+        }
+    }
+
+    pub fn empty() -> Self {
+        Self {
+            matrix: None,
+            cursor: 0,
+        }
     }
 }
 
@@ -306,24 +316,33 @@ impl<'a, E: FieldElement> Iterator for ColumnIter<'a, E> {
     type Item = &'a [E];
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.matrix.num_cols() - self.cursor {
-            0 => None,
-            _ => {
-                let column = self.matrix.get_column(self.cursor);
-                self.cursor += 1;
-                Some(column)
-            }
+        match self.matrix {
+            Some(matrix) => match matrix.num_cols() - self.cursor {
+                0 => None,
+                _ => {
+                    let column = matrix.get_column(self.cursor);
+                    self.cursor += 1;
+                    Some(column)
+                }
+            },
+            None => None,
         }
     }
 }
 
 impl<'a, E: FieldElement> ExactSizeIterator for ColumnIter<'a, E> {
     fn len(&self) -> usize {
-        self.matrix.num_cols()
+        self.matrix.map(|matrix| matrix.num_cols()).unwrap_or_default()
     }
 }
 
 impl<'a, E: FieldElement> FusedIterator for ColumnIter<'a, E> {}
+
+impl<'a, E: FieldElement> Default for ColumnIter<'a, E> {
+    fn default() -> Self {
+        Self::empty()
+    }
+}
 
 // MUTABLE COLUMN ITERATOR
 // ================================================================================================
@@ -367,66 +386,3 @@ impl<'a, E: FieldElement> ExactSizeIterator for ColumnIterMut<'a, E> {
 }
 
 impl<'a, E: FieldElement> FusedIterator for ColumnIterMut<'a, E> {}
-
-// MULTI-MATRIX COLUMN ITERATOR
-// ================================================================================================
-
-/// Iterator over columns several [ColMatrix]'s.
-pub struct MultiColumnIter<'a, E: FieldElement> {
-    matrixes: &'a [ColMatrix<E>],
-    m_cursor: usize,
-    c_cursor: usize,
-}
-
-impl<'a, E: FieldElement> MultiColumnIter<'a, E> {
-    pub fn new(matrixes: &'a [ColMatrix<E>]) -> Self {
-        // make sure all matrixes have the same number of rows
-        if !matrixes.is_empty() {
-            let num_rows = matrixes[0].num_rows();
-            for matrix in matrixes.iter().skip(1) {
-                assert_eq!(
-                    matrix.num_rows(),
-                    num_rows,
-                    "all matrixes must have the same number of rows"
-                );
-            }
-        }
-
-        Self {
-            matrixes,
-            m_cursor: 0,
-            c_cursor: 0,
-        }
-    }
-}
-
-impl<'a, E: FieldElement> Iterator for MultiColumnIter<'a, E> {
-    type Item = &'a [E];
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.matrixes.is_empty() {
-            return None;
-        }
-        let matrix = &self.matrixes[self.m_cursor];
-        match matrix.num_cols() - self.c_cursor {
-            0 => None,
-            _ => {
-                let column = matrix.get_column(self.c_cursor);
-                self.c_cursor += 1;
-                if self.c_cursor == matrix.num_cols() && self.m_cursor < self.matrixes.len() - 1 {
-                    self.m_cursor += 1;
-                    self.c_cursor = 0;
-                }
-                Some(column)
-            }
-        }
-    }
-}
-
-impl<'a, E: FieldElement> ExactSizeIterator for MultiColumnIter<'a, E> {
-    fn len(&self) -> usize {
-        self.matrixes.iter().fold(0, |s, m| s + m.num_cols())
-    }
-}
-
-impl<'a, E: FieldElement> FusedIterator for MultiColumnIter<'a, E> {}
