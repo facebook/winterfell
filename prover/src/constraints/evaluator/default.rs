@@ -153,7 +153,7 @@ where
 
             Some(LagrangeKernelConstraintsBatchEvaluator::new(
                 air,
-                aux_rand_elements.get_segment_elements(0)[0..num_rand_elements].to_vec(),
+                aux_rand_elements.get_segment_elements()[0..num_rand_elements].to_vec(),
                 composition_coefficients
                     .lagrange
                     .expect("expected Lagrange kernel composition coefficients to be present"),
@@ -237,7 +237,7 @@ where
     ) {
         // initialize buffers to hold trace values and evaluation results at each step
         let mut main_frame = EvaluationFrame::new(trace.trace_info().main_trace_width());
-        let mut aux_frame = EvaluationFrame::new(trace.trace_info().aux_trace_width());
+        let mut aux_frame = EvaluationFrame::new(trace.trace_info().aux_segment_width());
         let mut tm_evaluations = vec![E::BaseField::ZERO; self.num_main_transition_constraints()];
         let mut ta_evaluations = vec![E::ZERO; self.num_aux_transition_constraints()];
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
@@ -337,7 +337,7 @@ where
             .fold(E::ZERO, |acc, (&const_eval, &coef)| acc + coef.mul_base(const_eval))
     }
 
-    /// Evaluates all transition constraints (i.e., for main and auxiliary trace segments) at the
+    /// Evaluates all transition constraints (i.e., for main and the auxiliary trace segment) at the
     /// specified step of the constraint evaluation domain.
     ///
     /// `x` is the corresponding domain value at the specified step. That is, x = s * g^step,
@@ -355,7 +355,7 @@ where
         // get periodic values at the evaluation step
         let periodic_values = self.periodic_values.get_row(step);
 
-        // evaluate transition constraints over auxiliary trace segments and save the results into
+        // evaluate transition constraints over the auxiliary trace segment and save the results into
         // evaluations buffer
         self.air.evaluate_aux_transition(
             main_frame,
@@ -382,7 +382,7 @@ where
         self.transition_constraints.num_main_constraints()
     }
 
-    /// Returns the number of transition constraints applied against all auxiliary trace segments.
+    /// Returns the number of transition constraints applied against the auxiliary trace segment.
     fn num_aux_transition_constraints(&self) -> usize {
         self.transition_constraints.num_aux_constraints()
     }

@@ -68,7 +68,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
 
         let num_trace_segments = air.trace_info().num_segments();
         let main_trace_width = air.trace_info().main_trace_width();
-        let aux_trace_width = air.trace_info().aux_trace_width();
+        let aux_trace_width = air.trace_info().aux_segment_width();
         let lde_domain_size = air.lde_domain_size();
         let fri_options = air.options().to_fri_options();
 
@@ -272,19 +272,18 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> TraceQueries<E
         // of Merkle authentication paths in the proofs
         let aux_trace_states = if air.trace_info().is_multi_segment() {
             let mut aux_trace_states = Vec::new();
-            for (i, segment_queries) in queries.into_iter().enumerate() {
-                let segment_width = air.trace_info().get_aux_segment_width(i);
-                let (segment_query_proof, segment_trace_states) = segment_queries
-                    .parse::<H, E>(air.lde_domain_size(), num_queries, segment_width)
-                    .map_err(|err| {
-                        VerifierError::ProofDeserializationError(format!(
-                            "auxiliary trace segment query deserialization failed: {err}"
-                        ))
-                    })?;
+            let segment_queries = queries.remove(0);
+            let segment_width = air.trace_info().get_aux_segment_width();
+            let (segment_query_proof, segment_trace_states) = segment_queries
+                .parse::<H, E>(air.lde_domain_size(), num_queries, segment_width)
+                .map_err(|err| {
+                    VerifierError::ProofDeserializationError(format!(
+                        "auxiliary trace segment query deserialization failed: {err}"
+                    ))
+                })?;
 
-                query_proofs.push(segment_query_proof);
-                aux_trace_states.push(segment_trace_states);
-            }
+            query_proofs.push(segment_query_proof);
+            aux_trace_states.push(segment_trace_states);
 
             // merge tables for each auxiliary segment into a single table
             Some(Table::merge(aux_trace_states))

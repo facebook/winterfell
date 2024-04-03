@@ -160,11 +160,10 @@ const MIN_CYCLE_LENGTH: usize = 2;
 ///
 /// With Randomized AIR, construction of the execution trace is split into multiple stages. During
 /// the first stage, the *main trace segment* is built in a manner similar to how the trace is
-/// built for regular AIR. In the subsequent stages, *auxiliary trace segments* are built. When
-/// building auxiliary trace segments, the prover has access to extra randomness sent by the
+/// built for regular AIR. In the subsequent stages, the *auxiliary trace segment* is built. When
+/// building the auxiliary trace segment, the prover has access to extra randomness sent by the
 /// verifier (in the non-interactive version of the protocol, this randomness is derived from the
-/// previous trace segment commitments). Currently, the number of auxiliary trace segments is
-/// limited to one.
+/// previous trace segment commitments).
 ///
 /// To describe Randomized AIR, you will need to do the following when implementing the [Air]
 /// trait:
@@ -175,10 +174,10 @@ const MIN_CYCLE_LENGTH: usize = 2;
 /// * Override [Air::evaluate_aux_transition()] method. This method is similar to the
 ///   [Air::evaluate_transition()] method but it also accepts two extra parameters:
 ///   `aux_evaluation_frame` and `aux_rand_elements`. These parameters are needed for evaluating
-///   transition constraints over the auxiliary trace segments.
+///   transition constraints over the auxiliary trace segment.
 /// * Override [Air::get_aux_assertions()] method. This method is similar to the
 ///   [Air::get_assertions()] method, but it should return assertions against columns of the
-///   auxiliary trace segments.
+///   auxiliary trace segment.
 pub trait Air: Send + Sync {
     /// Base field for the computation described by this AIR. STARK protocol for this computation
     /// may be executed in the base field, or in an extension of the base fields as specified
@@ -229,7 +228,7 @@ pub trait Air: Send + Sync {
     // --------------------------------------------------------------------------------------------
 
     /// Evaluates transition constraints over the specified evaluation frames for the main and
-    /// auxiliary trace segments.
+    /// auxiliary trace segment.
     ///
     /// The evaluations should be written into the `results` slice in the same order as the order
     /// of auxiliary transition constraint degree descriptors used to instantiate [AirContext] for
@@ -267,15 +266,15 @@ pub trait Air: Send + Sync {
         unimplemented!("evaluation of auxiliary transition constraints has not been implemented");
     }
 
-    /// Returns a set of assertions placed against auxiliary trace segments.
+    /// Returns a set of assertions placed against the auxiliary trace segment.
     ///
     /// The default implementation of this function returns an empty vector. It should be
-    /// overridden only if the computation relies on auxiliary trace segments. In such a case,
+    /// overridden only if the computation relies on the auxiliary trace segment. In such a case,
     /// the vector returned from this function must contain at least one assertion.
     ///
     /// The column index for assertions is expected to be zero-based across all auxiliary trace
     /// segments. That is, assertion against column 0, is an assertion against the first column
-    /// of the auxiliary trace segments.
+    /// of auxiliary trace segment.
     ///
     /// When the protocol is executed using an extension field, auxiliary assertions are defined
     /// over the extension field. This is in contrast with the assertions returned from
@@ -480,20 +479,18 @@ pub trait Air: Send + Sync {
     // TRACE SEGMENT RANDOMNESS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a vector of field elements required for construction of an auxiliary trace segment
-    /// with the specified index.
+    /// Returns a vector of field elements required for construction of the auxiliary trace segment.
     ///
     /// The elements are drawn uniformly at random from the provided public coin.
     fn get_aux_trace_segment_random_elements<E, R>(
         &self,
-        aux_segment_idx: usize,
         public_coin: &mut R,
     ) -> Result<Vec<E>, RandomCoinError>
     where
         E: FieldElement<BaseField = Self::BaseField>,
         R: RandomCoin<BaseField = Self::BaseField>,
     {
-        let num_elements = self.trace_info().get_aux_segment_rand_elements(aux_segment_idx);
+        let num_elements = self.trace_info().get_num_aux_segment_rand_elements();
         let mut result = Vec::with_capacity(num_elements);
         for _ in 0..num_elements {
             result.push(public_coin.draw()?);

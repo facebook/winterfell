@@ -96,7 +96,7 @@ impl<E: FieldElement> TransitionConstraints<E> {
         self.main_constraint_coef.clone()
     }
 
-    /// Returns a list of transition constraint degree descriptors for auxiliary trace segments of
+    /// Returns a list of transition constraint degree descriptors for the auxiliary trace segment of
     /// a computation.
     ///
     /// This list will be identical to the list passed into [AirContext::new_multi_segment()]
@@ -105,13 +105,13 @@ impl<E: FieldElement> TransitionConstraints<E> {
         &self.aux_constraint_degrees
     }
 
-    /// Returns the number of constraints applied against auxiliary trace segments of a
+    /// Returns the number of constraints applied against the auxiliary trace segment of a
     /// computation.
     pub fn num_aux_constraints(&self) -> usize {
         self.aux_constraint_degrees.len()
     }
 
-    /// Returns the random coefficients for constraints applied against auxiliary trace segments of a
+    /// Returns the random coefficients for constraints applied against the auxiliary trace segment of a
     /// computation.
     pub fn aux_constraint_coef(&self) -> Vec<E> {
         self.aux_constraint_coef.clone()

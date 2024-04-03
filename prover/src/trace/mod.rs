@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{matrix::MultiColumnIter, ColMatrix};
+use super::ColMatrix;
 use air::{
     Air, AuxTraceRandElements, EvaluationFrame, LagrangeKernelBoundaryConstraint, TraceInfo,
 };
@@ -51,19 +51,13 @@ pub trait Trace: Sized {
     /// Returns a reference to a [Matrix] describing the main segment of this trace.
     fn main_segment(&self) -> &ColMatrix<Self::BaseField>;
 
-    /// Builds and returns the next auxiliary trace segment. If there are no more segments to build
-    /// (i.e., the trace is complete), None is returned.
-    ///
-    /// The `aux_segments` slice contains a list of auxiliary trace segments built as a result of
-    /// prior invocations of this function. Thus, for example, on the first invocation,
-    /// `aux_segments` will be empty; on the second invocation, it will contain a single matrix (the
-    /// one built during the first invocation) etc.
+    /// Builds and returns the auxiliary trace segment. If the trace does not require an auxiliary
+    /// segment, None is returned.
     ///
     /// The `rand_elements` slice contains the random elements to use to build the aux segment. If a
     /// Lagrange kernel column is present, the `lagrange_kernel_rand_elements` should be used.
     fn build_aux_segment<E: FieldElement<BaseField = Self::BaseField>>(
         &mut self,
-        aux_segments: &[ColMatrix<E>],
         rand_elements: &[E],
         lagrange_kernel_rand_elements: Option<&[E]>,
     ) -> Option<ColMatrix<E>>;
@@ -84,9 +78,9 @@ pub trait Trace: Sized {
         self.info().main_trace_width()
     }
 
-    /// Returns the number of columns in all auxiliary trace segments.
+    /// Returns the number of columns in the auxiliary trace segment.
     fn aux_trace_width(&self) -> usize {
-        self.info().aux_trace_width()
+        self.info().aux_segment_width()
     }
 
     /// Checks if this trace is valid against the specified AIR, and panics if not.
@@ -95,7 +89,7 @@ pub trait Trace: Sized {
     fn validate<A, E>(
         &self,
         air: &A,
-        aux_segments: &[ColMatrix<E>],
+        aux_segment: Option<&ColMatrix<E>>,
         aux_rand_elements: &AuxTraceRandElements<E>,
     ) where
         A: Air<BaseField = Self::BaseField>,
@@ -125,44 +119,33 @@ pub trait Trace: Sized {
             });
         }
 
-        // then, check assertions against auxiliary trace segments
-        for assertion in air.get_aux_assertions(aux_rand_elements) {
-            // find which segment the assertion is for and remap assertion column index to the
-            // column index in the context of this segment
-            let mut column_idx = assertion.column();
-            let mut segment_idx = 0;
-            for i in 0..self.info().num_aux_segments() {
-                let segment_width = self.info().get_aux_segment_width(i);
-                if column_idx < segment_width {
-                    segment_idx = i;
-                    break;
-                }
-                column_idx -= segment_width;
+        // then, check assertions against the auxiliary trace segment
+        if let Some(aux_segment) = aux_segment {
+            for assertion in air.get_aux_assertions(aux_rand_elements) {
+                // get the matrix and verify the assertion against it
+                assertion.apply(self.length(), |step, value| {
+                    assert!(
+                        value == aux_segment.get(assertion.column(), step),
+                        "trace does not satisfy assertion aux_trace({}, {}) == {}",
+                        assertion.column(),
+                        step,
+                        value
+                    );
+                });
             }
 
-            // get the matrix and verify the assertion against it
-            assertion.apply(self.length(), |step, value| {
-                assert!(
-                    value == aux_segments[segment_idx].get(column_idx, step),
-                    "trace does not satisfy assertion aux_trace({}, {}) == {}",
-                    assertion.column(),
-                    step,
-                    value
-                );
-            });
-        }
+            // then, check the Lagrange kernel assertion, if any
+            if let Some(lagrange_kernel_col_idx) = air.context().lagrange_kernel_aux_column_idx() {
+                let boundary_constraint_assertion_value =
+                    LagrangeKernelBoundaryConstraint::assertion_value(
+                        aux_rand_elements.get_segment_elements(),
+                    );
 
-        // then, check the Lagrange kernel assertion, if any
-        if let Some(lagrange_kernel_col_idx) = air.context().lagrange_kernel_aux_column_idx() {
-            let boundary_constraint_assertion_value =
-                LagrangeKernelBoundaryConstraint::assertion_value(
-                    aux_rand_elements.get_segment_elements(0),
+                assert_eq!(
+                    boundary_constraint_assertion_value,
+                    aux_segment.get(lagrange_kernel_col_idx, 0)
                 );
-
-            assert_eq!(
-                boundary_constraint_assertion_value,
-                aux_segments[0].get(lagrange_kernel_col_idx, 0)
-            );
+            }
         }
 
         // --- 2. make sure this trace satisfies all transition constraints -----------------------
@@ -205,10 +188,11 @@ pub trait Trace: Sized {
                 );
             }
 
-            // evaluate transition constraints for auxiliary trace segments (if any) and make
+            // evaluate transition constraints for the auxiliary trace segment (if any) and make
             // sure they all evaluate to zeros
             if let Some(ref mut aux_frame) = aux_frame {
-                read_aux_frame(aux_segments, step, aux_frame);
+                let aux_segment = aux_segment.expect("expected aux segment to be present");
+                read_aux_frame(aux_segment, step, aux_frame);
                 air.evaluate_aux_transition(
                     &main_frame,
                     aux_frame,
@@ -231,9 +215,11 @@ pub trait Trace: Sized {
         // evaluate transition constraints for Lagrange kernel column (if any) and make sure
         // they all evaluate to zeros
         if let Some(col_idx) = air.context().lagrange_kernel_aux_column_idx() {
-            let c = aux_segments[0].get_column(col_idx);
+            let aux_segment = aux_segment
+                .expect("expected aux segment to be present when the Lagrange kernel column is");
+            let c = aux_segment.get_column(col_idx);
             let v = self.length().ilog2() as usize;
-            let r = aux_rand_elements.get_segment_elements(0);
+            let r = aux_rand_elements.get_segment_elements();
 
             // Loop over every constraint
             for constraint_idx in 1..v + 1 {
@@ -262,22 +248,24 @@ pub trait Trace: Sized {
 // HELPER FUNCTIONS
 // ================================================================================================
 
-/// Reads an evaluation frame from the set of provided auxiliary segments. This expects that
-/// `aux_segments` contains at least one entry.
+/// Reads an evaluation frame from the provided auxiliary segment.
 ///
 /// This is probably not the most efficient implementation, but since we call this function only
 /// for trace validation purposes (which is done in debug mode only), we don't care all that much
 /// about its performance.
-fn read_aux_frame<E>(aux_segments: &[ColMatrix<E>], row_idx: usize, frame: &mut EvaluationFrame<E>)
+fn read_aux_frame<E>(aux_segment: &ColMatrix<E>, row_idx: usize, frame: &mut EvaluationFrame<E>)
 where
     E: FieldElement,
 {
-    for (column, current_value) in MultiColumnIter::new(aux_segments).zip(frame.current_mut()) {
-        *current_value = column[row_idx];
+    for (current_frame_cell, aux_segment_col) in
+        frame.current_mut().iter_mut().zip(aux_segment.columns())
+    {
+        *current_frame_cell = aux_segment_col[row_idx];
     }
 
-    let next_row_idx = (row_idx + 1) % aux_segments[0].num_rows();
-    for (column, next_value) in MultiColumnIter::new(aux_segments).zip(frame.next_mut()) {
-        *next_value = column[next_row_idx];
+    let next_row_idx = (row_idx + 1) % aux_segment.num_rows();
+    for (next_frame_cell, aux_segment_col) in frame.next_mut().iter_mut().zip(aux_segment.columns())
+    {
+        *next_frame_cell = aux_segment_col[next_row_idx];
     }
 }
