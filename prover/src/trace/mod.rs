@@ -9,6 +9,9 @@ use air::{
 };
 use math::{polynom, FieldElement, StarkField};
 
+mod aux_trace_builder;
+pub use aux_trace_builder::{AuxTraceBuilder, AuxTraceWithMetadata};
+
 mod trace_lde;
 pub use trace_lde::{DefaultTraceLde, TraceLde};
 

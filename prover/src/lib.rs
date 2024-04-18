@@ -82,7 +82,10 @@ mod composer;
 use composer::DeepCompositionPoly;
 
 mod trace;
-pub use trace::{DefaultTraceLde, Trace, TraceLde, TracePolyTable, TraceTable, TraceTableFragment};
+pub use trace::{
+    AuxTraceBuilder, AuxTraceWithMetadata, DefaultTraceLde, Trace, TraceLde, TracePolyTable,
+    TraceTable, TraceTableFragment,
+};
 
 mod channel;
 use channel::ProverChannel;
