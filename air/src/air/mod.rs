@@ -226,6 +226,9 @@ pub trait Air: Send + Sync {
     /// Returns a set of assertions against a concrete execution trace of this computation.
     fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>>;
 
+    // TODO: Make `Self::AuxRandElements<E>`
+    fn get_lagrange_rand_elements<E>(&self, rand_eles: &Self::AuxRandElements) -> &[E];
+
     // AUXILIARY TRACE CONSTRAINTS
     // --------------------------------------------------------------------------------------------
 

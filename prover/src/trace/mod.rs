@@ -93,7 +93,7 @@ pub trait Trace: Sized {
         &self,
         air: &A,
         aux_segment: Option<&ColMatrix<E>>,
-        aux_rand_elements: &AuxTraceRandElements<E>,
+        aux_rand_elements: Option<&<A as Air>::AuxRandElements>,
     ) where
         A: Air<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField>,
@@ -124,7 +124,9 @@ pub trait Trace: Sized {
 
         // then, check assertions against the auxiliary trace segment
         if let Some(aux_segment) = aux_segment {
-            for assertion in air.get_aux_assertions(aux_rand_elements) {
+            let aux_rand_elements = aux_rand_elements.expect("expected aux rand elements");
+            // TODOP: remove `::<E>` after `AuxRandElements<E>` change
+            for assertion in air.get_aux_assertions::<E>(aux_rand_elements) {
                 // get the matrix and verify the assertion against it
                 assertion.apply(self.length(), |step, value| {
                     assert!(
@@ -141,7 +143,8 @@ pub trait Trace: Sized {
             if let Some(lagrange_kernel_col_idx) = air.context().lagrange_kernel_aux_column_idx() {
                 let boundary_constraint_assertion_value =
                     LagrangeKernelBoundaryConstraint::assertion_value(
-                        aux_rand_elements.get_segment_elements(),
+                        // TODOP: remove `::<E>` after `AuxRandElements<E>` change
+                        air.get_lagrange_rand_elements::<E>(aux_rand_elements),
                     );
 
                 assert_eq!(
@@ -195,6 +198,8 @@ pub trait Trace: Sized {
             // sure they all evaluate to zeros
             if let Some(ref mut aux_frame) = aux_frame {
                 let aux_segment = aux_segment.expect("expected aux segment to be present");
+                let aux_rand_elements =
+                    aux_rand_elements.expect("expected aux rand elements to be present");
                 read_aux_frame(aux_segment, step, aux_frame);
                 air.evaluate_aux_transition(
                     &main_frame,
@@ -220,9 +225,11 @@ pub trait Trace: Sized {
         if let Some(col_idx) = air.context().lagrange_kernel_aux_column_idx() {
             let aux_segment = aux_segment
                 .expect("expected aux segment to be present when the Lagrange kernel column is");
+            let aux_rand_elements =
+                aux_rand_elements.expect("expected aux rand elements to be present");
             let c = aux_segment.get_column(col_idx);
             let v = self.length().ilog2() as usize;
-            let r = aux_rand_elements.get_segment_elements();
+            let r = air.get_lagrange_rand_elements(aux_rand_elements);
 
             // Loop over every constraint
             for constraint_idx in 1..v + 1 {

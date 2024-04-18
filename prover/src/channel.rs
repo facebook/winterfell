@@ -67,6 +67,14 @@ where
             _field_element: PhantomData,
         }
     }
+    
+    // GETTER METHODS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns the inner public coin 
+    pub fn public_coin(&mut self) -> &mut R {
+        &mut self.public_coin
+    }
 
     // COMMITMENT METHODS
     // --------------------------------------------------------------------------------------------

@@ -189,7 +189,7 @@ pub trait Prover {
     fn new_evaluator<'a, E>(
         &self,
         air: &'a Self::Air,
-        aux_rand_elements: AuxTraceRandElements<E>,
+        aux_rand_elements: Option<&Self::AuxRandElements>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E>
     where
@@ -209,9 +209,8 @@ pub trait Prover {
         &self,
         trace: Self::Trace,
         aux_trace_builder: Self::AuxTraceBuilder,
-        aux_params: AuxParams<Self::AuxTraceBuilder>
-    ) -> Result<(StarkProof, Option<AuxProof<Self::AuxTraceBuilder>>), ProverError>
-    {
+        aux_params: AuxParams<Self::AuxTraceBuilder>,
+    ) -> Result<(StarkProof, Option<AuxProof<Self::AuxTraceBuilder>>), ProverError> {
         // figure out which version of the generic proof generation procedure to run. this is a sort
         // of static dispatch for selecting two generic parameter: extension field and hash
         // function.
@@ -252,7 +251,7 @@ pub trait Prover {
     fn generate_proof<E>(
         &self,
         mut trace: Self::Trace,
-        aux_trace_builder: Self::AuxTraceBuilder,
+        mut aux_trace_builder: Self::AuxTraceBuilder,
         aux_params: AuxParams<Self::AuxTraceBuilder>,
     ) -> Result<(StarkProof, Option<AuxProof<Self::AuxTraceBuilder>>), ProverError>
     where
@@ -307,31 +306,15 @@ pub trait Prover {
 
         // build the auxiliary trace segment (if any), and append the resulting segments to trace
         // commitment and trace polynomial table structs
-        let mut aux_trace_segment: Option<ColMatrix<E>> = None;
-        let mut aux_trace_rand_elements = AuxTraceRandElements::new();
-        if trace.info().is_multi_segment() {
-            let num_columns = trace.info().get_aux_segment_width();
-            let (aux_segment, rand_elements) = {
-                let span = info_span!("build_aux_trace_segment", num_columns).entered();
-
-                // draw a set of random elements required to build the auxiliary trace segment
-                let rand_elements = channel.get_aux_trace_segment_rand_elements();
-                let lagrange_rand_elements = if air.context().has_lagrange_kernel_aux_column() {
-                    Some(rand_elements.as_ref())
-                } else {
-                    None
-                };
-
-                // build the trace segment
-                let aux_segment = trace
-                    .build_aux_segment(&rand_elements, lagrange_rand_elements)
-                    .expect("failed build auxiliary trace segment");
-
-                drop(span);
-                (aux_segment, rand_elements)
-            };
-            assert_eq!(aux_segment.num_cols(), num_columns);
-            assert_eq!(aux_segment.num_rows(), trace_length);
+        let aux_trace_with_metadata: Option<AuxTraceWithMetadata<_, _, _>> = if trace
+            .info()
+            .is_multi_segment()
+        {
+            let aux_trace_with_metadata = aux_trace_builder.build_aux_trace(
+                trace.main_segment(),
+                aux_params,
+                channel.public_coin(),
+            );
 
             // commit to the auxiliary trace segment
             let aux_segment_polys = {
@@ -339,7 +322,7 @@ pub trait Prover {
                 // trace
                 let span = info_span!("commit_to_aux_trace_segment").entered();
                 let (aux_segment_polys, aux_segment_root) =
-                    trace_lde.set_aux_trace(&aux_segment, &domain);
+                    trace_lde.set_aux_trace(&aux_trace_with_metadata.aux_trace, &domain);
 
                 // commit to the LDE of the extended auxiliary trace segment by writing the root of
                 // its Merkle tree into the channel
@@ -351,19 +334,25 @@ pub trait Prover {
 
             trace_polys
                 .add_aux_segment(aux_segment_polys, air.context().lagrange_kernel_aux_column_idx());
-            aux_trace_rand_elements.set_segment_elements(rand_elements);
-            aux_trace_segment = Some(aux_segment);
-        }
+
+            Some(aux_trace_with_metadata)
+        } else {
+            None
+        };
 
         // make sure the specified trace (including auxiliary segments) is valid against the AIR.
         // This checks validity of both, assertions and state transitions. We do this in debug
         // mode only because this is a very expensive operation.
         #[cfg(debug_assertions)]
-        trace.validate(&air, aux_trace_segment.as_ref(), &aux_trace_rand_elements);
+        trace.validate(
+            &air,
+            aux_trace_with_metadata.map(|aux_trace| &aux_trace.aux_trace),
+            aux_trace_with_metadata.map(|aux_trace| &aux_trace.aux_rand_eles),
+        );
 
-        // drop the main trace and aux trace segments as they are no longer needed
+        // drop the main trace and aux trace segment as they are no longer needed
         drop(trace);
-        drop(aux_trace_segment);
+        // TODOP: Drop aux trace
 
         // 2 ----- evaluate constraints -----------------------------------------------------------
         // evaluate constraints specified by the AIR over the constraint evaluation domain, and
@@ -374,7 +363,7 @@ pub trait Prover {
             info_span!("evaluate_constraints", ce_domain_size).in_scope(|| {
                 self.new_evaluator(
                     &air,
-                    aux_trace_rand_elements,
+                    aux_trace_with_metadata.map(|aux_trace| &aux_trace.aux_rand_eles),
                     channel.get_constraint_composition_coeffs(),
                 )
                 .evaluate(&trace_lde, &domain)
@@ -512,7 +501,7 @@ pub trait Prover {
             proof
         };
 
-        Ok(proof)
+        Ok((proof, aux_trace_with_metadata.map(|aux_trace| aux_trace.aux_proof).flatten()))
     }
 
     /// Extends constraint composition polynomial over the LDE domain and builds a commitment to
