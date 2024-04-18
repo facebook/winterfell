@@ -8,10 +8,7 @@ use super::{
     BoundaryConstraints, CompositionPolyTrace, ConstraintEvaluationTable, ConstraintEvaluator,
     PeriodicValueTable, StarkDomain, TraceLde,
 };
-use air::{
-    Air, AuxTraceRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
-    TransitionConstraints,
-};
+use air::{Air, ConstraintCompositionCoefficients, EvaluationFrame, TransitionConstraints};
 use math::FieldElement;
 use utils::iter_mut;
 
@@ -41,7 +38,7 @@ pub struct DefaultConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A:
     boundary_constraints: BoundaryConstraints<E>,
     transition_constraints: TransitionConstraints<E>,
     lagrange_constraints_evaluator: Option<LagrangeKernelConstraintsBatchEvaluator<E>>,
-    aux_rand_elements: AuxTraceRandElements<E>,
+    aux_rand_elements: <A as Air>::AuxRandElements,
     periodic_values: PeriodicValueTable<E::BaseField>,
 }
 
@@ -133,7 +130,7 @@ where
     /// over extended execution trace.
     pub fn new(
         air: &'a A,
-        aux_rand_elements: AuxTraceRandElements<E>,
+        aux_rand_elements: <A as Air>::AuxRandElements,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self {
         // build transition constraint groups; these will be used to compose transition constraint
@@ -149,11 +146,9 @@ where
             BoundaryConstraints::new(air, &aux_rand_elements, &composition_coefficients.boundary);
 
         let lagrange_constraints_evaluator = if air.context().has_lagrange_kernel_aux_column() {
-            let num_rand_elements = air.context().trace_len().ilog2() as usize;
-
             Some(LagrangeKernelConstraintsBatchEvaluator::new(
                 air,
-                aux_rand_elements.get_segment_elements()[0..num_rand_elements].to_vec(),
+                air.get_lagrange_rand_elements(&aux_rand_elements).to_vec(),
                 composition_coefficients
                     .lagrange
                     .expect("expected Lagrange kernel composition coefficients to be present"),

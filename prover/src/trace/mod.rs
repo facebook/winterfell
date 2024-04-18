@@ -4,9 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::ColMatrix;
-use air::{
-    Air, AuxTraceRandElements, EvaluationFrame, LagrangeKernelBoundaryConstraint, TraceInfo,
-};
+use air::{Air, EvaluationFrame, LagrangeKernelBoundaryConstraint, TraceInfo};
 use math::{polynom, FieldElement, StarkField};
 
 mod aux_trace_builder;

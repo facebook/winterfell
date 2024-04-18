@@ -73,6 +73,7 @@ impl MockAir {
 impl Air for MockAir {
     type BaseField = BaseElement;
     type PublicInputs = ();
+    type AuxRandElements = ();
 
     fn new(trace_info: TraceInfo, _pub_inputs: (), _options: ProofOptions) -> Self {
         let context = build_context(trace_info, 8, 1);
@@ -102,6 +103,7 @@ impl Air for MockAir {
     fn get_periodic_column_values(&self) -> Vec<Vec<Self::BaseField>> {
         self.periodic_columns.clone()
     }
+    
 }
 
 // HELPER FUNCTIONS

@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::StarkDomain;
-use air::{Air, AuxTraceRandElements, ConstraintDivisor};
+use air::{Air, ConstraintDivisor};
 use alloc::{collections::BTreeMap, vec::Vec};
 use math::{fft, ExtensionOf, FieldElement};
 
@@ -33,7 +33,7 @@ impl<E: FieldElement> BoundaryConstraints<E> {
     /// by an instance of AIR for a specific computation.
     pub fn new<A: Air<BaseField = E::BaseField>>(
         air: &A,
-        aux_rand_elements: &AuxTraceRandElements<E>,
+        aux_rand_elements: &<A as Air>::AuxRandElements,
         composition_coefficients: &[E],
     ) -> Self {
         // get constraints from the AIR instance

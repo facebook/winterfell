@@ -226,9 +226,6 @@ pub trait Air: Send + Sync {
     /// Returns a set of assertions against a concrete execution trace of this computation.
     fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>>;
 
-    // TODO: Make `Self::AuxRandElements<E>`
-    fn get_lagrange_rand_elements<E>(&self, rand_eles: &Self::AuxRandElements) -> &[E];
-
     // AUXILIARY TRACE CONSTRAINTS
     // --------------------------------------------------------------------------------------------
 
@@ -291,6 +288,11 @@ pub trait Air: Send + Sync {
         aux_rand_elements: &Self::AuxRandElements,
     ) -> Vec<Assertion<E>> {
         Vec::new()
+    }
+
+    // TODOP: Make `Self::AuxRandElements<E>`
+    fn get_lagrange_rand_elements<E>(&self, _rand_eles: &Self::AuxRandElements) -> &[E] {
+        unimplemented!("getting the Lagrange random elements has not been implemented");
     }
 
     // PROVIDED METHODS
