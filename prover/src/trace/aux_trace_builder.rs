@@ -3,6 +3,9 @@ use math::FieldElement;
 
 use crate::matrix::ColMatrix;
 
+pub type AuxParams<ATB> = <ATB as AuxTraceBuilder>::AuxParams;
+pub type AuxProof<ATB> = <ATB as AuxTraceBuilder>::AuxProof;
+
 pub struct AuxTraceWithMetadata<E: FieldElement, AuxRandEles, AuxProof> {
     pub aux_trace: ColMatrix<E>,
     pub aux_rand_eles: AuxRandEles,
@@ -10,7 +13,7 @@ pub struct AuxTraceWithMetadata<E: FieldElement, AuxRandEles, AuxProof> {
 }
 
 pub trait AuxTraceBuilder {
-    type AuxRandEles<E>;
+    type AuxRandElements;
     type AuxParams;
 
     /// Optionally, an extra proof object. If not needed, set to `()`.
@@ -25,7 +28,7 @@ pub trait AuxTraceBuilder {
         main_trace: &ColMatrix<E::BaseField>,
         aux_params: Self::AuxParams,
         transcript: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> AuxTraceWithMetadata<E, Self::AuxRandEles<E>, Self::AuxProof>
+    ) -> AuxTraceWithMetadata<E, Self::AuxRandElements, Self::AuxProof>
     where
         E: FieldElement,
         Hasher: ElementHasher<BaseField = E::BaseField>;

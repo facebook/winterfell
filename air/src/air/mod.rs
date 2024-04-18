@@ -188,6 +188,8 @@ pub trait Air: Send + Sync {
     /// This could be any type as long as it can be serialized into a sequence of field elements.
     type PublicInputs: ToElements<Self::BaseField>;
 
+    type AuxRandElements;
+
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
 
@@ -257,7 +259,7 @@ pub trait Air: Send + Sync {
         main_frame: &EvaluationFrame<F>,
         aux_frame: &EvaluationFrame<E>,
         periodic_values: &[F],
-        aux_rand_elements: &AuxTraceRandElements<E>,
+        aux_rand_elements: &Self::AuxRandElements,
         result: &mut [E],
     ) where
         F: FieldElement<BaseField = Self::BaseField>,
@@ -283,7 +285,7 @@ pub trait Air: Send + Sync {
     #[allow(unused_variables)]
     fn get_aux_assertions<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        aux_rand_elements: &AuxTraceRandElements<E>,
+        aux_rand_elements: &Self::AuxRandElements,
     ) -> Vec<Assertion<E>> {
         Vec::new()
     }
@@ -378,7 +380,7 @@ pub trait Air: Send + Sync {
     /// combination of boundary constraints during constraint merging.
     fn get_boundary_constraints<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        aux_rand_elements: &AuxTraceRandElements<E>,
+        aux_rand_elements: &Self::AuxRandElements,
         composition_coefficients: &[E],
     ) -> BoundaryConstraints<E> {
         BoundaryConstraints::new(

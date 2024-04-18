@@ -83,8 +83,8 @@ use composer::DeepCompositionPoly;
 
 mod trace;
 pub use trace::{
-    AuxTraceBuilder, AuxTraceWithMetadata, DefaultTraceLde, Trace, TraceLde, TracePolyTable,
-    TraceTable, TraceTableFragment,
+    AuxParams, AuxProof, AuxTraceBuilder, AuxTraceWithMetadata, DefaultTraceLde, Trace, TraceLde,
+    TracePolyTable, TraceTable, TraceTableFragment,
 };
 
 mod channel;
@@ -128,8 +128,10 @@ pub trait Prover {
     /// Base field for the computation described by this prover.
     type BaseField: StarkField + ExtensibleField<2> + ExtensibleField<3>;
 
+    type AuxRandElements;
+
     /// Algebraic intermediate representation (AIR) for the computation described by this prover.
-    type Air: Air<BaseField = Self::BaseField>;
+    type Air: Air<BaseField = Self::BaseField, AuxRandElements = Self::AuxRandElements>;
 
     /// Execution trace of the computation described by this prover.
     type Trace: Trace<BaseField = Self::BaseField>;
@@ -149,6 +151,8 @@ pub trait Prover {
     type ConstraintEvaluator<'a, E>: ConstraintEvaluator<E, Air = Self::Air>
     where
         E: FieldElement<BaseField = Self::BaseField>;
+
+    type AuxTraceBuilder: AuxTraceBuilder<AuxRandElements = Self::AuxRandElements>;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -201,23 +205,39 @@ pub trait Prover {
     /// the computation described by [Self::Air](Prover::Air) and generated using some set of
     /// secret and public inputs. Public inputs must match the value returned from
     /// [Self::get_pub_inputs()](Prover::get_pub_inputs) for the provided trace.
-    fn prove(&self, trace: Self::Trace) -> Result<StarkProof, ProverError> {
+    fn prove(
+        &self,
+        trace: Self::Trace,
+        aux_trace_builder: Self::AuxTraceBuilder,
+        aux_params: AuxParams<Self::AuxTraceBuilder>
+    ) -> Result<(StarkProof, Option<AuxProof<Self::AuxTraceBuilder>>), ProverError>
+    {
         // figure out which version of the generic proof generation procedure to run. this is a sort
         // of static dispatch for selecting two generic parameter: extension field and hash
         // function.
         match self.options().field_extension() {
-            FieldExtension::None => self.generate_proof::<Self::BaseField>(trace),
+            FieldExtension::None => {
+                self.generate_proof::<Self::BaseField>(trace, aux_trace_builder, aux_params)
+            }
             FieldExtension::Quadratic => {
                 if !<QuadExtension<Self::BaseField>>::is_supported() {
                     return Err(ProverError::UnsupportedFieldExtension(2));
                 }
-                self.generate_proof::<QuadExtension<Self::BaseField>>(trace)
+                self.generate_proof::<QuadExtension<Self::BaseField>>(
+                    trace,
+                    aux_trace_builder,
+                    aux_params,
+                )
             }
             FieldExtension::Cubic => {
                 if !<CubeExtension<Self::BaseField>>::is_supported() {
                     return Err(ProverError::UnsupportedFieldExtension(3));
                 }
-                self.generate_proof::<CubeExtension<Self::BaseField>>(trace)
+                self.generate_proof::<CubeExtension<Self::BaseField>>(
+                    trace,
+                    aux_trace_builder,
+                    aux_params,
+                )
             }
         }
     }
@@ -229,7 +249,12 @@ pub trait Prover {
     /// execution `trace` is valid against this prover's AIR.
     /// TODO: make this function un-callable externally?
     #[doc(hidden)]
-    fn generate_proof<E>(&self, mut trace: Self::Trace) -> Result<StarkProof, ProverError>
+    fn generate_proof<E>(
+        &self,
+        mut trace: Self::Trace,
+        aux_trace_builder: Self::AuxTraceBuilder,
+        aux_params: AuxParams<Self::AuxTraceBuilder>,
+    ) -> Result<(StarkProof, Option<AuxProof<Self::AuxTraceBuilder>>), ProverError>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
