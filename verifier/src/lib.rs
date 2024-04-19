@@ -114,9 +114,9 @@ where
 
     // figure out which version of the generic proof verification procedure to run. this is a sort
     // of static dispatch for selecting two generic parameter: extension field and hash function.
-            let public_coin = RandCoin::new(&public_coin_seed);
-            let channel = VerifierChannel::new(&air, proof)?;
-            perform_verification::<E, AIR, _, HashFn, RandCoin>(air, aux_trace_verifier, channel, public_coin)
+    let public_coin = RandCoin::new(&public_coin_seed);
+    let channel = VerifierChannel::new(&air, proof)?;
+    perform_verification::<E, AIR, _, HashFn, RandCoin>(air, aux_trace_verifier, channel, public_coin)
 }
 
 // VERIFICATION PROCEDURE
