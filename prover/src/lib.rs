@@ -148,7 +148,7 @@ pub trait Prover {
     where
         E: FieldElement<BaseField = Self::BaseField>;
 
-    type AuxTraceBuilder<E>: AuxTraceBuilder<AuxRandElements = Self::AuxRandElements<E>>;
+    type AuxTraceBuilder<E>: AuxTraceBuilder<AuxRandElements<E> = Self::AuxRandElements<E>>;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -209,7 +209,7 @@ pub trait Prover {
     ) -> Result<(StarkProof, Option<AuxProof<Self::AuxTraceBuilder<E>>>), ProverError>
     where
         E: FieldElement<BaseField = Self::BaseField>,
-        Self::Air: Air<AuxRandElements<E> = AuxRandElements<Self::AuxTraceBuilder<E>>>,
+        Self::Air: Air<AuxRandElements<E> = AuxRandElements<Self::AuxTraceBuilder<E>, E>>,
     {
         // FIXME: the `self.options().field_extension` is now irrelevant and could not match the `E`
         // that was passed in.
@@ -231,7 +231,7 @@ pub trait Prover {
     ) -> Result<(StarkProof, Option<AuxProof<Self::AuxTraceBuilder<E>>>), ProverError>
     where
         E: FieldElement<BaseField = Self::BaseField>,
-        Self::Air: Air<AuxRandElements<E> = AuxRandElements<Self::AuxTraceBuilder<E>>>,
+        Self::Air: Air<AuxRandElements<E> = AuxRandElements<Self::AuxTraceBuilder<E>, E>>,
     {
         // 0 ----- instantiate AIR and prover channel ---------------------------------------------
 
