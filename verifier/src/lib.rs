@@ -32,10 +32,9 @@
 extern crate alloc;
 
 pub use air::{
-    proof::StarkProof, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
-    BoundaryConstraintGroup, ConstraintCompositionCoefficients, ConstraintDivisor,
-    DeepCompositionCoefficients, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
+    proof::StarkProof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
+    ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
+    EvaluationFrame, FieldExtension, ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
 
 use alloc::string::ToString;
@@ -152,16 +151,6 @@ where
     public_coin.reseed(trace_commitments[0]);
 
     // process the auxiliary trace segment (if any), to build a set of random elements
-    let mut aux_trace_rand_elements = AuxTraceRandElements::<E>::new();
-    if trace_commitments.len() > 1 {
-        let aux_segment_commitment = trace_commitments[1];
-        let rand_elements = air
-            .get_aux_trace_segment_random_elements(&mut public_coin)
-            .map_err(|_| VerifierError::RandomCoinError)?;
-        aux_trace_rand_elements.set_segment_elements(rand_elements);
-        public_coin.reseed(aux_segment_commitment);
-    }
-
     let aux_trace_rand_elements = match aux_trace_verifier {
         Some(aux_trace_verifier) => Some(
             aux_trace_verifier
