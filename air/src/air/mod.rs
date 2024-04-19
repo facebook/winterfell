@@ -31,7 +31,7 @@ pub use lagrange::{
 
 mod coefficients;
 pub use coefficients::{
-    AuxTraceRandElements, ConstraintCompositionCoefficients, DeepCompositionCoefficients,
+    ConstraintCompositionCoefficients, DeepCompositionCoefficients,
     LagrangeConstraintsCompositionCoefficients,
 };
 
