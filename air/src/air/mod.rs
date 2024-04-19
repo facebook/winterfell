@@ -291,7 +291,10 @@ pub trait Air: Send + Sync {
     }
 
     #[allow(unused_variables)]
-    fn get_lagrange_rand_elements<E>(&self, rand_eles: &Self::AuxRandElements<E>) -> &[E] {
+    fn get_lagrange_rand_elements<'a, E>(
+        &self,
+        rand_eles: &'a Self::AuxRandElements<E>,
+    ) -> &'a [E] {
         unimplemented!("getting the Lagrange random elements has not been implemented");
     }
 

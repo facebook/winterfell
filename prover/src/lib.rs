@@ -185,7 +185,7 @@ pub trait Prover {
     fn new_evaluator<'a, E>(
         &self,
         air: &'a Self::Air,
-        aux_rand_elements: Option<&Self::AuxRandElements<E>>,
+        aux_rand_elements: Option<Self::AuxRandElements<E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E>
     where
@@ -336,7 +336,7 @@ pub trait Prover {
             info_span!("evaluate_constraints", ce_domain_size).in_scope(|| {
                 self.new_evaluator(
                     &air,
-                    aux_rand_elements.as_ref(),
+                    aux_rand_elements,
                     channel.get_constraint_composition_coeffs(),
                 )
                 .evaluate(&trace_lde, &domain)

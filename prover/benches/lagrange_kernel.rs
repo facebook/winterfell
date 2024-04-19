@@ -6,18 +6,19 @@
 use std::time::Duration;
 
 use air::{
-    Air, AirContext, Assertion, AuxTraceRandElements, ConstraintCompositionCoefficients,
-    EvaluationFrame, FieldExtension, ProofOptions, TraceInfo, TransitionConstraintDegree,
+    Air, AirContext, Assertion, ConstraintCompositionCoefficients, EvaluationFrame, FieldExtension,
+    ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use crypto::{hashers::Blake3_256, DefaultRandomCoin};
 use math::{fields::f64::BaseElement, ExtensionOf, FieldElement};
 use winter_prover::{
-    matrix::ColMatrix, DefaultConstraintEvaluator, DefaultTraceLde, Prover, StarkDomain, Trace,
-    TracePolyTable,
+    matrix::ColMatrix, AuxTraceBuilder, AuxTraceWithMetadata, DefaultConstraintEvaluator,
+    DefaultTraceLde, Prover, StarkDomain, Trace, TracePolyTable,
 };
 
 const TRACE_LENS: [usize; 2] = [2_usize.pow(16), 2_usize.pow(20)];
+const AUX_SEGMENT_WIDTH: usize = 2;
 
 fn prove_with_lagrange_kernel(c: &mut Criterion) {
     let mut group = c.benchmark_group("Lagrange kernel column");
@@ -30,7 +31,11 @@ fn prove_with_lagrange_kernel(c: &mut Criterion) {
             let prover = LagrangeProver::new();
             b.iter_batched(
                 || trace.clone(),
-                |trace| prover.prove(trace).unwrap(),
+                |trace| {
+                    prover
+                        .prove::<BaseElement>(trace, LagrangeAuxTraceBuilder, AUX_SEGMENT_WIDTH)
+                        .unwrap()
+                },
                 BatchSize::SmallInput,
             )
         });
@@ -91,47 +96,10 @@ impl Trace for LagrangeTrace {
     /// by the main column
     fn build_aux_segment<E: FieldElement<BaseField = Self::BaseField>>(
         &mut self,
-        rand_elements: &[E],
-        lagrange_kernel_rand_elements: Option<&[E]>,
+        _rand_elements: &[E],
+        _lagrange_kernel_rand_elements: Option<&[E]>,
     ) -> Option<ColMatrix<E>> {
-        let mut columns = Vec::new();
-
-        // first build the Lagrange kernel column
-        {
-            let r = lagrange_kernel_rand_elements.unwrap();
-
-            let mut lagrange_col = Vec::with_capacity(self.len());
-
-            for row_idx in 0..self.len() {
-                let mut row_value = E::ONE;
-                for (bit_idx, &r_i) in r.iter().enumerate() {
-                    if row_idx & (1 << bit_idx) == 0 {
-                        row_value *= E::ONE - r_i;
-                    } else {
-                        row_value *= r_i;
-                    }
-                }
-                lagrange_col.push(row_value);
-            }
-
-            columns.push(lagrange_col);
-        }
-
-        // Then all other auxiliary columns
-        let rand_summed = rand_elements.iter().fold(E::ZERO, |acc, &r| acc + r);
-        for _ in 1..self.aux_trace_width() {
-            // building a dummy auxiliary column
-            let column = self
-                .main_segment()
-                .get_column(0)
-                .iter()
-                .map(|row_val| rand_summed.mul_base(*row_val))
-                .collect();
-
-            columns.push(column);
-        }
-
-        Some(ColMatrix::new(columns))
+        unimplemented!("TODOP: Remove")
     }
 
     fn read_main_frame(&self, row_idx: usize, frame: &mut air::EvaluationFrame<Self::BaseField>) {
@@ -151,6 +119,7 @@ struct LagrangeKernelAir {
 }
 
 impl Air for LagrangeKernelAir {
+    type AuxRandElements<E> = Vec<E>;
     type BaseField = BaseElement;
 
     type PublicInputs = ();
@@ -195,7 +164,7 @@ impl Air for LagrangeKernelAir {
         _main_frame: &EvaluationFrame<F>,
         _aux_frame: &EvaluationFrame<E>,
         _periodic_values: &[F],
-        _aux_rand_elements: &AuxTraceRandElements<E>,
+        _aux_rand_elements: &Self::AuxRandElements<E>,
         _result: &mut [E],
     ) where
         F: FieldElement<BaseField = Self::BaseField>,
@@ -206,14 +175,95 @@ impl Air for LagrangeKernelAir {
 
     fn get_aux_assertions<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        _aux_rand_elements: &AuxTraceRandElements<E>,
+        _aux_rand_elements: &Self::AuxRandElements<E>,
     ) -> Vec<Assertion<E>> {
         vec![Assertion::single(1, 0, E::ZERO)]
+    }
+
+    fn get_lagrange_rand_elements<'a, E>(
+        &self,
+        rand_eles: &'a Self::AuxRandElements<E>,
+    ) -> &'a [E] {
+        let log_trace_len = self.context().trace_len().ilog2() as usize;
+
+        &rand_eles[0..log_trace_len]
     }
 }
 
 // LagrangeProver
 // ================================================================================================
+
+pub struct LagrangeAuxTraceBuilder;
+
+impl AuxTraceBuilder for LagrangeAuxTraceBuilder {
+    type AuxRandElements<E> = Vec<E>;
+    // aux trace width
+    type AuxParams = usize;
+    type AuxProof = ();
+
+    fn build_aux_trace<E, Hasher>(
+        &mut self,
+        main_trace: &ColMatrix<E::BaseField>,
+        aux_trace_width: usize,
+        transcript: &mut impl crypto::RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
+    ) -> AuxTraceWithMetadata<E, Self::AuxRandElements<E>, Self::AuxProof>
+    where
+        E: FieldElement,
+        Hasher: crypto::ElementHasher<BaseField = E::BaseField>,
+    {
+        let lagrange_kernel_rand_elements: Vec<E> = {
+            let log_trace_len = main_trace.num_rows().ilog2() as usize;
+            let mut rand_elements = Vec::with_capacity(log_trace_len);
+            for _ in 0..log_trace_len {
+                rand_elements.push(transcript.draw().unwrap());
+            }
+
+            rand_elements
+        };
+
+        let mut columns = Vec::new();
+
+        // first build the Lagrange kernel column
+        {
+            let r = &lagrange_kernel_rand_elements;
+
+            let mut lagrange_col = Vec::with_capacity(main_trace.num_rows());
+
+            for row_idx in 0..main_trace.num_rows() {
+                let mut row_value = E::ONE;
+                for (bit_idx, &r_i) in r.iter().enumerate() {
+                    if row_idx & (1 << bit_idx) == 0 {
+                        row_value *= E::ONE - r_i;
+                    } else {
+                        row_value *= r_i;
+                    }
+                }
+                lagrange_col.push(row_value);
+            }
+
+            columns.push(lagrange_col);
+        }
+
+        // Then all other auxiliary columns
+        let rand_summed = lagrange_kernel_rand_elements.iter().fold(E::ZERO, |acc, &r| acc + r);
+        for _ in 1..aux_trace_width {
+            // building a dummy auxiliary column
+            let column = main_trace
+                .get_column(0)
+                .iter()
+                .map(|row_val| rand_summed.mul_base(*row_val))
+                .collect();
+
+            columns.push(column);
+        }
+
+        AuxTraceWithMetadata {
+            aux_trace: ColMatrix::new(columns),
+            aux_rand_eles: lagrange_kernel_rand_elements,
+            aux_proof: None,
+        }
+    }
+}
 
 struct LagrangeProver {
     options: ProofOptions,
@@ -228,6 +278,8 @@ impl LagrangeProver {
 }
 
 impl Prover for LagrangeProver {
+    type AuxRandElements<E> = Vec<E>;
+    type AuxTraceBuilder<E> = LagrangeAuxTraceBuilder;
     type BaseField = BaseElement;
     type Air = LagrangeKernelAir;
     type Trace = LagrangeTrace;
@@ -260,7 +312,7 @@ impl Prover for LagrangeProver {
     fn new_evaluator<'a, E>(
         &self,
         air: &'a Self::Air,
-        aux_rand_elements: AuxTraceRandElements<E>,
+        aux_rand_elements: Option<Self::AuxRandElements<E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E>
     where
