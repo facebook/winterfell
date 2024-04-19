@@ -96,16 +96,6 @@ impl Trace for LagrangeTrace {
         &self.main_trace
     }
 
-    /// Each non-Lagrange kernel segment will simply take the sum the random elements, and multiply
-    /// by the main column
-    fn build_aux_segment<E: FieldElement<BaseField = Self::BaseField>>(
-        &mut self,
-        _rand_elements: &[E],
-        _lagrange_kernel_rand_elements: Option<&[E]>,
-    ) -> Option<ColMatrix<E>> {
-        unimplemented!("TODOP: Remove")
-    }
-
     fn read_main_frame(&self, row_idx: usize, frame: &mut air::EvaluationFrame<Self::BaseField>) {
         let next_row_idx = row_idx + 1;
         assert_ne!(next_row_idx, self.len());

@@ -54,17 +54,6 @@ pub trait Trace: Sized {
     /// Returns a reference to a [Matrix] describing the main segment of this trace.
     fn main_segment(&self) -> &ColMatrix<Self::BaseField>;
 
-    /// Builds and returns the auxiliary trace segment. If the trace does not require an auxiliary
-    /// segment, None is returned.
-    ///
-    /// The `rand_elements` slice contains the random elements to use to build the aux segment. If a
-    /// Lagrange kernel column is present, the `lagrange_kernel_rand_elements` should be used.
-    fn build_aux_segment<E: FieldElement<BaseField = Self::BaseField>>(
-        &mut self,
-        rand_elements: &[E],
-        lagrange_kernel_rand_elements: Option<&[E]>,
-    ) -> Option<ColMatrix<E>>;
-
     /// Reads an evaluation frame from the main trace segment at the specified row.
     fn read_main_frame(&self, row_idx: usize, frame: &mut EvaluationFrame<Self::BaseField>);
 
