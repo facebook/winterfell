@@ -33,7 +33,11 @@ fn prove_with_lagrange_kernel(c: &mut Criterion) {
                 || trace.clone(),
                 |trace| {
                     prover
-                        .prove::<BaseElement>(trace, LagrangeAuxTraceBuilder, AUX_SEGMENT_WIDTH)
+                        .prove_with_aux_trace::<BaseElement, _>(
+                            trace,
+                            LagrangeAuxTraceBuilder,
+                            AUX_SEGMENT_WIDTH,
+                        )
                         .unwrap()
                 },
                 BatchSize::SmallInput,
@@ -279,7 +283,6 @@ impl LagrangeProver {
 
 impl Prover for LagrangeProver {
     type AuxRandElements<E> = Vec<E>;
-    type AuxTraceBuilder<E> = LagrangeAuxTraceBuilder;
     type BaseField = BaseElement;
     type Air = LagrangeKernelAir;
     type Trace = LagrangeTrace;
