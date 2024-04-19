@@ -3,14 +3,20 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256};
+use crate::{
+    rescue_raps::prover::RescueRapsAuxTraceBuilder, Blake3_192, Blake3_256, Example,
+    ExampleOptions, HashFunction, Sha3_256,
+};
 use core::marker::PhantomData;
 use rand_utils::rand_array;
 use std::time::Instant;
 use tracing::{field, info_span};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
-    math::{fields::f128::BaseElement, ExtensionOf, FieldElement},
+    math::{
+        fields::{f128::BaseElement, CubeExtension, QuadExtension},
+        ExtensionOf, FieldElement,
+    },
     ProofOptions, Prover, StarkProof, Trace, VerifierError,
 };
 
@@ -124,7 +130,31 @@ where
                 });
 
         // generate the proof
-        prover.prove_with_aux_trace(trace).unwrap()
+        let aux_trace_builder = RescueRapsAuxTraceBuilder;
+        let aux_segment_width = 3;
+
+        let (proof, _) = match self.options.field_extension() {
+            winterfell::FieldExtension::None => prover
+                .prove_with_aux_trace::<BaseElement, _>(trace, aux_trace_builder, aux_segment_width)
+                .unwrap(),
+            winterfell::FieldExtension::Quadratic => prover
+                .prove_with_aux_trace::<QuadExtension<BaseElement>, _>(
+                    trace,
+                    aux_trace_builder,
+                    aux_segment_width,
+                )
+                .unwrap(),
+
+            winterfell::FieldExtension::Cubic => prover
+                .prove_with_aux_trace::<CubeExtension<BaseElement>, _>(
+                    trace,
+                    aux_trace_builder,
+                    aux_segment_width,
+                )
+                .unwrap(),
+        };
+
+        proof
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {
