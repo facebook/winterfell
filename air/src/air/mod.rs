@@ -188,7 +188,7 @@ pub trait Air: Send + Sync {
     /// This could be any type as long as it can be serialized into a sequence of field elements.
     type PublicInputs: ToElements<Self::BaseField>;
 
-    type AuxRandElements;
+    type AuxRandElements<E>;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -259,7 +259,7 @@ pub trait Air: Send + Sync {
         main_frame: &EvaluationFrame<F>,
         aux_frame: &EvaluationFrame<E>,
         periodic_values: &[F],
-        aux_rand_elements: &Self::AuxRandElements,
+        aux_rand_elements: &Self::AuxRandElements<E>,
         result: &mut [E],
     ) where
         F: FieldElement<BaseField = Self::BaseField>,
@@ -285,13 +285,13 @@ pub trait Air: Send + Sync {
     #[allow(unused_variables)]
     fn get_aux_assertions<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        aux_rand_elements: &Self::AuxRandElements,
+        aux_rand_elements: &Self::AuxRandElements<E>,
     ) -> Vec<Assertion<E>> {
         Vec::new()
     }
 
-    // TODOP: Make `Self::AuxRandElements<E>`
-    fn get_lagrange_rand_elements<E>(&self, _rand_eles: &Self::AuxRandElements) -> &[E] {
+    #[allow(unused_variables)]
+    fn get_lagrange_rand_elements<E>(&self, rand_eles: &Self::AuxRandElements<E>) -> &[E] {
         unimplemented!("getting the Lagrange random elements has not been implemented");
     }
 
@@ -385,13 +385,15 @@ pub trait Air: Send + Sync {
     /// combination of boundary constraints during constraint merging.
     fn get_boundary_constraints<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        aux_rand_elements: &Self::AuxRandElements,
+        aux_rand_elements: Option<&Self::AuxRandElements<E>>,
         composition_coefficients: &[E],
     ) -> BoundaryConstraints<E> {
         BoundaryConstraints::new(
             self.context(),
             self.get_assertions(),
-            self.get_aux_assertions(aux_rand_elements),
+            aux_rand_elements
+                .map(|aux_rand_elements| self.get_aux_assertions(aux_rand_elements))
+                .unwrap_or_default(),
             composition_coefficients,
         )
     }

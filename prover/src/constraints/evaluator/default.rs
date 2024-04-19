@@ -38,7 +38,7 @@ pub struct DefaultConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A:
     boundary_constraints: BoundaryConstraints<E>,
     transition_constraints: TransitionConstraints<E>,
     lagrange_constraints_evaluator: Option<LagrangeKernelConstraintsBatchEvaluator<E>>,
-    aux_rand_elements: <A as Air>::AuxRandElements,
+    aux_rand_elements: Option<<A as Air>::AuxRandElements<E>>,
     periodic_values: PeriodicValueTable<E::BaseField>,
 }
 
@@ -130,7 +130,7 @@ where
     /// over extended execution trace.
     pub fn new(
         air: &'a A,
-        aux_rand_elements: <A as Air>::AuxRandElements,
+        aux_rand_elements: Option<<A as Air>::AuxRandElements<E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self {
         // build transition constraint groups; these will be used to compose transition constraint
@@ -142,13 +142,18 @@ where
 
         // build boundary constraint groups; these will be used to evaluate and compose boundary
         // constraint evaluations.
-        let boundary_constraints =
-            BoundaryConstraints::new(air, &aux_rand_elements, &composition_coefficients.boundary);
+        let boundary_constraints = BoundaryConstraints::new(
+            air,
+            aux_rand_elements.as_ref(),
+            &composition_coefficients.boundary,
+        );
 
         let lagrange_constraints_evaluator = if air.context().has_lagrange_kernel_aux_column() {
+            let aux_rand_elements =
+                aux_rand_elements.as_ref().expect("expected aux rand elements to be present");
             Some(LagrangeKernelConstraintsBatchEvaluator::new(
                 air,
-                air.get_lagrange_rand_elements(&aux_rand_elements).to_vec(),
+                air.get_lagrange_rand_elements(aux_rand_elements).to_vec(),
                 composition_coefficients
                     .lagrange
                     .expect("expected Lagrange kernel composition coefficients to be present"),
@@ -356,7 +361,9 @@ where
             main_frame,
             aux_frame,
             periodic_values,
-            &self.aux_rand_elements,
+            self.aux_rand_elements
+                .as_ref()
+                .expect("expected aux rand elements to be present"),
             evaluations,
         );
 

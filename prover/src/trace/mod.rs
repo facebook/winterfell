@@ -91,7 +91,7 @@ pub trait Trace: Sized {
         &self,
         air: &A,
         aux_segment: Option<&ColMatrix<E>>,
-        aux_rand_elements: Option<&<A as Air>::AuxRandElements>,
+        aux_rand_elements: Option<&<A as Air>::AuxRandElements<E>>,
     ) where
         A: Air<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField>,
@@ -123,8 +123,7 @@ pub trait Trace: Sized {
         // then, check assertions against the auxiliary trace segment
         if let Some(aux_segment) = aux_segment {
             let aux_rand_elements = aux_rand_elements.expect("expected aux rand elements");
-            // TODOP: remove `::<E>` after `AuxRandElements<E>` change
-            for assertion in air.get_aux_assertions::<E>(aux_rand_elements) {
+            for assertion in air.get_aux_assertions(aux_rand_elements) {
                 // get the matrix and verify the assertion against it
                 assertion.apply(self.length(), |step, value| {
                     assert!(
@@ -141,8 +140,7 @@ pub trait Trace: Sized {
             if let Some(lagrange_kernel_col_idx) = air.context().lagrange_kernel_aux_column_idx() {
                 let boundary_constraint_assertion_value =
                     LagrangeKernelBoundaryConstraint::assertion_value(
-                        // TODOP: remove `::<E>` after `AuxRandElements<E>` change
-                        air.get_lagrange_rand_elements::<E>(aux_rand_elements),
+                        air.get_lagrange_rand_elements(aux_rand_elements),
                     );
 
                 assert_eq!(

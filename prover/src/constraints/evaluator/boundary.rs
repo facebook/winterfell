@@ -33,7 +33,7 @@ impl<E: FieldElement> BoundaryConstraints<E> {
     /// by an instance of AIR for a specific computation.
     pub fn new<A: Air<BaseField = E::BaseField>>(
         air: &A,
-        aux_rand_elements: &<A as Air>::AuxRandElements,
+        aux_rand_elements: Option<&<A as Air>::AuxRandElements<E>>,
         composition_coefficients: &[E],
     ) -> Self {
         // get constraints from the AIR instance
