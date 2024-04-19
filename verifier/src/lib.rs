@@ -115,13 +115,7 @@ where
     // reseed the coin with the commitment to the main trace segment
     public_coin.reseed(trace_commitments[0]);
 
-    perform_verification::<AIR::BaseField, AIR, HashFn, RandCoin>(
-        air,
-        None,
-        channel,
-        public_coin,
-    )
-
+    perform_verification::<AIR::BaseField, AIR, HashFn, RandCoin>(air, None, channel, public_coin)
 }
 /// Verifies that the specified computation was executed correctly against the specified inputs.
 ///
@@ -213,7 +207,6 @@ where
     H: ElementHasher<BaseField = A::BaseField>,
     R: RandomCoin<BaseField = A::BaseField, Hasher = H>,
 {
-
     // build random coefficients for the composition polynomial
     let constraint_coeffs = air
         .get_constraint_composition_coefficients(&mut public_coin)

@@ -56,6 +56,7 @@ pub struct RescueAir {
 }
 
 impl Air for RescueAir {
+    type AuxRandElements<E> = ();
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
 

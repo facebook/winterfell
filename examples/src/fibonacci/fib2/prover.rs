@@ -8,9 +8,8 @@ use super::{
     Prover, TRACE_WIDTH,
 };
 use winterfell::{
-    matrix::ColMatrix, AuxTraceRandElements, ConstraintCompositionCoefficients,
-    DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable,
-    TraceTable,
+    matrix::ColMatrix, ConstraintCompositionCoefficients, DefaultConstraintEvaluator,
+    DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable, TraceTable,
 };
 
 // FIBONACCI PROVER

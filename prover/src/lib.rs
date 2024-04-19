@@ -199,8 +199,7 @@ pub trait Prover {
     /// the computation described by [Self::Air](Prover::Air) and generated using some set of
     /// secret and public inputs. Public inputs must match the value returned from
     /// [Self::get_pub_inputs()](Prover::get_pub_inputs) for the provided trace.
-    fn prove(&self, trace: Self::Trace) -> Result<StarkProof, ProverError>
-    {
+    fn prove(&self, trace: Self::Trace) -> Result<StarkProof, ProverError> {
         // FIXME: the `self.options().field_extension` is now irrelevant and could be inconsistent
         // with `E`.
         assert!(!trace.info().is_multi_segment());
@@ -219,10 +218,11 @@ pub trait Prover {
         // create a channel which is used to simulate interaction between the prover and the
         // verifier; the channel will be used to commit to values and to draw randomness that
         // should come from the verifier.
-        let mut channel = ProverChannel::<Self::Air, Self::BaseField, Self::HashFn, Self::RandomCoin>::new(
-            &air,
-            pub_inputs_elements,
-        );
+        let mut channel =
+            ProverChannel::<Self::Air, Self::BaseField, Self::HashFn, Self::RandomCoin>::new(
+                &air,
+                pub_inputs_elements,
+            );
 
         // 1 ----- Commit to the execution trace --------------------------------------------------
 

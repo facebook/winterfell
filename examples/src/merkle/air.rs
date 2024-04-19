@@ -29,6 +29,7 @@ pub struct MerkleAir {
 }
 
 impl Air for MerkleAir {
+    type AuxRandElements<E> = ();
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
 

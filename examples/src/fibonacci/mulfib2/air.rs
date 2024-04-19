@@ -20,6 +20,7 @@ pub struct MulFib2Air {
 }
 
 impl Air for MulFib2Air {
+    type AuxRandElements<E> = ();
     type BaseField = BaseElement;
     type PublicInputs = BaseElement;
 

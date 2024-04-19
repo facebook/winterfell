@@ -124,7 +124,7 @@ where
                 });
 
         // generate the proof
-        prover.prove(trace).unwrap()
+        prover.prove_with_aux_trace(trace).unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {

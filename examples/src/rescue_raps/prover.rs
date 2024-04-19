@@ -9,8 +9,8 @@ use super::{
     RescueRapsAir, CYCLE_LENGTH, NUM_HASH_ROUNDS,
 };
 use winterfell::{
-    matrix::ColMatrix, AuxTraceRandElements, ConstraintCompositionCoefficients,
-    DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable,
+    matrix::ColMatrix, ConstraintCompositionCoefficients, DefaultConstraintEvaluator,
+    DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable,
 };
 
 // RESCUE PROVER
@@ -97,6 +97,7 @@ impl<H: ElementHasher> Prover for RescueRapsProver<H>
 where
     H: ElementHasher<BaseField = BaseElement>,
 {
+    type AuxRandElements<E> = Vec<E>;
     type BaseField = BaseElement;
     type Air = RescueRapsAir;
     type Trace = RapTraceTable<BaseElement>;
@@ -132,7 +133,7 @@ where
     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         air: &'a Self::Air,
-        aux_rand_elements: AuxTraceRandElements<E>,
+        aux_rand_elements: Option<Self::AuxRandElements<E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E> {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)

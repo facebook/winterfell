@@ -12,7 +12,7 @@ use prover::{
 };
 use std::vec;
 use std::vec::Vec;
-use verifier::DefaultAuxTraceVerifier;
+use verifier::{verify_with_aux_trace, DefaultAuxTraceVerifier};
 
 const AUX_TRACE_WIDTH: usize = 2;
 
@@ -29,7 +29,7 @@ fn test_complex_lagrange_kernel_air() {
 
     let aux_trace_verifier = DefaultAuxTraceVerifier::new(log_trace_len);
 
-    verify::<
+    verify_with_aux_trace::<
         BaseElement,
         LagrangeKernelComplexAir,
         _,

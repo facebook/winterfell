@@ -19,6 +19,7 @@ pub struct Fib8Air {
 }
 
 impl Air for Fib8Air {
+    type AuxRandElements<E> = ();
     type BaseField = BaseElement;
     type PublicInputs = BaseElement;
 
