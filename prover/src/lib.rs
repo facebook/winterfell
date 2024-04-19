@@ -195,13 +195,35 @@ pub trait Prover {
     // --------------------------------------------------------------------------------------------
 
     /// Returns a STARK proof attesting to a correct execution of a computation defined by the
-    /// provided trace.
+    /// provided trace. The trace must not contain an auxiliary trace segment.
     ///
     /// The returned [StarkProof] attests that the specified `trace` is a valid execution trace of
     /// the computation described by [Self::Air](Prover::Air) and generated using some set of
     /// secret and public inputs. Public inputs must match the value returned from
     /// [Self::get_pub_inputs()](Prover::get_pub_inputs) for the provided trace.
     fn prove<E>(
+        &self,
+        trace: Self::Trace,
+    ) -> Result<(StarkProof, Option<AuxProof<Self::AuxTraceBuilder<E>>>), ProverError>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+        Self::Air: Air<AuxRandElements<E> = AuxRandElements<Self::AuxTraceBuilder<E>, E>>,
+    {
+        assert!(!trace.info().is_multi_segment());
+
+        // FIXME: the `self.options().field_extension` is now irrelevant and could be inconsistent
+        // with `E`.
+        self.generate_proof(trace, None, None)
+    }
+
+    /// Returns a STARK proof attesting to a correct execution of a computation defined by the
+    /// provided trace. The trace is expected to contain an auxiliary trace segment.
+    ///
+    /// The returned [StarkProof] attests that the specified `trace` is a valid execution trace of
+    /// the computation described by [Self::Air](Prover::Air) and generated using some set of
+    /// secret and public inputs. Public inputs must match the value returned from
+    /// [Self::get_pub_inputs()](Prover::get_pub_inputs) for the provided trace.
+    fn prove_with_aux_trace<E>(
         &self,
         trace: Self::Trace,
         aux_trace_builder: Self::AuxTraceBuilder<E>,
@@ -211,9 +233,9 @@ pub trait Prover {
         E: FieldElement<BaseField = Self::BaseField>,
         Self::Air: Air<AuxRandElements<E> = AuxRandElements<Self::AuxTraceBuilder<E>, E>>,
     {
-        // FIXME: the `self.options().field_extension` is now irrelevant and could be inconsistent
-        // with `E`.
-        self.generate_proof(trace, aux_trace_builder, aux_params)
+        assert!(trace.info().is_multi_segment());
+
+        self.generate_proof(trace, Some(aux_trace_builder), Some(aux_params))
     }
 
     // HELPER METHODS
@@ -226,8 +248,8 @@ pub trait Prover {
     fn generate_proof<E>(
         &self,
         trace: Self::Trace,
-        mut aux_trace_builder: Self::AuxTraceBuilder<E>,
-        aux_params: AuxParams<Self::AuxTraceBuilder<E>>,
+        aux_trace_builder: Option<Self::AuxTraceBuilder<E>>,
+        aux_params: Option<AuxParams<Self::AuxTraceBuilder<E>>>,
     ) -> Result<(StarkProof, Option<AuxProof<Self::AuxTraceBuilder<E>>>), ProverError>
     where
         E: FieldElement<BaseField = Self::BaseField>,
@@ -283,6 +305,8 @@ pub trait Prover {
         // build the auxiliary trace segment (if any), and append the resulting segments to trace
         // commitment and trace polynomial table structs
         let (aux_trace, aux_rand_elements, aux_proof) = if trace.info().is_multi_segment() {
+            let mut aux_trace_builder = aux_trace_builder.expect("expected aux trace builder");
+            let aux_params = aux_params.expect("expected aux_params");
             let aux_trace_with_metadata = aux_trace_builder.build_aux_trace(
                 trace.main_segment(),
                 aux_params,
