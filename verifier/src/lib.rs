@@ -38,7 +38,6 @@ pub use air::{
 };
 
 use alloc::string::ToString;
-use aux_verifier::AuxTraceVerifier;
 pub use math;
 use math::{FieldElement, ToElements};
 
@@ -58,6 +57,7 @@ use crypto::{ElementHasher, Hasher, RandomCoin};
 use fri::FriVerifier;
 
 mod aux_verifier;
+pub use aux_verifier::{AuxTraceVerifier, DefaultAuxTraceVerifier};
 
 mod channel;
 use channel::VerifierChannel;
