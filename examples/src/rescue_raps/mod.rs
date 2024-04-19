@@ -17,7 +17,8 @@ use winterfell::{
         fields::{f128::BaseElement, CubeExtension, QuadExtension},
         ExtensionOf, FieldElement,
     },
-    ProofOptions, Prover, StarkProof, Trace, VerifierError,
+    DefaultAuxTraceVerifier, FieldExtension, ProofOptions, Prover, StarkProof, Trace,
+    VerifierError,
 };
 
 mod custom_trace_table;
@@ -134,10 +135,10 @@ where
         let aux_segment_width = 3;
 
         let (proof, _) = match self.options.field_extension() {
-            winterfell::FieldExtension::None => prover
+            FieldExtension::None => prover
                 .prove_with_aux_trace::<BaseElement, _>(trace, aux_trace_builder, aux_segment_width)
                 .unwrap(),
-            winterfell::FieldExtension::Quadratic => prover
+            FieldExtension::Quadratic => prover
                 .prove_with_aux_trace::<QuadExtension<BaseElement>, _>(
                     trace,
                     aux_trace_builder,
@@ -145,7 +146,7 @@ where
                 )
                 .unwrap(),
 
-            winterfell::FieldExtension::Cubic => prover
+            FieldExtension::Cubic => prover
                 .prove_with_aux_trace::<CubeExtension<BaseElement>, _>(
                     trace,
                     aux_trace_builder,
@@ -163,11 +164,38 @@ where
         };
         let acceptable_options =
             winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
-        winterfell::verify::<RescueRapsAir, H, DefaultRandomCoin<H>>(
-            proof,
-            pub_inputs,
-            &acceptable_options,
-        )
+        let aux_verifier = DefaultAuxTraceVerifier::new(3);
+
+        match proof.options().field_extension() {
+            FieldExtension::None => {
+                winterfell::verify_with_aux_trace::<
+                    BaseElement,
+                    RescueRapsAir,
+                    _,
+                    H,
+                    DefaultRandomCoin<H>,
+                >(proof, aux_verifier, pub_inputs, &acceptable_options)
+            }
+
+            FieldExtension::Quadratic => {
+                winterfell::verify_with_aux_trace::<
+                    QuadExtension<BaseElement>,
+                    RescueRapsAir,
+                    _,
+                    H,
+                    DefaultRandomCoin<H>,
+                >(proof, aux_verifier, pub_inputs, &acceptable_options)
+            }
+            FieldExtension::Cubic => {
+                winterfell::verify_with_aux_trace::<
+                    CubeExtension<BaseElement>,
+                    RescueRapsAir,
+                    _,
+                    H,
+                    DefaultRandomCoin<H>,
+                >(proof, aux_verifier, pub_inputs, &acceptable_options)
+            }
+        }
     }
 
     fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
@@ -176,11 +204,39 @@ where
         };
         let acceptable_options =
             winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
-        winterfell::verify::<RescueRapsAir, H, DefaultRandomCoin<H>>(
-            proof,
-            pub_inputs,
-            &acceptable_options,
-        )
+
+        let aux_verifier = DefaultAuxTraceVerifier::new(3);
+
+        match proof.options().field_extension() {
+            FieldExtension::None => {
+                winterfell::verify_with_aux_trace::<
+                    BaseElement,
+                    RescueRapsAir,
+                    _,
+                    H,
+                    DefaultRandomCoin<H>,
+                >(proof, aux_verifier, pub_inputs, &acceptable_options)
+            }
+
+            FieldExtension::Quadratic => {
+                winterfell::verify_with_aux_trace::<
+                    QuadExtension<BaseElement>,
+                    RescueRapsAir,
+                    _,
+                    H,
+                    DefaultRandomCoin<H>,
+                >(proof, aux_verifier, pub_inputs, &acceptable_options)
+            }
+            FieldExtension::Cubic => {
+                winterfell::verify_with_aux_trace::<
+                    CubeExtension<BaseElement>,
+                    RescueRapsAir,
+                    _,
+                    H,
+                    DefaultRandomCoin<H>,
+                >(proof, aux_verifier, pub_inputs, &acceptable_options)
+            }
+        }
     }
 }
 
