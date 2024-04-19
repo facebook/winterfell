@@ -38,11 +38,10 @@ pub use air::{
     TransitionConstraintDegree,
 };
 
+use alloc::string::ToString;
+use aux_verifier::AuxTraceVerifier;
 pub use math;
-use math::{
-    fields::{CubeExtension, QuadExtension},
-    FieldElement, ToElements,
-};
+use math::{FieldElement, ToElements};
 
 #[deprecated(
     since = "0.8.2",
@@ -58,6 +57,8 @@ pub use crypto;
 use crypto::{ElementHasher, Hasher, RandomCoin};
 
 use fri::FriVerifier;
+
+mod aux_verifier;
 
 mod channel;
 use channel::VerifierChannel;
@@ -86,13 +87,16 @@ pub use errors::VerifierError;
 /// - The specified proof was generated for this computation but for different public inputs.
 /// - The specified proof was generated with parameters not providing an acceptable security level.
 #[rustfmt::skip]
-pub fn verify<AIR, HashFn, RandCoin>(
+pub fn verify<E, AIR, ATV, HashFn, RandCoin>(
     proof: StarkProof,
+    aux_trace_verifier: Option<ATV>,
     pub_inputs: AIR::PublicInputs,
     acceptable_options: &AcceptableOptions,
 ) -> Result<(), VerifierError>
 where
+    E: FieldElement<BaseField = AIR::BaseField>,
     AIR: Air,
+    ATV: AuxTraceVerifier<AuxRandElements<E> = <AIR as Air>::AuxRandElements<E>>,
     HashFn: ElementHasher<BaseField = AIR::BaseField>,
     RandCoin: RandomCoin<BaseField = AIR::BaseField, Hasher = HashFn>,
 {
@@ -111,43 +115,25 @@ where
 
     // figure out which version of the generic proof verification procedure to run. this is a sort
     // of static dispatch for selecting two generic parameter: extension field and hash function.
-    match air.options().field_extension() {
-        FieldExtension::None => {
             let public_coin = RandCoin::new(&public_coin_seed);
             let channel = VerifierChannel::new(&air, proof)?;
-            perform_verification::<AIR, AIR::BaseField, HashFn, RandCoin>(air, channel, public_coin)
-        },
-        FieldExtension::Quadratic => {
-            if !<QuadExtension<AIR::BaseField>>::is_supported() {
-                return Err(VerifierError::UnsupportedFieldExtension(2));
-            }
-            let public_coin = RandCoin::new(&public_coin_seed);
-            let channel = VerifierChannel::new(&air, proof)?;
-            perform_verification::<AIR, QuadExtension<AIR::BaseField>, HashFn, RandCoin>(air, channel, public_coin)
-        },
-        FieldExtension::Cubic => {
-            if !<CubeExtension<AIR::BaseField>>::is_supported() {
-                return Err(VerifierError::UnsupportedFieldExtension(3));
-            }
-            let public_coin = RandCoin::new(&public_coin_seed);
-            let channel = VerifierChannel::new(&air, proof)?;
-            perform_verification::<AIR, CubeExtension<AIR::BaseField>, HashFn, RandCoin>(air, channel, public_coin)
-        },
-    }
+            perform_verification::<E, AIR, _, HashFn, RandCoin>(air, aux_trace_verifier, channel, public_coin)
 }
 
 // VERIFICATION PROCEDURE
 // ================================================================================================
 /// Performs the actual verification by reading the data from the `channel` and making sure it
 /// attests to a correct execution of the computation specified by the provided `air`.
-fn perform_verification<A, E, H, R>(
+fn perform_verification<E, A, ATV, H, R>(
     air: A,
+    aux_trace_verifier: Option<ATV>,
     mut channel: VerifierChannel<E, H>,
     mut public_coin: R,
 ) -> Result<(), VerifierError>
 where
-    A: Air,
     E: FieldElement<BaseField = A::BaseField>,
+    A: Air,
+    ATV: AuxTraceVerifier<AuxRandElements<E> = <A as Air>::AuxRandElements<E>>,
     H: ElementHasher<BaseField = A::BaseField>,
     R: RandomCoin<BaseField = A::BaseField, Hasher = H>,
 {
@@ -175,6 +161,15 @@ where
         aux_trace_rand_elements.set_segment_elements(rand_elements);
         public_coin.reseed(aux_segment_commitment);
     }
+
+    let aux_trace_rand_elements = match aux_trace_verifier {
+        Some(aux_trace_verifier) => Some(
+            aux_trace_verifier
+                .generate_aux_rand_elements::<E, _>(&mut public_coin)
+                .map_err(|err| VerifierError::AuxTraceVerificationFailed(err.to_string()))?,
+        ),
+        None => None,
+    };
 
     // build random coefficients for the composition polynomial
     let constraint_coeffs = air
