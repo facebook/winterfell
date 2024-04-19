@@ -584,7 +584,8 @@
 extern crate std;
 
 pub use prover::{
-    crypto, iterators, math, matrix, Air, AirContext, Assertion, AuxTraceRandElements,
+    crypto, iterators, math, matrix, Air, AirContext, Assertion, AuxParams, AuxProof,
+    AuxRandElements, AuxTraceBuilder, AuxTraceRandElements, AuxTraceWithMetadata,
     BoundaryConstraint, BoundaryConstraintGroup, ByteReader, ByteWriter, CompositionPolyTrace,
     ConstraintCompositionCoefficients, ConstraintDivisor, ConstraintEvaluator,
     DeepCompositionCoefficients, DefaultConstraintEvaluator, DefaultTraceLde, Deserializable,
