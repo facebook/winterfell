@@ -131,7 +131,7 @@ where
 /// - The specified proof was generated with parameters not providing an acceptable security level.
 pub fn verify_with_aux_trace<E, AIR, ATV, HashFn, RandCoin>(
     proof: StarkProof,
-    aux_trace_verifier: Option<ATV>,
+    aux_trace_verifier: ATV,
     pub_inputs: AIR::PublicInputs,
     acceptable_options: &AcceptableOptions,
 ) -> Result<(), VerifierError>
@@ -174,18 +174,13 @@ where
     public_coin.reseed(trace_commitments[0]);
 
     // process the auxiliary trace segment (if any), to build a set of random elements
-    let aux_trace_rand_elements = match aux_trace_verifier {
-        Some(aux_trace_verifier) => Some(
-            aux_trace_verifier
-                .generate_aux_rand_elements::<E, _>(&mut public_coin)
-                .map_err(|err| VerifierError::AuxTraceVerificationFailed(err.to_string()))?,
-        ),
-        None => None,
-    };
+    let aux_trace_rand_elements = aux_trace_verifier
+        .generate_aux_rand_elements::<E, _>(&mut public_coin)
+        .map_err(|err| VerifierError::AuxTraceVerificationFailed(err.to_string()))?;
 
     perform_verification::<E, AIR, HashFn, RandCoin>(
         air,
-        aux_trace_rand_elements,
+        Some(aux_trace_rand_elements),
         channel,
         public_coin,
     )
