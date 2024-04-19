@@ -199,9 +199,7 @@ pub trait Prover {
     /// the computation described by [Self::Air](Prover::Air) and generated using some set of
     /// secret and public inputs. Public inputs must match the value returned from
     /// [Self::get_pub_inputs()](Prover::get_pub_inputs) for the provided trace.
-    fn prove<E>(&self, trace: Self::Trace) -> Result<StarkProof, ProverError>
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
+    fn prove(&self, trace: Self::Trace) -> Result<StarkProof, ProverError>
     {
         // FIXME: the `self.options().field_extension` is now irrelevant and could be inconsistent
         // with `E`.
@@ -221,7 +219,7 @@ pub trait Prover {
         // create a channel which is used to simulate interaction between the prover and the
         // verifier; the channel will be used to commit to values and to draw randomness that
         // should come from the verifier.
-        let mut channel = ProverChannel::<Self::Air, E, Self::HashFn, Self::RandomCoin>::new(
+        let mut channel = ProverChannel::<Self::Air, Self::BaseField, Self::HashFn, Self::RandomCoin>::new(
             &air,
             pub_inputs_elements,
         );
