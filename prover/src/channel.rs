@@ -67,11 +67,11 @@ where
             _field_element: PhantomData,
         }
     }
-    
+
     // GETTER METHODS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the inner public coin 
+    /// Returns the inner public coin
     pub fn public_coin(&mut self) -> &mut R {
         &mut self.public_coin
     }
@@ -107,15 +107,6 @@ where
 
     // PUBLIC COIN METHODS
     // --------------------------------------------------------------------------------------------
-
-    /// Returns a set of random elements required for constructing the auxiliary trace segment.
-    ///
-    /// The elements are drawn from the public coin uniformly at random.
-    pub fn get_aux_trace_segment_rand_elements(&mut self) -> Vec<E> {
-        self.air
-            .get_aux_trace_segment_random_elements(&mut self.public_coin)
-            .expect("failed to draw random elements for the auxiliary trace segment")
-    }
 
     /// Returns a set of coefficients for constructing a constraint composition polynomial.
     ///

@@ -3,6 +3,7 @@ use math::FieldElement;
 
 use crate::matrix::ColMatrix;
 
+pub type AuxRandElements<ATB> = <ATB as AuxTraceBuilder>::AuxRandElements;
 pub type AuxParams<ATB> = <ATB as AuxTraceBuilder>::AuxParams;
 pub type AuxProof<ATB> = <ATB as AuxTraceBuilder>::AuxProof;
 

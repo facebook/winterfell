@@ -254,7 +254,6 @@ impl Air for MockAir {
         _result: &mut [E],
     ) {
     }
-    
 }
 
 // UTILITY FUNCTIONS

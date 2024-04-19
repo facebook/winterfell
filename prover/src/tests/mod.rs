@@ -103,7 +103,6 @@ impl Air for MockAir {
     fn get_periodic_column_values(&self) -> Vec<Vec<Self::BaseField>> {
         self.periodic_columns.clone()
     }
-    
 }
 
 // HELPER FUNCTIONS

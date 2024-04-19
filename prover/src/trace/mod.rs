@@ -8,7 +8,9 @@ use air::{Air, EvaluationFrame, LagrangeKernelBoundaryConstraint, TraceInfo};
 use math::{polynom, FieldElement, StarkField};
 
 mod aux_trace_builder;
-pub use aux_trace_builder::{AuxParams, AuxProof, AuxTraceBuilder, AuxTraceWithMetadata};
+pub use aux_trace_builder::{
+    AuxParams, AuxProof, AuxRandElements, AuxTraceBuilder, AuxTraceWithMetadata,
+};
 
 mod trace_lde;
 pub use trace_lde::{DefaultTraceLde, TraceLde};
