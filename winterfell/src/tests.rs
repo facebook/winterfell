@@ -95,8 +95,8 @@ impl Trace for LagrangeComplexTrace {
     /// by the main column
     fn build_aux_segment<E: FieldElement<BaseField = Self::BaseField>>(
         &mut self,
-        rand_elements: &[E],
-        lagrange_kernel_rand_elements: Option<&[E]>,
+        _rand_elements: &[E],
+        _lagrange_kernel_rand_elements: Option<&[E]>,
     ) -> Option<ColMatrix<E>> {
         unimplemented!("to remove")
     }
