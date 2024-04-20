@@ -57,7 +57,7 @@ use crypto::{ElementHasher, Hasher, RandomCoin};
 use fri::FriVerifier;
 
 mod aux_verifier;
-pub use aux_verifier::{AuxTraceVerifier, DefaultAuxTraceVerifier};
+pub use aux_verifier::{AuxRandElementsGenerator, DefaultAuxRandElementsGenerator};
 
 mod channel;
 use channel::VerifierChannel;
@@ -142,16 +142,16 @@ where
 /// - The specified proof was generated for a different computation.
 /// - The specified proof was generated for this computation but for different public inputs.
 /// - The specified proof was generated with parameters not providing an acceptable security level.
-pub fn verify_with_aux_trace<E, AIR, ATV, HashFn, RandCoin>(
+pub fn verify_with_aux_trace<E, AIR, ARG, HashFn, RandCoin>(
     proof: StarkProof,
-    aux_trace_verifier: ATV,
+    aux_rand_eles_generator: ARG,
     pub_inputs: AIR::PublicInputs,
     acceptable_options: &AcceptableOptions,
 ) -> Result<(), VerifierError>
 where
     E: FieldElement<BaseField = AIR::BaseField>,
     AIR: Air,
-    ATV: AuxTraceVerifier<AuxRandElements<E> = <AIR as Air>::AuxRandElements<E>>,
+    ARG: AuxRandElementsGenerator<AuxRandElements<E> = <AIR as Air>::AuxRandElements<E>>,
     HashFn: ElementHasher<BaseField = AIR::BaseField>,
     RandCoin: RandomCoin<BaseField = AIR::BaseField, Hasher = HashFn>,
 {
@@ -192,7 +192,7 @@ where
 
     // process the auxiliary trace segment to build a set of random elements, and reseed the coin
     // with the aux trace commitment
-    let aux_trace_rand_elements = aux_trace_verifier
+    let aux_trace_rand_elements = aux_rand_eles_generator
         .generate_aux_rand_elements::<E, _>(&mut public_coin)
         .map_err(|err| VerifierError::AuxTraceVerificationFailed(err.to_string()))?;
     public_coin.reseed(aux_trace_commitment);

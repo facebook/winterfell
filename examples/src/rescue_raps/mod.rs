@@ -17,7 +17,7 @@ use winterfell::{
         fields::{f128::BaseElement, CubeExtension, QuadExtension},
         ExtensionOf, FieldElement,
     },
-    DefaultAuxTraceVerifier, FieldExtension, ProofOptions, Prover, StarkProof, Trace,
+    DefaultAuxRandElementsGenerator, FieldExtension, ProofOptions, Prover, StarkProof, Trace,
     VerifierError,
 };
 
@@ -164,7 +164,7 @@ where
         };
         let acceptable_options =
             winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
-        let aux_verifier = DefaultAuxTraceVerifier::new(3);
+        let aux_verifier = DefaultAuxRandElementsGenerator::new(3);
 
         match proof.options().field_extension() {
             FieldExtension::None => {
@@ -205,7 +205,7 @@ where
         let acceptable_options =
             winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
 
-        let aux_verifier = DefaultAuxTraceVerifier::new(3);
+        let aux_verifier = DefaultAuxRandElementsGenerator::new(3);
 
         match proof.options().field_extension() {
             FieldExtension::None => {

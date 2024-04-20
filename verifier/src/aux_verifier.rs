@@ -3,7 +3,7 @@ use crypto::{ElementHasher, RandomCoin, RandomCoinError};
 use math::FieldElement;
 
 /// A trait for generating the random elements required for constructing the auxiliary trace.
-pub trait AuxTraceVerifier {
+pub trait AuxRandElementsGenerator {
     type AuxRandElements<E: Send + Sync>;
     type Error: ToString;
 
@@ -17,19 +17,20 @@ pub trait AuxTraceVerifier {
         Hasher: ElementHasher<BaseField = E::BaseField>;
 }
 
-/// Implementation of the [`AuxTraceVerifier`] trait that simply samples a given number of elements.
-pub struct DefaultAuxTraceVerifier {
+/// Implementation of the [`AuxRandElementsGenerator`] trait that simply samples a given number of
+/// elements.
+pub struct DefaultAuxRandElementsGenerator {
     num_rand_elements: usize,
 }
 
-impl DefaultAuxTraceVerifier {
-    /// Creates a new [`DefaultAuxTraceVerifier`].
+impl DefaultAuxRandElementsGenerator {
+    /// Creates a new [`DefaultAuxRandElementsGenerator`].
     pub fn new(num_rand_elements: usize) -> Self {
         Self { num_rand_elements }
     }
 }
 
-impl AuxTraceVerifier for DefaultAuxTraceVerifier {
+impl AuxRandElementsGenerator for DefaultAuxRandElementsGenerator {
     type AuxRandElements<E: Send + Sync> = Vec<E>;
     type Error = RandomCoinError;
 
