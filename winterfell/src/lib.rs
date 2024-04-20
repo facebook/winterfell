@@ -177,7 +177,8 @@
 //! }
 //!
 //! impl Air for WorkAir {
-//!     // First, we'll specify which finite field to use for our computation, and also how
+//!     type AuxRandElements<E: Send + Sync> = ();
+//!     // We'll specify which finite field to use for our computation, and also how
 //!     // the public inputs must look like.
 //!     type BaseField = BaseElement;
 //!     type PublicInputs = PublicInputs;
@@ -284,6 +285,7 @@
 //! # }
 //! #
 //! # impl Air for WorkAir {
+//! #     type AuxRandElements<E: Send + Sync> = ();
 //! #     type BaseField = BaseElement;
 //! #     type PublicInputs = PublicInputs;
 //! #
@@ -338,6 +340,7 @@
 //! // struct as we don't need to define a custom trace for our computation. For other
 //! // associated types, we'll use default implementation provided by Winterfell.
 //! impl Prover for WorkProver {
+//!     type AuxRandElements<E: Send + Sync> = ();
 //!     type BaseField = BaseElement;
 //!     type Air = WorkAir;
 //!     type Trace = TraceTable<Self::BaseField>;
@@ -373,10 +376,11 @@
 //!         &self,
 //!         air: &'a Self::Air,
 //!         aux_rand_elements: Option<Self::AuxRandElements<E>>,
-//!         composition_coefficients: ConstraintCompositionCoefficients<E>,
+//!         composition_coefficients: winterfell::ConstraintCompositionCoefficients<E>,
 //!     ) -> Self::ConstraintEvaluator<'a, E> {
 //!         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
 //!     }
+//! }
 //! ```
 //!
 //! Now, we are finally ready to generate and verify STARK proofs.
@@ -429,6 +433,7 @@
 //! # }
 //! #
 //! # impl Air for WorkAir {
+//!       type AuxRandElements<E: Send + Sync> = ();
 //! #     type BaseField = BaseElement;
 //! #     type PublicInputs = PublicInputs;
 //! #
@@ -477,6 +482,7 @@
 //! # }
 //! #
 //! # impl Prover for WorkProver {
+//! #    type AuxRandElements<E: Send + Sync> = ();
 //! #    type BaseField = BaseElement;
 //! #    type Air = WorkAir;
 //! #    type Trace = TraceTable<Self::BaseField>;
@@ -511,7 +517,7 @@
 //! #        &self,
 //! #        air: &'a Self::Air,
 //! #        aux_rand_elements: Option<Self::AuxRandElements<E>>,
-//! #        composition_coefficients: ConstraintCompositionCoefficients<E>,
+//! #        composition_coefficients: winterfell::ConstraintCompositionCoefficients<E>,
 //! #    ) -> Self::ConstraintEvaluator<'a, E> {
 //! #        DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
 //! #    }
