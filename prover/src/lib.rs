@@ -294,8 +294,8 @@ pub trait Prover {
         let (mut trace_lde, mut trace_polys) =
             self.build_main_trace_and_commit(&trace, &domain, &mut channel);
 
-        // build the auxiliary trace segment (if any), and append the resulting segments to trace
-        // commitment and trace polynomial table structs
+        // build the auxiliary trace segment, and append the resulting segments to trace commitment
+        // and trace polynomial table structs
         let aux_trace_with_metadata = {
             let aux_trace_with_metadata = aux_trace_builder.build_aux_trace(
                 trace.main_segment(),
