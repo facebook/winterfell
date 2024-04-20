@@ -103,7 +103,7 @@ struct LagrangeKernelComplexAir {
 }
 
 impl Air for LagrangeKernelComplexAir {
-    type AuxRandElements<E> = Vec<E>;
+    type AuxRandElements<E: Send + Sync> = Vec<E>;
     type BaseField = BaseElement;
 
     type PublicInputs = ();
@@ -164,7 +164,7 @@ impl Air for LagrangeKernelComplexAir {
         vec![Assertion::single(1, 0, E::ZERO)]
     }
 
-    fn get_lagrange_rand_elements<'a, E>(
+    fn get_lagrange_rand_elements<'a, E: Send + Sync>(
         &self,
         rand_eles: &'a Self::AuxRandElements<E>,
     ) -> &'a [E] {
@@ -180,7 +180,7 @@ impl Air for LagrangeKernelComplexAir {
 pub struct LagrangeAuxTraceBuilder;
 
 impl AuxTraceBuilder for LagrangeAuxTraceBuilder {
-    type AuxRandElements<E> = Vec<E>;
+    type AuxRandElements<E: Send + Sync> = Vec<E>;
     // aux trace width
     type AuxParams = usize;
     type AuxProof = ();
@@ -262,7 +262,7 @@ impl LagrangeComplexProver {
 }
 
 impl Prover for LagrangeComplexProver {
-    type AuxRandElements<E> = Vec<E>;
+    type AuxRandElements<E: Send + Sync> = Vec<E>;
     type BaseField = BaseElement;
     type Air = LagrangeKernelComplexAir;
     type Trace = LagrangeComplexTrace;

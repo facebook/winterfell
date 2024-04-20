@@ -102,7 +102,7 @@ impl<H: ElementHasher> Prover for MerkleProver<H>
 where
     H: ElementHasher<BaseField = BaseElement>,
 {
-    type AuxRandElements<E> = ();
+    type AuxRandElements<E: Send + Sync> = ();
     type BaseField = BaseElement;
     type Air = MerkleAir;
     type Trace = TraceTable<BaseElement>;

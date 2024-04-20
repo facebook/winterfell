@@ -68,7 +68,7 @@ impl<H: ElementHasher> Prover for RescueProver<H>
 where
     H: ElementHasher<BaseField = BaseElement>,
 {
-    type AuxRandElements<E> = ();
+    type AuxRandElements<E: Send + Sync> = ();
     type BaseField = BaseElement;
     type Air = RescueAir;
     type Trace = TraceTable<BaseElement>;

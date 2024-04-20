@@ -48,7 +48,7 @@ pub struct LamportThresholdAir {
 }
 
 impl Air for LamportThresholdAir {
-    type AuxRandElements<E> = ();
+    type AuxRandElements<E: Send + Sync> = ();
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
 

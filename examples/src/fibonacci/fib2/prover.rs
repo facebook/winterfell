@@ -53,7 +53,7 @@ impl<H: ElementHasher> Prover for FibProver<H>
 where
     H: ElementHasher<BaseField = BaseElement>,
 {
-    type AuxRandElements<E> = ();
+    type AuxRandElements<E: Send + Sync> = ();
     type BaseField = BaseElement;
     type Air = FibAir;
     type Trace = TraceTable<BaseElement>;

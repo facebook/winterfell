@@ -3,7 +3,7 @@ use crypto::{ElementHasher, RandomCoin, RandomCoinError};
 use math::FieldElement;
 
 pub trait AuxTraceVerifier {
-    type AuxRandElements<E>;
+    type AuxRandElements<E: Send + Sync>;
     type Error: ToString;
 
     fn generate_aux_rand_elements<E, Hasher>(
@@ -26,7 +26,7 @@ impl DefaultAuxTraceVerifier {
 }
 
 impl AuxTraceVerifier for DefaultAuxTraceVerifier {
-    type AuxRandElements<E> = Vec<E>;
+    type AuxRandElements<E: Send + Sync> = Vec<E>;
     type Error = RandomCoinError;
 
     fn generate_aux_rand_elements<E, Hasher>(

@@ -34,7 +34,7 @@ pub struct VdfAir {
 }
 
 impl Air for VdfAir {
-    type AuxRandElements<E> = ();
+    type AuxRandElements<E: Send + Sync> = ();
     type BaseField = BaseElement;
     type PublicInputs = VdfInputs;
 

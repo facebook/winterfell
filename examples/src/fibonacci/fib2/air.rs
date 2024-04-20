@@ -18,7 +18,7 @@ pub struct FibAir {
 }
 
 impl Air for FibAir {
-    type AuxRandElements<E> = ();
+    type AuxRandElements<E: Send + Sync> = ();
     type BaseField = BaseElement;
     type PublicInputs = BaseElement;
 

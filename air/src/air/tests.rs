@@ -223,7 +223,7 @@ impl MockAir {
 impl Air for MockAir {
     type BaseField = BaseElement;
     type PublicInputs = ();
-    type AuxRandElements<E> = ();
+    type AuxRandElements<E: Send + Sync> = ();
 
     fn new(trace_info: TraceInfo, _pub_inputs: (), _options: ProofOptions) -> Self {
         let num_assertions = trace_info.meta()[0] as usize;

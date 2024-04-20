@@ -56,7 +56,7 @@ pub struct RescueAir {
 }
 
 impl Air for RescueAir {
-    type AuxRandElements<E> = ();
+    type AuxRandElements<E: Send + Sync> = ();
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
 

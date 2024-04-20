@@ -56,7 +56,7 @@ pub struct RescueRapsAir {
 }
 
 impl Air for RescueRapsAir {
-    type AuxRandElements<E> = Vec<E>;
+    type AuxRandElements<E: Send + Sync> = Vec<E>;
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
 

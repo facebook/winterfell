@@ -14,7 +14,7 @@ pub struct AuxTraceWithMetadata<E: FieldElement, AuxRandEles, AuxProof> {
 }
 
 pub trait AuxTraceBuilder {
-    type AuxRandElements<E>;
+    type AuxRandElements<E: Send + Sync>;
     type AuxParams;
 
     /// Optionally, an extra proof object. If not needed, set to `()`.

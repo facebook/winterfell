@@ -43,7 +43,7 @@ pub struct LamportAggregateAir {
 }
 
 impl Air for LamportAggregateAir {
-    type AuxRandElements<E> = ();
+    type AuxRandElements<E: Send + Sync> = ();
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
 

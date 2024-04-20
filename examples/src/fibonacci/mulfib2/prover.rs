@@ -49,7 +49,7 @@ impl<H: ElementHasher> Prover for MulFib2Prover<H>
 where
     H: ElementHasher<BaseField = BaseElement>,
 {
-    type AuxRandElements<E> = ();
+    type AuxRandElements<E: Send + Sync> = ();
     type BaseField = BaseElement;
     type Air = MulFib2Air;
     type Trace = TraceTable<BaseElement>;

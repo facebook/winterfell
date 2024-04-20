@@ -18,7 +18,7 @@ use winterfell::{
 pub struct RescueRapsAuxTraceBuilder;
 
 impl AuxTraceBuilder for RescueRapsAuxTraceBuilder {
-    type AuxRandElements<E> = Vec<E>;
+    type AuxRandElements<E: Send + Sync> = Vec<E>;
 
     // aux segment width
     type AuxParams = usize;
@@ -169,7 +169,7 @@ impl<H: ElementHasher> Prover for RescueRapsProver<H>
 where
     H: ElementHasher<BaseField = BaseElement>,
 {
-    type AuxRandElements<E> = Vec<E>;
+    type AuxRandElements<E: Send + Sync> = Vec<E>;
     type BaseField = BaseElement;
     type Air = RescueRapsAir;
     type Trace = RapTraceTable<BaseElement>;

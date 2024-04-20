@@ -52,7 +52,7 @@ impl<H: ElementHasher> Prover for FibSmallProver<H>
 where
     H: ElementHasher<BaseField = BaseElement>,
 {
-    type AuxRandElements<E> = ();
+    type AuxRandElements<E: Send + Sync> = ();
     type BaseField = BaseElement;
     type Air = FibSmall;
     type Trace = TraceTable<BaseElement>;

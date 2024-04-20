@@ -96,7 +96,7 @@ impl<H: ElementHasher> Prover for LamportAggregateProver<H>
 where
     H: ElementHasher<BaseField = BaseElement>,
 {
-    type AuxRandElements<E> = ();
+    type AuxRandElements<E: Send + Sync> = ();
     type BaseField = BaseElement;
     type Air = LamportAggregateAir;
     type Trace = TraceTable<BaseElement>;
