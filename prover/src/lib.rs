@@ -403,7 +403,7 @@ pub trait Prover {
         let composition_poly_trace =
             info_span!("evaluate_constraints", ce_domain_size).in_scope(|| {
                 self.new_evaluator(
-                    &air,
+                    air,
                     aux_rand_elements,
                     channel.get_constraint_composition_coeffs(),
                 )
