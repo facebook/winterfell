@@ -124,6 +124,7 @@ pub trait Prover {
     /// Base field for the computation described by this prover.
     type BaseField: StarkField + ExtensibleField<2> + ExtensibleField<3>;
 
+    /// A type defining the random elements used in constructing the auxiliary trace segment.
     type AuxRandElements<E: Send + Sync>;
 
     /// Algebraic intermediate representation (AIR) for the computation described by this prover.

@@ -74,6 +74,18 @@ pub use errors::VerifierError;
 // VERIFIER
 // ================================================================================================
 
+/// Verifies that the specified computation was executed correctly against the specified inputs.
+///
+/// Specifically, for a computation specified by `AIR` and `HashFn` type parameter, verifies that
+/// the provided `proof` attests to the correct execution of the computation against public inputs
+/// specified by `pub_inputs`. If the verification is successful, `Ok(())` is returned.
+///
+/// # Errors
+/// Returns an error if combination of the provided proof and public inputs does not attest to
+/// a correct execution of the computation. This could happen for many various reasons, including:
+/// - The specified proof was generated for a different computation.
+/// - The specified proof was generated for this computation but for different public inputs.
+/// - The specified proof was generated with parameters not providing an acceptable security level.
 pub fn verify<AIR, HashFn, RandCoin>(
     proof: StarkProof,
     pub_inputs: AIR::PublicInputs,
@@ -117,15 +129,16 @@ where
 
     perform_verification::<AIR::BaseField, AIR, HashFn, RandCoin>(air, None, channel, public_coin)
 }
-/// Verifies that the specified computation was executed correctly against the specified inputs.
+/// Verifies that the specified computation was executed correctly against the specified inputs,
+/// specificially when an auxiliary trace is present.
 ///
 /// Specifically, for a computation specified by `AIR` and `HashFn` type parameter, verifies that
 /// the provided `proof` attests to the correct execution of the computation against public inputs
 /// specified by `pub_inputs`. If the verification is successful, `Ok(())` is returned.
 ///
 /// # Errors
-/// Returns an error if combination of the provided proof and public inputs does not attest to
-/// a correct execution of the computation. This could happen for many various reasons, including:
+/// Returns an error if combination of the provided proof and public inputs does not attest to a
+/// correct execution of the computation. This could happen for many various reasons, including:
 /// - The specified proof was generated for a different computation.
 /// - The specified proof was generated for this computation but for different public inputs.
 /// - The specified proof was generated with parameters not providing an acceptable security level.

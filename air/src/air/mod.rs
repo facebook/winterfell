@@ -188,6 +188,7 @@ pub trait Air: Send + Sync {
     /// This could be any type as long as it can be serialized into a sequence of field elements.
     type PublicInputs: ToElements<Self::BaseField>;
 
+    /// A type defining the random elements used in constructing the auxiliary trace segment.
     type AuxRandElements<E: Send + Sync>: Send + Sync;
 
     // REQUIRED METHODS
@@ -290,6 +291,7 @@ pub trait Air: Send + Sync {
         Vec::new()
     }
 
+    /// Returns the random elements used in constructing the Lagrange kernel column.
     #[allow(unused_variables)]
     fn get_lagrange_rand_elements<'a, E: Send + Sync>(
         &self,

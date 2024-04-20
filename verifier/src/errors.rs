@@ -13,6 +13,8 @@ use core::fmt;
 /// Represents an error returned by the verifier during an execution of the protocol.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VerifierError {
+    /// This error occurs when the process of generating the random elements for the auxiliary trace
+    /// building failed.
     AuxTraceVerificationFailed(String),
     /// This error occurs when base field read by a verifier from a proof does not match the
     /// base field of AIR with which the verifier was instantiated.
