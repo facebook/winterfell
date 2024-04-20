@@ -168,15 +168,21 @@ where
     // used to draw random elements needed to construct the next trace segment. The last trace
     // commitment is used to draw a set of random coefficients which the prover uses to compute
     // constraint composition polynomial.
-    let trace_commitments = channel.read_trace_commitments();
+    let (main_trace_commitment, aux_trace_commitment) = {
+        let trace_commitments = channel.read_trace_commitments();
+
+        (trace_commitments[0], trace_commitments[1])
+    };
 
     // reseed the coin with the commitment to the main trace segment
-    public_coin.reseed(trace_commitments[0]);
+    public_coin.reseed(main_trace_commitment);
 
-    // process the auxiliary trace segment (if any), to build a set of random elements
+    // process the auxiliary trace segment to build a set of random elements, and reseed the coin
+    // with the aux trace commitment
     let aux_trace_rand_elements = aux_trace_verifier
         .generate_aux_rand_elements::<E, _>(&mut public_coin)
         .map_err(|err| VerifierError::AuxTraceVerificationFailed(err.to_string()))?;
+    public_coin.reseed(aux_trace_commitment);
 
     perform_verification::<E, AIR, HashFn, RandCoin>(
         air,
