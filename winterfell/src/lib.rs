@@ -372,12 +372,11 @@
 //!     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
 //!         &self,
 //!         air: &'a Self::Air,
-//!         aux_rand_elements: winterfell::AuxTraceRandElements<E>,
-//!         composition_coefficients: winterfell::ConstraintCompositionCoefficients<E>,
+//!         aux_rand_elements: Option<Self::AuxRandElements<E>>,
+//!         composition_coefficients: ConstraintCompositionCoefficients<E>,
 //!     ) -> Self::ConstraintEvaluator<'a, E> {
 //!         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
 //!     }
-//! }
 //! ```
 //!
 //! Now, we are finally ready to generate and verify STARK proofs.
@@ -511,8 +510,8 @@
 //! #    fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
 //! #        &self,
 //! #        air: &'a Self::Air,
-//! #        aux_rand_elements: winterfell::AuxTraceRandElements<E>,
-//! #        composition_coefficients: winterfell::ConstraintCompositionCoefficients<E>,
+//! #        aux_rand_elements: Option<Self::AuxRandElements<E>>,
+//! #        composition_coefficients: ConstraintCompositionCoefficients<E>,
 //! #    ) -> Self::ConstraintEvaluator<'a, E> {
 //! #        DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
 //! #    }

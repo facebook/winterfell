@@ -290,7 +290,7 @@ impl Prover for WorkProver {
     fn new_evaluator<'a, E: FieldElement<BaseField = BaseElement>>(
         &self,
         air: &'a WorkAir,
-        aux_rand_elements: winterfell::AuxTraceRandElements<E>,
+        aux_rand_elements: Option<Self::AuxRandElements<E>>,
         composition_coefficients: winterfell::ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E> {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
