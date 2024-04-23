@@ -3,16 +3,15 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use alloc::{
-    string::{String, ToString},
-    vec::Vec,
-};
+use super::{Deserializable, DeserializationError};
+use alloc::{string::String, vec::Vec};
+
+#[cfg(feature = "std")]
+use alloc::string::ToString;
 #[cfg(feature = "std")]
 use core::cell::{Ref, RefCell};
 #[cfg(feature = "std")]
 use std::io::BufRead;
-
-use super::{Deserializable, DeserializationError};
 
 // BYTE READER TRAIT
 // ================================================================================================
