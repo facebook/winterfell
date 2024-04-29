@@ -283,7 +283,6 @@ impl Prover for LagrangeProver {
         DefaultConstraintEvaluator<'a, LagrangeKernelAir, E>;
 
     fn get_pub_inputs(&self, _trace: &Self::Trace) -> <<Self as Prover>::Air as Air>::PublicInputs {
-        ()
     }
 
     fn options(&self) -> &ProofOptions {

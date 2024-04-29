@@ -1,114 +1,64 @@
 name: CI
 on:
+  workflow_dispatch:
+  pull_request:
   push:
     branches:
       - main
-  pull_request:
-    types: [opened, repoened, synchronize]
 
 jobs:
-  check:
-    name: Check with ${{matrix.features}}
+  light-checks:
+    name: Ligth checks
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        toolchain: [stable]
-        os: [ubuntu]
-        features: [--all-features, --no-default-features]
     steps:
       - uses: actions/checkout@main
-      - name: Install rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{matrix.toolchain}}
-          override: true
-      - name: Check
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --all-targets ${{matrix.features}}
+      - name: Clippy
+        run: |
+          rustup update --no-self-update nightly
+          rustup +nightly component add clippy
+          cargo +nightly clippy --workspace --all-targets --all-features -- -D clippy::all -D warnings
+
+      - name: Rustfmt
+        run: |
+          rustup +nightly component add rustfmt
+          cargo +nightly fmt --all --check
+
+  check:
+    name: Check all features and all targets against the MSRV
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+      - name: Perform checks
+        run: |
+          rustup update --no-self-update stable
+          cargo +stable install cargo-hack --locked
+          RUSTFLAGS=-Dwarnings cargo +stable hack --no-private --feature-powerset --keep-going check --rust-version --workspace --all-targets --verbose
 
   test:
     name: Test Rust ${{matrix.toolchain}} on ${{matrix.os}}
-    runs-on: ${{matrix.os}}-latest
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         toolchain: [stable, nightly]
-        os: [ubuntu]
     steps:
       - uses: actions/checkout@main
-      - name: Install rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{matrix.toolchain}}
-          override: true
-      - name: Test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@main
-      - name: Install minimal nightly with clippy
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          components: clippy
-          override: true
-
-      - name: Clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all -- -D clippy::all -D warnings
-        env:
-          # Seems necessary until https://github.com/rust-lang/rust/pull/115819 is merged.
-          CARGO_INCREMENTAL: 0
-
-  rustfmt:
-    name: rustfmt
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@main
-      - name: Install minimal nightly with rustfmt
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          components: rustfmt
-          override: true
-
-      - name: rustfmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+      - name: Run test
+        run: |
+          rustup update --no-self-update ${{ matrix.toolchain }}
+          cargo +${{ matrix.toolchain }} test
 
   no-std:
-    name: no-std
+    name: Build for no-std
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         toolchain: [stable, nightly]
-        target:
-          - wasm32-unknown-unknown
     steps:
       - uses: actions/checkout@main
-      - name: Install rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{matrix.toolchain}}
-          override: true
-      - run: rustup target add wasm32-unknown-unknown
-      - name: Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --verbose --no-default-features --target ${{ matrix.target }}
+      - name: Build for no-std
+        run: |
+          rustup update --no-self-update ${{ matrix.toolchain }}
+          rustup +${{ matrix.toolchain }} target add wasm32-unknown-unknown
+          cargo +${{ matrix.toolchain }} build --verbose --no-default-features --target wasm32-unknown-unknown
