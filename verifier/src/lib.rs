@@ -31,7 +31,6 @@
 #[macro_use]
 extern crate alloc;
 
-use air::AuxRandElementsGenerator;
 pub use air::{
     proof::StarkProof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
     ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
@@ -56,6 +55,9 @@ pub use crypto;
 use crypto::{ElementHasher, Hasher, RandomCoin};
 
 use fri::FriVerifier;
+
+mod aux_verifier;
+pub use aux_verifier::{AuxRandElementsGenerator, DefaultAuxRandElementsGenerator};
 
 mod channel;
 use channel::VerifierChannel;
