@@ -10,17 +10,15 @@ use super::{
 };
 use core_utils::uninit_vector;
 use winterfell::{
-    crypto::RandomCoin, matrix::ColMatrix, AuxRandElementsGenerator, AuxTraceBuilder,
-    AuxTraceWithMetadata, ConstraintCompositionCoefficients, DefaultAuxRandElementsGenerator,
-    DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable,
+    crypto::RandomCoin, matrix::ColMatrix, AuxTraceBuilder, AuxTraceWithMetadata,
+    ConstraintCompositionCoefficients, DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain,
+    Trace, TraceInfo, TracePolyTable,
 };
 
 pub struct RescueRapsAuxTraceBuilder;
 
 impl AuxTraceBuilder for RescueRapsAuxTraceBuilder {
     type AuxRandElements<E: Send + Sync> = Vec<E>;
-
-    type AuxRandElementsGenerator<E: Send + Sync> = DefaultAuxRandElementsGenerator;
 
     // aux segment width
     type AuxParams = usize;
@@ -31,16 +29,20 @@ impl AuxTraceBuilder for RescueRapsAuxTraceBuilder {
         &mut self,
         main_trace: &ColMatrix<E::BaseField>,
         aux_segment_width: Self::AuxParams,
-        aux_rand_elements_generator: Self::AuxRandElementsGenerator<E>,
         transcript: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
     ) -> AuxTraceWithMetadata<E, Self::AuxRandElements<E>, Self::AuxProof>
     where
         E: FieldElement,
         Hasher: ElementHasher<BaseField = E::BaseField>,
     {
-        let rand_elements = aux_rand_elements_generator
-            .generate_aux_rand_elements(transcript)
-            .expect("Failed to generate auxiliary trace random elements");
+        let rand_elements = {
+            let mut rand_elements = Vec::with_capacity(aux_segment_width);
+            for _ in 0..aux_segment_width {
+                rand_elements.push(transcript.draw().unwrap());
+            }
+
+            rand_elements
+        };
 
         let mut current_row = unsafe { uninit_vector(main_trace.num_cols()) };
         let mut next_row = unsafe { uninit_vector(main_trace.num_cols()) };

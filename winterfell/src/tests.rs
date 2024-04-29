@@ -24,13 +24,10 @@ fn test_complex_lagrange_kernel_air() {
     let prover = LagrangeComplexProver::new();
 
     let (proof, _) = prover
-        .prove_with_aux_trace::<BaseElement, _>(
-            trace,
-            aux_trace_builder,
-            DefaultAuxRandElementsGenerator::new(log_trace_len),
-            AUX_TRACE_WIDTH,
-        )
+        .prove_with_aux_trace::<BaseElement, _>(trace, aux_trace_builder, AUX_TRACE_WIDTH)
         .unwrap();
+
+    let aux_rand_eles_generator = DefaultAuxRandElementsGenerator::new(log_trace_len);
 
     verify_with_aux_trace::<
         BaseElement,
@@ -40,7 +37,7 @@ fn test_complex_lagrange_kernel_air() {
         DefaultRandomCoin<Blake3_256<BaseElement>>,
     >(
         proof,
-        DefaultAuxRandElementsGenerator::new(log_trace_len),
+        aux_rand_eles_generator,
         (),
         &AcceptableOptions::MinConjecturedSecurity(0),
     )
@@ -189,7 +186,6 @@ pub struct LagrangeAuxTraceBuilder;
 
 impl AuxTraceBuilder for LagrangeAuxTraceBuilder {
     type AuxRandElements<E: Send + Sync> = Vec<E>;
-    type AuxRandElementsGenerator<E: Send + Sync> = DefaultAuxRandElementsGenerator;
     // aux trace width
     type AuxParams = usize;
     type AuxProof = ();
@@ -198,16 +194,21 @@ impl AuxTraceBuilder for LagrangeAuxTraceBuilder {
         &mut self,
         main_trace: &ColMatrix<E::BaseField>,
         aux_trace_width: usize,
-        aux_rand_elements_generator: Self::AuxRandElementsGenerator<E>,
         transcript: &mut impl crypto::RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
     ) -> AuxTraceWithMetadata<E, Self::AuxRandElements<E>, Self::AuxProof>
     where
         E: FieldElement,
         Hasher: crypto::ElementHasher<BaseField = E::BaseField>,
     {
-        let lagrange_kernel_rand_elements = aux_rand_elements_generator
-            .generate_aux_rand_elements(transcript)
-            .expect("Failed to generate auxiliary trace random elements");
+        let lagrange_kernel_rand_elements: Vec<E> = {
+            let log_trace_len = main_trace.num_rows().ilog2() as usize;
+            let mut rand_elements = Vec::with_capacity(log_trace_len);
+            for _ in 0..log_trace_len {
+                rand_elements.push(transcript.draw().unwrap());
+            }
+
+            rand_elements
+        };
 
         let mut columns = Vec::new();
 

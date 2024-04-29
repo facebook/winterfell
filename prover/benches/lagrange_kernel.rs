@@ -6,9 +6,8 @@
 use std::time::Duration;
 
 use air::{
-    Air, AirContext, Assertion, AuxRandElementsGenerator, ConstraintCompositionCoefficients,
-    DefaultAuxRandElementsGenerator, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
+    Air, AirContext, Assertion, ConstraintCompositionCoefficients, EvaluationFrame, FieldExtension,
+    ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use crypto::{hashers::Blake3_256, DefaultRandomCoin};
@@ -30,17 +29,13 @@ fn prove_with_lagrange_kernel(c: &mut Criterion) {
         group.bench_function(BenchmarkId::new("prover", trace_len), |b| {
             let trace = LagrangeTrace::new(trace_len, 2);
             let prover = LagrangeProver::new();
-            let aux_rand_elements_generator =
-                DefaultAuxRandElementsGenerator::new(AUX_SEGMENT_WIDTH);
-
             b.iter_batched(
-                || (trace.clone(), aux_rand_elements_generator.clone()),
-                |(trace, aux_rand_elements_generator)| {
+                || trace.clone(),
+                |trace| {
                     prover
                         .prove_with_aux_trace::<BaseElement, _>(
                             trace,
                             LagrangeAuxTraceBuilder,
-                            aux_rand_elements_generator,
                             AUX_SEGMENT_WIDTH,
                         )
                         .unwrap()
@@ -196,7 +191,6 @@ pub struct LagrangeAuxTraceBuilder;
 
 impl AuxTraceBuilder for LagrangeAuxTraceBuilder {
     type AuxRandElements<E: Send + Sync> = Vec<E>;
-    type AuxRandElementsGenerator<E: Send + Sync> = DefaultAuxRandElementsGenerator;
     // aux trace width
     type AuxParams = usize;
     type AuxProof = ();
@@ -205,16 +199,21 @@ impl AuxTraceBuilder for LagrangeAuxTraceBuilder {
         &mut self,
         main_trace: &ColMatrix<E::BaseField>,
         aux_trace_width: usize,
-        aux_rand_elements_generator: Self::AuxRandElementsGenerator<E>,
         transcript: &mut impl crypto::RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
     ) -> AuxTraceWithMetadata<E, Self::AuxRandElements<E>, Self::AuxProof>
     where
         E: FieldElement,
         Hasher: crypto::ElementHasher<BaseField = E::BaseField>,
     {
-        let lagrange_kernel_rand_elements = aux_rand_elements_generator
-            .generate_aux_rand_elements(transcript)
-            .expect("Failed to generate auxiliary trace random elements");
+        let lagrange_kernel_rand_elements: Vec<E> = {
+            let log_trace_len = main_trace.num_rows().ilog2() as usize;
+            let mut rand_elements = Vec::with_capacity(log_trace_len);
+            for _ in 0..log_trace_len {
+                rand_elements.push(transcript.draw().unwrap());
+            }
+
+            rand_elements
+        };
 
         let mut columns = Vec::new();
 

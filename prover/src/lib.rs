@@ -253,7 +253,6 @@ pub trait Prover {
         &self,
         trace: Self::Trace,
         mut aux_trace_builder: ATB,
-        aux_rand_elements_generator: <ATB as AuxTraceBuilder>::AuxRandElementsGenerator<E>,
         aux_params: AuxParams<ATB>,
     ) -> Result<(StarkProof, Option<AuxProof<ATB>>), ProverError>
     where
@@ -301,7 +300,6 @@ pub trait Prover {
             let aux_trace_with_metadata = aux_trace_builder.build_aux_trace(
                 trace.main_segment(),
                 aux_params,
-                aux_rand_elements_generator,
                 channel.public_coin(),
             );
 

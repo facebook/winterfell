@@ -142,7 +142,7 @@ where
 /// - The specified proof was generated with parameters not providing an acceptable security level.
 pub fn verify_with_aux_trace<E, AIR, ARG, HashFn, RandCoin>(
     proof: StarkProof,
-    aux_rand_elements_generator: ARG,
+    aux_rand_eles_generator: ARG,
     pub_inputs: AIR::PublicInputs,
     acceptable_options: &AcceptableOptions,
 ) -> Result<(), VerifierError>
@@ -190,7 +190,7 @@ where
 
     // process the auxiliary trace segment to build a set of random elements, and reseed the coin
     // with the aux trace commitment
-    let aux_trace_rand_elements = aux_rand_elements_generator
+    let aux_trace_rand_elements = aux_rand_eles_generator
         .generate_aux_rand_elements::<E, _>(&mut public_coin)
         .map_err(|err| VerifierError::AuxTraceVerificationFailed(err.to_string()))?;
     public_coin.reseed(aux_trace_commitment);

@@ -1,4 +1,3 @@
-use air::AuxRandElementsGenerator;
 use crypto::{ElementHasher, RandomCoin};
 use math::FieldElement;
 
@@ -30,10 +29,6 @@ pub trait AuxTraceBuilder {
     /// A type defining the parameters used in building the auxiliary trace.
     type AuxParams;
 
-    type AuxRandElementsGenerator<E: Send + Sync>: AuxRandElementsGenerator<
-        AuxRandElements<E> = Self::AuxRandElements<E>,
-    >;
-
     /// Optionally, an extra proof object. If not needed, set to `()`.
     ///
     /// This is useful in cases where part of the auxiliary trace is proved outside of the STARK
@@ -45,7 +40,6 @@ pub trait AuxTraceBuilder {
         &mut self,
         main_trace: &ColMatrix<E::BaseField>,
         aux_params: Self::AuxParams,
-        aux_rand_elements_generator: Self::AuxRandElementsGenerator<E>,
         transcript: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
     ) -> AuxTraceWithMetadata<E, Self::AuxRandElements<E>, Self::AuxProof>
     where
