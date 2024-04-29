@@ -68,14 +68,6 @@ where
         }
     }
 
-    // GETTER METHODS
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns the inner public coin
-    pub fn public_coin(&mut self) -> &mut R {
-        &mut self.public_coin
-    }
-
     // COMMITMENT METHODS
     // --------------------------------------------------------------------------------------------
 
@@ -107,6 +99,11 @@ where
 
     // PUBLIC COIN METHODS
     // --------------------------------------------------------------------------------------------
+
+    /// Returns the inner public coin
+    pub fn public_coin(&mut self) -> &mut R {
+        &mut self.public_coin
+    }
 
     /// Returns a set of coefficients for constructing a constraint composition polynomial.
     ///
