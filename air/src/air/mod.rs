@@ -293,10 +293,10 @@ pub trait Air: Send + Sync {
 
     /// Returns the random elements used in constructing the Lagrange kernel column.
     #[allow(unused_variables)]
-    fn get_lagrange_rand_elements<'a, E: Send + Sync>(
+    fn get_lagrange_rand_elements<E: Clone + Send + Sync>(
         &self,
-        rand_eles: &'a Self::AuxRandElements<E>,
-    ) -> &'a [E] {
+        aux_random_elements: &Self::AuxRandElements<E>,
+    ) -> Vec<E> {
         unimplemented!("getting the Lagrange random elements has not been implemented");
     }
 

@@ -169,13 +169,13 @@ impl Air for LagrangeKernelComplexAir {
         vec![Assertion::single(1, 0, E::ZERO)]
     }
 
-    fn get_lagrange_rand_elements<'a, E: Send + Sync>(
+    fn get_lagrange_rand_elements<E: Clone + Send + Sync>(
         &self,
-        rand_eles: &'a Self::AuxRandElements<E>,
-    ) -> &'a [E] {
+        aux_rand_elements: &Self::AuxRandElements<E>,
+    ) -> Vec<E> {
         let log_trace_len = self.context().trace_len().ilog2() as usize;
 
-        &rand_eles[0..log_trace_len]
+        aux_rand_elements[0..log_trace_len].to_vec()
     }
 }
 
