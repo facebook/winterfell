@@ -599,8 +599,7 @@ pub use prover::{
     TraceTable, TraceTableFragment, TransitionConstraintDegree,
 };
 pub use verifier::{
-    verify, verify_with_aux_trace, AcceptableOptions, DefaultAuxRandElementsGenerator,
-    VerifierError,
+    verify, verify_with_aux_trace, AcceptableOptions, DefaultAuxTraceVerifier, VerifierError,
 };
 
 #[cfg(test)]

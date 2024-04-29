@@ -12,7 +12,7 @@ use prover::{
 };
 use std::vec;
 use std::vec::Vec;
-use verifier::{verify_with_aux_trace, DefaultAuxRandElementsGenerator};
+use verifier::{verify_with_aux_trace, DefaultAuxTraceVerifier};
 
 const AUX_TRACE_WIDTH: usize = 2;
 
@@ -27,7 +27,7 @@ fn test_complex_lagrange_kernel_air() {
         .prove_with_aux_trace::<BaseElement, _>(trace, aux_trace_builder, AUX_TRACE_WIDTH)
         .unwrap();
 
-    let aux_rand_eles_generator = DefaultAuxRandElementsGenerator::new(log_trace_len);
+    let aux_trace_verifier = DefaultAuxTraceVerifier::new(log_trace_len);
 
     verify_with_aux_trace::<
         BaseElement,
@@ -37,7 +37,8 @@ fn test_complex_lagrange_kernel_air() {
         DefaultRandomCoin<Blake3_256<BaseElement>>,
     >(
         proof,
-        aux_rand_eles_generator,
+        None,
+        aux_trace_verifier,
         (),
         &AcceptableOptions::MinConjecturedSecurity(0),
     )
