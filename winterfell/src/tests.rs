@@ -12,7 +12,7 @@ use prover::{
 };
 use std::vec;
 use std::vec::Vec;
-use verifier::{verify_with_aux_trace, DefaultAuxRandElementsGenerator};
+use verifier::verify_with_aux_trace;
 
 const AUX_TRACE_WIDTH: usize = 2;
 

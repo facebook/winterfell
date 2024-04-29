@@ -164,7 +164,7 @@ where
         };
         let acceptable_options =
             winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
-        let aux_verifier = DefaultAuxRandElementsGenerator::new(3);
+        let aux_rand_elements_generator = DefaultAuxRandElementsGenerator::new(3);
 
         match proof.options().field_extension() {
             FieldExtension::None => {
@@ -174,7 +174,9 @@ where
                     _,
                     H,
                     DefaultRandomCoin<H>,
-                >(proof, aux_verifier, pub_inputs, &acceptable_options)
+                >(
+                    proof, aux_rand_elements_generator, pub_inputs, &acceptable_options
+                )
             }
 
             FieldExtension::Quadratic => {
@@ -184,7 +186,9 @@ where
                     _,
                     H,
                     DefaultRandomCoin<H>,
-                >(proof, aux_verifier, pub_inputs, &acceptable_options)
+                >(
+                    proof, aux_rand_elements_generator, pub_inputs, &acceptable_options
+                )
             }
             FieldExtension::Cubic => {
                 winterfell::verify_with_aux_trace::<
@@ -193,7 +197,9 @@ where
                     _,
                     H,
                     DefaultRandomCoin<H>,
-                >(proof, aux_verifier, pub_inputs, &acceptable_options)
+                >(
+                    proof, aux_rand_elements_generator, pub_inputs, &acceptable_options
+                )
             }
         }
     }
