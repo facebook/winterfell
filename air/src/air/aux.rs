@@ -19,6 +19,7 @@ pub trait AuxRandElementsGenerator {
 
 /// Implementation of the [`AuxRandElementsGenerator`] trait that simply samples a given number of
 /// elements.
+#[derive(Debug, Clone)]
 pub struct DefaultAuxRandElementsGenerator {
     num_rand_elements: usize,
 }

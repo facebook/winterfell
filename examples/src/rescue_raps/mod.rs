@@ -131,17 +131,24 @@ where
                 });
 
         // generate the proof
-        let aux_trace_builder = RescueRapsAuxTraceBuilder;
         let aux_segment_width = 3;
+        let aux_trace_builder = RescueRapsAuxTraceBuilder;
+        let aux_rand_elements_generator = DefaultAuxRandElementsGenerator::new(aux_segment_width);
 
         let (proof, _) = match self.options.field_extension() {
             FieldExtension::None => prover
-                .prove_with_aux_trace::<BaseElement, _>(trace, aux_trace_builder, aux_segment_width)
+                .prove_with_aux_trace::<BaseElement, _>(
+                    trace,
+                    aux_trace_builder,
+                    aux_rand_elements_generator,
+                    aux_segment_width,
+                )
                 .unwrap(),
             FieldExtension::Quadratic => prover
                 .prove_with_aux_trace::<QuadExtension<BaseElement>, _>(
                     trace,
                     aux_trace_builder,
+                    aux_rand_elements_generator,
                     aux_segment_width,
                 )
                 .unwrap(),
@@ -150,6 +157,7 @@ where
                 .prove_with_aux_trace::<CubeExtension<BaseElement>, _>(
                     trace,
                     aux_trace_builder,
+                    aux_rand_elements_generator,
                     aux_segment_width,
                 )
                 .unwrap(),
