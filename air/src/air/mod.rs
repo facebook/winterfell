@@ -490,28 +490,6 @@ pub trait Air: Send + Sync {
         self.context().options.domain_offset()
     }
 
-    // TRACE SEGMENT RANDOMNESS
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns a vector of field elements required for construction of the auxiliary trace segment.
-    ///
-    /// The elements are drawn uniformly at random from the provided public coin.
-    fn get_aux_trace_segment_random_elements<E, R>(
-        &self,
-        public_coin: &mut R,
-    ) -> Result<Vec<E>, RandomCoinError>
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-        R: RandomCoin<BaseField = Self::BaseField>,
-    {
-        let num_elements = self.trace_info().get_num_aux_segment_rand_elements();
-        let mut result = Vec::with_capacity(num_elements);
-        for _ in 0..num_elements {
-            result.push(public_coin.draw()?);
-        }
-        Ok(result)
-    }
-
     // LINEAR COMBINATION COEFFICIENTS
     // --------------------------------------------------------------------------------------------
 
