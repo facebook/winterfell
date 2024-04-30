@@ -589,14 +589,13 @@
 extern crate std;
 
 pub use prover::{
-    crypto, iterators, math, matrix, Air, AirContext, Assertion, AuxParams, AuxProof,
-    AuxRandElements, AuxTraceBuilder, AuxTraceWithMetadata, BoundaryConstraint,
-    BoundaryConstraintGroup, ByteReader, ByteWriter, CompositionPolyTrace,
-    ConstraintCompositionCoefficients, ConstraintDivisor, ConstraintEvaluator,
-    DeepCompositionCoefficients, DefaultConstraintEvaluator, DefaultTraceLde, Deserializable,
-    DeserializationError, EvaluationFrame, FieldExtension, ProofOptions, Prover, ProverError,
-    Serializable, SliceReader, StarkDomain, StarkProof, Trace, TraceInfo, TraceLde, TracePolyTable,
-    TraceTable, TraceTableFragment, TransitionConstraintDegree,
+    crypto, iterators, math, matrix, Air, AirContext, Assertion, AuxProof, AuxRandElements,
+    AuxTraceBuilder, AuxTraceWithMetadata, BoundaryConstraint, BoundaryConstraintGroup, ByteReader,
+    ByteWriter, CompositionPolyTrace, ConstraintCompositionCoefficients, ConstraintDivisor,
+    ConstraintEvaluator, DeepCompositionCoefficients, DefaultConstraintEvaluator, DefaultTraceLde,
+    Deserializable, DeserializationError, EvaluationFrame, FieldExtension, ProofOptions, Prover,
+    ProverError, Serializable, SliceReader, StarkDomain, StarkProof, Trace, TraceInfo, TraceLde,
+    TracePolyTable, TraceTable, TraceTableFragment, TransitionConstraintDegree,
 };
 pub use verifier::{
     verify, verify_with_aux_trace, AcceptableOptions, DefaultAuxTraceVerifier, VerifierError,

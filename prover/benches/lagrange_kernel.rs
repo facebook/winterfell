@@ -18,7 +18,7 @@ use winter_prover::{
 };
 
 const TRACE_LENS: [usize; 2] = [2_usize.pow(16), 2_usize.pow(20)];
-const AUX_SEGMENT_WIDTH: usize = 2;
+const AUX_TRACE_WIDTH: usize = 2;
 
 fn prove_with_lagrange_kernel(c: &mut Criterion) {
     let mut group = c.benchmark_group("Lagrange kernel column");
@@ -35,8 +35,7 @@ fn prove_with_lagrange_kernel(c: &mut Criterion) {
                     prover
                         .prove_with_aux_trace::<BaseElement, _>(
                             trace,
-                            LagrangeAuxTraceBuilder,
-                            AUX_SEGMENT_WIDTH,
+                            LagrangeAuxTraceBuilder::new(AUX_TRACE_WIDTH),
                         )
                         .unwrap()
                 },
@@ -187,18 +186,23 @@ impl Air for LagrangeKernelAir {
 // LagrangeProver
 // ================================================================================================
 
-pub struct LagrangeAuxTraceBuilder;
+pub struct LagrangeAuxTraceBuilder {
+    aux_trace_width: usize,
+}
+
+impl LagrangeAuxTraceBuilder {
+    pub fn new(aux_trace_width: usize) -> Self {
+        Self { aux_trace_width }
+    }
+}
 
 impl AuxTraceBuilder for LagrangeAuxTraceBuilder {
     type AuxRandElements<E: Send + Sync> = Vec<E>;
-    // aux trace width
-    type AuxParams = usize;
     type AuxProof = ();
 
     fn build_aux_trace<E, Hasher>(
         &mut self,
         main_trace: &ColMatrix<E::BaseField>,
-        aux_trace_width: usize,
         transcript: &mut impl crypto::RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
     ) -> AuxTraceWithMetadata<E, Self::AuxRandElements<E>, Self::AuxProof>
     where
@@ -240,7 +244,7 @@ impl AuxTraceBuilder for LagrangeAuxTraceBuilder {
 
         // Then all other auxiliary columns
         let rand_summed = lagrange_kernel_rand_elements.iter().fold(E::ZERO, |acc, &r| acc + r);
-        for _ in 1..aux_trace_width {
+        for _ in 1..self.aux_trace_width {
             // building a dummy auxiliary column
             let column = main_trace
                 .get_column(0)

@@ -15,20 +15,24 @@ use winterfell::{
     Trace, TraceInfo, TracePolyTable,
 };
 
-pub struct RescueRapsAuxTraceBuilder;
+pub struct RescueRapsAuxTraceBuilder {
+    aux_segment_width: usize,
+}
+
+impl RescueRapsAuxTraceBuilder {
+    pub fn new(aux_segment_width: usize) -> Self {
+        Self { aux_segment_width }
+    }
+}
 
 impl AuxTraceBuilder for RescueRapsAuxTraceBuilder {
     type AuxRandElements<E: Send + Sync> = Vec<E>;
-
-    // aux segment width
-    type AuxParams = usize;
 
     type AuxProof = ();
 
     fn build_aux_trace<E, Hasher>(
         &mut self,
         main_trace: &ColMatrix<E::BaseField>,
-        aux_segment_width: Self::AuxParams,
         transcript: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
     ) -> AuxTraceWithMetadata<E, Self::AuxRandElements<E>, Self::AuxProof>
     where
@@ -36,8 +40,8 @@ impl AuxTraceBuilder for RescueRapsAuxTraceBuilder {
         Hasher: ElementHasher<BaseField = E::BaseField>,
     {
         let rand_elements = {
-            let mut rand_elements = Vec::with_capacity(aux_segment_width);
-            for _ in 0..aux_segment_width {
+            let mut rand_elements = Vec::with_capacity(self.aux_segment_width);
+            for _ in 0..self.aux_segment_width {
                 rand_elements.push(transcript.draw().unwrap());
             }
 
@@ -47,7 +51,7 @@ impl AuxTraceBuilder for RescueRapsAuxTraceBuilder {
         let mut current_row = unsafe { uninit_vector(main_trace.num_cols()) };
         let mut next_row = unsafe { uninit_vector(main_trace.num_cols()) };
         main_trace.read_row_into(0, &mut current_row);
-        let mut aux_columns = vec![vec![E::ZERO; main_trace.num_rows()]; aux_segment_width];
+        let mut aux_columns = vec![vec![E::ZERO; main_trace.num_rows()]; self.aux_segment_width];
 
         // Columns storing the copied values for the permutation argument are not necessary, but
         // help understanding the construction of RAPs and are kept for illustrative purposes.

@@ -20,12 +20,11 @@ const AUX_TRACE_WIDTH: usize = 2;
 fn test_complex_lagrange_kernel_air() {
     let trace = LagrangeComplexTrace::new(2_usize.pow(10), AUX_TRACE_WIDTH);
     let log_trace_len = trace.length().ilog2() as usize;
-    let aux_trace_builder = LagrangeAuxTraceBuilder;
+    let aux_trace_builder = LagrangeAuxTraceBuilder::new(AUX_TRACE_WIDTH);
     let prover = LagrangeComplexProver::new();
 
-    let (proof, _) = prover
-        .prove_with_aux_trace::<BaseElement, _>(trace, aux_trace_builder, AUX_TRACE_WIDTH)
-        .unwrap();
+    let (proof, _) =
+        prover.prove_with_aux_trace::<BaseElement, _>(trace, aux_trace_builder).unwrap();
 
     let aux_trace_verifier = DefaultAuxTraceVerifier::new(log_trace_len);
 
@@ -183,18 +182,23 @@ impl Air for LagrangeKernelComplexAir {
 // LagrangeComplexProver
 // ================================================================================================
 
-pub struct LagrangeAuxTraceBuilder;
+pub struct LagrangeAuxTraceBuilder {
+    aux_trace_width: usize,
+}
+
+impl LagrangeAuxTraceBuilder {
+    pub fn new(aux_trace_width: usize) -> Self {
+        Self { aux_trace_width }
+    }
+}
 
 impl AuxTraceBuilder for LagrangeAuxTraceBuilder {
     type AuxRandElements<E: Send + Sync> = Vec<E>;
-    // aux trace width
-    type AuxParams = usize;
     type AuxProof = ();
 
     fn build_aux_trace<E, Hasher>(
         &mut self,
         main_trace: &ColMatrix<E::BaseField>,
-        aux_trace_width: usize,
         transcript: &mut impl crypto::RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
     ) -> AuxTraceWithMetadata<E, Self::AuxRandElements<E>, Self::AuxProof>
     where
@@ -236,7 +240,7 @@ impl AuxTraceBuilder for LagrangeAuxTraceBuilder {
 
         // Then all other auxiliary columns
         let rand_summed = lagrange_kernel_rand_elements.iter().fold(E::ZERO, |acc, &r| acc + r);
-        for _ in 1..aux_trace_width {
+        for _ in 1..self.aux_trace_width {
             // building a dummy auxiliary column
             let column = main_trace
                 .get_column(0)

@@ -79,8 +79,8 @@ use composer::DeepCompositionPoly;
 
 mod trace;
 pub use trace::{
-    AuxParams, AuxProof, AuxRandElements, AuxTraceBuilder, AuxTraceWithMetadata, DefaultTraceLde,
-    Trace, TraceLde, TracePolyTable, TraceTable, TraceTableFragment,
+    AuxProof, AuxRandElements, AuxTraceBuilder, AuxTraceWithMetadata, DefaultTraceLde, Trace,
+    TraceLde, TracePolyTable, TraceTable, TraceTableFragment,
 };
 
 mod channel;
@@ -253,7 +253,6 @@ pub trait Prover {
         &self,
         trace: Self::Trace,
         mut aux_trace_builder: ATB,
-        aux_params: AuxParams<ATB>,
     ) -> Result<(StarkProof, Option<AuxProof<ATB>>), ProverError>
     where
         E: FieldElement<BaseField = Self::BaseField>,
@@ -297,11 +296,8 @@ pub trait Prover {
         // build the auxiliary trace segment, and append the resulting segments to trace commitment
         // and trace polynomial table structs
         let aux_trace_with_metadata = {
-            let aux_trace_with_metadata = aux_trace_builder.build_aux_trace(
-                trace.main_segment(),
-                aux_params,
-                channel.public_coin(),
-            );
+            let aux_trace_with_metadata =
+                aux_trace_builder.build_aux_trace(trace.main_segment(), channel.public_coin());
 
             // commit to the auxiliary trace segment
             let aux_segment_polys = {
