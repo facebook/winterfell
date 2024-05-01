@@ -101,7 +101,10 @@ pub mod tests;
 // this segment width seems to give the best performance for small fields (i.e., 64 bits)
 const DEFAULT_SEGMENT_WIDTH: usize = 8;
 
+/// Accesses the `AuxRandElements` type in a [`Prover`].
 pub type AuxRandElementsProver<P, E> = <<P as Prover>::Air as Air>::AuxRandElements<E>;
+
+/// Accesses the `AuxProof` type in a [`Prover`].
 pub type AuxProofProver<P> = <<P as Prover>::Air as Air>::AuxProof;
 
 /// Defines a STARK prover for a computation.
