@@ -21,6 +21,7 @@ impl Air for FibSmall {
     type AuxRandElements<E: Send + Sync> = ();
     type BaseField = BaseElement;
     type PublicInputs = BaseElement;
+    type AuxProof = ();
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------

@@ -23,6 +23,7 @@ impl Air for MulFib2Air {
     type AuxRandElements<E: Send + Sync> = ();
     type BaseField = BaseElement;
     type PublicInputs = BaseElement;
+    type AuxProof = ();
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------

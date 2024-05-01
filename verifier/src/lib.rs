@@ -210,7 +210,10 @@ pub fn verify_with_aux_trace<E, AIR, ATV, HashFn, RandCoin>(
 where
     E: FieldElement<BaseField = AIR::BaseField>,
     AIR: Air,
-    ATV: AuxTraceVerifier<AuxRandElements<E> = <AIR as Air>::AuxRandElements<E>>,
+    ATV: AuxTraceVerifier<
+        AuxRandElements<E> = <AIR as Air>::AuxRandElements<E>,
+        AuxProof = <AIR as Air>::AuxProof,
+    >,
     HashFn: ElementHasher<BaseField = AIR::BaseField>,
     RandCoin: RandomCoin<BaseField = AIR::BaseField, Hasher = HashFn>,
 {

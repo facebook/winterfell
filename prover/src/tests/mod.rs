@@ -74,6 +74,7 @@ impl Air for MockAir {
     type BaseField = BaseElement;
     type PublicInputs = ();
     type AuxRandElements<E: Send + Sync> = ();
+    type AuxProof = ();
 
     fn new(trace_info: TraceInfo, _pub_inputs: (), _options: ProofOptions) -> Self {
         let context = build_context(trace_info, 8, 1);

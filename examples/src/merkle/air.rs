@@ -32,6 +32,7 @@ impl Air for MerkleAir {
     type AuxRandElements<E: Send + Sync> = ();
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
+    type AuxProof = ();
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------

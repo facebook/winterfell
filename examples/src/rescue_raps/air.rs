@@ -59,6 +59,7 @@ impl Air for RescueRapsAir {
     type AuxRandElements<E: Send + Sync> = Vec<E>;
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
+    type AuxProof = ();
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------

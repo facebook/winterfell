@@ -37,6 +37,7 @@ pub use coefficients::{
 
 mod divisor;
 pub use divisor::ConstraintDivisor;
+use utils::{Deserializable, Serializable};
 
 #[cfg(test)]
 mod tests;
@@ -190,6 +191,9 @@ pub trait Air: Send + Sync {
 
     /// A type defining the random elements used in constructing the auxiliary trace segment.
     type AuxRandElements<E: Send + Sync>: Send + Sync;
+
+    /// An auxiliary (i.e. non-STARK) proof object. If not needed, set to `()`.
+    type AuxProof: Serializable + Deserializable;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------

@@ -13,8 +13,8 @@ use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criteri
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, ElementHasher, RandomCoin};
 use math::{fields::f64::BaseElement, ExtensionOf, FieldElement};
 use winter_prover::{
-    matrix::ColMatrix, AuxRandElementsProver, AuxTraceWithMetadata, DefaultConstraintEvaluator,
-    DefaultTraceLde, Prover, StarkDomain, Trace, TracePolyTable,
+    matrix::ColMatrix, AuxProofProver, AuxRandElementsProver, AuxTraceWithMetadata,
+    DefaultConstraintEvaluator, DefaultTraceLde, Prover, StarkDomain, Trace, TracePolyTable,
 };
 
 const TRACE_LENS: [usize; 2] = [2_usize.pow(16), 2_usize.pow(20)];
@@ -107,6 +107,7 @@ struct LagrangeKernelAir {
 impl Air for LagrangeKernelAir {
     type AuxRandElements<E: Send + Sync> = Vec<E>;
     type BaseField = BaseElement;
+    type AuxProof = ();
 
     type PublicInputs = ();
 
@@ -202,7 +203,6 @@ impl Prover for LagrangeProver {
     type TraceLde<E: FieldElement<BaseField = BaseElement>> = DefaultTraceLde<E, Self::HashFn>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = BaseElement>> =
         DefaultConstraintEvaluator<'a, LagrangeKernelAir, E>;
-    type AuxProof = ();
 
     fn get_pub_inputs(&self, _trace: &Self::Trace) -> <<Self as Prover>::Air as Air>::PublicInputs {
     }
@@ -239,7 +239,7 @@ impl Prover for LagrangeProver {
         &self,
         main_trace: &ColMatrix<E::BaseField>,
         transcript: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> AuxTraceWithMetadata<E, AuxRandElementsProver<Self, E>, Self::AuxProof>
+    ) -> AuxTraceWithMetadata<E, AuxRandElementsProver<Self, E>, AuxProofProver<Self>>
     where
         E: FieldElement,
         Hasher: ElementHasher<BaseField = E::BaseField>,

@@ -102,6 +102,7 @@ struct LagrangeKernelComplexAir {
 impl Air for LagrangeKernelComplexAir {
     type AuxRandElements<E: Send + Sync> = Vec<E>;
     type BaseField = BaseElement;
+    type AuxProof = ();
 
     type PublicInputs = ();
 
@@ -197,7 +198,6 @@ impl Prover for LagrangeComplexProver {
     type TraceLde<E: FieldElement<BaseField = BaseElement>> = DefaultTraceLde<E, Self::HashFn>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = BaseElement>> =
         DefaultConstraintEvaluator<'a, LagrangeKernelComplexAir, E>;
-    type AuxProof = ();
 
     fn get_pub_inputs(&self, _trace: &Self::Trace) -> <<Self as Prover>::Air as Air>::PublicInputs {
     }
@@ -234,7 +234,7 @@ impl Prover for LagrangeComplexProver {
         &self,
         main_trace: &ColMatrix<E::BaseField>,
         transcript: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> AuxTraceWithMetadata<E, AuxRandElementsProver<Self, E>, Self::AuxProof>
+    ) -> AuxTraceWithMetadata<E, AuxRandElementsProver<Self, E>, AuxProofProver<Self>>
     where
         E: FieldElement,
         Hasher: ElementHasher<BaseField = E::BaseField>,

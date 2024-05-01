@@ -55,7 +55,6 @@ where
     type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
         DefaultConstraintEvaluator<'a, Self::Air, E>;
-    type AuxProof = ();
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> VdfInputs {
         let last_step = trace.length() - 1;

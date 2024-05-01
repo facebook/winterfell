@@ -102,6 +102,7 @@ pub mod tests;
 const DEFAULT_SEGMENT_WIDTH: usize = 8;
 
 pub type AuxRandElementsProver<P, E> = <<P as Prover>::Air as Air>::AuxRandElements<E>;
+pub type AuxProofProver<P> = <<P as Prover>::Air as Air>::AuxProof;
 
 /// Defines a STARK prover for a computation.
 ///
@@ -150,9 +151,6 @@ pub trait Prover {
     type ConstraintEvaluator<'a, E>: ConstraintEvaluator<E, Air = Self::Air>
     where
         E: FieldElement<BaseField = Self::BaseField>;
-
-    /// An auxiliary (i.e. non-STARK) proof object. If not needed, set to `()`.
-    type AuxProof: Serializable + Deserializable;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -204,7 +202,7 @@ pub trait Prover {
         &self,
         main_trace: &ColMatrix<E::BaseField>,
         transcript: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> AuxTraceWithMetadata<E, AuxRandElementsProver<Self, E>, Self::AuxProof>
+    ) -> AuxTraceWithMetadata<E, AuxRandElementsProver<Self, E>, AuxProofProver<Self>>
     where
         E: FieldElement,
         Hasher: ElementHasher<BaseField = E::BaseField>,

@@ -10,9 +10,9 @@ use super::{
 };
 use core_utils::uninit_vector;
 use winterfell::{
-    crypto::RandomCoin, matrix::ColMatrix, AuxRandElementsProver, AuxTraceWithMetadata,
-    ConstraintCompositionCoefficients, DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain,
-    Trace, TraceInfo, TracePolyTable,
+    crypto::RandomCoin, matrix::ColMatrix, AuxProofProver, AuxRandElementsProver,
+    AuxTraceWithMetadata, ConstraintCompositionCoefficients, DefaultConstraintEvaluator,
+    DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable,
 };
 
 // RESCUE PROVER
@@ -109,7 +109,6 @@ where
     type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
         DefaultConstraintEvaluator<'a, Self::Air, E>;
-    type AuxProof = ();
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
         let last_step = trace.length() - 1;
@@ -147,7 +146,7 @@ where
         &self,
         main_trace: &ColMatrix<E::BaseField>,
         transcript: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> AuxTraceWithMetadata<E, AuxRandElementsProver<Self, E>, Self::AuxProof>
+    ) -> AuxTraceWithMetadata<E, AuxRandElementsProver<Self, E>, AuxProofProver<Self>>
     where
         E: FieldElement,
         Hasher: ElementHasher<BaseField = E::BaseField>,
