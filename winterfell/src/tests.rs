@@ -314,10 +314,10 @@ impl Prover for LagrangeComplexProver {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
     }
 
-    fn new_aux_trace_builder<E>(&self) -> Option<Self::AuxTraceBuilder<E>>
+    fn new_aux_trace_builder<E>(&self) -> Self::AuxTraceBuilder<E>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
-        Some(LagrangeAuxTraceBuilder::new(self.aux_trace_width))
+        LagrangeAuxTraceBuilder::new(self.aux_trace_width)
     }
 }

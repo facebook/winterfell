@@ -205,13 +205,15 @@ pub trait Prover {
     where
         E: FieldElement<BaseField = Self::BaseField>;
 
-    /// Returns a new [`AuxTraceBuilder`] used to build the auxiliary trace, if any.
-    fn new_aux_trace_builder<E>(&self) -> Option<Self::AuxTraceBuilder<E>>
-    where
-        E: FieldElement<BaseField = Self::BaseField>;
-
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
+    /// Returns a new [`AuxTraceBuilder`] used to build the auxiliary trace, if any.
+    fn new_aux_trace_builder<E>(&self) -> Self::AuxTraceBuilder<E>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        unimplemented!("`Prover::new_aux_trace_builder` needs to be implemented when the trace has an auxiliary segment.")
+    }
 
     /// Returns a STARK proof attesting to a correct execution of a computation defined by the
     /// provided trace. The trace must not contain an auxiliary trace segment.
@@ -288,8 +290,8 @@ pub trait Prover {
 
         // build the auxiliary trace segment, and append the resulting segments to trace commitment
         // and trace polynomial table structs
-        // TODOP: Make `new_aux_trace_builder()` return NOT an Option, by default is `unimplemented!()`, and here we check using trace_info or w/e
-        let aux_trace_with_metadata = self.new_aux_trace_builder().map(|aux_trace_builder| {
+        let aux_trace_with_metadata = if air.trace_info().is_multi_segment() {
+            let aux_trace_builder = self.new_aux_trace_builder();
             let aux_trace_with_metadata =
                 aux_trace_builder.build_aux_trace(trace.main_segment(), channel.public_coin());
 
@@ -312,8 +314,10 @@ pub trait Prover {
             trace_polys
                 .add_aux_segment(aux_segment_polys, air.context().lagrange_kernel_aux_column_idx());
 
-            aux_trace_with_metadata
-        });
+            Some(aux_trace_with_metadata)
+        } else {
+            None
+        };
 
         let (aux_trace, aux_rand_elements, _aux_proof) = match aux_trace_with_metadata {
             Some(atm) => (Some(atm.aux_trace), Some(atm.aux_rand_eles), atm.aux_proof),

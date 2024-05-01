@@ -99,10 +99,4 @@ where
     ) -> Self::ConstraintEvaluator<'a, E> {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
     }
-    fn new_aux_trace_builder<E>(&self) -> Option<Self::AuxTraceBuilder<E>>
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        None
-    }
 }
