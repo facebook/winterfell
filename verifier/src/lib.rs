@@ -40,7 +40,10 @@ pub use air::{
 use alloc::string::ToString;
 use aux_verifier::AuxProof;
 pub use math;
-use math::{FieldElement, ToElements};
+use math::{
+    fields::{CubeExtension, QuadExtension},
+    FieldElement, ToElements,
+};
 
 #[deprecated(
     since = "0.8.2",
@@ -114,22 +117,77 @@ where
     // figure out which version of the generic proof verification procedure to run. this is a sort
     // of static dispatch for selecting two generic parameter: extension field and hash function.
     let mut public_coin = RandCoin::new(&public_coin_seed);
-    let channel = VerifierChannel::new(&air, proof)?;
 
-    // Read the commitments to evaluations of the trace polynomials over the LDE domain sent by the
-    // prover. The commitments are used to update the public coin, and draw sets of random elements
-    // from the coin (in the interactive version of the protocol the verifier sends these random
-    // elements to the prover after each commitment is made). When there are multiple trace
-    // commitments (i.e., the trace consists of more than one segment), each previous commitment is
-    // used to draw random elements needed to construct the next trace segment. The last trace
-    // commitment is used to draw a set of random coefficients which the prover uses to compute
-    // constraint composition polynomial.
-    let trace_commitments = channel.read_trace_commitments();
+    match air.options().field_extension() {
+        FieldExtension::None => {
+            let channel = VerifierChannel::new(&air, proof)?;
 
-    // reseed the coin with the commitment to the main trace segment
-    public_coin.reseed(trace_commitments[0]);
+            // Read the commitments to evaluations of the trace polynomials over the LDE domain sent by the
+            // prover. The commitments are used to update the public coin, and draw sets of random elements
+            // from the coin (in the interactive version of the protocol the verifier sends these random
+            // elements to the prover after each commitment is made). When there are multiple trace
+            // commitments (i.e., the trace consists of more than one segment), each previous commitment is
+            // used to draw random elements needed to construct the next trace segment. The last trace
+            // commitment is used to draw a set of random coefficients which the prover uses to compute
+            // constraint composition polynomial.
+            let trace_commitments = channel.read_trace_commitments();
 
-    perform_verification::<AIR::BaseField, AIR, HashFn, RandCoin>(air, None, channel, public_coin)
+            // reseed the coin with the commitment to the main trace segment
+            public_coin.reseed(trace_commitments[0]);
+
+            perform_verification::<AIR::BaseField, AIR, HashFn, RandCoin>(
+                air,
+                None,
+                channel,
+                public_coin,
+            )
+        }
+        FieldExtension::Quadratic => {
+            let channel = VerifierChannel::new(&air, proof)?;
+
+            // Read the commitments to evaluations of the trace polynomials over the LDE domain sent by the
+            // prover. The commitments are used to update the public coin, and draw sets of random elements
+            // from the coin (in the interactive version of the protocol the verifier sends these random
+            // elements to the prover after each commitment is made). When there are multiple trace
+            // commitments (i.e., the trace consists of more than one segment), each previous commitment is
+            // used to draw random elements needed to construct the next trace segment. The last trace
+            // commitment is used to draw a set of random coefficients which the prover uses to compute
+            // constraint composition polynomial.
+            let trace_commitments = channel.read_trace_commitments();
+
+            // reseed the coin with the commitment to the main trace segment
+            public_coin.reseed(trace_commitments[0]);
+
+            perform_verification::<QuadExtension<AIR::BaseField>, AIR, HashFn, RandCoin>(
+                air,
+                None,
+                channel,
+                public_coin,
+            )
+        }
+        FieldExtension::Cubic => {
+            let channel = VerifierChannel::new(&air, proof)?;
+
+            // Read the commitments to evaluations of the trace polynomials over the LDE domain sent by the
+            // prover. The commitments are used to update the public coin, and draw sets of random elements
+            // from the coin (in the interactive version of the protocol the verifier sends these random
+            // elements to the prover after each commitment is made). When there are multiple trace
+            // commitments (i.e., the trace consists of more than one segment), each previous commitment is
+            // used to draw random elements needed to construct the next trace segment. The last trace
+            // commitment is used to draw a set of random coefficients which the prover uses to compute
+            // constraint composition polynomial.
+            let trace_commitments = channel.read_trace_commitments();
+
+            // reseed the coin with the commitment to the main trace segment
+            public_coin.reseed(trace_commitments[0]);
+            perform_verification::<CubeExtension<AIR::BaseField>, AIR, HashFn, RandCoin>(
+                air,
+                None,
+                channel,
+                public_coin,
+            )
+        }
+    }
 }
 /// Verifies that the specified computation was executed correctly against the specified inputs,
 /// specificially when an auxiliary trace is present.
