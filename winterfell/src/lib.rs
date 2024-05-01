@@ -23,9 +23,9 @@
 //! 3. Execute your computation and record its execution trace.
 //! 4. Define your prover by implementing [Prover] trait. Then execute [Prover::prove()] function
 //!    passing the trace generated in the previous step into it as a parameter. The function will
-//!    return an instance of [StarkProof].
+//!    return an instance of [Proof].
 //!
-//! This `StarkProof` can be serialized and sent to a STARK verifier for verification. The size
+//! This `Proof` can be serialized and sent to a STARK verifier for verification. The size
 //! of proof depends on the specifics of a given computation, but for most computations it should
 //! be in the range between 15 KB (for very small computations) and 300 KB (for very large
 //! computations).
@@ -40,13 +40,13 @@
 //! variable.
 //!
 //! ## Prof verification
-//! To verify a [StarkProof] generated as described in the previous sections, you'll need to
+//! To verify a [Proof] generated as described in the previous sections, you'll need to
 //! do the following:
 //!
 //! 1. Define an *algebraic intermediate representation* (AIR) for you computation. This AIR
 //!    must be the same as the one used during the proof generation process.
 //! 2. Execute [verify()] function and supply the AIR of your computation together with the
-//!    [StarkProof] and related public inputs as parameters.
+//!    [Proof] and related public inputs as parameters.
 //!
 //! Proof verification is extremely fast and is nearly independent of the complexity of the
 //! computation being verified. In the vast majority of cases, proofs can be verified in 3 - 5 ms
@@ -263,8 +263,8 @@
 //! };
 //!
 //! # use winterfell::{
-//! #   Air, AirContext, Assertion, ByteWriter, DefaultConstraintEvaluator, EvaluationFrame, TraceInfo,
-//! #   TransitionConstraintDegree,
+//! #   Air, AirContext, Assertion, AuxRandElementsProver, ByteWriter, DefaultConstraintEvaluator, 
+//! #   EmptyAuxTraceBuilder, EvaluationFrame, TraceInfo, TransitionConstraintDegree,
 //! # };
 //! #
 //! # pub struct PublicInputs {
@@ -340,7 +340,6 @@
 //! // struct as we don't need to define a custom trace for our computation. For other
 //! // associated types, we'll use default implementation provided by Winterfell.
 //! impl Prover for WorkProver {
-//!     type AuxRandElements<E: Send + Sync> = ();
 //!     type BaseField = BaseElement;
 //!     type Air = WorkAir;
 //!     type Trace = TraceTable<Self::BaseField>;
@@ -349,6 +348,8 @@
 //!     type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
 //!     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
 //!         DefaultConstraintEvaluator<'a, Self::Air, E>;
+//!     type AuxProof = ();
+//!     type AuxTraceBuilder<E: Send + Sync> = EmptyAuxTraceBuilder;
 //!
 //!     // Our public inputs consist of the first and last value in the execution trace.
 //!     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
@@ -375,7 +376,7 @@
 //!     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
 //!         &self,
 //!         air: &'a Self::Air,
-//!         aux_rand_elements: Option<Self::AuxRandElements<E>>,
+//!         aux_rand_elements: Option<AuxRandElementsProver<Self, E>>,
 //!         composition_coefficients: winterfell::ConstraintCompositionCoefficients<E>,
 //!     ) -> Self::ConstraintEvaluator<'a, E> {
 //!         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
@@ -395,9 +396,9 @@
 //! #    crypto::{hashers::Blake3_256, DefaultRandomCoin},
 //! #    math::{fields::f128::BaseElement, FieldElement, ToElements},
 //! #    matrix::ColMatrix,
-//! #    Air, AirContext, Assertion, ByteWriter, DefaultConstraintEvaluator, DefaultTraceLde,
-//! #    EvaluationFrame, TraceInfo, TransitionConstraintDegree, TraceTable, FieldExtension,
-//! #    Prover, ProofOptions, StarkDomain, StarkProof, Trace, TracePolyTable,
+//! #    Air, AirContext, Assertion, AuxRandElementsProver, ByteWriter, DefaultConstraintEvaluator, 
+//! #    DefaultTraceLde, EmptyAuxTraceBuilder, EvaluationFrame, TraceInfo, TransitionConstraintDegree, 
+//! #    TraceTable, FieldExtension, Prover, ProofOptions, StarkDomain, Proof, Trace, TracePolyTable,
 //! # };
 //! #
 //! # pub fn build_do_work_trace(start: BaseElement, n: usize) -> TraceTable<BaseElement> {
@@ -482,7 +483,6 @@
 //! # }
 //! #
 //! # impl Prover for WorkProver {
-//! #    type AuxRandElements<E: Send + Sync> = ();
 //! #    type BaseField = BaseElement;
 //! #    type Air = WorkAir;
 //! #    type Trace = TraceTable<Self::BaseField>;
@@ -491,6 +491,8 @@
 //! #    type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
 //! #    type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
 //! #        DefaultConstraintEvaluator<'a, Self::Air, E>;
+//! #    type AuxProof = ();
+//! #    type AuxTraceBuilder<E: Send + Sync> = EmptyAuxTraceBuilder;
 //! #
 //! #    fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
 //! #        let last_step = trace.length() - 1;
@@ -516,7 +518,7 @@
 //! #    fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
 //! #        &self,
 //! #        air: &'a Self::Air,
-//! #        aux_rand_elements: Option<Self::AuxRandElements<E>>,
+//! #        aux_rand_elements: Option<AuxRandElementsProver<Self, E>>,
 //! #        composition_coefficients: winterfell::ConstraintCompositionCoefficients<E>,
 //! #    ) -> Self::ConstraintEvaluator<'a, E> {
 //! #        DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
