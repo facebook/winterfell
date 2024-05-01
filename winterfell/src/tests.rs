@@ -190,15 +190,15 @@ impl LagrangeAuxTraceBuilder {
     }
 }
 
-impl<E: Send + Sync> AuxTraceBuilder<E> for LagrangeAuxTraceBuilder {
-    type AuxRandElements = Vec<E>;
+impl AuxTraceBuilder for LagrangeAuxTraceBuilder {
+    type AuxRandElements<E: Send + Sync> = Vec<E>;
     type AuxProof = ();
 
-    fn build_aux_trace<Hasher>(
+    fn build_aux_trace<E, Hasher>(
         self,
         main_trace: &ColMatrix<E::BaseField>,
         transcript: &mut impl crypto::RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> AuxTraceWithMetadata<E, Self::AuxRandElements, Self::AuxProof>
+    ) -> AuxTraceWithMetadata<E, Self::AuxRandElements<E>, Self::AuxProof>
     where
         E: FieldElement,
         Hasher: crypto::ElementHasher<BaseField = E::BaseField>,

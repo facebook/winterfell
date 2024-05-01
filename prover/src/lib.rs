@@ -157,8 +157,7 @@ pub trait Prover {
 
     /// An [`AuxTraceBuilder`] used to build the auxiliary trace.
     type AuxTraceBuilder<E>: AuxTraceBuilder<
-        E,
-        AuxRandElements = AuxRandElementsProver<Self, E>,
+        AuxRandElements<E> = AuxRandElementsProver<Self, E>,
         AuxProof = Self::AuxProof,
     >
     where

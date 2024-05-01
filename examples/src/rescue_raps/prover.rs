@@ -25,16 +25,16 @@ impl RescueRapsAuxTraceBuilder {
     }
 }
 
-impl<E: Send + Sync> AuxTraceBuilder<E> for RescueRapsAuxTraceBuilder {
-    type AuxRandElements = Vec<E>;
+impl AuxTraceBuilder for RescueRapsAuxTraceBuilder {
+    type AuxRandElements<E: Send + Sync> = Vec<E>;
 
     type AuxProof = ();
 
-    fn build_aux_trace<Hasher>(
+    fn build_aux_trace<E, Hasher>(
         self,
         main_trace: &ColMatrix<E::BaseField>,
         transcript: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> AuxTraceWithMetadata<E, Self::AuxRandElements, Self::AuxProof>
+    ) -> AuxTraceWithMetadata<E, Self::AuxRandElements<E>, Self::AuxProof>
     where
         E: FieldElement,
         Hasher: ElementHasher<BaseField = E::BaseField>,

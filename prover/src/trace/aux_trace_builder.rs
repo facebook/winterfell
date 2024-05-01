@@ -4,10 +4,10 @@ use math::FieldElement;
 use crate::matrix::ColMatrix;
 
 /// Accesses the type of the auxiliary trace's random elements in the [`AuxTraceBuilder`].
-pub type AuxRandElements<ATB, E> = <ATB as AuxTraceBuilder<E>>::AuxRandElements;
+pub type AuxRandElements<ATB, E> = <ATB as AuxTraceBuilder>::AuxRandElements<E>;
 
 /// Accesses the type of the auxiliary proof in the [`AuxTraceBuilder`].
-pub type AuxProof<ATB, E> = <ATB as AuxTraceBuilder<E>>::AuxProof;
+pub type AuxProof<ATB> = <ATB as AuxTraceBuilder>::AuxProof;
 
 /// Holds the auxiliary trace, random elements, and optionally, an auxiliary proof.
 ///
@@ -18,11 +18,10 @@ pub struct AuxTraceWithMetadata<E: FieldElement, AuxRandEles, AuxProof> {
     pub aux_proof: Option<AuxProof>,
 }
 
-// TODOP: I don't think `AuxTraceBuilder` needs to be generic; we can make `AuxRandElements<E>`.
 /// Defines the interface for building the auxiliary trace.
-pub trait AuxTraceBuilder<E: Send + Sync> {
+pub trait AuxTraceBuilder {
     /// A type defining the random elements used in constructing the auxiliary trace.
-    type AuxRandElements;
+    type AuxRandElements<E: Send + Sync>;
 
     /// Optionally, an extra proof object. If not needed, set to `()`.
     ///
@@ -31,11 +30,11 @@ pub trait AuxTraceBuilder<E: Send + Sync> {
     type AuxProof;
 
     /// Builds the auxiliary trace.
-    fn build_aux_trace<Hasher>(
+    fn build_aux_trace<E, Hasher>(
         self,
         main_trace: &ColMatrix<E::BaseField>,
         transcript: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> AuxTraceWithMetadata<E, Self::AuxRandElements, Self::AuxProof>
+    ) -> AuxTraceWithMetadata<E, Self::AuxRandElements<E>, Self::AuxProof>
     where
         E: FieldElement,
         Hasher: ElementHasher<BaseField = E::BaseField>;
@@ -43,16 +42,16 @@ pub trait AuxTraceBuilder<E: Send + Sync> {
 
 pub struct EmptyAuxTraceBuilder;
 
-impl<E: Send + Sync> AuxTraceBuilder<E> for EmptyAuxTraceBuilder {
-    type AuxRandElements = ();
+impl AuxTraceBuilder for EmptyAuxTraceBuilder {
+    type AuxRandElements<E: Send + Sync> = ();
 
     type AuxProof = ();
 
-    fn build_aux_trace<Hasher>(
+    fn build_aux_trace<E, Hasher>(
         self,
         _main_trace: &ColMatrix<<E>::BaseField>,
         _transcript: &mut impl RandomCoin<BaseField = <E>::BaseField, Hasher = Hasher>,
-    ) -> AuxTraceWithMetadata<E, Self::AuxRandElements, Self::AuxProof>
+    ) -> AuxTraceWithMetadata<E, Self::AuxRandElements<E>, Self::AuxProof>
     where
         E: FieldElement,
         Hasher: ElementHasher<BaseField = <E>::BaseField>,
