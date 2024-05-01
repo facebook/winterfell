@@ -75,6 +75,7 @@ pub use errors::VerifierError;
 // VERIFIER
 // ================================================================================================
 
+// TODOP: Remove `verify_with_aux_trace()`
 /// Verifies that the specified computation was executed correctly against the specified inputs.
 ///
 /// Specifically, for a computation specified by `AIR` and `HashFn` type parameter, verifies that
