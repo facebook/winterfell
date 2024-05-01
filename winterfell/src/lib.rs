@@ -594,8 +594,8 @@ pub use prover::{
     BoundaryConstraintGroup, ByteReader, ByteWriter, CompositionPolyTrace,
     ConstraintCompositionCoefficients, ConstraintDivisor, ConstraintEvaluator,
     DeepCompositionCoefficients, DefaultConstraintEvaluator, DefaultTraceLde, Deserializable,
-    DeserializationError, EmptyAuxTraceBuilder, EvaluationFrame, FieldExtension, ProofOptions,
-    Prover, ProverError, Serializable, SliceReader, StarkDomain, StarkProof, Trace, TraceInfo,
+    DeserializationError, EmptyAuxTraceBuilder, EvaluationFrame, FieldExtension, Proof,
+    ProofOptions, Prover, ProverError, Serializable, SliceReader, StarkDomain, Trace, TraceInfo,
     TraceLde, TracePolyTable, TraceTable, TraceTableFragment, TransitionConstraintDegree,
 };
 pub use verifier::{

@@ -32,13 +32,7 @@ fn test_complex_lagrange_kernel_air() {
         _,
         Blake3_256<BaseElement>,
         DefaultRandomCoin<Blake3_256<BaseElement>>,
-    >(
-        proof,
-        None,
-        aux_trace_verifier,
-        (),
-        &AcceptableOptions::MinConjecturedSecurity(0),
-    )
+    >(proof, aux_trace_verifier, (), &AcceptableOptions::MinConjecturedSecurity(0))
     .unwrap()
 }
 

@@ -14,8 +14,7 @@ use winterfell::{
         fields::{f128::BaseElement, CubeExtension, QuadExtension},
         ExtensionOf, FieldElement,
     },
-    DefaultAuxTraceVerifier, FieldExtension, ProofOptions, Prover, StarkProof, Trace,
-    VerifierError,
+    DefaultAuxTraceVerifier, FieldExtension, Proof, ProofOptions, Prover, Trace, VerifierError,
 };
 
 mod custom_trace_table;
@@ -111,7 +110,7 @@ impl<H: ElementHasher> Example for RescueRapsExample<H>
 where
     H: ElementHasher<BaseField = BaseElement>,
 {
-    fn prove(&self) -> StarkProof {
+    fn prove(&self) -> Proof {
         // generate the execution trace
         println!("Generating proof for computing a chain of {} Rescue hashes", self.chain_length);
 
@@ -131,7 +130,7 @@ where
         prover.prove(trace).unwrap()
     }
 
-    fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {
+    fn verify(&self, proof: Proof) -> Result<(), VerifierError> {
         let pub_inputs = PublicInputs {
             result: self.result,
         };
@@ -147,7 +146,7 @@ where
                     _,
                     H,
                     DefaultRandomCoin<H>,
-                >(proof, None, aux_verifier, pub_inputs, &acceptable_options)
+                >(proof, aux_verifier, pub_inputs, &acceptable_options)
             }
 
             FieldExtension::Quadratic => {
@@ -157,7 +156,7 @@ where
                     _,
                     H,
                     DefaultRandomCoin<H>,
-                >(proof, None, aux_verifier, pub_inputs, &acceptable_options)
+                >(proof, aux_verifier, pub_inputs, &acceptable_options)
             }
             FieldExtension::Cubic => {
                 winterfell::verify_with_aux_trace::<
@@ -166,12 +165,12 @@ where
                     _,
                     H,
                     DefaultRandomCoin<H>,
-                >(proof, None, aux_verifier, pub_inputs, &acceptable_options)
+                >(proof, aux_verifier, pub_inputs, &acceptable_options)
             }
         }
     }
 
-    fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
+    fn verify_with_wrong_inputs(&self, proof: Proof) -> Result<(), VerifierError> {
         let pub_inputs = PublicInputs {
             result: [self.result[1], self.result[0]],
         };
@@ -188,7 +187,7 @@ where
                     _,
                     H,
                     DefaultRandomCoin<H>,
-                >(proof, None, aux_verifier, pub_inputs, &acceptable_options)
+                >(proof, aux_verifier, pub_inputs, &acceptable_options)
             }
 
             FieldExtension::Quadratic => {
@@ -198,7 +197,7 @@ where
                     _,
                     H,
                     DefaultRandomCoin<H>,
-                >(proof, None, aux_verifier, pub_inputs, &acceptable_options)
+                >(proof, aux_verifier, pub_inputs, &acceptable_options)
             }
             FieldExtension::Cubic => {
                 winterfell::verify_with_aux_trace::<
@@ -207,7 +206,7 @@ where
                     _,
                     H,
                     DefaultRandomCoin<H>,
-                >(proof, None, aux_verifier, pub_inputs, &acceptable_options)
+                >(proof, aux_verifier, pub_inputs, &acceptable_options)
             }
         }
     }

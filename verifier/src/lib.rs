@@ -32,13 +32,12 @@
 extern crate alloc;
 
 pub use air::{
-    proof::StarkProof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
+    proof::Proof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
     ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
     EvaluationFrame, FieldExtension, ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
 
 use alloc::string::ToString;
-use aux_verifier::AuxProof;
 pub use math;
 use math::{
     fields::{CubeExtension, QuadExtension},
@@ -78,7 +77,6 @@ pub use errors::VerifierError;
 // VERIFIER
 // ================================================================================================
 
-// TODOP: Remove `verify_with_aux_trace()`
 /// Verifies that the specified computation was executed correctly against the specified inputs.
 ///
 /// Specifically, for a computation specified by `AIR` and `HashFn` type parameter, verifies that
@@ -92,7 +90,7 @@ pub use errors::VerifierError;
 /// - The specified proof was generated for this computation but for different public inputs.
 /// - The specified proof was generated with parameters not providing an acceptable security level.
 pub fn verify<AIR, HashFn, RandCoin>(
-    proof: StarkProof,
+    proof: Proof,
     pub_inputs: AIR::PublicInputs,
     acceptable_options: &AcceptableOptions,
 ) -> Result<(), VerifierError>
@@ -189,6 +187,7 @@ where
         }
     }
 }
+
 /// Verifies that the specified computation was executed correctly against the specified inputs,
 /// specificially when an auxiliary trace is present.
 ///
@@ -203,8 +202,7 @@ where
 /// - The specified proof was generated for this computation but for different public inputs.
 /// - The specified proof was generated with parameters not providing an acceptable security level.
 pub fn verify_with_aux_trace<E, AIR, ATV, HashFn, RandCoin>(
-    proof: StarkProof,
-    aux_proof: Option<AuxProof<ATV>>,
+    proof: Proof,
     aux_trace_verifier: ATV,
     pub_inputs: AIR::PublicInputs,
     acceptable_options: &AcceptableOptions,
@@ -253,9 +251,23 @@ where
 
     // process the auxiliary trace segment to build a set of random elements, and reseed the coin
     // with the aux trace commitment
-    let aux_trace_rand_elements = aux_trace_verifier
-        .verify_aux_trace::<E, _>(aux_proof, &mut public_coin)
-        .map_err(|err| VerifierError::AuxTraceVerificationFailed(err.to_string()))?;
+    let aux_trace_rand_elements = {
+        let aux_proof = {
+            let aux_proof_serialized = channel.read_aux_proof();
+
+            match aux_proof_serialized {
+                Some(aux_proof_serialized) => Some(
+                    Deserializable::read_from_bytes(aux_proof_serialized)
+                        .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?,
+                ),
+                None => None,
+            }
+        };
+
+        aux_trace_verifier
+            .verify_aux_trace::<E, _>(aux_proof, &mut public_coin)
+            .map_err(|err| VerifierError::AuxTraceVerificationFailed(err.to_string()))?
+    };
     public_coin.reseed(aux_trace_commitment);
 
     perform_verification::<E, AIR, HashFn, RandCoin>(
@@ -428,7 +440,7 @@ pub enum AcceptableOptions {
 
 impl AcceptableOptions {
     /// Checks that a proof was generated using an acceptable set of parameters.
-    pub fn validate<H: Hasher>(&self, proof: &StarkProof) -> Result<(), VerifierError> {
+    pub fn validate<H: Hasher>(&self, proof: &Proof) -> Result<(), VerifierError> {
         match self {
             AcceptableOptions::MinConjecturedSecurity(minimal_security) => {
                 let proof_security = proof.security_level::<H>(true);

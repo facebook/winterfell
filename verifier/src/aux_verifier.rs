@@ -1,14 +1,12 @@
 use alloc::{string::ToString, vec::Vec};
 use crypto::{ElementHasher, RandomCoin, RandomCoinError};
 use math::FieldElement;
-
-/// Accesses the type of the auxiliary proof in the [`AuxTraceVerifier`].
-pub type AuxProof<ATV> = <ATV as AuxTraceVerifier>::AuxProof;
+use utils::Deserializable;
 
 /// A trait for generating the random elements required for constructing the auxiliary trace.
 pub trait AuxTraceVerifier {
     type AuxRandElements<E: Send + Sync>;
-    type AuxProof;
+    type AuxProof: Deserializable;
     type Error: ToString;
 
     /// Generates the random elements required for constructing the auxiliary trace. Optionally,

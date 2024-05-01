@@ -7,7 +7,7 @@ use structopt::StructOpt;
 use winterfell::{
     crypto::hashers::{Rp64_256, RpJive64_256},
     math::fields::f128::BaseElement,
-    FieldExtension, ProofOptions, StarkProof, VerifierError,
+    FieldExtension, Proof, ProofOptions, VerifierError,
 };
 
 pub mod fibonacci;
@@ -32,9 +32,9 @@ pub type Blake3_256 = winterfell::crypto::hashers::Blake3_256<BaseElement>;
 pub type Sha3_256 = winterfell::crypto::hashers::Sha3_256<BaseElement>;
 
 pub trait Example {
-    fn prove(&self) -> StarkProof;
-    fn verify(&self, proof: StarkProof) -> Result<(), VerifierError>;
-    fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError>;
+    fn prove(&self) -> Proof;
+    fn verify(&self, proof: Proof) -> Result<(), VerifierError>;
+    fn verify_with_wrong_inputs(&self, proof: Proof) -> Result<(), VerifierError>;
 }
 
 // EXAMPLE OPTIONS
@@ -105,7 +105,7 @@ impl ExampleOptions {
     }
 
     /// Returns security level of the input proof in bits.
-    pub fn get_proof_security_level(&self, proof: &StarkProof, conjectured: bool) -> usize {
+    pub fn get_proof_security_level(&self, proof: &Proof, conjectured: bool) -> usize {
         let security_level = match self.hash_fn.as_str() {
             "blake3_192" => proof.security_level::<Blake3_192>(conjectured),
             "blake3_256" => proof.security_level::<Blake3_256>(conjectured),

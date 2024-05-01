@@ -52,7 +52,7 @@ const MAX_PROXIMITY_PARAMETER: u64 = 1000;
 /// To estimate soundness of a proof (in bits), [security_level()](StarkProof::security_level)
 /// function can be used.
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct StarkProof {
+pub struct Proof {
     /// Basic metadata about the execution of the computation described by this proof.
     pub context: Context,
     /// Number of unique queries made by the verifier. This will be different from the
@@ -72,9 +72,11 @@ pub struct StarkProof {
     pub fri_proof: FriProof,
     /// Proof-of-work nonce for query seed grinding.
     pub pow_nonce: u64,
+    /// Optionally, an auxiliary (non-STARK) proof that was generated during auxiliary trace generation.
+    pub aux_proof: Option<Vec<u8>>,
 }
 
-impl StarkProof {
+impl Proof {
     /// Returns STARK protocol parameters used to generate this proof.
     pub fn options(&self) -> &ProofOptions {
         self.context.options()
@@ -158,6 +160,7 @@ impl StarkProof {
             ood_frame: OodFrame::default(),
             fri_proof: FriProof::new_dummy(),
             pow_nonce: 0,
+            aux_proof: None,
         }
     }
 }
@@ -165,7 +168,7 @@ impl StarkProof {
 // SERIALIZATION
 // ================================================================================================
 
-impl Serializable for StarkProof {
+impl Serializable for Proof {
     fn write_into<W: utils::ByteWriter>(&self, target: &mut W) {
         self.context.write_into(target);
         target.write_u8(self.num_unique_queries);
@@ -174,11 +177,12 @@ impl Serializable for StarkProof {
         self.constraint_queries.write_into(target);
         self.ood_frame.write_into(target);
         self.fri_proof.write_into(target);
-        self.pow_nonce.write_into(target)
+        self.pow_nonce.write_into(target);
+        self.aux_proof.write_into(target);
     }
 }
 
-impl Deserializable for StarkProof {
+impl Deserializable for Proof {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let context = Context::read_from(source)?;
         let num_unique_queries = source.read_u8()?;
@@ -189,7 +193,7 @@ impl Deserializable for StarkProof {
             trace_queries.push(Queries::read_from(source)?);
         }
 
-        let proof = StarkProof {
+        let proof = Proof {
             context,
             num_unique_queries,
             commitments,
@@ -198,6 +202,7 @@ impl Deserializable for StarkProof {
             ood_frame: OodFrame::read_from(source)?,
             fri_proof: FriProof::read_from(source)?,
             pow_nonce: source.read_u64()?,
+            aux_proof: Option::<Vec<u8>>::read_from(source)?,
         };
         Ok(proof)
     }

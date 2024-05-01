@@ -5,7 +5,7 @@
 
 use crate::VerifierError;
 use air::{
-    proof::{Queries, StarkProof, Table, TraceOodFrame},
+    proof::{Proof, Queries, Table, TraceOodFrame},
     Air,
 };
 use alloc::{string::ToString, vec::Vec};
@@ -39,6 +39,7 @@ pub struct VerifierChannel<E: FieldElement, H: ElementHasher<BaseField = E::Base
     ood_constraint_evaluations: Option<Vec<E>>,
     // query proof-of-work
     pow_nonce: u64,
+    aux_proof: Option<Vec<u8>>,
 }
 
 impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChannel<E, H> {
@@ -47,9 +48,9 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
     /// Creates and returns a new [VerifierChannel] initialized from the specified `proof`.
     pub fn new<A: Air<BaseField = E::BaseField>>(
         air: &A,
-        proof: StarkProof,
+        proof: Proof,
     ) -> Result<Self, VerifierError> {
-        let StarkProof {
+        let Proof {
             context,
             num_unique_queries,
             commitments,
@@ -58,6 +59,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
             ood_frame,
             fri_proof,
             pow_nonce,
+            aux_proof,
         } = proof;
 
         // make sure AIR and proof base fields are the same
@@ -114,6 +116,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
             ood_constraint_evaluations: Some(ood_constraint_evaluations),
             // query seed
             pow_nonce,
+            aux_proof,
         })
     }
 
@@ -151,6 +154,11 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
     /// Returns query proof-of-work nonce sent by the prover.
     pub fn read_pow_nonce(&self) -> u64 {
         self.pow_nonce
+    }
+
+    /// Returns the serialized auxiliary proof, if any.
+    pub fn read_aux_proof(&self) -> Option<&Vec<u8>> {
+        self.aux_proof.as_ref()
     }
 
     /// Returns trace states at the specified positions of the LDE domain. This also checks if

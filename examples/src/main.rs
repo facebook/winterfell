@@ -11,7 +11,7 @@ use tracing_forest::ForestLayer;
 #[cfg(not(feature = "tracing-forest"))]
 use tracing_subscriber::fmt::format::FmtSpan;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
-use winterfell::StarkProof;
+use winterfell::Proof;
 
 use examples::{fibonacci, rescue, vdf, ExampleOptions, ExampleType};
 #[cfg(feature = "std")]
@@ -111,7 +111,7 @@ fn main() {
 
     // verify the proof
     println!("---------------------");
-    let parsed_proof = StarkProof::from_bytes(&proof_bytes).unwrap();
+    let parsed_proof = Proof::from_bytes(&proof_bytes).unwrap();
     assert_eq!(proof, parsed_proof);
     let now = Instant::now();
     match example.verify(proof) {

@@ -43,10 +43,9 @@
 extern crate alloc;
 
 pub use air::{
-    proof, proof::StarkProof, Air, AirContext, Assertion, BoundaryConstraint,
-    BoundaryConstraintGroup, ConstraintCompositionCoefficients, ConstraintDivisor,
-    DeepCompositionCoefficients, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
+    proof, proof::Proof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
+    ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
+    EvaluationFrame, FieldExtension, ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
 use tracing::{event, info_span, Level};
 pub use utils::{
@@ -153,7 +152,7 @@ pub trait Prover {
         E: FieldElement<BaseField = Self::BaseField>;
 
     /// An auxiliary (i.e. non-STARK) proof object. If not needed, set to `()`.
-    type AuxProof;
+    type AuxProof: Serializable + Deserializable;
 
     /// An [`AuxTraceBuilder`] used to build the auxiliary trace.
     type AuxTraceBuilder<E>: AuxTraceBuilder<
@@ -221,11 +220,7 @@ pub trait Prover {
     /// the computation described by [Self::Air](Prover::Air) and generated using some set of
     /// secret and public inputs. Public inputs must match the value returned from
     /// [Self::get_pub_inputs()](Prover::get_pub_inputs) for the provided trace.
-    fn prove(
-        &self,
-        trace: Self::Trace,
-        // TODOP: Change StarkProof
-    ) -> Result<StarkProof, ProverError> {
+    fn prove(&self, trace: Self::Trace) -> Result<Proof, ProverError> {
         // figure out which version of the generic proof generation procedure to run. this is a sort
         // of static dispatch for selecting two generic parameter: extension field and hash
         // function.
@@ -250,7 +245,7 @@ pub trait Prover {
     /// execution `trace` is valid against this prover's AIR.
     /// TODO: make this function un-callable externally?
     #[doc(hidden)]
-    fn generate_proof<E>(&self, trace: Self::Trace) -> Result<StarkProof, ProverError>
+    fn generate_proof<E>(&self, trace: Self::Trace) -> Result<Proof, ProverError>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
@@ -318,7 +313,7 @@ pub trait Prover {
             None
         };
 
-        let (aux_trace, aux_rand_elements, _aux_proof) = match aux_trace_with_metadata {
+        let (aux_trace, aux_rand_elements, aux_proof) = match aux_trace_with_metadata {
             Some(atm) => (Some(atm.aux_trace), Some(atm.aux_rand_eles), atm.aux_proof),
             None => (None, None, None),
         };
@@ -474,6 +469,7 @@ pub trait Prover {
                 constraint_queries,
                 fri_proof,
                 query_positions.len(),
+                aux_proof.map(|aux_proof| aux_proof.to_bytes()),
             );
 
             drop(span);
