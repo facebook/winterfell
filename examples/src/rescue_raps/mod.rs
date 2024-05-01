@@ -119,7 +119,7 @@ where
         println!("Generating proof for computing a chain of {} Rescue hashes", self.chain_length);
 
         // create a prover
-        let prover = RescueRapsProver::<H>::new(self.options.clone());
+        let prover = RescueRapsProver::<H>::new(3, self.options.clone());
 
         // generate execution trace
         let trace =
@@ -131,20 +131,7 @@ where
                 });
 
         // generate the proof
-        let aux_trace_builder = RescueRapsAuxTraceBuilder::new(3);
-
-        let (proof, _) = match self.options.field_extension() {
-            FieldExtension::None => {
-                prover.prove_with_aux_trace::<BaseElement, _>(trace, aux_trace_builder).unwrap()
-            }
-            FieldExtension::Quadratic => prover
-                .prove_with_aux_trace::<QuadExtension<BaseElement>, _>(trace, aux_trace_builder)
-                .unwrap(),
-
-            FieldExtension::Cubic => prover
-                .prove_with_aux_trace::<CubeExtension<BaseElement>, _>(trace, aux_trace_builder)
-                .unwrap(),
-        };
+        let (proof, _) = prover.prove(trace).unwrap();
 
         proof
     }

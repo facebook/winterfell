@@ -290,6 +290,7 @@ pub trait Prover {
 
         // build the auxiliary trace segment, and append the resulting segments to trace commitment
         // and trace polynomial table structs
+        // TODOP: Make `new_aux_trace_builder()` return NOT an Option, by default is `unimplemented!()`, and here we check using trace_info or w/e
         let aux_trace_with_metadata = self.new_aux_trace_builder().map(|aux_trace_builder| {
             let aux_trace_with_metadata =
                 aux_trace_builder.build_aux_trace(trace.main_segment(), channel.public_coin());

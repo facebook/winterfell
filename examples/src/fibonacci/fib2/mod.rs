@@ -106,7 +106,8 @@ where
                 });
 
         // generate the proof
-        prover.prove(trace).unwrap()
+        let (stark_proof, _) = prover.prove(trace).unwrap();
+        stark_proof
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {

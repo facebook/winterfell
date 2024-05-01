@@ -8,8 +8,9 @@ use super::{
     Prover, TRACE_WIDTH,
 };
 use winterfell::{
-    matrix::ColMatrix, Air, ConstraintCompositionCoefficients, DefaultConstraintEvaluator,
-    DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable, TraceTable,
+    matrix::ColMatrix, Air, AuxRandElementsProver, ConstraintCompositionCoefficients,
+    DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable,
+    TraceTable,
 };
 
 // FIBONACCI PROVER
@@ -85,7 +86,7 @@ where
     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         air: &'a Self::Air,
-        aux_rand_elements: Option<<<Self as Prover>::Air as Air>::AuxRandElements<E>>,
+        aux_rand_elements: Option<AuxRandElementsProver<Self, E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E> {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
