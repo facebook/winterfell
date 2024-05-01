@@ -57,7 +57,11 @@ pub use utils::{
 use fri::FriProver;
 
 pub use math;
-use math::{fft::infer_degree, ExtensibleField, FieldElement, StarkField, ToElements};
+use math::{
+    fft::infer_degree,
+    fields::{CubeExtension, QuadExtension},
+    ExtensibleField, FieldElement, StarkField, ToElements,
+};
 
 pub use crypto;
 use crypto::{ElementHasher, RandomCoin};
@@ -98,6 +102,8 @@ pub mod tests;
 // this segment width seems to give the best performance for small fields (i.e., 64 bits)
 const DEFAULT_SEGMENT_WIDTH: usize = 8;
 
+pub type AuxRandElementsProver<P, E> = <<P as Prover>::Air as Air>::AuxRandElements<E>;
+
 /// Defines a STARK prover for a computation.
 ///
 /// A STARK prover can be used to generate STARK proofs. The prover contains definitions of a
@@ -124,9 +130,6 @@ pub trait Prover {
     /// Base field for the computation described by this prover.
     type BaseField: StarkField + ExtensibleField<2> + ExtensibleField<3>;
 
-    /// A type defining the random elements used in constructing the auxiliary trace segment.
-    type AuxRandElements<E: Send + Sync>;
-
     /// Algebraic intermediate representation (AIR) for the computation described by this prover.
     type Air: Air<BaseField = Self::BaseField>;
 
@@ -146,6 +149,18 @@ pub trait Prover {
 
     /// Constraints evaluator used to evaluate AIR constraints over the extended execution trace.
     type ConstraintEvaluator<'a, E>: ConstraintEvaluator<E, Air = Self::Air>
+    where
+        E: FieldElement<BaseField = Self::BaseField>;
+
+    /// An auxiliary (i.e. non-STARK) proof object. If not needed, set to `()`.
+    type AuxProof;
+
+    /// An [`AuxTraceBuilder`] used to build the auxiliary trace.
+    type AuxTraceBuilder<E>: AuxTraceBuilder<
+        E,
+        AuxRandElements = AuxRandElementsProver<Self, E>,
+        AuxProof = Self::AuxProof,
+    >
     where
         E: FieldElement<BaseField = Self::BaseField>;
 
@@ -184,9 +199,14 @@ pub trait Prover {
     fn new_evaluator<'a, E>(
         &self,
         air: &'a Self::Air,
-        aux_rand_elements: Option<Self::AuxRandElements<E>>,
+        aux_rand_elements: Option<AuxRandElementsProver<Self, E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E>
+    where
+        E: FieldElement<BaseField = Self::BaseField>;
+
+    /// Returns a new [`AuxTraceBuilder`] used to build the auxiliary trace, if any.
+    fn new_aux_trace_builder<E>(&self) -> Option<Self::AuxTraceBuilder<E>>
     where
         E: FieldElement<BaseField = Self::BaseField>;
 
@@ -200,66 +220,41 @@ pub trait Prover {
     /// the computation described by [Self::Air](Prover::Air) and generated using some set of
     /// secret and public inputs. Public inputs must match the value returned from
     /// [Self::get_pub_inputs()](Prover::get_pub_inputs) for the provided trace.
-    fn prove(&self, trace: Self::Trace) -> Result<StarkProof, ProverError> {
-        // FIXME: the `self.options().field_extension` is now irrelevant and could be inconsistent
-        // with `E`.
-        assert!(!trace.info().is_multi_segment());
-
-        // 0 ----- instantiate AIR and prover channel ---------------------------------------------
-
-        // serialize public inputs; these will be included in the seed for the public coin
-        let pub_inputs = self.get_pub_inputs(&trace);
-        let pub_inputs_elements = pub_inputs.to_elements();
-
-        // create an instance of AIR for the provided parameters. this takes a generic description
-        // of the computation (provided via AIR type), and creates a description of a specific
-        // execution of the computation for the provided public inputs.
-        let air = Self::Air::new(trace.info().clone(), pub_inputs, self.options().clone());
-
-        // create a channel which is used to simulate interaction between the prover and the
-        // verifier; the channel will be used to commit to values and to draw randomness that
-        // should come from the verifier.
-        let mut channel =
-            ProverChannel::<Self::Air, Self::BaseField, Self::HashFn, Self::RandomCoin>::new(
-                &air,
-                pub_inputs_elements,
-            );
-
-        // 1 ----- Commit to the execution trace --------------------------------------------------
-
-        // build computation domain; this is used later for polynomial evaluations
-        let lde_domain_size = air.lde_domain_size();
-        let trace_length = air.trace_length();
-        let domain = info_span!("build_domain", trace_length, lde_domain_size)
-            .in_scope(|| StarkDomain::new(&air));
-        assert_eq!(domain.lde_domain_size(), lde_domain_size);
-        assert_eq!(domain.trace_length(), trace_length);
-
-        // commit to the main trace segment
-        let (trace_lde, trace_polys) =
-            self.build_main_trace_and_commit(&trace, &domain, &mut channel);
-
-        self.generate_proof(trace_lde, trace_polys, domain, &air, None, channel)
-    }
-
-    /// Returns a STARK proof attesting to a correct execution of a computation defined by the
-    /// provided trace. The trace is expected to contain an auxiliary trace segment.
-    ///
-    /// The returned [StarkProof] attests that the specified `trace` is a valid execution trace of
-    /// the computation described by [Self::Air](Prover::Air) and generated using some set of
-    /// secret and public inputs. Public inputs must match the value returned from
-    /// [Self::get_pub_inputs()](Prover::get_pub_inputs) for the provided trace.
-    fn prove_with_aux_trace<E, ATB>(
+    fn prove(
         &self,
         trace: Self::Trace,
-        mut aux_trace_builder: ATB,
-    ) -> Result<(StarkProof, Option<AuxProof<ATB>>), ProverError>
+    ) -> Result<(StarkProof, Option<Self::AuxProof>), ProverError> {
+        // figure out which version of the generic proof generation procedure to run. this is a sort
+        // of static dispatch for selecting two generic parameter: extension field and hash
+        // function.
+        match self.options().field_extension() {
+            FieldExtension::None => self.generate_proof::<Self::BaseField>(trace),
+            FieldExtension::Quadratic => {
+                if !<QuadExtension<Self::BaseField>>::is_supported() {
+                    return Err(ProverError::UnsupportedFieldExtension(2));
+                }
+                self.generate_proof::<QuadExtension<Self::BaseField>>(trace)
+            }
+            FieldExtension::Cubic => {
+                if !<CubeExtension<Self::BaseField>>::is_supported() {
+                    return Err(ProverError::UnsupportedFieldExtension(3));
+                }
+                self.generate_proof::<CubeExtension<Self::BaseField>>(trace)
+            }
+        }
+    }
+
+    /// Performs the actual proof generation procedure, generating the proof that the provided
+    /// execution `trace` is valid against this prover's AIR.
+    /// TODO: make this function un-callable externally?
+    #[doc(hidden)]
+    fn generate_proof<E>(
+        &self,
+        trace: Self::Trace,
+    ) -> Result<(StarkProof, Option<Self::AuxProof>), ProverError>
     where
         E: FieldElement<BaseField = Self::BaseField>,
-        ATB: AuxTraceBuilder<AuxRandElements<E> = Self::AuxRandElements<E>>,
-        Self::Air: Air<AuxRandElements<E> = AuxRandElements<ATB, E>>,
     {
-        assert!(trace.info().is_multi_segment());
         // 0 ----- instantiate AIR and prover channel ---------------------------------------------
 
         // serialize public inputs; these will be included in the seed for the public coin
@@ -295,7 +290,7 @@ pub trait Prover {
 
         // build the auxiliary trace segment, and append the resulting segments to trace commitment
         // and trace polynomial table structs
-        let aux_trace_with_metadata = {
+        let aux_trace_with_metadata = self.new_aux_trace_builder().map(|aux_trace_builder| {
             let aux_trace_with_metadata =
                 aux_trace_builder.build_aux_trace(trace.main_segment(), channel.public_coin());
 
@@ -319,78 +314,22 @@ pub trait Prover {
                 .add_aux_segment(aux_segment_polys, air.context().lagrange_kernel_aux_column_idx());
 
             aux_trace_with_metadata
+        });
+
+        let (aux_trace, aux_rand_elements, aux_proof) = match aux_trace_with_metadata {
+            Some(atm) => (Some(atm.aux_trace), Some(atm.aux_rand_eles), atm.aux_proof),
+            None => (None, None, None),
         };
 
         // make sure the specified trace (including auxiliary segments) is valid against the AIR.
         // This checks validity of both, assertions and state transitions. We do this in debug
         // mode only because this is a very expensive operation.
         #[cfg(debug_assertions)]
-        trace.validate(
-            &air,
-            Some(&aux_trace_with_metadata.aux_trace),
-            Some(&aux_trace_with_metadata.aux_rand_eles),
-        );
+        trace.validate(&air, aux_trace.as_ref(), aux_rand_elements.as_ref());
 
         // drop the main trace and aux trace segment as they are no longer needed
         drop(trace);
-        drop(aux_trace_with_metadata.aux_trace);
-
-        self.generate_proof(
-            trace_lde,
-            trace_polys,
-            domain,
-            &air,
-            Some(aux_trace_with_metadata.aux_rand_eles),
-            channel,
-        )
-        .map(|stark_proof| (stark_proof, aux_trace_with_metadata.aux_proof))
-    }
-
-    // HELPER METHODS
-    // --------------------------------------------------------------------------------------------
-
-    fn build_main_trace_and_commit<E>(
-        &self,
-        trace: &Self::Trace,
-        domain: &StarkDomain<Self::BaseField>,
-        channel: &mut ProverChannel<Self::Air, E, Self::HashFn, Self::RandomCoin>,
-    ) -> (<Self as Prover>::TraceLde<E>, TracePolyTable<E>)
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        // extend the main execution trace and build a Merkle tree from the extended trace
-        let _span = info_span!("commit_to_main_trace_segment").entered();
-        let (trace_lde, trace_polys) =
-            self.new_trace_lde(trace.info(), trace.main_segment(), domain);
-
-        // get the commitment to the main trace segment LDE
-        let main_trace_root = trace_lde.get_main_trace_commitment();
-
-        // commit to the LDE of the main trace by writing the root of its Merkle tree into
-        // the channel
-        channel.commit_trace(main_trace_root);
-
-        (trace_lde, trace_polys)
-    }
-
-    /// Performs the actual proof generation procedure, generating the proof that the provided
-    /// execution `trace` is valid against this prover's AIR.
-    /// TODO: make this function un-callable externally?
-    #[doc(hidden)]
-    fn generate_proof<E>(
-        &self,
-        trace_lde: Self::TraceLde<E>,
-        trace_polys: TracePolyTable<E>,
-        domain: StarkDomain<Self::BaseField>,
-        air: &Self::Air,
-        aux_rand_elements: Option<Self::AuxRandElements<E>>,
-        mut channel: ProverChannel<Self::Air, E, Self::HashFn, Self::RandomCoin>,
-    ) -> Result<StarkProof, ProverError>
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        let trace_length = air.trace_length();
-        let lde_domain_size = air.lde_domain_size();
+        drop(aux_trace);
 
         // 2 ----- evaluate constraints -----------------------------------------------------------
         // evaluate constraints specified by the AIR over the constraint evaluation domain, and
@@ -400,7 +339,7 @@ pub trait Prover {
         let composition_poly_trace =
             info_span!("evaluate_constraints", ce_domain_size).in_scope(|| {
                 self.new_evaluator(
-                    air,
+                    &air,
                     aux_rand_elements,
                     channel.get_constraint_composition_coeffs(),
                 )
@@ -539,7 +478,34 @@ pub trait Prover {
             proof
         };
 
-        Ok(proof)
+        Ok((proof, aux_proof))
+    }
+
+    // HELPER METHODS
+    // --------------------------------------------------------------------------------------------
+
+    fn build_main_trace_and_commit<E>(
+        &self,
+        trace: &Self::Trace,
+        domain: &StarkDomain<Self::BaseField>,
+        channel: &mut ProverChannel<Self::Air, E, Self::HashFn, Self::RandomCoin>,
+    ) -> (<Self as Prover>::TraceLde<E>, TracePolyTable<E>)
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        // extend the main execution trace and build a Merkle tree from the extended trace
+        let _span = info_span!("commit_to_main_trace_segment").entered();
+        let (trace_lde, trace_polys) =
+            self.new_trace_lde(trace.info(), trace.main_segment(), domain);
+
+        // get the commitment to the main trace segment LDE
+        let main_trace_root = trace_lde.get_main_trace_commitment();
+
+        // commit to the LDE of the main trace by writing the root of its Merkle tree into
+        // the channel
+        channel.commit_trace(main_trace_root);
+
+        (trace_lde, trace_polys)
     }
 
     /// Extends constraint composition polynomial over the LDE domain and builds a commitment to
