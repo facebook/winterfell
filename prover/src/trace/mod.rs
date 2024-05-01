@@ -7,11 +7,6 @@ use super::ColMatrix;
 use air::{Air, EvaluationFrame, LagrangeKernelBoundaryConstraint, TraceInfo};
 use math::{polynom, FieldElement, StarkField};
 
-mod aux_trace_builder;
-pub use aux_trace_builder::{
-    AuxProof, AuxRandElements, AuxTraceBuilder, AuxTraceWithMetadata, EmptyAuxTraceBuilder,
-};
-
 mod trace_lde;
 pub use trace_lde::{DefaultTraceLde, TraceLde};
 
@@ -23,6 +18,16 @@ pub use trace_table::{TraceTable, TraceTableFragment};
 
 #[cfg(test)]
 mod tests;
+
+// AUX TRACE WITH METADATA
+// ================================================================================================
+
+/// Holds the auxiliary trace, random elements, and optionally, an auxiliary proof.
+pub struct AuxTraceWithMetadata<E: FieldElement, AuxRandEles, AuxProof> {
+    pub aux_trace: ColMatrix<E>,
+    pub aux_rand_eles: AuxRandEles,
+    pub aux_proof: Option<AuxProof>,
+}
 
 // TRACE TRAIT
 // ================================================================================================

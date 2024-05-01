@@ -10,84 +10,10 @@ use super::{
 };
 use core_utils::uninit_vector;
 use winterfell::{
-    crypto::RandomCoin, matrix::ColMatrix, AuxRandElementsProver, AuxTraceBuilder,
-    AuxTraceWithMetadata, ConstraintCompositionCoefficients, DefaultConstraintEvaluator,
-    DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable,
+    crypto::RandomCoin, matrix::ColMatrix, AuxRandElementsProver, AuxTraceWithMetadata,
+    ConstraintCompositionCoefficients, DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain,
+    Trace, TraceInfo, TracePolyTable,
 };
-
-pub struct RescueRapsAuxTraceBuilder {
-    aux_segment_width: usize,
-}
-
-impl RescueRapsAuxTraceBuilder {
-    pub fn new(aux_segment_width: usize) -> Self {
-        Self { aux_segment_width }
-    }
-}
-
-impl AuxTraceBuilder for RescueRapsAuxTraceBuilder {
-    type AuxRandElements<E: Send + Sync> = Vec<E>;
-
-    type AuxProof = ();
-
-    fn build_aux_trace<E, Hasher>(
-        self,
-        main_trace: &ColMatrix<E::BaseField>,
-        transcript: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> AuxTraceWithMetadata<E, Self::AuxRandElements<E>, Self::AuxProof>
-    where
-        E: FieldElement,
-        Hasher: ElementHasher<BaseField = E::BaseField>,
-    {
-        let rand_elements = {
-            let mut rand_elements = Vec::with_capacity(self.aux_segment_width);
-            for _ in 0..self.aux_segment_width {
-                rand_elements.push(transcript.draw().unwrap());
-            }
-
-            rand_elements
-        };
-
-        let mut current_row = unsafe { uninit_vector(main_trace.num_cols()) };
-        let mut next_row = unsafe { uninit_vector(main_trace.num_cols()) };
-        main_trace.read_row_into(0, &mut current_row);
-        let mut aux_columns = vec![vec![E::ZERO; main_trace.num_rows()]; self.aux_segment_width];
-
-        // Columns storing the copied values for the permutation argument are not necessary, but
-        // help understanding the construction of RAPs and are kept for illustrative purposes.
-        aux_columns[0][0] =
-            rand_elements[0] * current_row[0].into() + rand_elements[1] * current_row[1].into();
-        aux_columns[1][0] =
-            rand_elements[0] * current_row[4].into() + rand_elements[1] * current_row[5].into();
-
-        // Permutation argument column
-        aux_columns[2][0] = E::ONE;
-
-        for index in 1..main_trace.num_rows() {
-            // At every last step before a new hash iteration,
-            // copy the permuted values into the auxiliary columns
-            if (index % super::CYCLE_LENGTH) == super::NUM_HASH_ROUNDS {
-                main_trace.read_row_into(index, &mut current_row);
-                main_trace.read_row_into(index + 1, &mut next_row);
-
-                aux_columns[0][index] = rand_elements[0] * (next_row[0] - current_row[0]).into()
-                    + rand_elements[1] * (next_row[1] - current_row[1]).into();
-                aux_columns[1][index] = rand_elements[0] * (next_row[4] - current_row[4]).into()
-                    + rand_elements[1] * (next_row[5] - current_row[5]).into();
-            }
-
-            let num = aux_columns[0][index - 1] + rand_elements[2];
-            let denom = aux_columns[1][index - 1] + rand_elements[2];
-            aux_columns[2][index] = aux_columns[2][index - 1] * num * denom.inv();
-        }
-
-        AuxTraceWithMetadata {
-            aux_trace: ColMatrix::new(aux_columns),
-            aux_rand_eles: rand_elements,
-            aux_proof: None,
-        }
-    }
-}
 
 // RESCUE PROVER
 // ================================================================================================
@@ -184,7 +110,6 @@ where
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
         DefaultConstraintEvaluator<'a, Self::Air, E>;
     type AuxProof = ();
-    type AuxTraceBuilder<E: Send + Sync> = RescueRapsAuxTraceBuilder;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
         let last_step = trace.length() - 1;
@@ -218,10 +143,61 @@ where
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
     }
 
-    fn new_aux_trace_builder<E>(&self) -> Self::AuxTraceBuilder<E>
+    fn build_aux_trace<E, Hasher>(
+        &self,
+        main_trace: &ColMatrix<E::BaseField>,
+        transcript: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
+    ) -> AuxTraceWithMetadata<E, AuxRandElementsProver<Self, E>, Self::AuxProof>
     where
-        E: FieldElement<BaseField = Self::BaseField>,
+        E: FieldElement,
+        Hasher: ElementHasher<BaseField = E::BaseField>,
     {
-        RescueRapsAuxTraceBuilder::new(self.aux_segment_width)
+        let rand_elements = {
+            let mut rand_elements = Vec::with_capacity(self.aux_segment_width);
+            for _ in 0..self.aux_segment_width {
+                rand_elements.push(transcript.draw().unwrap());
+            }
+
+            rand_elements
+        };
+
+        let mut current_row = unsafe { uninit_vector(main_trace.num_cols()) };
+        let mut next_row = unsafe { uninit_vector(main_trace.num_cols()) };
+        main_trace.read_row_into(0, &mut current_row);
+        let mut aux_columns = vec![vec![E::ZERO; main_trace.num_rows()]; self.aux_segment_width];
+
+        // Columns storing the copied values for the permutation argument are not necessary, but
+        // help understanding the construction of RAPs and are kept for illustrative purposes.
+        aux_columns[0][0] =
+            rand_elements[0] * current_row[0].into() + rand_elements[1] * current_row[1].into();
+        aux_columns[1][0] =
+            rand_elements[0] * current_row[4].into() + rand_elements[1] * current_row[5].into();
+
+        // Permutation argument column
+        aux_columns[2][0] = E::ONE;
+
+        for index in 1..main_trace.num_rows() {
+            // At every last step before a new hash iteration,
+            // copy the permuted values into the auxiliary columns
+            if (index % super::CYCLE_LENGTH) == super::NUM_HASH_ROUNDS {
+                main_trace.read_row_into(index, &mut current_row);
+                main_trace.read_row_into(index + 1, &mut next_row);
+
+                aux_columns[0][index] = rand_elements[0] * (next_row[0] - current_row[0]).into()
+                    + rand_elements[1] * (next_row[1] - current_row[1]).into();
+                aux_columns[1][index] = rand_elements[0] * (next_row[4] - current_row[4]).into()
+                    + rand_elements[1] * (next_row[5] - current_row[5]).into();
+            }
+
+            let num = aux_columns[0][index - 1] + rand_elements[2];
+            let denom = aux_columns[1][index - 1] + rand_elements[2];
+            aux_columns[2][index] = aux_columns[2][index - 1] * num * denom.inv();
+        }
+
+        AuxTraceWithMetadata {
+            aux_trace: ColMatrix::new(aux_columns),
+            aux_rand_eles: rand_elements,
+            aux_proof: None,
+        }
     }
 }

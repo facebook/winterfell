@@ -10,11 +10,11 @@ use air::{
     ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
-use crypto::{hashers::Blake3_256, DefaultRandomCoin};
+use crypto::{hashers::Blake3_256, DefaultRandomCoin, ElementHasher, RandomCoin};
 use math::{fields::f64::BaseElement, ExtensionOf, FieldElement};
 use winter_prover::{
-    matrix::ColMatrix, AuxRandElementsProver, AuxTraceBuilder, AuxTraceWithMetadata,
-    DefaultConstraintEvaluator, DefaultTraceLde, Prover, StarkDomain, Trace, TracePolyTable,
+    matrix::ColMatrix, AuxRandElementsProver, AuxTraceWithMetadata, DefaultConstraintEvaluator,
+    DefaultTraceLde, Prover, StarkDomain, Trace, TracePolyTable,
 };
 
 const TRACE_LENS: [usize; 2] = [2_usize.pow(16), 2_usize.pow(20)];
@@ -179,28 +179,70 @@ impl Air for LagrangeKernelAir {
 // LagrangeProver
 // ================================================================================================
 
-pub struct LagrangeAuxTraceBuilder {
+struct LagrangeProver {
     aux_trace_width: usize,
+    options: ProofOptions,
 }
 
-impl LagrangeAuxTraceBuilder {
-    pub fn new(aux_trace_width: usize) -> Self {
-        Self { aux_trace_width }
+impl LagrangeProver {
+    fn new(aux_trace_width: usize) -> Self {
+        Self {
+            aux_trace_width,
+            options: ProofOptions::new(1, 2, 0, FieldExtension::None, 2, 1),
+        }
     }
 }
 
-impl AuxTraceBuilder for LagrangeAuxTraceBuilder {
-    type AuxRandElements<E: Send + Sync> = Vec<E>;
+impl Prover for LagrangeProver {
+    type BaseField = BaseElement;
+    type Air = LagrangeKernelAir;
+    type Trace = LagrangeTrace;
+    type HashFn = Blake3_256<BaseElement>;
+    type RandomCoin = DefaultRandomCoin<Self::HashFn>;
+    type TraceLde<E: FieldElement<BaseField = BaseElement>> = DefaultTraceLde<E, Self::HashFn>;
+    type ConstraintEvaluator<'a, E: FieldElement<BaseField = BaseElement>> =
+        DefaultConstraintEvaluator<'a, LagrangeKernelAir, E>;
     type AuxProof = ();
 
+    fn get_pub_inputs(&self, _trace: &Self::Trace) -> <<Self as Prover>::Air as Air>::PublicInputs {
+    }
+
+    fn options(&self) -> &ProofOptions {
+        &self.options
+    }
+
+    fn new_trace_lde<E>(
+        &self,
+        trace_info: &TraceInfo,
+        main_trace: &ColMatrix<Self::BaseField>,
+        domain: &StarkDomain<Self::BaseField>,
+    ) -> (Self::TraceLde<E>, TracePolyTable<E>)
+    where
+        E: math::FieldElement<BaseField = Self::BaseField>,
+    {
+        DefaultTraceLde::new(trace_info, main_trace, domain)
+    }
+
+    fn new_evaluator<'a, E>(
+        &self,
+        air: &'a Self::Air,
+        aux_rand_elements: Option<AuxRandElementsProver<Self, E>>,
+        composition_coefficients: ConstraintCompositionCoefficients<E>,
+    ) -> Self::ConstraintEvaluator<'a, E>
+    where
+        E: math::FieldElement<BaseField = Self::BaseField>,
+    {
+        DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
+    }
+
     fn build_aux_trace<E, Hasher>(
-        self,
+        &self,
         main_trace: &ColMatrix<E::BaseField>,
-        transcript: &mut impl crypto::RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> AuxTraceWithMetadata<E, Self::AuxRandElements<E>, Self::AuxProof>
+        transcript: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
+    ) -> AuxTraceWithMetadata<E, AuxRandElementsProver<Self, E>, Self::AuxProof>
     where
         E: FieldElement,
-        Hasher: crypto::ElementHasher<BaseField = E::BaseField>,
+        Hasher: ElementHasher<BaseField = E::BaseField>,
     {
         let lagrange_kernel_rand_elements: Vec<E> = {
             let log_trace_len = main_trace.num_rows().ilog2() as usize;
@@ -253,70 +295,5 @@ impl AuxTraceBuilder for LagrangeAuxTraceBuilder {
             aux_rand_eles: lagrange_kernel_rand_elements,
             aux_proof: None,
         }
-    }
-}
-
-struct LagrangeProver {
-    aux_segment_width: usize,
-    options: ProofOptions,
-}
-
-impl LagrangeProver {
-    fn new(aux_segment_width: usize) -> Self {
-        Self {
-            aux_segment_width,
-            options: ProofOptions::new(1, 2, 0, FieldExtension::None, 2, 1),
-        }
-    }
-}
-
-impl Prover for LagrangeProver {
-    type BaseField = BaseElement;
-    type Air = LagrangeKernelAir;
-    type Trace = LagrangeTrace;
-    type HashFn = Blake3_256<BaseElement>;
-    type RandomCoin = DefaultRandomCoin<Self::HashFn>;
-    type TraceLde<E: FieldElement<BaseField = BaseElement>> = DefaultTraceLde<E, Self::HashFn>;
-    type ConstraintEvaluator<'a, E: FieldElement<BaseField = BaseElement>> =
-        DefaultConstraintEvaluator<'a, LagrangeKernelAir, E>;
-    type AuxProof = ();
-    type AuxTraceBuilder<E: Send + Sync> = LagrangeAuxTraceBuilder;
-
-    fn get_pub_inputs(&self, _trace: &Self::Trace) -> <<Self as Prover>::Air as Air>::PublicInputs {
-    }
-
-    fn options(&self) -> &ProofOptions {
-        &self.options
-    }
-
-    fn new_trace_lde<E>(
-        &self,
-        trace_info: &TraceInfo,
-        main_trace: &ColMatrix<Self::BaseField>,
-        domain: &StarkDomain<Self::BaseField>,
-    ) -> (Self::TraceLde<E>, TracePolyTable<E>)
-    where
-        E: math::FieldElement<BaseField = Self::BaseField>,
-    {
-        DefaultTraceLde::new(trace_info, main_trace, domain)
-    }
-
-    fn new_evaluator<'a, E>(
-        &self,
-        air: &'a Self::Air,
-        aux_rand_elements: Option<AuxRandElementsProver<Self, E>>,
-        composition_coefficients: ConstraintCompositionCoefficients<E>,
-    ) -> Self::ConstraintEvaluator<'a, E>
-    where
-        E: math::FieldElement<BaseField = Self::BaseField>,
-    {
-        DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
-    }
-
-    fn new_aux_trace_builder<E>(&self) -> Self::AuxTraceBuilder<E>
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        LagrangeAuxTraceBuilder::new(self.aux_segment_width)
     }
 }

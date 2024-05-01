@@ -82,8 +82,8 @@ use composer::DeepCompositionPoly;
 
 mod trace;
 pub use trace::{
-    AuxProof, AuxRandElements, AuxTraceBuilder, AuxTraceWithMetadata, DefaultTraceLde,
-    EmptyAuxTraceBuilder, Trace, TraceLde, TracePolyTable, TraceTable, TraceTableFragment,
+    AuxTraceWithMetadata, DefaultTraceLde, Trace, TraceLde, TracePolyTable, TraceTable,
+    TraceTableFragment,
 };
 
 mod channel;
@@ -154,14 +154,6 @@ pub trait Prover {
     /// An auxiliary (i.e. non-STARK) proof object. If not needed, set to `()`.
     type AuxProof: Serializable + Deserializable;
 
-    /// An [`AuxTraceBuilder`] used to build the auxiliary trace.
-    type AuxTraceBuilder<E>: AuxTraceBuilder<
-        AuxRandElements<E> = AuxRandElementsProver<Self, E>,
-        AuxProof = Self::AuxProof,
-    >
-    where
-        E: Send + Sync;
-
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
 
@@ -205,12 +197,19 @@ pub trait Prover {
 
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
-    /// Returns a new [`AuxTraceBuilder`] used to build the auxiliary trace, if any.
-    fn new_aux_trace_builder<E>(&self) -> Self::AuxTraceBuilder<E>
+
+    /// Builds the auxiliary trace.
+    #[allow(unused_variables)]
+    fn build_aux_trace<E, Hasher>(
+        &self,
+        main_trace: &ColMatrix<E::BaseField>,
+        transcript: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
+    ) -> AuxTraceWithMetadata<E, AuxRandElementsProver<Self, E>, Self::AuxProof>
     where
-        E: FieldElement<BaseField = Self::BaseField>,
+        E: FieldElement,
+        Hasher: ElementHasher<BaseField = E::BaseField>,
     {
-        unimplemented!("`Prover::new_aux_trace_builder` needs to be implemented when the trace has an auxiliary segment.")
+        unimplemented!("`Prover::build_aux_trace` needs to be implemented when the trace has an auxiliary segment.")
     }
 
     /// Returns a STARK proof attesting to a correct execution of a computation defined by the
@@ -285,9 +284,8 @@ pub trait Prover {
         // build the auxiliary trace segment, and append the resulting segments to trace commitment
         // and trace polynomial table structs
         let aux_trace_with_metadata = if air.trace_info().is_multi_segment() {
-            let aux_trace_builder = self.new_aux_trace_builder();
             let aux_trace_with_metadata =
-                aux_trace_builder.build_aux_trace(trace.main_segment(), channel.public_coin());
+                self.build_aux_trace(trace.main_segment(), channel.public_coin());
 
             // commit to the auxiliary trace segment
             let aux_segment_polys = {

@@ -264,7 +264,7 @@
 //!
 //! # use winterfell::{
 //! #   Air, AirContext, Assertion, AuxRandElementsProver, ByteWriter, DefaultConstraintEvaluator,
-//! #   EmptyAuxTraceBuilder, EvaluationFrame, TraceInfo, TransitionConstraintDegree,
+//! #   EvaluationFrame, TraceInfo, TransitionConstraintDegree,
 //! # };
 //! #
 //! # pub struct PublicInputs {
@@ -349,7 +349,6 @@
 //!     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
 //!         DefaultConstraintEvaluator<'a, Self::Air, E>;
 //!     type AuxProof = ();
-//!     type AuxTraceBuilder<E: Send + Sync> = EmptyAuxTraceBuilder;
 //!
 //!     // Our public inputs consist of the first and last value in the execution trace.
 //!     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
@@ -397,7 +396,7 @@
 //! #    math::{fields::f128::BaseElement, FieldElement, ToElements},
 //! #    matrix::ColMatrix,
 //! #    Air, AirContext, Assertion, AuxRandElementsProver, ByteWriter, DefaultConstraintEvaluator,
-//! #    DefaultTraceLde, EmptyAuxTraceBuilder, EvaluationFrame, TraceInfo, TransitionConstraintDegree,
+//! #    DefaultTraceLde, EvaluationFrame, TraceInfo, TransitionConstraintDegree,
 //! #    TraceTable, FieldExtension, Prover, ProofOptions, StarkDomain, Proof, Trace, TracePolyTable,
 //! # };
 //! #
@@ -492,7 +491,6 @@
 //! #    type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
 //! #        DefaultConstraintEvaluator<'a, Self::Air, E>;
 //! #    type AuxProof = ();
-//! #    type AuxTraceBuilder<E: Send + Sync> = EmptyAuxTraceBuilder;
 //! #
 //! #    fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
 //! #        let last_step = trace.length() - 1;
@@ -591,14 +589,13 @@
 extern crate std;
 
 pub use prover::{
-    crypto, iterators, math, matrix, Air, AirContext, Assertion, AuxProof, AuxRandElements,
-    AuxRandElementsProver, AuxTraceBuilder, AuxTraceWithMetadata, BoundaryConstraint,
-    BoundaryConstraintGroup, ByteReader, ByteWriter, CompositionPolyTrace,
-    ConstraintCompositionCoefficients, ConstraintDivisor, ConstraintEvaluator,
-    DeepCompositionCoefficients, DefaultConstraintEvaluator, DefaultTraceLde, Deserializable,
-    DeserializationError, EmptyAuxTraceBuilder, EvaluationFrame, FieldExtension, Proof,
-    ProofOptions, Prover, ProverError, Serializable, SliceReader, StarkDomain, Trace, TraceInfo,
-    TraceLde, TracePolyTable, TraceTable, TraceTableFragment, TransitionConstraintDegree,
+    crypto, iterators, math, matrix, Air, AirContext, Assertion, AuxRandElementsProver,
+    AuxTraceWithMetadata, BoundaryConstraint, BoundaryConstraintGroup, ByteReader, ByteWriter,
+    CompositionPolyTrace, ConstraintCompositionCoefficients, ConstraintDivisor,
+    ConstraintEvaluator, DeepCompositionCoefficients, DefaultConstraintEvaluator, DefaultTraceLde,
+    Deserializable, DeserializationError, EvaluationFrame, FieldExtension, Proof, ProofOptions,
+    Prover, ProverError, Serializable, SliceReader, StarkDomain, Trace, TraceInfo, TraceLde,
+    TracePolyTable, TraceTable, TraceTableFragment, TransitionConstraintDegree,
 };
 pub use verifier::{
     verify, verify_with_aux_trace, AcceptableOptions, DefaultAuxTraceVerifier, VerifierError,
