@@ -263,7 +263,7 @@
 //! };
 //!
 //! # use winterfell::{
-//! #   Air, AirContext, Assertion, AuxRandElementsProver, ByteWriter, DefaultConstraintEvaluator, 
+//! #   Air, AirContext, Assertion, AuxRandElementsProver, ByteWriter, DefaultConstraintEvaluator,
 //! #   EmptyAuxTraceBuilder, EvaluationFrame, TraceInfo, TransitionConstraintDegree,
 //! # };
 //! #
@@ -396,8 +396,8 @@
 //! #    crypto::{hashers::Blake3_256, DefaultRandomCoin},
 //! #    math::{fields::f128::BaseElement, FieldElement, ToElements},
 //! #    matrix::ColMatrix,
-//! #    Air, AirContext, Assertion, AuxRandElementsProver, ByteWriter, DefaultConstraintEvaluator, 
-//! #    DefaultTraceLde, EmptyAuxTraceBuilder, EvaluationFrame, TraceInfo, TransitionConstraintDegree, 
+//! #    Air, AirContext, Assertion, AuxRandElementsProver, ByteWriter, DefaultConstraintEvaluator,
+//! #    DefaultTraceLde, EmptyAuxTraceBuilder, EvaluationFrame, TraceInfo, TransitionConstraintDegree,
 //! #    TraceTable, FieldExtension, Prover, ProofOptions, StarkDomain, Proof, Trace, TracePolyTable,
 //! # };
 //! #
