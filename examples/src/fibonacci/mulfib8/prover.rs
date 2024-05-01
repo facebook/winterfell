@@ -8,7 +8,9 @@ use super::{
     ProofOptions, Prover,
 };
 use winterfell::{
-    matrix::ColMatrix, AuxRandElementsProver, ConstraintCompositionCoefficients, DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable, TraceTable
+    matrix::ColMatrix, AuxRandElementsProver, ConstraintCompositionCoefficients,
+    DefaultConstraintEvaluator, DefaultTraceLde, EmptyAuxTraceBuilder, StarkDomain, Trace,
+    TraceInfo, TracePolyTable, TraceTable,
 };
 
 // FIBONACCI PROVER
@@ -69,7 +71,7 @@ where
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
         DefaultConstraintEvaluator<'a, Self::Air, E>;
     type AuxProof = ();
-    type AuxTraceBuilder<E> = ();
+    type AuxTraceBuilder<E: Send + Sync> = EmptyAuxTraceBuilder;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> BaseElement {
         let last_step = trace.length() - 1;

@@ -11,8 +11,8 @@ use super::{
 use std::collections::HashMap;
 use winterfell::{
     matrix::ColMatrix, AuxRandElementsProver, ConstraintCompositionCoefficients,
-    DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, TraceInfo, TracePolyTable,
-    TraceTable,
+    DefaultConstraintEvaluator, DefaultTraceLde, EmptyAuxTraceBuilder, StarkDomain, TraceInfo,
+    TracePolyTable, TraceTable,
 };
 
 #[cfg(feature = "concurrent")]
@@ -147,7 +147,7 @@ where
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
         DefaultConstraintEvaluator<'a, Self::Air, E>;
     type AuxProof = ();
-    type AuxTraceBuilder<E> = ();
+    type AuxTraceBuilder<E: Send + Sync> = EmptyAuxTraceBuilder;
 
     fn get_pub_inputs(&self, _trace: &Self::Trace) -> PublicInputs {
         self.pub_inputs.clone()

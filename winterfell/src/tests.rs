@@ -20,11 +20,9 @@ const AUX_TRACE_WIDTH: usize = 2;
 fn test_complex_lagrange_kernel_air() {
     let trace = LagrangeComplexTrace::new(2_usize.pow(10), AUX_TRACE_WIDTH);
     let log_trace_len = trace.length().ilog2() as usize;
-    let aux_trace_builder = LagrangeAuxTraceBuilder::new(AUX_TRACE_WIDTH);
-    let prover = LagrangeComplexProver::new();
+    let prover = LagrangeComplexProver::new(AUX_TRACE_WIDTH);
 
-    let (proof, _) =
-        prover.prove_with_aux_trace::<BaseElement, _>(trace, aux_trace_builder).unwrap();
+    let proof = prover.prove(trace).unwrap();
 
     let aux_trace_verifier = DefaultAuxTraceVerifier::new(log_trace_len);
 
@@ -192,15 +190,15 @@ impl LagrangeAuxTraceBuilder {
     }
 }
 
-impl AuxTraceBuilder for LagrangeAuxTraceBuilder {
-    type AuxRandElements<E: Send + Sync> = Vec<E>;
+impl<E: Send + Sync> AuxTraceBuilder<E> for LagrangeAuxTraceBuilder {
+    type AuxRandElements = Vec<E>;
     type AuxProof = ();
 
-    fn build_aux_trace<E, Hasher>(
-        &mut self,
+    fn build_aux_trace<Hasher>(
+        self,
         main_trace: &ColMatrix<E::BaseField>,
         transcript: &mut impl crypto::RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> AuxTraceWithMetadata<E, Self::AuxRandElements<E>, Self::AuxProof>
+    ) -> AuxTraceWithMetadata<E, Self::AuxRandElements, Self::AuxProof>
     where
         E: FieldElement,
         Hasher: crypto::ElementHasher<BaseField = E::BaseField>,
@@ -260,19 +258,20 @@ impl AuxTraceBuilder for LagrangeAuxTraceBuilder {
 }
 
 struct LagrangeComplexProver {
+    aux_trace_width: usize,
     options: ProofOptions,
 }
 
 impl LagrangeComplexProver {
-    fn new() -> Self {
+    fn new(aux_trace_width: usize) -> Self {
         Self {
+            aux_trace_width,
             options: ProofOptions::new(1, 2, 0, FieldExtension::None, 2, 1),
         }
     }
 }
 
 impl Prover for LagrangeComplexProver {
-    type AuxRandElements<E: Send + Sync> = Vec<E>;
     type BaseField = BaseElement;
     type Air = LagrangeKernelComplexAir;
     type Trace = LagrangeComplexTrace;
@@ -281,6 +280,8 @@ impl Prover for LagrangeComplexProver {
     type TraceLde<E: FieldElement<BaseField = BaseElement>> = DefaultTraceLde<E, Self::HashFn>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = BaseElement>> =
         DefaultConstraintEvaluator<'a, LagrangeKernelComplexAir, E>;
+    type AuxProof = ();
+    type AuxTraceBuilder<E: Send + Sync> = LagrangeAuxTraceBuilder;
 
     fn get_pub_inputs(&self, _trace: &Self::Trace) -> <<Self as Prover>::Air as Air>::PublicInputs {
     }
@@ -311,5 +312,12 @@ impl Prover for LagrangeComplexProver {
         E: math::FieldElement<BaseField = Self::BaseField>,
     {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
+    }
+
+    fn new_aux_trace_builder<E>(&self) -> Option<Self::AuxTraceBuilder<E>>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        Some(LagrangeAuxTraceBuilder::new(self.aux_trace_width))
     }
 }

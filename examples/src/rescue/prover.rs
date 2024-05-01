@@ -9,8 +9,8 @@ use super::{
 };
 use winterfell::{
     matrix::ColMatrix, AuxRandElementsProver, ConstraintCompositionCoefficients,
-    DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable,
-    TraceTable,
+    DefaultConstraintEvaluator, DefaultTraceLde, EmptyAuxTraceBuilder, StarkDomain, Trace,
+    TraceInfo, TracePolyTable, TraceTable,
 };
 
 // RESCUE PROVER
@@ -78,7 +78,7 @@ where
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
         DefaultConstraintEvaluator<'a, Self::Air, E>;
     type AuxProof = ();
-    type AuxTraceBuilder<E> = ();
+    type AuxTraceBuilder<E: Send + Sync> = EmptyAuxTraceBuilder;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
         let last_step = trace.length() - 1;

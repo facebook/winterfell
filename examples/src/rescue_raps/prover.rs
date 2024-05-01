@@ -184,7 +184,7 @@ where
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
         DefaultConstraintEvaluator<'a, Self::Air, E>;
     type AuxProof = ();
-    type AuxTraceBuilder<E> = RescueRapsAuxTraceBuilder where E: FieldElement<BaseField = Self::BaseField>;
+    type AuxTraceBuilder<E: Send + Sync> = RescueRapsAuxTraceBuilder;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
         let last_step = trace.length() - 1;

@@ -83,8 +83,8 @@ use composer::DeepCompositionPoly;
 
 mod trace;
 pub use trace::{
-    AuxProof, AuxRandElements, AuxTraceBuilder, AuxTraceWithMetadata, DefaultTraceLde, Trace,
-    TraceLde, TracePolyTable, TraceTable, TraceTableFragment,
+    AuxProof, AuxRandElements, AuxTraceBuilder, AuxTraceWithMetadata, DefaultTraceLde,
+    EmptyAuxTraceBuilder, Trace, TraceLde, TracePolyTable, TraceTable, TraceTableFragment,
 };
 
 mod channel;
@@ -162,7 +162,7 @@ pub trait Prover {
         AuxProof = Self::AuxProof,
     >
     where
-        E: FieldElement<BaseField = Self::BaseField>;
+        E: Send + Sync;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -223,7 +223,8 @@ pub trait Prover {
     fn prove(
         &self,
         trace: Self::Trace,
-    ) -> Result<(StarkProof, Option<Self::AuxProof>), ProverError> {
+        // TODOP: Change StarkProof
+    ) -> Result<StarkProof, ProverError> {
         // figure out which version of the generic proof generation procedure to run. this is a sort
         // of static dispatch for selecting two generic parameter: extension field and hash
         // function.
@@ -248,10 +249,7 @@ pub trait Prover {
     /// execution `trace` is valid against this prover's AIR.
     /// TODO: make this function un-callable externally?
     #[doc(hidden)]
-    fn generate_proof<E>(
-        &self,
-        trace: Self::Trace,
-    ) -> Result<(StarkProof, Option<Self::AuxProof>), ProverError>
+    fn generate_proof<E>(&self, trace: Self::Trace) -> Result<StarkProof, ProverError>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
@@ -317,7 +315,7 @@ pub trait Prover {
             aux_trace_with_metadata
         });
 
-        let (aux_trace, aux_rand_elements, aux_proof) = match aux_trace_with_metadata {
+        let (aux_trace, aux_rand_elements, _aux_proof) = match aux_trace_with_metadata {
             Some(atm) => (Some(atm.aux_trace), Some(atm.aux_rand_eles), atm.aux_proof),
             None => (None, None, None),
         };
@@ -479,7 +477,7 @@ pub trait Prover {
             proof
         };
 
-        Ok((proof, aux_proof))
+        Ok(proof)
     }
 
     // HELPER METHODS

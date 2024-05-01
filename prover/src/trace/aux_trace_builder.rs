@@ -18,6 +18,7 @@ pub struct AuxTraceWithMetadata<E: FieldElement, AuxRandEles, AuxProof> {
     pub aux_proof: Option<AuxProof>,
 }
 
+// TODOP: I don't think `AuxTraceBuilder` needs to be generic; we can make `AuxRandElements<E>`.
 /// Defines the interface for building the auxiliary trace.
 pub trait AuxTraceBuilder<E: Send + Sync> {
     /// A type defining the random elements used in constructing the auxiliary trace.
@@ -38,4 +39,24 @@ pub trait AuxTraceBuilder<E: Send + Sync> {
     where
         E: FieldElement,
         Hasher: ElementHasher<BaseField = E::BaseField>;
+}
+
+pub struct EmptyAuxTraceBuilder;
+
+impl<E: Send + Sync> AuxTraceBuilder<E> for EmptyAuxTraceBuilder {
+    type AuxRandElements = ();
+
+    type AuxProof = ();
+
+    fn build_aux_trace<Hasher>(
+        self,
+        _main_trace: &ColMatrix<<E>::BaseField>,
+        _transcript: &mut impl RandomCoin<BaseField = <E>::BaseField, Hasher = Hasher>,
+    ) -> AuxTraceWithMetadata<E, Self::AuxRandElements, Self::AuxProof>
+    where
+        E: FieldElement,
+        Hasher: ElementHasher<BaseField = <E>::BaseField>,
+    {
+        panic!("the empty aux trace builder doesn't define how to build an aux trace.")
+    }
 }

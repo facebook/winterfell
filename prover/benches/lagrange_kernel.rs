@@ -13,8 +13,8 @@ use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criteri
 use crypto::{hashers::Blake3_256, DefaultRandomCoin};
 use math::{fields::f64::BaseElement, ExtensionOf, FieldElement};
 use winter_prover::{
-    matrix::ColMatrix, AuxTraceBuilder, AuxTraceWithMetadata, DefaultConstraintEvaluator,
-    DefaultTraceLde, Prover, StarkDomain, Trace, TracePolyTable,
+    matrix::ColMatrix, AuxRandElementsProver, AuxTraceBuilder, AuxTraceWithMetadata,
+    DefaultConstraintEvaluator, DefaultTraceLde, Prover, StarkDomain, Trace, TracePolyTable,
 };
 
 const TRACE_LENS: [usize; 2] = [2_usize.pow(16), 2_usize.pow(20)];
@@ -27,18 +27,11 @@ fn prove_with_lagrange_kernel(c: &mut Criterion) {
 
     for &trace_len in TRACE_LENS.iter() {
         group.bench_function(BenchmarkId::new("prover", trace_len), |b| {
-            let trace = LagrangeTrace::new(trace_len, 2);
-            let prover = LagrangeProver::new();
+            let trace = LagrangeTrace::new(trace_len, AUX_TRACE_WIDTH);
+            let prover = LagrangeProver::new(AUX_TRACE_WIDTH);
             b.iter_batched(
                 || trace.clone(),
-                |trace| {
-                    prover
-                        .prove_with_aux_trace::<BaseElement, _>(
-                            trace,
-                            LagrangeAuxTraceBuilder::new(AUX_TRACE_WIDTH),
-                        )
-                        .unwrap()
-                },
+                |trace| prover.prove(trace).unwrap(),
                 BatchSize::SmallInput,
             )
         });
@@ -196,15 +189,15 @@ impl LagrangeAuxTraceBuilder {
     }
 }
 
-impl AuxTraceBuilder for LagrangeAuxTraceBuilder {
-    type AuxRandElements<E: Send + Sync> = Vec<E>;
+impl<E: Send + Sync> AuxTraceBuilder<E> for LagrangeAuxTraceBuilder {
+    type AuxRandElements = Vec<E>;
     type AuxProof = ();
 
-    fn build_aux_trace<E, Hasher>(
-        &mut self,
+    fn build_aux_trace<Hasher>(
+        self,
         main_trace: &ColMatrix<E::BaseField>,
         transcript: &mut impl crypto::RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> AuxTraceWithMetadata<E, Self::AuxRandElements<E>, Self::AuxProof>
+    ) -> AuxTraceWithMetadata<E, Self::AuxRandElements, Self::AuxProof>
     where
         E: FieldElement,
         Hasher: crypto::ElementHasher<BaseField = E::BaseField>,
@@ -264,19 +257,20 @@ impl AuxTraceBuilder for LagrangeAuxTraceBuilder {
 }
 
 struct LagrangeProver {
+    aux_segment_width: usize,
     options: ProofOptions,
 }
 
 impl LagrangeProver {
-    fn new() -> Self {
+    fn new(aux_segment_width: usize) -> Self {
         Self {
+            aux_segment_width,
             options: ProofOptions::new(1, 2, 0, FieldExtension::None, 2, 1),
         }
     }
 }
 
 impl Prover for LagrangeProver {
-    type AuxRandElements<E: Send + Sync> = Vec<E>;
     type BaseField = BaseElement;
     type Air = LagrangeKernelAir;
     type Trace = LagrangeTrace;
@@ -285,6 +279,8 @@ impl Prover for LagrangeProver {
     type TraceLde<E: FieldElement<BaseField = BaseElement>> = DefaultTraceLde<E, Self::HashFn>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = BaseElement>> =
         DefaultConstraintEvaluator<'a, LagrangeKernelAir, E>;
+    type AuxProof = ();
+    type AuxTraceBuilder<E: Send + Sync> = LagrangeAuxTraceBuilder;
 
     fn get_pub_inputs(&self, _trace: &Self::Trace) -> <<Self as Prover>::Air as Air>::PublicInputs {
     }
@@ -308,12 +304,19 @@ impl Prover for LagrangeProver {
     fn new_evaluator<'a, E>(
         &self,
         air: &'a Self::Air,
-        aux_rand_elements: Option<Self::AuxRandElements<E>>,
+        aux_rand_elements: Option<AuxRandElementsProver<Self, E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E>
     where
         E: math::FieldElement<BaseField = Self::BaseField>,
     {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
+    }
+
+    fn new_aux_trace_builder<E>(&self) -> Option<Self::AuxTraceBuilder<E>>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        Some(LagrangeAuxTraceBuilder::new(self.aux_segment_width))
     }
 }

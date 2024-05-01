@@ -3,10 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{
-    rescue_raps::prover::RescueRapsAuxTraceBuilder, Blake3_192, Blake3_256, Example,
-    ExampleOptions, HashFunction, Sha3_256,
-};
+use crate::{Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256};
 use core::marker::PhantomData;
 use rand_utils::rand_array;
 use std::time::Instant;
@@ -131,9 +128,7 @@ where
                 });
 
         // generate the proof
-        let (proof, _) = prover.prove(trace).unwrap();
-
-        proof
+        prover.prove(trace).unwrap()
     }
 
     fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {

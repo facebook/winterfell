@@ -8,8 +8,9 @@ use super::{
     VdfAir, VdfInputs, FORTY_TWO, INV_ALPHA,
 };
 use winterfell::{
-    matrix::ColMatrix, ConstraintCompositionCoefficients, DefaultConstraintEvaluator,
-    DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable, TraceTable,
+    matrix::ColMatrix, AuxRandElementsProver, ConstraintCompositionCoefficients,
+    DefaultConstraintEvaluator, DefaultTraceLde, EmptyAuxTraceBuilder, StarkDomain, Trace,
+    TraceInfo, TracePolyTable, TraceTable,
 };
 
 // VDF PROVER
@@ -49,7 +50,6 @@ impl<H: ElementHasher> Prover for VdfProver<H>
 where
     H: ElementHasher<BaseField = BaseElement>,
 {
-    type AuxRandElements<E: Send + Sync> = ();
     type BaseField = BaseElement;
     type Air = VdfAir;
     type Trace = TraceTable<BaseElement>;
@@ -58,6 +58,8 @@ where
     type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
         DefaultConstraintEvaluator<'a, Self::Air, E>;
+    type AuxProof = ();
+    type AuxTraceBuilder<E: Send + Sync> = EmptyAuxTraceBuilder;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> VdfInputs {
         // the result is read from the second to last step because the last last step contains
@@ -85,9 +87,16 @@ where
     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         air: &'a Self::Air,
-        aux_rand_elements: Option<Self::AuxRandElements<E>>,
+        aux_rand_elements: Option<AuxRandElementsProver<Self, E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E> {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
+    }
+
+    fn new_aux_trace_builder<E>(&self) -> Option<Self::AuxTraceBuilder<E>>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        None
     }
 }
