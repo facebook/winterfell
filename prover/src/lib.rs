@@ -26,9 +26,9 @@
 //! 3. Execute your computation and record its execution trace.
 //! 4. Define your prover by implementing [Prover] trait. Then execute [Prover::prove()] function
 //!    passing the trace generated in the previous step into it as a parameter. The function will
-//!    return a instance of [StarkProof].
+//!    return a instance of [Proof].
 //!
-//! This [StarkProof] can be serialized and sent to a STARK verifier for verification. The size
+//! This [Proof] can be serialized and sent to a STARK verifier for verification. The size
 //! of proof depends on the specifics of a given computation, but for most computations it should
 //! be in the range between 15 KB (for very small computations) and 300 KB (for very large
 //! computations).
@@ -219,7 +219,7 @@ pub trait Prover {
     /// Returns a STARK proof attesting to a correct execution of a computation defined by the
     /// provided trace. The trace must not contain an auxiliary trace segment.
     ///
-    /// The returned [StarkProof] attests that the specified `trace` is a valid execution trace of
+    /// The returned [Proof] attests that the specified `trace` is a valid execution trace of
     /// the computation described by [Self::Air](Prover::Air) and generated using some set of
     /// secret and public inputs. Public inputs must match the value returned from
     /// [Self::get_pub_inputs()](Prover::get_pub_inputs) for the provided trace.

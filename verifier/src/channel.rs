@@ -16,7 +16,7 @@ use math::{FieldElement, StarkField};
 // VERIFIER CHANNEL
 // ================================================================================================
 
-/// A view into a [StarkProof] for a computation structured to simulate an "interactive" channel.
+/// A view into a [Proof] for a computation structured to simulate an "interactive" channel.
 ///
 /// A channel is instantiated for a specific proof, which is parsed into structs over the
 /// appropriate field (specified by type parameter `E`). This also validates that the proof is

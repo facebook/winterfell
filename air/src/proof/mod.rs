@@ -45,11 +45,11 @@ const MAX_PROXIMITY_PARAMETER: u64 = 1000;
 /// also contains basic metadata for the computation, but neither the definition of the computation
 /// itself, nor public inputs consumed by the computation are contained in a proof.
 ///
-/// A proof can be serialized into a sequence of bytes using [to_bytes()](StarkProof::to_bytes)
-/// function, and deserialized from a sequence of bytes using [from_bytes()](StarkProof::from_bytes)
+/// A proof can be serialized into a sequence of bytes using [to_bytes()](Proof::to_bytes)
+/// function, and deserialized from a sequence of bytes using [from_bytes()](Proof::from_bytes)
 /// function.
 ///
-/// To estimate soundness of a proof (in bits), [security_level()](StarkProof::security_level)
+/// To estimate soundness of a proof (in bits), [security_level()](Proof::security_level)
 /// function can be used.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Proof {
@@ -134,7 +134,7 @@ impl Proof {
         Deserializable::read_from_bytes(source)
     }
 
-    /// Creates a dummy `StarkProof` for use in tests.
+    /// Creates a dummy `Proof` for use in tests.
     pub fn new_dummy() -> Self {
         use crate::FieldExtension;
         use crypto::hashers::Blake3_192 as DummyHasher;

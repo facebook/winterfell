@@ -13,7 +13,7 @@
 //! 1. Define an *algebraic intermediate representation* (AIR) for you computation. This can be
 //!    done by implementing [Air] trait.
 //! 2. Execute [verify()] function and supply the AIR of your computation together with the
-//!    [StarkProof] and related public inputs as parameters.
+//!    [Proof] and related public inputs as parameters.
 //!
 //! # Performance
 //! Proof verification is extremely fast and is nearly independent of the complexity of the

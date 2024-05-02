@@ -25,7 +25,7 @@
 //! details, please refer to the documentation of the [Air] trait itself.
 //!
 //! This crate also contains components describing STARK protocol parameters ([ProofOptions]) and
-//! proof structure ([StarkProof](proof::StarkProof)).
+//! proof structure ([Proof](proof::Proof)).
 
 #![no_std]
 

@@ -21,7 +21,7 @@ pub trait AuxTraceVerifier {
         Hasher: ElementHasher<BaseField = E::BaseField>;
 }
 
-/// Implementation of the [`AuxRandElementsGenerator`] trait that simply samples a given number of
+/// Implementation of the [`AuxTraceVerifier`] trait that simply samples a given number of
 /// elements.
 pub struct DefaultAuxTraceVerifier {
     num_rand_elements: usize,
