@@ -217,7 +217,7 @@ pub trait Prover {
     }
 
     /// Returns a STARK proof attesting to a correct execution of a computation defined by the
-    /// provided trace. 
+    /// provided trace.
     ///
     /// The returned [Proof] attests that the specified `trace` is a valid execution trace of the
     /// computation described by [Self::Air](Prover::Air) and generated using some set of secret and

@@ -29,9 +29,9 @@ pub struct MerkleAir {
 }
 
 impl Air for MerkleAir {
-    type AuxRandElements<E: Send + Sync> = ();
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
+    type AuxRandElements<E: Send + Sync> = ();
     type AuxProof = ();
 
     // CONSTRUCTOR

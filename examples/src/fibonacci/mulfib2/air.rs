@@ -20,9 +20,9 @@ pub struct MulFib2Air {
 }
 
 impl Air for MulFib2Air {
-    type AuxRandElements<E: Send + Sync> = ();
     type BaseField = BaseElement;
     type PublicInputs = BaseElement;
+    type AuxRandElements<E: Send + Sync> = ();
     type AuxProof = ();
 
     // CONSTRUCTOR
