@@ -142,6 +142,7 @@ pub trait AsyncProver: Send + Sync {
     ) -> impl Future<Output = Result<Proof, ProverError>> + Send + Sync
     where
         <<Self as AsyncProver>::Air as Air>::PublicInputs: Send + Sync,
+        <<Self as AsyncProver>::Air as Air>::AuxProof: Send + Sync,
     {
         async {
             // figure out which version of the generic proof generation procedure to run. this is a sort
@@ -179,6 +180,7 @@ pub trait AsyncProver: Send + Sync {
     where
         E: FieldElement<BaseField = Self::BaseField>,
         <<Self as AsyncProver>::Air as Air>::PublicInputs: Send + Sync,
+        <<Self as AsyncProver>::Air as Air>::AuxProof: Send + Sync,
     {
         async {
             // 0 ----- instantiate AIR and prover channel ---------------------------------------------
@@ -293,8 +295,6 @@ pub trait AsyncProver: Send + Sync {
 
             // 3 ----- commit to constraint evaluations -----------------------------------------------
             let (constraint_commitment, composition_poly) = {
-                let span = info_span!("commit_to_constraint_evaluations").entered();
-
                 // first, build a commitment to the evaluations of the constraint composition
                 // polynomial columns
                 let (constraint_commitment, composition_poly) = self
@@ -302,13 +302,14 @@ pub trait AsyncProver: Send + Sync {
                         composition_poly_trace,
                         air.context().num_constraint_composition_columns(),
                         &domain,
-                    );
+                    )
+                    .await;
 
+                let _span = info_span!("commit_to_constraint_evaluations").entered();
                 // then, commit to the evaluations of constraints by writing the root of the constraint
                 // Merkle tree into the channel
                 channel.commit_constraints(constraint_commitment.root());
 
-                drop(span);
                 (constraint_commitment, composition_poly)
             };
 
@@ -446,43 +447,55 @@ pub trait AsyncProver: Send + Sync {
         composition_poly_trace: CompositionPolyTrace<E>,
         num_constraint_composition_columns: usize,
         domain: &StarkDomain<Self::BaseField>,
-    ) -> (ConstraintCommitment<E, Self::HashFn>, CompositionPoly<E>)
+    ) -> impl Future<Output = (ConstraintCommitment<E, Self::HashFn>, CompositionPoly<E>)> + Send + Sync
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
-        // first, build constraint composition polynomial from its trace as follows:
-        // - interpolate the trace into a polynomial in coefficient form
-        // - "break" the polynomial into a set of column polynomials each of degree equal to
-        //   trace_length - 1
-        let composition_poly = info_span!(
-            "build_composition_poly_columns",
-            num_columns = num_constraint_composition_columns
-        )
-        .in_scope(|| {
-            CompositionPoly::new(composition_poly_trace, domain, num_constraint_composition_columns)
-        });
-        assert_eq!(composition_poly.num_columns(), num_constraint_composition_columns);
-        assert_eq!(composition_poly.column_degree(), domain.trace_length() - 1);
+        let _span = info_span!("build_constraint_commitment").entered();
 
-        // then, evaluate composition polynomial columns over the LDE domain
-        let domain_size = domain.lde_domain_size();
-        let composed_evaluations = info_span!("evaluate_composition_poly_columns").in_scope(|| {
-            RowMatrix::evaluate_polys_over::<DEFAULT_SEGMENT_WIDTH>(composition_poly.data(), domain)
-        });
-        assert_eq!(composed_evaluations.num_cols(), num_constraint_composition_columns);
-        assert_eq!(composed_evaluations.num_rows(), domain_size);
+        async move {
+            // first, build constraint composition polynomial from its trace as follows:
+            // - interpolate the trace into a polynomial in coefficient form
+            // - "break" the polynomial into a set of column polynomials each of degree equal to
+            //   trace_length - 1
+            let composition_poly = info_span!(
+                "build_composition_poly_columns",
+                num_columns = num_constraint_composition_columns
+            )
+            .in_scope(|| {
+                CompositionPoly::new(
+                    composition_poly_trace,
+                    domain,
+                    num_constraint_composition_columns,
+                )
+            });
+            assert_eq!(composition_poly.num_columns(), num_constraint_composition_columns);
+            assert_eq!(composition_poly.column_degree(), domain.trace_length() - 1);
 
-        // finally, build constraint evaluation commitment
-        let constraint_commitment = info_span!(
-            "compute_constraint_evaluation_commitment",
-            tree_depth = domain_size.ilog2()
-        )
-        .in_scope(|| {
-            let commitment = composed_evaluations.commit_to_rows();
-            ConstraintCommitment::new(composed_evaluations, commitment)
-        });
-        assert_eq!(constraint_commitment.tree_depth(), domain_size.ilog2() as usize);
+            // then, evaluate composition polynomial columns over the LDE domain
+            let domain_size = domain.lde_domain_size();
+            let composed_evaluations =
+                info_span!("evaluate_composition_poly_columns").in_scope(|| {
+                    RowMatrix::evaluate_polys_over::<DEFAULT_SEGMENT_WIDTH>(
+                        composition_poly.data(),
+                        domain,
+                    )
+                });
+            assert_eq!(composed_evaluations.num_cols(), num_constraint_composition_columns);
+            assert_eq!(composed_evaluations.num_rows(), domain_size);
 
-        (constraint_commitment, composition_poly)
+            // finally, build constraint evaluation commitment
+            let constraint_commitment = info_span!(
+                "compute_constraint_evaluation_commitment",
+                tree_depth = domain_size.ilog2()
+            )
+            .in_scope(|| {
+                let commitment = composed_evaluations.commit_to_rows();
+                ConstraintCommitment::new(composed_evaluations, commitment)
+            });
+            assert_eq!(constraint_commitment.tree_depth(), domain_size.ilog2() as usize);
+
+            (constraint_commitment, composition_poly)
+        }
     }
 }
