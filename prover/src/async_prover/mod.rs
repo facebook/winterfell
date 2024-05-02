@@ -43,10 +43,10 @@ pub trait AsyncProver: Send + Sync {
     type HashFn: ElementHasher<BaseField = Self::BaseField>;
 
     /// PRNG to be used for generating random field elements.
-    type RandomCoin: RandomCoin<BaseField = Self::BaseField, Hasher = Self::HashFn>;
+    type RandomCoin: RandomCoin<BaseField = Self::BaseField, Hasher = Self::HashFn> + Send + Sync;
 
     /// Trace low-degree extension for building the LDEs of trace segments and their commitments.
-    type TraceLde<E>: TraceLde<E, HashFn = Self::HashFn>
+    type TraceLde<E>: TraceLde<E, HashFn = Self::HashFn> + Send + Sync
     where
         E: FieldElement<BaseField = Self::BaseField>;
 
@@ -112,11 +112,20 @@ pub trait AsyncProver: Send + Sync {
         &self,
         main_trace: &Self::Trace,
         transcript: &mut Self::RandomCoin,
-    ) -> AuxTraceWithMetadata<E, AsyncProverAuxRandElements<Self, E>, AsyncProverAuxProof<Self>>
+    ) -> impl Future<
+        Output = AuxTraceWithMetadata<
+            E,
+            AsyncProverAuxRandElements<Self, E>,
+            AsyncProverAuxProof<Self>,
+        >,
+    > + Send
+           + Sync
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
-        unimplemented!("`Prover::build_aux_trace` needs to be implemented when the trace has an auxiliary segment.")
+        async {
+            unimplemented!("`Prover::build_aux_trace` needs to be implemented when the trace has an auxiliary segment.")
+        }
     }
 
     /// Returns a STARK proof attesting to a correct execution of a computation defined by the
@@ -130,7 +139,10 @@ pub trait AsyncProver: Send + Sync {
     fn prove(
         &self,
         trace: Self::Trace,
-    ) -> impl Future<Output = Result<Proof, ProverError>> + Send + Sync {
+    ) -> impl Future<Output = Result<Proof, ProverError>> + Send + Sync
+    where
+        <<Self as AsyncProver>::Air as Air>::PublicInputs: Send + Sync,
+    {
         async {
             // figure out which version of the generic proof generation procedure to run. this is a sort
             // of static dispatch for selecting two generic parameter: extension field and hash
@@ -166,6 +178,7 @@ pub trait AsyncProver: Send + Sync {
     ) -> impl Future<Output = Result<Proof, ProverError>> + Send + Sync
     where
         E: FieldElement<BaseField = Self::BaseField>,
+        <<Self as AsyncProver>::Air as Air>::PublicInputs: Send + Sync,
     {
         async {
             // 0 ----- instantiate AIR and prover channel ---------------------------------------------
@@ -217,7 +230,8 @@ pub trait AsyncProver: Send + Sync {
             // build the auxiliary trace segment, and append the resulting segments to trace commitment
             // and trace polynomial table structs
             let aux_trace_with_metadata = if air.trace_info().is_multi_segment() {
-                let aux_trace_with_metadata = self.build_aux_trace(&trace, channel.public_coin());
+                let aux_trace_with_metadata =
+                    self.build_aux_trace(&trace, channel.public_coin()).await;
 
                 // commit to the auxiliary trace segment
                 let aux_segment_polys = {
