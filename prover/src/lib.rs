@@ -286,8 +286,21 @@ pub trait Prover {
         assert_eq!(domain.trace_length(), trace_length);
 
         // commit to the main trace segment
-        let (mut trace_lde, mut trace_polys) =
-            self.build_main_trace_and_commit(&trace, &domain, &mut channel);
+        let (mut trace_lde, mut trace_polys) = {
+            // extend the main execution trace and build a Merkle tree from the extended trace
+            let _span = info_span!("commit_to_main_trace_segment").entered();
+            let (trace_lde, trace_polys) =
+                self.new_trace_lde(trace.info(), trace.main_segment(), &domain);
+
+            // get the commitment to the main trace segment LDE
+            let main_trace_root = trace_lde.get_main_trace_commitment();
+
+            // commit to the LDE of the main trace by writing the root of its Merkle tree into
+            // the channel
+            channel.commit_trace(main_trace_root);
+
+            (trace_lde, trace_polys)
+        };
 
         // build the auxiliary trace segment, and append the resulting segments to trace commitment
         // and trace polynomial table structs
@@ -482,30 +495,6 @@ pub trait Prover {
         };
 
         Ok(proof)
-    }
-
-    fn build_main_trace_and_commit<E>(
-        &self,
-        trace: &Self::Trace,
-        domain: &StarkDomain<Self::BaseField>,
-        channel: &mut ProverChannel<Self::Air, E, Self::HashFn, Self::RandomCoin>,
-    ) -> (<Self as Prover>::TraceLde<E>, TracePolyTable<E>)
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        // extend the main execution trace and build a Merkle tree from the extended trace
-        let _span = info_span!("commit_to_main_trace_segment").entered();
-        let (trace_lde, trace_polys) =
-            self.new_trace_lde(trace.info(), trace.main_segment(), domain);
-
-        // get the commitment to the main trace segment LDE
-        let main_trace_root = trace_lde.get_main_trace_commitment();
-
-        // commit to the LDE of the main trace by writing the root of its Merkle tree into
-        // the channel
-        channel.commit_trace(main_trace_root);
-
-        (trace_lde, trace_polys)
     }
 
     /// Extends constraint composition polynomial over the LDE domain and builds a commitment to
