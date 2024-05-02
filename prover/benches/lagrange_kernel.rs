@@ -10,7 +10,7 @@ use air::{
     ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
-use crypto::{hashers::Blake3_256, DefaultRandomCoin, ElementHasher, RandomCoin};
+use crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin};
 use math::{fields::f64::BaseElement, ExtensionOf, FieldElement};
 use winter_prover::{
     matrix::ColMatrix, AuxTraceWithMetadata, DefaultConstraintEvaluator, DefaultTraceLde, Prover,
@@ -235,15 +235,15 @@ impl Prover for LagrangeProver {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
     }
 
-    fn build_aux_trace<E, Hasher>(
+    fn build_aux_trace<E>(
         &self,
-        main_trace: &ColMatrix<E::BaseField>,
-        transcript: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
+        main_trace: &Self::Trace,
+        transcript: &mut Self::RandomCoin,
     ) -> AuxTraceWithMetadata<E, ProverAuxRandElements<Self, E>, ProverAuxProof<Self>>
     where
-        E: FieldElement,
-        Hasher: ElementHasher<BaseField = E::BaseField>,
+        E: FieldElement<BaseField = Self::BaseField>,
     {
+        let main_trace = main_trace.main_segment();
         let lagrange_kernel_rand_elements: Vec<E> = {
             let log_trace_len = main_trace.num_rows().ilog2() as usize;
             let mut rand_elements = Vec::with_capacity(log_trace_len);

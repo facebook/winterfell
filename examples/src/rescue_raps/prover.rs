@@ -142,15 +142,15 @@ where
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
     }
 
-    fn build_aux_trace<E, Hasher>(
+    fn build_aux_trace<E>(
         &self,
-        main_trace: &ColMatrix<E::BaseField>,
-        transcript: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
+        main_trace: &Self::Trace,
+        transcript: &mut Self::RandomCoin,
     ) -> AuxTraceWithMetadata<E, ProverAuxRandElements<Self, E>, ProverAuxProof<Self>>
     where
-        E: FieldElement,
-        Hasher: ElementHasher<BaseField = E::BaseField>,
+        E: FieldElement<BaseField = Self::BaseField>,
     {
+        let main_trace = main_trace.main_segment();
         let rand_elements = {
             let mut rand_elements = Vec::with_capacity(self.aux_segment_width);
             for _ in 0..self.aux_segment_width {

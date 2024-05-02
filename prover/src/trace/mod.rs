@@ -22,7 +22,13 @@ mod tests;
 // AUX TRACE WITH METADATA
 // ================================================================================================
 
-/// Holds the auxiliary trace, random elements, and optionally, an auxiliary proof.
+/// Holds the auxiliary trace, the random elements used when generating the auxiliary trace, and
+/// optionally, an auxiliary proof.
+/// 
+/// The auxiliary proof object gives the possibility to prove some auxiliary trace constraints using
+/// a non-STARK proving system. For example, [Improving logarithmic derivative lookups using
+/// GKR](https://eprint.iacr.org/2023/1284.pdf) presents a technique for proving the constraints of
+/// a virtual machine's LogUp bus using GKR. In this case, `AuxProof` would be a GKR proof.
 pub struct AuxTraceWithMetadata<E: FieldElement, AuxRandEles, AuxProof> {
     pub aux_trace: ColMatrix<E>,
     pub aux_rand_eles: AuxRandEles,

@@ -199,16 +199,19 @@ pub trait Prover {
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
 
-    /// Builds the auxiliary trace.
+    /// Builds and returns the auxiliary trace along with extra metadata:
+    /// - The random elements drawn and used in generating the auxiliary trace,
+    /// - An auxiliary proof object.
+    /// 
+    /// See [`AuxTraceWithMetadata`] for more information.
     #[allow(unused_variables)]
-    fn build_aux_trace<E, Hasher>(
+    fn build_aux_trace<E>(
         &self,
-        main_trace: &ColMatrix<E::BaseField>,
-        transcript: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
+        main_trace: &Self::Trace,
+        transcript: &mut Self::RandomCoin,
     ) -> AuxTraceWithMetadata<E, ProverAuxRandElements<Self, E>, ProverAuxProof<Self>>
     where
-        E: FieldElement,
-        Hasher: ElementHasher<BaseField = E::BaseField>,
+        E: FieldElement<BaseField = Self::BaseField>,
     {
         unimplemented!("`Prover::build_aux_trace` needs to be implemented when the trace has an auxiliary segment.")
     }
@@ -285,8 +288,7 @@ pub trait Prover {
         // build the auxiliary trace segment, and append the resulting segments to trace commitment
         // and trace polynomial table structs
         let aux_trace_with_metadata = if air.trace_info().is_multi_segment() {
-            let aux_trace_with_metadata =
-                self.build_aux_trace(trace.main_segment(), channel.public_coin());
+            let aux_trace_with_metadata = self.build_aux_trace(&trace, channel.public_coin());
 
             // commit to the auxiliary trace segment
             let aux_segment_polys = {
