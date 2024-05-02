@@ -42,6 +42,9 @@
 #[macro_use]
 extern crate alloc;
 
+#[cfg(feature = "async")]
+mod async_prover;
+
 pub use air::{
     proof, proof::Proof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
     ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
