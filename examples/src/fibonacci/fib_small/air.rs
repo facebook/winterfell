@@ -20,7 +20,7 @@ pub struct FibSmall {
 impl Air for FibSmall {
     type BaseField = BaseElement;
     type PublicInputs = BaseElement;
-    type AuxRandElements<E: Send + Sync> = ();
+    type AuxRandElements<E: FieldElement<BaseField = Self::BaseField>> = ();
     type AuxProof = ();
 
     // CONSTRUCTOR

@@ -92,7 +92,7 @@ struct LagrangeKernelComplexAir {
 }
 
 impl Air for LagrangeKernelComplexAir {
-    type AuxRandElements<E: Send + Sync> = Vec<E>;
+    type AuxRandElements<E: FieldElement<BaseField = Self::BaseField>> = Vec<E>;
     type BaseField = BaseElement;
     type AuxProof = ();
 
@@ -154,10 +154,10 @@ impl Air for LagrangeKernelComplexAir {
         vec![Assertion::single(1, 0, E::ZERO)]
     }
 
-    fn get_lagrange_rand_elements<E: Clone + Send + Sync>(
-        &self,
-        aux_rand_elements: &Self::AuxRandElements<E>,
-    ) -> Vec<E> {
+    fn get_lagrange_rand_elements<E>(&self, aux_rand_elements: &Self::AuxRandElements<E>) -> Vec<E>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
         let log_trace_len = self.context().trace_len().ilog2() as usize;
 
         aux_rand_elements[0..log_trace_len].to_vec()

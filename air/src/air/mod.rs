@@ -190,7 +190,9 @@ pub trait Air: Send + Sync {
     type PublicInputs: ToElements<Self::BaseField>;
 
     /// A type defining the random elements used in constructing the auxiliary trace segment.
-    type AuxRandElements<E: Send + Sync>: Send + Sync;
+    type AuxRandElements<E>
+    where
+        E: FieldElement<BaseField = Self::BaseField>;
 
     /// An auxiliary (i.e. non-STARK) proof object. If not needed, set to `()`.
     type AuxProof: Serializable + Deserializable;
@@ -297,10 +299,13 @@ pub trait Air: Send + Sync {
 
     /// Returns the random elements used in constructing the Lagrange kernel column.
     #[allow(unused_variables)]
-    fn get_lagrange_rand_elements<E: Clone + Send + Sync>(
+    fn get_lagrange_rand_elements<E>(
         &self,
         aux_random_elements: &Self::AuxRandElements<E>,
-    ) -> Vec<E> {
+    ) -> Vec<E>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
         unimplemented!("getting the Lagrange random elements has not been implemented");
     }
 

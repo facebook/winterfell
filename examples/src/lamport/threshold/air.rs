@@ -50,7 +50,7 @@ pub struct LamportThresholdAir {
 impl Air for LamportThresholdAir {
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
-    type AuxRandElements<E: Send + Sync> = ();
+    type AuxRandElements<E: FieldElement<BaseField = Self::BaseField>> = ();
     type AuxProof = ();
 
     // CONSTRUCTOR

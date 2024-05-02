@@ -56,7 +56,7 @@ pub struct RescueRapsAir {
 }
 
 impl Air for RescueRapsAir {
-    type AuxRandElements<E: Send + Sync> = Vec<E>;
+    type AuxRandElements<E: FieldElement<BaseField = Self::BaseField>> = Vec<E>;
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
     type AuxProof = ();
@@ -232,10 +232,13 @@ impl Air for RescueRapsAir {
         ]
     }
 
-    fn get_aux_assertions<E: FieldElement + From<Self::BaseField>>(
+    fn get_aux_assertions<E>(
         &self,
         _aux_rand_elements: &Self::AuxRandElements<E>,
-    ) -> Vec<Assertion<E>> {
+    ) -> Vec<Assertion<E>>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
         let last_step = self.trace_length() - 1;
         vec![Assertion::single(2, 0, E::ONE), Assertion::single(2, last_step, E::ONE)]
     }

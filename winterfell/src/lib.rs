@@ -177,7 +177,7 @@
 //! }
 //!
 //! impl Air for WorkAir {
-//!     type AuxRandElements<E: Send + Sync> = ();
+//!     type AuxRandElements<E: FieldElement<BaseField = Self::BaseField>> = ();
 //!     // We'll specify which finite field to use for our computation, and also how
 //!     // the public inputs must look like.
 //!     type BaseField = BaseElement;
@@ -286,7 +286,7 @@
 //! # }
 //! #
 //! # impl Air for WorkAir {
-//! #     type AuxRandElements<E: Send + Sync> = ();
+//! #     type AuxRandElements<E: FieldElement<BaseField = Self::BaseField>> = ();
 //! #     type BaseField = BaseElement;
 //! #     type PublicInputs = PublicInputs;
 //! #     type AuxProof = ();
@@ -434,7 +434,7 @@
 //! # }
 //! #
 //! # impl Air for WorkAir {
-//!       type AuxRandElements<E: Send + Sync> = ();
+//!       type AuxRandElements<E: FieldElement<BaseField = Self::BaseField>> = ();
 //! #     type BaseField = BaseElement;
 //! #     type PublicInputs = PublicInputs;
 //! #     type AuxProof = ();
