@@ -190,7 +190,7 @@ pub trait Air: Send + Sync {
     type PublicInputs: ToElements<Self::BaseField>;
 
     /// A type defining the random elements used in constructing the auxiliary trace segment.
-    type AuxRandElements<E>
+    type AuxRandElements<E>: Send + Sync
     where
         E: FieldElement<BaseField = Self::BaseField>;
 
