@@ -331,16 +331,17 @@ pub trait Prover {
             None
         };
 
+        // make sure the specified trace (including auxiliary segment) is valid against the AIR.
+        // This checks validity of both, assertions and state transitions. We do this in debug
+        // mode only because this is a very expensive operation.
+        #[cfg(debug_assertions)]
+        trace.validate(&air, aux_trace_with_metadata.as_ref());
+
+        // Destructure `aux_trace_with_metadata`.
         let (aux_trace, aux_rand_elements, aux_proof) = match aux_trace_with_metadata {
             Some(atm) => (Some(atm.aux_trace), Some(atm.aux_rand_eles), atm.aux_proof),
             None => (None, None, None),
         };
-
-        // make sure the specified trace (including auxiliary segments) is valid against the AIR.
-        // This checks validity of both, assertions and state transitions. We do this in debug
-        // mode only because this is a very expensive operation.
-        #[cfg(debug_assertions)]
-        trace.validate(&air, aux_trace.as_ref(), aux_rand_elements.as_ref());
 
         // drop the main trace and aux trace segment as they are no longer needed
         drop(trace);
