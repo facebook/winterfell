@@ -58,14 +58,11 @@ impl LagrangeTrace {
         let main_trace_col: Vec<BaseElement> =
             (0..trace_len).map(|idx| BaseElement::from(idx as u32)).collect();
 
-        let num_aux_segment_rands = trace_len.ilog2() as usize;
-
         Self {
             main_trace: ColMatrix::new(vec![main_trace_col]),
             info: TraceInfo::new_multi_segment(
                 1,
                 aux_segment_width,
-                num_aux_segment_rands,
                 trace_len,
                 vec![],
             ),
