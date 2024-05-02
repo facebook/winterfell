@@ -24,7 +24,7 @@ mod tests;
 
 /// Holds the auxiliary trace, the random elements used when generating the auxiliary trace, and
 /// optionally, an auxiliary proof.
-/// 
+///
 /// The auxiliary proof object gives the possibility to prove some auxiliary trace constraints using
 /// a non-STARK proving system. For example, [Improving logarithmic derivative lookups using
 /// GKR](https://eprint.iacr.org/2023/1284.pdf) presents a technique for proving the constraints of

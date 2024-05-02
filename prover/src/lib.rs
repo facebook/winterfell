@@ -202,7 +202,7 @@ pub trait Prover {
     /// Builds and returns the auxiliary trace along with extra metadata:
     /// - The random elements drawn and used in generating the auxiliary trace,
     /// - An auxiliary proof object.
-    /// 
+    ///
     /// See [`AuxTraceWithMetadata`] for more information.
     #[allow(unused_variables)]
     fn build_aux_trace<E>(
