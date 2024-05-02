@@ -184,12 +184,8 @@ mod tests {
         ]);
 
         let expected = {
-            let trace_info = TraceInfo::new_multi_segment(
-                main_width,
-                aux_width,
-                trace_length,
-                vec![],
-            );
+            let trace_info =
+                TraceInfo::new_multi_segment(main_width, aux_width, trace_length, vec![]);
 
             let mut expected = trace_info.to_elements();
             expected.extend(vec![
@@ -212,8 +208,7 @@ mod tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
         );
-        let trace_info =
-            TraceInfo::new_multi_segment(main_width, aux_width, trace_length, vec![]);
+        let trace_info = TraceInfo::new_multi_segment(main_width, aux_width, trace_length, vec![]);
         let context = Context::new::<BaseElement>(trace_info, options);
         assert_eq!(expected, context.to_elements());
     }

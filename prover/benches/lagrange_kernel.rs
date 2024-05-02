@@ -60,12 +60,7 @@ impl LagrangeTrace {
 
         Self {
             main_trace: ColMatrix::new(vec![main_trace_col]),
-            info: TraceInfo::new_multi_segment(
-                1,
-                aux_segment_width,
-                trace_len,
-                vec![],
-            ),
+            info: TraceInfo::new_multi_segment(1, aux_segment_width, trace_len, vec![]),
         }
     }
 

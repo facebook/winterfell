@@ -60,7 +60,7 @@ impl TraceInfo {
     /// * Length of `meta` is greater than 65535;
     pub fn with_meta(width: usize, length: usize, meta: Vec<u8>) -> Self {
         assert!(width > 0, "trace width must be greater than 0");
-        Self::new_multi_segment(width, 0,  length, meta)
+        Self::new_multi_segment(width, 0, length, meta)
     }
 
     /// Creates a new [TraceInfo] with main and auxiliary segments.
@@ -315,8 +315,7 @@ mod tests {
         let trace_meta = vec![1_u8, 2, 3, 4];
 
         let expected = {
-            let first_ele =
-                u32::from_le_bytes([aux_width, num_aux_segments, main_width, 0u8]);
+            let first_ele = u32::from_le_bytes([aux_width, num_aux_segments, main_width, 0u8]);
 
             // `trace_meta` is 4 bytes, so fits into a single element
             let mut meta_bytes = trace_meta.clone();
