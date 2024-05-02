@@ -11,7 +11,7 @@ use super::{
 use std::collections::HashMap;
 use winterfell::{
     matrix::ColMatrix, ConstraintCompositionCoefficients, DefaultConstraintEvaluator,
-    DefaultTraceLde, ProverAuxRandElements, StarkDomain, TraceInfo, TracePolyTable, TraceTable,
+    DefaultTraceLde, StarkDomain, TraceInfo, TracePolyTable, TraceTable,
 };
 
 #[cfg(feature = "concurrent")]
@@ -166,7 +166,7 @@ where
     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         air: &'a Self::Air,
-        aux_rand_elements: Option<ProverAuxRandElements<Self, E>>,
+        aux_rand_elements: Option<()>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E> {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
