@@ -95,7 +95,7 @@ pub trait AsyncProver: Send + Sync {
         air: &'a Self::Air,
         aux_rand_elements: Option<AsyncProverAuxRandElements<Self, E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
-    ) -> Self::ConstraintEvaluator<'a, E>
+    ) -> impl Future<Output = Self::ConstraintEvaluator<'a, E>> + Send + Sync
     where
         E: FieldElement<BaseField = Self::BaseField>;
 
@@ -283,15 +283,10 @@ pub trait AsyncProver: Send + Sync {
             // compute random linear combinations of these evaluations using coefficients drawn from
             // the channel
             let ce_domain_size = air.ce_domain_size();
-            let composition_poly_trace = info_span!("evaluate_constraints", ce_domain_size)
-                .in_scope(|| {
-                    self.new_evaluator(
-                        &air,
-                        aux_rand_elements,
-                        channel.get_constraint_composition_coeffs(),
-                    )
-                    .evaluate(&trace_lde, &domain)
-                });
+            let composition_poly_trace = self
+                .new_evaluator(&air, aux_rand_elements, channel.get_constraint_composition_coeffs())
+                .await
+                .evaluate(&trace_lde, &domain);
             assert_eq!(composition_poly_trace.num_rows(), ce_domain_size);
 
             // 3 ----- commit to constraint evaluations -----------------------------------------------
