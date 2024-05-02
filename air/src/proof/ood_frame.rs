@@ -120,11 +120,15 @@ impl OodFrame {
         main_trace_width: usize,
         aux_trace_width: usize,
         num_evaluations: usize,
+        has_lagrange_ker: bool,
     ) -> Result<(TraceOodFrame<E>, Vec<E>), DeserializationError> {
         assert!(main_trace_width > 0, "trace width cannot be zero");
         assert!(num_evaluations > 0, "number of evaluations cannot be zero");
 
-        // Parse main and auxiliary trace evaluation frames. This does the reverse operation done in
+        // if there is a Lagrange kernel, then we treat its associated entries separately
+        let aux_trace_width = aux_trace_width - (has_lagrange_ker as usize);
+
+        // parse main and auxiliary trace evaluation frames. This does the reverse operation done in
         // `set_trace_states()`.
         let (current_row, next_row) = {
             let mut reader = SliceReader::new(&self.trace_states);

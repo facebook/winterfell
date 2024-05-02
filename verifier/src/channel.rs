@@ -73,6 +73,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
         let aux_trace_width = air.trace_info().aux_segment_width();
         let lde_domain_size = air.lde_domain_size();
         let fri_options = air.options().to_fri_options();
+        let has_lagrange_kernel = air.context().has_lagrange_kernel_aux_column();
 
         // --- parse commitments ------------------------------------------------------------------
         let (trace_roots, constraint_root, fri_roots) = commitments
@@ -95,7 +96,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
 
         // --- parse out-of-domain evaluation frame -----------------------------------------------
         let (ood_trace_frame, ood_constraint_evaluations) = ood_frame
-            .parse(main_trace_width, aux_trace_width, constraint_frame_width)
+            .parse(main_trace_width, aux_trace_width, constraint_frame_width, has_lagrange_kernel)
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         Ok(VerifierChannel {

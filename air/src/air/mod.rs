@@ -586,9 +586,16 @@ pub trait Air: Send + Sync {
             c_coefficients.push(public_coin.draw()?);
         }
 
+        let lagrange_cc = if self.context().has_lagrange_kernel_aux_column() {
+            Some(public_coin.draw()?)
+        } else {
+            None
+        };
+
         Ok(DeepCompositionCoefficients {
             trace: t_coefficients,
             constraints: c_coefficients,
+            lagrange_cc,
         })
     }
 }

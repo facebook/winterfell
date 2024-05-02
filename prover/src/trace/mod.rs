@@ -141,6 +141,8 @@ pub trait Trace: Sized {
 
             // then, check the Lagrange kernel assertion, if any
             if let Some(lagrange_kernel_col_idx) = air.context().lagrange_kernel_aux_column_idx() {
+                // TODO: update once #271 is merged.
+                let log_trace_len = air.context().trace_len().ilog2() as usize;
                 let boundary_constraint_assertion_value =
                     LagrangeKernelBoundaryConstraint::assertion_value(
                         aux_rand_elements

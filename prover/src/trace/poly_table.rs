@@ -19,7 +19,7 @@ use math::{FieldElement, StarkField};
 pub struct TracePolyTable<E: FieldElement> {
     main_trace_polys: ColMatrix<E::BaseField>,
     aux_trace_polys: Option<ColMatrix<E>>,
-    lagrange_kernel_column_idx: Option<usize>,
+    lagrange_kernel_col_poly: Option<Vec<E>>,
 }
 
 impl<E: FieldElement> TracePolyTable<E> {
@@ -30,7 +30,7 @@ impl<E: FieldElement> TracePolyTable<E> {
         Self {
             main_trace_polys,
             aux_trace_polys: None,
-            lagrange_kernel_column_idx: None,
+            lagrange_kernel_col_poly: None,
         }
     }
 
@@ -49,8 +49,16 @@ impl<E: FieldElement> TracePolyTable<E> {
             aux_trace_polys.num_rows(),
             "polynomials in auxiliary segment must be of the same size as in the main segment"
         );
-        self.aux_trace_polys = Some(aux_trace_polys);
-        self.lagrange_kernel_column_idx = lagrange_kernel_column_idx;
+        let aux_trace_polys_except_lag: Vec<Vec<E>> = aux_trace_polys
+            .columns()
+            .enumerate()
+            .filter(|(i, _col)| Some(i) != lagrange_kernel_column_idx.as_ref())
+            .map(|(_, col)| col.to_vec())
+            .collect();
+        self.aux_trace_polys = Some(ColMatrix::new(aux_trace_polys_except_lag));
+        if let Some(idx) = lagrange_kernel_column_idx {
+            self.lagrange_kernel_col_poly = Some(aux_trace_polys.get_column(idx).to_vec());
+        }
     }
 
     // PUBLIC ACCESSORS
@@ -81,18 +89,13 @@ impl<E: FieldElement> TracePolyTable<E> {
         let current_row = self.evaluate_at(z);
         let next_row = self.evaluate_at(z * g);
 
-        let lagrange_kernel_frame = self.lagrange_kernel_column_idx.map(|col_idx| {
-            let aux_segment_poly = self
-                .aux_trace_polys
-                .as_ref()
-                .expect("aux segment poly and lagrange kernel column idx are set together");
-            let lagrange_kernel_col_poly = aux_segment_poly.get_column(col_idx);
-
-            LagrangeKernelEvaluationFrame::from_lagrange_kernel_column_poly(
-                lagrange_kernel_col_poly,
-                z,
-            )
-        });
+        let lagrange_kernel_frame =
+            self.lagrange_kernel_col_poly.as_ref().map(|lagrange_kernel_col_poly| {
+                LagrangeKernelEvaluationFrame::from_lagrange_kernel_column_poly(
+                    lagrange_kernel_col_poly,
+                    z,
+                )
+            });
 
         let main_trace_width = self.main_trace_polys.num_cols();
 
@@ -110,6 +113,12 @@ impl<E: FieldElement> TracePolyTable<E> {
             Some(ref aux_segment_polys) => aux_segment_polys.columns(),
             None => ColumnIter::empty(),
         }
+    }
+
+    /// Returns the polynomial of the auxiliary trace segment corresponding to the Lagrange kernel,
+    /// if any.
+    pub fn lagrange_poly(&self) -> Option<&[E]> {
+        self.lagrange_kernel_col_poly.as_deref()
     }
 
     // TEST HELPERS
