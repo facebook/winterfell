@@ -23,12 +23,8 @@ mod tests;
 // ================================================================================================
 
 /// Holds the auxiliary trace, the random elements used when generating the auxiliary trace, and
-/// optionally, an auxiliary proof.
-///
-/// The auxiliary proof object gives the possibility to prove some auxiliary trace constraints using
-/// a non-STARK proving system. For example, [Improving logarithmic derivative lookups using
-/// GKR](https://eprint.iacr.org/2023/1284.pdf) presents a technique for proving the constraints of
-/// a virtual machine's LogUp bus using GKR. In this case, `AuxProof` would be a GKR proof.
+/// optionally, an auxiliary proof. See [`crate::Proof`] for more information about the auxiliary
+/// proof.
 pub struct AuxTraceWithMetadata<E: FieldElement, AuxRandEles, AuxProof> {
     pub aux_trace: ColMatrix<E>,
     pub aux_rand_eles: AuxRandEles,
