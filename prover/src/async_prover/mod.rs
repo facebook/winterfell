@@ -84,7 +84,7 @@ pub trait AsyncProver: Send + Sync {
         trace_info: &TraceInfo,
         main_trace: &ColMatrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
-    ) -> (Self::TraceLde<E>, TracePolyTable<E>)
+    ) -> impl Future<Output = (Self::TraceLde<E>, TracePolyTable<E>)> + Send + Sync
     where
         E: FieldElement<BaseField = Self::BaseField>;
 
@@ -215,9 +215,10 @@ pub trait AsyncProver: Send + Sync {
             // commit to the main trace segment
             let (mut trace_lde, mut trace_polys) = {
                 // extend the main execution trace and build a Merkle tree from the extended trace
-                let _span = info_span!("commit_to_main_trace_segment").entered();
                 let (trace_lde, trace_polys) =
-                    self.new_trace_lde(trace.info(), trace.main_segment(), &domain);
+                    self.new_trace_lde(trace.info(), trace.main_segment(), &domain).await;
+
+                let _span = info_span!("commit_to_main_trace_segment").entered();
 
                 // get the commitment to the main trace segment LDE
                 let main_trace_root = trace_lde.get_main_trace_commitment();
