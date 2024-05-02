@@ -245,6 +245,9 @@ pub trait Prover {
         }
     }
 
+    // HELPER METHODS
+    // --------------------------------------------------------------------------------------------
+
     /// Performs the actual proof generation procedure, generating the proof that the provided
     /// execution `trace` is valid against this prover's AIR.
     /// TODO: make this function un-callable externally?
@@ -480,9 +483,6 @@ pub trait Prover {
 
         Ok(proof)
     }
-
-    // HELPER METHODS
-    // --------------------------------------------------------------------------------------------
 
     fn build_main_trace_and_commit<E>(
         &self,
