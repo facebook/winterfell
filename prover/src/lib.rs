@@ -44,6 +44,8 @@ extern crate alloc;
 
 #[cfg(feature = "async")]
 mod async_prover;
+#[cfg(feature = "async")]
+pub use async_prover::{AsyncProver, AsyncProverAuxProof, AsyncProverAuxRandElements};
 
 pub use air::{
     proof, proof::Proof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,

@@ -1,33 +1,35 @@
-use air::{Air, ProofOptions};
+use air::{
+    proof::Proof, Air, ConstraintCompositionCoefficients, FieldExtension, ProofOptions, TraceInfo,
+};
+use async_trait::async_trait;
 use crypto::{ElementHasher, RandomCoin};
-use math::{ExtensibleField, FieldElement, StarkField};
+use fri::FriProver;
+use math::{
+    fft::infer_degree,
+    fields::{CubeExtension, QuadExtension},
+    ExtensibleField, FieldElement, StarkField, ToElements,
+};
+use tracing::{event, info_span, Level};
+use utils::Serializable;
 
-use crate::{ConstraintEvaluator, Trace, TraceLde};
+use crate::{
+    channel::ProverChannel,
+    composer::DeepCompositionPoly,
+    matrix::{ColMatrix, RowMatrix},
+    AuxTraceWithMetadata, CompositionPoly, CompositionPolyTrace, ConstraintCommitment,
+    ConstraintEvaluator, ProverError, StarkDomain, Trace, TraceLde, TracePolyTable,
+    DEFAULT_SEGMENT_WIDTH,
+};
 
+/// Accesses the `AuxRandElements` type in a [`Prover`].
+pub type AsyncProverAuxRandElements<P, E> = <<P as AsyncProver>::Air as Air>::AuxRandElements<E>;
 
-/// Defines a STARK prover for a computation.
-///
-/// A STARK prover can be used to generate STARK proofs. The prover contains definitions of a
-/// computation's AIR (specified via [Air](Prover::Air) associated type), execution trace
-/// (specified via [Trace](Prover::Trace) associated type) and hash function to be used (specified
-/// via [HashFn](Prover::HashFn) associated type), and exposes [prove()](Prover::prove) method which
-/// can be used to build STARK proofs for provided execution traces.
-///
-/// Thus, once a prover is defined and instantiated, generating a STARK proof consists of two
-/// steps:
-/// 1. Build an execution trace for a specific instance of the computation.
-/// 2. Invoke [Prover::prove()] method generate a proof using the trace from the previous step
-///    as a witness.
-///
-/// The generated proof is built using protocol parameters defined by the [ProofOptions] struct
-/// return from [Prover::options] method.
-///
-/// To further customize the prover, implementers can specify custom implementations of the
-/// [RandomCoin], [TraceLde], and [ConstraintEvaluator] associated types (default implementations
-/// of these types are provided with the prover). For example, providing custom implementations
-/// of [TraceLde] and/or [ConstraintEvaluator] can be beneficial when some steps of proof
-/// generation can be delegated to non-CPU hardware (e.g., GPUs).
-pub trait Prover {
+/// Accesses the `AuxProof` type in a [`Prover`].
+pub type AsyncProverAuxProof<P> = <<P as AsyncProver>::Air as Air>::AuxProof;
+
+/// Async version of [`crate::Prover`].
+#[async_trait]
+pub trait AsyncProver {
     /// Base field for the computation described by this prover.
     type BaseField: StarkField + ExtensibleField<2> + ExtensibleField<3>;
 
@@ -60,7 +62,7 @@ pub trait Prover {
     /// trace.
     ///
     /// Public inputs need to be shared with the verifier in order for them to verify a proof.
-    fn get_pub_inputs(&self, trace: &Self::Trace) -> <<Self as Prover>::Air as Air>::PublicInputs;
+    fn get_pub_inputs(&self, trace: &Self::Trace) -> <<Self as AsyncProver>::Air as Air>::PublicInputs;
 
     /// Returns [ProofOptions] which this prover uses to generate STARK proofs.
     ///
@@ -88,7 +90,7 @@ pub trait Prover {
     fn new_evaluator<'a, E>(
         &self,
         air: &'a Self::Air,
-        aux_rand_elements: Option<ProverAuxRandElements<Self, E>>,
+        aux_rand_elements: Option<AsyncProverAuxRandElements<Self, E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E>
     where
@@ -107,7 +109,7 @@ pub trait Prover {
         &self,
         main_trace: &Self::Trace,
         transcript: &mut Self::RandomCoin,
-    ) -> AuxTraceWithMetadata<E, ProverAuxRandElements<Self, E>, ProverAuxProof<Self>>
+    ) -> AuxTraceWithMetadata<E, AsyncProverAuxRandElements<Self, E>, AsyncProverAuxProof<Self>>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
