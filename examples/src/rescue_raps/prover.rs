@@ -10,9 +10,9 @@ use super::{
 };
 use core_utils::uninit_vector;
 use winterfell::{
-    crypto::RandomCoin, matrix::ColMatrix, AuxProofProver, AuxRandElementsProver,
-    AuxTraceWithMetadata, ConstraintCompositionCoefficients, DefaultConstraintEvaluator,
-    DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable,
+    crypto::RandomCoin, matrix::ColMatrix, AuxTraceWithMetadata, ConstraintCompositionCoefficients,
+    DefaultConstraintEvaluator, DefaultTraceLde, ProverAuxProof, ProverAuxRandElements,
+    StarkDomain, Trace, TraceInfo, TracePolyTable,
 };
 
 // RESCUE PROVER
@@ -136,7 +136,7 @@ where
     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         air: &'a Self::Air,
-        aux_rand_elements: Option<AuxRandElementsProver<Self, E>>,
+        aux_rand_elements: Option<ProverAuxRandElements<Self, E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E> {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
@@ -146,7 +146,7 @@ where
         &self,
         main_trace: &ColMatrix<E::BaseField>,
         transcript: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> AuxTraceWithMetadata<E, AuxRandElementsProver<Self, E>, AuxProofProver<Self>>
+    ) -> AuxTraceWithMetadata<E, ProverAuxRandElements<Self, E>, ProverAuxProof<Self>>
     where
         E: FieldElement,
         Hasher: ElementHasher<BaseField = E::BaseField>,

@@ -8,8 +8,8 @@ use super::{
     VdfAir, VdfInputs, FORTY_TWO, INV_ALPHA,
 };
 use winterfell::{
-    matrix::ColMatrix, AuxRandElementsProver, ConstraintCompositionCoefficients,
-    DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable,
+    matrix::ColMatrix, ConstraintCompositionCoefficients, DefaultConstraintEvaluator,
+    DefaultTraceLde, ProverAuxRandElements, StarkDomain, Trace, TraceInfo, TracePolyTable,
     TraceTable,
 };
 
@@ -80,7 +80,7 @@ where
     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         air: &'a Self::Air,
-        aux_rand_elements: Option<AuxRandElementsProver<Self, E>>,
+        aux_rand_elements: Option<ProverAuxRandElements<Self, E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E> {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)

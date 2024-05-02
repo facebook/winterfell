@@ -102,10 +102,10 @@ pub mod tests;
 const DEFAULT_SEGMENT_WIDTH: usize = 8;
 
 /// Accesses the `AuxRandElements` type in a [`Prover`].
-pub type AuxRandElementsProver<P, E> = <<P as Prover>::Air as Air>::AuxRandElements<E>;
+pub type ProverAuxRandElements<P, E> = <<P as Prover>::Air as Air>::AuxRandElements<E>;
 
 /// Accesses the `AuxProof` type in a [`Prover`].
-pub type AuxProofProver<P> = <<P as Prover>::Air as Air>::AuxProof;
+pub type ProverAuxProof<P> = <<P as Prover>::Air as Air>::AuxProof;
 
 /// Defines a STARK prover for a computation.
 ///
@@ -190,7 +190,7 @@ pub trait Prover {
     fn new_evaluator<'a, E>(
         &self,
         air: &'a Self::Air,
-        aux_rand_elements: Option<AuxRandElementsProver<Self, E>>,
+        aux_rand_elements: Option<ProverAuxRandElements<Self, E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E>
     where
@@ -205,7 +205,7 @@ pub trait Prover {
         &self,
         main_trace: &ColMatrix<E::BaseField>,
         transcript: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> AuxTraceWithMetadata<E, AuxRandElementsProver<Self, E>, AuxProofProver<Self>>
+    ) -> AuxTraceWithMetadata<E, ProverAuxRandElements<Self, E>, ProverAuxProof<Self>>
     where
         E: FieldElement,
         Hasher: ElementHasher<BaseField = E::BaseField>,

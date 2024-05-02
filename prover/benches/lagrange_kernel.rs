@@ -13,8 +13,8 @@ use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criteri
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, ElementHasher, RandomCoin};
 use math::{fields::f64::BaseElement, ExtensionOf, FieldElement};
 use winter_prover::{
-    matrix::ColMatrix, AuxProofProver, AuxRandElementsProver, AuxTraceWithMetadata,
-    DefaultConstraintEvaluator, DefaultTraceLde, Prover, StarkDomain, Trace, TracePolyTable,
+    matrix::ColMatrix, AuxTraceWithMetadata, DefaultConstraintEvaluator, DefaultTraceLde, Prover,
+    ProverAuxProof, ProverAuxRandElements, StarkDomain, Trace, TracePolyTable,
 };
 
 const TRACE_LENS: [usize; 2] = [2_usize.pow(16), 2_usize.pow(20)];
@@ -226,7 +226,7 @@ impl Prover for LagrangeProver {
     fn new_evaluator<'a, E>(
         &self,
         air: &'a Self::Air,
-        aux_rand_elements: Option<AuxRandElementsProver<Self, E>>,
+        aux_rand_elements: Option<ProverAuxRandElements<Self, E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E>
     where
@@ -239,7 +239,7 @@ impl Prover for LagrangeProver {
         &self,
         main_trace: &ColMatrix<E::BaseField>,
         transcript: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> AuxTraceWithMetadata<E, AuxRandElementsProver<Self, E>, AuxProofProver<Self>>
+    ) -> AuxTraceWithMetadata<E, ProverAuxRandElements<Self, E>, ProverAuxProof<Self>>
     where
         E: FieldElement,
         Hasher: ElementHasher<BaseField = E::BaseField>,

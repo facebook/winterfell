@@ -234,7 +234,7 @@ impl Prover for LagrangeComplexProver {
         &self,
         main_trace: &ColMatrix<E::BaseField>,
         transcript: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> AuxTraceWithMetadata<E, AuxRandElementsProver<Self, E>, AuxProofProver<Self>>
+    ) -> AuxTraceWithMetadata<E, ProverAuxRandElements<Self, E>, ProverAuxProof<Self>>
     where
         E: FieldElement,
         Hasher: ElementHasher<BaseField = E::BaseField>,
