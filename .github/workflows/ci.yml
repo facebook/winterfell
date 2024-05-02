@@ -8,7 +8,7 @@ on:
 
 jobs:
   light-checks:
-    name: Ligth checks
+    name: Light checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@main
