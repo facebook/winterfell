@@ -24,7 +24,7 @@ name = "lagrange_kernel"
 harness = false
 
 [features]
-async = ["async-trait"]
+async = []
 concurrent = ["crypto/concurrent", "math/concurrent", "fri/concurrent", "utils/concurrent", "std"]
 default = ["std"]
 std = ["air/std", "crypto/std", "fri/std", "math/std", "utils/std"]

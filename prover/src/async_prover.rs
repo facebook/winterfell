@@ -1,7 +1,8 @@
+use core::future::Future;
+
 use air::{
     proof::Proof, Air, ConstraintCompositionCoefficients, FieldExtension, ProofOptions, TraceInfo,
 };
-use async_trait::async_trait;
 use crypto::{ElementHasher, RandomCoin};
 use fri::FriProver;
 use math::{
@@ -28,8 +29,7 @@ pub type AsyncProverAuxRandElements<P, E> = <<P as AsyncProver>::Air as Air>::Au
 pub type AsyncProverAuxProof<P> = <<P as AsyncProver>::Air as Air>::AuxProof;
 
 /// Async version of [`crate::Prover`].
-#[async_trait]
-pub trait AsyncProver {
+pub trait AsyncProver: Send + Sync {
     /// Base field for the computation described by this prover.
     type BaseField: StarkField + ExtensibleField<2> + ExtensibleField<3>;
 
@@ -37,7 +37,7 @@ pub trait AsyncProver {
     type Air: Air<BaseField = Self::BaseField>;
 
     /// Execution trace of the computation described by this prover.
-    type Trace: Trace<BaseField = Self::BaseField>;
+    type Trace: Trace<BaseField = Self::BaseField> + Send + Sync;
 
     /// Hash function to be used.
     type HashFn: ElementHasher<BaseField = Self::BaseField>;
@@ -62,7 +62,10 @@ pub trait AsyncProver {
     /// trace.
     ///
     /// Public inputs need to be shared with the verifier in order for them to verify a proof.
-    fn get_pub_inputs(&self, trace: &Self::Trace) -> <<Self as AsyncProver>::Air as Air>::PublicInputs;
+    fn get_pub_inputs(
+        &self,
+        trace: &Self::Trace,
+    ) -> <<Self as AsyncProver>::Air as Air>::PublicInputs;
 
     /// Returns [ProofOptions] which this prover uses to generate STARK proofs.
     ///
@@ -124,23 +127,28 @@ pub trait AsyncProver {
     /// public inputs. It may also contain an auxiliary proof, further documented in [`Proof`].
     /// Public inputs must match the value returned from
     /// [Self::get_pub_inputs()](Prover::get_pub_inputs) for the provided trace.
-    fn prove(&self, trace: Self::Trace) -> Result<Proof, ProverError> {
-        // figure out which version of the generic proof generation procedure to run. this is a sort
-        // of static dispatch for selecting two generic parameter: extension field and hash
-        // function.
-        match self.options().field_extension() {
-            FieldExtension::None => self.generate_proof::<Self::BaseField>(trace),
-            FieldExtension::Quadratic => {
-                if !<QuadExtension<Self::BaseField>>::is_supported() {
-                    return Err(ProverError::UnsupportedFieldExtension(2));
+    fn prove(
+        &self,
+        trace: Self::Trace,
+    ) -> impl Future<Output = Result<Proof, ProverError>> + Send + Sync {
+        async {
+            // figure out which version of the generic proof generation procedure to run. this is a sort
+            // of static dispatch for selecting two generic parameter: extension field and hash
+            // function.
+            match self.options().field_extension() {
+                FieldExtension::None => self.generate_proof::<Self::BaseField>(trace).await,
+                FieldExtension::Quadratic => {
+                    if !<QuadExtension<Self::BaseField>>::is_supported() {
+                        return Err(ProverError::UnsupportedFieldExtension(2));
+                    }
+                    self.generate_proof::<QuadExtension<Self::BaseField>>(trace).await
                 }
-                self.generate_proof::<QuadExtension<Self::BaseField>>(trace)
-            }
-            FieldExtension::Cubic => {
-                if !<CubeExtension<Self::BaseField>>::is_supported() {
-                    return Err(ProverError::UnsupportedFieldExtension(3));
+                FieldExtension::Cubic => {
+                    if !<CubeExtension<Self::BaseField>>::is_supported() {
+                        return Err(ProverError::UnsupportedFieldExtension(3));
+                    }
+                    self.generate_proof::<CubeExtension<Self::BaseField>>(trace).await
                 }
-                self.generate_proof::<CubeExtension<Self::BaseField>>(trace)
             }
         }
     }
@@ -152,250 +160,261 @@ pub trait AsyncProver {
     /// execution `trace` is valid against this prover's AIR.
     /// TODO: make this function un-callable externally?
     #[doc(hidden)]
-    fn generate_proof<E>(&self, trace: Self::Trace) -> Result<Proof, ProverError>
+    fn generate_proof<E>(
+        &self,
+        trace: Self::Trace,
+    ) -> impl Future<Output = Result<Proof, ProverError>> + Send + Sync
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
-        // 0 ----- instantiate AIR and prover channel ---------------------------------------------
+        async {
+            // 0 ----- instantiate AIR and prover channel ---------------------------------------------
 
-        // serialize public inputs; these will be included in the seed for the public coin
-        let pub_inputs = self.get_pub_inputs(&trace);
-        let pub_inputs_elements = pub_inputs.to_elements();
+            // serialize public inputs; these will be included in the seed for the public coin
+            let pub_inputs = self.get_pub_inputs(&trace);
+            let pub_inputs_elements = pub_inputs.to_elements();
 
-        // create an instance of AIR for the provided parameters. this takes a generic description
-        // of the computation (provided via AIR type), and creates a description of a specific
-        // execution of the computation for the provided public inputs.
-        let air = Self::Air::new(trace.info().clone(), pub_inputs, self.options().clone());
+            // create an instance of AIR for the provided parameters. this takes a generic description
+            // of the computation (provided via AIR type), and creates a description of a specific
+            // execution of the computation for the provided public inputs.
+            let air = Self::Air::new(trace.info().clone(), pub_inputs, self.options().clone());
 
-        // create a channel which is used to simulate interaction between the prover and the
-        // verifier; the channel will be used to commit to values and to draw randomness that
-        // should come from the verifier.
-        let mut channel = ProverChannel::<Self::Air, E, Self::HashFn, Self::RandomCoin>::new(
-            &air,
-            pub_inputs_elements,
-        );
+            // create a channel which is used to simulate interaction between the prover and the
+            // verifier; the channel will be used to commit to values and to draw randomness that
+            // should come from the verifier.
+            let mut channel = ProverChannel::<Self::Air, E, Self::HashFn, Self::RandomCoin>::new(
+                &air,
+                pub_inputs_elements,
+            );
 
-        // 1 ----- Commit to the execution trace --------------------------------------------------
+            // 1 ----- Commit to the execution trace --------------------------------------------------
 
-        // build computation domain; this is used later for polynomial evaluations
-        let lde_domain_size = air.lde_domain_size();
-        let trace_length = air.trace_length();
-        let domain = info_span!("build_domain", trace_length, lde_domain_size)
-            .in_scope(|| StarkDomain::new(&air));
-        assert_eq!(domain.lde_domain_size(), lde_domain_size);
-        assert_eq!(domain.trace_length(), trace_length);
+            // build computation domain; this is used later for polynomial evaluations
+            let lde_domain_size = air.lde_domain_size();
+            let trace_length = air.trace_length();
+            let domain = info_span!("build_domain", trace_length, lde_domain_size)
+                .in_scope(|| StarkDomain::new(&air));
+            assert_eq!(domain.lde_domain_size(), lde_domain_size);
+            assert_eq!(domain.trace_length(), trace_length);
 
-        // commit to the main trace segment
-        let (mut trace_lde, mut trace_polys) = {
-            // extend the main execution trace and build a Merkle tree from the extended trace
-            let _span = info_span!("commit_to_main_trace_segment").entered();
-            let (trace_lde, trace_polys) =
-                self.new_trace_lde(trace.info(), trace.main_segment(), &domain);
+            // commit to the main trace segment
+            let (mut trace_lde, mut trace_polys) = {
+                // extend the main execution trace and build a Merkle tree from the extended trace
+                let _span = info_span!("commit_to_main_trace_segment").entered();
+                let (trace_lde, trace_polys) =
+                    self.new_trace_lde(trace.info(), trace.main_segment(), &domain);
 
-            // get the commitment to the main trace segment LDE
-            let main_trace_root = trace_lde.get_main_trace_commitment();
+                // get the commitment to the main trace segment LDE
+                let main_trace_root = trace_lde.get_main_trace_commitment();
 
-            // commit to the LDE of the main trace by writing the root of its Merkle tree into
-            // the channel
-            channel.commit_trace(main_trace_root);
+                // commit to the LDE of the main trace by writing the root of its Merkle tree into
+                // the channel
+                channel.commit_trace(main_trace_root);
 
-            (trace_lde, trace_polys)
-        };
-
-        // build the auxiliary trace segment, and append the resulting segments to trace commitment
-        // and trace polynomial table structs
-        let aux_trace_with_metadata = if air.trace_info().is_multi_segment() {
-            let aux_trace_with_metadata = self.build_aux_trace(&trace, channel.public_coin());
-
-            // commit to the auxiliary trace segment
-            let aux_segment_polys = {
-                // extend the auxiliary trace segment and build a Merkle tree from the extended
-                // trace
-                let span = info_span!("commit_to_aux_trace_segment").entered();
-                let (aux_segment_polys, aux_segment_root) =
-                    trace_lde.set_aux_trace(&aux_trace_with_metadata.aux_trace, &domain);
-
-                // commit to the LDE of the extended auxiliary trace segment by writing the root of
-                // its Merkle tree into the channel
-                channel.commit_trace(aux_segment_root);
-
-                drop(span);
-                aux_segment_polys
+                (trace_lde, trace_polys)
             };
 
-            trace_polys
-                .add_aux_segment(aux_segment_polys, air.context().lagrange_kernel_aux_column_idx());
+            // build the auxiliary trace segment, and append the resulting segments to trace commitment
+            // and trace polynomial table structs
+            let aux_trace_with_metadata = if air.trace_info().is_multi_segment() {
+                let aux_trace_with_metadata = self.build_aux_trace(&trace, channel.public_coin());
 
-            Some(aux_trace_with_metadata)
-        } else {
-            None
-        };
+                // commit to the auxiliary trace segment
+                let aux_segment_polys = {
+                    // extend the auxiliary trace segment and build a Merkle tree from the extended
+                    // trace
+                    let span = info_span!("commit_to_aux_trace_segment").entered();
+                    let (aux_segment_polys, aux_segment_root) =
+                        trace_lde.set_aux_trace(&aux_trace_with_metadata.aux_trace, &domain);
 
-        // make sure the specified trace (including auxiliary segment) is valid against the AIR.
-        // This checks validity of both, assertions and state transitions. We do this in debug
-        // mode only because this is a very expensive operation.
-        #[cfg(debug_assertions)]
-        trace.validate(&air, aux_trace_with_metadata.as_ref());
+                    // commit to the LDE of the extended auxiliary trace segment by writing the root of
+                    // its Merkle tree into the channel
+                    channel.commit_trace(aux_segment_root);
 
-        // Destructure `aux_trace_with_metadata`.
-        let (aux_trace, aux_rand_elements, aux_proof) = match aux_trace_with_metadata {
-            Some(atm) => (Some(atm.aux_trace), Some(atm.aux_rand_eles), atm.aux_proof),
-            None => (None, None, None),
-        };
+                    drop(span);
+                    aux_segment_polys
+                };
 
-        // drop the main trace and aux trace segment as they are no longer needed
-        drop(trace);
-        drop(aux_trace);
+                trace_polys.add_aux_segment(
+                    aux_segment_polys,
+                    air.context().lagrange_kernel_aux_column_idx(),
+                );
 
-        // 2 ----- evaluate constraints -----------------------------------------------------------
-        // evaluate constraints specified by the AIR over the constraint evaluation domain, and
-        // compute random linear combinations of these evaluations using coefficients drawn from
-        // the channel
-        let ce_domain_size = air.ce_domain_size();
-        let composition_poly_trace =
-            info_span!("evaluate_constraints", ce_domain_size).in_scope(|| {
-                self.new_evaluator(
-                    &air,
-                    aux_rand_elements,
-                    channel.get_constraint_composition_coeffs(),
-                )
-                .evaluate(&trace_lde, &domain)
-            });
-        assert_eq!(composition_poly_trace.num_rows(), ce_domain_size);
+                Some(aux_trace_with_metadata)
+            } else {
+                None
+            };
 
-        // 3 ----- commit to constraint evaluations -----------------------------------------------
-        let (constraint_commitment, composition_poly) = {
-            let span = info_span!("commit_to_constraint_evaluations").entered();
+            // make sure the specified trace (including auxiliary segment) is valid against the AIR.
+            // This checks validity of both, assertions and state transitions. We do this in debug
+            // mode only because this is a very expensive operation.
+            #[cfg(debug_assertions)]
+            trace.validate(&air, aux_trace_with_metadata.as_ref());
 
-            // first, build a commitment to the evaluations of the constraint composition
-            // polynomial columns
-            let (constraint_commitment, composition_poly) = self.build_constraint_commitment::<E>(
-                composition_poly_trace,
-                air.context().num_constraint_composition_columns(),
-                &domain,
-            );
+            // Destructure `aux_trace_with_metadata`.
+            let (aux_trace, aux_rand_elements, aux_proof) = match aux_trace_with_metadata {
+                Some(atm) => (Some(atm.aux_trace), Some(atm.aux_rand_eles), atm.aux_proof),
+                None => (None, None, None),
+            };
 
-            // then, commit to the evaluations of constraints by writing the root of the constraint
-            // Merkle tree into the channel
-            channel.commit_constraints(constraint_commitment.root());
+            // drop the main trace and aux trace segment as they are no longer needed
+            drop(trace);
+            drop(aux_trace);
 
-            drop(span);
-            (constraint_commitment, composition_poly)
-        };
+            // 2 ----- evaluate constraints -----------------------------------------------------------
+            // evaluate constraints specified by the AIR over the constraint evaluation domain, and
+            // compute random linear combinations of these evaluations using coefficients drawn from
+            // the channel
+            let ce_domain_size = air.ce_domain_size();
+            let composition_poly_trace = info_span!("evaluate_constraints", ce_domain_size)
+                .in_scope(|| {
+                    self.new_evaluator(
+                        &air,
+                        aux_rand_elements,
+                        channel.get_constraint_composition_coeffs(),
+                    )
+                    .evaluate(&trace_lde, &domain)
+                });
+            assert_eq!(composition_poly_trace.num_rows(), ce_domain_size);
 
-        // 4 ----- build DEEP composition polynomial ----------------------------------------------
-        let deep_composition_poly = {
-            let span = info_span!("build_deep_composition_poly").entered();
-            // draw an out-of-domain point z. Depending on the type of E, the point is drawn either
-            // from the base field or from an extension field defined by E.
-            //
-            // The purpose of sampling from the extension field here (instead of the base field) is
-            // to increase security. Soundness is limited by the size of the field that the random
-            // point is drawn from, and we can potentially save on performance by only drawing this
-            // point from an extension field, rather than increasing the size of the field overall.
-            let z = channel.get_ood_point();
+            // 3 ----- commit to constraint evaluations -----------------------------------------------
+            let (constraint_commitment, composition_poly) = {
+                let span = info_span!("commit_to_constraint_evaluations").entered();
 
-            // evaluate trace and constraint polynomials at the OOD point z, and send the results to
-            // the verifier. the trace polynomials are actually evaluated over two points: z and z *
-            // g, where g is the generator of the trace domain. Additionally, if the Lagrange kernel
-            // auxiliary column is present, we also evaluate that column over the points: z, z * g,
-            // z * g^2, z * g^4, ..., z * g^(2^(v-1)), where v = log(trace_len).
-            let ood_trace_states = trace_polys.get_ood_frame(z);
-            channel.send_ood_trace_states(&ood_trace_states);
+                // first, build a commitment to the evaluations of the constraint composition
+                // polynomial columns
+                let (constraint_commitment, composition_poly) = self
+                    .build_constraint_commitment::<E>(
+                        composition_poly_trace,
+                        air.context().num_constraint_composition_columns(),
+                        &domain,
+                    );
 
-            let ood_evaluations = composition_poly.evaluate_at(z);
-            channel.send_ood_constraint_evaluations(&ood_evaluations);
+                // then, commit to the evaluations of constraints by writing the root of the constraint
+                // Merkle tree into the channel
+                channel.commit_constraints(constraint_commitment.root());
 
-            // draw random coefficients to use during DEEP polynomial composition, and use them to
-            // initialize the DEEP composition polynomial
-            let deep_coefficients = channel.get_deep_composition_coeffs();
-            let mut deep_composition_poly = DeepCompositionPoly::new(z, deep_coefficients);
+                drop(span);
+                (constraint_commitment, composition_poly)
+            };
 
-            // combine all trace polynomials together and merge them into the DEEP composition
-            // polynomial
-            deep_composition_poly.add_trace_polys(trace_polys, ood_trace_states);
+            // 4 ----- build DEEP composition polynomial ----------------------------------------------
+            let deep_composition_poly = {
+                let span = info_span!("build_deep_composition_poly").entered();
+                // draw an out-of-domain point z. Depending on the type of E, the point is drawn either
+                // from the base field or from an extension field defined by E.
+                //
+                // The purpose of sampling from the extension field here (instead of the base field) is
+                // to increase security. Soundness is limited by the size of the field that the random
+                // point is drawn from, and we can potentially save on performance by only drawing this
+                // point from an extension field, rather than increasing the size of the field overall.
+                let z = channel.get_ood_point();
 
-            // merge columns of constraint composition polynomial into the DEEP composition
-            // polynomial
-            deep_composition_poly.add_composition_poly(composition_poly, ood_evaluations);
+                // evaluate trace and constraint polynomials at the OOD point z, and send the results to
+                // the verifier. the trace polynomials are actually evaluated over two points: z and z *
+                // g, where g is the generator of the trace domain. Additionally, if the Lagrange kernel
+                // auxiliary column is present, we also evaluate that column over the points: z, z * g,
+                // z * g^2, z * g^4, ..., z * g^(2^(v-1)), where v = log(trace_len).
+                let ood_trace_states = trace_polys.get_ood_frame(z);
+                channel.send_ood_trace_states(&ood_trace_states);
 
-            event!(Level::DEBUG, "degree: {}", deep_composition_poly.degree());
+                let ood_evaluations = composition_poly.evaluate_at(z);
+                channel.send_ood_constraint_evaluations(&ood_evaluations);
 
-            drop(span);
-            deep_composition_poly
-        };
+                // draw random coefficients to use during DEEP polynomial composition, and use them to
+                // initialize the DEEP composition polynomial
+                let deep_coefficients = channel.get_deep_composition_coeffs();
+                let mut deep_composition_poly = DeepCompositionPoly::new(z, deep_coefficients);
 
-        // make sure the degree of the DEEP composition polynomial is equal to trace polynomial
-        // degree minus 1.
-        assert_eq!(trace_length - 2, deep_composition_poly.degree());
+                // combine all trace polynomials together and merge them into the DEEP composition
+                // polynomial
+                deep_composition_poly.add_trace_polys(trace_polys, ood_trace_states);
 
-        // 5 ----- evaluate DEEP composition polynomial over LDE domain ---------------------------
-        let deep_evaluations = {
-            let span = info_span!("evaluate_deep_composition_poly").entered();
-            let deep_evaluations = deep_composition_poly.evaluate(&domain);
-            // we check the following condition in debug mode only because infer_degree is an
-            // expensive operation
-            debug_assert_eq!(trace_length - 2, infer_degree(&deep_evaluations, domain.offset()));
+                // merge columns of constraint composition polynomial into the DEEP composition
+                // polynomial
+                deep_composition_poly.add_composition_poly(composition_poly, ood_evaluations);
 
-            drop(span);
-            deep_evaluations
-        };
+                event!(Level::DEBUG, "degree: {}", deep_composition_poly.degree());
 
-        // 6 ----- compute FRI layers for the composition polynomial ------------------------------
-        let fri_options = air.options().to_fri_options();
-        let num_layers = fri_options.num_fri_layers(lde_domain_size);
-        let mut fri_prover = FriProver::new(fri_options);
-        info_span!("compute_fri_layers", num_layers)
-            .in_scope(|| fri_prover.build_layers(&mut channel, deep_evaluations));
+                drop(span);
+                deep_composition_poly
+            };
 
-        // 7 ----- determine query positions ------------------------------------------------------
-        let query_positions = {
-            let grinding_factor = air.options().grinding_factor();
-            let num_positions = air.options().num_queries();
-            let span =
-                info_span!("determine_query_positions", grinding_factor, num_positions,).entered();
+            // make sure the degree of the DEEP composition polynomial is equal to trace polynomial
+            // degree minus 1.
+            assert_eq!(trace_length - 2, deep_composition_poly.degree());
 
-            // apply proof-of-work to the query seed
-            channel.grind_query_seed();
+            // 5 ----- evaluate DEEP composition polynomial over LDE domain ---------------------------
+            let deep_evaluations = {
+                let span = info_span!("evaluate_deep_composition_poly").entered();
+                let deep_evaluations = deep_composition_poly.evaluate(&domain);
+                // we check the following condition in debug mode only because infer_degree is an
+                // expensive operation
+                debug_assert_eq!(
+                    trace_length - 2,
+                    infer_degree(&deep_evaluations, domain.offset())
+                );
 
-            // generate pseudo-random query positions
-            let query_positions = channel.get_query_positions();
-            event!(Level::DEBUG, "query_positions_len: {}", query_positions.len());
+                drop(span);
+                deep_evaluations
+            };
 
-            drop(span);
-            query_positions
-        };
+            // 6 ----- compute FRI layers for the composition polynomial ------------------------------
+            let fri_options = air.options().to_fri_options();
+            let num_layers = fri_options.num_fri_layers(lde_domain_size);
+            let mut fri_prover = FriProver::new(fri_options);
+            info_span!("compute_fri_layers", num_layers)
+                .in_scope(|| fri_prover.build_layers(&mut channel, deep_evaluations));
 
-        // 8 ----- build proof object -------------------------------------------------------------
-        let proof = {
-            let span = info_span!("build_proof_object").entered();
-            // generate FRI proof
-            let fri_proof = fri_prover.build_proof(&query_positions);
+            // 7 ----- determine query positions ------------------------------------------------------
+            let query_positions = {
+                let grinding_factor = air.options().grinding_factor();
+                let num_positions = air.options().num_queries();
+                let span = info_span!("determine_query_positions", grinding_factor, num_positions,)
+                    .entered();
 
-            // query the execution trace at the selected position; for each query, we need the
-            // state of the trace at that position + Merkle authentication path
-            let trace_queries = trace_lde.query(&query_positions);
+                // apply proof-of-work to the query seed
+                channel.grind_query_seed();
 
-            // query the constraint commitment at the selected positions; for each query, we need
-            // just a Merkle authentication path. this is because constraint evaluations for each
-            // step are merged into a single value and Merkle authentication paths contain these
-            // values already
-            let constraint_queries = constraint_commitment.query(&query_positions);
+                // generate pseudo-random query positions
+                let query_positions = channel.get_query_positions();
+                event!(Level::DEBUG, "query_positions_len: {}", query_positions.len());
 
-            // build the proof object
-            let proof = channel.build_proof(
-                trace_queries,
-                constraint_queries,
-                fri_proof,
-                query_positions.len(),
-                aux_proof.map(|aux_proof| aux_proof.to_bytes()),
-            );
+                drop(span);
+                query_positions
+            };
 
-            drop(span);
-            proof
-        };
+            // 8 ----- build proof object -------------------------------------------------------------
+            let proof = {
+                let span = info_span!("build_proof_object").entered();
+                // generate FRI proof
+                let fri_proof = fri_prover.build_proof(&query_positions);
 
-        Ok(proof)
+                // query the execution trace at the selected position; for each query, we need the
+                // state of the trace at that position + Merkle authentication path
+                let trace_queries = trace_lde.query(&query_positions);
+
+                // query the constraint commitment at the selected positions; for each query, we need
+                // just a Merkle authentication path. this is because constraint evaluations for each
+                // step are merged into a single value and Merkle authentication paths contain these
+                // values already
+                let constraint_queries = constraint_commitment.query(&query_positions);
+
+                // build the proof object
+                let proof = channel.build_proof(
+                    trace_queries,
+                    constraint_queries,
+                    fri_proof,
+                    query_positions.len(),
+                    aux_proof.map(|aux_proof| aux_proof.to_bytes()),
+                );
+
+                drop(span);
+                proof
+            };
+
+            Ok(proof)
+        }
     }
 
     /// Extends constraint composition polynomial over the LDE domain and builds a commitment to
