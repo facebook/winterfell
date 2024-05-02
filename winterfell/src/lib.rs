@@ -264,7 +264,7 @@
 //! };
 //!
 //! # use winterfell::{
-//! #   Air, AirContext, Assertion, AuxRandElementsProver, ByteWriter, DefaultConstraintEvaluator,
+//! #   Air, AirContext, Assertion, ProverAuxRandElements, ByteWriter, DefaultConstraintEvaluator,
 //! #   EvaluationFrame, TraceInfo, TransitionConstraintDegree,
 //! # };
 //! #
@@ -376,7 +376,7 @@
 //!     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
 //!         &self,
 //!         air: &'a Self::Air,
-//!         aux_rand_elements: Option<AuxRandElementsProver<Self, E>>,
+//!         aux_rand_elements: Option<ProverAuxRandElements<Self, E>>,
 //!         composition_coefficients: winterfell::ConstraintCompositionCoefficients<E>,
 //!     ) -> Self::ConstraintEvaluator<'a, E> {
 //!         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
@@ -396,7 +396,7 @@
 //! #    crypto::{hashers::Blake3_256, DefaultRandomCoin},
 //! #    math::{fields::f128::BaseElement, FieldElement, ToElements},
 //! #    matrix::ColMatrix,
-//! #    Air, AirContext, Assertion, AuxRandElementsProver, ByteWriter, DefaultConstraintEvaluator,
+//! #    Air, AirContext, Assertion, ProverAuxRandElements, ByteWriter, DefaultConstraintEvaluator,
 //! #    DefaultTraceLde, EvaluationFrame, TraceInfo, TransitionConstraintDegree,
 //! #    TraceTable, FieldExtension, Prover, ProofOptions, StarkDomain, Proof, Trace, TracePolyTable,
 //! # };
@@ -517,7 +517,7 @@
 //! #    fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
 //! #        &self,
 //! #        air: &'a Self::Air,
-//! #        aux_rand_elements: Option<AuxRandElementsProver<Self, E>>,
+//! #        aux_rand_elements: Option<ProverAuxRandElements<Self, E>>,
 //! #        composition_coefficients: winterfell::ConstraintCompositionCoefficients<E>,
 //! #    ) -> Self::ConstraintEvaluator<'a, E> {
 //! #        DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
