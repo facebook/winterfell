@@ -21,15 +21,15 @@ use winterfell::{
 /// In order to demonstrate the power of RAPs, the two hash chains have seeds that are
 /// permutations of each other.
 pub struct RescueRapsProver<H: ElementHasher> {
-    aux_segment_width: usize,
+    num_aux_rand_elements: usize,
     options: ProofOptions,
     _hasher: PhantomData<H>,
 }
 
 impl<H: ElementHasher> RescueRapsProver<H> {
-    pub fn new(aux_segment_width: usize, options: ProofOptions) -> Self {
+    pub fn new(num_aux_rand_elements: usize, options: ProofOptions) -> Self {
         Self {
-            aux_segment_width,
+            num_aux_rand_elements,
             options,
             _hasher: PhantomData,
         }
@@ -152,8 +152,8 @@ where
     {
         let main_trace = main_trace.main_segment();
         let rand_elements = {
-            let mut rand_elements = Vec::with_capacity(self.aux_segment_width);
-            for _ in 0..self.aux_segment_width {
+            let mut rand_elements = Vec::with_capacity(self.num_aux_rand_elements);
+            for _ in 0..self.num_aux_rand_elements {
                 rand_elements.push(transcript.draw().unwrap());
             }
 
@@ -163,7 +163,8 @@ where
         let mut current_row = unsafe { uninit_vector(main_trace.num_cols()) };
         let mut next_row = unsafe { uninit_vector(main_trace.num_cols()) };
         main_trace.read_row_into(0, &mut current_row);
-        let mut aux_columns = vec![vec![E::ZERO; main_trace.num_rows()]; self.aux_segment_width];
+        let mut aux_columns =
+            vec![vec![E::ZERO; main_trace.num_rows()]; self.num_aux_rand_elements];
 
         // Columns storing the copied values for the permutation argument are not necessary, but
         // help understanding the construction of RAPs and are kept for illustrative purposes.
