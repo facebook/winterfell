@@ -43,8 +43,8 @@ const MAX_PROXIMITY_PARAMETER: u64 = 1000;
 ///
 /// A STARK proof contains information proving that a computation was executed correctly. A proof
 /// also contains basic metadata for the computation, but neither the definition of the computation
-/// itself, nor public inputs consumed by the computation are contained in a proof. 
-/// 
+/// itself, nor public inputs consumed by the computation are contained in a proof.
+///
 /// Optionally, it may contain an non-STARK auxiliary proof. The auxiliary proof object gives the
 /// possibility to prove some auxiliary trace constraints using a non-STARK proving system. For
 /// example, [Improving logarithmic derivative lookups using
