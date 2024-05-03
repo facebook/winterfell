@@ -26,4 +26,4 @@ The number of threads can be configured via `RAYON_NUM_THREADS` environment vari
 License
 -------
 
-This project is [MIT licensed](../LICENSE).
+This project is [MIT licensed](../../LICENSE).

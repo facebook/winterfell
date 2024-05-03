@@ -6,4 +6,4 @@ When compiled to WebAssembly target, all of the functions are omitted.
 License
 -------
 
-This project is [MIT licensed](../LICENSE).
+This project is [MIT licensed](../../LICENSE).

@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "utils/core",
+  "utils/maybe_async",
   "utils/rand",
   "math",
   "crypto",
@@ -9,7 +10,7 @@ members = [
   "prover",
   "verifier",
   "winterfell",
-  "examples"
+  "examples",
 ]
 resolver = "2"
 
