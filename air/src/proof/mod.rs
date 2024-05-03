@@ -43,12 +43,13 @@ const MAX_PROXIMITY_PARAMETER: u64 = 1000;
 ///
 /// A STARK proof contains information proving that a computation was executed correctly. A proof
 /// also contains basic metadata for the computation, but neither the definition of the computation
-/// itself, nor public inputs consumed by the computation are contained in a proof. Optionally, it
-/// may contain an non-STARK auxiliary proof. The auxiliary proof object gives the possibility to
-/// prove some auxiliary trace constraints using a non-STARK proving system. For example, [Improving
-/// logarithmic derivative lookups using GKR](https://eprint.iacr.org/2023/1284.pdf) presents a
-/// technique for proving the constraints of a virtual machine's LogUp bus using GKR. In this case,
-/// `aux_proof` would contain a GKR proof.
+/// itself, nor public inputs consumed by the computation are contained in a proof. 
+/// 
+/// Optionally, it may contain an non-STARK auxiliary proof. The auxiliary proof object gives the
+/// possibility to prove some auxiliary trace constraints using a non-STARK proving system. For
+/// example, [Improving logarithmic derivative lookups using
+/// GKR](https://eprint.iacr.org/2023/1284.pdf) presents a technique for proving the constraints of
+/// a virtual machine's LogUp bus using GKR. In this case, `aux_proof` would contain a GKR proof.
 ///
 /// A proof can be serialized into a sequence of bytes using [to_bytes()](Proof::to_bytes) function,
 /// and deserialized from a sequence of bytes using [from_bytes()](Proof::from_bytes) function.
