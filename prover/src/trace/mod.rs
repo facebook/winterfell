@@ -19,6 +19,11 @@ pub use trace_table::{TraceTable, TraceTableFragment};
 #[cfg(test)]
 mod tests;
 
+/// Defines an [`AuxTraceWithMetadata`] type where the type arguments use their equivalents in an
+/// [`Air`].
+type AirAuxTraceWithMetadata<A, E> =
+    AuxTraceWithMetadata<E, <A as Air>::AuxRandElements<E>, <A as Air>::AuxProof>;
+
 // AUX TRACE WITH METADATA
 // ================================================================================================
 
@@ -88,9 +93,7 @@ pub trait Trace: Sized {
     fn validate<A, E>(
         &self,
         air: &A,
-        aux_trace_with_metadata: Option<
-            &AuxTraceWithMetadata<E, <A as Air>::AuxRandElements<E>, <A as Air>::AuxProof>,
-        >,
+        aux_trace_with_metadata: Option<&AirAuxTraceWithMetadata<A, E>>,
     ) where
         A: Air<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField>,
