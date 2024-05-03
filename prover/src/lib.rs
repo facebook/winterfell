@@ -288,7 +288,7 @@ pub trait Prover {
         // commit to the main trace segment
         let (mut trace_lde, mut trace_polys) = {
             // extend the main execution trace and build a Merkle tree from the extended trace
-            let _span = info_span!("commit_to_main_trace_segment").entered();
+            let span = info_span!("commit_to_main_trace_segment").entered();
             let (trace_lde, trace_polys) =
                 self.new_trace_lde(trace.info(), trace.main_segment(), &domain);
 
@@ -298,6 +298,8 @@ pub trait Prover {
             // commit to the LDE of the main trace by writing the root of its Merkle tree into
             // the channel
             channel.commit_trace(main_trace_root);
+
+            drop(span);
 
             (trace_lde, trace_polys)
         };
