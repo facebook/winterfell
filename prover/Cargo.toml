@@ -35,7 +35,7 @@ async-trait = { version = "0.1.80", optional = true }
 crypto = { version = "0.8", path = "../crypto", package = "winter-crypto", default-features = false }
 fri = { version = "0.8", path = '../fri', package = "winter-fri", default-features = false }
 math = { version = "0.8", path = "../math", package = "winter-math", default-features = false }
-maybe_async = { version = "0.8", path = "../utils/maybe_async" }
+maybe_async = { version = "0.8", path = "../utils/maybe_async", package = "winter-maybe-async"}
 tracing = { version = "0.1", default-features = false }
 utils = { version = "0.8", path = "../utils/core", package = "winter-utils", default-features = false }
 
