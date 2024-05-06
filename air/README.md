@@ -81,7 +81,7 @@ To describe Randomized AIR, you will need to do the following when implementing 
 4. Blowup factor - higher values increase proof security, but also increase proof generation time and proof size. However, higher blowup factors require fewer queries for the same security level. Thus, it is frequently possible to increase blowup factor and at the same time decrease the number of queries in such a way that the proofs become smaller.
 5. Grinding factor - higher values increase proof security, but also may increase proof generation time.
 
-See [options.rs](src/options.rs) for more info on currently available options and their meaning. Additionally, security level of a proof can be estimated using `StarkProof::security_level()` function.
+See [options.rs](src/options.rs) for more info on currently available options and their meaning. Additionally, security level of a proof can be estimated using `Proof::security_level()` function.
 
 ## Crate features
 This crate can be compiled with the following features:

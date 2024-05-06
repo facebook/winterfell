@@ -26,9 +26,9 @@
 //! 3. Execute your computation and record its execution trace.
 //! 4. Define your prover by implementing [Prover] trait. Then execute [Prover::prove()] function
 //!    passing the trace generated in the previous step into it as a parameter. The function will
-//!    return a instance of [StarkProof].
+//!    return a instance of [Proof].
 //!
-//! This [StarkProof] can be serialized and sent to a STARK verifier for verification. The size
+//! This [Proof] can be serialized and sent to a STARK verifier for verification. The size
 //! of proof depends on the specifics of a given computation, but for most computations it should
 //! be in the range between 15 KB (for very small computations) and 300 KB (for very large
 //! computations).
@@ -42,10 +42,11 @@
 #[macro_use]
 extern crate alloc;
 
+use air::AuxRandElements;
 pub use air::{
-    proof, proof::StarkProof, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
-    BoundaryConstraintGroup, ConstraintCompositionCoefficients, ConstraintDivisor,
-    DeepCompositionCoefficients, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo,
+    proof, proof::Proof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
+    ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
+    EvaluationFrame, FieldExtension, LagrangeKernelRandElements, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
 use tracing::{event, info_span, Level};
@@ -82,7 +83,10 @@ mod composer;
 use composer::DeepCompositionPoly;
 
 mod trace;
-pub use trace::{DefaultTraceLde, Trace, TraceLde, TracePolyTable, TraceTable, TraceTableFragment};
+pub use trace::{
+    AuxTraceWithMetadata, DefaultTraceLde, Trace, TraceLde, TracePolyTable, TraceTable,
+    TraceTableFragment,
+};
 
 mod channel;
 use channel::ProverChannel;
@@ -98,6 +102,9 @@ pub mod tests;
 
 // this segment width seems to give the best performance for small fields (i.e., 64 bits)
 const DEFAULT_SEGMENT_WIDTH: usize = 8;
+
+/// Accesses the `GkrProof` type in a [`Prover`].
+pub type ProverGkrProof<P> = <<P as Prover>::Air as Air>::GkrProof;
 
 /// Defines a STARK prover for a computation.
 ///
@@ -182,7 +189,7 @@ pub trait Prover {
     fn new_evaluator<'a, E>(
         &self,
         air: &'a Self::Air,
-        aux_rand_elements: AuxTraceRandElements<E>,
+        aux_rand_elements: Option<AuxRandElements<E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E>
     where
@@ -191,14 +198,41 @@ pub trait Prover {
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
 
+    /// Builds the GKR proof. If the [`Air`] doesn't use a GKR proof, leave unimplemented.
+    #[allow(unused_variables)]
+    fn generate_gkr_proof<E>(
+        &self,
+        main_trace: &Self::Trace,
+        public_coin: &mut Self::RandomCoin,
+    ) -> (ProverGkrProof<Self>, LagrangeKernelRandElements<E>)
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        unimplemented!("`Prover::generate_gkr_proof` needs to be implemented when the auxiliary trace has a Lagrange kernel column.")
+    }
+
+    /// Builds and returns the auxiliary trace.
+    #[allow(unused_variables)]
+    fn build_aux_trace<E>(
+        &self,
+        main_trace: &Self::Trace,
+        aux_rand_elements: &AuxRandElements<E>,
+    ) -> ColMatrix<E>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        unimplemented!("`Prover::build_aux_trace` needs to be implemented when the trace has an auxiliary segment.")
+    }
+
     /// Returns a STARK proof attesting to a correct execution of a computation defined by the
     /// provided trace.
     ///
-    /// The returned [StarkProof] attests that the specified `trace` is a valid execution trace of
-    /// the computation described by [Self::Air](Prover::Air) and generated using some set of
-    /// secret and public inputs. Public inputs must match the value returned from
+    /// The returned [Proof] attests that the specified `trace` is a valid execution trace of the
+    /// computation described by [Self::Air](Prover::Air) and generated using some set of secret and
+    /// public inputs. It may also contain a GKR proof, further documented in [`Proof`].
+    /// Public inputs must match the value returned from
     /// [Self::get_pub_inputs()](Prover::get_pub_inputs) for the provided trace.
-    fn prove(&self, trace: Self::Trace) -> Result<StarkProof, ProverError> {
+    fn prove(&self, trace: Self::Trace) -> Result<Proof, ProverError> {
         // figure out which version of the generic proof generation procedure to run. this is a sort
         // of static dispatch for selecting two generic parameter: extension field and hash
         // function.
@@ -226,7 +260,7 @@ pub trait Prover {
     /// execution `trace` is valid against this prover's AIR.
     /// TODO: make this function un-callable externally?
     #[doc(hidden)]
-    fn generate_proof<E>(&self, mut trace: Self::Trace) -> Result<StarkProof, ProverError>
+    fn generate_proof<E>(&self, trace: Self::Trace) -> Result<Proof, ProverError>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
@@ -274,36 +308,32 @@ pub trait Prover {
             channel.commit_trace(main_trace_root);
 
             drop(span);
+
             (trace_lde, trace_polys)
         };
 
-        // build the auxiliary trace segment (if any), and append the resulting segments to trace
-        // commitment and trace polynomial table structs
-        let mut aux_trace_segment: Option<ColMatrix<E>> = None;
-        let mut aux_trace_rand_elements = AuxTraceRandElements::new();
-        if trace.info().is_multi_segment() {
-            let num_columns = trace.info().get_aux_segment_width();
-            let (aux_segment, rand_elements) = {
-                let span = info_span!("build_aux_trace_segment", num_columns).entered();
+        // build the auxiliary trace segment, and append the resulting segments to trace commitment
+        // and trace polynomial table structs
+        let aux_trace_with_metadata = if air.trace_info().is_multi_segment() {
+            let (gkr_proof, lagrange_rand_elements) =
+                if air.context().has_lagrange_kernel_aux_column() {
+                    let (gkr_proof, lagrange_rand_elements) =
+                        self.generate_gkr_proof(&trace, channel.public_coin());
 
-                // draw a set of random elements required to build the auxiliary trace segment
-                let rand_elements = channel.get_aux_trace_segment_rand_elements();
-                let lagrange_rand_elements = if air.context().has_lagrange_kernel_aux_column() {
-                    Some(rand_elements.as_ref())
+                    (Some(gkr_proof), Some(lagrange_rand_elements))
                 } else {
-                    None
+                    (None, None)
                 };
 
-                // build the trace segment
-                let aux_segment = trace
-                    .build_aux_segment(&rand_elements, lagrange_rand_elements)
-                    .expect("failed build auxiliary trace segment");
+            let aux_rand_elements = {
+                let rand_elements = air
+                    .get_aux_rand_elements(channel.public_coin())
+                    .expect("failed to draw random elements for the auxiliary trace segment");
 
-                drop(span);
-                (aux_segment, rand_elements)
+                AuxRandElements::new_with_lagrange(rand_elements, lagrange_rand_elements)
             };
-            assert_eq!(aux_segment.num_cols(), num_columns);
-            assert_eq!(aux_segment.num_rows(), trace_length);
+
+            let aux_trace = self.build_aux_trace(&trace, &aux_rand_elements);
 
             // commit to the auxiliary trace segment
             let aux_segment_polys = {
@@ -311,7 +341,7 @@ pub trait Prover {
                 // trace
                 let span = info_span!("commit_to_aux_trace_segment").entered();
                 let (aux_segment_polys, aux_segment_root) =
-                    trace_lde.set_aux_trace(&aux_segment, &domain);
+                    trace_lde.set_aux_trace(&aux_trace, &domain);
 
                 // commit to the LDE of the extended auxiliary trace segment by writing the root of
                 // its Merkle tree into the channel
@@ -323,19 +353,31 @@ pub trait Prover {
 
             trace_polys
                 .add_aux_segment(aux_segment_polys, air.context().lagrange_kernel_aux_column_idx());
-            aux_trace_rand_elements.set_segment_elements(rand_elements);
-            aux_trace_segment = Some(aux_segment);
-        }
 
-        // make sure the specified trace (including auxiliary segments) is valid against the AIR.
+            Some(AuxTraceWithMetadata {
+                aux_trace,
+                aux_rand_elements,
+                gkr_proof,
+            })
+        } else {
+            None
+        };
+
+        // make sure the specified trace (including auxiliary segment) is valid against the AIR.
         // This checks validity of both, assertions and state transitions. We do this in debug
         // mode only because this is a very expensive operation.
         #[cfg(debug_assertions)]
-        trace.validate(&air, aux_trace_segment.as_ref(), &aux_trace_rand_elements);
+        trace.validate(&air, aux_trace_with_metadata.as_ref());
 
-        // drop the main trace and aux trace segments as they are no longer needed
+        // Destructure `aux_trace_with_metadata`.
+        let (aux_trace, aux_rand_elements, gkr_proof) = match aux_trace_with_metadata {
+            Some(atm) => (Some(atm.aux_trace), Some(atm.aux_rand_elements), atm.gkr_proof),
+            None => (None, None, None),
+        };
+
+        // drop the main trace and aux trace segment as they are no longer needed
         drop(trace);
-        drop(aux_trace_segment);
+        drop(aux_trace);
 
         // 2 ----- evaluate constraints -----------------------------------------------------------
         // evaluate constraints specified by the AIR over the constraint evaluation domain, and
@@ -346,7 +388,7 @@ pub trait Prover {
             info_span!("evaluate_constraints", ce_domain_size).in_scope(|| {
                 self.new_evaluator(
                     &air,
-                    aux_trace_rand_elements,
+                    aux_rand_elements,
                     channel.get_constraint_composition_coeffs(),
                 )
                 .evaluate(&trace_lde, &domain)
@@ -478,6 +520,7 @@ pub trait Prover {
                 constraint_queries,
                 fri_proof,
                 query_positions.len(),
+                gkr_proof.map(|gkr_proof| gkr_proof.to_bytes()),
             );
 
             drop(span);

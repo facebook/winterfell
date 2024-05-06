@@ -7,7 +7,7 @@ use super::{
     Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
-use crate::{AuxTraceRandElements, FieldExtension};
+use crate::FieldExtension;
 use alloc::{collections::BTreeMap, vec::Vec};
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin};
 use math::{fields::f64::BaseElement, get_power_series, polynom, FieldElement, StarkField};
@@ -102,7 +102,7 @@ fn get_boundary_constraints() {
     // is stable; the original order is just by degree_adjustment
     let mut prng = build_prng();
     let coefficients = (0..8).map(|_| prng.draw().unwrap()).collect::<Vec<BaseElement>>();
-    let constraints = air.get_boundary_constraints(&AuxTraceRandElements::new(), &coefficients);
+    let constraints = air.get_boundary_constraints(None, &coefficients);
     let groups = constraints.main_constraints().to_vec();
 
     assert_eq!(5, groups.len());
@@ -223,6 +223,8 @@ impl MockAir {
 impl Air for MockAir {
     type BaseField = BaseElement;
     type PublicInputs = ();
+    type GkrProof = ();
+    type GkrVerifier = ();
 
     fn new(trace_info: TraceInfo, _pub_inputs: (), _options: ProofOptions) -> Self {
         let num_assertions = trace_info.meta()[0] as usize;

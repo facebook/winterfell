@@ -11,7 +11,7 @@ use tracing::{field, info_span};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, FieldElement},
-    ProofOptions, Prover, StarkProof, Trace, VerifierError,
+    Proof, ProofOptions, Prover, Trace, VerifierError,
 };
 
 mod air;
@@ -87,7 +87,7 @@ impl<H: ElementHasher> Example for Fib8Example<H>
 where
     H: ElementHasher<BaseField = BaseElement>,
 {
-    fn prove(&self) -> StarkProof {
+    fn prove(&self) -> Proof {
         println!(
             "Generating proof for computing Fibonacci sequence (8 terms per step) up to {}th term",
             self.sequence_length
@@ -109,7 +109,7 @@ where
         prover.prove(trace).unwrap()
     }
 
-    fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {
+    fn verify(&self, proof: Proof) -> Result<(), VerifierError> {
         let acceptable_options =
             winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
         winterfell::verify::<Fib8Air, H, DefaultRandomCoin<H>>(
@@ -119,7 +119,7 @@ where
         )
     }
 
-    fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
+    fn verify_with_wrong_inputs(&self, proof: Proof) -> Result<(), VerifierError> {
         let acceptable_options =
             winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
         winterfell::verify::<Fib8Air, H, DefaultRandomCoin<H>>(

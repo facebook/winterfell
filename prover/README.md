@@ -9,9 +9,9 @@ To generate a proof that a computation was executed correctly, you will need to 
 1. Define *algebraic intermediate representation* (AIR) for your computation. This can be done by implementing `Air` trait (see [air crate](../air) for more info).
 2. Define an [execution trace](#Execution-trace) for your computation. This can be done by implementing `Trace` trait. Alternatively, you can use `TraceTable` struct which already implements `Trace` trait in cases when this generic implementation works for your use case.
 3. Execute your computation and record its execution trace.
-4. Define your prover(#Prover) by implementing `Prover` trait. Then execute `Prover::prove()` function passing the trace generated in the previous step into it as a parameter. The function will return a instance of `StarkProof`.
+4. Define your prover(#Prover) by implementing `Prover` trait. Then execute `Prover::prove()` function passing the trace generated in the previous step into it as a parameter. The function will return a instance of `Proof`.
 
-The resulting `StarkProof` object can be serialized and sent to a [verifier](../verifier) for verification. The size of proof depends on the specifics of a given computation, but for most computations it should be in the range between 15 KB (for very small computations) and 300 KB (for very large computations).
+The resulting `Proof` object can be serialized and sent to a [verifier](../verifier) for verification. The size of proof depends on the specifics of a given computation, but for most computations it should be in the range between 15 KB (for very small computations) and 300 KB (for very large computations).
 
 Proof generation time is also highly dependent on the specifics of a given computation, but also depends on the capabilities of the machine used to generate the proofs (i.e. on number of CPU cores and memory bandwidth). For some high level benchmarks, see the [performance](..#Performance) section of the root README.
 

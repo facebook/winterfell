@@ -8,7 +8,7 @@ use super::{
     ProofOptions, Prover,
 };
 use winterfell::{
-    matrix::ColMatrix, AuxTraceRandElements, ConstraintCompositionCoefficients,
+    matrix::ColMatrix, AuxRandElements, ConstraintCompositionCoefficients,
     DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable,
     TraceTable,
 };
@@ -92,7 +92,7 @@ where
     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         air: &'a Self::Air,
-        aux_rand_elements: AuxTraceRandElements<E>,
+        aux_rand_elements: Option<AuxRandElements<E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E> {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)

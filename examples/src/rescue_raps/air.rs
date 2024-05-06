@@ -10,7 +10,7 @@ use super::{
 use crate::utils::{are_equal, not, EvaluationResult};
 use core_utils::flatten_slice_elements;
 use winterfell::{
-    math::ToElements, Air, AirContext, Assertion, AuxTraceRandElements, EvaluationFrame, TraceInfo,
+    math::ToElements, Air, AirContext, Assertion, EvaluationFrame, TraceInfo,
     TransitionConstraintDegree,
 };
 
@@ -58,6 +58,8 @@ pub struct RescueRapsAir {
 impl Air for RescueRapsAir {
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
+    type GkrProof = ();
+    type GkrVerifier = ();
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -159,7 +161,7 @@ impl Air for RescueRapsAir {
         main_frame: &EvaluationFrame<F>,
         aux_frame: &EvaluationFrame<E>,
         periodic_values: &[F],
-        aux_rand_elements: &AuxTraceRandElements<E>,
+        aux_rand_elements: &[E],
         result: &mut [E],
     ) where
         F: FieldElement<BaseField = Self::BaseField>,
@@ -170,8 +172,6 @@ impl Air for RescueRapsAir {
 
         let aux_current = aux_frame.current();
         let aux_next = aux_frame.next();
-
-        let random_elements = aux_rand_elements.get_segment_elements();
 
         let absorption_flag = periodic_values[1];
 
@@ -193,13 +193,13 @@ impl Air for RescueRapsAir {
         // auxiliary one. For the sake of illustrating RAPs behaviour, we will store
         // the computed values in additional columns.
 
-        let copied_value_1 = random_elements[0] * (main_next[0] - main_current[0]).into()
-            + random_elements[1] * (main_next[1] - main_current[1]).into();
+        let copied_value_1 = aux_rand_elements[0] * (main_next[0] - main_current[0]).into()
+            + aux_rand_elements[1] * (main_next[1] - main_current[1]).into();
 
         result.agg_constraint(0, absorption_flag.into(), are_equal(aux_current[0], copied_value_1));
 
-        let copied_value_2 = random_elements[0] * (main_next[4] - main_current[4]).into()
-            + random_elements[1] * (main_next[5] - main_current[5]).into();
+        let copied_value_2 = aux_rand_elements[0] * (main_next[4] - main_current[4]).into()
+            + aux_rand_elements[1] * (main_next[5] - main_current[5]).into();
 
         result.agg_constraint(1, absorption_flag.into(), are_equal(aux_current[1], copied_value_2));
 
@@ -208,8 +208,8 @@ impl Air for RescueRapsAir {
             2,
             E::ONE,
             are_equal(
-                aux_next[2] * (aux_current[1] + random_elements[2]),
-                aux_current[2] * (aux_current[0] + random_elements[2]),
+                aux_next[2] * (aux_current[1] + aux_rand_elements[2]),
+                aux_current[2] * (aux_current[0] + aux_rand_elements[2]),
             ),
         );
     }
@@ -232,10 +232,10 @@ impl Air for RescueRapsAir {
         ]
     }
 
-    fn get_aux_assertions<E: FieldElement + From<Self::BaseField>>(
-        &self,
-        _aux_rand_elements: &AuxTraceRandElements<E>,
-    ) -> Vec<Assertion<E>> {
+    fn get_aux_assertions<E>(&self, _aux_rand_elements: &[E]) -> Vec<Assertion<E>>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
         let last_step = self.trace_length() - 1;
         vec![Assertion::single(2, 0, E::ONE), Assertion::single(2, last_step, E::ONE)]
     }

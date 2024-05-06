@@ -13,7 +13,7 @@
 //! 1. Define an *algebraic intermediate representation* (AIR) for you computation. This can be
 //!    done by implementing [Air] trait.
 //! 2. Execute [verify()] function and supply the AIR of your computation together with the
-//!    [StarkProof] and related public inputs as parameters.
+//!    [Proof] and related public inputs as parameters.
 //!
 //! # Performance
 //! Proof verification is extremely fast and is nearly independent of the complexity of the
@@ -32,12 +32,13 @@
 extern crate alloc;
 
 pub use air::{
-    proof::StarkProof, Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint,
-    BoundaryConstraintGroup, ConstraintCompositionCoefficients, ConstraintDivisor,
-    DeepCompositionCoefficients, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
+    proof::Proof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
+    ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
+    EvaluationFrame, FieldExtension, ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
+use air::{AuxRandElements, GkrVerifier};
 
+use alloc::string::ToString;
 pub use math;
 use math::{
     fields::{CubeExtension, QuadExtension},
@@ -73,6 +74,7 @@ pub use errors::VerifierError;
 
 // VERIFIER
 // ================================================================================================
+
 /// Verifies that the specified computation was executed correctly against the specified inputs.
 ///
 /// Specifically, for a computation specified by `AIR` and `HashFn` type parameter, verifies that
@@ -85,9 +87,8 @@ pub use errors::VerifierError;
 /// - The specified proof was generated for a different computation.
 /// - The specified proof was generated for this computation but for different public inputs.
 /// - The specified proof was generated with parameters not providing an acceptable security level.
-#[rustfmt::skip]
 pub fn verify<AIR, HashFn, RandCoin>(
-    proof: StarkProof,
+    proof: Proof,
     pub_inputs: AIR::PublicInputs,
     acceptable_options: &AcceptableOptions,
 ) -> Result<(), VerifierError>
@@ -116,23 +117,31 @@ where
             let public_coin = RandCoin::new(&public_coin_seed);
             let channel = VerifierChannel::new(&air, proof)?;
             perform_verification::<AIR, AIR::BaseField, HashFn, RandCoin>(air, channel, public_coin)
-        },
+        }
         FieldExtension::Quadratic => {
             if !<QuadExtension<AIR::BaseField>>::is_supported() {
                 return Err(VerifierError::UnsupportedFieldExtension(2));
             }
             let public_coin = RandCoin::new(&public_coin_seed);
             let channel = VerifierChannel::new(&air, proof)?;
-            perform_verification::<AIR, QuadExtension<AIR::BaseField>, HashFn, RandCoin>(air, channel, public_coin)
-        },
+            perform_verification::<AIR, QuadExtension<AIR::BaseField>, HashFn, RandCoin>(
+                air,
+                channel,
+                public_coin,
+            )
+        }
         FieldExtension::Cubic => {
             if !<CubeExtension<AIR::BaseField>>::is_supported() {
                 return Err(VerifierError::UnsupportedFieldExtension(3));
             }
             let public_coin = RandCoin::new(&public_coin_seed);
             let channel = VerifierChannel::new(&air, proof)?;
-            perform_verification::<AIR, CubeExtension<AIR::BaseField>, HashFn, RandCoin>(air, channel, public_coin)
-        },
+            perform_verification::<AIR, CubeExtension<AIR::BaseField>, HashFn, RandCoin>(
+                air,
+                channel,
+                public_coin,
+            )
+        }
     }
 }
 
@@ -146,8 +155,8 @@ fn perform_verification<A, E, H, R>(
     mut public_coin: R,
 ) -> Result<(), VerifierError>
 where
-    A: Air,
     E: FieldElement<BaseField = A::BaseField>,
+    A: Air,
     H: ElementHasher<BaseField = A::BaseField>,
     R: RandomCoin<BaseField = A::BaseField, Hasher = H>,
 {
@@ -160,21 +169,48 @@ where
     // used to draw random elements needed to construct the next trace segment. The last trace
     // commitment is used to draw a set of random coefficients which the prover uses to compute
     // constraint composition polynomial.
+    const MAIN_TRACE_IDX: usize = 0;
+    const AUX_TRACE_IDX: usize = 1;
     let trace_commitments = channel.read_trace_commitments();
 
     // reseed the coin with the commitment to the main trace segment
-    public_coin.reseed(trace_commitments[0]);
+    public_coin.reseed(trace_commitments[MAIN_TRACE_IDX]);
 
-    // process the auxiliary trace segment (if any), to build a set of random elements
-    let mut aux_trace_rand_elements = AuxTraceRandElements::<E>::new();
-    if trace_commitments.len() > 1 {
-        let aux_segment_commitment = trace_commitments[1];
-        let rand_elements = air
-            .get_aux_trace_segment_random_elements(&mut public_coin)
-            .map_err(|_| VerifierError::RandomCoinError)?;
-        aux_trace_rand_elements.set_segment_elements(rand_elements);
-        public_coin.reseed(aux_segment_commitment);
-    }
+    // process auxiliary trace segments (if any), to build a set of random elements for each segment
+    let aux_trace_rand_elements = if air.trace_info().is_multi_segment() {
+        if air.context().has_lagrange_kernel_aux_column() {
+            let gkr_proof = {
+                let gkr_proof_serialized = channel
+                    .read_gkr_proof()
+                    .expect("Expected an a GKR proof because trace has lagrange kernel column");
+
+                Deserializable::read_from_bytes(gkr_proof_serialized)
+                    .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?
+            };
+            let lagrange_rand_elements = air
+                .get_auxiliary_proof_verifier::<E>()
+                .verify::<E, _>(gkr_proof, &mut public_coin)
+                .map_err(|err| VerifierError::GkrProofVerificationFailed(err.to_string()))?;
+
+            let rand_elements = air.get_aux_rand_elements(&mut public_coin).expect(
+                "failed to generate the random elements needed to build the auxiliary trace",
+            );
+
+            public_coin.reseed(trace_commitments[AUX_TRACE_IDX]);
+
+            Some(AuxRandElements::new_with_lagrange(rand_elements, Some(lagrange_rand_elements)))
+        } else {
+            let rand_elements = air.get_aux_rand_elements(&mut public_coin).expect(
+                "failed to generate the random elements needed to build the auxiliary trace",
+            );
+
+            public_coin.reseed(trace_commitments[AUX_TRACE_IDX]);
+
+            Some(AuxRandElements::new(rand_elements))
+        }
+    } else {
+        None
+    };
 
     // build random coefficients for the composition polynomial
     let constraint_coeffs = air
@@ -208,7 +244,7 @@ where
         &ood_main_trace_frame,
         &ood_aux_trace_frame,
         ood_lagrange_kernel_frame,
-        aux_trace_rand_elements,
+        aux_trace_rand_elements.as_ref(),
         z,
     );
     public_coin.reseed(ood_trace_frame.hash::<H>());
@@ -322,7 +358,7 @@ pub enum AcceptableOptions {
 
 impl AcceptableOptions {
     /// Checks that a proof was generated using an acceptable set of parameters.
-    pub fn validate<H: Hasher>(&self, proof: &StarkProof) -> Result<(), VerifierError> {
+    pub fn validate<H: Hasher>(&self, proof: &Proof) -> Result<(), VerifierError> {
         match self {
             AcceptableOptions::MinConjecturedSecurity(minimal_security) => {
                 let proof_security = proof.security_level::<H>(true);

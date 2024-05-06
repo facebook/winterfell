@@ -13,6 +13,8 @@ use core::fmt;
 /// Represents an error returned by the verifier during an execution of the protocol.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VerifierError {
+    /// This error occurs when verifying the GKR proof failed.
+    GkrProofVerificationFailed(String),
     /// This error occurs when base field read by a verifier from a proof does not match the
     /// base field of AIR with which the verifier was instantiated.
     InconsistentBaseField,
@@ -58,6 +60,9 @@ impl fmt::Display for VerifierError {
     #[rustfmt::skip]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::GkrProofVerificationFailed(reason) => {
+                write!(f, "aux trace verification failed: {}", reason)
+            }
             Self::InconsistentBaseField =>  {
                 write!(f, "base field of the proof does not match base field of the specified AIR")
             }
