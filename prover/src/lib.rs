@@ -357,7 +357,7 @@ pub trait Prover {
             Some(AuxTraceWithMetadata {
                 aux_trace,
                 aux_rand_elements,
-                aux_proof,
+                gkr_proof: aux_proof,
             })
         } else {
             None
@@ -371,7 +371,7 @@ pub trait Prover {
 
         // Destructure `aux_trace_with_metadata`.
         let (aux_trace, aux_rand_elements, aux_proof) = match aux_trace_with_metadata {
-            Some(atm) => (Some(atm.aux_trace), Some(atm.aux_rand_elements), atm.aux_proof),
+            Some(atm) => (Some(atm.aux_trace), Some(atm.aux_rand_elements), atm.gkr_proof),
             None => (None, None, None),
         };
 

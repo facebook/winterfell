@@ -32,7 +32,7 @@ type AirAuxTraceWithMetadata<A, E> = AuxTraceWithMetadata<E, <A as Air>::GkrProo
 pub struct AuxTraceWithMetadata<E: FieldElement, GkrProof> {
     pub aux_trace: ColMatrix<E>,
     pub aux_rand_elements: AuxRandElements<E>,
-    pub aux_proof: Option<GkrProof>,
+    pub gkr_proof: Option<GkrProof>,
 }
 
 // TRACE TRAIT
