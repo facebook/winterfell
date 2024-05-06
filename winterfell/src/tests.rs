@@ -12,31 +12,22 @@ use prover::{
 };
 use std::vec;
 use std::vec::Vec;
-use verifier::verify_with_aux_trace;
 
 const AUX_TRACE_WIDTH: usize = 2;
 
 #[test]
 fn test_complex_lagrange_kernel_air() {
     let trace = LagrangeComplexTrace::new(2_usize.pow(10), AUX_TRACE_WIDTH);
-    let log_trace_len = trace.len().ilog2() as usize;
 
     let prover = LagrangeComplexProver::new(AUX_TRACE_WIDTH);
 
     let proof = prover.prove(trace).unwrap();
 
-    verify_with_aux_trace::<
-        BaseElement,
+    verify::<
         LagrangeKernelComplexAir,
-        _,
         Blake3_256<BaseElement>,
         DefaultRandomCoin<Blake3_256<BaseElement>>,
-    >(
-        proof,
-        DummyAuxProofVerifier::new(log_trace_len),
-        (),
-        &AcceptableOptions::MinConjecturedSecurity(0),
-    )
+    >(proof, (), &AcceptableOptions::MinConjecturedSecurity(0))
     .unwrap()
 }
 
@@ -91,32 +82,28 @@ impl Trace for LagrangeComplexTrace {
 // AIR
 // =================================================================================================
 
-struct DummyAuxProofVerifier {
-    log_trace_len: usize,
-}
-
-impl DummyAuxProofVerifier {
-    pub fn new(log_trace_len: usize) -> Self {
-        Self { log_trace_len }
-    }
-}
+#[derive(Debug, Clone, Default)]
+struct DummyAuxProofVerifier;
 
 impl AuxProofVerifier for DummyAuxProofVerifier {
-    type AuxProof = ();
+    // `AuxProof` is log(trace_len) for this dummy example, so that the verifier knows how many aux
+    // random variables to generate
+    type AuxProof = usize;
     type Error = VerifierError;
 
     fn verify<E, Hasher>(
         &self,
-        _aux_proof: Option<Self::AuxProof>,
+        aux_proof: usize,
         public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
     ) -> Result<Option<LagrangeKernelRandElements<E>>, Self::Error>
     where
         E: FieldElement,
         Hasher: crypto::ElementHasher<BaseField = E::BaseField>,
     {
+        let log_trace_len = aux_proof;
         let lagrange_kernel_rand_elements: LagrangeKernelRandElements<E> = {
-            let mut rand_elements = Vec::with_capacity(self.log_trace_len);
-            for _ in 0..self.log_trace_len {
+            let mut rand_elements = Vec::with_capacity(log_trace_len);
+            for _ in 0..log_trace_len {
                 rand_elements.push(public_coin.draw().unwrap());
             }
 
@@ -133,7 +120,10 @@ struct LagrangeKernelComplexAir {
 
 impl Air for LagrangeKernelComplexAir {
     type BaseField = BaseElement;
-    type AuxProof = ();
+    // `AuxProof` is log(trace_len) for this dummy example, so that the verifier knows how many aux
+    // random variables to generate
+    type AuxProof = usize;
+    type AuxProofVerifier = DummyAuxProofVerifier;
 
     type PublicInputs = ();
 
@@ -191,6 +181,12 @@ impl Air for LagrangeKernelComplexAir {
         _aux_rand_elements: &[E],
     ) -> Vec<Assertion<E>> {
         vec![Assertion::single(1, 0, E::ZERO)]
+    }
+
+    fn get_auxiliary_proof_verifier<E: FieldElement<BaseField = Self::BaseField>>(
+        &self,
+    ) -> Self::AuxProofVerifier {
+        DummyAuxProofVerifier
     }
 }
 
@@ -261,8 +257,8 @@ impl Prover for LagrangeComplexProver {
         E: FieldElement<BaseField = Self::BaseField>,
     {
         let main_trace = main_trace.main_segment();
+        let log_trace_len = main_trace.num_rows().ilog2() as usize;
         let lagrange_kernel_rand_elements: Vec<E> = {
-            let log_trace_len = main_trace.num_rows().ilog2() as usize;
             let mut rand_elements = Vec::with_capacity(log_trace_len);
             for _ in 0..log_trace_len {
                 rand_elements.push(public_coin.draw().unwrap());
@@ -271,7 +267,7 @@ impl Prover for LagrangeComplexProver {
             rand_elements
         };
 
-        ((), LagrangeKernelRandElements::new(lagrange_kernel_rand_elements))
+        (log_trace_len, LagrangeKernelRandElements::new(lagrange_kernel_rand_elements))
     }
 
     fn build_aux_trace<E>(

@@ -10,7 +10,7 @@ use super::{
 use crate::utils::{are_equal, is_binary, is_zero, not, EvaluationResult};
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement, StarkField, ToElements},
-    Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
+    Air, AirContext, Assertion, DefaultAuxProofVerifier, EvaluationFrame, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
 
@@ -51,6 +51,7 @@ impl Air for LamportThresholdAir {
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
     type AuxProof = ();
+    type AuxProofVerifier = DefaultAuxProofVerifier;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------

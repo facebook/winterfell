@@ -195,6 +195,9 @@ pub trait Air: Send + Sync {
     /// An auxiliary (i.e. non-STARK) proof object. If not needed, set to `()`.
     type AuxProof: Serializable + Deserializable;
 
+    /// An auxiliary (i.e., non-STARK) verifier for verifying auxiliary proofs. If not needed, set to [`DefaultAuxProofVerifier`].
+    type AuxProofVerifier: AuxProofVerifier<AuxProof = Self::AuxProof>;
+
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
 
@@ -294,6 +297,16 @@ pub trait Air: Send + Sync {
         aux_rand_elements: &[E],
     ) -> Vec<Assertion<E>> {
         Vec::new()
+    }
+
+    // AUXILIARY PROOF VERIFIER
+    // --------------------------------------------------------------------------------------------
+
+    // TODOP: Docs
+    fn get_auxiliary_proof_verifier<E: FieldElement<BaseField = Self::BaseField>>(
+        &self,
+    ) -> Self::AuxProofVerifier {
+        unimplemented!("`get_auxiliary_proof_verifier()` must be implemented when the proof contains an auxiliary proof");
     }
 
     // PROVIDED METHODS

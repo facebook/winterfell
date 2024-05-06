@@ -6,8 +6,8 @@
 use super::{rescue, BaseElement, FieldElement, ProofOptions, CYCLE_LENGTH, TRACE_WIDTH};
 use crate::utils::{are_equal, is_zero, not, EvaluationResult};
 use winterfell::{
-    math::ToElements, Air, AirContext, Assertion, EvaluationFrame, TraceInfo,
-    TransitionConstraintDegree,
+    math::ToElements, Air, AirContext, Assertion, DefaultAuxProofVerifier, EvaluationFrame,
+    TraceInfo, TransitionConstraintDegree,
 };
 
 // CONSTANTS
@@ -59,6 +59,7 @@ impl Air for RescueAir {
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
     type AuxProof = ();
+    type AuxProofVerifier = DefaultAuxProofVerifier;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------

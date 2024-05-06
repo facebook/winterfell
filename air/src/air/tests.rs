@@ -7,7 +7,7 @@ use super::{
     Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
-use crate::FieldExtension;
+use crate::{DefaultAuxProofVerifier, FieldExtension};
 use alloc::{collections::BTreeMap, vec::Vec};
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin};
 use math::{fields::f64::BaseElement, get_power_series, polynom, FieldElement, StarkField};
@@ -224,6 +224,7 @@ impl Air for MockAir {
     type BaseField = BaseElement;
     type PublicInputs = ();
     type AuxProof = ();
+    type AuxProofVerifier = DefaultAuxProofVerifier;
 
     fn new(trace_info: TraceInfo, _pub_inputs: (), _options: ProofOptions) -> Self {
         let num_assertions = trace_info.meta()[0] as usize;

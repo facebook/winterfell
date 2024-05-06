@@ -599,7 +599,7 @@ pub use prover::{
     ProverAuxProof, ProverError, Serializable, SliceReader, StarkDomain, Trace, TraceInfo,
     TraceLde, TracePolyTable, TraceTable, TraceTableFragment, TransitionConstraintDegree,
 };
-pub use verifier::{verify, verify_with_aux_trace, AcceptableOptions, VerifierError};
+pub use verifier::{verify, AcceptableOptions, VerifierError};
 
 #[cfg(test)]
 mod tests;

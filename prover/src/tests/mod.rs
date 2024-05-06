@@ -5,8 +5,8 @@
 
 use crate::TraceTable;
 use air::{
-    Air, AirContext, Assertion, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
+    Air, AirContext, Assertion, DefaultAuxProofVerifier, EvaluationFrame, FieldExtension,
+    ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
 use alloc::vec::Vec;
 use math::{fields::f128::BaseElement, FieldElement, StarkField};
@@ -74,6 +74,7 @@ impl Air for MockAir {
     type BaseField = BaseElement;
     type PublicInputs = ();
     type AuxProof = ();
+    type AuxProofVerifier = DefaultAuxProofVerifier;
 
     fn new(trace_info: TraceInfo, _pub_inputs: (), _options: ProofOptions) -> Self {
         let context = build_context(trace_info, 8, 1);

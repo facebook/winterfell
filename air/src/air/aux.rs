@@ -49,7 +49,7 @@ pub trait AuxProofVerifier {
     /// verifies the auxiliary proof.
     fn verify<E, Hasher>(
         &self,
-        aux_proof: Option<Self::AuxProof>,
+        aux_proof: Self::AuxProof,
         public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
     ) -> Result<Option<LagrangeKernelRandElements<E>>, Self::Error>
     where
@@ -76,15 +76,13 @@ impl AuxProofVerifier for DefaultAuxProofVerifier {
 
     fn verify<E, Hasher>(
         &self,
-        aux_proof: Option<Self::AuxProof>,
+        _aux_proof: Self::AuxProof,
         _public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
     ) -> Result<Option<LagrangeKernelRandElements<E>>, Self::Error>
     where
         E: FieldElement,
         Hasher: ElementHasher<BaseField = E::BaseField>,
     {
-        assert!(aux_proof.is_none());
-
         Ok(None)
     }
 }
