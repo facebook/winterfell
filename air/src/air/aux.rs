@@ -50,14 +50,14 @@ impl<E> AuxRandElements<E> {
 }
 
 // TODOP: Talk more about GKR
-/// A trait for verifying an auxiliary proof.
+/// A trait for verifying a GKR proof.
 pub trait GkrVerifier {
-    /// The auxiliary proof.
+    /// The GKR proof.
     type GkrProof: Deserializable;
-    /// The error that can occur during auxiliary proof verification.
+    /// The error that can occur during GKR proof verification.
     type Error: ToString;
 
-    /// Verifies the auxiliary proof, and returns the random elements that will be used in building
+    /// Verifies the GKR proof, and returns the random elements that will be used in building
     /// the Lagrange kernel auxiliary column.
     fn verify<E, Hasher>(
         &self,

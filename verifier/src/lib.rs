@@ -180,9 +180,9 @@ where
     let aux_trace_rand_elements = if air.trace_info().is_multi_segment() {
         if air.context().has_lagrange_kernel_aux_column() {
             let aux_proof = {
-                let aux_proof_serialized = channel.read_aux_proof().expect(
-                    "Expected an an auxiliary proof because trace has lagrange kernel column",
-                );
+                let aux_proof_serialized = channel
+                    .read_aux_proof()
+                    .expect("Expected an a GKR proof because trace has lagrange kernel column");
 
                 Deserializable::read_from_bytes(aux_proof_serialized)
                     .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?

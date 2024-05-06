@@ -214,9 +214,9 @@ pub trait Prover {
     // TODOP: Fix docs
     /// Builds and returns the auxiliary trace along with extra metadata:
     /// - The random elements drawn and used in generating the auxiliary trace,
-    /// - An auxiliary proof object.
+    /// - A GKR proof object.
     ///
-    /// See [`Proof`] for more information about the auxiliary proof object.
+    /// See [`Proof`] for more information about the GKR proof object.
     #[allow(unused_variables)]
     fn build_aux_trace<E>(
         &self,
@@ -234,7 +234,7 @@ pub trait Prover {
     ///
     /// The returned [Proof] attests that the specified `trace` is a valid execution trace of the
     /// computation described by [Self::Air](Prover::Air) and generated using some set of secret and
-    /// public inputs. It may also contain an auxiliary proof, further documented in [`Proof`].
+    /// public inputs. It may also contain a GKR proof, further documented in [`Proof`].
     /// Public inputs must match the value returned from
     /// [Self::get_pub_inputs()](Prover::get_pub_inputs) for the provided trace.
     fn prove(&self, trace: Self::Trace) -> Result<Proof, ProverError> {

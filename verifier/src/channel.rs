@@ -156,7 +156,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
         self.pow_nonce
     }
 
-    /// Returns the serialized auxiliary proof, if any.
+    /// Returns the serialized GKR proof, if any.
     pub fn read_aux_proof(&self) -> Option<&Vec<u8>> {
         self.aux_proof.as_ref()
     }

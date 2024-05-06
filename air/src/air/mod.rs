@@ -195,7 +195,7 @@ pub trait Air: Send + Sync {
     /// An auxiliary (i.e. non-STARK) proof object. If not needed, set to `()`.
     type GkrProof: Serializable + Deserializable;
 
-    /// An auxiliary (i.e., non-STARK) verifier for verifying auxiliary proofs. If not needed, set to [`DefaultGkrVerifier`].
+    /// An auxiliary (i.e., non-STARK) verifier for verifying GKR proofs. If not needed, set to [`DefaultGkrVerifier`].
     type GkrVerifier: GkrVerifier<GkrProof = Self::GkrProof>;
 
     // REQUIRED METHODS
@@ -304,13 +304,13 @@ pub trait Air: Send + Sync {
     // AUXILIARY PROOF VERIFIER
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the [`GkrVerifier`] to be used to verify the auxiliary proof.
+    /// Returns the [`GkrVerifier`] to be used to verify the GKR proof.
     ///
-    /// Leave unimplemented if the `Air` doesn't use an auxiliary proof.
+    /// Leave unimplemented if the `Air` doesn't use a GKR proof.
     fn get_auxiliary_proof_verifier<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
     ) -> Self::GkrVerifier {
-        unimplemented!("`get_auxiliary_proof_verifier()` must be implemented when the proof contains an auxiliary proof");
+        unimplemented!("`get_auxiliary_proof_verifier()` must be implemented when the proof contains a GKR proof");
     }
 
     // PROVIDED METHODS
