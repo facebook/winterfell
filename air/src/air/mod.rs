@@ -8,6 +8,9 @@ use alloc::{collections::BTreeMap, vec::Vec};
 use crypto::{RandomCoin, RandomCoinError};
 use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElements};
 
+mod aux;
+pub use aux::{AuxRandElements, GkrVerifier};
+
 mod trace_info;
 pub use trace_info::TraceInfo;
 
@@ -26,17 +29,18 @@ pub use transition::{EvaluationFrame, TransitionConstraintDegree, TransitionCons
 mod lagrange;
 pub use lagrange::{
     LagrangeKernelBoundaryConstraint, LagrangeKernelConstraints, LagrangeKernelEvaluationFrame,
-    LagrangeKernelTransitionConstraints,
+    LagrangeKernelRandElements, LagrangeKernelTransitionConstraints,
 };
 
 mod coefficients;
 pub use coefficients::{
-    AuxTraceRandElements, ConstraintCompositionCoefficients, DeepCompositionCoefficients,
+    ConstraintCompositionCoefficients, DeepCompositionCoefficients,
     LagrangeConstraintsCompositionCoefficients,
 };
 
 mod divisor;
 pub use divisor::ConstraintDivisor;
+use utils::{Deserializable, Serializable};
 
 #[cfg(test)]
 mod tests;
@@ -188,6 +192,12 @@ pub trait Air: Send + Sync {
     /// This could be any type as long as it can be serialized into a sequence of field elements.
     type PublicInputs: ToElements<Self::BaseField>;
 
+    /// An GKR proof object. If not needed, set to `()`.
+    type GkrProof: Serializable + Deserializable;
+
+    /// A verifier for verifying GKR proofs. If not needed, set to `()`.
+    type GkrVerifier: GkrVerifier<GkrProof = Self::GkrProof>;
+
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
 
@@ -257,7 +267,7 @@ pub trait Air: Send + Sync {
         main_frame: &EvaluationFrame<F>,
         aux_frame: &EvaluationFrame<E>,
         periodic_values: &[F],
-        aux_rand_elements: &AuxTraceRandElements<E>,
+        aux_rand_elements: &[E],
         result: &mut [E],
     ) where
         F: FieldElement<BaseField = Self::BaseField>,
@@ -268,13 +278,16 @@ pub trait Air: Send + Sync {
 
     /// Returns a set of assertions placed against the auxiliary trace segment.
     ///
-    /// The default implementation of this function returns an empty vector. It should be
-    /// overridden only if the computation relies on the auxiliary trace segment. In such a case,
-    /// the vector returned from this function must contain at least one assertion.
+    /// The default implementation of this function returns an empty vector. It should be overridden
+    /// only if the computation relies on the auxiliary trace segment. In such a case, the vector
+    /// returned from this function must contain at least one assertion.
     ///
     /// The column index for assertions is expected to be zero-based across all auxiliary trace
-    /// segments. That is, assertion against column 0, is an assertion against the first column
-    /// of auxiliary trace segment.
+    /// segments. That is, assertion against column 0, is an assertion against the first column of
+    /// auxiliary trace segment.
+    ///
+    /// `aux_rand_elements` holds the random elements used to build all auxiliary columns except for
+    /// the Lagrange kernel column.
     ///
     /// When the protocol is executed using an extension field, auxiliary assertions are defined
     /// over the extension field. This is in contrast with the assertions returned from
@@ -283,20 +296,49 @@ pub trait Air: Send + Sync {
     #[allow(unused_variables)]
     fn get_aux_assertions<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        aux_rand_elements: &AuxTraceRandElements<E>,
+        aux_rand_elements: &[E],
     ) -> Vec<Assertion<E>> {
         Vec::new()
     }
 
+    // AUXILIARY PROOF VERIFIER
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns the [`GkrVerifier`] to be used to verify the GKR proof.
+    ///
+    /// Leave unimplemented if the `Air` doesn't use a GKR proof.
+    fn get_auxiliary_proof_verifier<E: FieldElement<BaseField = Self::BaseField>>(
+        &self,
+    ) -> Self::GkrVerifier {
+        unimplemented!("`get_auxiliary_proof_verifier()` must be implemented when the proof contains a GKR proof");
+    }
+
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
+
+    /// Returns a vector of field elements required for construction of the auxiliary trace segment
+    /// (except the Lagrange kernel column, if any).
+    ///
+    /// The elements are drawn uniformly at random from the provided public coin.
+    fn get_aux_rand_elements<E, R>(&self, public_coin: &mut R) -> Result<Vec<E>, RandomCoinError>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+        R: RandomCoin<BaseField = Self::BaseField>,
+    {
+        let num_elements = self.trace_info().get_num_aux_segment_rand_elements();
+        let mut rand_elements = Vec::with_capacity(num_elements);
+        for _ in 0..num_elements {
+            rand_elements.push(public_coin.draw()?);
+        }
+        Ok(rand_elements)
+    }
 
     /// Returns a new [`LagrangeKernelConstraints`] if a Lagrange kernel auxiliary column is present
     /// in the trace, or `None` otherwise.
     fn get_lagrange_kernel_constraints<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         lagrange_composition_coefficients: LagrangeConstraintsCompositionCoefficients<E>,
-        lagrange_kernel_rand_elements: &[E],
+        lagrange_kernel_rand_elements: &LagrangeKernelRandElements<E>,
     ) -> Option<LagrangeKernelConstraints<E>> {
         self.context().lagrange_kernel_aux_column_idx().map(|col_idx| {
             LagrangeKernelConstraints::new(
@@ -378,13 +420,15 @@ pub trait Air: Send + Sync {
     /// combination of boundary constraints during constraint merging.
     fn get_boundary_constraints<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        aux_rand_elements: &AuxTraceRandElements<E>,
+        aux_rand_elements: Option<&[E]>,
         composition_coefficients: &[E],
     ) -> BoundaryConstraints<E> {
         BoundaryConstraints::new(
             self.context(),
             self.get_assertions(),
-            self.get_aux_assertions(aux_rand_elements),
+            aux_rand_elements
+                .map(|aux_rand_elements| self.get_aux_assertions(aux_rand_elements))
+                .unwrap_or_default(),
             composition_coefficients,
         )
     }
@@ -474,28 +518,6 @@ pub trait Air: Send + Sync {
     /// to the execution trace domain.
     fn domain_offset(&self) -> Self::BaseField {
         self.context().options.domain_offset()
-    }
-
-    // TRACE SEGMENT RANDOMNESS
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns a vector of field elements required for construction of the auxiliary trace segment.
-    ///
-    /// The elements are drawn uniformly at random from the provided public coin.
-    fn get_aux_trace_segment_random_elements<E, R>(
-        &self,
-        public_coin: &mut R,
-    ) -> Result<Vec<E>, RandomCoinError>
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-        R: RandomCoin<BaseField = Self::BaseField>,
-    {
-        let num_elements = self.trace_info().get_num_aux_segment_rand_elements();
-        let mut result = Vec::with_capacity(num_elements);
-        for _ in 0..num_elements {
-            result.push(public_coin.draw()?);
-        }
-        Ok(result)
     }
 
     // LINEAR COMBINATION COEFFICIENTS

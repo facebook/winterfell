@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use air::{
-    proof::{Commitments, Context, OodFrame, Queries, StarkProof, TraceOodFrame},
+    proof::{Commitments, Context, OodFrame, Proof, Queries, TraceOodFrame},
     Air, ConstraintCompositionCoefficients, DeepCompositionCoefficients,
 };
 use alloc::vec::Vec;
@@ -100,13 +100,9 @@ where
     // PUBLIC COIN METHODS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a set of random elements required for constructing the auxiliary trace segment.
-    ///
-    /// The elements are drawn from the public coin uniformly at random.
-    pub fn get_aux_trace_segment_rand_elements(&mut self) -> Vec<E> {
-        self.air
-            .get_aux_trace_segment_random_elements(&mut self.public_coin)
-            .expect("failed to draw random elements for the auxiliary trace segment")
+    /// Returns the inner public coin
+    pub fn public_coin(&mut self) -> &mut R {
+        &mut self.public_coin
     }
 
     /// Returns a set of coefficients for constructing a constraint composition polynomial.
@@ -182,10 +178,11 @@ where
         constraint_queries: Queries,
         fri_proof: FriProof,
         num_query_positions: usize,
-    ) -> StarkProof {
+        gkr_proof: Option<Vec<u8>>,
+    ) -> Proof {
         assert!(num_query_positions <= u8::MAX as usize, "num_query_positions too big");
 
-        StarkProof {
+        Proof {
             context: self.context,
             commitments: self.commitments,
             ood_frame: self.ood_frame,
@@ -194,6 +191,7 @@ where
             fri_proof,
             pow_nonce: self.pow_nonce,
             num_unique_queries: num_query_positions as u8,
+            gkr_proof,
         }
     }
 }

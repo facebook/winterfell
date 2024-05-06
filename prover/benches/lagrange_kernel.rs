@@ -6,18 +6,20 @@
 use std::time::Duration;
 
 use air::{
-    Air, AirContext, Assertion, AuxTraceRandElements, ConstraintCompositionCoefficients,
-    EvaluationFrame, FieldExtension, ProofOptions, TraceInfo, TransitionConstraintDegree,
+    Air, AirContext, Assertion, AuxRandElements, ConstraintCompositionCoefficients,
+    EvaluationFrame, FieldExtension, LagrangeKernelRandElements, ProofOptions, TraceInfo,
+    TransitionConstraintDegree,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
-use crypto::{hashers::Blake3_256, DefaultRandomCoin};
+use crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin};
 use math::{fields::f64::BaseElement, ExtensionOf, FieldElement};
 use winter_prover::{
-    matrix::ColMatrix, DefaultConstraintEvaluator, DefaultTraceLde, Prover, StarkDomain, Trace,
-    TracePolyTable,
+    matrix::ColMatrix, DefaultConstraintEvaluator, DefaultTraceLde, Prover, ProverGkrProof,
+    StarkDomain, Trace, TracePolyTable,
 };
 
 const TRACE_LENS: [usize; 2] = [2_usize.pow(16), 2_usize.pow(20)];
+const AUX_TRACE_WIDTH: usize = 2;
 
 fn prove_with_lagrange_kernel(c: &mut Criterion) {
     let mut group = c.benchmark_group("Lagrange kernel column");
@@ -26,8 +28,8 @@ fn prove_with_lagrange_kernel(c: &mut Criterion) {
 
     for &trace_len in TRACE_LENS.iter() {
         group.bench_function(BenchmarkId::new("prover", trace_len), |b| {
-            let trace = LagrangeTrace::new(trace_len, 2);
-            let prover = LagrangeProver::new();
+            let trace = LagrangeTrace::new(trace_len, AUX_TRACE_WIDTH);
+            let prover = LagrangeProver::new(AUX_TRACE_WIDTH);
             b.iter_batched(
                 || trace.clone(),
                 |trace| prover.prove(trace).unwrap(),
@@ -57,17 +59,9 @@ impl LagrangeTrace {
         let main_trace_col: Vec<BaseElement> =
             (0..trace_len).map(|idx| BaseElement::from(idx as u32)).collect();
 
-        let num_aux_segment_rands = trace_len.ilog2() as usize;
-
         Self {
             main_trace: ColMatrix::new(vec![main_trace_col]),
-            info: TraceInfo::new_multi_segment(
-                1,
-                aux_segment_width,
-                num_aux_segment_rands,
-                trace_len,
-                vec![],
-            ),
+            info: TraceInfo::new_multi_segment(1, aux_segment_width, 0, trace_len, vec![]),
         }
     }
 
@@ -85,53 +79,6 @@ impl Trace for LagrangeTrace {
 
     fn main_segment(&self) -> &ColMatrix<Self::BaseField> {
         &self.main_trace
-    }
-
-    /// Each non-Lagrange kernel segment will simply take the sum the random elements, and multiply
-    /// by the main column
-    fn build_aux_segment<E: FieldElement<BaseField = Self::BaseField>>(
-        &mut self,
-        rand_elements: &[E],
-        lagrange_kernel_rand_elements: Option<&[E]>,
-    ) -> Option<ColMatrix<E>> {
-        let mut columns = Vec::new();
-
-        // first build the Lagrange kernel column
-        {
-            let r = lagrange_kernel_rand_elements.unwrap();
-
-            let mut lagrange_col = Vec::with_capacity(self.len());
-
-            for row_idx in 0..self.len() {
-                let mut row_value = E::ONE;
-                for (bit_idx, &r_i) in r.iter().enumerate() {
-                    if row_idx & (1 << bit_idx) == 0 {
-                        row_value *= E::ONE - r_i;
-                    } else {
-                        row_value *= r_i;
-                    }
-                }
-                lagrange_col.push(row_value);
-            }
-
-            columns.push(lagrange_col);
-        }
-
-        // Then all other auxiliary columns
-        let rand_summed = rand_elements.iter().fold(E::ZERO, |acc, &r| acc + r);
-        for _ in 1..self.aux_trace_width() {
-            // building a dummy auxiliary column
-            let column = self
-                .main_segment()
-                .get_column(0)
-                .iter()
-                .map(|row_val| rand_summed.mul_base(*row_val))
-                .collect();
-
-            columns.push(column);
-        }
-
-        Some(ColMatrix::new(columns))
     }
 
     fn read_main_frame(&self, row_idx: usize, frame: &mut air::EvaluationFrame<Self::BaseField>) {
@@ -152,6 +99,8 @@ struct LagrangeKernelAir {
 
 impl Air for LagrangeKernelAir {
     type BaseField = BaseElement;
+    type GkrProof = ();
+    type GkrVerifier = ();
 
     type PublicInputs = ();
 
@@ -195,7 +144,7 @@ impl Air for LagrangeKernelAir {
         _main_frame: &EvaluationFrame<F>,
         _aux_frame: &EvaluationFrame<E>,
         _periodic_values: &[F],
-        _aux_rand_elements: &AuxTraceRandElements<E>,
+        _aux_rand_elements: &[E],
         _result: &mut [E],
     ) where
         F: FieldElement<BaseField = Self::BaseField>,
@@ -206,7 +155,7 @@ impl Air for LagrangeKernelAir {
 
     fn get_aux_assertions<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        _aux_rand_elements: &AuxTraceRandElements<E>,
+        _aux_rand_elements: &[E],
     ) -> Vec<Assertion<E>> {
         vec![Assertion::single(1, 0, E::ZERO)]
     }
@@ -216,12 +165,14 @@ impl Air for LagrangeKernelAir {
 // ================================================================================================
 
 struct LagrangeProver {
+    aux_trace_width: usize,
     options: ProofOptions,
 }
 
 impl LagrangeProver {
-    fn new() -> Self {
+    fn new(aux_trace_width: usize) -> Self {
         Self {
+            aux_trace_width,
             options: ProofOptions::new(1, 2, 0, FieldExtension::None, 2, 1),
         }
     }
@@ -259,12 +210,85 @@ impl Prover for LagrangeProver {
     fn new_evaluator<'a, E>(
         &self,
         air: &'a Self::Air,
-        aux_rand_elements: AuxTraceRandElements<E>,
+        aux_rand_elements: Option<AuxRandElements<E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E>
     where
         E: math::FieldElement<BaseField = Self::BaseField>,
     {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
+    }
+
+    fn generate_gkr_proof<E>(
+        &self,
+        main_trace: &Self::Trace,
+        public_coin: &mut Self::RandomCoin,
+    ) -> (ProverGkrProof<Self>, LagrangeKernelRandElements<E>)
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        let main_trace = main_trace.main_segment();
+        let lagrange_kernel_rand_elements: Vec<E> = {
+            let log_trace_len = main_trace.num_rows().ilog2() as usize;
+            let mut rand_elements = Vec::with_capacity(log_trace_len);
+            for _ in 0..log_trace_len {
+                rand_elements.push(public_coin.draw().unwrap());
+            }
+
+            rand_elements
+        };
+
+        ((), LagrangeKernelRandElements::new(lagrange_kernel_rand_elements))
+    }
+
+    fn build_aux_trace<E>(
+        &self,
+        main_trace: &Self::Trace,
+        aux_rand_elements: &AuxRandElements<E>,
+    ) -> ColMatrix<E>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        let main_trace = main_trace.main_segment();
+        let mut columns = Vec::new();
+
+        let lagrange_kernel_rand_elements = aux_rand_elements
+            .lagrange()
+            .expect("expected lagrange kernel random elements to be present.");
+
+        // first build the Lagrange kernel column
+        {
+            let r = lagrange_kernel_rand_elements;
+            let mut lagrange_col = Vec::with_capacity(main_trace.num_rows());
+
+            for row_idx in 0..main_trace.num_rows() {
+                let mut row_value = E::ONE;
+                for (bit_idx, &r_i) in r.iter().enumerate() {
+                    if row_idx & (1 << bit_idx) == 0 {
+                        row_value *= E::ONE - r_i;
+                    } else {
+                        row_value *= r_i;
+                    }
+                }
+                lagrange_col.push(row_value);
+            }
+
+            columns.push(lagrange_col);
+        }
+
+        // Then all other auxiliary columns
+        let rand_summed = lagrange_kernel_rand_elements.iter().fold(E::ZERO, |acc, &r| acc + r);
+        for _ in 1..self.aux_trace_width {
+            // building a dummy auxiliary column
+            let column = main_trace
+                .get_column(0)
+                .iter()
+                .map(|row_val| rand_summed.mul_base(*row_val))
+                .collect();
+
+            columns.push(column);
+        }
+
+        ColMatrix::new(columns)
     }
 }

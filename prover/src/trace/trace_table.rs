@@ -6,7 +6,7 @@
 use super::{ColMatrix, Trace};
 use air::{EvaluationFrame, TraceInfo};
 use alloc::vec::Vec;
-use math::{FieldElement, StarkField};
+use math::StarkField;
 use utils::uninit_vector;
 
 #[cfg(feature = "concurrent")]
@@ -297,17 +297,6 @@ impl<B: StarkField> Trace for TraceTable<B> {
 
     fn main_segment(&self) -> &ColMatrix<B> {
         &self.trace
-    }
-
-    fn build_aux_segment<E>(
-        &mut self,
-        _rand_elements: &[E],
-        _lagrange_rand_elements: Option<&[E]>,
-    ) -> Option<ColMatrix<E>>
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        None
     }
 }
 

@@ -11,7 +11,7 @@ use tracing::{field, info_span};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, ExtensionOf, FieldElement},
-    ProofOptions, Prover, StarkProof, Trace, VerifierError,
+    Proof, ProofOptions, Prover, Trace, VerifierError,
 };
 
 mod custom_trace_table;
@@ -107,7 +107,7 @@ impl<H: ElementHasher> Example for RescueRapsExample<H>
 where
     H: ElementHasher<BaseField = BaseElement>,
 {
-    fn prove(&self) -> StarkProof {
+    fn prove(&self) -> Proof {
         // generate the execution trace
         println!("Generating proof for computing a chain of {} Rescue hashes", self.chain_length);
 
@@ -127,12 +127,13 @@ where
         prover.prove(trace).unwrap()
     }
 
-    fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {
+    fn verify(&self, proof: Proof) -> Result<(), VerifierError> {
         let pub_inputs = PublicInputs {
             result: self.result,
         };
         let acceptable_options =
             winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
+
         winterfell::verify::<RescueRapsAir, H, DefaultRandomCoin<H>>(
             proof,
             pub_inputs,
@@ -140,12 +141,13 @@ where
         )
     }
 
-    fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
+    fn verify_with_wrong_inputs(&self, proof: Proof) -> Result<(), VerifierError> {
         let pub_inputs = PublicInputs {
             result: [self.result[1], self.result[0]],
         };
         let acceptable_options =
             winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
+
         winterfell::verify::<RescueRapsAir, H, DefaultRandomCoin<H>>(
             proof,
             pub_inputs,

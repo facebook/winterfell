@@ -5,7 +5,7 @@
 
 use math::FieldElement;
 
-use crate::LagrangeKernelEvaluationFrame;
+use crate::{LagrangeKernelEvaluationFrame, LagrangeKernelRandElements};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct LagrangeKernelBoundaryConstraint<E>
@@ -21,7 +21,10 @@ where
     E: FieldElement,
 {
     /// Creates a new Lagrange kernel boundary constraint.
-    pub fn new(composition_coefficient: E, lagrange_kernel_rand_elements: &[E]) -> Self {
+    pub fn new(
+        composition_coefficient: E,
+        lagrange_kernel_rand_elements: &LagrangeKernelRandElements<E>,
+    ) -> Self {
         Self {
             assertion_value: Self::assertion_value(lagrange_kernel_rand_elements),
             composition_coefficient,
@@ -57,9 +60,9 @@ where
     }
 
     /// Computes the assertion value given the provided random elements.
-    pub fn assertion_value(lagrange_kernel_rand_elements: &[E]) -> E {
+    pub fn assertion_value(lagrange_kernel_rand_elements: &LagrangeKernelRandElements<E>) -> E {
         let mut assertion_value = E::ONE;
-        for &rand_ele in lagrange_kernel_rand_elements {
+        for &rand_ele in lagrange_kernel_rand_elements.as_ref() {
             assertion_value *= E::ONE - rand_ele;
         }
 

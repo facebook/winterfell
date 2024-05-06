@@ -5,7 +5,7 @@ This crate contains an implementation of a STARK verifier which can verify proof
 To verify a proof you can use `verifier::verify()` function, which has the following signature:
 ```Rust
 pub fn verify<AIR, HashFn, RandCoin>(
-    proof: StarkProof,
+    proof: Proof,
     pub_inputs: AIR::PublicInputs,
     acceptable_options: &AcceptableOptions,
 ) -> Result<(), VerifierError> 

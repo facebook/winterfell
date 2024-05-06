@@ -13,7 +13,7 @@ use tracing::{field, info_span};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, get_power_series, FieldElement, StarkField},
-    ProofOptions, Prover, StarkProof, Trace, VerifierError,
+    Proof, ProofOptions, Prover, Trace, VerifierError,
 };
 
 mod air;
@@ -114,7 +114,7 @@ impl<H: ElementHasher> Example for LamportAggregateExample<H>
 where
     H: ElementHasher<BaseField = BaseElement>,
 {
-    fn prove(&self) -> StarkProof {
+    fn prove(&self) -> Proof {
         // generate the execution trace
         println!("Generating proof for verifying {} Lamport+ signatures", self.signatures.len());
 
@@ -135,7 +135,7 @@ where
         prover.prove(trace).unwrap()
     }
 
-    fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {
+    fn verify(&self, proof: Proof) -> Result<(), VerifierError> {
         let pub_inputs = PublicInputs {
             pub_keys: self.pub_keys.clone(),
             messages: self.messages.clone(),
@@ -149,7 +149,7 @@ where
         )
     }
 
-    fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
+    fn verify_with_wrong_inputs(&self, proof: Proof) -> Result<(), VerifierError> {
         let mut pub_keys = self.pub_keys.clone();
         pub_keys.swap(0, 1);
         let pub_inputs = PublicInputs {

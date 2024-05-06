@@ -25,7 +25,7 @@
 //! details, please refer to the documentation of the [Air] trait itself.
 //!
 //! This crate also contains components describing STARK protocol parameters ([ProofOptions]) and
-//! proof structure ([StarkProof](proof::StarkProof)).
+//! proof structure ([Proof](proof::Proof)).
 
 #![no_std]
 
@@ -42,10 +42,11 @@ pub use options::{FieldExtension, ProofOptions};
 
 mod air;
 pub use air::{
-    Air, AirContext, Assertion, AuxTraceRandElements, BoundaryConstraint, BoundaryConstraintGroup,
+    Air, AirContext, Assertion, AuxRandElements, BoundaryConstraint, BoundaryConstraintGroup,
     BoundaryConstraints, ConstraintCompositionCoefficients, ConstraintDivisor,
-    DeepCompositionCoefficients, EvaluationFrame, LagrangeConstraintsCompositionCoefficients,
-    LagrangeKernelBoundaryConstraint, LagrangeKernelConstraints, LagrangeKernelEvaluationFrame,
+    DeepCompositionCoefficients, EvaluationFrame, GkrVerifier,
+    LagrangeConstraintsCompositionCoefficients, LagrangeKernelBoundaryConstraint,
+    LagrangeKernelConstraints, LagrangeKernelEvaluationFrame, LagrangeKernelRandElements,
     LagrangeKernelTransitionConstraints, TraceInfo, TransitionConstraintDegree,
     TransitionConstraints,
 };

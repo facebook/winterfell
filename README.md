@@ -290,7 +290,7 @@ impl Prover for WorkProver {
     fn new_evaluator<'a, E: FieldElement<BaseField = BaseElement>>(
         &self,
         air: &'a WorkAir,
-        aux_rand_elements: winterfell::AuxTraceRandElements<E>,
+        aux_rand_elements: Option<Self::AuxRandElements<E>>,
         composition_coefficients: winterfell::ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E> {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
@@ -307,10 +307,10 @@ Now, we are finally ready to generate a STARK proof. The function below, will ex
 ```Rust
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement},
-    FieldExtension, HashFunction, ProofOptions, StarkProof,
+    FieldExtension, HashFunction, ProofOptions, Proof,
 };
 
-pub fn prove_work() -> (BaseElement, StarkProof) {
+pub fn prove_work() -> (BaseElement, Proof) {
     // We'll just hard-code the parameters here for this example.
     let start = BaseElement::new(3);
     let n = 1_048_576;
@@ -343,12 +343,12 @@ We can then give this proof (together with the public inputs) to anyone, and the
 use winterfell::{
     crypto::{hashers::Blake3_256, DefaultRandomCoin},
     math::fields::f128::BaseElement,
-    verify, AcceptableOptions, StarkProof,
+    verify, AcceptableOptions, Proof,
 };
 
 type Blake3 = Blake3_256<BaseElement>;
 
-pub fn verify_work(start: BaseElement, result: BaseElement, proof: StarkProof) {
+pub fn verify_work(start: BaseElement, result: BaseElement, proof: Proof) {
     // The verifier will accept proofs with parameters which guarantee 95 bits or more of
     // conjectured security
     let min_opts = AcceptableOptions::MinConjecturedSecurity(95);
