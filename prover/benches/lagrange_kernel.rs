@@ -219,7 +219,7 @@ impl Prover for LagrangeProver {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
     }
 
-    fn generate_aux_proof<E>(
+    fn generate_gkr_proof<E>(
         &self,
         main_trace: &Self::Trace,
         public_coin: &mut Self::RandomCoin,

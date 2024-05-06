@@ -14,12 +14,11 @@ use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serial
 // ================================================================================================
 /// Information about a specific execution trace.
 ///
-/// Trace info consists of the number of columns for all trace segments, trace length, and optional
-/// custom metadata. Currently, a trace can consist of at most two segments: the main segment and
-/// one auxiliary segment. Metadata is just a vector of bytes and can store any values up to 64KB in
-/// size.
-///
-/// TODOP: Document how `num_aux_segment_rands` now excludes the Lagrange ones.
+/// Trace info consists of the number of columns for all trace segments, trace length, the number of
+/// random elements needed to generate the auxiliary segment (excluding the Lagrange kernel column),
+/// and optional custom metadata. Currently, a trace can consist of at most two segments: the main
+/// segment and one auxiliary segment. Metadata is just a vector of bytes and can store any values
+/// up to 64KB in size.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TraceInfo {
     main_segment_width: usize,
@@ -68,8 +67,10 @@ impl TraceInfo {
         Self::new_multi_segment(width, 0, 0, length, meta)
     }
 
-    // TODOP: Document that `num_aux_segment_rands` excludes lagrange ones
     /// Creates a new [TraceInfo] with main and auxiliary segments.
+    ///
+    /// Note: `num_aux_segment_rands` refers to the random elements needed to generate all auxiliary
+    /// columns other than the Lagrange kernel one.
     ///
     /// # Panics
     /// Panics if:
@@ -77,8 +78,10 @@ impl TraceInfo {
     /// * Total width of all trace segments is greater than 255.
     /// * Trace length is smaller than 8 or is not a power of two.
     /// * A zero entry in auxiliary segment width array is followed by a non-zero entry.
-    /// * Number of random elements for the auxiliary trace segment of non-zero width is set to zero.
-    /// * Number of random elements for the auxiliary trace segment of zero width is set to non-zero.
+    /// * Number of random elements for the auxiliary trace segment of non-zero width is set to
+    ///   zero.
+    /// * Number of random elements for the auxiliary trace segment of zero width is set to
+    ///   non-zero.
     /// * Number of random elements for any auxiliary trace segment is greater than 255.
     pub fn new_multi_segment(
         main_segment_width: usize,
@@ -199,7 +202,8 @@ impl TraceInfo {
         self.aux_segment_width
     }
 
-    // TODOP: Document (and how this excludes Lagrange random elements)
+    /// Returns the number of random elements needed to build all auxiliary columns, except for the
+    /// Lagrange kernel column.
     pub fn get_num_aux_segment_rand_elements(&self) -> usize {
         self.num_aux_segment_rands
     }

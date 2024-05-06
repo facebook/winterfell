@@ -49,8 +49,11 @@ impl<E> AuxRandElements<E> {
     }
 }
 
-// TODOP: Talk more about GKR
 /// A trait for verifying a GKR proof.
+///
+/// Specifically, the use case in mind is proving the constraints of a LogUp bus using GKR, as
+/// described in [Improving logarithmic derivative lookups using
+/// GKR](https://eprint.iacr.org/2023/1284.pdf).
 pub trait GkrVerifier {
     /// The GKR proof.
     type GkrProof: Deserializable;

@@ -26,7 +26,6 @@ type AirAuxTraceWithMetadata<A, E> = AuxTraceWithMetadata<E, <A as Air>::GkrProo
 // AUX TRACE WITH METADATA
 // ================================================================================================
 
-// TODOP: Switch to using `AuxRandElements` instead of generic `AuxRandEles`
 /// Holds the auxiliary trace, the random elements used when generating the auxiliary trace, and
 /// optionally, a GKR proof. See [`crate::Proof`] for more information about the auxiliary
 /// proof.

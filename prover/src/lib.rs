@@ -198,9 +198,9 @@ pub trait Prover {
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
 
-    // TODOP: Document
+    /// Builds the GKR proof. If the [`Air`] doesn't use a GKR proof, leave unimplemented.
     #[allow(unused_variables)]
-    fn generate_aux_proof<E>(
+    fn generate_gkr_proof<E>(
         &self,
         main_trace: &Self::Trace,
         public_coin: &mut Self::RandomCoin,
@@ -211,12 +211,7 @@ pub trait Prover {
         unimplemented!("`Prover::generate_aux_proof` needs to be implemented when the auxiliary trace has a Lagrange kernel column.")
     }
 
-    // TODOP: Fix docs
-    /// Builds and returns the auxiliary trace along with extra metadata:
-    /// - The random elements drawn and used in generating the auxiliary trace,
-    /// - A GKR proof object.
-    ///
-    /// See [`Proof`] for more information about the GKR proof object.
+    /// Builds and returns the auxiliary trace.
     #[allow(unused_variables)]
     fn build_aux_trace<E>(
         &self,
@@ -323,7 +318,7 @@ pub trait Prover {
             let (aux_proof, lagrange_rand_elements) =
                 if air.context().has_lagrange_kernel_aux_column() {
                     let (aux_proof, lagrange_rand_elements) =
-                        self.generate_aux_proof(&trace, channel.public_coin());
+                        self.generate_gkr_proof(&trace, channel.public_coin());
 
                     (Some(aux_proof), Some(lagrange_rand_elements))
                 } else {

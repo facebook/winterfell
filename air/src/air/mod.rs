@@ -316,11 +316,10 @@ pub trait Air: Send + Sync {
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a vector of field elements required for construction of the auxiliary trace segment.
+    /// Returns a vector of field elements required for construction of the auxiliary trace segment
+    /// (except the Lagrange kernel column, if any).
     ///
     /// The elements are drawn uniformly at random from the provided public coin.
-    ///
-    /// TODOP: Document how these exclude the Lagrange ones, and how they're put in `AuxRandElements::rand_elements`.
     fn get_aux_rand_elements<E, R>(&self, public_coin: &mut R) -> Result<Vec<E>, RandomCoinError>
     where
         E: FieldElement<BaseField = Self::BaseField>,
