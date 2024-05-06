@@ -47,17 +47,17 @@ impl<E: FieldElement> LagrangeKernelConstraints<E> {
 
 /// TODOP: Document
 #[derive(Debug, Clone)]
-pub struct LagrangeRandElements<E> {
+pub struct LagrangeKernelRandElements<E> {
     elements: Vec<E>,
 }
 
-impl<E> LagrangeRandElements<E> {
+impl<E> LagrangeKernelRandElements<E> {
     pub fn new(elements: Vec<E>) -> Self {
         Self { elements }
     }
 }
 
-impl<E> Deref for LagrangeRandElements<E> {
+impl<E> Deref for LagrangeKernelRandElements<E> {
     type Target = Vec<E>;
 
     fn deref(&self) -> &Self::Target {
@@ -65,14 +65,14 @@ impl<E> Deref for LagrangeRandElements<E> {
     }
 }
 
-impl<E> AsRef<[E]> for LagrangeRandElements<E> {
+impl<E> AsRef<[E]> for LagrangeKernelRandElements<E> {
     fn as_ref(&self) -> &[E] {
         &self.elements
     }
 }
 
-impl<E> From<LagrangeRandElements<E>> for Vec<E> {
-    fn from(lagrange_rand_elements: LagrangeRandElements<E>) -> Self {
+impl<E> From<LagrangeKernelRandElements<E>> for Vec<E> {
+    fn from(lagrange_rand_elements: LagrangeKernelRandElements<E>) -> Self {
         lagrange_rand_elements.elements
     }
 }

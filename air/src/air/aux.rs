@@ -1,12 +1,12 @@
 use alloc::vec::Vec;
 
-use super::lagrange::LagrangeRandElements;
+use super::lagrange::LagrangeKernelRandElements;
 
 /// TODOP: document
 #[derive(Debug, Clone)]
 pub struct AuxRandElements<E> {
     rand_elements: Vec<E>,
-    lagrange: Option<LagrangeRandElements<E>>,
+    lagrange: Option<LagrangeKernelRandElements<E>>,
 }
 
 impl<E> AuxRandElements<E> {
@@ -19,7 +19,7 @@ impl<E> AuxRandElements<E> {
 
     pub fn new_with_lagrange(
         rand_elements: Vec<E>,
-        lagrange: Option<LagrangeRandElements<E>>,
+        lagrange: Option<LagrangeKernelRandElements<E>>,
     ) -> Self {
         Self {
             rand_elements,
@@ -31,7 +31,7 @@ impl<E> AuxRandElements<E> {
         &self.rand_elements
     }
 
-    pub fn lagrange(&self) -> Option<&LagrangeRandElements<E>> {
+    pub fn lagrange(&self) -> Option<&LagrangeKernelRandElements<E>> {
         self.lagrange.as_ref()
     }
 }
