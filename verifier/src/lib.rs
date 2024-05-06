@@ -190,7 +190,7 @@ where
             let lagrange_rand_elements = air
                 .get_auxiliary_proof_verifier::<E>()
                 .verify::<E, _>(aux_proof, &mut public_coin)
-                .map_err(|err| VerifierError::AuxTraceVerificationFailed(err.to_string()))?;
+                .map_err(|err| VerifierError::GkrProofVerificationFailed(err.to_string()))?;
 
             let rand_elements = air.get_aux_rand_elements(&mut public_coin).expect(
                 "failed to generate the random elements needed to build the auxiliary trace",
