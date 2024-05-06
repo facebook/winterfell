@@ -202,6 +202,11 @@ impl TraceInfo {
     pub fn get_aux_segment_width(&self) -> usize {
         self.aux_segment_width
     }
+
+    // TODOP: Document (and how this excludes Lagrange random elements)
+    pub fn get_num_aux_segment_rand_elements(&self) -> usize {
+        self.num_aux_segment_rands
+    }
 }
 
 impl<E: StarkField> ToElements<E> for TraceInfo {
