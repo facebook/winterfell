@@ -589,7 +589,7 @@
 #[cfg(test)]
 extern crate std;
 
-pub use air::AuxRandElements;
+pub use air::{AuxProofVerifier, AuxRandElements, DefaultAuxProofVerifier};
 pub use prover::{
     crypto, iterators, math, matrix, Air, AirContext, Assertion, AuxTraceWithMetadata,
     BoundaryConstraint, BoundaryConstraintGroup, ByteReader, ByteWriter, CompositionPolyTrace,
@@ -599,9 +599,7 @@ pub use prover::{
     ProverAuxProof, ProverError, Serializable, SliceReader, StarkDomain, Trace, TraceInfo,
     TraceLde, TracePolyTable, TraceTable, TraceTableFragment, TransitionConstraintDegree,
 };
-pub use verifier::{
-    verify, verify_with_aux_trace, AcceptableOptions, DefaultAuxProofVerifier, VerifierError,
-};
+pub use verifier::{verify, verify_with_aux_trace, AcceptableOptions, VerifierError};
 
 #[cfg(test)]
 mod tests;

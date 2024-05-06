@@ -31,12 +31,12 @@
 #[macro_use]
 extern crate alloc;
 
-use air::AuxRandElements;
 pub use air::{
     proof::Proof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
     ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
     EvaluationFrame, FieldExtension, ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
+use air::{AuxProofVerifier, AuxRandElements};
 
 use alloc::string::ToString;
 pub use math;
@@ -59,9 +59,6 @@ pub use crypto;
 use crypto::{ElementHasher, Hasher, RandomCoin};
 
 use fri::FriVerifier;
-
-mod aux_verifier;
-pub use aux_verifier::{AuxProofVerifier, DefaultAuxProofVerifier};
 
 mod channel;
 use channel::VerifierChannel;

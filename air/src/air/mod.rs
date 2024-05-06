@@ -9,7 +9,7 @@ use crypto::{RandomCoin, RandomCoinError};
 use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElements};
 
 mod aux;
-pub use aux::AuxRandElements;
+pub use aux::{AuxProofVerifier, AuxRandElements, DefaultAuxProofVerifier};
 
 mod trace_info;
 pub use trace_info::TraceInfo;
