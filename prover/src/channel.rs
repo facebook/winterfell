@@ -178,7 +178,7 @@ where
         constraint_queries: Queries,
         fri_proof: FriProof,
         num_query_positions: usize,
-        aux_proof: Option<Vec<u8>>,
+        gkr_proof: Option<Vec<u8>>,
     ) -> Proof {
         assert!(num_query_positions <= u8::MAX as usize, "num_query_positions too big");
 
@@ -191,7 +191,7 @@ where
             fri_proof,
             pow_nonce: self.pow_nonce,
             num_unique_queries: num_query_positions as u8,
-            aux_proof,
+            gkr_proof,
         }
     }
 }

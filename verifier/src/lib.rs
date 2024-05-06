@@ -179,17 +179,17 @@ where
     // process auxiliary trace segments (if any), to build a set of random elements for each segment
     let aux_trace_rand_elements = if air.trace_info().is_multi_segment() {
         if air.context().has_lagrange_kernel_aux_column() {
-            let aux_proof = {
-                let aux_proof_serialized = channel
-                    .read_aux_proof()
+            let gkr_proof = {
+                let gkr_proof_serialized = channel
+                    .read_gkr_proof()
                     .expect("Expected an a GKR proof because trace has lagrange kernel column");
 
-                Deserializable::read_from_bytes(aux_proof_serialized)
+                Deserializable::read_from_bytes(gkr_proof_serialized)
                     .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?
             };
             let lagrange_rand_elements = air
                 .get_auxiliary_proof_verifier::<E>()
-                .verify::<E, _>(aux_proof, &mut public_coin)
+                .verify::<E, _>(gkr_proof, &mut public_coin)
                 .map_err(|err| VerifierError::GkrProofVerificationFailed(err.to_string()))?;
 
             let rand_elements = air.get_aux_rand_elements(&mut public_coin).expect(

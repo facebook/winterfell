@@ -93,14 +93,14 @@ impl GkrVerifier for DummyGkrVerifier {
 
     fn verify<E, Hasher>(
         &self,
-        aux_proof: usize,
+        gkr_proof: usize,
         public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
     ) -> Result<LagrangeKernelRandElements<E>, Self::Error>
     where
         E: FieldElement,
         Hasher: crypto::ElementHasher<BaseField = E::BaseField>,
     {
-        let log_trace_len = aux_proof;
+        let log_trace_len = gkr_proof;
         let lagrange_kernel_rand_elements: LagrangeKernelRandElements<E> = {
             let mut rand_elements = Vec::with_capacity(log_trace_len);
             for _ in 0..log_trace_len {

@@ -39,7 +39,7 @@ pub struct VerifierChannel<E: FieldElement, H: ElementHasher<BaseField = E::Base
     ood_constraint_evaluations: Option<Vec<E>>,
     // query proof-of-work
     pow_nonce: u64,
-    aux_proof: Option<Vec<u8>>,
+    gkr_proof: Option<Vec<u8>>,
 }
 
 impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChannel<E, H> {
@@ -59,7 +59,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
             ood_frame,
             fri_proof,
             pow_nonce,
-            aux_proof,
+            gkr_proof,
         } = proof;
 
         // make sure AIR and proof base fields are the same
@@ -116,7 +116,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
             ood_constraint_evaluations: Some(ood_constraint_evaluations),
             // query seed
             pow_nonce,
-            aux_proof,
+            gkr_proof,
         })
     }
 
@@ -157,8 +157,8 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
     }
 
     /// Returns the serialized GKR proof, if any.
-    pub fn read_aux_proof(&self) -> Option<&Vec<u8>> {
-        self.aux_proof.as_ref()
+    pub fn read_gkr_proof(&self) -> Option<&Vec<u8>> {
+        self.gkr_proof.as_ref()
     }
 
     /// Returns trace states at the specified positions of the LDE domain. This also checks if

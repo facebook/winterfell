@@ -76,7 +76,7 @@ pub struct Proof {
     /// Proof-of-work nonce for query seed grinding.
     pub pow_nonce: u64,
     /// Optionally, an auxiliary (non-STARK) proof that was generated during auxiliary trace generation.
-    pub aux_proof: Option<Vec<u8>>,
+    pub gkr_proof: Option<Vec<u8>>,
 }
 
 impl Proof {
@@ -163,7 +163,7 @@ impl Proof {
             ood_frame: OodFrame::default(),
             fri_proof: FriProof::new_dummy(),
             pow_nonce: 0,
-            aux_proof: None,
+            gkr_proof: None,
         }
     }
 }
@@ -181,7 +181,7 @@ impl Serializable for Proof {
         self.ood_frame.write_into(target);
         self.fri_proof.write_into(target);
         self.pow_nonce.write_into(target);
-        self.aux_proof.write_into(target);
+        self.gkr_proof.write_into(target);
     }
 }
 
@@ -205,7 +205,7 @@ impl Deserializable for Proof {
             ood_frame: OodFrame::read_from(source)?,
             fri_proof: FriProof::read_from(source)?,
             pow_nonce: source.read_u64()?,
-            aux_proof: Option::<Vec<u8>>::read_from(source)?,
+            gkr_proof: Option::<Vec<u8>>::read_from(source)?,
         };
         Ok(proof)
     }

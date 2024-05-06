@@ -208,7 +208,7 @@ pub trait Prover {
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
-        unimplemented!("`Prover::generate_aux_proof` needs to be implemented when the auxiliary trace has a Lagrange kernel column.")
+        unimplemented!("`Prover::generate_gkr_proof` needs to be implemented when the auxiliary trace has a Lagrange kernel column.")
     }
 
     /// Builds and returns the auxiliary trace.
@@ -315,12 +315,12 @@ pub trait Prover {
         // build the auxiliary trace segment, and append the resulting segments to trace commitment
         // and trace polynomial table structs
         let aux_trace_with_metadata = if air.trace_info().is_multi_segment() {
-            let (aux_proof, lagrange_rand_elements) =
+            let (gkr_proof, lagrange_rand_elements) =
                 if air.context().has_lagrange_kernel_aux_column() {
-                    let (aux_proof, lagrange_rand_elements) =
+                    let (gkr_proof, lagrange_rand_elements) =
                         self.generate_gkr_proof(&trace, channel.public_coin());
 
-                    (Some(aux_proof), Some(lagrange_rand_elements))
+                    (Some(gkr_proof), Some(lagrange_rand_elements))
                 } else {
                     (None, None)
                 };
@@ -357,7 +357,7 @@ pub trait Prover {
             Some(AuxTraceWithMetadata {
                 aux_trace,
                 aux_rand_elements,
-                gkr_proof: aux_proof,
+                gkr_proof,
             })
         } else {
             None
@@ -370,7 +370,7 @@ pub trait Prover {
         trace.validate(&air, aux_trace_with_metadata.as_ref());
 
         // Destructure `aux_trace_with_metadata`.
-        let (aux_trace, aux_rand_elements, aux_proof) = match aux_trace_with_metadata {
+        let (aux_trace, aux_rand_elements, gkr_proof) = match aux_trace_with_metadata {
             Some(atm) => (Some(atm.aux_trace), Some(atm.aux_rand_elements), atm.gkr_proof),
             None => (None, None, None),
         };
@@ -520,7 +520,7 @@ pub trait Prover {
                 constraint_queries,
                 fri_proof,
                 query_positions.len(),
-                aux_proof.map(|aux_proof| aux_proof.to_bytes()),
+                gkr_proof.map(|gkr_proof| gkr_proof.to_bytes()),
             );
 
             drop(span);
