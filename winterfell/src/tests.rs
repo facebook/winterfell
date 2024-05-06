@@ -83,12 +83,12 @@ impl Trace for LagrangeComplexTrace {
 // =================================================================================================
 
 #[derive(Debug, Clone, Default)]
-struct DummyAuxProofVerifier;
+struct DummyGkrVerifier;
 
-impl AuxProofVerifier for DummyAuxProofVerifier {
-    // `AuxProof` is log(trace_len) for this dummy example, so that the verifier knows how many aux
+impl GkrVerifier for DummyGkrVerifier {
+    // `GkrProof` is log(trace_len) for this dummy example, so that the verifier knows how many aux
     // random variables to generate
-    type AuxProof = usize;
+    type GkrProof = usize;
     type Error = VerifierError;
 
     fn verify<E, Hasher>(
@@ -120,10 +120,10 @@ struct LagrangeKernelComplexAir {
 
 impl Air for LagrangeKernelComplexAir {
     type BaseField = BaseElement;
-    // `AuxProof` is log(trace_len) for this dummy example, so that the verifier knows how many aux
+    // `GkrProof` is log(trace_len) for this dummy example, so that the verifier knows how many aux
     // random variables to generate
-    type AuxProof = usize;
-    type AuxProofVerifier = DummyAuxProofVerifier;
+    type GkrProof = usize;
+    type GkrVerifier = DummyGkrVerifier;
 
     type PublicInputs = ();
 
@@ -185,8 +185,8 @@ impl Air for LagrangeKernelComplexAir {
 
     fn get_auxiliary_proof_verifier<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-    ) -> Self::AuxProofVerifier {
-        DummyAuxProofVerifier
+    ) -> Self::GkrVerifier {
+        DummyGkrVerifier
     }
 }
 
@@ -252,7 +252,7 @@ impl Prover for LagrangeComplexProver {
         &self,
         main_trace: &Self::Trace,
         public_coin: &mut Self::RandomCoin,
-    ) -> (ProverAuxProof<Self>, LagrangeKernelRandElements<E>)
+    ) -> (ProverGkrProof<Self>, LagrangeKernelRandElements<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {

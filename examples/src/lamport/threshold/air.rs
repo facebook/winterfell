@@ -50,8 +50,8 @@ pub struct LamportThresholdAir {
 impl Air for LamportThresholdAir {
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
-    type AuxProof = ();
-    type AuxProofVerifier = ();
+    type GkrProof = ();
+    type GkrVerifier = ();
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------

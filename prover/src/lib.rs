@@ -103,8 +103,8 @@ pub mod tests;
 // this segment width seems to give the best performance for small fields (i.e., 64 bits)
 const DEFAULT_SEGMENT_WIDTH: usize = 8;
 
-/// Accesses the `AuxProof` type in a [`Prover`].
-pub type ProverAuxProof<P> = <<P as Prover>::Air as Air>::AuxProof;
+/// Accesses the `GkrProof` type in a [`Prover`].
+pub type ProverGkrProof<P> = <<P as Prover>::Air as Air>::GkrProof;
 
 /// Defines a STARK prover for a computation.
 ///
@@ -204,7 +204,7 @@ pub trait Prover {
         &self,
         main_trace: &Self::Trace,
         public_coin: &mut Self::RandomCoin,
-    ) -> (ProverAuxProof<Self>, LagrangeKernelRandElements<E>)
+    ) -> (ProverGkrProof<Self>, LagrangeKernelRandElements<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {

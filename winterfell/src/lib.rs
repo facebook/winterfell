@@ -150,7 +150,7 @@
 //! ```no_run
 //! use winterfell::{
 //!     math::{fields::f128::BaseElement, FieldElement, ToElements},
-//!     Air, AirContext, Assertion, AuxProofVerifier, EvaluationFrame,
+//!     Air, AirContext, Assertion, GkrVerifier, EvaluationFrame,
 //!     ProofOptions, TraceInfo, TransitionConstraintDegree,
 //!     crypto::{hashers::Blake3_256, DefaultRandomCoin},
 //! };
@@ -182,8 +182,8 @@
 //!     // the public inputs must look like.
 //!     type BaseField = BaseElement;
 //!     type PublicInputs = PublicInputs;
-//!     type AuxProof = ();
-//!     type AuxProofVerifier = ();
+//!     type GkrProof = ();
+//!     type GkrVerifier = ();
 //!
 //!     // Here, we'll construct a new instance of our computation which is defined by 3
 //!     // parameters: starting value, number of steps, and the end result. Another way to
@@ -289,8 +289,8 @@
 //! # impl Air for WorkAir {
 //! #     type BaseField = BaseElement;
 //! #     type PublicInputs = PublicInputs;
-//! #     type AuxProof = ();
-//! #     type AuxProofVerifier = ();
+//! #     type GkrProof = ();
+//! #     type GkrVerifier = ();
 //! #
 //! #     fn new(trace_info: TraceInfo, pub_inputs: PublicInputs, options: ProofOptions) -> Self {
 //! #         assert_eq!(1, trace_info.width());
@@ -438,8 +438,8 @@
 //! # impl Air for WorkAir {
 //! #     type BaseField = BaseElement;
 //! #     type PublicInputs = PublicInputs;
-//! #     type AuxProof = ();
-//! #     type AuxProofVerifier = ();
+//! #     type GkrProof = ();
+//! #     type GkrVerifier = ();
 //! #
 //! #     fn new(trace_info: TraceInfo, pub_inputs: PublicInputs, options: ProofOptions) -> Self {
 //! #         assert_eq!(1, trace_info.width());
@@ -591,14 +591,14 @@
 #[cfg(test)]
 extern crate std;
 
-pub use air::{AuxProofVerifier, AuxRandElements};
+pub use air::{AuxRandElements, GkrVerifier};
 pub use prover::{
     crypto, iterators, math, matrix, Air, AirContext, Assertion, AuxTraceWithMetadata,
     BoundaryConstraint, BoundaryConstraintGroup, ByteReader, ByteWriter, CompositionPolyTrace,
     ConstraintCompositionCoefficients, ConstraintDivisor, ConstraintEvaluator,
     DeepCompositionCoefficients, DefaultConstraintEvaluator, DefaultTraceLde, Deserializable,
     DeserializationError, EvaluationFrame, FieldExtension, Proof, ProofOptions, Prover,
-    ProverAuxProof, ProverError, Serializable, SliceReader, StarkDomain, Trace, TraceInfo,
+    ProverError, ProverGkrProof, Serializable, SliceReader, StarkDomain, Trace, TraceInfo,
     TraceLde, TracePolyTable, TraceTable, TraceTableFragment, TransitionConstraintDegree,
 };
 pub use verifier::{verify, AcceptableOptions, VerifierError};

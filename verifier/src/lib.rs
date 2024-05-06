@@ -36,7 +36,7 @@ pub use air::{
     ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
     EvaluationFrame, FieldExtension, ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
-use air::{AuxProofVerifier, AuxRandElements};
+use air::{AuxRandElements, GkrVerifier};
 
 use alloc::string::ToString;
 pub use math;

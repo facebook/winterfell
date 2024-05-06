@@ -9,7 +9,7 @@ use crypto::{RandomCoin, RandomCoinError};
 use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElements};
 
 mod aux;
-pub use aux::{AuxProofVerifier, AuxRandElements};
+pub use aux::{AuxRandElements, GkrVerifier};
 
 mod trace_info;
 pub use trace_info::TraceInfo;
@@ -193,10 +193,10 @@ pub trait Air: Send + Sync {
     type PublicInputs: ToElements<Self::BaseField>;
 
     /// An auxiliary (i.e. non-STARK) proof object. If not needed, set to `()`.
-    type AuxProof: Serializable + Deserializable;
+    type GkrProof: Serializable + Deserializable;
 
-    /// An auxiliary (i.e., non-STARK) verifier for verifying auxiliary proofs. If not needed, set to [`DefaultAuxProofVerifier`].
-    type AuxProofVerifier: AuxProofVerifier<AuxProof = Self::AuxProof>;
+    /// An auxiliary (i.e., non-STARK) verifier for verifying auxiliary proofs. If not needed, set to [`DefaultGkrVerifier`].
+    type GkrVerifier: GkrVerifier<GkrProof = Self::GkrProof>;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -304,12 +304,12 @@ pub trait Air: Send + Sync {
     // AUXILIARY PROOF VERIFIER
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the [`AuxProofVerifier`] to be used to verify the auxiliary proof.
+    /// Returns the [`GkrVerifier`] to be used to verify the auxiliary proof.
     ///
     /// Leave unimplemented if the `Air` doesn't use an auxiliary proof.
     fn get_auxiliary_proof_verifier<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-    ) -> Self::AuxProofVerifier {
+    ) -> Self::GkrVerifier {
         unimplemented!("`get_auxiliary_proof_verifier()` must be implemented when the proof contains an auxiliary proof");
     }
 

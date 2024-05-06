@@ -14,7 +14,7 @@ use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criteri
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin};
 use math::{fields::f64::BaseElement, ExtensionOf, FieldElement};
 use winter_prover::{
-    matrix::ColMatrix, DefaultConstraintEvaluator, DefaultTraceLde, Prover, ProverAuxProof,
+    matrix::ColMatrix, DefaultConstraintEvaluator, DefaultTraceLde, Prover, ProverGkrProof,
     StarkDomain, Trace, TracePolyTable,
 };
 
@@ -99,8 +99,8 @@ struct LagrangeKernelAir {
 
 impl Air for LagrangeKernelAir {
     type BaseField = BaseElement;
-    type AuxProof = ();
-    type AuxProofVerifier = ();
+    type GkrProof = ();
+    type GkrVerifier = ();
 
     type PublicInputs = ();
 
@@ -223,7 +223,7 @@ impl Prover for LagrangeProver {
         &self,
         main_trace: &Self::Trace,
         public_coin: &mut Self::RandomCoin,
-    ) -> (ProverAuxProof<Self>, LagrangeKernelRandElements<E>)
+    ) -> (ProverGkrProof<Self>, LagrangeKernelRandElements<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {

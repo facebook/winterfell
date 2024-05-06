@@ -42,9 +42,9 @@ pub use options::{FieldExtension, ProofOptions};
 
 mod air;
 pub use air::{
-    Air, AirContext, Assertion, AuxProofVerifier, AuxRandElements, BoundaryConstraint,
-    BoundaryConstraintGroup, BoundaryConstraints, ConstraintCompositionCoefficients,
-    ConstraintDivisor, DeepCompositionCoefficients, EvaluationFrame,
+    Air, AirContext, Assertion, AuxRandElements, BoundaryConstraint, BoundaryConstraintGroup,
+    BoundaryConstraints, ConstraintCompositionCoefficients, ConstraintDivisor,
+    DeepCompositionCoefficients, EvaluationFrame, GkrVerifier,
     LagrangeConstraintsCompositionCoefficients, LagrangeKernelBoundaryConstraint,
     LagrangeKernelConstraints, LagrangeKernelEvaluationFrame, LagrangeKernelRandElements,
     LagrangeKernelTransitionConstraints, TraceInfo, TransitionConstraintDegree,

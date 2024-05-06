@@ -51,9 +51,9 @@ impl<E> AuxRandElements<E> {
 
 // TODOP: Talk more about GKR
 /// A trait for verifying an auxiliary proof.
-pub trait AuxProofVerifier {
+pub trait GkrVerifier {
     /// The auxiliary proof.
-    type AuxProof: Deserializable;
+    type GkrProof: Deserializable;
     /// The error that can occur during auxiliary proof verification.
     type Error: ToString;
 
@@ -61,7 +61,7 @@ pub trait AuxProofVerifier {
     /// the Lagrange kernel auxiliary column.
     fn verify<E, Hasher>(
         &self,
-        aux_proof: Self::AuxProof,
+        aux_proof: Self::GkrProof,
         public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
     ) -> Result<LagrangeKernelRandElements<E>, Self::Error>
     where
@@ -69,13 +69,13 @@ pub trait AuxProofVerifier {
         Hasher: ElementHasher<BaseField = E::BaseField>;
 }
 
-impl AuxProofVerifier for () {
-    type AuxProof = ();
+impl GkrVerifier for () {
+    type GkrProof = ();
     type Error = RandomCoinError;
 
     fn verify<E, Hasher>(
         &self,
-        _aux_proof: Self::AuxProof,
+        _aux_proof: Self::GkrProof,
         _public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
     ) -> Result<LagrangeKernelRandElements<E>, Self::Error>
     where

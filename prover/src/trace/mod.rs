@@ -21,7 +21,7 @@ mod tests;
 
 /// Defines an [`AuxTraceWithMetadata`] type where the type arguments use their equivalents in an
 /// [`Air`].
-type AirAuxTraceWithMetadata<A, E> = AuxTraceWithMetadata<E, <A as Air>::AuxProof>;
+type AirAuxTraceWithMetadata<A, E> = AuxTraceWithMetadata<E, <A as Air>::GkrProof>;
 
 // AUX TRACE WITH METADATA
 // ================================================================================================
@@ -30,10 +30,10 @@ type AirAuxTraceWithMetadata<A, E> = AuxTraceWithMetadata<E, <A as Air>::AuxProo
 /// Holds the auxiliary trace, the random elements used when generating the auxiliary trace, and
 /// optionally, an auxiliary proof. See [`crate::Proof`] for more information about the auxiliary
 /// proof.
-pub struct AuxTraceWithMetadata<E: FieldElement, AuxProof> {
+pub struct AuxTraceWithMetadata<E: FieldElement, GkrProof> {
     pub aux_trace: ColMatrix<E>,
     pub aux_rand_elements: AuxRandElements<E>,
-    pub aux_proof: Option<AuxProof>,
+    pub aux_proof: Option<GkrProof>,
 }
 
 // TRACE TRAIT
