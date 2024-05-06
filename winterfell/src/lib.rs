@@ -150,8 +150,9 @@
 //! ```no_run
 //! use winterfell::{
 //!     math::{fields::f128::BaseElement, FieldElement, ToElements},
-//!     Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
-//!     TransitionConstraintDegree, crypto::{hashers::Blake3_256, DefaultRandomCoin},
+//!     Air, AirContext, Assertion, AuxProofVerifier, EvaluationFrame, DefaultAuxProofVerifier, 
+//!     ProofOptions, TraceInfo, TransitionConstraintDegree, 
+//!     crypto::{hashers::Blake3_256, DefaultRandomCoin},
 //! };
 //!
 //! // Public inputs for our computation will consist of the starting value and the end result.
@@ -177,12 +178,12 @@
 //! }
 //!
 //! impl Air for WorkAir {
-//!     type AuxRandElements<E: FieldElement<BaseField = Self::BaseField>> = ();
 //!     // We'll specify which finite field to use for our computation, and also how
 //!     // the public inputs must look like.
 //!     type BaseField = BaseElement;
 //!     type PublicInputs = PublicInputs;
 //!     type AuxProof = ();
+//!     type AuxProofVerifier = DefaultAuxProofVerifier;
 //!
 //!     // Here, we'll construct a new instance of our computation which is defined by 3
 //!     // parameters: starting value, number of steps, and the end result. Another way to
@@ -264,8 +265,8 @@
 //! };
 //!
 //! # use winterfell::{
-//! #   Air, AirContext, Assertion, ProverAuxRandElements, ByteWriter, DefaultConstraintEvaluator,
-//! #   EvaluationFrame, TraceInfo, TransitionConstraintDegree,
+//! #   Air, AirContext, Assertion, AuxRandElements, ByteWriter, DefaultConstraintEvaluator,
+//! #   EvaluationFrame, TraceInfo, TransitionConstraintDegree, DefaultAuxProofVerifier
 //! # };
 //! #
 //! # pub struct PublicInputs {
@@ -286,10 +287,10 @@
 //! # }
 //! #
 //! # impl Air for WorkAir {
-//! #     type AuxRandElements<E: FieldElement<BaseField = Self::BaseField>> = ();
 //! #     type BaseField = BaseElement;
 //! #     type PublicInputs = PublicInputs;
 //! #     type AuxProof = ();
+//! #     type AuxProofVerifier = DefaultAuxProofVerifier;
 //! #
 //! #     fn new(trace_info: TraceInfo, pub_inputs: PublicInputs, options: ProofOptions) -> Self {
 //! #         assert_eq!(1, trace_info.width());
@@ -376,7 +377,7 @@
 //!     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
 //!         &self,
 //!         air: &'a Self::Air,
-//!         aux_rand_elements: Option<ProverAuxRandElements<Self, E>>,
+//!         aux_rand_elements: Option<AuxRandElements<E>>,
 //!         composition_coefficients: winterfell::ConstraintCompositionCoefficients<E>,
 //!     ) -> Self::ConstraintEvaluator<'a, E> {
 //!         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
@@ -396,9 +397,10 @@
 //! #    crypto::{hashers::Blake3_256, DefaultRandomCoin},
 //! #    math::{fields::f128::BaseElement, FieldElement, ToElements},
 //! #    matrix::ColMatrix,
-//! #    Air, AirContext, Assertion, ProverAuxRandElements, ByteWriter, DefaultConstraintEvaluator,
-//! #    DefaultTraceLde, EvaluationFrame, TraceInfo, TransitionConstraintDegree,
-//! #    TraceTable, FieldExtension, Prover, ProofOptions, StarkDomain, Proof, Trace, TracePolyTable,
+//! #    Air, AirContext, Assertion, AuxRandElements, ByteWriter, DefaultConstraintEvaluator,
+//! #    DefaultAuxProofVerifier, DefaultTraceLde, EvaluationFrame, TraceInfo, 
+//! #    TransitionConstraintDegree, TraceTable, FieldExtension, Prover, 
+//! #    ProofOptions, StarkDomain, Proof, Trace, TracePolyTable,
 //! # };
 //! #
 //! # pub fn build_do_work_trace(start: BaseElement, n: usize) -> TraceTable<BaseElement> {
@@ -434,10 +436,10 @@
 //! # }
 //! #
 //! # impl Air for WorkAir {
-//!       type AuxRandElements<E: FieldElement<BaseField = Self::BaseField>> = ();
 //! #     type BaseField = BaseElement;
 //! #     type PublicInputs = PublicInputs;
 //! #     type AuxProof = ();
+//! #     type AuxProofVerifier = DefaultAuxProofVerifier;
 //! #
 //! #     fn new(trace_info: TraceInfo, pub_inputs: PublicInputs, options: ProofOptions) -> Self {
 //! #         assert_eq!(1, trace_info.width());
@@ -517,7 +519,7 @@
 //! #    fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
 //! #        &self,
 //! #        air: &'a Self::Air,
-//! #        aux_rand_elements: Option<ProverAuxRandElements<Self, E>>,
+//! #        aux_rand_elements: Option<AuxRandElements<E>>,
 //! #        composition_coefficients: winterfell::ConstraintCompositionCoefficients<E>,
 //! #    ) -> Self::ConstraintEvaluator<'a, E> {
 //! #        DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
