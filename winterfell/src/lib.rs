@@ -150,7 +150,7 @@
 //! ```no_run
 //! use winterfell::{
 //!     math::{fields::f128::BaseElement, FieldElement, ToElements},
-//!     Air, AirContext, Assertion, AuxProofVerifier, EvaluationFrame, DefaultAuxProofVerifier,
+//!     Air, AirContext, Assertion, AuxProofVerifier, EvaluationFrame,
 //!     ProofOptions, TraceInfo, TransitionConstraintDegree,
 //!     crypto::{hashers::Blake3_256, DefaultRandomCoin},
 //! };
@@ -183,7 +183,7 @@
 //!     type BaseField = BaseElement;
 //!     type PublicInputs = PublicInputs;
 //!     type AuxProof = ();
-//!     type AuxProofVerifier = DefaultAuxProofVerifier;
+//!     type AuxProofVerifier = ();
 //!
 //!     // Here, we'll construct a new instance of our computation which is defined by 3
 //!     // parameters: starting value, number of steps, and the end result. Another way to
@@ -266,7 +266,7 @@
 //!
 //! # use winterfell::{
 //! #   Air, AirContext, Assertion, AuxRandElements, ByteWriter, DefaultConstraintEvaluator,
-//! #   EvaluationFrame, TraceInfo, TransitionConstraintDegree, DefaultAuxProofVerifier
+//! #   EvaluationFrame, TraceInfo, TransitionConstraintDegree,
 //! # };
 //! #
 //! # pub struct PublicInputs {
@@ -290,7 +290,7 @@
 //! #     type BaseField = BaseElement;
 //! #     type PublicInputs = PublicInputs;
 //! #     type AuxProof = ();
-//! #     type AuxProofVerifier = DefaultAuxProofVerifier;
+//! #     type AuxProofVerifier = ();
 //! #
 //! #     fn new(trace_info: TraceInfo, pub_inputs: PublicInputs, options: ProofOptions) -> Self {
 //! #         assert_eq!(1, trace_info.width());
@@ -398,7 +398,7 @@
 //! #    math::{fields::f128::BaseElement, FieldElement, ToElements},
 //! #    matrix::ColMatrix,
 //! #    Air, AirContext, Assertion, AuxRandElements, ByteWriter, DefaultConstraintEvaluator,
-//! #    DefaultAuxProofVerifier, DefaultTraceLde, EvaluationFrame, TraceInfo,
+//! #    DefaultTraceLde, EvaluationFrame, TraceInfo,
 //! #    TransitionConstraintDegree, TraceTable, FieldExtension, Prover,
 //! #    ProofOptions, StarkDomain, Proof, Trace, TracePolyTable,
 //! # };
@@ -439,7 +439,7 @@
 //! #     type BaseField = BaseElement;
 //! #     type PublicInputs = PublicInputs;
 //! #     type AuxProof = ();
-//! #     type AuxProofVerifier = DefaultAuxProofVerifier;
+//! #     type AuxProofVerifier = ();
 //! #
 //! #     fn new(trace_info: TraceInfo, pub_inputs: PublicInputs, options: ProofOptions) -> Self {
 //! #         assert_eq!(1, trace_info.width());
@@ -591,7 +591,7 @@
 #[cfg(test)]
 extern crate std;
 
-pub use air::{AuxProofVerifier, AuxRandElements, DefaultAuxProofVerifier};
+pub use air::{AuxProofVerifier, AuxRandElements};
 pub use prover::{
     crypto, iterators, math, matrix, Air, AirContext, Assertion, AuxTraceWithMetadata,
     BoundaryConstraint, BoundaryConstraintGroup, ByteReader, ByteWriter, CompositionPolyTrace,

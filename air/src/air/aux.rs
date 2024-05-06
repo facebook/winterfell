@@ -69,21 +69,7 @@ pub trait AuxProofVerifier {
         Hasher: ElementHasher<BaseField = E::BaseField>;
 }
 
-/// Dummy implementation of the [`AuxProofVerifier`] trait that is effectively a no-op.
-/// 
-/// To be used as [`crate::Air::AuxProofVerifier`] when the auxiliary trace doesn't contain a
-/// Lagrange kernel column.
-#[derive(Debug, Clone, Default)]
-pub struct DefaultAuxProofVerifier;
-
-impl DefaultAuxProofVerifier {
-    /// Creates a new [`DefaultAuxTraceVerifier`].
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl AuxProofVerifier for DefaultAuxProofVerifier {
+impl AuxProofVerifier for () {
     type AuxProof = ();
     type Error = RandomCoinError;
 

@@ -9,7 +9,7 @@ use crypto::{RandomCoin, RandomCoinError};
 use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElements};
 
 mod aux;
-pub use aux::{AuxProofVerifier, AuxRandElements, DefaultAuxProofVerifier};
+pub use aux::{AuxProofVerifier, AuxRandElements};
 
 mod trace_info;
 pub use trace_info::TraceInfo;
@@ -285,7 +285,7 @@ pub trait Air: Send + Sync {
     /// The column index for assertions is expected to be zero-based across all auxiliary trace
     /// segments. That is, assertion against column 0, is an assertion against the first column of
     /// auxiliary trace segment.
-    /// 
+    ///
     /// `aux_rand_elements` holds the random elements used to build all auxiliary columns except for
     /// the Lagrange kernel column.
     ///
@@ -305,7 +305,7 @@ pub trait Air: Send + Sync {
     // --------------------------------------------------------------------------------------------
 
     /// Returns the [`AuxProofVerifier`] to be used to verify the auxiliary proof.
-    /// 
+    ///
     /// Leave unimplemented if the `Air` doesn't use an auxiliary proof.
     fn get_auxiliary_proof_verifier<E: FieldElement<BaseField = Self::BaseField>>(
         &self,

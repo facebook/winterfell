@@ -5,8 +5,8 @@
 
 use super::{BaseElement, FieldElement, ProofOptions, ALPHA, FORTY_TWO, TRACE_WIDTH};
 use winterfell::{
-    math::ToElements, Air, AirContext, Assertion, DefaultAuxProofVerifier, EvaluationFrame,
-    TraceInfo, TransitionConstraintDegree,
+    math::ToElements, Air, AirContext, Assertion, EvaluationFrame, TraceInfo,
+    TransitionConstraintDegree,
 };
 
 // PUBLIC INPUTS
@@ -37,7 +37,7 @@ impl Air for VdfAir {
     type BaseField = BaseElement;
     type PublicInputs = VdfInputs;
     type AuxProof = ();
-    type AuxProofVerifier = DefaultAuxProofVerifier;
+    type AuxProofVerifier = ();
 
     fn new(trace_info: TraceInfo, pub_inputs: VdfInputs, options: ProofOptions) -> Self {
         let degrees = vec![TransitionConstraintDegree::new(3)];

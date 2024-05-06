@@ -44,7 +44,7 @@ mod air;
 pub use air::{
     Air, AirContext, Assertion, AuxProofVerifier, AuxRandElements, BoundaryConstraint,
     BoundaryConstraintGroup, BoundaryConstraints, ConstraintCompositionCoefficients,
-    ConstraintDivisor, DeepCompositionCoefficients, DefaultAuxProofVerifier, EvaluationFrame,
+    ConstraintDivisor, DeepCompositionCoefficients, EvaluationFrame,
     LagrangeConstraintsCompositionCoefficients, LagrangeKernelBoundaryConstraint,
     LagrangeKernelConstraints, LagrangeKernelEvaluationFrame, LagrangeKernelRandElements,
     LagrangeKernelTransitionConstraints, TraceInfo, TransitionConstraintDegree,

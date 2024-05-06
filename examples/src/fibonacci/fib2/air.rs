@@ -6,8 +6,7 @@
 use super::{BaseElement, FieldElement, ProofOptions, TRACE_WIDTH};
 use crate::utils::are_equal;
 use winterfell::{
-    Air, AirContext, Assertion, DefaultAuxProofVerifier, EvaluationFrame, TraceInfo,
-    TransitionConstraintDegree,
+    Air, AirContext, Assertion, EvaluationFrame, TraceInfo, TransitionConstraintDegree,
 };
 
 // FIBONACCI AIR
@@ -22,7 +21,7 @@ impl Air for FibAir {
     type BaseField = BaseElement;
     type PublicInputs = BaseElement;
     type AuxProof = ();
-    type AuxProofVerifier = DefaultAuxProofVerifier;
+    type AuxProofVerifier = ();
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------

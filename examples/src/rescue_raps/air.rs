@@ -10,8 +10,8 @@ use super::{
 use crate::utils::{are_equal, not, EvaluationResult};
 use core_utils::flatten_slice_elements;
 use winterfell::{
-    math::ToElements, Air, AirContext, Assertion, DefaultAuxProofVerifier, EvaluationFrame,
-    TraceInfo, TransitionConstraintDegree,
+    math::ToElements, Air, AirContext, Assertion, EvaluationFrame, TraceInfo,
+    TransitionConstraintDegree,
 };
 
 // CONSTANTS
@@ -59,7 +59,7 @@ impl Air for RescueRapsAir {
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
     type AuxProof = ();
-    type AuxProofVerifier = DefaultAuxProofVerifier;
+    type AuxProofVerifier = ();
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------

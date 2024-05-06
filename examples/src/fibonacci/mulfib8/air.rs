@@ -7,7 +7,7 @@ use super::TRACE_WIDTH;
 use crate::utils::are_equal;
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement},
-    Air, AirContext, Assertion, DefaultAuxProofVerifier, EvaluationFrame, ProofOptions, TraceInfo,
+    Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
 
@@ -23,7 +23,7 @@ impl Air for MulFib8Air {
     type BaseField = BaseElement;
     type PublicInputs = BaseElement;
     type AuxProof = ();
-    type AuxProofVerifier = DefaultAuxProofVerifier;
+    type AuxProofVerifier = ();
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------

@@ -6,8 +6,8 @@
 use super::{rescue, BaseElement, FieldElement, HASH_CYCLE_LEN, HASH_STATE_WIDTH, TRACE_WIDTH};
 use crate::utils::{are_equal, is_binary, is_zero, not, EvaluationResult};
 use winterfell::{
-    math::ToElements, Air, AirContext, Assertion, DefaultAuxProofVerifier, EvaluationFrame,
-    ProofOptions, TraceInfo, TransitionConstraintDegree,
+    math::ToElements, Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
+    TransitionConstraintDegree,
 };
 
 // MERKLE PATH VERIFICATION AIR
@@ -32,7 +32,7 @@ impl Air for MerkleAir {
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
     type AuxProof = ();
-    type AuxProofVerifier = DefaultAuxProofVerifier;
+    type AuxProofVerifier = ();
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
