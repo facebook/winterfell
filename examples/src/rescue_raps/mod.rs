@@ -112,7 +112,7 @@ where
         println!("Generating proof for computing a chain of {} Rescue hashes", self.chain_length);
 
         // create a prover
-        let prover = RescueRapsProver::<H>::new(3, self.options.clone());
+        let prover = RescueRapsProver::<H>::new(self.options.clone());
 
         // generate execution trace
         let trace =
