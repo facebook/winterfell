@@ -56,7 +56,6 @@ pub struct RescueRapsAir {
 }
 
 impl Air for RescueRapsAir {
-    type AuxRandElements<E: FieldElement<BaseField = Self::BaseField>> = Vec<E>;
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
     type AuxProof = ();
@@ -161,7 +160,7 @@ impl Air for RescueRapsAir {
         main_frame: &EvaluationFrame<F>,
         aux_frame: &EvaluationFrame<E>,
         periodic_values: &[F],
-        aux_rand_elements: &Self::AuxRandElements<E>,
+        aux_rand_elements: &[E],
         result: &mut [E],
     ) where
         F: FieldElement<BaseField = Self::BaseField>,
@@ -232,10 +231,7 @@ impl Air for RescueRapsAir {
         ]
     }
 
-    fn get_aux_assertions<E>(
-        &self,
-        _aux_rand_elements: &Self::AuxRandElements<E>,
-    ) -> Vec<Assertion<E>>
+    fn get_aux_assertions<E>(&self, _aux_rand_elements: &[E]) -> Vec<Assertion<E>>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {

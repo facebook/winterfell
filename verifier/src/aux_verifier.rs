@@ -1,60 +1,55 @@
-use alloc::{string::ToString, vec::Vec};
+use air::LagrangeKernelRandElements;
+use alloc::string::ToString;
 use crypto::{ElementHasher, RandomCoin, RandomCoinError};
 use math::FieldElement;
 use utils::Deserializable;
 
+// TODOP: Fix docs
 /// A trait for generating the random elements required for constructing the auxiliary trace.
-pub trait AuxTraceVerifier {
-    type AuxRandElements<E: Send + Sync>;
+pub trait AuxProofVerifier {
     type AuxProof: Deserializable;
     type Error: ToString;
 
     /// Generates the random elements required for constructing the auxiliary trace. Optionally,
     /// verifies the auxiliary proof.
-    fn verify_aux_trace<E, Hasher>(
+    fn verify<E, Hasher>(
         &self,
         aux_proof: Option<Self::AuxProof>,
-        transcript: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> Result<Self::AuxRandElements<E>, Self::Error>
+        public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
+    ) -> Result<Option<LagrangeKernelRandElements<E>>, Self::Error>
     where
         E: FieldElement,
         Hasher: ElementHasher<BaseField = E::BaseField>;
 }
 
+// TODOP: Fix docs
 /// Implementation of the [`AuxTraceVerifier`] trait that simply samples a given number of
 /// elements.
-pub struct DefaultAuxTraceVerifier {
-    num_rand_elements: usize,
-}
+#[derive(Debug, Clone, Default)]
+pub struct DefaultAuxProofVerifier;
 
-impl DefaultAuxTraceVerifier {
+impl DefaultAuxProofVerifier {
     /// Creates a new [`DefaultAuxTraceVerifier`].
-    pub fn new(num_rand_elements: usize) -> Self {
-        Self { num_rand_elements }
+    pub fn new() -> Self {
+        Self
     }
 }
 
-impl AuxTraceVerifier for DefaultAuxTraceVerifier {
-    type AuxRandElements<E: Send + Sync> = Vec<E>;
+impl AuxProofVerifier for DefaultAuxProofVerifier {
     type AuxProof = ();
     type Error = RandomCoinError;
 
-    fn verify_aux_trace<E, Hasher>(
+    fn verify<E, Hasher>(
         &self,
         aux_proof: Option<Self::AuxProof>,
-        transcript: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> Result<Self::AuxRandElements<E>, Self::Error>
+        _public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
+    ) -> Result<Option<LagrangeKernelRandElements<E>>, Self::Error>
     where
         E: FieldElement,
         Hasher: ElementHasher<BaseField = E::BaseField>,
     {
         assert!(aux_proof.is_none());
-        let mut rand_elements = Vec::with_capacity(self.num_rand_elements);
 
-        for _ in 0..self.num_rand_elements {
-            rand_elements.push(transcript.draw()?);
-        }
-
-        Ok(rand_elements)
+        Ok(None)
     }
 }

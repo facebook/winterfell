@@ -103,9 +103,6 @@ pub mod tests;
 // this segment width seems to give the best performance for small fields (i.e., 64 bits)
 const DEFAULT_SEGMENT_WIDTH: usize = 8;
 
-/// Accesses the `AuxRandElements` type in a [`Prover`].
-pub type ProverAuxRandElements<P, E> = <<P as Prover>::Air as Air>::AuxRandElements<E>;
-
 /// Accesses the `AuxProof` type in a [`Prover`].
 pub type ProverAuxProof<P> = <<P as Prover>::Air as Air>::AuxProof;
 

@@ -4,27 +4,26 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::*;
+use air::LagrangeKernelRandElements;
 use prover::{
     crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin},
     math::{fields::f64::BaseElement, ExtensionOf, FieldElement},
     matrix::ColMatrix,
-    AuxTraceWithMetadata,
 };
 use std::vec;
 use std::vec::Vec;
-use verifier::{verify_with_aux_trace, DefaultAuxTraceVerifier};
+use verifier::{verify_with_aux_trace, AuxProofVerifier};
 
 const AUX_TRACE_WIDTH: usize = 2;
 
 #[test]
 fn test_complex_lagrange_kernel_air() {
     let trace = LagrangeComplexTrace::new(2_usize.pow(10), AUX_TRACE_WIDTH);
-    let log_trace_len = trace.length().ilog2() as usize;
+    let log_trace_len = trace.len().ilog2() as usize;
+
     let prover = LagrangeComplexProver::new(AUX_TRACE_WIDTH);
 
     let proof = prover.prove(trace).unwrap();
-
-    let aux_trace_verifier = DefaultAuxTraceVerifier::new(log_trace_len);
 
     verify_with_aux_trace::<
         BaseElement,
@@ -32,7 +31,12 @@ fn test_complex_lagrange_kernel_air() {
         _,
         Blake3_256<BaseElement>,
         DefaultRandomCoin<Blake3_256<BaseElement>>,
-    >(proof, aux_trace_verifier, (), &AcceptableOptions::MinConjecturedSecurity(0))
+    >(
+        proof,
+        DummyAuxProofVerifier::new(log_trace_len),
+        (),
+        &AcceptableOptions::MinConjecturedSecurity(0),
+    )
     .unwrap()
 }
 
@@ -87,12 +91,47 @@ impl Trace for LagrangeComplexTrace {
 // AIR
 // =================================================================================================
 
+struct DummyAuxProofVerifier {
+    log_trace_len: usize,
+}
+
+impl DummyAuxProofVerifier {
+    pub fn new(log_trace_len: usize) -> Self {
+        Self { log_trace_len }
+    }
+}
+
+impl AuxProofVerifier for DummyAuxProofVerifier {
+    type AuxProof = ();
+    type Error = VerifierError;
+
+    fn verify<E, Hasher>(
+        &self,
+        _aux_proof: Option<Self::AuxProof>,
+        public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
+    ) -> Result<Option<LagrangeKernelRandElements<E>>, Self::Error>
+    where
+        E: FieldElement,
+        Hasher: crypto::ElementHasher<BaseField = E::BaseField>,
+    {
+        let lagrange_kernel_rand_elements: LagrangeKernelRandElements<E> = {
+            let mut rand_elements = Vec::with_capacity(self.log_trace_len);
+            for _ in 0..self.log_trace_len {
+                rand_elements.push(public_coin.draw().unwrap());
+            }
+
+            LagrangeKernelRandElements::new(rand_elements)
+        };
+
+        Ok(Some(lagrange_kernel_rand_elements))
+    }
+}
+
 struct LagrangeKernelComplexAir {
     context: AirContext<BaseElement>,
 }
 
 impl Air for LagrangeKernelComplexAir {
-    type AuxRandElements<E: FieldElement<BaseField = Self::BaseField>> = Vec<E>;
     type BaseField = BaseElement;
     type AuxProof = ();
 
@@ -138,7 +177,7 @@ impl Air for LagrangeKernelComplexAir {
         _main_frame: &EvaluationFrame<F>,
         _aux_frame: &EvaluationFrame<E>,
         _periodic_values: &[F],
-        _aux_rand_elements: &Vec<E>,
+        _aux_rand_elements: &[E],
         _result: &mut [E],
     ) where
         F: FieldElement<BaseField = Self::BaseField>,
@@ -149,18 +188,9 @@ impl Air for LagrangeKernelComplexAir {
 
     fn get_aux_assertions<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        _aux_rand_elements: &Vec<E>,
+        _aux_rand_elements: &[E],
     ) -> Vec<Assertion<E>> {
         vec![Assertion::single(1, 0, E::ZERO)]
-    }
-
-    fn get_lagrange_rand_elements<E>(&self, aux_rand_elements: &Self::AuxRandElements<E>) -> Vec<E>
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        let log_trace_len = self.context().trace_len().ilog2() as usize;
-
-        aux_rand_elements[0..log_trace_len].to_vec()
     }
 }
 
@@ -213,7 +243,7 @@ impl Prover for LagrangeComplexProver {
     fn new_evaluator<'a, E>(
         &self,
         air: &'a Self::Air,
-        aux_rand_elements: Option<Vec<E>>,
+        aux_rand_elements: Option<AuxRandElements<E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E>
     where
@@ -222,11 +252,11 @@ impl Prover for LagrangeComplexProver {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
     }
 
-    fn build_aux_trace<E>(
+    fn generate_aux_proof<E>(
         &self,
         main_trace: &Self::Trace,
-        transcript: &mut Self::RandomCoin,
-    ) -> AuxTraceWithMetadata<E, ProverAuxRandElements<Self, E>, ProverAuxProof<Self>>
+        public_coin: &mut Self::RandomCoin,
+    ) -> (ProverAuxProof<Self>, LagrangeKernelRandElements<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
@@ -235,11 +265,27 @@ impl Prover for LagrangeComplexProver {
             let log_trace_len = main_trace.num_rows().ilog2() as usize;
             let mut rand_elements = Vec::with_capacity(log_trace_len);
             for _ in 0..log_trace_len {
-                rand_elements.push(transcript.draw().unwrap());
+                rand_elements.push(public_coin.draw().unwrap());
             }
 
             rand_elements
         };
+
+        ((), LagrangeKernelRandElements::new(lagrange_kernel_rand_elements))
+    }
+
+    fn build_aux_trace<E>(
+        &self,
+        main_trace: &Self::Trace,
+        aux_rand_elements: &AuxRandElements<E>,
+    ) -> ColMatrix<E>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        let main_trace = main_trace.main_segment();
+        let lagrange_kernel_rand_elements = aux_rand_elements
+            .lagrange()
+            .expect("expected lagrange random elements to be present.");
 
         let mut columns = Vec::new();
 
@@ -277,10 +323,6 @@ impl Prover for LagrangeComplexProver {
             columns.push(column);
         }
 
-        AuxTraceWithMetadata {
-            aux_trace: ColMatrix::new(columns),
-            aux_rand_elements: lagrange_kernel_rand_elements,
-            aux_proof: None,
-        }
+        ColMatrix::new(columns)
     }
 }

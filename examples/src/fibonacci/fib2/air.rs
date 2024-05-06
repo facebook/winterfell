@@ -20,7 +20,6 @@ pub struct FibAir {
 impl Air for FibAir {
     type BaseField = BaseElement;
     type PublicInputs = BaseElement;
-    type AuxRandElements<E: FieldElement<BaseField = Self::BaseField>> = ();
     type AuxProof = ();
 
     // CONSTRUCTOR

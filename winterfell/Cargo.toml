@@ -21,6 +21,7 @@ default = ["std"]
 std = ["prover/std", "verifier/std"]
 
 [dependencies]
+air = { version = "0.8", path = "../air", package = "winter-air", default-features = false }
 prover = { version = "0.8", path = "../prover", package = "winter-prover", default-features = false }
 verifier = { version = "0.8", path = "../verifier", package = "winter-verifier", default-features = false }
 

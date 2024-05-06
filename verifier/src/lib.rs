@@ -31,6 +31,7 @@
 #[macro_use]
 extern crate alloc;
 
+use air::AuxRandElements;
 pub use air::{
     proof::Proof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
     ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
@@ -60,7 +61,7 @@ use crypto::{ElementHasher, Hasher, RandomCoin};
 use fri::FriVerifier;
 
 mod aux_verifier;
-pub use aux_verifier::{AuxTraceVerifier, DefaultAuxTraceVerifier};
+pub use aux_verifier::{AuxProofVerifier, DefaultAuxProofVerifier};
 
 mod channel;
 use channel::VerifierChannel;
@@ -201,19 +202,16 @@ where
 /// - The specified proof was generated for a different computation.
 /// - The specified proof was generated for this computation but for different public inputs.
 /// - The specified proof was generated with parameters not providing an acceptable security level.
-pub fn verify_with_aux_trace<E, AIR, ATV, HashFn, RandCoin>(
+pub fn verify_with_aux_trace<E, AIR, APV, HashFn, RandCoin>(
     proof: Proof,
-    aux_trace_verifier: ATV,
+    aux_proof_verifier: APV,
     pub_inputs: AIR::PublicInputs,
     acceptable_options: &AcceptableOptions,
 ) -> Result<(), VerifierError>
 where
     E: FieldElement<BaseField = AIR::BaseField>,
     AIR: Air,
-    ATV: AuxTraceVerifier<
-        AuxRandElements<E> = <AIR as Air>::AuxRandElements<E>,
-        AuxProof = <AIR as Air>::AuxProof,
-    >,
+    APV: AuxProofVerifier<AuxProof = <AIR as Air>::AuxProof>,
     HashFn: ElementHasher<BaseField = AIR::BaseField>,
     RandCoin: RandomCoin<BaseField = AIR::BaseField, Hasher = HashFn>,
 {
@@ -267,9 +265,15 @@ where
             }
         };
 
-        aux_trace_verifier
-            .verify_aux_trace::<E, _>(aux_proof, &mut public_coin)
-            .map_err(|err| VerifierError::AuxTraceVerificationFailed(err.to_string()))?
+        let lagrange_rand_elements = aux_proof_verifier
+            .verify::<E, _>(aux_proof, &mut public_coin)
+            .map_err(|err| VerifierError::AuxTraceVerificationFailed(err.to_string()))?;
+
+        let rand_elements = air
+            .get_aux_rand_elements(&mut public_coin)
+            .expect("failed to generate the random elements needed to build the auxiliary trace");
+
+        AuxRandElements::new_with_lagrange(rand_elements, lagrange_rand_elements)
     };
     public_coin.reseed(aux_trace_commitment);
 
@@ -287,7 +291,7 @@ where
 /// attests to a correct execution of the computation specified by the provided `air`.
 fn perform_verification<E, A, H, R>(
     air: A,
-    aux_trace_rand_elements: Option<A::AuxRandElements<E>>,
+    aux_trace_rand_elements: Option<AuxRandElements<E>>,
     mut channel: VerifierChannel<E, H>,
     mut public_coin: R,
 ) -> Result<(), VerifierError>
@@ -329,7 +333,7 @@ where
         &ood_main_trace_frame,
         &ood_aux_trace_frame,
         ood_lagrange_kernel_frame,
-        aux_trace_rand_elements,
+        aux_trace_rand_elements.as_ref(),
         z,
     );
     public_coin.reseed(ood_trace_frame.hash::<H>());

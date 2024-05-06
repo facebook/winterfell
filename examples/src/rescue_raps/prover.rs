@@ -10,9 +10,8 @@ use super::{
 };
 use core_utils::uninit_vector;
 use winterfell::{
-    crypto::RandomCoin, matrix::ColMatrix, AuxTraceWithMetadata, ConstraintCompositionCoefficients,
-    DefaultConstraintEvaluator, DefaultTraceLde, ProverAuxProof, ProverAuxRandElements,
-    StarkDomain, Trace, TraceInfo, TracePolyTable,
+    matrix::ColMatrix, AuxRandElements, ConstraintCompositionCoefficients,
+    DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable,
 };
 
 // RESCUE PROVER
@@ -21,6 +20,7 @@ use winterfell::{
 /// In order to demonstrate the power of RAPs, the two hash chains have seeds that are
 /// permutations of each other.
 pub struct RescueRapsProver<H: ElementHasher> {
+    // TODOP: Remove `num_aux_rand_elements`; now belongs in `TraceInfo`
     num_aux_rand_elements: usize,
     options: ProofOptions,
     _hasher: PhantomData<H>,
@@ -136,7 +136,7 @@ where
     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         air: &'a Self::Air,
-        aux_rand_elements: Option<ProverAuxRandElements<Self, E>>,
+        aux_rand_elements: Option<AuxRandElements<E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E> {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
@@ -145,20 +145,13 @@ where
     fn build_aux_trace<E>(
         &self,
         main_trace: &Self::Trace,
-        transcript: &mut Self::RandomCoin,
-    ) -> AuxTraceWithMetadata<E, ProverAuxRandElements<Self, E>, ProverAuxProof<Self>>
+        aux_rand_elements: &AuxRandElements<E>,
+    ) -> ColMatrix<E>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
         let main_trace = main_trace.main_segment();
-        let rand_elements = {
-            let mut rand_elements = Vec::with_capacity(self.num_aux_rand_elements);
-            for _ in 0..self.num_aux_rand_elements {
-                rand_elements.push(transcript.draw().unwrap());
-            }
-
-            rand_elements
-        };
+        let rand_elements = aux_rand_elements.rand_elements();
 
         let mut current_row = unsafe { uninit_vector(main_trace.num_cols()) };
         let mut next_row = unsafe { uninit_vector(main_trace.num_cols()) };
@@ -194,10 +187,6 @@ where
             aux_columns[2][index] = aux_columns[2][index - 1] * num * denom.inv();
         }
 
-        AuxTraceWithMetadata {
-            aux_trace: ColMatrix::new(aux_columns),
-            aux_rand_elements: rand_elements,
-            aux_proof: None,
-        }
+        ColMatrix::new(aux_columns)
     }
 }

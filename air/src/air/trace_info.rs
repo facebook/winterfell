@@ -68,6 +68,7 @@ impl TraceInfo {
         Self::new_multi_segment(width, 0, 0, length, meta)
     }
 
+    // TODOP: Document that `num_aux_segment_rands` excludes lagrange ones
     /// Creates a new [TraceInfo] with main and auxiliary segments.
     ///
     /// # Panics
@@ -114,12 +115,7 @@ impl TraceInfo {
         );
 
         // validate number of random elements required by the auxiliary segment
-        if aux_segment_width != 0 {
-            assert!(
-                num_aux_segment_rands > 0,
-                "number of random elements for a non-empty auxiliary trace segment must be greater than zero"
-            );
-        } else {
+        if aux_segment_width == 0 {
             assert!(
                 num_aux_segment_rands == 0,
                 "number of random elements for an empty auxiliary trace segment must be zero"

@@ -192,12 +192,6 @@ pub trait Air: Send + Sync {
     /// This could be any type as long as it can be serialized into a sequence of field elements.
     type PublicInputs: ToElements<Self::BaseField>;
 
-    // TODOP: Remove
-    /// A type defining the random elements used in constructing the auxiliary trace segment.
-    type AuxRandElements<E>: Send + Sync
-    where
-        E: FieldElement<BaseField = Self::BaseField>;
-
     /// An auxiliary (i.e. non-STARK) proof object. If not needed, set to `()`.
     type AuxProof: Serializable + Deserializable;
 

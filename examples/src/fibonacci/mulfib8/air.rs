@@ -22,7 +22,6 @@ pub struct MulFib8Air {
 impl Air for MulFib8Air {
     type BaseField = BaseElement;
     type PublicInputs = BaseElement;
-    type AuxRandElements<E: FieldElement<BaseField = Self::BaseField>> = ();
     type AuxProof = ();
 
     // CONSTRUCTOR

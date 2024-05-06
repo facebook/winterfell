@@ -9,8 +9,9 @@ use super::{
     CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH, TRACE_WIDTH,
 };
 use winterfell::{
-    matrix::ColMatrix, ConstraintCompositionCoefficients, DefaultConstraintEvaluator,
-    DefaultTraceLde, StarkDomain, TraceInfo, TracePolyTable, TraceTable,
+    matrix::ColMatrix, AuxRandElements, ConstraintCompositionCoefficients,
+    DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, TraceInfo, TracePolyTable,
+    TraceTable,
 };
 
 #[cfg(feature = "concurrent")]
@@ -125,7 +126,7 @@ where
     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         air: &'a Self::Air,
-        aux_rand_elements: Option<()>,
+        aux_rand_elements: Option<AuxRandElements<E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E> {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)

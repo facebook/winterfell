@@ -105,13 +105,13 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
         let lagrange_constraints = air
             .get_lagrange_kernel_constraints(
                 lagrange_coefficients,
-                &lagrange_kernel_aux_rand_elements,
+                lagrange_kernel_aux_rand_elements,
             )
             .expect("expected Lagrange kernel constraints to be present");
 
         result += lagrange_constraints.transition.evaluate_and_combine::<E>(
             lagrange_kernel_column_frame,
-            &lagrange_kernel_aux_rand_elements,
+            lagrange_kernel_aux_rand_elements,
             x,
         );
 

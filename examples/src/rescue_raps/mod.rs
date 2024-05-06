@@ -14,7 +14,7 @@ use winterfell::{
         fields::{f128::BaseElement, CubeExtension, QuadExtension},
         ExtensionOf, FieldElement,
     },
-    DefaultAuxTraceVerifier, FieldExtension, Proof, ProofOptions, Prover, Trace, VerifierError,
+    DefaultAuxProofVerifier, FieldExtension, Proof, ProofOptions, Prover, Trace, VerifierError,
 };
 
 mod custom_trace_table;
@@ -136,7 +136,7 @@ where
         };
         let acceptable_options =
             winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
-        let aux_verifier = DefaultAuxTraceVerifier::new(3);
+        let aux_verifier = DefaultAuxProofVerifier::new();
 
         match proof.options().field_extension() {
             FieldExtension::None => {
@@ -177,7 +177,7 @@ where
         let acceptable_options =
             winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
 
-        let aux_verifier = DefaultAuxTraceVerifier::new(3);
+        let aux_verifier = DefaultAuxProofVerifier::new();
 
         match proof.options().field_extension() {
             FieldExtension::None => {
