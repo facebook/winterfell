@@ -301,6 +301,7 @@ pub trait Air: Send + Sync {
     }
 
     /// Returns the random elements used in constructing the Lagrange kernel column.
+    /// TODOP: Remove
     #[allow(unused_variables)]
     fn get_lagrange_rand_elements<E>(
         &self,
