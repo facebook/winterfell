@@ -60,7 +60,7 @@ pub trait GkrVerifier {
     /// The error that can occur during GKR proof verification.
     type Error: ToString;
 
-    /// Verifies the GKR proof, and returns the random elements that will be used in building
+    /// Verifies the GKR proof, and returns the random elements that were used in building
     /// the Lagrange kernel auxiliary column.
     fn verify<E, Hasher>(
         &self,
