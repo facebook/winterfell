@@ -45,7 +45,8 @@ extern crate alloc;
 pub use air::{
     proof, proof::Proof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
     ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
-    EvaluationFrame, FieldExtension, ProofOptions, TraceInfo, TransitionConstraintDegree,
+    EvaluationFrame, FieldExtension, LagrangeKernelRandElements, ProofOptions, TraceInfo,
+    TransitionConstraintDegree,
 };
 use tracing::{event, info_span, Level};
 pub use utils::{
@@ -198,6 +199,19 @@ pub trait Prover {
 
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
+
+    // TODOP: Document
+    #[allow(unused_variables)]
+    fn generate_aux_proof<E>(
+        &self,
+        main_trace: &Self::Trace,
+        public_coin: &mut Self::RandomCoin,
+    ) -> (ProverAuxProof<Self>, LagrangeKernelRandElements<E>)
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        unimplemented!("`Prover::generate_aux_proof` needs to be implemented when the auxiliary trace has a Lagrange kernel column.")
+    }
 
     /// Builds and returns the auxiliary trace along with extra metadata:
     /// - The random elements drawn and used in generating the auxiliary trace,

@@ -29,7 +29,7 @@ pub use transition::{EvaluationFrame, TransitionConstraintDegree, TransitionCons
 mod lagrange;
 pub use lagrange::{
     LagrangeKernelBoundaryConstraint, LagrangeKernelConstraints, LagrangeKernelEvaluationFrame,
-    LagrangeKernelTransitionConstraints,
+    LagrangeKernelRandElements, LagrangeKernelTransitionConstraints,
 };
 
 mod coefficients;
@@ -316,10 +316,10 @@ pub trait Air: Send + Sync {
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a vector of field elements required for construction of the auxiliary trace segment. 
+    /// Returns a vector of field elements required for construction of the auxiliary trace segment.
     ///
     /// The elements are drawn uniformly at random from the provided public coin.
-    /// 
+    ///
     /// TODOP: Document how these exclude the Lagrange ones, and how they're put in `AuxRandElements::rand_elements`.
     fn get_aux_rand_elements<E, R>(&self, public_coin: &mut R) -> Result<Vec<E>, RandomCoinError>
     where
