@@ -8,6 +8,9 @@ use alloc::{collections::BTreeMap, vec::Vec};
 use crypto::{RandomCoin, RandomCoinError};
 use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElements};
 
+mod aux;
+pub use aux::AuxRandElements;
+
 mod trace_info;
 pub use trace_info::TraceInfo;
 
