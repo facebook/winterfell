@@ -36,6 +36,8 @@ pub struct VdfAir {
 impl Air for VdfAir {
     type BaseField = BaseElement;
     type PublicInputs = VdfInputs;
+    type GkrProof = ();
+    type GkrVerifier = ();
 
     fn new(trace_info: TraceInfo, pub_inputs: VdfInputs, options: ProofOptions) -> Self {
         let degrees = vec![TransitionConstraintDegree::new(3)];

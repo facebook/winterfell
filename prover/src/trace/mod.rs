@@ -4,9 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::ColMatrix;
-use air::{
-    Air, AuxTraceRandElements, EvaluationFrame, LagrangeKernelBoundaryConstraint, TraceInfo,
-};
+use air::{Air, AuxRandElements, EvaluationFrame, LagrangeKernelBoundaryConstraint, TraceInfo};
 use math::{polynom, FieldElement, StarkField};
 
 mod trace_lde;
@@ -20,6 +18,22 @@ pub use trace_table::{TraceTable, TraceTableFragment};
 
 #[cfg(test)]
 mod tests;
+
+/// Defines an [`AuxTraceWithMetadata`] type where the type arguments use their equivalents in an
+/// [`Air`].
+type AirAuxTraceWithMetadata<A, E> = AuxTraceWithMetadata<E, <A as Air>::GkrProof>;
+
+// AUX TRACE WITH METADATA
+// ================================================================================================
+
+/// Holds the auxiliary trace, the random elements used when generating the auxiliary trace, and
+/// optionally, a GKR proof. See [`crate::Proof`] for more information about the auxiliary
+/// proof.
+pub struct AuxTraceWithMetadata<E: FieldElement, GkrProof> {
+    pub aux_trace: ColMatrix<E>,
+    pub aux_rand_elements: AuxRandElements<E>,
+    pub gkr_proof: Option<GkrProof>,
+}
 
 // TRACE TRAIT
 // ================================================================================================
@@ -51,17 +65,6 @@ pub trait Trace: Sized {
     /// Returns a reference to a [Matrix] describing the main segment of this trace.
     fn main_segment(&self) -> &ColMatrix<Self::BaseField>;
 
-    /// Builds and returns the auxiliary trace segment. If the trace does not require an auxiliary
-    /// segment, None is returned.
-    ///
-    /// The `rand_elements` slice contains the random elements to use to build the aux segment. If a
-    /// Lagrange kernel column is present, the `lagrange_kernel_rand_elements` should be used.
-    fn build_aux_segment<E: FieldElement<BaseField = Self::BaseField>>(
-        &mut self,
-        rand_elements: &[E],
-        lagrange_kernel_rand_elements: Option<&[E]>,
-    ) -> Option<ColMatrix<E>>;
-
     /// Reads an evaluation frame from the main trace segment at the specified row.
     fn read_main_frame(&self, row_idx: usize, frame: &mut EvaluationFrame<Self::BaseField>);
 
@@ -89,8 +92,7 @@ pub trait Trace: Sized {
     fn validate<A, E>(
         &self,
         air: &A,
-        aux_segment: Option<&ColMatrix<E>>,
-        aux_rand_elements: &AuxTraceRandElements<E>,
+        aux_trace_with_metadata: Option<&AirAuxTraceWithMetadata<A, E>>,
     ) where
         A: Air<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField>,
@@ -120,12 +122,15 @@ pub trait Trace: Sized {
         }
 
         // then, check assertions against the auxiliary trace segment
-        if let Some(aux_segment) = aux_segment {
-            for assertion in air.get_aux_assertions(aux_rand_elements) {
+        if let Some(aux_trace_with_metadata) = aux_trace_with_metadata {
+            let aux_trace = &aux_trace_with_metadata.aux_trace;
+            let aux_rand_elements = &aux_trace_with_metadata.aux_rand_elements;
+
+            for assertion in air.get_aux_assertions(aux_rand_elements.rand_elements()) {
                 // get the matrix and verify the assertion against it
                 assertion.apply(self.length(), |step, value| {
                     assert!(
-                        value == aux_segment.get(assertion.column(), step),
+                        value == aux_trace.get(assertion.column(), step),
                         "trace does not satisfy assertion aux_trace({}, {}) == {}",
                         assertion.column(),
                         step,
@@ -138,12 +143,14 @@ pub trait Trace: Sized {
             if let Some(lagrange_kernel_col_idx) = air.context().lagrange_kernel_aux_column_idx() {
                 let boundary_constraint_assertion_value =
                     LagrangeKernelBoundaryConstraint::assertion_value(
-                        aux_rand_elements.get_segment_elements(),
+                        aux_rand_elements
+                            .lagrange()
+                            .expect("expected Lagrange kernel rand elements to be present"),
                     );
 
                 assert_eq!(
                     boundary_constraint_assertion_value,
-                    aux_segment.get(lagrange_kernel_col_idx, 0)
+                    aux_trace.get(lagrange_kernel_col_idx, 0)
                 );
             }
         }
@@ -191,13 +198,17 @@ pub trait Trace: Sized {
             // evaluate transition constraints for the auxiliary trace segment (if any) and make
             // sure they all evaluate to zeros
             if let Some(ref mut aux_frame) = aux_frame {
-                let aux_segment = aux_segment.expect("expected aux segment to be present");
-                read_aux_frame(aux_segment, step, aux_frame);
+                let aux_trace_with_metadata =
+                    aux_trace_with_metadata.expect("expected aux trace to be present");
+                let aux_trace = &aux_trace_with_metadata.aux_trace;
+                let aux_rand_elements = &aux_trace_with_metadata.aux_rand_elements;
+
+                read_aux_frame(aux_trace, step, aux_frame);
                 air.evaluate_aux_transition(
                     &main_frame,
                     aux_frame,
                     &periodic_values,
-                    aux_rand_elements,
+                    aux_rand_elements.rand_elements(),
                     &mut aux_evaluations,
                 );
                 for (i, &evaluation) in aux_evaluations.iter().enumerate() {
@@ -215,11 +226,14 @@ pub trait Trace: Sized {
         // evaluate transition constraints for Lagrange kernel column (if any) and make sure
         // they all evaluate to zeros
         if let Some(col_idx) = air.context().lagrange_kernel_aux_column_idx() {
-            let aux_segment = aux_segment
-                .expect("expected aux segment to be present when the Lagrange kernel column is");
-            let c = aux_segment.get_column(col_idx);
+            let aux_trace_with_metadata =
+                aux_trace_with_metadata.expect("expected aux trace to be present");
+            let aux_trace = &aux_trace_with_metadata.aux_trace;
+            let aux_rand_elements = &aux_trace_with_metadata.aux_rand_elements;
+
+            let c = aux_trace.get_column(col_idx);
             let v = self.length().ilog2() as usize;
-            let r = aux_rand_elements.get_segment_elements();
+            let r = aux_rand_elements.lagrange().expect("expected Lagrange column to be present");
 
             // Loop over every constraint
             for constraint_idx in 1..v + 1 {

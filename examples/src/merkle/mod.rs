@@ -18,7 +18,7 @@ use tracing::{field, info_span};
 use winterfell::{
     crypto::{DefaultRandomCoin, Digest, ElementHasher, MerkleTree},
     math::{fields::f128::BaseElement, FieldElement, StarkField},
-    ProofOptions, Prover, StarkProof, Trace, VerifierError,
+    Proof, ProofOptions, Prover, Trace, VerifierError,
 };
 
 mod air;
@@ -107,7 +107,7 @@ impl<H: ElementHasher> Example for MerkleExample<H>
 where
     H: ElementHasher<BaseField = BaseElement>,
 {
-    fn prove(&self) -> StarkProof {
+    fn prove(&self) -> Proof {
         // generate the execution trace
         println!(
             "Generating proof for proving membership in a Merkle tree of depth {}",
@@ -129,7 +129,7 @@ where
         prover.prove(trace).unwrap()
     }
 
-    fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {
+    fn verify(&self, proof: Proof) -> Result<(), VerifierError> {
         let pub_inputs = PublicInputs {
             tree_root: self.tree_root.to_elements(),
         };
@@ -142,7 +142,7 @@ where
         )
     }
 
-    fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
+    fn verify_with_wrong_inputs(&self, proof: Proof) -> Result<(), VerifierError> {
         let tree_root = self.tree_root.to_elements();
         let pub_inputs = PublicInputs {
             tree_root: [tree_root[1], tree_root[0]],

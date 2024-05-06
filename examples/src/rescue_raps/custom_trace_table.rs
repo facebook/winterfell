@@ -4,11 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use core_utils::uninit_vector;
-use winterfell::{
-    math::{FieldElement, StarkField},
-    matrix::ColMatrix,
-    EvaluationFrame, Trace, TraceInfo,
-};
+use winterfell::{math::StarkField, matrix::ColMatrix, EvaluationFrame, Trace, TraceInfo};
 
 // RAP TRACE TABLE
 // ================================================================================================
@@ -169,50 +165,5 @@ impl<B: StarkField> Trace for RapTraceTable<B> {
 
     fn main_segment(&self) -> &ColMatrix<B> {
         &self.trace
-    }
-
-    fn build_aux_segment<E>(
-        &mut self,
-        rand_elements: &[E],
-        _lagrange_rand_elements: Option<&[E]>,
-    ) -> Option<ColMatrix<E>>
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        let mut current_row = unsafe { uninit_vector(self.width()) };
-        let mut next_row = unsafe { uninit_vector(self.width()) };
-        self.read_row_into(0, &mut current_row);
-        let mut aux_columns =
-            vec![vec![E::ZERO; self.info.length()]; self.info.aux_segment_width()];
-
-        // Columns storing the copied values for the permutation argument are not necessary, but
-        // help understanding the construction of RAPs and are kept for illustrative purposes.
-        aux_columns[0][0] =
-            rand_elements[0] * current_row[0].into() + rand_elements[1] * current_row[1].into();
-        aux_columns[1][0] =
-            rand_elements[0] * current_row[4].into() + rand_elements[1] * current_row[5].into();
-
-        // Permutation argument column
-        aux_columns[2][0] = E::ONE;
-
-        for index in 1..self.info.length() {
-            // At every last step before a new hash iteration,
-            // copy the permuted values into the auxiliary columns
-            if (index % super::CYCLE_LENGTH) == super::NUM_HASH_ROUNDS {
-                self.read_row_into(index, &mut current_row);
-                self.read_row_into(index + 1, &mut next_row);
-
-                aux_columns[0][index] = rand_elements[0] * (next_row[0] - current_row[0]).into()
-                    + rand_elements[1] * (next_row[1] - current_row[1]).into();
-                aux_columns[1][index] = rand_elements[0] * (next_row[4] - current_row[4]).into()
-                    + rand_elements[1] * (next_row[5] - current_row[5]).into();
-            }
-
-            let num = aux_columns[0][index - 1] + rand_elements[2];
-            let denom = aux_columns[1][index - 1] + rand_elements[2];
-            aux_columns[2][index] = aux_columns[2][index - 1] * num * denom.inv();
-        }
-
-        Some(ColMatrix::new(aux_columns))
     }
 }

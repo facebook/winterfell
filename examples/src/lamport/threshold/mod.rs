@@ -14,7 +14,7 @@ use tracing::{field, info_span};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, get_power_series, FieldElement, StarkField},
-    ProofOptions, Prover, StarkProof, Trace, VerifierError,
+    Proof, ProofOptions, Prover, Trace, VerifierError,
 };
 
 mod signature;
@@ -112,7 +112,7 @@ impl<H: ElementHasher> Example for LamportThresholdExample<H>
 where
     H: ElementHasher<BaseField = BaseElement>,
 {
-    fn prove(&self) -> StarkProof {
+    fn prove(&self) -> Proof {
         // generate the execution trace
         println!(
             "Generating proof for verifying {}-of-{} signature",
@@ -141,7 +141,7 @@ where
         prover.prove(trace).unwrap()
     }
 
-    fn verify(&self, proof: StarkProof) -> Result<(), VerifierError> {
+    fn verify(&self, proof: Proof) -> Result<(), VerifierError> {
         let pub_inputs = PublicInputs {
             pub_key_root: self.pub_key.root().to_elements(),
             num_pub_keys: self.pub_key.num_keys(),
@@ -157,7 +157,7 @@ where
         )
     }
 
-    fn verify_with_wrong_inputs(&self, proof: StarkProof) -> Result<(), VerifierError> {
+    fn verify_with_wrong_inputs(&self, proof: Proof) -> Result<(), VerifierError> {
         let pub_inputs = PublicInputs {
             pub_key_root: self.pub_key.root().to_elements(),
             num_pub_keys: self.pub_key.num_keys(),
