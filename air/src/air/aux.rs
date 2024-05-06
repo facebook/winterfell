@@ -69,9 +69,10 @@ pub trait AuxProofVerifier {
         Hasher: ElementHasher<BaseField = E::BaseField>;
 }
 
-// TODOP: Fix docs
-/// Implementation of the [`AuxTraceVerifier`] trait that simply samples a given number of
-/// elements.
+/// Dummy implementation of the [`AuxProofVerifier`] trait that is effectively a no-op.
+/// 
+/// To be used as [`crate::Air::AuxProofVerifier`] when the auxiliary trace doesn't contain a
+/// Lagrange kernel column.
 #[derive(Debug, Clone, Default)]
 pub struct DefaultAuxProofVerifier;
 

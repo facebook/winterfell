@@ -276,16 +276,18 @@ pub trait Air: Send + Sync {
         unimplemented!("evaluation of auxiliary transition constraints has not been implemented");
     }
 
-    // TODOP: Specific how `aux_rand_elements` is the non-lagrange random elements
     /// Returns a set of assertions placed against the auxiliary trace segment.
     ///
-    /// The default implementation of this function returns an empty vector. It should be
-    /// overridden only if the computation relies on the auxiliary trace segment. In such a case,
-    /// the vector returned from this function must contain at least one assertion.
+    /// The default implementation of this function returns an empty vector. It should be overridden
+    /// only if the computation relies on the auxiliary trace segment. In such a case, the vector
+    /// returned from this function must contain at least one assertion.
     ///
     /// The column index for assertions is expected to be zero-based across all auxiliary trace
-    /// segments. That is, assertion against column 0, is an assertion against the first column
-    /// of auxiliary trace segment.
+    /// segments. That is, assertion against column 0, is an assertion against the first column of
+    /// auxiliary trace segment.
+    /// 
+    /// `aux_rand_elements` holds the random elements used to build all auxiliary columns except for
+    /// the Lagrange kernel column.
     ///
     /// When the protocol is executed using an extension field, auxiliary assertions are defined
     /// over the extension field. This is in contrast with the assertions returned from
@@ -302,7 +304,9 @@ pub trait Air: Send + Sync {
     // AUXILIARY PROOF VERIFIER
     // --------------------------------------------------------------------------------------------
 
-    // TODOP: Docs
+    /// Returns the [`AuxProofVerifier`] to be used to verify the auxiliary proof.
+    /// 
+    /// Leave unimplemented if the `Air` doesn't use an auxiliary proof.
     fn get_auxiliary_proof_verifier<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
     ) -> Self::AuxProofVerifier {
