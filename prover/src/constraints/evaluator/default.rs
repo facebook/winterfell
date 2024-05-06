@@ -8,7 +8,9 @@ use super::{
     BoundaryConstraints, CompositionPolyTrace, ConstraintEvaluationTable, ConstraintEvaluator,
     PeriodicValueTable, StarkDomain, TraceLde,
 };
-use air::{Air, ConstraintCompositionCoefficients, EvaluationFrame, TransitionConstraints};
+use air::{
+    Air, AuxRandElements, ConstraintCompositionCoefficients, EvaluationFrame, TransitionConstraints,
+};
 use math::FieldElement;
 use utils::iter_mut;
 
@@ -38,7 +40,7 @@ pub struct DefaultConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A:
     boundary_constraints: BoundaryConstraints<E>,
     transition_constraints: TransitionConstraints<E>,
     lagrange_constraints_evaluator: Option<LagrangeKernelConstraintsBatchEvaluator<E>>,
-    aux_rand_elements: Option<<A as Air>::AuxRandElements<E>>,
+    aux_rand_elements: Option<AuxRandElements<E>>,
     periodic_values: PeriodicValueTable<E::BaseField>,
 }
 
@@ -130,7 +132,7 @@ where
     /// over extended execution trace.
     pub fn new(
         air: &'a A,
-        aux_rand_elements: Option<<A as Air>::AuxRandElements<E>>,
+        aux_rand_elements: Option<AuxRandElements<E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self {
         // build transition constraint groups; these will be used to compose transition constraint
@@ -144,16 +146,21 @@ where
         // constraint evaluations.
         let boundary_constraints = BoundaryConstraints::new(
             air,
-            aux_rand_elements.as_ref(),
+            aux_rand_elements
+                .as_ref()
+                .map(|aux_rand_elements| aux_rand_elements.rand_elements()),
             &composition_coefficients.boundary,
         );
 
         let lagrange_constraints_evaluator = if air.context().has_lagrange_kernel_aux_column() {
             let aux_rand_elements =
                 aux_rand_elements.as_ref().expect("expected aux rand elements to be present");
+            let lagrange_rand_elements = aux_rand_elements
+                .lagrange()
+                .expect("expected lagrange rand elements to be present");
             Some(LagrangeKernelConstraintsBatchEvaluator::new(
                 air,
-                air.get_lagrange_rand_elements(aux_rand_elements).to_vec(),
+                lagrange_rand_elements.clone(),
                 composition_coefficients
                     .lagrange
                     .expect("expected Lagrange kernel composition coefficients to be present"),
@@ -363,7 +370,8 @@ where
             periodic_values,
             self.aux_rand_elements
                 .as_ref()
-                .expect("expected aux rand elements to be present"),
+                .expect("expected aux rand elements to be present")
+                .rand_elements(),
             evaluations,
         );
 

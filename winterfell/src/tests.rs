@@ -279,7 +279,7 @@ impl Prover for LagrangeComplexProver {
 
         AuxTraceWithMetadata {
             aux_trace: ColMatrix::new(columns),
-            aux_rand_eles: lagrange_kernel_rand_elements,
+            aux_rand_elements: lagrange_kernel_rand_elements,
             aux_proof: None,
         }
     }

@@ -196,7 +196,7 @@ where
 
         AuxTraceWithMetadata {
             aux_trace: ColMatrix::new(aux_columns),
-            aux_rand_eles: rand_elements,
+            aux_rand_elements: rand_elements,
             aux_proof: None,
         }
     }

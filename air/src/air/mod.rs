@@ -192,6 +192,7 @@ pub trait Air: Send + Sync {
     /// This could be any type as long as it can be serialized into a sequence of field elements.
     type PublicInputs: ToElements<Self::BaseField>;
 
+    // TODOP: Remove
     /// A type defining the random elements used in constructing the auxiliary trace segment.
     type AuxRandElements<E>: Send + Sync
     where
@@ -269,7 +270,7 @@ pub trait Air: Send + Sync {
         main_frame: &EvaluationFrame<F>,
         aux_frame: &EvaluationFrame<E>,
         periodic_values: &[F],
-        aux_rand_elements: &Self::AuxRandElements<E>,
+        aux_rand_elements: &[E],
         result: &mut [E],
     ) where
         F: FieldElement<BaseField = Self::BaseField>,
@@ -278,6 +279,7 @@ pub trait Air: Send + Sync {
         unimplemented!("evaluation of auxiliary transition constraints has not been implemented");
     }
 
+    // TODOP: Specific how `aux_rand_elements` is the non-lagrange random elements
     /// Returns a set of assertions placed against the auxiliary trace segment.
     ///
     /// The default implementation of this function returns an empty vector. It should be
@@ -295,22 +297,9 @@ pub trait Air: Send + Sync {
     #[allow(unused_variables)]
     fn get_aux_assertions<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        aux_rand_elements: &Self::AuxRandElements<E>,
+        aux_rand_elements: &[E],
     ) -> Vec<Assertion<E>> {
         Vec::new()
-    }
-
-    /// Returns the random elements used in constructing the Lagrange kernel column.
-    /// TODOP: Remove
-    #[allow(unused_variables)]
-    fn get_lagrange_rand_elements<E>(
-        &self,
-        aux_random_elements: &Self::AuxRandElements<E>,
-    ) -> Vec<E>
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        unimplemented!("getting the Lagrange random elements has not been implemented");
     }
 
     // PROVIDED METHODS
@@ -339,7 +328,7 @@ pub trait Air: Send + Sync {
     fn get_lagrange_kernel_constraints<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         lagrange_composition_coefficients: LagrangeConstraintsCompositionCoefficients<E>,
-        lagrange_kernel_rand_elements: &[E],
+        lagrange_kernel_rand_elements: &LagrangeKernelRandElements<E>,
     ) -> Option<LagrangeKernelConstraints<E>> {
         self.context().lagrange_kernel_aux_column_idx().map(|col_idx| {
             LagrangeKernelConstraints::new(
@@ -421,7 +410,7 @@ pub trait Air: Send + Sync {
     /// combination of boundary constraints during constraint merging.
     fn get_boundary_constraints<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        aux_rand_elements: Option<&Self::AuxRandElements<E>>,
+        aux_rand_elements: Option<&[E]>,
         composition_coefficients: &[E],
     ) -> BoundaryConstraints<E> {
         BoundaryConstraints::new(

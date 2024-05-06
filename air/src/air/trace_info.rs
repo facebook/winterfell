@@ -18,7 +18,7 @@ use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serial
 /// custom metadata. Currently, a trace can consist of at most two segments: the main segment and
 /// one auxiliary segment. Metadata is just a vector of bytes and can store any values up to 64KB in
 /// size.
-/// 
+///
 /// TODOP: Document how `num_aux_segment_rands` now excludes the Lagrange ones.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TraceInfo {

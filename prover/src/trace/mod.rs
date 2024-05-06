@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::ColMatrix;
-use air::{Air, EvaluationFrame, LagrangeKernelBoundaryConstraint, TraceInfo};
+use air::{Air, AuxRandElements, EvaluationFrame, LagrangeKernelBoundaryConstraint, TraceInfo};
 use math::{polynom, FieldElement, StarkField};
 
 mod trace_lde;
@@ -21,18 +21,18 @@ mod tests;
 
 /// Defines an [`AuxTraceWithMetadata`] type where the type arguments use their equivalents in an
 /// [`Air`].
-type AirAuxTraceWithMetadata<A, E> =
-    AuxTraceWithMetadata<E, <A as Air>::AuxRandElements<E>, <A as Air>::AuxProof>;
+type AirAuxTraceWithMetadata<A, E> = AuxTraceWithMetadata<E, <A as Air>::AuxProof>;
 
 // AUX TRACE WITH METADATA
 // ================================================================================================
 
+// TODOP: Switch to using `AuxRandElements` instead of generic `AuxRandEles`
 /// Holds the auxiliary trace, the random elements used when generating the auxiliary trace, and
 /// optionally, an auxiliary proof. See [`crate::Proof`] for more information about the auxiliary
 /// proof.
-pub struct AuxTraceWithMetadata<E: FieldElement, AuxRandEles, AuxProof> {
+pub struct AuxTraceWithMetadata<E: FieldElement, AuxProof> {
     pub aux_trace: ColMatrix<E>,
-    pub aux_rand_eles: AuxRandEles,
+    pub aux_rand_elements: AuxRandElements<E>,
     pub aux_proof: Option<AuxProof>,
 }
 
@@ -125,9 +125,9 @@ pub trait Trace: Sized {
         // then, check assertions against the auxiliary trace segment
         if let Some(aux_trace_with_metadata) = aux_trace_with_metadata {
             let aux_trace = &aux_trace_with_metadata.aux_trace;
-            let aux_rand_elements = &aux_trace_with_metadata.aux_rand_eles;
+            let aux_rand_elements = &aux_trace_with_metadata.aux_rand_elements;
 
-            for assertion in air.get_aux_assertions(aux_rand_elements) {
+            for assertion in air.get_aux_assertions(aux_rand_elements.rand_elements()) {
                 // get the matrix and verify the assertion against it
                 assertion.apply(self.length(), |step, value| {
                     assert!(
@@ -144,7 +144,9 @@ pub trait Trace: Sized {
             if let Some(lagrange_kernel_col_idx) = air.context().lagrange_kernel_aux_column_idx() {
                 let boundary_constraint_assertion_value =
                     LagrangeKernelBoundaryConstraint::assertion_value(
-                        &air.get_lagrange_rand_elements(aux_rand_elements),
+                        aux_rand_elements
+                            .lagrange()
+                            .expect("expected Lagrange kernel rand elements to be present"),
                     );
 
                 assert_eq!(
@@ -200,14 +202,14 @@ pub trait Trace: Sized {
                 let aux_trace_with_metadata =
                     aux_trace_with_metadata.expect("expected aux trace to be present");
                 let aux_trace = &aux_trace_with_metadata.aux_trace;
-                let aux_rand_elements = &aux_trace_with_metadata.aux_rand_eles;
+                let aux_rand_elements = &aux_trace_with_metadata.aux_rand_elements;
 
                 read_aux_frame(aux_trace, step, aux_frame);
                 air.evaluate_aux_transition(
                     &main_frame,
                     aux_frame,
                     &periodic_values,
-                    aux_rand_elements,
+                    aux_rand_elements.rand_elements(),
                     &mut aux_evaluations,
                 );
                 for (i, &evaluation) in aux_evaluations.iter().enumerate() {
@@ -228,11 +230,11 @@ pub trait Trace: Sized {
             let aux_trace_with_metadata =
                 aux_trace_with_metadata.expect("expected aux trace to be present");
             let aux_trace = &aux_trace_with_metadata.aux_trace;
-            let aux_rand_elements = &aux_trace_with_metadata.aux_rand_eles;
+            let aux_rand_elements = &aux_trace_with_metadata.aux_rand_elements;
 
             let c = aux_trace.get_column(col_idx);
             let v = self.length().ilog2() as usize;
-            let r = air.get_lagrange_rand_elements(aux_rand_elements);
+            let r = aux_rand_elements.lagrange().expect("expected Lagrange column to be present");
 
             // Loop over every constraint
             for constraint_idx in 1..v + 1 {

@@ -5,7 +5,7 @@
 
 use air::{
     Air, LagrangeConstraintsCompositionCoefficients, LagrangeKernelConstraints,
-    LagrangeKernelEvaluationFrame,
+    LagrangeKernelEvaluationFrame, LagrangeKernelRandElements,
 };
 use alloc::vec::Vec;
 use math::{batch_inversion, FieldElement};
@@ -18,14 +18,14 @@ use crate::{StarkDomain, TraceLde};
 /// Specifically, [`batch_inversion`] is used to reduce the number of divisions performed.
 pub struct LagrangeKernelConstraintsBatchEvaluator<E: FieldElement> {
     lagrange_kernel_constraints: LagrangeKernelConstraints<E>,
-    rand_elements: Vec<E>,
+    rand_elements: LagrangeKernelRandElements<E>,
 }
 
 impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
     /// Constructs a new [`LagrangeConstraintsBatchEvaluator`].
     pub fn new<A: Air>(
         air: &A,
-        lagrange_kernel_rand_elements: Vec<E>,
+        lagrange_kernel_rand_elements: LagrangeKernelRandElements<E>,
         lagrange_composition_coefficients: LagrangeConstraintsCompositionCoefficients<E>,
     ) -> Self
     where

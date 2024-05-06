@@ -3,7 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use air::{Air, ConstraintCompositionCoefficients, EvaluationFrame, LagrangeKernelEvaluationFrame};
+use air::{
+    Air, AuxRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
+    LagrangeKernelEvaluationFrame,
+};
 use alloc::vec::Vec;
 use math::{polynom, FieldElement};
 
@@ -17,7 +20,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     main_trace_frame: &EvaluationFrame<E>,
     aux_trace_frame: &Option<EvaluationFrame<E>>,
     lagrange_kernel_frame: Option<&LagrangeKernelEvaluationFrame<E>>,
-    aux_rand_elements: Option<<A as Air>::AuxRandElements<E>>,
+    aux_rand_elements: Option<&AuxRandElements<E>>,
     x: E,
 ) -> E {
     // 1 ----- evaluate transition constraints ----------------------------------------------------
@@ -44,13 +47,13 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     let mut t_evaluations2 = E::zeroed_vector(t_constraints.num_aux_constraints());
     if let Some(aux_trace_frame) = aux_trace_frame {
         let aux_rand_elements =
-            aux_rand_elements.as_ref().expect("expected aux rand elements to be present");
+            aux_rand_elements.expect("expected aux rand elements to be present");
 
         air.evaluate_aux_transition(
             main_trace_frame,
             aux_trace_frame,
             &periodic_values,
-            aux_rand_elements,
+            aux_rand_elements.rand_elements(),
             &mut t_evaluations2,
         );
     }
@@ -63,8 +66,10 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     // 2 ----- evaluate boundary constraints ------------------------------------------------------
 
     // get boundary constraints grouped by common divisor from the AIR
-    let b_constraints = air
-        .get_boundary_constraints(aux_rand_elements.as_ref(), &composition_coefficients.boundary);
+    let b_constraints = air.get_boundary_constraints(
+        aux_rand_elements.as_ref().map(|eles| eles.rand_elements()),
+        &composition_coefficients.boundary,
+    );
 
     // iterate over boundary constraint groups for the main trace segment (each group has a
     // distinct divisor), evaluate constraints in each group and add their combination to the
@@ -90,9 +95,11 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
             .expect("expected Lagrange kernel composition coefficients to be present");
         let lagrange_kernel_aux_rand_elements = {
             let aux_rand_elements =
-                aux_rand_elements.as_ref().expect("expected aux rand elements to be present");
+                aux_rand_elements.expect("expected aux rand elements to be present");
 
-            air.get_lagrange_rand_elements(aux_rand_elements)
+            aux_rand_elements
+                .lagrange()
+                .expect("expected lagrange rand elements to be present")
         };
 
         let lagrange_constraints = air

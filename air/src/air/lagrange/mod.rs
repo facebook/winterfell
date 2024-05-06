@@ -29,7 +29,7 @@ impl<E: FieldElement> LagrangeKernelConstraints<E> {
     /// Constructs a new [`LagrangeKernelConstraints`].
     pub fn new(
         lagrange_composition_coefficients: LagrangeConstraintsCompositionCoefficients<E>,
-        lagrange_kernel_rand_elements: &[E],
+        lagrange_kernel_rand_elements: &LagrangeKernelRandElements<E>,
         lagrange_kernel_col_idx: usize,
     ) -> Self {
         Self {

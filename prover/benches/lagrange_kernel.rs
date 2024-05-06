@@ -58,16 +58,9 @@ impl LagrangeTrace {
         let main_trace_col: Vec<BaseElement> =
             (0..trace_len).map(|idx| BaseElement::from(idx as u32)).collect();
 
-
         Self {
             main_trace: ColMatrix::new(vec![main_trace_col]),
-            info: TraceInfo::new_multi_segment(
-                1,
-                aux_segment_width,
-                0,
-                trace_len,
-                vec![],
-            ),
+            info: TraceInfo::new_multi_segment(1, aux_segment_width, 0, trace_len, vec![]),
         }
     }
 
@@ -291,7 +284,7 @@ impl Prover for LagrangeProver {
 
         AuxTraceWithMetadata {
             aux_trace: ColMatrix::new(columns),
-            aux_rand_eles: lagrange_kernel_rand_elements,
+            aux_rand_elements: lagrange_kernel_rand_elements,
             aux_proof: None,
         }
     }

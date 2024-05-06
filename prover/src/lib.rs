@@ -42,6 +42,7 @@
 #[macro_use]
 extern crate alloc;
 
+use air::AuxRandElements;
 pub use air::{
     proof, proof::Proof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
     ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
@@ -191,7 +192,7 @@ pub trait Prover {
     fn new_evaluator<'a, E>(
         &self,
         air: &'a Self::Air,
-        aux_rand_elements: Option<ProverAuxRandElements<Self, E>>,
+        aux_rand_elements: Option<AuxRandElements<E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E>
     where
@@ -213,6 +214,7 @@ pub trait Prover {
         unimplemented!("`Prover::generate_aux_proof` needs to be implemented when the auxiliary trace has a Lagrange kernel column.")
     }
 
+    // TODOP: Fix docs
     /// Builds and returns the auxiliary trace along with extra metadata:
     /// - The random elements drawn and used in generating the auxiliary trace,
     /// - An auxiliary proof object.
@@ -222,8 +224,8 @@ pub trait Prover {
     fn build_aux_trace<E>(
         &self,
         main_trace: &Self::Trace,
-        transcript: &mut Self::RandomCoin,
-    ) -> AuxTraceWithMetadata<E, ProverAuxRandElements<Self, E>, ProverAuxProof<Self>>
+        aux_rand_elements: &AuxRandElements<E>,
+    ) -> ColMatrix<E>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
@@ -321,7 +323,25 @@ pub trait Prover {
         // build the auxiliary trace segment, and append the resulting segments to trace commitment
         // and trace polynomial table structs
         let aux_trace_with_metadata = if air.trace_info().is_multi_segment() {
-            let aux_trace_with_metadata = self.build_aux_trace(&trace, channel.public_coin());
+            let (aux_proof, lagrange_rand_elements) =
+                if air.context().has_lagrange_kernel_aux_column() {
+                    let (aux_proof, lagrange_rand_elements) =
+                        self.generate_aux_proof(&trace, channel.public_coin());
+
+                    (Some(aux_proof), Some(lagrange_rand_elements))
+                } else {
+                    (None, None)
+                };
+
+            let aux_rand_elements = {
+                let rand_elements = air
+                    .get_aux_rand_elements(channel.public_coin())
+                    .expect("failed to draw random elements for the auxiliary trace segment");
+
+                AuxRandElements::new_with_lagrange(rand_elements, lagrange_rand_elements)
+            };
+
+            let aux_trace = self.build_aux_trace(&trace, &aux_rand_elements);
 
             // commit to the auxiliary trace segment
             let aux_segment_polys = {
@@ -329,7 +349,7 @@ pub trait Prover {
                 // trace
                 let span = info_span!("commit_to_aux_trace_segment").entered();
                 let (aux_segment_polys, aux_segment_root) =
-                    trace_lde.set_aux_trace(&aux_trace_with_metadata.aux_trace, &domain);
+                    trace_lde.set_aux_trace(&aux_trace, &domain);
 
                 // commit to the LDE of the extended auxiliary trace segment by writing the root of
                 // its Merkle tree into the channel
@@ -342,7 +362,11 @@ pub trait Prover {
             trace_polys
                 .add_aux_segment(aux_segment_polys, air.context().lagrange_kernel_aux_column_idx());
 
-            Some(aux_trace_with_metadata)
+            Some(AuxTraceWithMetadata {
+                aux_trace,
+                aux_rand_elements,
+                aux_proof,
+            })
         } else {
             None
         };
@@ -355,7 +379,7 @@ pub trait Prover {
 
         // Destructure `aux_trace_with_metadata`.
         let (aux_trace, aux_rand_elements, aux_proof) = match aux_trace_with_metadata {
-            Some(atm) => (Some(atm.aux_trace), Some(atm.aux_rand_eles), atm.aux_proof),
+            Some(atm) => (Some(atm.aux_trace), Some(atm.aux_rand_elements), atm.aux_proof),
             None => (None, None, None),
         };
 
