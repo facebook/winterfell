@@ -4,6 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 mod boundary;
+use core::ops::Deref;
+
+use alloc::vec::Vec;
 pub use boundary::LagrangeKernelBoundaryConstraint;
 
 mod frame;
@@ -39,5 +42,37 @@ impl<E: FieldElement> LagrangeKernelConstraints<E> {
             ),
             lagrange_kernel_col_idx,
         }
+    }
+}
+
+/// TODOP: Document
+#[derive(Debug, Clone)]
+pub struct LagrangeRandElements<E> {
+    elements: Vec<E>,
+}
+
+impl<E> LagrangeRandElements<E> {
+    pub fn new(elements: Vec<E>) -> Self {
+        Self { elements }
+    }
+}
+
+impl<E> Deref for LagrangeRandElements<E> {
+    type Target = Vec<E>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.elements
+    }
+}
+
+impl<E> AsRef<[E]> for LagrangeRandElements<E> {
+    fn as_ref(&self) -> &[E] {
+        &self.elements
+    }
+}
+
+impl<E> From<LagrangeRandElements<E>> for Vec<E> {
+    fn from(lagrange_rand_elements: LagrangeRandElements<E>) -> Self {
+        lagrange_rand_elements.elements
     }
 }
