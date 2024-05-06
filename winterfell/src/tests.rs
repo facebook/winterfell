@@ -95,7 +95,7 @@ impl AuxProofVerifier for DummyAuxProofVerifier {
         &self,
         aux_proof: usize,
         public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> Result<Option<LagrangeKernelRandElements<E>>, Self::Error>
+    ) -> Result<LagrangeKernelRandElements<E>, Self::Error>
     where
         E: FieldElement,
         Hasher: crypto::ElementHasher<BaseField = E::BaseField>,
@@ -110,7 +110,7 @@ impl AuxProofVerifier for DummyAuxProofVerifier {
             LagrangeKernelRandElements::new(rand_elements)
         };
 
-        Ok(Some(lagrange_kernel_rand_elements))
+        Ok(lagrange_kernel_rand_elements)
     }
 }
 

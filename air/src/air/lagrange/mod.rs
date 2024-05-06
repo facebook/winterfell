@@ -45,13 +45,14 @@ impl<E: FieldElement> LagrangeKernelConstraints<E> {
     }
 }
 
-/// TODOP: Document
+/// Holds the randomly generated elements needed to build the Lagrange kernel auxiliary column.
 #[derive(Debug, Clone)]
 pub struct LagrangeKernelRandElements<E> {
     elements: Vec<E>,
 }
 
 impl<E> LagrangeKernelRandElements<E> {
+    /// Creates a new [`LagrangeKernelRandElements`].
     pub fn new(elements: Vec<E>) -> Self {
         Self { elements }
     }
