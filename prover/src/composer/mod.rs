@@ -147,7 +147,9 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
         // finally compose the final term associated to the Lagrange kernel trace polynomial if
         // there is one present.
         if let Some(poly) = trace_polys.lagrange_poly() {
-            let ood_eval_frame = ood_trace_states.lagrange_kernel_frame().unwrap();
+            let ood_eval_frame = ood_trace_states.lagrange_kernel_frame().expect(
+                "should contain OOD values for Lagrange kernel trace polynomial if we are here",
+            );
 
             let log_trace_len = poly.len().ilog2();
             let g = E::from(E::BaseField::get_root_of_unity(log_trace_len));
@@ -167,9 +169,10 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
             let p_s = polynom::interpolate(&xs, ood_eval_frame.inner(), true);
             let z_s = polynom::get_zero_roots(&xs);
             let quotient = polynom::div(&polynom::sub(poly, &p_s), &z_s);
-            let scaled = polynom::mul_by_scalar(&quotient, self.cc.lagrange_cc.unwrap());
+            let scaled_with_randomness =
+                polynom::mul_by_scalar(&quotient, self.cc.lagrange_cc.unwrap());
 
-            trace_poly = polynom::add(&scaled, &trace_poly);
+            trace_poly = polynom::add(&scaled_with_randomness, &trace_poly);
         };
 
         // set the coefficients of the DEEP composition polynomial

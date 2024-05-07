@@ -122,6 +122,8 @@ impl<E: FieldElement> DeepComposer<E> {
             // we define this offset here because composition of the main trace columns has
             // consumed some number of composition coefficients already.
             let cc_offset = queried_main_trace_states.num_columns();
+
+            // we treat the Lagrange column separately if present
             let lagrange_ker_col_idx =
                 self.lagrange_ker_idx.unwrap_or(ood_aux_trace_states[0].len());
 
