@@ -16,7 +16,8 @@ jobs:
         run: |
           rustup update --no-self-update nightly
           rustup +nightly component add clippy
-          cargo +nightly clippy --workspace --all-targets --all-features -- -D clippy::all -D warnings
+          # Specifically, don't enable `async` feature in winter-prover crate
+          cargo +nightly clippy --workspace --all-targets --features std,concurrent -- -D clippy::all -D warnings
 
       - name: Rustfmt
         run: |
