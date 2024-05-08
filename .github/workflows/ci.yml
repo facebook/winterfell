@@ -35,7 +35,7 @@ jobs:
         run: |
           rustup update --no-self-update stable
           cargo +stable install cargo-hack --locked
-          RUSTFLAGS=-Dwarnings cargo +stable -p winter-utils,winter-maybe-async,winter-rand-utils,winter-math,winter-crypto,winter-fri,winter-air,winter-verifier,winterfell,examples hack --no-private --feature-powerset --keep-going check --rust-version --workspace --all-targets --verbose
+          RUSTFLAGS=-Dwarnings cargo +stable hack -p winter-utils,winter-maybe-async,winter-rand-utils,winter-math,winter-crypto,winter-fri,winter-air,winter-verifier,winterfell,examples --no-private --feature-powerset --keep-going check --rust-version --workspace --all-targets --verbose
 
   # Check prover alone; specifically, that the `async` feature builds correctly with all other features.
   check-prover:
@@ -47,7 +47,7 @@ jobs:
         run: |
           rustup update --no-self-update stable
           cargo +stable install cargo-hack --locked
-          RUSTFLAGS=-Dwarnings cargo +stable -p winter-prover hack --no-private --feature-powerset --keep-going check --rust-version --workspace --all-targets --verbose
+          RUSTFLAGS=-Dwarnings cargo +stable hack -p winter-prover --no-private --feature-powerset --keep-going check --rust-version --workspace --all-targets --verbose
 
   test:
     name: Test Rust ${{matrix.toolchain}} on ${{matrix.os}}
