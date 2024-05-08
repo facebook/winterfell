@@ -12,6 +12,7 @@ use air::{
     Air, AuxRandElements, ConstraintCompositionCoefficients, EvaluationFrame, TransitionConstraints,
 };
 use math::FieldElement;
+use tracing::instrument;
 use utils::iter_mut;
 
 #[cfg(feature = "concurrent")]
@@ -51,6 +52,13 @@ where
 {
     type Air = A;
 
+    #[instrument(
+        skip_all,
+        name = "evaluate_constraints",
+        fields(
+            ce_domain_size = %domain.ce_domain_size()
+        )
+    )]
     fn evaluate<T: TraceLde<E>>(
         self,
         trace: &T,
