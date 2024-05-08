@@ -72,14 +72,15 @@ pub struct LagrangeConstraintsCompositionCoefficients<E: FieldElement> {
 /// https://eprint.iacr.org/2022/1216 and it relies on two points:
 ///
 /// 1. The evaluation proofs for each trace polynomial at $z$ and $g \cdot z$ can be batched using
-/// the non-normalized Lagrange kernel over the set $\{z, g \cdot z\}$. This, however, requires
-/// that the FRI protocol is run with a larger agreement parameter
-/// $\alpha^{+} = (1 + 1/2m)\cdot\sqrt{\rho^{+}}$ where $\rho^{+} := \frac{\kappa + 2}{\nu}$,
-/// $\kappa$ and $\nu$ are the length of the execution trace and the LDE domain size, respectively.
+///    the non-normalized Lagrange kernel over the set $\{z, g \cdot z\}$. This, however, requires
+///    that the FRI protocol is run with a larger agreement parameter
+///    $\alpha^{+} = (1 + 1/2m)\cdot\sqrt{\rho^{+}}$ where $\rho^{+} := \frac{\kappa + 2}{\nu}$,
+///    $\kappa$ and $\nu$ are the length of the execution trace and the LDE domain size,
+///    respectively.
 /// 2. The resulting $Y(x)$ do not need to be degree adjusted but the soundness error of the
-/// protocol needs to be updated. For most combinations of batching parameters, this leads to a
-/// negligible increase in soundness error. The formula for the updated error can be found in
-/// Theorem 8 of https://eprint.iacr.org/2022/1216.
+///    protocol needs to be updated. For most combinations of batching parameters, this leads to a
+///    negligible increase in soundness error. The formula for the updated error can be found in
+///    Theorem 8 of https://eprint.iacr.org/2022/1216.
 ///
 /// In the case when the trace polynomials contain a trace polynomial corresponding to a Lagrange
 /// kernel column, the above expression of $Y(x)$ includes the additional term given by
@@ -93,7 +94,7 @@ pub struct LagrangeConstraintsCompositionCoefficients<E: FieldElement> {
 /// 1. $\gamma$ is the composition coefficient for the Lagrange kernel trace polynomial.
 /// 2. $T_l(x) is the evaluation of the Lagrange trace polynomial at $x$.
 /// 3. $S$ is the set of opening points for the Lagrange kernel i.e.,
-/// $S := {z, z.g, z.g^2, ..., z.g^{2^{log_2(\nu) - 1}}}$.
+///    $S := {z, z.g, z.g^2, ..., z.g^{2^{log_2(\nu) - 1}}}$.
 /// 4. $p_S(X)$ is the polynomial of minimal degree interpolating the set ${(a, T_l(a)): a \in S}$.
 /// 5. $Z_S(X)$ is the polynomial of minimal degree vanishing over the set $S$.
 ///
@@ -106,5 +107,5 @@ pub struct DeepCompositionCoefficients<E: FieldElement> {
     /// Constraint column polynomial composition coefficients $\beta_j$.
     pub constraints: Vec<E>,
     /// Lagrange kernel trace polynomial composition coefficient $\gamma$.
-    pub lagrange_cc: Option<E>,
+    pub lagrange: Option<E>,
 }

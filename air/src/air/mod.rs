@@ -595,7 +595,7 @@ pub trait Air: Send + Sync {
         Ok(DeepCompositionCoefficients {
             trace: t_coefficients,
             constraints: c_coefficients,
-            lagrange_cc,
+            lagrange: lagrange_cc,
         })
     }
 }

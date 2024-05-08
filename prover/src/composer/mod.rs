@@ -5,7 +5,11 @@
 use super::{constraints::CompositionPoly, StarkDomain, TracePolyTable};
 use air::{proof::TraceOodFrame, DeepCompositionCoefficients};
 use alloc::vec::Vec;
-use math::{add_in_place, fft, mul_acc, polynom, ExtensionOf, FieldElement, StarkField};
+use math::{
+    add_in_place, fft, mul_acc,
+    polynom::{self, syn_div_roots_in_place},
+    ExtensionOf, FieldElement, StarkField,
+};
 use utils::iter_mut;
 
 #[cfg(feature = "concurrent")]
@@ -166,11 +170,17 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
                 g_exp *= g_exp;
             }
 
+            // compute the numerator
             let p_s = polynom::interpolate(&xs, ood_eval_frame.inner(), true);
-            let z_s = polynom::get_zero_roots(&xs);
-            let quotient = polynom::div(&polynom::sub(poly, &p_s), &z_s);
+            let mut numerator = polynom::sub(poly, &p_s);
+
+            // divide by the zero polynomial of the set S
+            syn_div_roots_in_place(&mut numerator, &xs);
+
+            // multiply by constraint composition randomness
+            let quotient = numerator;
             let scaled_with_randomness =
-                polynom::mul_by_scalar(&quotient, self.cc.lagrange_cc.unwrap());
+                polynom::mul_by_scalar(&quotient, self.cc.lagrange.unwrap());
 
             trace_poly = polynom::add(&scaled_with_randomness, &trace_poly);
         };

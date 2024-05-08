@@ -120,13 +120,23 @@ impl OodFrame {
         main_trace_width: usize,
         aux_trace_width: usize,
         num_evaluations: usize,
-        has_lagrange_ker: bool,
     ) -> Result<(TraceOodFrame<E>, Vec<E>), DeserializationError> {
         assert!(main_trace_width > 0, "trace width cannot be zero");
         assert!(num_evaluations > 0, "number of evaluations cannot be zero");
 
-        // if there is a Lagrange kernel, then we treat its associated entries separately
-        let aux_trace_width = aux_trace_width - (has_lagrange_ker as usize);
+        // parse Lagrange kernel column trace, if any
+        let mut reader = SliceReader::new(&self.lagrange_kernel_trace_states);
+        let lagrange_kernel_frame_size = reader.read_u8()? as usize;
+        let lagrange_kernel_frame = if lagrange_kernel_frame_size > 0 {
+            let lagrange_kernel_trace = reader.read_many(lagrange_kernel_frame_size)?;
+
+            Some(LagrangeKernelEvaluationFrame::new(lagrange_kernel_trace))
+        } else {
+            None
+        };
+
+        // if there is a Lagrange kernel, we treat its associated entries separately above
+        let aux_trace_width = aux_trace_width - (lagrange_kernel_frame.is_some() as usize);
 
         // parse main and auxiliary trace evaluation frames. This does the reverse operation done in
         // `set_trace_states()`.
@@ -148,17 +158,6 @@ impl OodFrame {
             }
 
             (current_row, next_row)
-        };
-
-        // parse Lagrange kernel column trace
-        let mut reader = SliceReader::new(&self.lagrange_kernel_trace_states);
-        let lagrange_kernel_frame_size = reader.read_u8()? as usize;
-        let lagrange_kernel_frame = if lagrange_kernel_frame_size > 0 {
-            let lagrange_kernel_trace = reader.read_many(lagrange_kernel_frame_size)?;
-
-            Some(LagrangeKernelEvaluationFrame::new(lagrange_kernel_trace))
-        } else {
-            None
         };
 
         // parse the constraint evaluations

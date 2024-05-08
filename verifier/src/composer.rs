@@ -182,7 +182,7 @@ impl<E: FieldElement> DeepComposer<E> {
 
                 for (row, &x) in queried_aux_trace_states.rows().zip(&self.x_coordinates) {
                     let value = row[lagrange_ker_col_idx];
-                    let cc = self.cc.lagrange_cc.unwrap();
+                    let cc = self.cc.lagrange.unwrap();
 
                     result_lag_num.push((value - polynom::eval(&p_s, x)) * cc);
                     result_lag_den.push(polynom::eval(&z_s_prime, x));
