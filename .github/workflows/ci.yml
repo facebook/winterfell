@@ -24,8 +24,10 @@ jobs:
           rustup +nightly component add rustfmt
           cargo +nightly fmt --all --check
 
+  # Note: the examples won't compile when the prover is built with the `async` feature, since they're designed to be sync only.
+  # Hence, we avoid this scenario explicitly.
   check:
-    name: Check all features and all targets against the MSRV
+    name: Check all features and all targets against the MSRV, except for winter-prover
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@main
@@ -33,7 +35,19 @@ jobs:
         run: |
           rustup update --no-self-update stable
           cargo +stable install cargo-hack --locked
-          RUSTFLAGS=-Dwarnings cargo +stable hack --no-private --feature-powerset --keep-going check --rust-version --workspace --all-targets --verbose
+          RUSTFLAGS=-Dwarnings cargo +stable -p winter-utils,winter-maybe-async,winter-rand-utils,winter-math,winter-crypto,winter-fri,winter-air,winter-verifier,winterfell,examples hack --no-private --feature-powerset --keep-going check --rust-version --workspace --all-targets --verbose
+
+  # Check prover alone; specifically, that the `async` feature builds correctly with all other features.
+  check:
+    name: Check prover
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+      - name: Perform check
+        run: |
+          rustup update --no-self-update stable
+          cargo +stable install cargo-hack --locked
+          RUSTFLAGS=-Dwarnings cargo +stable -p winter-prover hack --no-private --feature-powerset --keep-going check --rust-version --workspace --all-targets --verbose
 
   test:
     name: Test Rust ${{matrix.toolchain}} on ${{matrix.os}}
