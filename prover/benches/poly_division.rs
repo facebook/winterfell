@@ -24,7 +24,7 @@ fn polynomial_division_naive(c: &mut Criterion) {
             let poly: Vec<QuadExtension<BaseElement>> = rand_vector(trace_len);
             let z: QuadExtension<BaseElement> = rand_value();
             let log_trace_len = trace_len.ilog2();
-            let g: BaseElement = BaseElement::get_root_of_unity(log_trace_len as u32);
+            let g: BaseElement = BaseElement::get_root_of_unity(log_trace_len);
             let mut xs = Vec::with_capacity(log_trace_len as usize + 1);
 
             // push z
@@ -66,7 +66,7 @@ fn polynomial_division_synthetic(c: &mut Criterion) {
             let poly: Vec<QuadExtension<BaseElement>> = rand_vector(trace_len);
             let z: QuadExtension<BaseElement> = rand_value();
             let log_trace_len = trace_len.ilog2();
-            let g: BaseElement = BaseElement::get_root_of_unity(log_trace_len as u32);
+            let g: BaseElement = BaseElement::get_root_of_unity(log_trace_len);
             let mut xs = Vec::with_capacity(log_trace_len as usize + 1);
 
             // push z
