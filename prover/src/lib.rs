@@ -53,7 +53,7 @@ pub use air::{
     TransitionConstraintDegree,
 };
 use maybe_async::maybe_async;
-use tracing::{event, info_span, Level};
+use tracing::{event, info_span, instrument, Level};
 pub use utils::{
     iterators, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
     SliceReader,
@@ -141,16 +141,16 @@ pub trait Prover {
     type Air: Air<BaseField = Self::BaseField>;
 
     /// Execution trace of the computation described by this prover.
-    type Trace: Trace<BaseField = Self::BaseField> + Send;
+    type Trace: Trace<BaseField = Self::BaseField> + Send + Sync;
 
     /// Hash function to be used.
     type HashFn: ElementHasher<BaseField = Self::BaseField>;
 
     /// PRNG to be used for generating random field elements.
-    type RandomCoin: RandomCoin<BaseField = Self::BaseField, Hasher = Self::HashFn> + Send;
+    type RandomCoin: RandomCoin<BaseField = Self::BaseField, Hasher = Self::HashFn> + Send + Sync;
 
     /// Trace low-degree extension for building the LDEs of trace segments and their commitments.
-    type TraceLde<E>: TraceLde<E, HashFn = Self::HashFn> + Send
+    type TraceLde<E>: TraceLde<E, HashFn = Self::HashFn> + Send + Sync
     where
         E: FieldElement<BaseField = Self::BaseField>;
 
@@ -305,23 +305,8 @@ pub trait Prover {
         assert_eq!(domain.trace_length(), trace_length);
 
         // commit to the main trace segment
-        let (mut trace_lde, mut trace_polys) = {
-            // extend the main execution trace and build a Merkle tree from the extended trace
-            let (trace_lde, trace_polys) =
-                self.new_trace_lde(trace.info(), trace.main_segment(), &domain).await;
-            let span = info_span!("commit_to_main_trace_segment").entered();
-
-            // get the commitment to the main trace segment LDE
-            let main_trace_root = trace_lde.get_main_trace_commitment();
-
-            // commit to the LDE of the main trace by writing the root of its Merkle tree into
-            // the channel
-            channel.commit_trace(main_trace_root);
-
-            drop(span);
-
-            (trace_lde, trace_polys)
-        };
+        let (mut trace_lde, mut trace_polys) =
+            self.commit_to_main_trace_segment(&trace, &domain, &mut channel).await;
 
         // build the auxiliary trace segment, and append the resulting segments to trace commitment
         // and trace polynomial table structs
@@ -590,5 +575,29 @@ pub trait Prover {
         assert_eq!(constraint_commitment.tree_depth(), domain_size.ilog2() as usize);
 
         (constraint_commitment, composition_poly)
+    }
+
+    #[instrument(skip_all)]
+    async fn commit_to_main_trace_segment<E>(
+        &self,
+        trace: &Self::Trace,
+        domain: &StarkDomain<Self::BaseField>,
+        channel: &mut ProverChannel<Self::Air, E, Self::HashFn, Self::RandomCoin>,
+    ) -> (Self::TraceLde<E>, TracePolyTable<E>)
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        // extend the main execution trace and build a Merkle tree from the extended trace
+        let (trace_lde, trace_polys) =
+            self.new_trace_lde(trace.info(), trace.main_segment(), &domain).await;
+
+        // get the commitment to the main trace segment LDE
+        let main_trace_root = trace_lde.get_main_trace_commitment();
+
+        // commit to the LDE of the main trace by writing the root of its Merkle tree into
+        // the channel
+        channel.commit_trace(main_trace_root);
+
+        (trace_lde, trace_polys)
     }
 }
