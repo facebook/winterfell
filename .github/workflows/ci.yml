@@ -38,7 +38,7 @@ jobs:
           RUSTFLAGS=-Dwarnings cargo +stable -p winter-utils,winter-maybe-async,winter-rand-utils,winter-math,winter-crypto,winter-fri,winter-air,winter-verifier,winterfell,examples hack --no-private --feature-powerset --keep-going check --rust-version --workspace --all-targets --verbose
 
   # Check prover alone; specifically, that the `async` feature builds correctly with all other features.
-  check:
+  check-prover:
     name: Check prover
     runs-on: ubuntu-latest
     steps:
