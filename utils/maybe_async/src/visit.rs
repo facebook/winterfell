@@ -1,3 +1,8 @@
+// Copyright (c) Facebook, Inc. and its affiliates.
+//
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
 //! This file was heavily inspired by [`visit.rs`](https://github.com/fMeow/maybe-async-rs/blob/b32a81704f6d84576d77e06882a06570e7f38de9/src/visit.rs).
 
 use proc_macro2::TokenStream;
