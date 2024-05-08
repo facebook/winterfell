@@ -397,13 +397,11 @@ pub trait Prover {
                     &domain,
                 )
                 .await;
-            let span = info_span!("commit_to_constraint_evaluations").entered();
 
             // then, commit to the evaluations of constraints by writing the root of the constraint
             // Merkle tree into the channel
             channel.commit_constraints(constraint_commitment.root());
 
-            drop(span);
             (constraint_commitment, composition_poly)
         };
 
@@ -532,6 +530,7 @@ pub trait Prover {
     ///
     /// The commitment is computed by hashing each row in the evaluation matrix, and then building
     /// a Merkle tree from the resulting hashes.
+    #[instrument(skip_all)]
     async fn build_constraint_commitment<E>(
         &self,
         composition_poly_trace: CompositionPolyTrace<E>,
