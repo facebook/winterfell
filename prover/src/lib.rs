@@ -387,23 +387,9 @@ pub trait Prover {
         assert_eq!(composition_poly_trace.num_rows(), ce_domain_size);
 
         // 3 ----- commit to constraint evaluations -----------------------------------------------
-        let (constraint_commitment, composition_poly) = {
-            // first, build a commitment to the evaluations of the constraint composition
-            // polynomial columns
-            let (constraint_commitment, composition_poly) = self
-                .build_constraint_commitment::<E>(
-                    composition_poly_trace,
-                    air.context().num_constraint_composition_columns(),
-                    &domain,
-                )
-                .await;
-
-            // then, commit to the evaluations of constraints by writing the root of the constraint
-            // Merkle tree into the channel
-            channel.commit_constraints(constraint_commitment.root());
-
-            (constraint_commitment, composition_poly)
-        };
+        let (constraint_commitment, composition_poly) = self
+            .commit_to_constraint_evaluations(&air, composition_poly_trace, &domain, &mut channel)
+            .await;
 
         // 4 ----- build DEEP composition polynomial ----------------------------------------------
         let deep_composition_poly = {
@@ -530,7 +516,6 @@ pub trait Prover {
     ///
     /// The commitment is computed by hashing each row in the evaluation matrix, and then building
     /// a Merkle tree from the resulting hashes.
-    #[instrument(skip_all)]
     async fn build_constraint_commitment<E>(
         &self,
         composition_poly_trace: CompositionPolyTrace<E>,
@@ -588,7 +573,7 @@ pub trait Prover {
     {
         // extend the main execution trace and build a Merkle tree from the extended trace
         let (trace_lde, trace_polys) =
-            self.new_trace_lde(trace.info(), trace.main_segment(), &domain).await;
+            self.new_trace_lde(trace.info(), trace.main_segment(), domain).await;
 
         // get the commitment to the main trace segment LDE
         let main_trace_root = trace_lde.get_main_trace_commitment();
@@ -598,5 +583,33 @@ pub trait Prover {
         channel.commit_trace(main_trace_root);
 
         (trace_lde, trace_polys)
+    }
+
+    #[instrument(skip_all)]
+    async fn commit_to_constraint_evaluations<E>(
+        &self,
+        air: &Self::Air,
+        composition_poly_trace: CompositionPolyTrace<E>,
+        domain: &StarkDomain<Self::BaseField>,
+        channel: &mut ProverChannel<Self::Air, E, Self::HashFn, Self::RandomCoin>,
+    ) -> (ConstraintCommitment<E, Self::HashFn>, CompositionPoly<E>)
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        // first, build a commitment to the evaluations of the constraint composition polynomial
+        // columns
+        let (constraint_commitment, composition_poly) = self
+            .build_constraint_commitment::<E>(
+                composition_poly_trace,
+                air.context().num_constraint_composition_columns(),
+                domain,
+            )
+            .await;
+
+        // then, commit to the evaluations of constraints by writing the root of the constraint
+        // Merkle tree into the channel
+        channel.commit_constraints(constraint_commitment.root());
+
+        (constraint_commitment, composition_poly)
     }
 }
