@@ -205,7 +205,7 @@ pub trait Prover {
 
     /// Builds the GKR proof. If the [`Air`] doesn't use a GKR proof, leave unimplemented.
     #[allow(unused_variables)]
-    fn generate_gkr_proof<E>(
+    async fn generate_gkr_proof<E>(
         &self,
         main_trace: &Self::Trace,
         public_coin: &mut Self::RandomCoin,
@@ -218,7 +218,7 @@ pub trait Prover {
 
     /// Builds and returns the auxiliary trace.
     #[allow(unused_variables)]
-    fn build_aux_trace<E>(
+    async fn build_aux_trace<E>(
         &self,
         main_trace: &Self::Trace,
         aux_rand_elements: &AuxRandElements<E>,
@@ -329,7 +329,7 @@ pub trait Prover {
             let (gkr_proof, lagrange_rand_elements) =
                 if air.context().has_lagrange_kernel_aux_column() {
                     let (gkr_proof, lagrange_rand_elements) =
-                        self.generate_gkr_proof(&trace, channel.public_coin());
+                        self.generate_gkr_proof(&trace, channel.public_coin()).await;
 
                     (Some(gkr_proof), Some(lagrange_rand_elements))
                 } else {
@@ -344,7 +344,7 @@ pub trait Prover {
                 AuxRandElements::new_with_lagrange(rand_elements, lagrange_rand_elements)
             };
 
-            let aux_trace = self.build_aux_trace(&trace, &aux_rand_elements);
+            let aux_trace = self.build_aux_trace(&trace, &aux_rand_elements).await;
 
             // commit to the auxiliary trace segment
             let aux_segment_polys = {
