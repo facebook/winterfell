@@ -24,10 +24,10 @@ name = "lagrange_kernel"
 harness = false
 
 [features]
+async = ["async-trait", "maybe_async/async"]
 concurrent = ["crypto/concurrent", "math/concurrent", "fri/concurrent", "utils/concurrent", "std"]
 default = ["std"]
 std = ["air/std", "crypto/std", "fri/std", "math/std", "utils/std"]
-async = ["async-trait", "maybe_async/async"]
 
 [dependencies]
 air = { version = "0.8", path = "../air", package = "winter-air", default-features = false }
