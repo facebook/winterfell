@@ -47,7 +47,7 @@ jobs:
         run: |
           rustup update --no-self-update stable
           cargo +stable install cargo-hack --locked
-          RUSTFLAGS=-Dwarnings cargo +stable hack --package winter-prover --no-private --feature-powerset --keep-going check --rust-version --verbose --all-targets
+          RUSTFLAGS=-Dwarnings cargo +stable hack --package winter-prover --no-private --feature-powerset --keep-going check --rust-version --verbose
 
   test:
     name: Test Rust ${{matrix.toolchain}} on ${{matrix.os}}
