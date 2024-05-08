@@ -16,10 +16,10 @@ rust-version = "1.75"
 bench = false
 
 [features]
+async = ["prover/async"]
 concurrent = ["prover/concurrent", "std"]
 default = ["std"]
 std = ["prover/std", "verifier/std"]
-asyncprover = ["prover/async"]
 
 [dependencies]
 air = { version = "0.8", path = "../air", package = "winter-air", default-features = false }
