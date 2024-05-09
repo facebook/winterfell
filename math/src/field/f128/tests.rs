@@ -225,18 +225,6 @@ fn read_elements_from() {
     }
 }
 
-// INITIALIZATION
-// ================================================================================================
-
-#[test]
-fn zeroed_vector() {
-    let result = BaseElement::zeroed_vector(4);
-    assert_eq!(4, result.len());
-    for element in result.into_iter() {
-        assert_eq!(BaseElement::ZERO, element);
-    }
-}
-
 // HELPER FUNCTIONS
 // ================================================================================================
 

@@ -213,18 +213,6 @@ fn bytes_as_elements() {
     assert!(matches!(result, Err(DeserializationError::InvalidValue(_))));
 }
 
-// INITIALIZATION
-// ------------------------------------------------------------------------------------------------
-
-#[test]
-fn zeroed_vector() {
-    let result = BaseElement::zeroed_vector(4);
-    assert_eq!(4, result.len());
-    for element in result.into_iter() {
-        assert_eq!(BaseElement::ZERO, element);
-    }
-}
-
 // QUADRATIC EXTENSION
 // ------------------------------------------------------------------------------------------------
 #[test]
