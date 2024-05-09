@@ -40,11 +40,11 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
         .collect::<Vec<_>>();
 
     // evaluate transition constraints for the main trace segment
-    let mut t_evaluations1 = E::zeroed_vector(t_constraints.num_main_constraints());
+    let mut t_evaluations1 = vec![E::ZERO; t_constraints.num_main_constraints()];
     air.evaluate_transition(main_trace_frame, &periodic_values, &mut t_evaluations1);
 
     // evaluate transition constraints for the auxiliary trace segment (if any)
-    let mut t_evaluations2 = E::zeroed_vector(t_constraints.num_aux_constraints());
+    let mut t_evaluations2 = vec![E::ZERO; t_constraints.num_aux_constraints()];
     if let Some(aux_trace_frame) = aux_trace_frame {
         let aux_rand_elements =
             aux_rand_elements.expect("expected aux rand elements to be present");

@@ -120,7 +120,7 @@ where
     let denominators: Vec<E> = numerators.iter().zip(xs).map(|(e, &x)| eval(e, x)).collect();
     let denominators = batch_inversion(&denominators);
 
-    let mut result = E::zeroed_vector(xs.len());
+    let mut result = vec![E::ZERO; xs.len()];
     for i in 0..xs.len() {
         let y_slice = ys[i] * denominators[i];
         for (j, res) in result.iter_mut().enumerate() {
@@ -320,7 +320,7 @@ where
     E: FieldElement,
 {
     let result_len = a.len() + b.len() - 1;
-    let mut result = E::zeroed_vector(result_len);
+    let mut result = vec![E::ZERO; result_len];
     for i in 0..a.len() {
         for j in 0..b.len() {
             let s = a[i] * b[j];
@@ -409,7 +409,7 @@ where
         assert!(b[0] != E::ZERO, "cannot divide polynomial by zero");
     }
 
-    let mut result = E::zeroed_vector(apos - bpos + 1);
+    let mut result = vec![E::ZERO; apos - bpos + 1];
     for i in (0..result.len()).rev() {
         let quot = a[apos] / b[bpos];
         result[i] = quot;

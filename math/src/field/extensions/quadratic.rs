@@ -4,10 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use super::{ExtensibleField, ExtensionOf, FieldElement};
-use alloc::{
-    string::{String, ToString},
-    vec::Vec,
-};
+use alloc::string::{String, ToString};
 use core::{
     fmt,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
@@ -43,22 +40,6 @@ impl<B: ExtensibleField<2>> QuadExtension<B> {
     /// Returns true if the base field specified by B type parameter supports quadratic extensions.
     pub fn is_supported() -> bool {
         <B as ExtensibleField<2>>::is_supported()
-    }
-
-    /// Converts a vector of base elements into a vector of elements in a quadratic extension
-    /// field by fusing two adjacent base elements together. The output vector is half the length
-    /// of the source vector.
-    fn base_to_quad_vector(source: Vec<B>) -> Vec<Self> {
-        debug_assert!(
-            source.len() % Self::EXTENSION_DEGREE == 0,
-            "source vector length must be divisible by two, but was {}",
-            source.len()
-        );
-        let mut v = core::mem::ManuallyDrop::new(source);
-        let p = v.as_mut_ptr();
-        let len = v.len() / Self::EXTENSION_DEGREE;
-        let cap = v.capacity() / Self::EXTENSION_DEGREE;
-        unsafe { Vec::from_raw_parts(p as *mut Self, len, cap) }
     }
 
     /// Returns an array of base field elements comprising this extension field element.
@@ -177,15 +158,6 @@ impl<B: ExtensibleField<2>> FieldElement for QuadExtension<B> {
         }
 
         Ok(slice::from_raw_parts(p as *const Self, len))
-    }
-
-    // UTILITIES
-    // --------------------------------------------------------------------------------------------
-
-    fn zeroed_vector(n: usize) -> Vec<Self> {
-        // get twice the number of base elements, and re-interpret them as quad field elements
-        let result = B::zeroed_vector(n * Self::EXTENSION_DEGREE);
-        Self::base_to_quad_vector(result)
     }
 }
 
@@ -431,18 +403,6 @@ mod tests {
 
         let expected = QuadExtension(r1.0 - r2.0, r1.1 - r2.1);
         assert_eq!(expected, r1 - r2);
-    }
-
-    // INITIALIZATION
-    // --------------------------------------------------------------------------------------------
-
-    #[test]
-    fn zeroed_vector() {
-        let result = QuadExtension::<BaseElement>::zeroed_vector(4);
-        assert_eq!(4, result.len());
-        for element in result.into_iter() {
-            assert_eq!(QuadExtension::<BaseElement>::ZERO, element);
-        }
     }
 
     // SERIALIZATION / DESERIALIZATION
