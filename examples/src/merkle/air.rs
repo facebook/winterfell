@@ -3,12 +3,13 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{rescue, BaseElement, FieldElement, HASH_CYCLE_LEN, HASH_STATE_WIDTH, TRACE_WIDTH};
-use crate::utils::{are_equal, is_binary, is_zero, not, EvaluationResult};
 use winterfell::{
     math::ToElements, Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
+
+use super::{rescue, BaseElement, FieldElement, HASH_CYCLE_LEN, HASH_STATE_WIDTH, TRACE_WIDTH};
+use crate::utils::{are_equal, is_binary, is_zero, not, EvaluationResult};
 
 // MERKLE PATH VERIFICATION AIR
 // ================================================================================================

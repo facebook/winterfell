@@ -3,14 +3,15 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{
-    rescue, BaseElement, DefaultRandomCoin, ElementHasher, FieldElement, PhantomData, ProofOptions,
-    Prover, PublicInputs, RescueAir, CYCLE_LENGTH, NUM_HASH_ROUNDS,
-};
 use winterfell::{
     matrix::ColMatrix, AuxRandElements, ConstraintCompositionCoefficients,
     DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable,
     TraceTable,
+};
+
+use super::{
+    rescue, BaseElement, DefaultRandomCoin, ElementHasher, FieldElement, PhantomData, ProofOptions,
+    Prover, PublicInputs, RescueAir, CYCLE_LENGTH, NUM_HASH_ROUNDS,
 };
 
 // RESCUE PROVER
@@ -23,10 +24,7 @@ pub struct RescueProver<H: ElementHasher> {
 
 impl<H: ElementHasher> RescueProver<H> {
     pub fn new(options: ProofOptions) -> Self {
-        Self {
-            options,
-            _hasher: PhantomData,
-        }
+        Self { options, _hasher: PhantomData }
     }
 
     pub fn build_trace(

@@ -3,15 +3,17 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use alloc::vec::Vec;
+
+use crypto::{hashers::Blake3_256, DefaultRandomCoin, Hasher, RandomCoin};
+use math::{fft, fields::f128::BaseElement, FieldElement};
+use utils::{Deserializable, Serializable, SliceReader};
+
 use super::{DefaultProverChannel, FriProver};
 use crate::{
     verifier::{DefaultVerifierChannel, FriVerifier},
     FriOptions, FriProof, VerifierError,
 };
-use alloc::vec::Vec;
-use crypto::{hashers::Blake3_256, DefaultRandomCoin, Hasher, RandomCoin};
-use math::{fft, fields::f128::BaseElement, FieldElement};
-use utils::{Deserializable, Serializable, SliceReader};
 
 type Blake3 = Blake3_256<BaseElement>;
 

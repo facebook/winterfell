@@ -3,10 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{Digest, DIGEST_SIZE};
 use core::slice;
+
 use math::{fields::f62::BaseElement, StarkField};
 use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+
+use super::{Digest, DIGEST_SIZE};
 
 // DIGEST TRAIT IMPLEMENTATIONS
 // ================================================================================================
@@ -84,9 +86,10 @@ impl Deserializable for ElementDigest {
 #[cfg(test)]
 mod tests {
 
-    use super::ElementDigest;
     use rand_utils::rand_array;
     use utils::{Deserializable, Serializable, SliceReader};
+
+    use super::ElementDigest;
 
     #[test]
     fn digest_serialization() {

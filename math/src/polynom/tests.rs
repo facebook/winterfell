@@ -3,12 +3,13 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use alloc::vec::Vec;
+
 use super::remove_leading_zeros;
 use crate::{
     field::{f128::BaseElement, FieldElement, StarkField},
     utils::get_power_series,
 };
-use alloc::vec::Vec;
 
 #[test]
 fn eval() {

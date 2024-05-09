@@ -39,21 +39,17 @@ pub use air::{
     EvaluationFrame, FieldExtension, ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
 use air::{AuxRandElements, GkrVerifier};
-
+pub use crypto;
+use crypto::{ElementHasher, Hasher, RandomCoin};
+use fri::FriVerifier;
 pub use math;
 use math::{
     fields::{CubeExtension, QuadExtension},
     FieldElement, ToElements,
 };
-
 pub use utils::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
 };
-
-pub use crypto;
-use crypto::{ElementHasher, Hasher, RandomCoin};
-
-use fri::FriVerifier;
 
 mod channel;
 use channel::VerifierChannel;
@@ -112,7 +108,7 @@ where
             let public_coin = RandCoin::new(&public_coin_seed);
             let channel = VerifierChannel::new(&air, proof)?;
             perform_verification::<AIR, AIR::BaseField, HashFn, RandCoin>(air, channel, public_coin)
-        }
+        },
         FieldExtension::Quadratic => {
             if !<QuadExtension<AIR::BaseField>>::is_supported() {
                 return Err(VerifierError::UnsupportedFieldExtension(2));
@@ -124,7 +120,7 @@ where
                 channel,
                 public_coin,
             )
-        }
+        },
         FieldExtension::Cubic => {
             if !<CubeExtension<AIR::BaseField>>::is_supported() {
                 return Err(VerifierError::UnsupportedFieldExtension(3));
@@ -136,7 +132,7 @@ where
                 channel,
                 public_coin,
             )
-        }
+        },
     }
 }
 
@@ -364,7 +360,7 @@ impl AcceptableOptions {
                         proof_security,
                     ));
                 }
-            }
+            },
             AcceptableOptions::MinProvenSecurity(minimal_security) => {
                 let proof_security = proof.security_level::<H>(false);
                 if proof_security < *minimal_security {
@@ -373,12 +369,12 @@ impl AcceptableOptions {
                         proof_security,
                     ));
                 }
-            }
+            },
             AcceptableOptions::OptionSet(options) => {
                 if !options.iter().any(|opt| opt == proof.options()) {
                     return Err(VerifierError::UnacceptableProofOptions);
                 }
-            }
+            },
         }
         Ok(())
     }

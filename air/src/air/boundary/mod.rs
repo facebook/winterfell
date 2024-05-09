@@ -3,12 +3,14 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{AirContext, Assertion, ConstraintDivisor};
 use alloc::{
     collections::{BTreeMap, BTreeSet},
     vec::Vec,
 };
+
 use math::{ExtensionOf, FieldElement};
+
+use super::{AirContext, Assertion, ConstraintDivisor};
 
 mod constraint;
 pub use constraint::BoundaryConstraint;
@@ -125,10 +127,7 @@ impl<E: FieldElement> BoundaryConstraints<E> {
             &mut twiddle_map,
         );
 
-        Self {
-            main_constraints,
-            aux_constraints,
-        }
+        Self { main_constraints, aux_constraints }
     }
 
     // PUBLIC ACCESSORS

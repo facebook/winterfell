@@ -3,9 +3,11 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{ColMatrix, StarkDomain};
 use alloc::vec::Vec;
+
 use math::{fft, polynom::degree_of, FieldElement};
+
+use super::{ColMatrix, StarkDomain};
 
 // CONSTRAINT COMPOSITION POLYNOMIAL TRACE
 // ================================================================================================
@@ -70,9 +72,7 @@ impl<E: FieldElement> CompositionPoly<E> {
 
         let polys = segment(trace, domain.trace_length(), num_cols);
 
-        CompositionPoly {
-            data: ColMatrix::new(polys),
-        }
+        CompositionPoly { data: ColMatrix::new(polys) }
     }
 
     // PUBLIC ACCESSORS
@@ -139,6 +139,7 @@ fn segment<E: FieldElement>(
 mod tests {
 
     use alloc::vec::Vec;
+
     use math::fields::f128::BaseElement;
 
     #[test]

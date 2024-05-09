@@ -3,11 +3,13 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::RowMatrix;
-use air::proof::Queries;
 use alloc::vec::Vec;
+
+use air::proof::Queries;
 use crypto::{ElementHasher, MerkleTree};
 use math::FieldElement;
+
+use super::RowMatrix;
 
 // CONSTRAINT COMMITMENT
 // ================================================================================================
@@ -32,10 +34,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> ConstraintComm
             commitment.leaves().len(),
             "number of rows in constraint evaluation matrix must be the same as number of leaves in constraint commitment"
         );
-        ConstraintCommitment {
-            evaluations,
-            commitment,
-        }
+        ConstraintCommitment { evaluations, commitment }
     }
 
     /// Returns the root of the commitment Merkle tree.

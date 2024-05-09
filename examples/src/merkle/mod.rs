@@ -3,22 +3,23 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::utils::rescue::{
-    self, CYCLE_LENGTH as HASH_CYCLE_LEN, NUM_ROUNDS as NUM_HASH_ROUNDS,
-    STATE_WIDTH as HASH_STATE_WIDTH,
-};
-use crate::{
-    utils::rescue::{Hash, Rescue128},
-    Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256,
-};
 use core::marker::PhantomData;
-use rand_utils::{rand_value, rand_vector};
 use std::time::Instant;
+
+use rand_utils::{rand_value, rand_vector};
 use tracing::{field, info_span};
 use winterfell::{
     crypto::{DefaultRandomCoin, Digest, ElementHasher, MerkleTree},
     math::{fields::f128::BaseElement, FieldElement, StarkField},
     Proof, ProofOptions, Prover, Trace, VerifierError,
+};
+
+use crate::{
+    utils::rescue::{
+        self, Hash, Rescue128, CYCLE_LENGTH as HASH_CYCLE_LEN, NUM_ROUNDS as NUM_HASH_ROUNDS,
+        STATE_WIDTH as HASH_STATE_WIDTH,
+    },
+    Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256,
 };
 
 mod air;
@@ -46,10 +47,10 @@ pub fn get_example(
     match hash_fn {
         HashFunction::Blake3_192 => {
             Ok(Box::new(MerkleExample::<Blake3_192>::new(tree_depth, options)))
-        }
+        },
         HashFunction::Blake3_256 => {
             Ok(Box::new(MerkleExample::<Blake3_256>::new(tree_depth, options)))
-        }
+        },
         HashFunction::Sha3_256 => Ok(Box::new(MerkleExample::<Sha3_256>::new(tree_depth, options))),
         _ => Err("The specified hash function cannot be used with this example.".to_string()),
     }
@@ -130,9 +131,7 @@ where
     }
 
     fn verify(&self, proof: Proof) -> Result<(), VerifierError> {
-        let pub_inputs = PublicInputs {
-            tree_root: self.tree_root.to_elements(),
-        };
+        let pub_inputs = PublicInputs { tree_root: self.tree_root.to_elements() };
         let acceptable_options =
             winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
         winterfell::verify::<MerkleAir, H, DefaultRandomCoin<H>>(
@@ -144,9 +143,7 @@ where
 
     fn verify_with_wrong_inputs(&self, proof: Proof) -> Result<(), VerifierError> {
         let tree_root = self.tree_root.to_elements();
-        let pub_inputs = PublicInputs {
-            tree_root: [tree_root[1], tree_root[0]],
-        };
+        let pub_inputs = PublicInputs { tree_root: [tree_root[1], tree_root[0]] };
         let acceptable_options =
             winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
         winterfell::verify::<MerkleAir, H, DefaultRandomCoin<H>>(

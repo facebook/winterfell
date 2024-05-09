@@ -3,10 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use std::time::Duration;
+
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use examples::{rescue, Example};
-
-use std::time::Duration;
 use winterfell::{
     crypto::hashers::Blake3_256, math::fields::f128::BaseElement, FieldExtension, ProofOptions,
 };

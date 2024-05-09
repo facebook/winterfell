@@ -3,13 +3,13 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use proptest::prelude::*;
+use rand_utils::{rand_array, rand_value};
+
 use super::{
     BaseElement, ElementDigest, ElementHasher, FieldElement, Hasher, Rp64_256, StarkField, ALPHA,
     INV_ALPHA, INV_MDS, MDS, STATE_WIDTH,
 };
-use proptest::prelude::*;
-
-use rand_utils::{rand_array, rand_value};
 
 #[test]
 fn mds_inv_test() {

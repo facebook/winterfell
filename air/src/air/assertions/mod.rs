@@ -3,13 +3,15 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::errors::AssertionError;
 use alloc::vec::Vec;
 use core::{
     cmp::Ordering,
     fmt::{Display, Formatter},
 };
+
 use math::FieldElement;
+
+use crate::errors::AssertionError;
 
 #[cfg(test)]
 mod tests;
@@ -326,7 +328,7 @@ impl<E: FieldElement> Display for Assertion<E> {
             _ => {
                 let second_step = self.first_step + self.stride;
                 write!(f, "steps=[{}, {}, ...], ", self.first_step, second_step)?;
-            }
+            },
         }
         match self.values.len() {
             1 => write!(f, "value={})", self.values[0]),

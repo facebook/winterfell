@@ -14,7 +14,6 @@
 //!   and shifts.
 //! * $8$ is the 64th root of unity which opens up potential for optimized FFT implementations.
 
-use super::{ExtensibleField, FieldElement, StarkField};
 use alloc::{
     string::{String, ToString},
     vec::Vec,
@@ -25,13 +24,15 @@ use core::{
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
     slice,
 };
+
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 use utils::{
     AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Randomizable,
     Serializable,
 };
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
+use super::{ExtensibleField, FieldElement, StarkField};
 
 #[cfg(test)]
 mod tests;

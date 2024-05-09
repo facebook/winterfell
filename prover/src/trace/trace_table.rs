@@ -3,14 +3,15 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{ColMatrix, Trace};
-use air::{EvaluationFrame, TraceInfo};
 use alloc::vec::Vec;
+
+use air::{EvaluationFrame, TraceInfo};
 use math::StarkField;
 use utils::uninit_vector;
-
 #[cfg(feature = "concurrent")]
 use utils::{iterators::*, rayon};
+
+use super::{ColMatrix, Trace};
 
 // CONSTANTS
 // ================================================================================================
@@ -104,10 +105,7 @@ impl<B: StarkField> TraceTable<B> {
 
         let columns = unsafe { (0..width).map(|_| uninit_vector(length)).collect() };
 
-        Self {
-            info,
-            trace: ColMatrix::new(columns),
-        }
+        Self { info, trace: ColMatrix::new(columns) }
     }
 
     /// Creates a new execution trace from a list of provided trace columns.
@@ -135,10 +133,7 @@ impl<B: StarkField> TraceTable<B> {
             assert_eq!(column.len(), trace_length, "all columns traces must have the same length");
         }
 
-        Self {
-            info,
-            trace: ColMatrix::new(columns),
-        }
+        Self { info, trace: ColMatrix::new(columns) }
     }
 
     // DATA MUTATORS

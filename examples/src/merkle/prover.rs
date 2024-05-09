@@ -3,15 +3,16 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{
-    rescue, BaseElement, DefaultRandomCoin, ElementHasher, FieldElement, MerkleAir, PhantomData,
-    ProofOptions, Prover, PublicInputs, HASH_CYCLE_LEN, HASH_STATE_WIDTH, NUM_HASH_ROUNDS,
-    TRACE_WIDTH,
-};
 use winterfell::{
     matrix::ColMatrix, AuxRandElements, ConstraintCompositionCoefficients,
     DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable,
     TraceTable,
+};
+
+use super::{
+    rescue, BaseElement, DefaultRandomCoin, ElementHasher, FieldElement, MerkleAir, PhantomData,
+    ProofOptions, Prover, PublicInputs, HASH_CYCLE_LEN, HASH_STATE_WIDTH, NUM_HASH_ROUNDS,
+    TRACE_WIDTH,
 };
 
 // MERKLE PROVER
@@ -24,10 +25,7 @@ pub struct MerkleProver<H: ElementHasher> {
 
 impl<H: ElementHasher> MerkleProver<H> {
     pub fn new(options: ProofOptions) -> Self {
-        Self {
-            options,
-            _hasher: PhantomData,
-        }
+        Self { options, _hasher: PhantomData }
     }
 
     pub fn build_trace(

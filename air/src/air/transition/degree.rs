@@ -3,9 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{super::super::ProofOptions, MIN_CYCLE_LENGTH};
 use alloc::vec::Vec;
 use core::cmp;
+
+use super::{super::super::ProofOptions, MIN_CYCLE_LENGTH};
 
 // TRANSITION CONSTRAINT DEGREE
 // ================================================================================================
@@ -34,10 +35,7 @@ impl TransitionConstraintDegree {
     /// Panics if the provided `degree` is zero.
     pub fn new(degree: usize) -> Self {
         assert!(degree > 0, "transition constraint degree must be at least one, but was zero");
-        TransitionConstraintDegree {
-            base: degree,
-            cycles: vec![],
-        }
+        TransitionConstraintDegree { base: degree, cycles: vec![] }
     }
 
     /// Creates a new transition degree descriptor for constraints which involve multiplication
@@ -66,10 +64,7 @@ impl TransitionConstraintDegree {
                 "cycle length must be a power of two, but was {cycle} for cycle {i}"
             );
         }
-        TransitionConstraintDegree {
-            base: base_degree,
-            cycles,
-        }
+        TransitionConstraintDegree { base: base_degree, cycles }
     }
 
     /// Computes a degree to which this degree description expands in the context of execution

@@ -12,10 +12,9 @@ use alloc::{
 use super::DeserializationError;
 
 mod byte_reader;
-pub use byte_reader::{ByteReader, SliceReader};
-
 #[cfg(feature = "std")]
 pub use byte_reader::ReadAdapter;
+pub use byte_reader::{ByteReader, SliceReader};
 
 mod byte_writer;
 pub use byte_writer::ByteWriter;
@@ -184,7 +183,7 @@ impl<T: Serializable> Serializable for Option<T> {
             Some(v) => {
                 target.write_bool(true);
                 v.write_into(target);
-            }
+            },
             None => target.write_bool(false),
         }
     }

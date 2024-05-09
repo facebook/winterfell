@@ -3,14 +3,15 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::ColMatrix;
 use alloc::vec::Vec;
 use core::ops::Deref;
-use math::{fft::fft_inputs::FftInputs, FieldElement, StarkField};
-use utils::uninit_vector;
 
+use math::{fft::fft_inputs::FftInputs, FieldElement, StarkField};
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
+use utils::uninit_vector;
+
+use super::ColMatrix;
 
 // CONSTANTS
 // ================================================================================================
@@ -224,9 +225,10 @@ impl<B: StarkField, const N: usize> Deref for Segment<B, N> {
 /// with slices of element arrays.
 #[cfg(feature = "concurrent")]
 mod concurrent {
-    use super::{FftInputs, StarkField};
     use math::fft::permute_index;
     use utils::{iterators::*, rayon};
+
+    use super::{FftInputs, StarkField};
 
     /// In-place recursive FFT with permuted output.
     /// Adapted from: https://github.com/0xProject/OpenZKP/tree/master/algebra/primefield/src/fft

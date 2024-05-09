@@ -3,15 +3,16 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{ColMatrix, Segment};
-use crate::StarkDomain;
 use alloc::vec::Vec;
+
 use crypto::{ElementHasher, MerkleTree};
 use math::{fft, FieldElement, StarkField};
-use utils::{batch_iter_mut, flatten_vector_elements, uninit_vector};
-
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
+use utils::{batch_iter_mut, flatten_vector_elements, uninit_vector};
+
+use super::{ColMatrix, Segment};
+use crate::StarkDomain;
 
 // ROW-MAJOR MATRIX
 // ================================================================================================

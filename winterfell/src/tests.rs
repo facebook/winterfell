@@ -3,15 +3,16 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::*;
+use std::{vec, vec::Vec};
+
 use air::LagrangeKernelRandElements;
 use prover::{
     crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin},
     math::{fields::f64::BaseElement, ExtensionOf, FieldElement},
     matrix::ColMatrix,
 };
-use std::vec;
-use std::vec::Vec;
+
+use super::*;
 
 const AUX_TRACE_WIDTH: usize = 2;
 

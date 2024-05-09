@@ -3,9 +3,11 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{errors::MerkleTreeError, Hasher};
 use alloc::{collections::BTreeMap, string::ToString, vec::Vec};
+
 use utils::{ByteReader, DeserializationError, Serializable};
+
+use crate::{errors::MerkleTreeError, Hasher};
 
 // CONSTANTS
 // ================================================================================================
@@ -100,11 +102,7 @@ impl<H: Hasher> BatchMerkleProof<H> {
             core::mem::swap(&mut path_map, &mut next_path_map);
         }
 
-        BatchMerkleProof {
-            leaves,
-            nodes,
-            depth: (depth - 1) as u8,
-        }
+        BatchMerkleProof { leaves, nodes, depth: (depth - 1) as u8 }
     }
 
     /// Computes a node to which all Merkle paths aggregated in this proof resolve.
@@ -154,16 +152,16 @@ impl<H: Hasher> BatchMerkleProof<H> {
                             }
                             buf[1] = self.leaves[index2];
                             proof_pointers.push(0);
-                        }
+                        },
                         None => {
                             if self.nodes[i].is_empty() {
                                 return Err(MerkleTreeError::InvalidProof);
                             }
                             buf[1] = self.nodes[i][0];
                             proof_pointers.push(1);
-                        }
+                        },
                     }
-                }
+                },
                 None => {
                     if self.nodes[i].is_empty() {
                         return Err(MerkleTreeError::InvalidProof);
@@ -175,11 +173,11 @@ impl<H: Hasher> BatchMerkleProof<H> {
                                 return Err(MerkleTreeError::InvalidProof);
                             }
                             buf[1] = self.leaves[index2];
-                        }
+                        },
                         None => return Err(MerkleTreeError::InvalidProof),
                     }
                     proof_pointers.push(1);
-                }
+                },
             }
 
             // hash sibling nodes into their parent
@@ -298,16 +296,16 @@ impl<H: Hasher> BatchMerkleProof<H> {
                             }
                             buf[1] = self.leaves[index2];
                             proof_pointers.push(0);
-                        }
+                        },
                         None => {
                             if self.nodes[i].is_empty() {
                                 return Err(MerkleTreeError::InvalidProof);
                             }
                             buf[1] = self.nodes[i][0];
                             proof_pointers.push(1);
-                        }
+                        },
                     }
-                }
+                },
                 None => {
                     if self.nodes[i].is_empty() {
                         return Err(MerkleTreeError::InvalidProof);
@@ -319,11 +317,11 @@ impl<H: Hasher> BatchMerkleProof<H> {
                                 return Err(MerkleTreeError::InvalidProof);
                             }
                             buf[1] = self.leaves[index2];
-                        }
+                        },
                         None => return Err(MerkleTreeError::InvalidProof),
                     }
                     proof_pointers.push(1);
-                }
+                },
             }
 
             // hash sibling nodes into their parent and add it to partial_tree
@@ -464,11 +462,7 @@ impl<H: Hasher> BatchMerkleProof<H> {
             nodes.push(digests);
         }
 
-        Ok(BatchMerkleProof {
-            leaves,
-            nodes,
-            depth,
-        })
+        Ok(BatchMerkleProof { leaves, nodes, depth })
     }
 }
 

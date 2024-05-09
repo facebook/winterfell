@@ -1,4 +1,5 @@
 use alloc::{string::ToString, vec::Vec};
+
 use crypto::{ElementHasher, RandomCoin, RandomCoinError};
 use math::FieldElement;
 use utils::Deserializable;
@@ -20,10 +21,7 @@ impl<E> AuxRandElements<E> {
     /// Creates a new [`AuxRandElements`], where the auxiliary trace doesn't contain a Lagrange
     /// kernel column.
     pub fn new(rand_elements: Vec<E>) -> Self {
-        Self {
-            rand_elements,
-            lagrange: None,
-        }
+        Self { rand_elements, lagrange: None }
     }
 
     /// Creates a new [`AuxRandElements`], where the auxiliary trace contains a Lagrange kernel
@@ -32,10 +30,7 @@ impl<E> AuxRandElements<E> {
         rand_elements: Vec<E>,
         lagrange: Option<LagrangeKernelRandElements<E>>,
     ) -> Self {
-        Self {
-            rand_elements,
-            lagrange,
-        }
+        Self { rand_elements, lagrange }
     }
 
     /// Returns the random elements needed to build all columns other than the Lagrange kernel one.

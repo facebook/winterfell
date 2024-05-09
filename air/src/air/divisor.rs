@@ -3,10 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::air::Assertion;
 use alloc::vec::Vec;
 use core::fmt::{Display, Formatter};
+
 use math::{FieldElement, StarkField};
+
+use crate::air::Assertion;
 
 // CONSTRAINT DIVISOR
 // ================================================================================================
@@ -34,10 +36,7 @@ impl<B: StarkField> ConstraintDivisor<B> {
 
     /// Returns a new divisor instantiated from the provided parameters.
     fn new(numerator: Vec<(usize, B)>, exemptions: Vec<B>) -> Self {
-        ConstraintDivisor {
-            numerator,
-            exemptions,
-        }
+        ConstraintDivisor { numerator, exemptions }
     }
 
     /// Builds a divisor for transition constraints.
@@ -177,8 +176,9 @@ fn get_trace_domain_value_at<B: StarkField>(trace_length: usize, step: usize) ->
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use math::{fields::f128::BaseElement, polynom};
+
+    use super::*;
 
     #[test]
     fn constraint_divisor_degree() {

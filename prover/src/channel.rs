@@ -3,16 +3,16 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use alloc::vec::Vec;
+use core::marker::PhantomData;
+
 use air::{
     proof::{Commitments, Context, OodFrame, Proof, Queries, TraceOodFrame},
     Air, ConstraintCompositionCoefficients, DeepCompositionCoefficients,
 };
-use alloc::vec::Vec;
-use core::marker::PhantomData;
 use crypto::{ElementHasher, RandomCoin};
 use fri::FriProof;
 use math::{FieldElement, ToElements};
-
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
 

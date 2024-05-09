@@ -3,15 +3,15 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{Deserializable, DeserializationError};
-use alloc::{string::String, vec::Vec};
-
 #[cfg(feature = "std")]
 use alloc::string::ToString;
+use alloc::{string::String, vec::Vec};
 #[cfg(feature = "std")]
 use core::cell::{Ref, RefCell};
 #[cfg(feature = "std")]
 use std::io::BufRead;
+
+use super::{Deserializable, DeserializationError};
 
 // BYTE READER TRAIT
 // ================================================================================================
@@ -351,7 +351,7 @@ impl<'a> ReadAdapter<'a> {
                     core::ptr::copy_nonoverlapping(buf.as_ptr(), output.as_mut_ptr(), N);
                 }
                 self.reader.get_mut().consume(N);
-            }
+            },
             n if n >= N => {
                 // SAFETY: This copy is guaranteed to be safe, as we have validated above
                 // that `buf` has at least N bytes, and `output` is defined to be exactly
@@ -360,7 +360,7 @@ impl<'a> ReadAdapter<'a> {
                     core::ptr::copy_nonoverlapping(buf.as_ptr(), output.as_mut_ptr(), N);
                 }
                 self.pos += N;
-            }
+            },
             n => {
                 // We have to fill from both the local and reader buffers
                 self.non_empty_reader_buffer_mut()?;
@@ -390,7 +390,7 @@ impl<'a> ReadAdapter<'a> {
                         }
                         self.pos += n;
                         self.reader.get_mut().consume(needed);
-                    }
+                    },
                     // We didn't get enough, but haven't necessarily reached eof yet, so fall back
                     // to filling `self.buf`
                     m => {
@@ -408,9 +408,9 @@ impl<'a> ReadAdapter<'a> {
                         }
                         self.pos += N;
                         return Ok(output);
-                    }
+                    },
                 }
-            }
+            },
         }
 
         // Check if we should reset our internal buffer
@@ -680,9 +680,10 @@ impl<'a> ByteReader for SliceReader<'a> {
 
 #[cfg(all(test, feature = "std"))]
 mod tests {
+    use std::io::Cursor;
+
     use super::*;
     use crate::ByteWriter;
-    use std::io::Cursor;
 
     #[test]
     fn read_adapter_empty() -> Result<(), DeserializationError> {

@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use core::{fmt::Debug, slice};
+
 use math::{FieldElement, StarkField};
 use utils::{ByteReader, Deserializable, DeserializationError, Serializable};
 

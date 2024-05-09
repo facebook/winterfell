@@ -3,8 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::Blake3_256;
 use winterfell::{FieldExtension, ProofOptions};
+
+use super::Blake3_256;
 
 #[test]
 fn rescue_test_basic_proof_verification() {

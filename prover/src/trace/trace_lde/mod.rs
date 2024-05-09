@@ -3,11 +3,13 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use alloc::vec::Vec;
+
+use air::{proof::Queries, LagrangeKernelEvaluationFrame, TraceInfo};
+use crypto::{ElementHasher, Hasher};
+
 use super::{ColMatrix, EvaluationFrame, FieldElement, TracePolyTable};
 use crate::StarkDomain;
-use air::{proof::Queries, LagrangeKernelEvaluationFrame, TraceInfo};
-use alloc::vec::Vec;
-use crypto::{ElementHasher, Hasher};
 
 mod default;
 pub use default::DefaultTraceLde;

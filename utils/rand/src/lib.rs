@@ -13,6 +13,7 @@ pub use internal::*;
 #[cfg(not(target_family = "wasm"))]
 mod internal {
     use core::fmt::Debug;
+
     use rand::prelude::*;
     use utils::Randomizable;
 

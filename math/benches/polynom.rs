@@ -3,9 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use std::time::Duration;
+
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use rand_utils::rand_vector;
-use std::time::Duration;
 use winter_math::{fft, fields::f128::BaseElement, polynom, FieldElement};
 
 const SIZES: [usize; 3] = [262_144, 524_288, 1_048_576];

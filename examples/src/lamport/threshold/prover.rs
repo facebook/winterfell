@@ -3,20 +3,21 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{
-    get_power_series, rescue, AggPublicKey, BaseElement, DefaultRandomCoin, ElementHasher,
-    FieldElement, LamportThresholdAir, PhantomData, ProofOptions, Prover, PublicInputs, Signature,
-    StarkField, HASH_CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH, TRACE_WIDTH,
-};
 use std::collections::HashMap;
+
+#[cfg(feature = "concurrent")]
+use winterfell::iterators::*;
 use winterfell::{
     matrix::ColMatrix, AuxRandElements, ConstraintCompositionCoefficients,
     DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, TraceInfo, TracePolyTable,
     TraceTable,
 };
 
-#[cfg(feature = "concurrent")]
-use winterfell::iterators::*;
+use super::{
+    get_power_series, rescue, AggPublicKey, BaseElement, DefaultRandomCoin, ElementHasher,
+    FieldElement, LamportThresholdAir, PhantomData, ProofOptions, Prover, PublicInputs, Signature,
+    StarkField, HASH_CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH, TRACE_WIDTH,
+};
 
 // CONSTANTS
 // ================================================================================================

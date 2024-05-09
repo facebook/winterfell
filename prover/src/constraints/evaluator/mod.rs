@@ -3,9 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{super::TraceLde, CompositionPolyTrace, ConstraintEvaluationTable, StarkDomain};
 use air::Air;
 use math::FieldElement;
+
+use super::{super::TraceLde, CompositionPolyTrace, ConstraintEvaluationTable, StarkDomain};
 
 mod default;
 pub use default::DefaultConstraintEvaluator;

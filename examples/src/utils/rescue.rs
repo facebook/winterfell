@@ -3,13 +3,15 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::utils::{are_equal, EvaluationResult};
 use core::slice;
+
 use winterfell::{
     crypto::{Digest, Hasher},
     math::{fields::f128::BaseElement, FieldElement},
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
+
+use crate::utils::{are_equal, EvaluationResult};
 
 /// Function state is set to 6 field elements or 96 bytes; 4 elements are reserved for rate
 /// and 2 elements are reserved for capacity.

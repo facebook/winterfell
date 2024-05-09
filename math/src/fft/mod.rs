@@ -11,12 +11,13 @@
 //! these functions are much more efficient: their runtime complexity is O(`n` log `n`), where
 //! `n` is the domain size.
 
+use alloc::vec::Vec;
+
 use crate::{
     fft::fft_inputs::FftInputs,
     field::{FieldElement, StarkField},
     utils::get_power_series,
 };
-use alloc::vec::Vec;
 
 pub mod fft_inputs;
 pub mod real_u64;

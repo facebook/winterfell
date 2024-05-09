@@ -3,19 +3,21 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{
-    message_to_elements, rescue, Example, PrivateKey, Signature, CYCLE_LENGTH as HASH_CYCLE_LENGTH,
-    NUM_HASH_ROUNDS,
-};
-use crate::{Blake3_192, Blake3_256, ExampleOptions, HashFunction, Sha3_256};
 use core::marker::PhantomData;
 use std::time::Instant;
+
 use tracing::{field, info_span};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, get_power_series, FieldElement, StarkField},
     Proof, ProofOptions, Prover, Trace, VerifierError,
 };
+
+use super::{
+    message_to_elements, rescue, Example, PrivateKey, Signature, CYCLE_LENGTH as HASH_CYCLE_LENGTH,
+    NUM_HASH_ROUNDS,
+};
+use crate::{Blake3_192, Blake3_256, ExampleOptions, HashFunction, Sha3_256};
 
 mod signature;
 use signature::AggPublicKey;
@@ -44,13 +46,13 @@ pub fn get_example(
     match hash_fn {
         HashFunction::Blake3_192 => {
             Ok(Box::new(LamportThresholdExample::<Blake3_192>::new(num_signers, options)))
-        }
+        },
         HashFunction::Blake3_256 => {
             Ok(Box::new(LamportThresholdExample::<Blake3_256>::new(num_signers, options)))
-        }
+        },
         HashFunction::Sha3_256 => {
             Ok(Box::new(LamportThresholdExample::<Sha3_256>::new(num_signers, options)))
-        }
+        },
         _ => Err("The specified hash function cannot be used with this example.".to_string()),
     }
 }

@@ -3,14 +3,15 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{
-    BaseElement, DefaultRandomCoin, ElementHasher, Fib8Air, FieldElement, PhantomData,
-    ProofOptions, Prover,
-};
 use winterfell::{
     matrix::ColMatrix, AuxRandElements, ConstraintCompositionCoefficients,
     DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable,
     TraceTable,
+};
+
+use super::{
+    BaseElement, DefaultRandomCoin, ElementHasher, Fib8Air, FieldElement, PhantomData,
+    ProofOptions, Prover,
 };
 
 // FIBONACCI PROVER
@@ -23,10 +24,7 @@ pub struct Fib8Prover<H: ElementHasher> {
 
 impl<H: ElementHasher> Fib8Prover<H> {
     pub fn new(options: ProofOptions) -> Self {
-        Self {
-            options,
-            _hasher: PhantomData,
-        }
+        Self { options, _hasher: PhantomData }
     }
 
     /// Builds an execution trace for computing a Fibonacci sequence of the specified length such

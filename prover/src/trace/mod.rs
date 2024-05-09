@@ -3,9 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::ColMatrix;
 use air::{Air, AuxRandElements, EvaluationFrame, LagrangeKernelBoundaryConstraint, TraceInfo};
 use math::{polynom, FieldElement, StarkField};
+
+use super::ColMatrix;
 
 mod trace_lde;
 pub use trace_lde::{DefaultTraceLde, TraceLde};

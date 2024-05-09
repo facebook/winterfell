@@ -9,7 +9,6 @@
 //! fast modular arithmetic including branchless multiplication and addition. Base elements are
 //! stored in the Montgomery form using `u64` as the backing type.
 
-use super::{ExtensibleField, FieldElement, StarkField};
 use alloc::{
     string::{String, ToString},
     vec::Vec,
@@ -20,13 +19,15 @@ use core::{
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
     slice,
 };
+
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 use utils::{
     AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Randomizable,
     Serializable,
 };
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
+use super::{ExtensibleField, FieldElement, StarkField};
 
 #[cfg(test)]
 mod tests;

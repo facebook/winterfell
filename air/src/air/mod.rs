@@ -3,10 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::ProofOptions;
 use alloc::{collections::BTreeMap, vec::Vec};
+
 use crypto::{RandomCoin, RandomCoinError};
 use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElements};
+
+use crate::ProofOptions;
 
 mod aux;
 pub use aux::{AuxRandElements, GkrVerifier};

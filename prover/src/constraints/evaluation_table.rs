@@ -3,19 +3,18 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{ConstraintDivisor, StarkDomain};
 use alloc::vec::Vec;
-use math::{batch_inversion, FieldElement, StarkField};
-use utils::{batch_iter_mut, iter_mut, uninit_vector};
-
-#[cfg(debug_assertions)]
-use math::fft;
 
 #[cfg(debug_assertions)]
 use air::TransitionConstraints;
-
+#[cfg(debug_assertions)]
+use math::fft;
+use math::{batch_inversion, FieldElement, StarkField};
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
+use utils::{batch_iter_mut, iter_mut, uninit_vector};
+
+use super::{ConstraintDivisor, StarkDomain};
 
 // CONSTANTS
 // ================================================================================================

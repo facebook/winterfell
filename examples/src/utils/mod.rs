@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use core::ops::Range;
+
 use winterfell::{
     math::{FieldElement, StarkField},
     Trace, TraceTable,

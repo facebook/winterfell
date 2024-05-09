@@ -3,8 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use air::Air;
 use alloc::vec::Vec;
+
+use air::Air;
 use math::{fft, get_power_series, StarkField};
 
 // TYPES AND INTERFACES

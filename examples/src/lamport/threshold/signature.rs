@@ -3,13 +3,14 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{
-    lamport::signature::PublicKey,
-    utils::rescue::{Hash, Rescue128},
-};
 use winterfell::{
     crypto::MerkleTree,
     math::{fields::f128::BaseElement, FieldElement},
+};
+
+use crate::{
+    lamport::signature::PublicKey,
+    utils::rescue::{Hash, Rescue128},
 };
 
 // AGGREGATED PUBLIC KEY

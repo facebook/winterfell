@@ -3,16 +3,17 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{
-    rescue, CYCLE_LENGTH as HASH_CYCLE_LEN, SIG_CYCLE_LENGTH as SIG_CYCLE_LEN, TRACE_WIDTH,
-};
-use crate::utils::{are_equal, is_binary, is_zero, not, EvaluationResult};
 use core_utils::flatten_slice_elements;
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement, ToElements},
     Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
+
+use super::{
+    rescue, CYCLE_LENGTH as HASH_CYCLE_LEN, SIG_CYCLE_LENGTH as SIG_CYCLE_LEN, TRACE_WIDTH,
+};
+use crate::utils::{are_equal, is_binary, is_zero, not, EvaluationResult};
 
 // CONSTANTS
 // ================================================================================================

@@ -3,10 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::StarkDomain;
-use air::{Air, ConstraintDivisor};
 use alloc::{collections::BTreeMap, vec::Vec};
+
+use air::{Air, ConstraintDivisor};
 use math::{fft, ExtensionOf, FieldElement};
+
+use super::StarkDomain;
 
 // CONSTANTS
 // ================================================================================================
@@ -67,7 +69,7 @@ impl<E: FieldElement> BoundaryConstraints<E> {
                     let group =
                         BoundaryConstraintGroup::from_aux_constraints(group, air, &mut twiddle_map);
                     result.push(group);
-                }
+                },
             };
         }
 

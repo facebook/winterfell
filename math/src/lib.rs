@@ -103,11 +103,7 @@ pub mod fields {
     //! This module contains concrete implementations of base STARK fields as well as extensions
     //! of these field.
 
-    pub use super::field::f128;
-    pub use super::field::f62;
-    pub use super::field::f64;
-    pub use super::field::CubeExtension;
-    pub use super::field::QuadExtension;
+    pub use super::field::{f128, f62, f64, CubeExtension, QuadExtension};
 }
 
 mod utils;

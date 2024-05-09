@@ -3,10 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{ProofOptions, TraceInfo};
 use alloc::{string::ToString, vec::Vec};
+
 use math::{StarkField, ToElements};
 use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+
+use crate::{ProofOptions, TraceInfo};
 
 // PROOF CONTEXT
 // ================================================================================================
@@ -146,11 +148,7 @@ impl Deserializable for Context {
         // read options
         let options = ProofOptions::read_from(source)?;
 
-        Ok(Context {
-            trace_info,
-            field_modulus_bytes,
-            options,
-        })
+        Ok(Context { trace_info, field_modulus_bytes, options })
     }
 }
 
@@ -159,9 +157,10 @@ impl Deserializable for Context {
 
 #[cfg(test)]
 mod tests {
+    use math::fields::f64::BaseElement;
+
     use super::{Context, ProofOptions, ToElements, TraceInfo};
     use crate::FieldExtension;
-    use math::fields::f64::BaseElement;
 
     #[test]
     fn context_to_elements() {

@@ -3,15 +3,17 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256};
 use core::marker::PhantomData;
 use std::time::Instant;
+
 use tracing::{field, info_span};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, FieldElement},
     Proof, ProofOptions, Prover, Trace, VerifierError,
 };
+
+use crate::{Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256};
 
 mod air;
 use air::{VdfAir, VdfInputs};
@@ -103,10 +105,7 @@ where
     }
 
     fn verify(&self, proof: Proof) -> Result<(), VerifierError> {
-        let pub_inputs = VdfInputs {
-            seed: self.seed,
-            result: self.result,
-        };
+        let pub_inputs = VdfInputs { seed: self.seed, result: self.result };
         let acceptable_options =
             winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
         winterfell::verify::<VdfAir, H, DefaultRandomCoin<H>>(

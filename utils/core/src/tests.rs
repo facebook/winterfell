@@ -3,9 +3,11 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{ByteReader, ByteWriter, Serializable, SliceReader};
 use alloc::vec::Vec;
+
 use proptest::prelude::{any, proptest};
+
+use super::{ByteReader, ByteWriter, Serializable, SliceReader};
 
 // SLICE READER TESTS
 // ================================================================================================

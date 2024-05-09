@@ -3,8 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{Assertion, BoundaryConstraint, ConstraintDivisor, ExtensionOf, FieldElement};
 use alloc::{collections::BTreeMap, vec::Vec};
+
+use super::{Assertion, BoundaryConstraint, ConstraintDivisor, ExtensionOf, FieldElement};
 
 // BOUNDARY CONSTRAINT GROUP
 // ================================================================================================
@@ -51,10 +52,7 @@ where
     // --------------------------------------------------------------------------------------------
     /// Returns a new boundary constraint group to hold constraints with the specified divisor.
     pub(super) fn new(divisor: ConstraintDivisor<F::BaseField>) -> Self {
-        BoundaryConstraintGroup {
-            constraints: Vec::new(),
-            divisor,
-        }
+        BoundaryConstraintGroup { constraints: Vec::new(), divisor }
     }
 
     // PUBLIC ACCESSORS

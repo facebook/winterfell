@@ -3,15 +3,17 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::VerifierError;
+use alloc::{string::ToString, vec::Vec};
+
 use air::{
     proof::{Proof, Queries, Table, TraceOodFrame},
     Air,
 };
-use alloc::{string::ToString, vec::Vec};
 use crypto::{BatchMerkleProof, ElementHasher, MerkleTree};
 use fri::VerifierChannel as FriVerifierChannel;
 use math::{FieldElement, StarkField};
+
+use crate::VerifierError;
 
 // VERIFIER CHANNEL
 // ================================================================================================
@@ -336,9 +338,6 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> ConstraintQuer
                 ))
             })?;
 
-        Ok(Self {
-            query_proofs,
-            evaluations,
-        })
+        Ok(Self { query_proofs, evaluations })
     }
 }

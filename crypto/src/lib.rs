@@ -26,19 +26,13 @@ pub use hash::{Digest, ElementHasher, Hasher};
 pub mod hashers {
     //! Contains implementations of currently supported hash functions.
 
-    pub use super::hash::Blake3_192;
-    pub use super::hash::Blake3_256;
-    pub use super::hash::Rp62_248;
-    pub use super::hash::Rp64_256;
-    pub use super::hash::RpJive64_256;
-    pub use super::hash::Sha3_256;
+    pub use super::hash::{Blake3_192, Blake3_256, Rp62_248, Rp64_256, RpJive64_256, Sha3_256};
 }
 
 mod merkle;
-pub use merkle::{build_merkle_nodes, BatchMerkleProof, MerkleTree};
-
 #[cfg(feature = "concurrent")]
 pub use merkle::concurrent;
+pub use merkle::{build_merkle_nodes, BatchMerkleProof, MerkleTree};
 
 mod random;
 pub use random::{DefaultRandomCoin, RandomCoin};

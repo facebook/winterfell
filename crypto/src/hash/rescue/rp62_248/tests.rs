@@ -3,12 +3,13 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use math::StarkField;
+use rand_utils::{rand_array, rand_value};
+
 use super::{
     BaseElement, ElementDigest, ElementHasher, FieldElement, Hasher, Rp62_248, ALPHA, INV_ALPHA,
     STATE_WIDTH,
 };
-use math::StarkField;
-use rand_utils::{rand_array, rand_value};
 
 #[test]
 fn test_alphas() {

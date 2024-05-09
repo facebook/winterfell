@@ -148,8 +148,9 @@ fn encoded_len(value: usize) -> usize {
 
 #[cfg(all(test, feature = "std"))]
 mod tests {
-    use super::*;
     use std::io::Cursor;
+
+    use super::*;
 
     #[test]
     fn write_adapter_passthrough() {

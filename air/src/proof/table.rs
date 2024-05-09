@@ -3,11 +3,13 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{DeserializationError, SliceReader};
 use alloc::vec::Vec;
 use core::iter::FusedIterator;
+
 use math::FieldElement;
 use utils::ByteReader;
+
+use super::{DeserializationError, SliceReader};
 
 // CONSTANTS
 // ================================================================================================
@@ -131,7 +133,7 @@ impl<'a, E: FieldElement> Iterator for RowIterator<'a, E> {
                 let row = self.table.get_row(self.cursor);
                 self.cursor += 1;
                 Some(row)
-            }
+            },
         }
     }
 }

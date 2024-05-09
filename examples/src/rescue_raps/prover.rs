@@ -3,15 +3,16 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{
-    apply_rescue_round_parallel, rescue::STATE_WIDTH, BaseElement, DefaultRandomCoin,
-    ElementHasher, FieldElement, PhantomData, ProofOptions, Prover, PublicInputs, RapTraceTable,
-    RescueRapsAir, CYCLE_LENGTH, NUM_HASH_ROUNDS,
-};
 use core_utils::uninit_vector;
 use winterfell::{
     matrix::ColMatrix, AuxRandElements, ConstraintCompositionCoefficients,
     DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable,
+};
+
+use super::{
+    apply_rescue_round_parallel, rescue::STATE_WIDTH, BaseElement, DefaultRandomCoin,
+    ElementHasher, FieldElement, PhantomData, ProofOptions, Prover, PublicInputs, RapTraceTable,
+    RescueRapsAir, CYCLE_LENGTH, NUM_HASH_ROUNDS,
 };
 
 // RESCUE PROVER
@@ -26,10 +27,7 @@ pub struct RescueRapsProver<H: ElementHasher> {
 
 impl<H: ElementHasher> RescueRapsProver<H> {
     pub fn new(options: ProofOptions) -> Self {
-        Self {
-            options,
-            _hasher: PhantomData,
-        }
+        Self { options, _hasher: PhantomData }
     }
     /// The parameter `seeds` is the set of seeds for the first hash chain.
     /// The parameter `permuted_seeds` is the set of seeds for the second hash chain.
@@ -78,8 +76,8 @@ impl<H: ElementHasher> RescueRapsProver<H> {
                             state[4] += permuted_seeds[idx][0];
                             state[5] += permuted_seeds[idx][1];
                         }
-                    }
-                    _ => {}
+                    },
+                    _ => {},
                 };
             },
         );

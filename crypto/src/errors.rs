@@ -35,28 +35,28 @@ impl fmt::Display for MerkleTreeError {
                     f,
                     "a Merkle tree must contain at least {expected} leaves, but {actual} were provided"
                 )
-            }
+            },
             Self::NumberOfLeavesNotPowerOfTwo(num_leaves) => {
                 write!(f, "number of leaves must be a power of two, but {num_leaves} were provided")
-            }
+            },
             Self::LeafIndexOutOfBounds(expected, actual) => {
                 write!(f, "a leaf index cannot exceed {expected}, but was {actual}")
-            }
+            },
             Self::DuplicateLeafIndex => {
                 write!(f, "repeating indexes detected")
-            }
+            },
             Self::TooFewLeafIndexes => {
                 write!(f, "at least one leaf index must be provided")
-            }
+            },
             Self::TooManyLeafIndexes(max_indexes, num_indexes) => {
                 write!(
                     f,
                     "number of leaf indexes cannot exceed {max_indexes}, but {num_indexes} was provided"
                 )
-            }
+            },
             Self::InvalidProof => {
                 write!(f, "Merkle proof is invalid")
-            }
+            },
         }
     }
 }
@@ -79,13 +79,13 @@ impl fmt::Display for RandomCoinError {
         match self {
             Self::FailedToDrawFieldElement(num_tries) => {
                 write!(f, "failed to generate a valid field element after {num_tries} tries")
-            }
+            },
             Self::FailedToDrawIntegers(num_expected, num_actual, num_tries) => {
                 write!(
                     f,
                     "needed to draw {num_expected} integers from a domain, but drew only {num_actual} after {num_tries} tries"
                 )
-            }
+            },
         }
     }
 }
