@@ -1,16 +1,16 @@
 [package]
 name = "winterfell"
-version = "0.8.3"
+version = "0.9.0"
 description = "Winterfell STARK prover and verifier"
 authors = ["winterfell contributors"]
 readme = "../README.md"
 license = "MIT"
 repository = "https://github.com/novifinancial/winterfell"
-documentation = "https://docs.rs/winterfell/0.8.3"
+documentation = "https://docs.rs/winterfell/0.9.0"
 categories = ["cryptography", "no-std"]
 keywords = ["crypto", "zkp", "stark", "prover", "verifier"]
 edition = "2021"
-rust-version = "1.75"
+rust-version = "1.78"
 
 [lib]
 bench = false
@@ -22,9 +22,9 @@ default = ["std"]
 std = ["prover/std", "verifier/std"]
 
 [dependencies]
-air = { version = "0.8", path = "../air", package = "winter-air", default-features = false }
-prover = { version = "0.8", path = "../prover", package = "winter-prover", default-features = false }
-verifier = { version = "0.8", path = "../verifier", package = "winter-verifier", default-features = false }
+air = { version = "0.9", path = "../air", package = "winter-air", default-features = false }
+prover = { version = "0.9", path = "../prover", package = "winter-prover", default-features = false }
+verifier = { version = "0.9", path = "../verifier", package = "winter-verifier", default-features = false }
 
 # Allow math in docs
 [package.metadata.docs.rs]
