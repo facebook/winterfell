@@ -13,20 +13,7 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
-#[deprecated(since = "0.8.2", note = "You should prefer to import from `alloc::boxed::*`")]
-pub mod boxed;
-// TODO: Remove this when deprecation period for `boxed` module is over
-#[allow(deprecated)]
-pub use boxed::*;
-
-#[deprecated(
-    since = "0.8.2",
-    note = "You should prefer to import from `alloc::collections::*`"
-)]
-pub mod collections;
 pub mod iterators;
-#[deprecated(since = "0.8.2", note = "You should prefer to import from `alloc::string::*`")]
-pub mod string;
 
 use alloc::vec::Vec;
 use core::{mem, slice};
