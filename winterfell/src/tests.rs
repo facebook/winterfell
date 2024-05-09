@@ -135,7 +135,7 @@ impl Air for LagrangeKernelComplexAir {
                 vec![TransitionConstraintDegree::new(1)],
                 1,
                 1,
-                Some(0),
+                Some(1),
                 options,
             ),
         }
@@ -180,7 +180,7 @@ impl Air for LagrangeKernelComplexAir {
         &self,
         _aux_rand_elements: &[E],
     ) -> Vec<Assertion<E>> {
-        vec![Assertion::single(1, 0, E::ZERO)]
+        vec![Assertion::single(0, 0, E::ZERO)]
     }
 
     fn get_auxiliary_proof_verifier<E: FieldElement<BaseField = Self::BaseField>>(
@@ -285,7 +285,20 @@ impl Prover for LagrangeComplexProver {
 
         let mut columns = Vec::new();
 
-        // first build the Lagrange kernel column
+        // First all other auxiliary columns
+        let rand_summed = lagrange_kernel_rand_elements.iter().fold(E::ZERO, |acc, &r| acc + r);
+        for _ in 1..self.aux_trace_width {
+            // building a dummy auxiliary column
+            let column = main_trace
+                .get_column(0)
+                .iter()
+                .map(|row_val| rand_summed.mul_base(*row_val))
+                .collect();
+
+            columns.push(column);
+        }
+
+        // then build the Lagrange kernel column
         {
             let r = &lagrange_kernel_rand_elements;
 
@@ -304,19 +317,6 @@ impl Prover for LagrangeComplexProver {
             }
 
             columns.push(lagrange_col);
-        }
-
-        // Then all other auxiliary columns
-        let rand_summed = lagrange_kernel_rand_elements.iter().fold(E::ZERO, |acc, &r| acc + r);
-        for _ in 1..self.aux_trace_width {
-            // building a dummy auxiliary column
-            let column = main_trace
-                .get_column(0)
-                .iter()
-                .map(|row_val| rand_summed.mul_base(*row_val))
-                .collect();
-
-            columns.push(column);
         }
 
         ColMatrix::new(columns)

@@ -2,11 +2,14 @@
 //
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
-
 use super::{constraints::CompositionPoly, StarkDomain, TracePolyTable};
 use air::{proof::TraceOodFrame, DeepCompositionCoefficients};
 use alloc::vec::Vec;
-use math::{add_in_place, fft, mul_acc, polynom, ExtensionOf, FieldElement, StarkField};
+use math::{
+    add_in_place, fft, mul_acc,
+    polynom::{self, syn_div_roots_in_place},
+    ExtensionOf, FieldElement, StarkField,
+};
 use utils::iter_mut;
 
 #[cfg(feature = "concurrent")]
@@ -58,9 +61,20 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
     /// - Then, combine together all T'_i(x) and T''_i(x) polynomials using a random linear
     ///   combination as T(x) = sum((T'_i(x) + T''_i(x)) * cc_i) for all i, where cc_i is
     ///   the coefficient for the random linear combination drawn from the public coin.
+    /// - If a Lagrange kernel is present, combine one additional term defined as
+    ///   (T_l(x) - p_S(x)) / Z_S(x), where:
+    ///
+    /// 1. $T_l(x) is the evaluation of the Lagrange trace polynomial at $x$.
+    /// 2. $S$ is the set of opening points for the Lagrange kernel i.e.,
+    ///    $S := {z, z.g, z.g^2, ..., z.g^{2^{log_2(\nu) - 1}}}$.
+    /// 3. $p_S(X)$ is the polynomial of minimal degree interpolating the set
+    ///    ${(a, T_l(a)): a \in S}$.
+    /// 4. $Z_S(X)$ is the polynomial of minimal degree vanishing over the set $S$.
     ///
     /// Note that evaluations of T_i(z) and T_i(z * g) are passed in via the `ood_trace_state`
     /// parameter.
+    /// If a Lagrange kernel is present, the evaluations of $T_l$ over the set $S$ are provided
+    /// separately via `ood_trace_state`.
     pub fn add_trace_polys(
         &mut self,
         trace_polys: TracePolyTable<E>,
@@ -131,8 +145,46 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
         // divide the composition polynomials by (x - z) and (x - z * g), respectively,
         // and add the resulting polynomials together; the output of this step
         // is a single trace polynomial T(x) and deg(T(x)) = trace_length - 2.
-        let trace_poly =
+        let mut trace_poly =
             merge_trace_compositions(vec![t1_composition, t2_composition], vec![self.z, next_z]);
+
+        // finally compose the final term associated to the Lagrange kernel trace polynomial if
+        // there is one present.
+        // TODO: Investigate using FFT to speed up this block (see #281).
+        if let Some(poly) = trace_polys.lagrange_kernel_poly() {
+            let ood_eval_frame = ood_trace_states.lagrange_kernel_frame().expect(
+                "should contain OOD values for Lagrange kernel trace polynomial if we are here",
+            );
+
+            let log_trace_len = poly.len().ilog2();
+            let g = E::from(E::BaseField::get_root_of_unity(log_trace_len));
+            let mut xs = Vec::with_capacity(log_trace_len as usize + 1);
+
+            // push z
+            xs.push(self.z);
+
+            // compute the values (z * g), (z * g^2), (z * g^4), ..., (z * g^(2^(v-1)))
+            let mut g_exp = g;
+            for _ in 0..log_trace_len {
+                let x = g_exp * self.z;
+                xs.push(x);
+                g_exp *= g_exp;
+            }
+
+            // compute the numerator
+            let p_s = polynom::interpolate(&xs, ood_eval_frame.inner(), true);
+            let mut numerator = polynom::sub(poly, &p_s);
+
+            // divide by the zero polynomial of the set S
+            syn_div_roots_in_place(&mut numerator, &xs);
+
+            // multiply by constraint composition randomness
+            let quotient = numerator;
+            let scaled_with_randomness =
+                polynom::mul_by_scalar(&quotient, self.cc.lagrange.unwrap());
+
+            trace_poly = polynom::add(&scaled_with_randomness, &trace_poly);
+        };
 
         // set the coefficients of the DEEP composition polynomial
         self.coefficients = trace_poly;

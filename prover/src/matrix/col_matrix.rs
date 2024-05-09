@@ -153,6 +153,15 @@ impl<E: FieldElement> ColMatrix<E> {
         self.columns.push(column);
     }
 
+    /// Removes a column of the matrix given its index.
+    ///
+    /// # Panics
+    /// Panics if the column index is out of range.
+    pub fn remove_column(&mut self, index: usize) -> Vec<E> {
+        assert!(index < self.num_cols(), "column index out of range");
+        self.columns.remove(index)
+    }
+
     // ITERATION
     // --------------------------------------------------------------------------------------------
 
