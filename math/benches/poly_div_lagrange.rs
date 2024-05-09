@@ -4,13 +4,13 @@
 // LICENSE file in the root directory of this source tree.
 
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
-use math::{
+use rand_utils::{rand_value, rand_vector};
+use std::time::Duration;
+use winter_math::{
     fields::{f64::BaseElement, QuadExtension},
     polynom::{self, eval_many, syn_div_roots_in_place},
     ExtensionOf, StarkField,
 };
-use rand_utils::{rand_value, rand_vector};
-use std::time::Duration;
 
 const TRACE_LENS: [usize; 4] = [2_usize.pow(16), 2_usize.pow(18), 2_usize.pow(20), 2_usize.pow(22)];
 

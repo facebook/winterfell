@@ -27,6 +27,10 @@ harness = false
 name = "polynom"
 harness = false
 
+[[bench]]
+name = "poly_div_lagrange"
+harness = false
+
 [features]
 concurrent = ["utils/concurrent", "std"]
 default = ["std"]

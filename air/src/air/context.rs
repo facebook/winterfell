@@ -124,7 +124,11 @@ impl<B: StarkField> AirContext<B> {
 
         // validate Lagrange kernel aux column, if any
         if let Some(lagrange_kernel_aux_column_idx) = lagrange_kernel_aux_column_idx {
-            assert!(lagrange_kernel_aux_column_idx == trace_info.get_aux_segment_width() - 1, "Lagrange kernel column should be the last column of the auxiliary trace: index={}, but aux trace width is {}", lagrange_kernel_aux_column_idx, trace_info.get_aux_segment_width());
+            assert!(
+            lagrange_kernel_aux_column_idx == trace_info.get_aux_segment_width() - 1,
+            "Lagrange kernel column should be the last column of the auxiliary trace: index={}, but aux trace width is {}",
+            lagrange_kernel_aux_column_idx, trace_info.get_aux_segment_width()
+            );
         }
 
         // determine minimum blowup factor needed to evaluate transition constraints by taking
