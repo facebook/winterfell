@@ -31,6 +31,8 @@
 #[macro_use]
 extern crate alloc;
 
+use alloc::{string::ToString, vec::Vec};
+
 pub use air::{
     proof::Proof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
     ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
@@ -38,19 +40,12 @@ pub use air::{
 };
 use air::{AuxRandElements, GkrVerifier};
 
-use alloc::string::ToString;
 pub use math;
 use math::{
     fields::{CubeExtension, QuadExtension},
     FieldElement, ToElements,
 };
 
-#[deprecated(
-    since = "0.8.2",
-    note = "You should prefer the types from libstd/liballoc instead"
-)]
-#[allow(deprecated)]
-pub use utils::collections::*;
 pub use utils::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
 };
