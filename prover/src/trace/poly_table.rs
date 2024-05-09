@@ -50,16 +50,12 @@ impl<E: FieldElement> TracePolyTable<E> {
             aux_trace_polys.num_rows(),
             "polynomials in auxiliary segment must be of the same size as in the main segment"
         );
-        let aux_trace_polys_except_lagrange: Vec<Vec<E>> = aux_trace_polys
-            .columns()
-            .enumerate()
-            .filter(|(i, _col)| Some(i) != lagrange_kernel_column_idx.as_ref())
-            .map(|(_, col)| col.to_vec())
-            .collect();
-        self.aux_trace_polys = Some(ColMatrix::new(aux_trace_polys_except_lagrange));
-        if let Some(idx) = lagrange_kernel_column_idx {
-            self.lagrange_kernel_poly = Some(aux_trace_polys.get_column(idx).to_vec());
+
+        let mut aux_trace_polys = aux_trace_polys;
+        if let Some(index) = lagrange_kernel_column_idx {
+            self.lagrange_kernel_poly = Some(aux_trace_polys.remove_column(index));
         }
+        self.aux_trace_polys = Some(aux_trace_polys);
     }
 
     // PUBLIC ACCESSORS
