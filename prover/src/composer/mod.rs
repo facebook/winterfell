@@ -150,6 +150,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
 
         // finally compose the final term associated to the Lagrange kernel trace polynomial if
         // there is one present.
+        // TODO: Investigate using FFT to speed up this block (see #281).
         if let Some(poly) = trace_polys.lagrange_kernel_poly() {
             let ood_eval_frame = ood_trace_states.lagrange_kernel_frame().expect(
                 "should contain OOD values for Lagrange kernel trace polynomial if we are here",
