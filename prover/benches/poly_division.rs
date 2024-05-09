@@ -41,7 +41,7 @@ fn polynomial_division_naive(c: &mut Criterion) {
 
             let p_s = polynom::interpolate(&xs, &ood_evaluations, true);
             let numerator = polynom::sub(&poly, &p_s);
-            let z_s = polynom::get_zero_roots(&xs);
+            let z_s = polynom::poly_from_roots(&xs);
 
             b.iter_batched(
                 || {

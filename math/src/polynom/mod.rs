@@ -114,7 +114,7 @@ where
 {
     debug_assert!(xs.len() == ys.len(), "number of X and Y coordinates must be the same");
 
-    let roots = get_zero_roots(xs);
+    let roots = poly_from_roots(xs);
     let numerators: Vec<Vec<E>> = xs.iter().map(|&x| syn_div(&roots, 1, x)).collect();
 
     let denominators: Vec<E> = numerators.iter().zip(xs).map(|(e, &x)| eval(e, x)).collect();
@@ -696,10 +696,10 @@ where
 ///     .collect::<Vec<_>>();
 /// expected_poly[1] *= -BaseElement::ONE;
 ///
-/// let poly = get_zero_roots(&xs);
+/// let poly = poly_from_roots(&xs);
 /// assert_eq!(expected_poly, poly);
 /// ```
-pub fn get_zero_roots<E: FieldElement>(xs: &[E]) -> Vec<E> {
+pub fn poly_from_roots<E: FieldElement>(xs: &[E]) -> Vec<E> {
     let mut result = unsafe { utils::uninit_vector(xs.len() + 1) };
     fill_zero_roots(xs, &mut result);
     result

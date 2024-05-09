@@ -17,7 +17,7 @@ pub struct DeepComposer<E: FieldElement> {
     x_coordinates: Vec<E>,
     z: [E; 2],
     g_trace: E::BaseField,
-    lagrange_ker_idx: Option<usize>,
+    lagrange_kernel_column_idx: Option<usize>,
 }
 
 impl<E: FieldElement> DeepComposer<E> {
@@ -42,7 +42,7 @@ impl<E: FieldElement> DeepComposer<E> {
             x_coordinates,
             z: [z, z * E::from(g_trace)],
             g_trace,
-            lagrange_ker_idx: air.context().lagrange_kernel_aux_column_idx(),
+            lagrange_kernel_column_idx: air.context().lagrange_kernel_aux_column_idx(),
         }
     }
 
@@ -125,7 +125,7 @@ impl<E: FieldElement> DeepComposer<E> {
 
             // we treat the Lagrange column separately if present
             let lagrange_ker_col_idx =
-                self.lagrange_ker_idx.unwrap_or(ood_aux_trace_states[0].len());
+                self.lagrange_kernel_column_idx.unwrap_or(ood_aux_trace_states[0].len());
 
             for ((j, row), &x) in
                 (0..n).zip(queried_aux_trace_states.rows()).zip(&self.x_coordinates)
@@ -178,7 +178,7 @@ impl<E: FieldElement> DeepComposer<E> {
                     g_exp *= g_exp;
                 }
                 let p_s = polynom::interpolate(&xs, &ys, true);
-                let z_s_prime = polynom::get_zero_roots(&xs[2..]);
+                let z_s_prime = polynom::poly_from_roots(&xs[2..]);
 
                 for (row, &x) in queried_aux_trace_states.rows().zip(&self.x_coordinates) {
                     let value = row[lagrange_ker_col_idx];
