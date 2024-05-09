@@ -35,7 +35,7 @@ jobs:
         run: |
           rustup update --no-self-update stable
           cargo +stable install cargo-hack --locked
-          RUSTFLAGS=-Dwarnings cargo +stable hack --no-private --feature-powerset --keep-going check --rust-version --verbose --all-targets --exclude winter-prover --exclude winterfell
+          RUSTFLAGS=-Dwarnings cargo +stable hack --no-private --feature-powerset --keep-going check --rust-version --verbose --all-targets --workspace --exclude winter-prover --exclude winterfell
 
   # Check prover alone; specifically, that the `async` feature builds correctly 
   check-prover:
