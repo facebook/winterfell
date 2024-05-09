@@ -561,6 +561,7 @@ pub trait Prover {
         (constraint_commitment, composition_poly)
     }
 
+    #[doc(hidden)]
     #[instrument(skip_all)]
     async fn commit_to_main_trace_segment<E>(
         &self,
@@ -585,6 +586,7 @@ pub trait Prover {
         (trace_lde, trace_polys)
     }
 
+    #[doc(hidden)]
     #[instrument(skip_all)]
     async fn commit_to_constraint_evaluations<E>(
         &self,
