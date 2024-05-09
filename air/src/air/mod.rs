@@ -190,10 +190,10 @@ pub trait Air: Send + Sync {
 
     /// A type defining shape of public inputs for the computation described by this protocol.
     /// This could be any type as long as it can be serialized into a sequence of field elements.
-    type PublicInputs: ToElements<Self::BaseField>;
+    type PublicInputs: ToElements<Self::BaseField> + Send;
 
     /// An GKR proof object. If not needed, set to `()`.
-    type GkrProof: Serializable + Deserializable;
+    type GkrProof: Serializable + Deserializable + Send;
 
     /// A verifier for verifying GKR proofs. If not needed, set to `()`.
     type GkrVerifier: GkrVerifier<GkrProof = Self::GkrProof>;
