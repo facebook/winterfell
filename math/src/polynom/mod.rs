@@ -27,7 +27,7 @@
 use crate::{field::FieldElement, utils::batch_inversion};
 use alloc::vec::Vec;
 use core::mem;
-use utils::group_vector_elements;
+use utils::group_slice_elements;
 
 #[cfg(test)]
 mod tests;
@@ -177,8 +177,8 @@ where
     );
 
     let n = xs.len();
-    let mut equations = group_vector_elements(E::zeroed_vector(n * N * N));
-    let mut inverses = E::zeroed_vector(n * N);
+    let mut equations = vec![[E::ZERO; N]; n * N];
+    let mut inverses = vec![E::ZERO; n * N];
 
     // TODO: converting this to an array results in about 5% speed-up, but unfortunately, complex
     // generic constraints are not yet supported: https://github.com/rust-lang/rust/issues/76560
@@ -196,10 +196,11 @@ where
             inverses[i * N + j] = eval(equation, x);
         }
     }
-    let equations = group_vector_elements::<[E; N], N>(equations);
-    let inverses = group_vector_elements::<E, N>(batch_inversion(&inverses));
+    let equations = group_slice_elements::<[E; N], N>(&equations);
+    let inverses_vec = batch_inversion(&inverses);
+    let inverses = group_slice_elements::<E, N>(&inverses_vec);
 
-    let mut result = group_vector_elements(E::zeroed_vector(n * N));
+    let mut result = vec![[E::ZERO; N]; n];
     for (i, poly) in result.iter_mut().enumerate() {
         for j in 0..N {
             let inv_y = ys[i][j] * inverses[i][j];

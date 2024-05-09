@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.9.0 (2024-05-09)
+- [BREAKING] removed `group_vector_elements()` utility function (TBD).
+
 ## 0.8.4 (2024-03-18) - `utils/core` crate only
 * Re-added unintentionally removed re-exported liballoc macros (#263).
 

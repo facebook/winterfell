@@ -7,7 +7,7 @@ use crate::{FriProof, VerifierError};
 use alloc::vec::Vec;
 use crypto::{BatchMerkleProof, ElementHasher, Hasher, MerkleTree};
 use math::FieldElement;
-use utils::{group_vector_elements, DeserializationError};
+use utils::{group_slice_elements, DeserializationError};
 
 // VERIFIER CHANNEL TRAIT
 // ================================================================================================
@@ -88,7 +88,7 @@ pub trait VerifierChannel<E: FieldElement> {
         // TODO: make sure layer queries hash into leaves of layer proof
 
         let layer_queries = self.take_next_fri_layer_queries();
-        Ok(group_vector_elements(layer_queries))
+        Ok(group_slice_elements(&layer_queries).to_vec())
     }
 
     /// Returns FRI remainder polynomial read from this channel.
