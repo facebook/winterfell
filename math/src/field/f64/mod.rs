@@ -516,31 +516,27 @@ impl ExtensibleField<3> for BaseElement {
 // TYPE CONVERSIONS
 // ================================================================================================
 
-impl From<u32> for BaseElement {
-    /// Converts a 32-bit value into a field element.
-    fn from(value: u32) -> Self {
-        Self::new(value as u64)
-    }
-}
-
-impl From<u16> for BaseElement {
-    /// Converts a 16-bit value into a field element.
-    fn from(value: u16) -> Self {
-        Self::new(value as u64)
+impl From<bool> for BaseElement {
+    fn from(value: bool) -> Self {
+        Self::new(value.into())
     }
 }
 
 impl From<u8> for BaseElement {
-    /// Converts an 8-bit value into a field element.
     fn from(value: u8) -> Self {
-        Self::new(value as u64)
+        Self::new(value.into())
     }
 }
 
-impl From<bool> for BaseElement {
-    /// Converts an bool value into a field element.
-    fn from(value: bool) -> Self {
-        Self::new(value as u64)
+impl From<u16> for BaseElement {
+    fn from(value: u16) -> Self {
+        Self::new(value.into())
+    }
+}
+
+impl From<u32> for BaseElement {
+    fn from(value: u32) -> Self {
+        Self::new(value.into())
     }
 }
 
@@ -562,12 +558,23 @@ impl TryFrom<u128> for BaseElement {
     type Error = String;
 
     fn try_from(value: u128) -> Result<Self, Self::Error> {
-        if value >= M as u128 {
+        if value >= M.into() {
             Err(format!(
                 "invalid field element: value {value} is greater than or equal to the field modulus"
             ))
         } else {
             Ok(Self::new(value as u64))
+        }
+    }
+}
+
+impl TryFrom<usize> for BaseElement {
+    type Error = String;
+
+    fn try_from(value: usize) -> Result<Self, Self::Error> {
+        match u64::try_from(value) {
+            Err(_) => Err(format!("invalid field element: value {value} does not fit in a u64")),
+            Ok(v) => v.try_into(),
         }
     }
 }
@@ -607,19 +614,19 @@ impl<'a> TryFrom<&'a [u8]> for BaseElement {
     }
 }
 
-impl From<BaseElement> for u128 {
-    fn from(value: BaseElement) -> Self {
-        value.as_int() as u128
+impl TryFrom<BaseElement> for bool {
+    type Error = String;
+
+    fn try_from(value: BaseElement) -> Result<Self, Self::Error> {
+        match value.as_int() {
+            0 => Ok(false),
+            1 => Ok(true),
+            v => Err(format!("Field element does not represent a boolean, got {}", v)),
+        }
     }
 }
 
-impl From<BaseElement> for u64 {
-    fn from(value: BaseElement) -> Self {
-        value.as_int()
-    }
-}
-
-impl TryFrom<BaseElement> for u32 {
+impl TryFrom<BaseElement> for u8 {
     type Error = String;
 
     fn try_from(value: BaseElement) -> Result<Self, Self::Error> {
@@ -635,7 +642,7 @@ impl TryFrom<BaseElement> for u16 {
     }
 }
 
-impl TryFrom<BaseElement> for u8 {
+impl TryFrom<BaseElement> for u32 {
     type Error = String;
 
     fn try_from(value: BaseElement) -> Result<Self, Self::Error> {
@@ -643,15 +650,15 @@ impl TryFrom<BaseElement> for u8 {
     }
 }
 
-impl TryFrom<BaseElement> for bool {
-    type Error = String;
+impl From<BaseElement> for u64 {
+    fn from(value: BaseElement) -> Self {
+        value.as_int()
+    }
+}
 
-    fn try_from(value: BaseElement) -> Result<Self, Self::Error> {
-        match value.as_int() {
-            0 => Ok(false),
-            1 => Ok(true),
-            v => Err(format!("Field element does not represent a boolean, got {}", v)),
-        }
+impl From<BaseElement> for u128 {
+    fn from(value: BaseElement) -> Self {
+        value.as_int().into()
     }
 }
 
