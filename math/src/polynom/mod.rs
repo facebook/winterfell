@@ -114,7 +114,7 @@ where
 {
     debug_assert!(xs.len() == ys.len(), "number of X and Y coordinates must be the same");
 
-    let roots = get_zero_roots(xs);
+    let roots = poly_from_roots(xs);
     let numerators: Vec<Vec<E>> = xs.iter().map(|&x| syn_div(&roots, 1, x)).collect();
 
     let denominators: Vec<E> = numerators.iter().zip(xs).map(|(e, &x)| eval(e, x)).collect();
@@ -549,6 +549,64 @@ where
     }
 }
 
+/// Divides a polynomial by a polynomial given its roots and saves the result into the original
+/// polynomial.
+///
+/// Specifically, divides polynomial `p` by polynomial \prod_{i = 1}^m (x - `x_i`) using
+/// [synthetic division](https://en.wikipedia.org/wiki/Synthetic_division) method and saves the
+/// result into `p`. If the polynomials don't divide evenly, the remainder is ignored. Polynomial
+/// `p` is expected to be in the coefficient form, and the result will be in coefficient form as
+/// well.
+///
+/// This function is significantly faster than the generic `polynom::div()` function, using
+/// the coefficients of the divisor.
+///
+/// # Panics
+/// Panics if:
+/// * `roots.len()` is zero;
+/// * `p.len()` is smaller than or equal to `roots.len()`.
+///
+/// # Examples
+/// ```
+/// # use winter_math::polynom::*;
+/// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
+/// // p(x) = x^3 - 7 * x + 6
+/// let mut p = [
+///     BaseElement::new(6),
+///     -BaseElement::new(7),
+///     BaseElement::new(0),
+///     BaseElement::new(1),
+/// ];
+///
+/// // divide by (x - 1) * (x - 2)
+/// let zeros = vec![BaseElement::new(1), BaseElement::new(2)];
+/// syn_div_roots_in_place(&mut p, &zeros);
+///
+/// // expected result = x + 3
+/// let expected = [
+///     BaseElement::new(3),
+///     BaseElement::new(1),
+///     BaseElement::ZERO,
+///     BaseElement::ZERO,
+/// ];
+///
+/// assert_eq!(expected, p);
+pub fn syn_div_roots_in_place<E>(p: &mut [E], roots: &[E])
+where
+    E: FieldElement,
+{
+    assert!(!roots.is_empty(), "divisor should contain at least one linear factor");
+    assert!(p.len() > roots.len(), "divisor degree cannot be greater than dividend size");
+
+    for root in roots {
+        let mut c = E::ZERO;
+        for coeff in p.iter_mut().rev() {
+            *coeff += *root * c;
+            mem::swap(coeff, &mut c);
+        }
+    }
+}
+
 // DEGREE INFERENCE
 // ================================================================================================
 
@@ -621,13 +679,34 @@ where
     vec![]
 }
 
-// HELPER FUNCTIONS
-// ================================================================================================
-fn get_zero_roots<E: FieldElement>(xs: &[E]) -> Vec<E> {
+/// Returns the coefficients of polynomial given its roots.
+///
+/// # Examples
+/// ```
+/// # use winter_math::polynom::*;
+/// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
+/// let xs = vec![1u128, 2]
+///     .into_iter()
+///     .map(BaseElement::new)
+///     .collect::<Vec<_>>();
+///
+/// let mut expected_poly = vec![2u128, 3, 1]
+///     .into_iter()
+///     .map(BaseElement::new)
+///     .collect::<Vec<_>>();
+/// expected_poly[1] *= -BaseElement::ONE;
+///
+/// let poly = poly_from_roots(&xs);
+/// assert_eq!(expected_poly, poly);
+/// ```
+pub fn poly_from_roots<E: FieldElement>(xs: &[E]) -> Vec<E> {
     let mut result = unsafe { utils::uninit_vector(xs.len() + 1) };
     fill_zero_roots(xs, &mut result);
     result
 }
+
+// HELPER FUNCTIONS
+// ================================================================================================
 
 fn fill_zero_roots<E: FieldElement>(xs: &[E], result: &mut [E]) {
     let mut n = result.len();

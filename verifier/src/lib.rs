@@ -330,6 +330,7 @@ where
         queried_aux_trace_states,
         ood_main_trace_frame,
         ood_aux_trace_frame,
+        ood_lagrange_kernel_frame,
     );
     let c_composition = composer
         .compose_constraint_evaluations(queried_constraint_evaluations, ood_constraint_evaluations);
