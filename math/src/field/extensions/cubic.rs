@@ -3,20 +3,21 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{ExtensibleField, ExtensionOf, FieldElement};
 use alloc::string::{String, ToString};
 use core::{
     fmt,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
     slice,
 };
+
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 use utils::{
     AsBytes, ByteReader, ByteWriter, Deserializable, DeserializationError, Randomizable,
     Serializable, SliceReader,
 };
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
+use super::{ExtensibleField, ExtensionOf, FieldElement};
 
 // QUADRATIC EXTENSION FIELD
 // ================================================================================================
@@ -377,9 +378,10 @@ impl<B: ExtensibleField<3>> Deserializable for CubeExtension<B> {
 
 #[cfg(test)]
 mod tests {
+    use rand_utils::rand_value;
+
     use super::{CubeExtension, DeserializationError, FieldElement};
     use crate::field::f64::BaseElement;
-    use rand_utils::rand_value;
 
     // BASIC ALGEBRA
     // --------------------------------------------------------------------------------------------

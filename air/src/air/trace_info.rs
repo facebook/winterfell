@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::{string::ToString, vec::Vec};
+
 use math::{StarkField, ToElements};
 use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
@@ -340,8 +341,9 @@ impl Deserializable for TraceInfo {
 
 #[cfg(test)]
 mod tests {
-    use super::{ToElements, TraceInfo};
     use math::{fields::f64::BaseElement, FieldElement};
+
+    use super::{ToElements, TraceInfo};
 
     #[test]
     fn trace_info_to_elements() {

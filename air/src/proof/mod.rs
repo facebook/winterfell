@@ -5,13 +5,15 @@
 
 //! Contains STARK proof struct and associated components.
 
-use crate::{ProofOptions, TraceInfo};
 use alloc::vec::Vec;
 use core::cmp;
+
 use crypto::Hasher;
 use fri::FriProof;
 use math::FieldElement;
 use utils::{ByteReader, Deserializable, DeserializationError, Serializable, SliceReader};
+
+use crate::{ProofOptions, TraceInfo};
 
 mod context;
 pub use context::Context;
@@ -139,10 +141,10 @@ impl Proof {
 
     /// Creates a dummy `Proof` for use in tests.
     pub fn new_dummy() -> Self {
-        use crate::FieldExtension;
-        use crypto::hashers::Blake3_192 as DummyHasher;
-        use crypto::BatchMerkleProof;
+        use crypto::{hashers::Blake3_192 as DummyHasher, BatchMerkleProof};
         use math::fields::f64::BaseElement as DummyField;
+
+        use crate::FieldExtension;
 
         Self {
             context: Context::new::<DummyField>(
@@ -405,9 +407,10 @@ pub fn ceil(value: f64) -> f64 {
 
 #[cfg(test)]
 mod prove_security_tests {
+    use math::{fields::f64::BaseElement, StarkField};
+
     use super::ProofOptions;
     use crate::{proof::get_proven_security, FieldExtension};
-    use math::{fields::f64::BaseElement, StarkField};
 
     #[test]
     fn get_96_bits_security() {

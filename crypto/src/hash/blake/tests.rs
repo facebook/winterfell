@@ -3,9 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{Blake3_256, ElementHasher, Hasher};
 use math::{fields::f62::BaseElement, FieldElement};
 use rand_utils::rand_array;
+
+use super::{Blake3_256, ElementHasher, Hasher};
 
 #[test]
 fn hash_padding() {

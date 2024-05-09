@@ -3,14 +3,15 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{
-    BaseElement, DefaultRandomCoin, ElementHasher, FieldElement, PhantomData, ProofOptions, Prover,
-    VdfAir, VdfInputs, FORTY_TWO, INV_ALPHA,
-};
 use winterfell::{
     matrix::ColMatrix, AuxRandElements, ConstraintCompositionCoefficients,
     DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable,
     TraceTable,
+};
+
+use super::{
+    BaseElement, DefaultRandomCoin, ElementHasher, FieldElement, PhantomData, ProofOptions, Prover,
+    VdfAir, VdfInputs, FORTY_TWO, INV_ALPHA,
 };
 
 // VDF PROVER
@@ -23,10 +24,7 @@ pub struct VdfProver<H: ElementHasher> {
 
 impl<H: ElementHasher> VdfProver<H> {
     pub fn new(options: ProofOptions) -> Self {
-        Self {
-            options,
-            _hasher: PhantomData,
-        }
+        Self { options, _hasher: PhantomData }
     }
 
     pub fn build_trace(seed: BaseElement, n: usize) -> TraceTable<BaseElement> {

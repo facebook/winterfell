@@ -3,14 +3,16 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use alloc::{collections::BTreeMap, vec::Vec};
+
+use crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin};
+use math::{fields::f64::BaseElement, get_power_series, polynom, FieldElement, StarkField};
+
 use super::{
     Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
 use crate::FieldExtension;
-use alloc::{collections::BTreeMap, vec::Vec};
-use crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin};
-use math::{fields::f64::BaseElement, get_power_series, polynom, FieldElement, StarkField};
 
 // PERIODIC COLUMNS
 // ================================================================================================

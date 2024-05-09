@@ -3,11 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use alloc::vec::Vec;
+
 use air::{
     Air, AuxRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
     LagrangeKernelEvaluationFrame,
 };
-use alloc::vec::Vec;
 use math::{polynom, FieldElement};
 
 // CONSTRAINT EVALUATION

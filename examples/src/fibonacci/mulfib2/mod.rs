@@ -3,16 +3,18 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::utils::compute_mulfib_term;
-use crate::{Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256};
 use core::marker::PhantomData;
 use std::time::Instant;
+
 use tracing::{field, info_span};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, FieldElement},
     Proof, ProofOptions, Prover, Trace, VerifierError,
 };
+
+use super::utils::compute_mulfib_term;
+use crate::{Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256};
 
 mod air;
 use air::MulFib2Air;
@@ -40,13 +42,13 @@ pub fn get_example(
     match hash_fn {
         HashFunction::Blake3_192 => {
             Ok(Box::new(MulFib2Example::<Blake3_192>::new(sequence_length, options)))
-        }
+        },
         HashFunction::Blake3_256 => {
             Ok(Box::new(MulFib2Example::<Blake3_256>::new(sequence_length, options)))
-        }
+        },
         HashFunction::Sha3_256 => {
             Ok(Box::new(MulFib2Example::<Sha3_256>::new(sequence_length, options)))
-        }
+        },
         _ => Err("The specified hash function cannot be used with this example.".to_string()),
     }
 }

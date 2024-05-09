@@ -4,9 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 mod boundary;
+use alloc::vec::Vec;
 use core::ops::Deref;
 
-use alloc::vec::Vec;
 pub use boundary::LagrangeKernelBoundaryConstraint;
 
 mod frame;

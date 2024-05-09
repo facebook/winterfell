@@ -3,11 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{BaseElement, FieldElement, ProofOptions, ALPHA, FORTY_TWO, TRACE_WIDTH};
 use winterfell::{
     math::ToElements, Air, AirContext, Assertion, EvaluationFrame, TraceInfo,
     TransitionConstraintDegree,
 };
+
+use super::{BaseElement, FieldElement, ProofOptions, ALPHA, FORTY_TWO, TRACE_WIDTH};
 
 // PUBLIC INPUTS
 // ================================================================================================

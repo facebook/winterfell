@@ -3,12 +3,13 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{rescue, BaseElement, FieldElement, ProofOptions, CYCLE_LENGTH, TRACE_WIDTH};
-use crate::utils::{are_equal, is_zero, not, EvaluationResult};
 use winterfell::{
     math::ToElements, Air, AirContext, Assertion, EvaluationFrame, TraceInfo,
     TransitionConstraintDegree,
 };
+
+use super::{rescue, BaseElement, FieldElement, ProofOptions, CYCLE_LENGTH, TRACE_WIDTH};
+use crate::utils::{are_equal, is_zero, not, EvaluationResult};
 
 // CONSTANTS
 // ================================================================================================

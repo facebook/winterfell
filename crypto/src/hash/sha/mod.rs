@@ -3,11 +3,13 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{ByteDigest, ElementHasher, Hasher};
 use core::marker::PhantomData;
+
 use math::{FieldElement, StarkField};
 use sha3::Digest;
 use utils::ByteWriter;
+
+use super::{ByteDigest, ElementHasher, Hasher};
 
 // SHA3 WITH 256-BIT OUTPUT
 // ================================================================================================

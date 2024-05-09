@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::{string::ToString, vec::Vec};
+
 use crypto::{BatchMerkleProof, ElementHasher, Hasher};
 use math::FieldElement;
 use utils::{
@@ -218,11 +219,7 @@ impl Deserializable for FriProof {
         // read number of partitions
         let num_partitions = source.read_u8()?;
 
-        Ok(FriProof {
-            layers,
-            remainder,
-            num_partitions,
-        })
+        Ok(FriProof { layers, remainder, num_partitions })
     }
 }
 

@@ -3,13 +3,15 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::rescue::Rescue128;
-use rand_utils::prng_vector;
 use std::cmp::Ordering;
+
+use rand_utils::prng_vector;
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement, StarkField},
     Serializable,
 };
+
+use super::rescue::Rescue128;
 
 // CONSTANTS
 // ================================================================================================
@@ -55,11 +57,7 @@ impl PrivateKey {
 
         let pub_key_hash = hash_pub_keys(&pub_keys);
 
-        PrivateKey {
-            sec_keys,
-            pub_keys,
-            pub_key_hash,
-        }
+        PrivateKey { sec_keys, pub_keys, pub_key_hash }
     }
 
     /// Returns a public key corresponding to this private key.

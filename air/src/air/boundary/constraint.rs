@@ -3,9 +3,11 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{Assertion, ExtensionOf, FieldElement};
 use alloc::{collections::BTreeMap, vec::Vec};
+
 use math::{fft, polynom};
+
+use super::{Assertion, ExtensionOf, FieldElement};
 
 // BOUNDARY CONSTRAINT
 // ================================================================================================

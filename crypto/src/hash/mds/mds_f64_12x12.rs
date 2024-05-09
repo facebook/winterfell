@@ -6,8 +6,11 @@
 // FFT-BASED MDS MULTIPLICATION HELPER FUNCTIONS
 // ================================================================================================
 
-use math::fft::real_u64::{fft4_real, ifft4_real_unreduced};
-use math::{fields::f64::BaseElement, FieldElement};
+use math::{
+    fft::real_u64::{fft4_real, ifft4_real_unreduced},
+    fields::f64::BaseElement,
+    FieldElement,
+};
 
 /// This module contains helper functions as well as constants used to perform a 12x12 vector-matrix
 /// multiplication. The special form of our MDS matrix i.e. being circulant, allows us to reduce

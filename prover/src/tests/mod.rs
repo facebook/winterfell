@@ -3,13 +3,15 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::TraceTable;
+use alloc::vec::Vec;
+
 use air::{
     Air, AirContext, Assertion, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
-use alloc::vec::Vec;
 use math::{fields::f128::BaseElement, FieldElement, StarkField};
+
+use crate::TraceTable;
 
 // FIBONACCI TRACE BUILDER
 // ================================================================================================

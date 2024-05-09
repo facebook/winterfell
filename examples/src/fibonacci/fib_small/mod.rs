@@ -3,16 +3,18 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::utils::compute_fib_term;
-use crate::{Example, ExampleOptions, HashFunction};
 use core::marker::PhantomData;
 use std::time::Instant;
+
 use tracing::{field, info_span};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f64::BaseElement, FieldElement},
     Proof, ProofOptions, Prover, Trace, VerifierError,
 };
+
+use super::utils::compute_fib_term;
+use crate::{Example, ExampleOptions, HashFunction};
 
 mod air;
 use air::FibSmall;
@@ -46,19 +48,19 @@ pub fn get_example(
     match hash_fn {
         HashFunction::Blake3_192 => {
             Ok(Box::new(FibExample::<Blake3_192>::new(sequence_length, options)))
-        }
+        },
         HashFunction::Blake3_256 => {
             Ok(Box::new(FibExample::<Blake3_256>::new(sequence_length, options)))
-        }
+        },
         HashFunction::Sha3_256 => {
             Ok(Box::new(FibExample::<Sha3_256>::new(sequence_length, options)))
-        }
+        },
         HashFunction::Rp64_256 => {
             Ok(Box::new(FibExample::<Rp64_256>::new(sequence_length, options)))
-        }
+        },
         HashFunction::RpJive64_256 => {
             Ok(Box::new(FibExample::<RpJive64_256>::new(sequence_length, options)))
-        }
+        },
     }
 }
 

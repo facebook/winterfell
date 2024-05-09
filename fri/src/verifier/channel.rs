@@ -3,11 +3,13 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{FriProof, VerifierError};
 use alloc::vec::Vec;
+
 use crypto::{BatchMerkleProof, ElementHasher, Hasher, MerkleTree};
 use math::FieldElement;
 use utils::{group_slice_elements, DeserializationError};
+
+use crate::{FriProof, VerifierError};
 
 // VERIFIER CHANNEL TRAIT
 // ================================================================================================

@@ -3,8 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{exp_acc, Digest, ElementHasher, Hasher};
 use math::{fields::f62::BaseElement, FieldElement, StarkField};
+
+use super::{exp_acc, Digest, ElementHasher, Hasher};
 
 mod digest;
 pub use digest::ElementDigest;

@@ -34,7 +34,6 @@ mod tests;
 
 #[cfg(feature = "concurrent")]
 use iterators::*;
-
 #[cfg(feature = "concurrent")]
 pub use rayon;
 

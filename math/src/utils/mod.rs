@@ -5,11 +5,11 @@
 
 use alloc::vec::Vec;
 
-use crate::{field::FieldElement, ExtensionOf};
-use utils::{batch_iter_mut, iter_mut, uninit_vector};
-
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
+use utils::{batch_iter_mut, iter_mut, uninit_vector};
+
+use crate::{field::FieldElement, ExtensionOf};
 
 // MATH FUNCTIONS
 // ================================================================================================

@@ -3,16 +3,17 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{
-    rescue::{self, STATE_WIDTH},
-    BaseElement, ExtensionOf, FieldElement, ProofOptions, CYCLE_LENGTH, TRACE_WIDTH,
-};
-use crate::utils::{are_equal, not, EvaluationResult};
 use core_utils::flatten_slice_elements;
 use winterfell::{
     math::ToElements, Air, AirContext, Assertion, EvaluationFrame, TraceInfo,
     TransitionConstraintDegree,
 };
+
+use super::{
+    rescue::{self, STATE_WIDTH},
+    BaseElement, ExtensionOf, FieldElement, ProofOptions, CYCLE_LENGTH, TRACE_WIDTH,
+};
+use crate::utils::{are_equal, not, EvaluationResult};
 
 // CONSTANTS
 // ================================================================================================

@@ -52,24 +52,21 @@ pub use air::{
     EvaluationFrame, FieldExtension, LagrangeKernelRandElements, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
-use maybe_async::maybe_async;
-use tracing::{event, info_span, instrument, Level};
-pub use utils::{
-    iterators, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
-    SliceReader,
-};
-
+pub use crypto;
+use crypto::{ElementHasher, RandomCoin};
 use fri::FriProver;
-
 pub use math;
 use math::{
     fft::infer_degree,
     fields::{CubeExtension, QuadExtension},
     ExtensibleField, FieldElement, StarkField, ToElements,
 };
-
-pub use crypto;
-use crypto::{ElementHasher, RandomCoin};
+use maybe_async::maybe_async;
+use tracing::{event, info_span, instrument, Level};
+pub use utils::{
+    iterators, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+    SliceReader,
+};
 
 mod domain;
 pub use domain::StarkDomain;
@@ -252,13 +249,13 @@ pub trait Prover {
                     return Err(ProverError::UnsupportedFieldExtension(2));
                 }
                 self.generate_proof::<QuadExtension<Self::BaseField>>(trace).await
-            }
+            },
             FieldExtension::Cubic => {
                 if !<CubeExtension<Self::BaseField>>::is_supported() {
                     return Err(ProverError::UnsupportedFieldExtension(3));
                 }
                 self.generate_proof::<CubeExtension<Self::BaseField>>(trace).await
-            }
+            },
         }
     }
 
@@ -350,11 +347,7 @@ pub trait Prover {
             trace_polys
                 .add_aux_segment(aux_segment_polys, air.context().lagrange_kernel_aux_column_idx());
 
-            Some(AuxTraceWithMetadata {
-                aux_trace,
-                aux_rand_elements,
-                gkr_proof,
-            })
+            Some(AuxTraceWithMetadata { aux_trace, aux_rand_elements, gkr_proof })
         } else {
             None
         };

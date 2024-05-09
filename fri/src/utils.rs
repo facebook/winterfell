@@ -4,12 +4,12 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::vec::Vec;
+
 use crypto::ElementHasher;
 use math::FieldElement;
-use utils::{iter_mut, uninit_vector};
-
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
+use utils::{iter_mut, uninit_vector};
 
 /// Maps positions in the evaluation domain to indexes of commitment Merkle tree.
 pub fn map_positions_to_indexes(

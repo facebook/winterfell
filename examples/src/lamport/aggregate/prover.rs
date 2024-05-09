@@ -3,19 +3,19 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::{
-    get_power_series, rescue, BaseElement, DefaultRandomCoin, ElementHasher, FieldElement,
-    LamportAggregateAir, PhantomData, ProofOptions, Prover, PublicInputs, Signature, StarkField,
-    CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH, TRACE_WIDTH,
-};
+#[cfg(feature = "concurrent")]
+use winterfell::iterators::*;
 use winterfell::{
     matrix::ColMatrix, AuxRandElements, ConstraintCompositionCoefficients,
     DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, TraceInfo, TracePolyTable,
     TraceTable,
 };
 
-#[cfg(feature = "concurrent")]
-use winterfell::iterators::*;
+use super::{
+    get_power_series, rescue, BaseElement, DefaultRandomCoin, ElementHasher, FieldElement,
+    LamportAggregateAir, PhantomData, ProofOptions, Prover, PublicInputs, Signature, StarkField,
+    CYCLE_LENGTH, NUM_HASH_ROUNDS, SIG_CYCLE_LENGTH, TRACE_WIDTH,
+};
 
 // CONSTANTS
 // ================================================================================================
@@ -280,11 +280,7 @@ fn build_sig_info(msg: &[BaseElement; 2], sig: &Signature) -> SignatureInfo {
     let m0 = msg[0].as_int();
     let m1 = msg[1].as_int();
     let key_schedule = build_key_schedule(m0, m1, sig);
-    SignatureInfo {
-        m0,
-        m1,
-        key_schedule,
-    }
+    SignatureInfo { m0, m1, key_schedule }
 }
 
 /// Transforms signature into 4 vectors of keys such that keys 0..127 and 127..254 end up in

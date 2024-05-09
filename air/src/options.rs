@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::vec::Vec;
+
 use fri::FriOptions;
 use math::{StarkField, ToElements};
 use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
@@ -305,8 +306,9 @@ impl Deserializable for FieldExtension {
 
 #[cfg(test)]
 mod tests {
-    use super::{FieldExtension, ProofOptions, ToElements};
     use math::fields::f64::BaseElement;
+
+    use super::{FieldExtension, ProofOptions, ToElements};
 
     #[test]
     fn proof_options_to_elements() {

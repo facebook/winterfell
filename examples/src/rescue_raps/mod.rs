@@ -3,16 +3,18 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256};
 use core::marker::PhantomData;
-use rand_utils::rand_array;
 use std::time::Instant;
+
+use rand_utils::rand_array;
 use tracing::{field, info_span};
 use winterfell::{
     crypto::{DefaultRandomCoin, ElementHasher},
     math::{fields::f128::BaseElement, ExtensionOf, FieldElement},
     Proof, ProofOptions, Prover, Trace, VerifierError,
 };
+
+use crate::{Blake3_192, Blake3_256, Example, ExampleOptions, HashFunction, Sha3_256};
 
 mod custom_trace_table;
 pub use custom_trace_table::RapTraceTable;
@@ -47,13 +49,13 @@ pub fn get_example(
     match hash_fn {
         HashFunction::Blake3_192 => {
             Ok(Box::new(RescueRapsExample::<Blake3_192>::new(chain_length, options)))
-        }
+        },
         HashFunction::Blake3_256 => {
             Ok(Box::new(RescueRapsExample::<Blake3_256>::new(chain_length, options)))
-        }
+        },
         HashFunction::Sha3_256 => {
             Ok(Box::new(RescueRapsExample::<Sha3_256>::new(chain_length, options)))
-        }
+        },
         _ => Err("The specified hash function cannot be used with this example.".to_string()),
     }
 }
@@ -128,9 +130,7 @@ where
     }
 
     fn verify(&self, proof: Proof) -> Result<(), VerifierError> {
-        let pub_inputs = PublicInputs {
-            result: self.result,
-        };
+        let pub_inputs = PublicInputs { result: self.result };
         let acceptable_options =
             winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
 
@@ -142,9 +142,7 @@ where
     }
 
     fn verify_with_wrong_inputs(&self, proof: Proof) -> Result<(), VerifierError> {
-        let pub_inputs = PublicInputs {
-            result: [self.result[1], self.result[0]],
-        };
+        let pub_inputs = PublicInputs { result: [self.result[1], self.result[0]] };
         let acceptable_options =
             winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
 

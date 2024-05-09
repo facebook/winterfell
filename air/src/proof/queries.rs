@@ -3,13 +3,15 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::Table;
 use alloc::vec::Vec;
+
 use crypto::{BatchMerkleProof, ElementHasher, Hasher};
 use math::FieldElement;
 use utils::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
 };
+
+use super::Table;
 
 // QUERIES
 // ================================================================================================

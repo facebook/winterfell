@@ -3,10 +3,11 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use super::super::mds::mds_f64_12x12::mds_multiply;
-use super::{exp_acc, Digest, ElementHasher, Hasher};
 use core::ops::Range;
+
 use math::{fields::f64::BaseElement, FieldElement, StarkField};
+
+use super::{super::mds::mds_f64_12x12::mds_multiply, exp_acc, Digest, ElementHasher, Hasher};
 
 mod digest;
 pub use digest::ElementDigest;

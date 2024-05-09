@@ -3,10 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::Hasher;
 use alloc::vec::Vec;
 use core::slice;
+
 use utils::{iterators::*, rayon};
+
+use crate::Hasher;
 
 // CONSTANTS
 // ================================================================================================
@@ -75,10 +77,10 @@ pub fn build_merkle_nodes<H: Hasher>(leaves: &[H::Digest]) -> Vec<H::Digest> {
 
 #[cfg(test)]
 mod tests {
-    use crate::hash::{ByteDigest, Sha3_256};
     use math::fields::f128::BaseElement;
-    use proptest::collection::vec;
-    use proptest::prelude::*;
+    use proptest::{collection::vec, prelude::*};
+
+    use crate::hash::{ByteDigest, Sha3_256};
 
     proptest! {
         #[test]

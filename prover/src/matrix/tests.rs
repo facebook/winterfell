@@ -3,12 +3,14 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use alloc::vec::Vec;
+
+use rand_utils::rand_vector;
+
 use crate::{
     math::{fields::f64::BaseElement, get_power_series, polynom, StarkField},
     ColMatrix, RowMatrix,
 };
-use alloc::vec::Vec;
-use rand_utils::rand_vector;
 
 #[test]
 fn test_eval_poly_with_offset_matrix() {

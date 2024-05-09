@@ -3,15 +3,17 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use alloc::vec::Vec;
+
+use air::LagrangeKernelEvaluationFrame;
+use crypto::MerkleTree;
+use tracing::info_span;
+
 use super::{
     ColMatrix, ElementHasher, EvaluationFrame, FieldElement, Hasher, Queries, StarkDomain,
     TraceInfo, TraceLde, TracePolyTable,
 };
 use crate::{RowMatrix, DEFAULT_SEGMENT_WIDTH};
-use air::LagrangeKernelEvaluationFrame;
-use alloc::vec::Vec;
-use crypto::MerkleTree;
-use tracing::info_span;
 
 #[cfg(test)]
 mod tests;

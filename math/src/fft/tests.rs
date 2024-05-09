@@ -3,14 +3,16 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use alloc::vec::Vec;
+
+use rand_utils::rand_vector;
+
 use crate::{
     fft::fft_inputs::FftInputs,
     field::{f128::BaseElement, StarkField},
     polynom,
     utils::get_power_series,
 };
-use alloc::vec::Vec;
-use rand_utils::rand_vector;
 
 // CORE ALGORITHMS
 // ================================================================================================

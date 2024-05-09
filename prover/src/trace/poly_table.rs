@@ -3,10 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{matrix::ColumnIter, ColMatrix};
-use air::{proof::TraceOodFrame, LagrangeKernelEvaluationFrame};
 use alloc::vec::Vec;
+
+use air::{proof::TraceOodFrame, LagrangeKernelEvaluationFrame};
 use math::{FieldElement, StarkField};
+
+use crate::{matrix::ColumnIter, ColMatrix};
 
 // TRACE POLYNOMIAL TABLE
 // ================================================================================================

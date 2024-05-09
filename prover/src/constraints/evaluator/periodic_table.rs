@@ -3,8 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use air::Air;
 use alloc::{collections::BTreeMap, vec::Vec};
+
+use air::Air;
 use math::{fft, StarkField};
 use utils::uninit_vector;
 
@@ -25,11 +26,7 @@ impl<B: StarkField> PeriodicValueTable<B> {
         // periodic columns return an empty table
         let polys = air.get_periodic_column_polys();
         if polys.is_empty() {
-            return PeriodicValueTable {
-                values: Vec::new(),
-                length: 0,
-                width: 0,
-            };
+            return PeriodicValueTable { values: Vec::new(), length: 0, width: 0 };
         }
 
         // determine the size of the biggest polynomial in the set. unwrap is OK here
@@ -93,12 +90,14 @@ impl<B: StarkField> PeriodicValueTable<B> {
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::MockAir;
-    use air::Air;
     use alloc::vec::Vec;
+
+    use air::Air;
     use math::{
         fields::f128::BaseElement, get_power_series_with_offset, polynom, FieldElement, StarkField,
     };
+
+    use crate::tests::MockAir;
 
     #[test]
     fn periodic_value_table() {

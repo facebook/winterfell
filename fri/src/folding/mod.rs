@@ -8,14 +8,14 @@
 //! This module is exposed publicly primarily for benchmarking and documentation purposes. The
 //! functions contained here are not intended to be used by the end-user of the crate.
 
-#[cfg(feature = "concurrent")]
-use utils::iterators::*;
-
 use alloc::vec::Vec;
+
 use math::{
     fft::{get_inv_twiddles, serial_fft},
     get_power_series_with_offset, polynom, FieldElement, StarkField,
 };
+#[cfg(feature = "concurrent")]
+use utils::iterators::*;
 use utils::{iter_mut, uninit_vector};
 
 // DEGREE-RESPECTING PROJECTION

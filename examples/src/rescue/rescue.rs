@@ -3,8 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::utils::{are_equal, EvaluationResult};
 use winterfell::math::{fields::f128::BaseElement, FieldElement};
+
+use crate::utils::{are_equal, EvaluationResult};
 
 /// The number of rounds is set to 14 to provide 128-bit security level.
 /// computed using algorithm 7 from https://eprint.iacr.org/2020/1143.pdf

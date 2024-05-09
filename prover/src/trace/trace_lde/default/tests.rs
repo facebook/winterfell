@@ -3,15 +3,17 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{
-    tests::{build_fib_trace, MockAir},
-    DefaultTraceLde, StarkDomain, Trace, TraceLde,
-};
 use alloc::vec::Vec;
+
 use crypto::{hashers::Blake3_256, ElementHasher, MerkleTree};
 use math::{
     fields::f128::BaseElement, get_power_series, get_power_series_with_offset, polynom,
     FieldElement, StarkField,
+};
+
+use crate::{
+    tests::{build_fib_trace, MockAir},
+    DefaultTraceLde, StarkDomain, Trace, TraceLde,
 };
 
 type Blake3 = Blake3_256<BaseElement>;

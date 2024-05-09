@@ -43,8 +43,8 @@ impl VisitMut for AsyncAwaitRemoval {
                     })
                 };
                 *node = sync_expr;
-            }
-            _ => {}
+            },
+            _ => {},
         }
     }
 }

@@ -39,7 +39,7 @@ fn convert_sync(input: &mut Item) -> TokenStream2 {
                 }
             }
             AsyncAwaitRemoval.remove_async_await(quote!(#item))
-        }
+        },
         Item::Trait(item) => {
             for inner in &mut item.items {
                 if let TraitItem::Fn(ref mut method) = inner {
@@ -49,13 +49,13 @@ fn convert_sync(input: &mut Item) -> TokenStream2 {
                 }
             }
             AsyncAwaitRemoval.remove_async_await(quote!(#item))
-        }
+        },
         Item::Fn(item) => {
             if item.sig.asyncness.is_some() {
                 item.sig.asyncness = None;
             }
             AsyncAwaitRemoval.remove_async_await(quote!(#item))
-        }
+        },
         Item::Static(item) => AsyncAwaitRemoval.remove_async_await(quote!(#item)),
     }
 }

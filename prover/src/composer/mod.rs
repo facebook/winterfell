@@ -2,18 +2,19 @@
 //
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
-use super::{constraints::CompositionPoly, StarkDomain, TracePolyTable};
-use air::{proof::TraceOodFrame, DeepCompositionCoefficients};
 use alloc::vec::Vec;
+
+use air::{proof::TraceOodFrame, DeepCompositionCoefficients};
 use math::{
     add_in_place, fft, mul_acc,
     polynom::{self, syn_div_roots_in_place},
     ExtensionOf, FieldElement, StarkField,
 };
 use utils::iter_mut;
-
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
+
+use super::{constraints::CompositionPoly, StarkDomain, TracePolyTable};
 
 // DEEP COMPOSITION POLYNOMIAL
 // ================================================================================================
@@ -30,11 +31,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
     /// the intent is to populate the coefficients via add_trace_polys() and add_constraint_polys()
     /// methods.
     pub fn new(z: E, cc: DeepCompositionCoefficients<E>) -> Self {
-        DeepCompositionPoly {
-            coefficients: vec![],
-            cc,
-            z,
-        }
+        DeepCompositionPoly { coefficients: vec![], cc, z }
     }
 
     // ACCESSORS

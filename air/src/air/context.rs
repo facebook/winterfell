@@ -3,10 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{air::TransitionConstraintDegree, ProofOptions, TraceInfo};
 use alloc::vec::Vec;
 use core::cmp;
+
 use math::StarkField;
+
+use crate::{air::TransitionConstraintDegree, ProofOptions, TraceInfo};
 
 // AIR CONTEXT
 // ================================================================================================

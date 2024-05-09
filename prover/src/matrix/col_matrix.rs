@@ -3,15 +3,16 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::StarkDomain;
 use alloc::vec::Vec;
 use core::{iter::FusedIterator, slice};
+
 use crypto::{ElementHasher, MerkleTree};
 use math::{fft, polynom, FieldElement};
-use utils::{batch_iter_mut, iter, iter_mut, uninit_vector};
-
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
+use utils::{batch_iter_mut, iter, iter_mut, uninit_vector};
+
+use crate::StarkDomain;
 
 // COLUMN-MAJOR MATRIX
 // ================================================================================================
@@ -307,17 +308,11 @@ pub struct ColumnIter<'a, E: FieldElement> {
 
 impl<'a, E: FieldElement> ColumnIter<'a, E> {
     pub fn new(matrix: &'a ColMatrix<E>) -> Self {
-        Self {
-            matrix: Some(matrix),
-            cursor: 0,
-        }
+        Self { matrix: Some(matrix), cursor: 0 }
     }
 
     pub fn empty() -> Self {
-        Self {
-            matrix: None,
-            cursor: 0,
-        }
+        Self { matrix: None, cursor: 0 }
     }
 }
 
@@ -332,7 +327,7 @@ impl<'a, E: FieldElement> Iterator for ColumnIter<'a, E> {
                     let column = matrix.get_column(self.cursor);
                     self.cursor += 1;
                     Some(column)
-                }
+                },
             },
             None => None,
         }
@@ -383,7 +378,7 @@ impl<'a, E: FieldElement> Iterator for ColumnIterMut<'a, E> {
                 let p = column.as_ptr();
                 let len = column.len();
                 Some(unsafe { slice::from_raw_parts_mut(p as *mut E, len) })
-            }
+            },
         }
     }
 }

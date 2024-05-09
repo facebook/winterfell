@@ -24,10 +24,12 @@
 //! let p = [BaseElement::new(3), BaseElement::ZERO, BaseElement::new(4)];
 //! ```
 
-use crate::{field::FieldElement, utils::batch_inversion};
 use alloc::vec::Vec;
 use core::mem;
+
 use utils::group_slice_elements;
+
+use crate::{field::FieldElement, utils::batch_inversion};
 
 #[cfg(test)]
 mod tests;
