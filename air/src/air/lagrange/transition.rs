@@ -110,7 +110,7 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
     // HELPERS
     // ---------------------------------------------------------------------------------------------
 
-    /// Evaluates the transition constraints' numerators over the specificed Lagrange kernel
+    /// Evaluates the transition constraints' numerators over the specified Lagrange kernel
     /// evaluation frame.
     fn evaluate_numerators<F>(
         &self,
@@ -122,7 +122,7 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
         E: ExtensionOf<F>,
     {
         let log2_trace_len = lagrange_kernel_column_frame.num_rows() - 1;
-        let mut transition_evals = E::zeroed_vector(log2_trace_len);
+        let mut transition_evals = vec![E::ZERO; log2_trace_len];
 
         let c = lagrange_kernel_column_frame.inner();
         let v = c.len() - 1;

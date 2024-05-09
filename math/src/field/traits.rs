@@ -207,16 +207,6 @@ pub trait FieldElement:
     /// This function is unsafe because it does not check whether underlying bytes represent valid
     /// field elements according to their internal representation.
     unsafe fn bytes_as_elements(bytes: &[u8]) -> Result<&[Self], DeserializationError>;
-
-    // UTILITIES
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns a vector of length `n` initialized with all ZERO elements.
-    ///
-    /// Specialized implementations of this function may be faster than the generic implementation.
-    fn zeroed_vector(n: usize) -> Vec<Self> {
-        vec![Self::ZERO; n]
-    }
 }
 
 // STARK FIELD

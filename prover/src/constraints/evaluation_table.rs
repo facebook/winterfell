@@ -163,7 +163,7 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
     /// combines the results into a single column.
     pub fn combine(self) -> Vec<E> {
         // allocate memory for the combined polynomial
-        let mut combined_poly = E::zeroed_vector(self.num_rows());
+        let mut combined_poly = vec![E::ZERO; self.num_rows()];
 
         // iterate over all columns of the constraint evaluation table, divide each column
         // by the evaluations of its corresponding divisor, and add all resulting evaluations

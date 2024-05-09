@@ -89,8 +89,8 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
         let next_z = self.z * g;
 
         // combine trace polynomials into 2 composition polynomials T'(x) and T''(x)
-        let mut t1_composition = E::zeroed_vector(trace_length);
-        let mut t2_composition = E::zeroed_vector(trace_length);
+        let mut t1_composition = vec![E::ZERO; trace_length];
+        let mut t2_composition = vec![E::ZERO; trace_length];
 
         // index of a trace polynomial; we declare it here so that we can maintain index continuity
         // across all trace segments

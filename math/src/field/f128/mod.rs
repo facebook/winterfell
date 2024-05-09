@@ -136,25 +136,6 @@ impl FieldElement for BaseElement {
 
         Ok(slice::from_raw_parts(p as *const Self, len))
     }
-
-    // UTILITIES
-    // --------------------------------------------------------------------------------------------
-
-    fn zeroed_vector(n: usize) -> Vec<Self> {
-        // this uses a specialized vector initialization code which requests zero-filled memory
-        // from the OS; unfortunately, this works only for built-in types and we can't use
-        // Self::ZERO here as much less efficient initialization procedure will be invoked.
-        // We also use u128 to make sure the memory is aligned correctly for our element size.
-        debug_assert_eq!(Self::ELEMENT_BYTES, mem::size_of::<u128>());
-        let result = vec![0u128; n];
-
-        // translate a zero-filled vector of u128s into a vector of base field elements
-        let mut v = core::mem::ManuallyDrop::new(result);
-        let p = v.as_mut_ptr();
-        let len = v.len();
-        let cap = v.capacity();
-        unsafe { Vec::from_raw_parts(p as *mut Self, len, cap) }
-    }
 }
 
 impl StarkField for BaseElement {
