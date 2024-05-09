@@ -16,6 +16,7 @@ rust-version = "1.75"
 bench = false
 
 [features]
+async = ["prover/async"]
 concurrent = ["prover/concurrent", "std"]
 default = ["std"]
 std = ["prover/std", "verifier/std"]

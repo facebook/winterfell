@@ -42,6 +42,9 @@
 #[macro_use]
 extern crate alloc;
 
+#[cfg(feature = "async")]
+use alloc::boxed::Box;
+
 use air::AuxRandElements;
 pub use air::{
     proof, proof::Proof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
@@ -49,7 +52,8 @@ pub use air::{
     EvaluationFrame, FieldExtension, LagrangeKernelRandElements, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
-use tracing::{event, info_span, Level};
+use maybe_async::maybe_async;
+use tracing::{event, info_span, instrument, Level};
 pub use utils::{
     iterators, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
     SliceReader,
@@ -128,6 +132,7 @@ pub type ProverGkrProof<P> = <<P as Prover>::Air as Air>::GkrProof;
 /// of these types are provided with the prover). For example, providing custom implementations
 /// of [TraceLde] and/or [ConstraintEvaluator] can be beneficial when some steps of proof
 /// generation can be delegated to non-CPU hardware (e.g., GPUs).
+#[maybe_async]
 pub trait Prover {
     /// Base field for the computation described by this prover.
     type BaseField: StarkField + ExtensibleField<2> + ExtensibleField<3>;
@@ -136,16 +141,16 @@ pub trait Prover {
     type Air: Air<BaseField = Self::BaseField>;
 
     /// Execution trace of the computation described by this prover.
-    type Trace: Trace<BaseField = Self::BaseField>;
+    type Trace: Trace<BaseField = Self::BaseField> + Send + Sync;
 
     /// Hash function to be used.
     type HashFn: ElementHasher<BaseField = Self::BaseField>;
 
     /// PRNG to be used for generating random field elements.
-    type RandomCoin: RandomCoin<BaseField = Self::BaseField, Hasher = Self::HashFn>;
+    type RandomCoin: RandomCoin<BaseField = Self::BaseField, Hasher = Self::HashFn> + Send + Sync;
 
     /// Trace low-degree extension for building the LDEs of trace segments and their commitments.
-    type TraceLde<E>: TraceLde<E, HashFn = Self::HashFn>
+    type TraceLde<E>: TraceLde<E, HashFn = Self::HashFn> + Send + Sync
     where
         E: FieldElement<BaseField = Self::BaseField>;
 
@@ -175,7 +180,7 @@ pub trait Prover {
     ///
     /// Returns a tuple containing a [TracePolyTable] with the trace polynomials for the main trace
     /// and a new [TraceLde] instance from which the LDE and trace commitments can be obtained.
-    fn new_trace_lde<E>(
+    async fn new_trace_lde<E>(
         &self,
         trace_info: &TraceInfo,
         main_trace: &ColMatrix<Self::BaseField>,
@@ -186,7 +191,7 @@ pub trait Prover {
 
     /// Returns a new constraint evaluator which can be used to evaluate transition and boundary
     /// constraints over the extended execution trace.
-    fn new_evaluator<'a, E>(
+    async fn new_evaluator<'a, E>(
         &self,
         air: &'a Self::Air,
         aux_rand_elements: Option<AuxRandElements<E>>,
@@ -200,7 +205,7 @@ pub trait Prover {
 
     /// Builds the GKR proof. If the [`Air`] doesn't use a GKR proof, leave unimplemented.
     #[allow(unused_variables)]
-    fn generate_gkr_proof<E>(
+    async fn generate_gkr_proof<E>(
         &self,
         main_trace: &Self::Trace,
         public_coin: &mut Self::RandomCoin,
@@ -213,7 +218,7 @@ pub trait Prover {
 
     /// Builds and returns the auxiliary trace.
     #[allow(unused_variables)]
-    fn build_aux_trace<E>(
+    async fn build_aux_trace<E>(
         &self,
         main_trace: &Self::Trace,
         aux_rand_elements: &AuxRandElements<E>,
@@ -232,23 +237,27 @@ pub trait Prover {
     /// public inputs. It may also contain a GKR proof, further documented in [`Proof`].
     /// Public inputs must match the value returned from
     /// [Self::get_pub_inputs()](Prover::get_pub_inputs) for the provided trace.
-    fn prove(&self, trace: Self::Trace) -> Result<Proof, ProverError> {
+    async fn prove(&self, trace: Self::Trace) -> Result<Proof, ProverError>
+    where
+        <Self::Air as Air>::PublicInputs: Send,
+        <Self::Air as Air>::GkrProof: Send,
+    {
         // figure out which version of the generic proof generation procedure to run. this is a sort
         // of static dispatch for selecting two generic parameter: extension field and hash
         // function.
         match self.options().field_extension() {
-            FieldExtension::None => self.generate_proof::<Self::BaseField>(trace),
+            FieldExtension::None => self.generate_proof::<Self::BaseField>(trace).await,
             FieldExtension::Quadratic => {
                 if !<QuadExtension<Self::BaseField>>::is_supported() {
                     return Err(ProverError::UnsupportedFieldExtension(2));
                 }
-                self.generate_proof::<QuadExtension<Self::BaseField>>(trace)
+                self.generate_proof::<QuadExtension<Self::BaseField>>(trace).await
             }
             FieldExtension::Cubic => {
                 if !<CubeExtension<Self::BaseField>>::is_supported() {
                     return Err(ProverError::UnsupportedFieldExtension(3));
                 }
-                self.generate_proof::<CubeExtension<Self::BaseField>>(trace)
+                self.generate_proof::<CubeExtension<Self::BaseField>>(trace).await
             }
         }
     }
@@ -260,9 +269,11 @@ pub trait Prover {
     /// execution `trace` is valid against this prover's AIR.
     /// TODO: make this function un-callable externally?
     #[doc(hidden)]
-    fn generate_proof<E>(&self, trace: Self::Trace) -> Result<Proof, ProverError>
+    async fn generate_proof<E>(&self, trace: Self::Trace) -> Result<Proof, ProverError>
     where
         E: FieldElement<BaseField = Self::BaseField>,
+        <Self::Air as Air>::PublicInputs: Send,
+        <Self::Air as Air>::GkrProof: Send,
     {
         // 0 ----- instantiate AIR and prover channel ---------------------------------------------
 
@@ -294,23 +305,8 @@ pub trait Prover {
         assert_eq!(domain.trace_length(), trace_length);
 
         // commit to the main trace segment
-        let (mut trace_lde, mut trace_polys) = {
-            // extend the main execution trace and build a Merkle tree from the extended trace
-            let span = info_span!("commit_to_main_trace_segment").entered();
-            let (trace_lde, trace_polys) =
-                self.new_trace_lde(trace.info(), trace.main_segment(), &domain);
-
-            // get the commitment to the main trace segment LDE
-            let main_trace_root = trace_lde.get_main_trace_commitment();
-
-            // commit to the LDE of the main trace by writing the root of its Merkle tree into
-            // the channel
-            channel.commit_trace(main_trace_root);
-
-            drop(span);
-
-            (trace_lde, trace_polys)
-        };
+        let (mut trace_lde, mut trace_polys) =
+            self.commit_to_main_trace_segment(&trace, &domain, &mut channel).await;
 
         // build the auxiliary trace segment, and append the resulting segments to trace commitment
         // and trace polynomial table structs
@@ -318,7 +314,7 @@ pub trait Prover {
             let (gkr_proof, lagrange_rand_elements) =
                 if air.context().has_lagrange_kernel_aux_column() {
                     let (gkr_proof, lagrange_rand_elements) =
-                        self.generate_gkr_proof(&trace, channel.public_coin());
+                        self.generate_gkr_proof(&trace, channel.public_coin()).await;
 
                     (Some(gkr_proof), Some(lagrange_rand_elements))
                 } else {
@@ -333,7 +329,7 @@ pub trait Prover {
                 AuxRandElements::new_with_lagrange(rand_elements, lagrange_rand_elements)
             };
 
-            let aux_trace = self.build_aux_trace(&trace, &aux_rand_elements);
+            let aux_trace = self.build_aux_trace(&trace, &aux_rand_elements).await;
 
             // commit to the auxiliary trace segment
             let aux_segment_polys = {
@@ -384,36 +380,16 @@ pub trait Prover {
         // compute random linear combinations of these evaluations using coefficients drawn from
         // the channel
         let ce_domain_size = air.ce_domain_size();
-        let composition_poly_trace =
-            info_span!("evaluate_constraints", ce_domain_size).in_scope(|| {
-                self.new_evaluator(
-                    &air,
-                    aux_rand_elements,
-                    channel.get_constraint_composition_coeffs(),
-                )
-                .evaluate(&trace_lde, &domain)
-            });
+        let composition_poly_trace = self
+            .new_evaluator(&air, aux_rand_elements, channel.get_constraint_composition_coeffs())
+            .await
+            .evaluate(&trace_lde, &domain);
         assert_eq!(composition_poly_trace.num_rows(), ce_domain_size);
 
         // 3 ----- commit to constraint evaluations -----------------------------------------------
-        let (constraint_commitment, composition_poly) = {
-            let span = info_span!("commit_to_constraint_evaluations").entered();
-
-            // first, build a commitment to the evaluations of the constraint composition
-            // polynomial columns
-            let (constraint_commitment, composition_poly) = self.build_constraint_commitment::<E>(
-                composition_poly_trace,
-                air.context().num_constraint_composition_columns(),
-                &domain,
-            );
-
-            // then, commit to the evaluations of constraints by writing the root of the constraint
-            // Merkle tree into the channel
-            channel.commit_constraints(constraint_commitment.root());
-
-            drop(span);
-            (constraint_commitment, composition_poly)
-        };
+        let (constraint_commitment, composition_poly) = self
+            .commit_to_constraint_evaluations(&air, composition_poly_trace, &domain, &mut channel)
+            .await;
 
         // 4 ----- build DEEP composition polynomial ----------------------------------------------
         let deep_composition_poly = {
@@ -540,7 +516,7 @@ pub trait Prover {
     ///
     /// The commitment is computed by hashing each row in the evaluation matrix, and then building
     /// a Merkle tree from the resulting hashes.
-    fn build_constraint_commitment<E>(
+    async fn build_constraint_commitment<E>(
         &self,
         composition_poly_trace: CompositionPolyTrace<E>,
         num_constraint_composition_columns: usize,
@@ -581,6 +557,60 @@ pub trait Prover {
             ConstraintCommitment::new(composed_evaluations, commitment)
         });
         assert_eq!(constraint_commitment.tree_depth(), domain_size.ilog2() as usize);
+
+        (constraint_commitment, composition_poly)
+    }
+
+    #[doc(hidden)]
+    #[instrument(skip_all)]
+    async fn commit_to_main_trace_segment<E>(
+        &self,
+        trace: &Self::Trace,
+        domain: &StarkDomain<Self::BaseField>,
+        channel: &mut ProverChannel<Self::Air, E, Self::HashFn, Self::RandomCoin>,
+    ) -> (Self::TraceLde<E>, TracePolyTable<E>)
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        // extend the main execution trace and build a Merkle tree from the extended trace
+        let (trace_lde, trace_polys) =
+            self.new_trace_lde(trace.info(), trace.main_segment(), domain).await;
+
+        // get the commitment to the main trace segment LDE
+        let main_trace_root = trace_lde.get_main_trace_commitment();
+
+        // commit to the LDE of the main trace by writing the root of its Merkle tree into
+        // the channel
+        channel.commit_trace(main_trace_root);
+
+        (trace_lde, trace_polys)
+    }
+
+    #[doc(hidden)]
+    #[instrument(skip_all)]
+    async fn commit_to_constraint_evaluations<E>(
+        &self,
+        air: &Self::Air,
+        composition_poly_trace: CompositionPolyTrace<E>,
+        domain: &StarkDomain<Self::BaseField>,
+        channel: &mut ProverChannel<Self::Air, E, Self::HashFn, Self::RandomCoin>,
+    ) -> (ConstraintCommitment<E, Self::HashFn>, CompositionPoly<E>)
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        // first, build a commitment to the evaluations of the constraint composition polynomial
+        // columns
+        let (constraint_commitment, composition_poly) = self
+            .build_constraint_commitment::<E>(
+                composition_poly_trace,
+                air.context().num_constraint_composition_columns(),
+                domain,
+            )
+            .await;
+
+        // then, commit to the evaluations of constraints by writing the root of the constraint
+        // Merkle tree into the channel
+        channel.commit_constraints(constraint_commitment.root());
 
         (constraint_commitment, composition_poly)
     }
