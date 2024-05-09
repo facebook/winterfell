@@ -1,8 +1,17 @@
 # Changelog
 
 ## 0.9.0 (2024-05-09)
+- [BREAKING] Merged `TraceLayout` into `TraceInfo` (#245).
+- Implemented Lagrange Kernel constraints (#247, )
+- [BREAKING] refactored `TraceOodFrame` struct (#266, #274).
+- [BREAKING] explicitly limited the number of auxiliary trace segments to 1 (#267).
+- Implemented additional field conversions for the `f64` field (#268).
+- [BREAKING] Added support for auxiliary proofs (#271).
+- Introduced async prover (enabled via `async` feature) (#280).
 - [BREAKING] removed `group_vector_elements()` utility function (#282).
 - [BREAKING] removed `FieldElement::zeroed_vector()` function (#282).
+- [BREAKING] removed previously deprecated re-exports of core modules.
+- Updated minimum supported Rust version to 1.78.
 
 ## 0.8.4 (2024-03-28) - `math` crate only
 * Added more to/from conversions for `f64` field (#268).
@@ -15,7 +24,7 @@
 * Extended range of possible implementations of `ByteReader` and `ByteWriter`. (#262).
 
 ## 0.8.2 (2024-02-27) - `utils/core` crate only
-* Extend `write_many` to support `IntoIterator` (#251)
+* Extended `write_many` to support `IntoIterator` (#251)
 
 ## 0.8.1 (2024-02-21)
 * Refactored utils module re-exports to comply with latest clippy updates (#250).
