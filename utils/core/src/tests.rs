@@ -7,29 +7,6 @@ use super::{ByteReader, ByteWriter, Serializable, SliceReader};
 use alloc::vec::Vec;
 use proptest::prelude::{any, proptest};
 
-// VECTOR UTILS TESTS
-// ================================================================================================
-
-#[test]
-fn group_vector_elements() {
-    let n = 16;
-    let a = (0..n).map(|v| v as u64).collect::<Vec<_>>();
-
-    let b = super::group_vector_elements::<u64, 4>(a.clone());
-    for i in 0..b.len() {
-        for j in 0..4 {
-            assert_eq!(a[i * 4 + j], b[i][j]);
-        }
-    }
-
-    let b = super::group_vector_elements::<u64, 2>(a.clone());
-    for i in 0..b.len() {
-        for j in 0..2 {
-            assert_eq!(a[i * 2 + j], b[i][j]);
-        }
-    }
-}
-
 // SLICE READER TESTS
 // ================================================================================================
 

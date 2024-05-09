@@ -101,36 +101,6 @@ pub unsafe fn uninit_vector<T>(length: usize) -> Vec<T> {
 // GROUPING / UN-GROUPING FUNCTIONS
 // ================================================================================================
 
-/// Transmutes a vector of `n` elements into a vector of `n` / `N` elements, each of which is
-/// an array of `N` elements.
-///
-/// This function just re-interprets the underlying memory and is thus zero-copy.
-/// # Panics
-/// Panics if `n` is not divisible by `N`.
-///
-/// # Example
-/// ```
-/// # use winter_utils::group_vector_elements;
-/// let a = vec![0_u32, 1, 2, 3, 4, 5, 6, 7];
-/// let b: Vec<[u32; 2]> = group_vector_elements(a);
-///
-/// assert_eq!(vec![[0, 1], [2, 3], [4, 5], [6, 7]], b);
-/// ```
-pub fn group_vector_elements<T, const N: usize>(source: Vec<T>) -> Vec<[T; N]> {
-    assert_eq!(
-        source.len() % N,
-        0,
-        "source length must be divisible by {}, but was {}",
-        N,
-        source.len()
-    );
-    let mut v = mem::ManuallyDrop::new(source);
-    let p = v.as_mut_ptr();
-    let len = v.len() / N;
-    let cap = v.capacity() / N;
-    unsafe { Vec::from_raw_parts(p as *mut [T; N], len, cap) }
-}
-
 /// Transmutes a slice of `n` elements into a slice of `n` / `N` elements, each of which is
 /// an array of `N` elements.
 ///
@@ -217,7 +187,7 @@ pub fn transpose_slice<T: Copy + Send + Sync, const N: usize>(source: &[T]) -> V
         source.len()
     );
 
-    let mut result = unsafe { group_vector_elements(uninit_vector(row_count * N)) };
+    let mut result: Vec<[T; N]> = unsafe { uninit_vector(row_count) };
     iter_mut!(result, 1024).enumerate().for_each(|(i, element)| {
         for j in 0..N {
             element[j] = source[i + j * row_count]

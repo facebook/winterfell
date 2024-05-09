@@ -6,7 +6,7 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use math::{fields::f128::BaseElement, get_power_series, polynom, StarkField};
 use rand_utils::{rand_value, rand_vector};
-use utils::group_vector_elements;
+use utils::group_slice_elements;
 use winter_fri::folding;
 
 static BATCH_SIZES: [usize; 3] = [65536, 131072, 262144];
@@ -42,7 +42,7 @@ criterion_main!(quartic_group);
 
 fn build_coordinate_batches(batch_size: usize) -> (Vec<[BaseElement; 4]>, Vec<[BaseElement; 4]>) {
     let r = BaseElement::get_root_of_unity(batch_size.ilog2());
-    let xs = group_vector_elements(get_power_series(r, batch_size));
-    let ys = group_vector_elements(rand_vector::<BaseElement>(batch_size));
+    let xs = group_slice_elements(&get_power_series(r, batch_size)).to_vec();
+    let ys = group_slice_elements(&rand_vector::<BaseElement>(batch_size)).to_vec();
     (xs, ys)
 }

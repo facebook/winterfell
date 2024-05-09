@@ -7,7 +7,7 @@ use super::ColMatrix;
 use alloc::vec::Vec;
 use core::ops::Deref;
 use math::{fft::fft_inputs::FftInputs, FieldElement, StarkField};
-use utils::{group_vector_elements, uninit_vector};
+use utils::uninit_vector;
 
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
@@ -69,7 +69,7 @@ impl<B: StarkField, const N: usize> Segment<B, N> {
         } else {
             // but if some columns in the segment will remain unfilled, we allocate memory initialized
             // to zeros to make sure we don't end up with memory with undefined values
-            group_vector_elements(B::zeroed_vector(N * domain_size))
+            vec![[B::ZERO; N]; domain_size]
         };
 
         Self::new_with_buffer(data, polys, poly_offset, offsets, twiddles)
