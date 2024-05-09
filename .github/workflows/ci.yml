@@ -27,7 +27,7 @@ jobs:
   # Note: the examples won't compile when the prover is built with the `async` feature, since they're designed to be sync only.
   # Hence, we avoid this scenario explicitly.
   check:
-    name: Check all features and all targets against the MSRV, except for winter-prover
+    name: Check all features and all targets against the MSRV, except for winter-prover and winterfell
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@main
@@ -37,9 +37,9 @@ jobs:
           cargo +stable install cargo-hack --locked
           RUSTFLAGS=-Dwarnings cargo +stable hack --no-private --feature-powerset --keep-going check --rust-version --verbose --all-targets --workspace --exclude winter-prover --exclude winterfell
 
-  # Check prover alone; specifically, that the `async` feature builds correctly 
+  # Check prover and winterfell alone; specifically, that the `async` feature builds correctly 
   check-prover:
-    name: Check prover
+    name: Check prover and winterfell packages
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@main
@@ -47,7 +47,7 @@ jobs:
         run: |
           rustup update --no-self-update stable
           cargo +stable install cargo-hack --locked
-          RUSTFLAGS=-Dwarnings cargo +stable hack --package winter-prover --no-private --feature-powerset --keep-going check --rust-version --verbose
+          RUSTFLAGS=-Dwarnings cargo +stable hack --package winter-prover --package winterfell --no-private --feature-powerset --keep-going check --rust-version --verbose
 
   test:
     name: Test Rust ${{matrix.toolchain}} on ${{matrix.os}}
