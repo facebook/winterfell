@@ -1,0 +1,22 @@
+[package]
+name = "winter-maybe-async-await"
+version = "0.1.0"
+description = "sync/async and await macro for winterfell"
+authors = ["winterfell contributors"]
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/facebook/winterfell"
+documentation = ""
+keywords = ["async"]
+edition = "2021"
+rust-version = "1.78"
+
+[lib]
+proc-macro = true
+
+[features]
+async = []
+
+[dependencies]
+quote = "1"
+syn = { version = "2", features = ["full"] }
