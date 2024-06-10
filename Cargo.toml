@@ -1,7 +1,7 @@
 [workspace]
 members = [
   "utils/core",
-  "utils/maybe_async_await",
+  "utils/maybe_async",
   "utils/rand",
   "math",
   "crypto",

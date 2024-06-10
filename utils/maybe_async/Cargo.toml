@@ -1,7 +1,7 @@
 [package]
-name = "winter-maybe-async-await"
+name = "winter-maybe-async"
 version = "0.1.0"
-description = "sync/async and await macro for winterfell"
+description = "sync/async macro for winterfell"
 authors = ["winterfell contributors"]
 readme = "README.md"
 license = "MIT"
