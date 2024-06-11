@@ -1,7 +1,16 @@
+// Copyright (c) Facebook, Inc. and its affiliates.
+//
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, Expr, ItemFn, TraitItemFn};
 
+/// maybe_async procedural attribute macro
+///
+/// Parses a function (regular or trait) and conditionally adds the `async` keyword
+/// depending on the `async` feature flag being enabled.
 #[proc_macro_attribute]
 pub fn maybe_async(_attr: TokenStream, input: TokenStream) -> TokenStream {
     if let Ok(func) = syn::parse::<ItemFn>(input.clone()) {
@@ -29,6 +38,10 @@ pub fn maybe_async(_attr: TokenStream, input: TokenStream) -> TokenStream {
     }
 }
 
+/// maybe_await procedural macro
+///
+/// Parses an expression and conditionally adds the `.await` keyword at the end of it
+/// depending on the `async` feature flag being enabled.
 #[proc_macro]
 pub fn maybe_await(input: TokenStream) -> TokenStream {
     let item = parse_macro_input!(input as Expr);
