@@ -23,6 +23,19 @@ fn hello_world() {
 }
 ```
 
+When the `async` feature is enabled, the above code will be transformed into:
+```Rust
+trait ExampleTrait {
+    async fn say_hello(&self);
+
+    async fn get_hello(&self) -> String;
+}
+
+async fn hello_world() {
+    // ...
+}
+```
+
 ## maybe_await
 
 To compliment `maybe_async` we also have the `maybe_await` procedural macro that conditionally adds the `.await` keyword to the end of an expression depending on the `async` feature flag.
@@ -38,6 +51,19 @@ fn hello_world() {
 
 #[maybe_async]
 fn world() -> String {
+    "world".to_string()
+}
+```
+
+When the `async` feature is enabled, the above code will be transformed into:
+```Rust
+async fn hello_world() {
+    let w = world().await;
+
+    println!("hello {}", w);
+}
+
+async fn world() -> String {
     "world".to_string()
 }
 ```
