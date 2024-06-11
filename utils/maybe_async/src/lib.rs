@@ -4,67 +4,53 @@
 // LICENSE file in the root directory of this source tree.
 
 use proc_macro::TokenStream;
-use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{parse_macro_input, ImplItem, TraitItem};
+use syn::{parse_macro_input, Expr, ItemFn, TraitItemFn};
 
-mod parse;
-use parse::Item;
-
-mod visit;
-use visit::AsyncAwaitRemoval;
-
-/// maybe_async attribute macro
+/// maybe_async procedural attribute macro
+///
+/// Parses a function (regular or trait) and conditionally adds the `async` keyword
+/// depending on the `async` feature flag being enabled.
 #[proc_macro_attribute]
-pub fn maybe_async(_args: TokenStream, input: TokenStream) -> TokenStream {
-    let mut item = parse_macro_input!(input as Item);
-
-    let token = if cfg!(feature = "async") {
-        convert_async(&mut item)
+pub fn maybe_async(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    if let Ok(func) = syn::parse::<ItemFn>(input.clone()) {
+        if cfg!(feature = "async") {
+            let ItemFn { attrs, vis, sig, block } = func;
+            quote! {
+                #(#attrs)* #vis async #sig { #block }
+            }
+            .into()
+        } else {
+            quote!(#func).into()
+        }
+    } else if let Ok(func) = syn::parse::<TraitItemFn>(input.clone()) {
+        if cfg!(feature = "async") {
+            let TraitItemFn { attrs, sig, default, semi_token } = func;
+            quote! {
+                #(#attrs)* async #sig #default #semi_token
+            }
+            .into()
+        } else {
+            quote!(#func).into()
+        }
     } else {
-        convert_sync(&mut item)
+        input
+    }
+}
+
+/// maybe_await procedural macro
+///
+/// Parses an expression and conditionally adds the `.await` keyword at the end of it
+/// depending on the `async` feature flag being enabled.
+#[proc_macro]
+pub fn maybe_await(input: TokenStream) -> TokenStream {
+    let item = parse_macro_input!(input as Expr);
+
+    let quote = if cfg!(feature = "async") {
+        quote!(#item.await)
+    } else {
+        quote!(#item)
     };
 
-    token.into()
-}
-
-fn convert_sync(input: &mut Item) -> TokenStream2 {
-    match input {
-        Item::Impl(item) => {
-            for inner in &mut item.items {
-                if let ImplItem::Fn(ref mut method) = inner {
-                    if method.sig.asyncness.is_some() {
-                        method.sig.asyncness = None;
-                    }
-                }
-            }
-            AsyncAwaitRemoval.remove_async_await(quote!(#item))
-        },
-        Item::Trait(item) => {
-            for inner in &mut item.items {
-                if let TraitItem::Fn(ref mut method) = inner {
-                    if method.sig.asyncness.is_some() {
-                        method.sig.asyncness = None;
-                    }
-                }
-            }
-            AsyncAwaitRemoval.remove_async_await(quote!(#item))
-        },
-        Item::Fn(item) => {
-            if item.sig.asyncness.is_some() {
-                item.sig.asyncness = None;
-            }
-            AsyncAwaitRemoval.remove_async_await(quote!(#item))
-        },
-        Item::Static(item) => AsyncAwaitRemoval.remove_async_await(quote!(#item)),
-    }
-}
-
-fn convert_async(input: &mut Item) -> TokenStream2 {
-    match input {
-        Item::Trait(item) => quote!(#[async_trait::async_trait]#item),
-        Item::Impl(item) => quote!(#[async_trait::async_trait]#item),
-        Item::Fn(item) => quote!(#item),
-        Item::Static(item) => quote!(#item),
-    }
+    quote.into()
 }
