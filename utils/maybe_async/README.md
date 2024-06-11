@@ -24,7 +24,8 @@ fn hello_world() {
 ```
 
 When the `async` feature is enabled, the above code will be transformed into:
-```Rust
+
+```rust
 trait ExampleTrait {
     async fn say_hello(&self);
 
@@ -56,7 +57,8 @@ fn world() -> String {
 ```
 
 When the `async` feature is enabled, the above code will be transformed into:
-```Rust
+
+```rust
 async fn hello_world() {
     let w = world().await;
 
