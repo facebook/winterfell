@@ -1,6 +1,8 @@
 # Winter maybe-async
 
-This crate contains a `maybe_async` procedural attribute macro and the `maybe_await` procedural macro that abstract away rust sync/async.
+This crate contains the `maybe_async` procedural attribute macro and the `maybe_await` procedural macro which abstract away Rust sync/async.
+
+## maybe_async
 
 The `maybe_async` macro will conditionally add the `async` keyword to a function it marks depending on the `async` feature being enabled. To generate the asynchronous version, enable the `async` feature on the crate. If the `async` feature is off, the synchronous version will be generated. For example,
 
@@ -21,15 +23,17 @@ fn hello_world() {
 }
 ```
 
+## maybe_await
+
 To compliment `maybe_async` we also have the `maybe_await` procedural macro that conditionally adds the `.await` keyword to the end of an expression depending on the `async` feature flag.
 
 ```rust
 #[maybe_async]
 fn hello_world() {
     // Adding `maybe_await` to an expression
-    let world = maybe_await!(world());
+    let w = maybe_await!(world());
 
-    println!("hello {}", world);
+    println!("hello {}", w);
 }
 
 #[maybe_async]
