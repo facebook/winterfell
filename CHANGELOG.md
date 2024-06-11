@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.10.0 (2024-06-11) - `utils/maybe-async` crate only
+* [BREAKING] Refactored `maybe-async` macro into simpler `maybe-async` and `maybe-await` macros.
+
 ## 0.9.0 (2024-05-09)
 - [BREAKING] Merged `TraceLayout` into `TraceInfo` (#245).
 - Implemented Lagrange Kernel constraints (#247, )
