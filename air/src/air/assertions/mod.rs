@@ -30,18 +30,18 @@ const NO_STRIDE: usize = 0;
 /// An assertion is always placed against a single column of an execution trace, but can cover
 /// multiple steps and multiple values. Specifically, there are three kinds of assertions:
 ///
-/// 1. **Single** assertion - which requires that a value in a single cell of an execution trace
-///    is equal to the specified value.
-/// 2. **Periodic** assertion - which requires that values in multiple cells of a single column
-///   are equal to the specified value. The cells must be evenly spaced at intervals with lengths
-///   equal to powers of two. For example, we can specify that values in a column must be equal
-///   to 0 at steps 0, 8, 16, 24, 32 etc. Steps can also start at some offset - e.g., 1, 9, 17,
-///   25, 33 is also a valid sequence of steps.
-/// 3. **Sequence** assertion - which requires that multiple cells in a single column are equal
-///   to the values from the provided list. The cells must be evenly spaced at intervals with
-///   lengths equal to powers of two. For example, we can specify that values in a column must
-///   be equal to a sequence 1, 2, 3, 4 at steps 0, 8, 16, 24. That is, value at step 0 should be
-///   equal to 1, value at step 8 should be equal to 2 etc.
+/// 1.  **Single** assertion - which requires that a value in a single cell of an execution trace
+///     is equal to the specified value.
+/// 2.  **Periodic** assertion - which requires that values in multiple cells of a single column
+///     are equal to the specified value. The cells must be evenly spaced at intervals with lengths
+///     equal to powers of two. For example, we can specify that values in a column must be equal
+///     to 0 at steps 0, 8, 16, 24, 32 etc. Steps can also start at some offset - e.g., 1, 9, 17,
+///     25, 33 is also a valid sequence of steps.
+/// 3.  **Sequence** assertion - which requires that multiple cells in a single column are equal
+///     to the values from the provided list. The cells must be evenly spaced at intervals with
+///     lengths equal to powers of two. For example, we can specify that values in a column must
+///     be equal to a sequence 1, 2, 3, 4 at steps 0, 8, 16, 24. That is, value at step 0 should be
+///     equal to 1, value at step 8 should be equal to 2 etc.
 ///
 /// Note that single and periodic assertions are succinct. That is, a verifier can evaluate them
 /// very efficiently. However, sequence assertions have liner complexity in the number of
