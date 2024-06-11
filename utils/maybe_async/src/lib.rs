@@ -15,27 +15,27 @@ use syn::{parse_macro_input, Expr, ItemFn, TraitItemFn};
 /// trait ExampleTrait {
 ///     #[maybe_async]
 ///     fn say_hello(&self);
-/// 
+///
 ///     #[maybe_async]
 ///     fn get_hello(&self) -> String;
 /// }
 ///
-/// 
+///
 /// #[maybe_async]
 /// fn hello_world() {
 ///     // ...
 /// }
 /// ```
-/// 
+///
 /// When the `async` feature is enabled, will be transformed into:
 /// ```ignore
 /// trait ExampleTrait {
 ///     async fn say_hello(&self);
-/// 
+///
 ///     async fn get_hello(&self) -> String;
 /// }
 ///
-/// 
+///
 /// async fn hello_world() {
 ///     // ...
 /// }
@@ -69,30 +69,30 @@ pub fn maybe_async(_attr: TokenStream, input: TokenStream) -> TokenStream {
 
 /// Parses an expression and conditionally adds the `.await` keyword at the end of it depending on
 /// the `async` feature flag being enabled.
-/// 
+///
 /// ```ignore
 /// #[maybe_async]
 /// fn hello_world() {
 ///     // Adding `maybe_await` to an expression
 ///     let w = maybe_await!(world());
-/// 
+///
 ///     println!("hello {}", w);
 /// }
-/// 
+///
 /// #[maybe_async]
 /// fn world() -> String {
 ///     "world".to_string()
 /// }
 /// ```
-/// 
+///
 /// When the `async` feature is enabled, will be transformed into:
 /// ```ignore
 /// async fn hello_world() {
 ///     let w = world().await;
-/// 
+///
 ///     println!("hello {}", w);
 /// }
-/// 
+///
 /// async fn world() -> String {
 ///     "world".to_string()
 /// }
