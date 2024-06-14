@@ -4,8 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::vec::Vec;
-
-use crypto::{BatchMerkleProof, ElementHasher, Hasher};
+use crypto::{ElementHasher, Hasher, VectorCommitment};
 use math::FieldElement;
 use utils::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
@@ -17,21 +16,21 @@ use super::Table;
 // ================================================================================================
 /// Decommitments to evaluations of a set of functions at multiple points.
 ///
-/// Given a set of functions evaluated over a domain *D*, a commitment is assumed to be a Merkle
-/// tree where a leaf at position *i* contains evaluations of all functions at *x<sub>i</sub>*.
+/// Given a set of functions evaluated over a domain *D*, a commitment is assumed to be a vector
+/// commitment where the *i*-th vector entry contains evaluations of all functions at *x<sub>i</sub>*.
 /// Thus, a query (i.e. a single decommitment) for position *i* includes evaluations of all
-/// functions at *x<sub>i</sub>*, accompanied by a Merkle authentication path from the leaf *i* to
-/// the tree root.
+/// functions at *x<sub>i</sub>*, accompanied by an opening proof of leaf *i* against the vector
+/// commitment string.
 ///
 /// This struct can contain one or more queries. In cases when more than one query is stored,
-/// Merkle authentication paths are compressed to remove redundant nodes.
+/// a batch opening proof is used in order to compress the individual opening proofs.
 ///
-/// Internally, all Merkle paths and query values are stored as a sequence of bytes. Thus, to
-/// retrieve query values and the corresponding Merkle authentication paths,
-/// [parse()](Queries::parse) function should be used.
+/// Internally, all opening proofs and query values are stored as a sequence of bytes. Thus, to
+/// retrieve query values and their corresponding opening proofs, [parse()](Queries::parse)
+/// function should be used.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Queries {
-    paths: Vec<u8>,
+    opening_proof: Vec<u8>,
     values: Vec<u8>,
 }
 
@@ -39,25 +38,22 @@ impl Queries {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Returns queries constructed from evaluations of a set of functions at some number of points
-    /// in a domain and their corresponding Merkle authentication paths.
+    /// in a domain and their corresponding batch opening proof.
     ///
-    /// For each evaluation point, the same number of values must be provided, and a hash of
-    /// these values must be equal to a leaf node in the corresponding Merkle authentication path.
+    /// For each evaluation point, the same number of values must be provided.
     ///
     /// # Panics
     /// Panics if:
     /// * No queries were provided (`query_values` is an empty vector).
     /// * Any of the queries does not contain any evaluations.
     /// * Not all queries contain the same number of evaluations.
-    pub fn new<H: Hasher, E: FieldElement>(
-        merkle_proof: BatchMerkleProof<H>,
+    pub fn new<H: Hasher, E: FieldElement, V: VectorCommitment>(
+        opening_proof: V::MultiProof,
         query_values: Vec<Vec<E>>,
     ) -> Self {
         assert!(!query_values.is_empty(), "query values cannot be empty");
         let elements_per_query = query_values[0].len();
         assert_ne!(elements_per_query, 0, "a query must contain at least one evaluation");
-
-        // TODO: add debug check that values actually hash into the leaf nodes of the batch proof
 
         // concatenate all elements together into a single vector of bytes
         let num_queries = query_values.len();
@@ -70,33 +66,34 @@ impl Queries {
             );
             values.write_many(elements);
         }
+        let opening_proof = opening_proof.to_bytes();
 
-        // serialize internal nodes of the batch Merkle proof; we care about internal nodes only
-        // because leaf nodes can be reconstructed from hashes of query values
-        let paths = merkle_proof.serialize_nodes();
-
-        Queries { paths, values }
+        Queries {
+            opening_proof,
+            values,
+        }
     }
 
     // PARSER
     // --------------------------------------------------------------------------------------------
-    /// Convert internally stored bytes into a set of query values and the corresponding Merkle
-    /// authentication paths.
+    /// Convert internally stored bytes into a set of query values and the corresponding batch
+    /// opening proof.
     ///
     /// # Panics
     /// Panics if:
     /// * `domain_size` is not a power of two.
     /// * `num_queries` is zero.
     /// * `values_per_query` is zero.
-    pub fn parse<H, E>(
+    pub fn parse<H, E, V>(
         self,
         domain_size: usize,
         num_queries: usize,
         values_per_query: usize,
-    ) -> Result<(BatchMerkleProof<H>, Table<E>), DeserializationError>
+    ) -> Result<(V::MultiProof, Table<E>), DeserializationError>
     where
         E: FieldElement,
         H: ElementHasher<BaseField = E::BaseField>,
+        V: VectorCommitment,
     {
         assert!(domain_size.is_power_of_two(), "domain size must be a power of two");
         assert!(num_queries > 0, "there must be at least one query");
@@ -113,20 +110,17 @@ impl Queries {
             )));
         }
 
-        // read bytes corresponding to each query, convert them into field elements,
-        // and also hash them to build leaf nodes of the batch Merkle proof
+        // read bytes corresponding to each query and convert them into field elements.
         let query_values = Table::<E>::from_bytes(&self.values, num_queries, values_per_query)?;
-        let hashed_queries = query_values.rows().map(|row| H::hash_elements(row)).collect();
 
-        // build batch Merkle proof
-        let mut reader = SliceReader::new(&self.paths);
-        let tree_depth = domain_size.ilog2() as u8;
-        let merkle_proof = BatchMerkleProof::deserialize(&mut reader, hashed_queries, tree_depth)?;
+        // build batch opening proof
+        let mut reader = SliceReader::new(&self.opening_proof);
+        let opening_proof = <V::MultiProof as Deserializable>::read_from(&mut reader)?;
         if reader.has_more_bytes() {
             return Err(DeserializationError::UnconsumedBytes);
         }
 
-        Ok((merkle_proof, query_values))
+        Ok((opening_proof, query_values))
     }
 }
 
@@ -141,13 +135,13 @@ impl Serializable for Queries {
         target.write_bytes(&self.values);
 
         // write path bytes
-        target.write_u32(self.paths.len() as u32);
-        target.write_bytes(&self.paths);
+        target.write_u32(self.opening_proof.len() as u32);
+        target.write_bytes(&self.opening_proof);
     }
 
     /// Returns an estimate of how many bytes are needed to represent self.
     fn get_size_hint(&self) -> usize {
-        self.paths.len() + self.values.len() + 8
+        self.opening_proof.len() + self.values.len() + 8
     }
 }
 
@@ -165,6 +159,9 @@ impl Deserializable for Queries {
         let num_paths_bytes = source.read_u32()?;
         let paths = source.read_vec(num_paths_bytes as usize)?;
 
-        Ok(Queries { paths, values })
+        Ok(Queries {
+            opening_proof: paths,
+            values,
+        })
     }
 }

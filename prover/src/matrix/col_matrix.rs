@@ -5,8 +5,7 @@
 
 use alloc::vec::Vec;
 use core::{iter::FusedIterator, slice};
-
-use crypto::{ElementHasher, MerkleTree};
+use crypto::{ElementHasher, VectorCommitment};
 use math::{fft, polynom, FieldElement};
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
@@ -256,13 +255,13 @@ impl<E: FieldElement> ColMatrix<E> {
     ///
     /// The commitment is built as follows:
     /// * Each row of the matrix is hashed into a single digest of the specified hash function.
-    /// * The resulting values are used to built a binary Merkle tree such that each row digest
-    ///   becomes a leaf in the tree. Thus, the number of leaves in the tree is equal to the
-    ///   number of rows in the matrix.
-    /// * The resulting Merkle tree is return as the commitment to the entire matrix.
-    pub fn commit_to_rows<H>(&self) -> MerkleTree<H>
+    /// * The resulting vector of digests is commited to using the specified vector commitment
+    ///   scheme.
+    /// * The resulting commitment is returned as the commitment to the entire matrix.
+    pub fn commit_to_rows<H, V>(&self) -> V
     where
-        H: ElementHasher<BaseField = E::BaseField>,
+        H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment>::Item>,
+        V: VectorCommitment,
     {
         // allocate vector to store row hashes
         let mut row_hashes = unsafe { uninit_vector::<H::Digest>(self.num_rows()) };
@@ -282,8 +281,8 @@ impl<E: FieldElement> ColMatrix<E> {
             }
         );
 
-        // build Merkle tree out of hashed rows
-        MerkleTree::new(row_hashes).expect("failed to construct trace Merkle tree")
+        // TODO: the options should be an input to the function
+        V::new(row_hashes, V::Options::default()).unwrap()
     }
 
     // CONVERSIONS

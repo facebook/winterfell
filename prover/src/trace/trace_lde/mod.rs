@@ -3,10 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use alloc::vec::Vec;
-
 use air::{proof::Queries, LagrangeKernelEvaluationFrame, TraceInfo};
-use crypto::{ElementHasher, Hasher};
+use alloc::vec::Vec;
+use crypto::{ElementHasher, VectorCommitment};
 
 use super::{ColMatrix, EvaluationFrame, FieldElement, TracePolyTable};
 use crate::StarkDomain;
@@ -24,11 +23,13 @@ pub use default::DefaultTraceLde;
 /// - Auxiliary segments: a list of 0 or more segments for traces generated after the prover
 ///   commits to the first trace segment. Currently, at most 1 auxiliary segment is possible.
 pub trait TraceLde<E: FieldElement>: Sync {
-    /// The hash function used for building the Merkle tree commitments to trace segment LDEs.
+    /// The hash function used for hashing the rows of trace segment LDEs.
     type HashFn: ElementHasher<BaseField = E::BaseField>;
 
+    type VC: VectorCommitment;
+
     /// Returns the commitment to the low-degree extension of the main trace segment.
-    fn get_main_trace_commitment(&self) -> <Self::HashFn as Hasher>::Digest;
+    fn get_main_trace_commitment(&self) -> <Self::VC as VectorCommitment>::Commitment;
 
     /// Takes auxiliary trace segment columns as input, interpolates them into polynomials in
     /// coefficient form, evaluates the polynomials over the LDE domain, and commits to the
@@ -46,7 +47,7 @@ pub trait TraceLde<E: FieldElement>: Sync {
         &mut self,
         aux_trace: &ColMatrix<E>,
         domain: &StarkDomain<E::BaseField>,
-    ) -> (ColMatrix<E>, <Self::HashFn as Hasher>::Digest);
+    ) -> (ColMatrix<E>, <Self::VC as VectorCommitment>::Commitment);
 
     /// Reads current and next rows from the main trace segment into the specified frame.
     fn read_main_trace_frame_into(
@@ -70,8 +71,8 @@ pub trait TraceLde<E: FieldElement>: Sync {
         frame: &mut LagrangeKernelEvaluationFrame<E>,
     );
 
-    /// Returns trace table rows at the specified positions along with Merkle authentication paths
-    /// from the commitment root to these rows.
+    /// Returns trace table rows at the specified positions along with an opening proof to these
+    /// rows.
     fn query(&self, positions: &[usize]) -> Vec<Queries>;
 
     /// Returns the number of rows in the execution trace.

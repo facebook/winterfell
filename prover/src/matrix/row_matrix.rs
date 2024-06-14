@@ -4,8 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::vec::Vec;
-
-use crypto::{ElementHasher, MerkleTree};
+use crypto::{ElementHasher, VectorCommitment};
 use math::{fft, FieldElement, StarkField};
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
@@ -176,13 +175,14 @@ impl<E: FieldElement> RowMatrix<E> {
     ///
     /// The commitment is built as follows:
     /// * Each row of the matrix is hashed into a single digest of the specified hash function.
-    /// * The resulting values are used to build a binary Merkle tree such that each row digest
-    ///   becomes a leaf in the tree. Thus, the number of leaves in the tree is equal to the
-    ///   number of rows in the matrix.
-    /// * The resulting Merkle tree is returned as the commitment to the entire matrix.
-    pub fn commit_to_rows<H>(&self) -> MerkleTree<H>
+    ///   The result is a vector of digests of length equal to the number of matrix rows.
+    /// * A vector commitment is computed for the resulting vector using the specified vector
+    ///   commitment scheme.
+    /// * The resulting vector commitment is returned as the commitment to the entire matrix.
+    pub fn commit_to_rows<H, V>(&self) -> V
     where
-        H: ElementHasher<BaseField = E::BaseField>,
+        H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment>::Item>,
+        V: VectorCommitment,
     {
         // allocate vector to store row hashes
         let mut row_hashes = unsafe { uninit_vector::<H::Digest>(self.num_rows()) };
@@ -198,8 +198,9 @@ impl<E: FieldElement> RowMatrix<E> {
             }
         );
 
-        // build Merkle tree out of hashed rows
-        MerkleTree::new(row_hashes).expect("failed to construct trace Merkle tree")
+        // build the vector commitment to the hashed rows
+        // TODO: the options should be an input to the function
+        V::new(row_hashes, V::Options::default()).unwrap()
     }
 }
 

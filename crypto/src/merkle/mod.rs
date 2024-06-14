@@ -3,13 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use crate::{errors::MerkleTreeError, hash::Hasher, VectorCommitment};
 use alloc::{
     collections::{BTreeMap, BTreeSet},
     vec::Vec,
 };
 use core::slice;
-
-use crate::{errors::MerkleTreeError, hash::Hasher};
 
 mod proofs;
 pub use proofs::BatchMerkleProof;
@@ -79,13 +78,13 @@ mod tests;
 /// assert_eq!(leaves, tree.leaves());
 ///
 /// // generate a proof
-/// let proof = tree.prove(2).unwrap();
-/// assert_eq!(3, proof.len());
-/// assert_eq!(leaves[2], proof[0]);
+/// let (leaf, proof) = tree.prove(2).unwrap();
+/// assert_eq!(2, proof.len());
+/// assert_eq!(leaves[2], leaf);
 ///
 /// // verify proof
-/// assert!(MerkleTree::<Blake3>::verify(*tree.root(), 2, &proof).is_ok());
-/// assert!(MerkleTree::<Blake3>::verify(*tree.root(), 1, &proof).is_err());
+/// assert!(MerkleTree::<Blake3>::verify(*tree.root(), 2, leaf, &proof).is_ok());
+/// assert!(MerkleTree::<Blake3>::verify(*tree.root(), 1, leaf, &proof).is_err());
 /// ```
 #[derive(Debug)]
 pub struct MerkleTree<H: Hasher> {
@@ -181,17 +180,17 @@ impl<H: Hasher> MerkleTree<H> {
 
     /// Returns a Merkle path to a leaf at the specified `index`.
     ///
-    /// The leaf itself will be the first element in the path.
+    /// The leaf itself will be the first element of the returned tuple.
     ///
     /// # Errors
     /// Returns an error if the specified index is greater than or equal to the number of leaves
     /// in the tree.
-    pub fn prove(&self, index: usize) -> Result<Vec<H::Digest>, MerkleTreeError> {
+    pub fn prove(&self, index: usize) -> Result<(H::Digest, Vec<H::Digest>), MerkleTreeError> {
         if index >= self.leaves.len() {
             return Err(MerkleTreeError::LeafIndexOutOfBounds(self.leaves.len(), index));
         }
-
-        let mut proof = vec![self.leaves[index], self.leaves[index ^ 1]];
+        let leaf = self.leaves[index];
+        let mut proof = vec![self.leaves[index ^ 1]];
 
         let mut index = (index + self.nodes.len()) >> 1;
         while index > 1 {
@@ -199,7 +198,7 @@ impl<H: Hasher> MerkleTree<H> {
             index >>= 1;
         }
 
-        Ok(proof)
+        Ok((leaf, proof))
     }
 
     /// Computes Merkle paths for the provided indexes and compresses the paths into a single proof.
@@ -211,7 +210,10 @@ impl<H: Hasher> MerkleTree<H> {
     /// * Any of the provided indexes are greater than or equal to the number of leaves in the
     ///   tree.
     /// * List of indexes contains duplicates.
-    pub fn prove_batch(&self, indexes: &[usize]) -> Result<BatchMerkleProof<H>, MerkleTreeError> {
+    pub fn prove_batch(
+        &self,
+        indexes: &[usize],
+    ) -> Result<(Vec<H::Digest>, BatchMerkleProof<H>), MerkleTreeError> {
         if indexes.is_empty() {
             return Err(MerkleTreeError::TooFewLeafIndexes);
         }
@@ -265,13 +267,19 @@ impl<H: Hasher> MerkleTree<H> {
             }
         }
 
-        Ok(BatchMerkleProof { leaves, nodes, depth: self.depth() as u8 })
+        Ok((
+            leaves,
+            BatchMerkleProof {
+                depth: self.depth() as u8,
+                nodes,
+            },
+        ))
     }
 
     // VERIFICATION METHODS
     // --------------------------------------------------------------------------------------------
 
-    /// Checks whether the `proof` for the specified `index` is valid.
+    /// Checks whether the `proof` for the given `leaf` at the specified `index` is valid.
     ///
     /// # Errors
     /// Returns an error if the specified `proof` (which is a Merkle path) does not resolve to the
@@ -279,13 +287,18 @@ impl<H: Hasher> MerkleTree<H> {
     pub fn verify(
         root: H::Digest,
         index: usize,
+        leaf: H::Digest,
         proof: &[H::Digest],
     ) -> Result<(), MerkleTreeError> {
         let r = index & 1;
-        let mut v = H::merge(&[proof[r], proof[1 - r]]);
+        let mut v = if r == 0 {
+            H::merge(&[leaf, proof[0]])
+        } else {
+            H::merge(&[proof[0], leaf])
+        };
 
-        let mut index = (index + 2usize.pow((proof.len() - 1) as u32)) >> 1;
-        for &p in proof.iter().skip(2) {
+        let mut index = (index + 2usize.pow((proof.len()) as u32)) >> 1;
+        for &p in proof.iter().skip(1) {
             v = if index & 1 == 0 {
                 H::merge(&[v, p])
             } else {
@@ -313,9 +326,10 @@ impl<H: Hasher> MerkleTree<H> {
     pub fn verify_batch(
         root: &H::Digest,
         indexes: &[usize],
+        leaves: &[H::Digest],
         proof: &BatchMerkleProof<H>,
     ) -> Result<(), MerkleTreeError> {
-        if *root != proof.get_root(indexes)? {
+        if *root != proof.get_root(indexes, leaves)? {
             return Err(MerkleTreeError::InvalidProof);
         }
         Ok(())
@@ -384,4 +398,58 @@ fn normalize_indexes(indexes: &[usize]) -> Vec<usize> {
         set.insert(index - (index & 1));
     }
     set.into_iter().collect()
+}
+
+// VECTOR COMMITMENT IMPLEMENTATION
+// ================================================================================================
+
+impl<H: Hasher> VectorCommitment for MerkleTree<H> {
+    type Options = ();
+
+    type Item = H::Digest;
+
+    type Commitment = H::Digest;
+
+    type Proof = Vec<H::Digest>;
+
+    type MultiProof = BatchMerkleProof<H>;
+
+    type Error = MerkleTreeError;
+
+    fn new(items: Vec<Self::Item>, _options: Self::Options) -> Result<Self, Self::Error> {
+        MerkleTree::new(items)
+    }
+
+    fn commitment(&self) -> Self::Commitment {
+        *self.root()
+    }
+
+    fn open(&self, index: usize) -> Result<(Self::Item, Self::Proof), Self::Error> {
+        self.prove(index)
+    }
+
+    fn open_many(
+        &self,
+        indexes: &[usize],
+    ) -> Result<(Vec<Self::Item>, Self::MultiProof), Self::Error> {
+        self.prove_batch(indexes)
+    }
+
+    fn verify(
+        commitment: Self::Commitment,
+        index: usize,
+        item: Self::Item,
+        proof: &Self::Proof,
+    ) -> Result<(), Self::Error> {
+        MerkleTree::<H>::verify(commitment, index, item, proof)
+    }
+
+    fn verify_many(
+        commitment: Self::Commitment,
+        indexes: &[usize],
+        items: &[Self::Item],
+        proof: &Self::MultiProof,
+    ) -> Result<(), Self::Error> {
+        MerkleTree::<H>::verify_batch(&commitment, indexes, items, proof)
+    }
 }

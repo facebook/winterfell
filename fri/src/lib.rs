@@ -51,7 +51,7 @@
 //! * Base STARK field,
 //! * Extension field,
 //! * Domain blowup factor,
-//! * Hash function (used for Merkle tree commitments),
+//! * Hash function (used for building vector commitments),
 //! * Folding factor (used for degree reduction for each FRI layer),
 //! * Maximum size of the last FRI layer.
 //!

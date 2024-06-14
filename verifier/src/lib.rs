@@ -39,9 +39,6 @@ pub use air::{
     EvaluationFrame, FieldExtension, ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
 use air::{AuxRandElements, GkrVerifier};
-pub use crypto;
-use crypto::{ElementHasher, Hasher, RandomCoin};
-use fri::FriVerifier;
 pub use math;
 use math::{
     fields::{CubeExtension, QuadExtension},
@@ -50,6 +47,11 @@ use math::{
 pub use utils::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
 };
+
+pub use crypto;
+use crypto::{ElementHasher, Hasher, RandomCoin, VectorCommitment};
+
+use fri::FriVerifier;
 
 mod channel;
 use channel::VerifierChannel;
@@ -78,15 +80,16 @@ pub use errors::VerifierError;
 /// - The specified proof was generated for a different computation.
 /// - The specified proof was generated for this computation but for different public inputs.
 /// - The specified proof was generated with parameters not providing an acceptable security level.
-pub fn verify<AIR, HashFn, RandCoin>(
+pub fn verify<AIR, HashFn, RandCoin, V>(
     proof: Proof,
     pub_inputs: AIR::PublicInputs,
     acceptable_options: &AcceptableOptions,
 ) -> Result<(), VerifierError>
 where
     AIR: Air,
-    HashFn: ElementHasher<BaseField = AIR::BaseField>,
-    RandCoin: RandomCoin<BaseField = AIR::BaseField, Hasher = HashFn>,
+    HashFn: ElementHasher<BaseField = AIR::BaseField, Digest = <V as VectorCommitment>::Item>,
+    RandCoin: RandomCoin<BaseField = AIR::BaseField, Hasher = HashFn, VC = V>,
+    V: VectorCommitment,
 {
     // check that `proof` was generated with an acceptable set of parameters from the point of view
     // of the verifier
@@ -107,15 +110,19 @@ where
         FieldExtension::None => {
             let public_coin = RandCoin::new(&public_coin_seed);
             let channel = VerifierChannel::new(&air, proof)?;
-            perform_verification::<AIR, AIR::BaseField, HashFn, RandCoin>(air, channel, public_coin)
-        },
+            perform_verification::<AIR, AIR::BaseField, HashFn, RandCoin, V>(
+                air,
+                channel,
+                public_coin,
+            )
+        }
         FieldExtension::Quadratic => {
             if !<QuadExtension<AIR::BaseField>>::is_supported() {
                 return Err(VerifierError::UnsupportedFieldExtension(2));
             }
             let public_coin = RandCoin::new(&public_coin_seed);
             let channel = VerifierChannel::new(&air, proof)?;
-            perform_verification::<AIR, QuadExtension<AIR::BaseField>, HashFn, RandCoin>(
+            perform_verification::<AIR, QuadExtension<AIR::BaseField>, HashFn, RandCoin, V>(
                 air,
                 channel,
                 public_coin,
@@ -127,7 +134,7 @@ where
             }
             let public_coin = RandCoin::new(&public_coin_seed);
             let channel = VerifierChannel::new(&air, proof)?;
-            perform_verification::<AIR, CubeExtension<AIR::BaseField>, HashFn, RandCoin>(
+            perform_verification::<AIR, CubeExtension<AIR::BaseField>, HashFn, RandCoin, V>(
                 air,
                 channel,
                 public_coin,
@@ -140,16 +147,17 @@ where
 // ================================================================================================
 /// Performs the actual verification by reading the data from the `channel` and making sure it
 /// attests to a correct execution of the computation specified by the provided `air`.
-fn perform_verification<A, E, H, R>(
+fn perform_verification<A, E, H, R, V>(
     air: A,
-    mut channel: VerifierChannel<E, H>,
+    mut channel: VerifierChannel<E, H, V>,
     mut public_coin: R,
 ) -> Result<(), VerifierError>
 where
     E: FieldElement<BaseField = A::BaseField>,
     A: Air,
-    H: ElementHasher<BaseField = A::BaseField>,
-    R: RandomCoin<BaseField = A::BaseField, Hasher = H>,
+    H: ElementHasher<BaseField = A::BaseField, Digest = <V as VectorCommitment>::Item>,
+    R: RandomCoin<BaseField = A::BaseField, Hasher = H, VC = V>,
+    V: VectorCommitment,
 {
     // 1 ----- trace commitment -------------------------------------------------------------------
     // Read the commitments to evaluations of the trace polynomials over the LDE domain sent by the
@@ -238,7 +246,7 @@ where
         aux_trace_rand_elements.as_ref(),
         z,
     );
-    public_coin.reseed(ood_trace_frame.hash::<H>());
+    public_coin.reseed(ood_trace_frame.hash::<H>().into());
 
     // read evaluations of composition polynomial columns sent by the prover, and reduce them into
     // a single value by computing \sum_{i=0}^{m-1}(z^(i * l) * value_i), where value_i is the
@@ -255,7 +263,7 @@ where
             .fold(E::ZERO, |result, (i, &value)| {
                 result + z.exp_vartime(((i * (air.trace_length())) as u32).into()) * value
             });
-    public_coin.reseed(H::hash_elements(&ood_constraint_evaluations));
+    public_coin.reseed(H::hash_elements(&ood_constraint_evaluations).into());
 
     // finally, make sure the values are the same
     if ood_constraint_evaluation_1 != ood_constraint_evaluation_2 {

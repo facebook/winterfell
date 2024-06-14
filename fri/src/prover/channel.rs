@@ -5,8 +5,7 @@
 
 use alloc::vec::Vec;
 use core::marker::PhantomData;
-
-use crypto::{ElementHasher, Hasher, RandomCoin};
+use crypto::{ElementHasher, RandomCoin, VectorCommitment};
 use math::FieldElement;
 
 // PROVER CHANNEL TRAIT
@@ -23,19 +22,24 @@ use math::FieldElement;
 /// commitments the prover has written into the channel up to this point.
 pub trait ProverChannel<E: FieldElement> {
     /// Hash function used by the prover to commit to polynomial evaluations.
-    type Hasher: Hasher;
+    type Hasher: ElementHasher<
+        BaseField = E::BaseField,
+        Digest = <Self::VectorCommitment as VectorCommitment>::Item,
+    >;
+    type VectorCommitment: VectorCommitment;
 
     /// Sends a layer commitment to the verifier.
     ///
-    /// A layer commitment is a root of a Merkle tree built from evaluations of a polynomial
-    /// at a given layer. The Merkle tree is built by first transposing evaluations into a
-    /// two-dimensional matrix where each row contains values needed to compute a single
-    /// value of the next FRI layer, and then putting each row of the matrix into a single
-    /// leaf of the Merkle tree. Thus, the number of elements grouped into a single leaf is
-    /// equal to the `folding_factor` used for FRI layer construction.
+    /// A layer commitment is the commitment string of a vector commitment to the vector of
+    /// evaluations of a polynomial at a given layer. The vector commitment is built by
+    /// first transposing evaluations into a two-dimensional matrix where each row contains
+    /// values needed to compute a single value of the next FRI layer, and then computing
+    /// the hash of each row to get one entry of the vector being commited to. Thus, the number
+    /// of elements grouped into a single leaf is equal to the `folding_factor` used for FRI layer
+    /// construction.
     fn commit_fri_layer(
         &mut self,
-        layer_root: <<Self as ProverChannel<E>>::Hasher as Hasher>::Digest,
+        layer_root: <<Self as ProverChannel<E>>::VectorCommitment as VectorCommitment>::Commitment,
     );
 
     /// Returns a random α drawn uniformly at random from the entire field.
@@ -55,24 +59,26 @@ pub trait ProverChannel<E: FieldElement> {
 ///
 /// Though this implementation is intended primarily for testing purposes, it can be used in
 /// production use cases as well.
-pub struct DefaultProverChannel<E, H, R>
+pub struct DefaultProverChannel<E, H, R, V>
 where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
     R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
+    V: VectorCommitment,
 {
     public_coin: R,
-    commitments: Vec<H::Digest>,
+    commitments: Vec<V::Commitment>,
     domain_size: usize,
     num_queries: usize,
     _field_element: PhantomData<E>,
 }
 
-impl<E, H, R> DefaultProverChannel<E, H, R>
+impl<E, H, R, V> DefaultProverChannel<E, H, R, V>
 where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
     R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
+    V: VectorCommitment,
 {
     /// Returns a new prover channel instantiated from the specified parameters.
     ///
@@ -113,20 +119,22 @@ where
     }
 
     /// Returns a list of FRI layer commitments written by the prover into this channel.
-    pub fn layer_commitments(&self) -> &[H::Digest] {
+    pub fn layer_commitments(&self) -> &[V::Commitment] {
         &self.commitments
     }
 }
 
-impl<E, H, R> ProverChannel<E> for DefaultProverChannel<E, H, R>
+impl<E, H, R, V> ProverChannel<E> for DefaultProverChannel<E, H, R, V>
 where
     E: FieldElement,
-    H: ElementHasher<BaseField = E::BaseField>,
-    R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
+    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment>::Item>,
+    R: RandomCoin<BaseField = E::BaseField, Hasher = H, VC = V>,
+    V: VectorCommitment,
 {
     type Hasher = H;
+    type VectorCommitment = V;
 
-    fn commit_fri_layer(&mut self, layer_root: H::Digest) {
+    fn commit_fri_layer(&mut self, layer_root: V::Commitment) {
         self.commitments.push(layer_root);
         self.public_coin.reseed(layer_root);
     }

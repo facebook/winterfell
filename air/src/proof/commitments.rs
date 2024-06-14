@@ -4,8 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::vec::Vec;
-
-use crypto::Hasher;
+use crypto::VectorCommitment;
 use utils::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
 };
@@ -29,10 +28,10 @@ impl Commitments {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Returns a new Commitments struct initialized with the provided commitments.
-    pub fn new<H: Hasher>(
-        trace_roots: Vec<H::Digest>,
-        constraint_root: H::Digest,
-        fri_roots: Vec<H::Digest>,
+    pub fn new<V: VectorCommitment>(
+        trace_roots: Vec<V::Commitment>,
+        constraint_root: V::Commitment,
+        fri_roots: Vec<V::Commitment>,
     ) -> Self {
         let mut bytes = Vec::new();
         bytes.write_many(&trace_roots);
@@ -45,7 +44,7 @@ impl Commitments {
     // --------------------------------------------------------------------------------------------
 
     /// Adds the specified commitment to the list of commitments.
-    pub fn add<H: Hasher>(&mut self, commitment: &H::Digest) {
+    pub fn add<V: VectorCommitment>(&mut self, commitment: &V::Commitment) {
         commitment.write_into(&mut self.0);
     }
 
@@ -63,11 +62,11 @@ impl Commitments {
     /// Returns an error if the bytes stored in self could not be parsed into the requested number
     /// of commitments, or if there are any unconsumed bytes remaining after the parsing completes.
     #[allow(clippy::type_complexity)]
-    pub fn parse<H: Hasher>(
+    pub fn parse<V: VectorCommitment>(
         self,
         num_trace_segments: usize,
         num_fri_layers: usize,
-    ) -> Result<(Vec<H::Digest>, H::Digest, Vec<H::Digest>), DeserializationError> {
+    ) -> Result<(Vec<V::Commitment>, V::Commitment, Vec<V::Commitment>), DeserializationError> {
         let mut reader = SliceReader::new(&self.0);
 
         // parse trace commitments

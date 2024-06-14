@@ -9,7 +9,8 @@ use air::{
     proof::{Proof, Queries, Table, TraceOodFrame},
     Air,
 };
-use crypto::{BatchMerkleProof, ElementHasher, MerkleTree};
+use core::marker::PhantomData;
+use crypto::{ElementHasher, VectorCommitment};
 use fri::VerifierChannel as FriVerifierChannel;
 use math::{FieldElement, StarkField};
 
@@ -23,16 +24,20 @@ use crate::VerifierError;
 /// A channel is instantiated for a specific proof, which is parsed into structs over the
 /// appropriate field (specified by type parameter `E`). This also validates that the proof is
 /// well-formed in the context of the computation for the specified [Air].
-pub struct VerifierChannel<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> {
+pub struct VerifierChannel<
+    E: FieldElement,
+    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment>::Item>,
+    V: VectorCommitment,
+> {
     // trace queries
-    trace_roots: Vec<H::Digest>,
-    trace_queries: Option<TraceQueries<E, H>>,
+    trace_roots: Vec<V::Commitment>,
+    trace_queries: Option<TraceQueries<E, H, V>>,
     // constraint queries
-    constraint_root: H::Digest,
-    constraint_queries: Option<ConstraintQueries<E, H>>,
+    constraint_root: V::Commitment,
+    constraint_queries: Option<ConstraintQueries<E, H, V>>,
     // FRI proof
-    fri_roots: Option<Vec<H::Digest>>,
-    fri_layer_proofs: Vec<BatchMerkleProof<H>>,
+    fri_roots: Option<Vec<V::Commitment>>,
+    fri_layer_proofs: Vec<V::MultiProof>,
     fri_layer_queries: Vec<Vec<E>>,
     fri_remainder: Option<Vec<E>>,
     fri_num_partitions: usize,
@@ -44,7 +49,12 @@ pub struct VerifierChannel<E: FieldElement, H: ElementHasher<BaseField = E::Base
     gkr_proof: Option<Vec<u8>>,
 }
 
-impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChannel<E, H> {
+impl<
+        E: FieldElement,
+        H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment>::Item>,
+        V: VectorCommitment,
+    > VerifierChannel<E, H, V>
+{
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Creates and returns a new [VerifierChannel] initialized from the specified `proof`.
@@ -78,13 +88,17 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
 
         // --- parse commitments ------------------------------------------------------------------
         let (trace_roots, constraint_root, fri_roots) = commitments
-            .parse::<H>(num_trace_segments, fri_options.num_fri_layers(lde_domain_size))
+            .parse::<V>(num_trace_segments, fri_options.num_fri_layers(lde_domain_size))
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         // --- parse trace and constraint queries -------------------------------------------------
-        let trace_queries = TraceQueries::new(trace_queries, air, num_unique_queries as usize)?;
-        let constraint_queries =
-            ConstraintQueries::new(constraint_queries, air, num_unique_queries as usize)?;
+        let trace_queries =
+            TraceQueries::<E, H, V>::new(trace_queries, air, num_unique_queries as usize)?;
+        let constraint_queries = ConstraintQueries::<E, H, V>::new(
+            constraint_queries,
+            air,
+            num_unique_queries as usize,
+        )?;
 
         // --- parse FRI proofs -------------------------------------------------------------------
         let fri_num_partitions = fri_proof.num_partitions();
@@ -92,7 +106,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
             .parse_remainder()
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
         let (fri_layer_queries, fri_layer_proofs) = fri_proof
-            .parse_layers::<H, E>(lde_domain_size, fri_options.folding_factor())
+            .parse_layers::<H, E, V>(lde_domain_size, fri_options.folding_factor())
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         // --- parse out-of-domain evaluation frame -----------------------------------------------
@@ -129,12 +143,12 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
     ///
     /// For computations requiring multiple trace segment, the returned slice will contain a
     /// commitment for each trace segment.
-    pub fn read_trace_commitments(&self) -> &[H::Digest] {
+    pub fn read_trace_commitments(&self) -> &[V::Commitment] {
         &self.trace_roots
     }
 
     /// Returns constraint evaluation commitment sent by the prover.
-    pub fn read_constraint_commitment(&self) -> H::Digest {
+    pub fn read_constraint_commitment(&self) -> V::Commitment {
         self.constraint_root
     }
 
@@ -177,9 +191,34 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
         let queries = self.trace_queries.take().expect("already read");
 
         // make sure the states included in the proof correspond to the trace commitment
-        for (root, proof) in self.trace_roots.iter().zip(queries.query_proofs.iter()) {
-            MerkleTree::verify_batch(root, positions, proof)
-                .map_err(|_| VerifierError::TraceQueryDoesNotMatchCommitment)?;
+
+        let items: Vec<V::Item> =
+            { queries.main_states.rows().map(|row| H::hash_elements(row)).collect() };
+        <V as VectorCommitment>::verify_many(
+            self.trace_roots[0],
+            positions,
+            &items,
+            &queries.query_proofs[0],
+        )
+        .map_err(|_| VerifierError::TraceQueryDoesNotMatchCommitment)?;
+
+        if queries.aux_states.is_some() {
+            let items: Vec<V::Item> = {
+                queries
+                    .aux_states
+                    .clone()
+                    .unwrap()
+                    .rows()
+                    .map(|row| H::hash_elements(row))
+                    .collect()
+            };
+            <V as VectorCommitment>::verify_many(
+                self.trace_roots[1],
+                positions,
+                &items,
+                &queries.query_proofs[1],
+            )
+            .map_err(|_| VerifierError::TraceQueryDoesNotMatchCommitment)?;
         }
 
         Ok((queries.main_states, queries.aux_states))
@@ -193,9 +232,15 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
         positions: &[usize],
     ) -> Result<Table<E>, VerifierError> {
         let queries = self.constraint_queries.take().expect("already read");
-
-        MerkleTree::verify_batch(&self.constraint_root, positions, &queries.query_proofs)
-            .map_err(|_| VerifierError::ConstraintQueryDoesNotMatchCommitment)?;
+        let items: Vec<V::Item> =
+            queries.evaluations.rows().map(|row| H::hash_elements(row)).collect();
+        <V as VectorCommitment>::verify_many(
+            self.constraint_root,
+            positions,
+            &items,
+            &queries.query_proofs,
+        )
+        .map_err(|_| VerifierError::ConstraintQueryDoesNotMatchCommitment)?;
 
         Ok(queries.evaluations)
     }
@@ -204,22 +249,24 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> VerifierChanne
 // FRI VERIFIER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-impl<E, H> FriVerifierChannel<E> for VerifierChannel<E, H>
+impl<E, H, V> FriVerifierChannel<E> for VerifierChannel<E, H, V>
 where
     E: FieldElement,
-    H: ElementHasher<BaseField = E::BaseField>,
+    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment>::Item>,
+    V: VectorCommitment,
 {
     type Hasher = H;
+    type VectorCommitment = V;
 
     fn read_fri_num_partitions(&self) -> usize {
         self.fri_num_partitions
     }
 
-    fn read_fri_layer_commitments(&mut self) -> Vec<H::Digest> {
+    fn read_fri_layer_commitments(&mut self) -> Vec<V::Commitment> {
         self.fri_roots.take().expect("already read")
     }
 
-    fn take_next_fri_layer_proof(&mut self) -> BatchMerkleProof<H> {
+    fn take_next_fri_layer_proof(&mut self) -> V::MultiProof {
         self.fri_layer_proofs.remove(0)
     }
 
@@ -237,18 +284,28 @@ where
 
 /// Container of trace query data, including:
 /// * Queried states for all trace segments.
-/// * Merkle authentication paths for all queries.
+/// * Batch opening proof for all queries.
 ///
 /// Trace states for all auxiliary segments are stored in a single table.
-struct TraceQueries<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> {
-    query_proofs: Vec<BatchMerkleProof<H>>,
+struct TraceQueries<
+    E: FieldElement,
+    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment>::Item>,
+    V: VectorCommitment,
+> {
+    query_proofs: Vec<V::MultiProof>,
     main_states: Table<E::BaseField>,
     aux_states: Option<Table<E>>,
+    _h: PhantomData<H>,
 }
 
-impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> TraceQueries<E, H> {
+impl<
+        E: FieldElement,
+        H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment>::Item>,
+        V: VectorCommitment,
+    > TraceQueries<E, H, V>
+{
     /// Parses the provided trace queries into trace states in the specified field and
-    /// corresponding Merkle authentication paths.
+    /// corresponding batch opening proof.
     pub fn new<A: Air<BaseField = E::BaseField>>(
         mut queries: Vec<Queries>,
         air: &A,
@@ -262,12 +319,11 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> TraceQueries<E
             queries.len()
         );
 
-        // parse main trace segment queries; parsing also validates that hashes of each table row
-        // form the leaves of Merkle authentication paths in the proofs
+        // parse main trace segment queries
         let main_segment_width = air.trace_info().main_trace_width();
         let main_segment_queries = queries.remove(0);
         let (main_segment_query_proofs, main_segment_states) = main_segment_queries
-            .parse::<H, E::BaseField>(air.lde_domain_size(), num_queries, main_segment_width)
+            .parse::<H, E::BaseField, V>(air.lde_domain_size(), num_queries, main_segment_width)
             .map_err(|err| {
                 VerifierError::ProofDeserializationError(format!(
                     "main trace segment query deserialization failed: {err}"
@@ -278,14 +334,13 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> TraceQueries<E
         let mut query_proofs = vec![main_segment_query_proofs];
 
         // parse auxiliary trace segment queries (if any), and merge resulting tables into a
-        // single table; parsing also validates that hashes of each table row form the leaves
-        // of Merkle authentication paths in the proofs
+        // single table
         let aux_trace_states = if air.trace_info().is_multi_segment() {
             let mut aux_trace_states = Vec::new();
             let segment_queries = queries.remove(0);
             let segment_width = air.trace_info().get_aux_segment_width();
             let (segment_query_proof, segment_trace_states) = segment_queries
-                .parse::<H, E>(air.lde_domain_size(), num_queries, segment_width)
+                .parse::<H, E, V>(air.lde_domain_size(), num_queries, segment_width)
                 .map_err(|err| {
                     VerifierError::ProofDeserializationError(format!(
                         "auxiliary trace segment query deserialization failed: {err}"
@@ -305,6 +360,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> TraceQueries<E
             query_proofs,
             main_states: main_segment_states,
             aux_states: aux_trace_states,
+            _h: PhantomData,
         })
     }
 }
@@ -314,15 +370,22 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> TraceQueries<E
 
 /// Container of constraint evaluation query data, including:
 /// * Queried constraint evaluation values.
-/// * Merkle authentication paths for all queries.
-struct ConstraintQueries<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> {
-    query_proofs: BatchMerkleProof<H>,
+/// * Batch opening proof for all queries.
+struct ConstraintQueries<
+    E: FieldElement,
+    H: ElementHasher<BaseField = E::BaseField>,
+    V: VectorCommitment,
+> {
+    query_proofs: V::MultiProof,
     evaluations: Table<E>,
+    _h: PhantomData<H>,
 }
 
-impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> ConstraintQueries<E, H> {
+impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>, V: VectorCommitment>
+    ConstraintQueries<E, H, V>
+{
     /// Parses the provided constraint queries into evaluations in the specified field and
-    /// corresponding Merkle authentication paths.
+    /// corresponding batch opening proof.
     pub fn new<A: Air<BaseField = E::BaseField>>(
         queries: Queries,
         air: &A,
@@ -331,13 +394,17 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> ConstraintQuer
         let constraint_frame_width = air.context().num_constraint_composition_columns();
 
         let (query_proofs, evaluations) = queries
-            .parse::<H, E>(air.lde_domain_size(), num_queries, constraint_frame_width)
+            .parse::<H, E, V>(air.lde_domain_size(), num_queries, constraint_frame_width)
             .map_err(|err| {
                 VerifierError::ProofDeserializationError(format!(
                     "constraint evaluation query deserialization failed: {err}"
                 ))
             })?;
 
-        Ok(Self { query_proofs, evaluations })
+        Ok(Self {
+            query_proofs,
+            evaluations,
+            _h: PhantomData,
+        })
     }
 }

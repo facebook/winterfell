@@ -152,7 +152,7 @@
 //!     math::{fields::f128::BaseElement, FieldElement, ToElements},
 //!     Air, AirContext, Assertion, GkrVerifier, EvaluationFrame,
 //!     ProofOptions, TraceInfo, TransitionConstraintDegree,
-//!     crypto::{hashers::Blake3_256, DefaultRandomCoin},
+//!     crypto::{hashers::Blake3_256, DefaultRandomCoin, MerkleTree},
 //! };
 //!
 //! // Public inputs for our computation will consist of the starting value and the end result.
@@ -258,7 +258,7 @@
 //!
 //! ```no_run
 //! use winterfell::{
-//!     crypto::{hashers::Blake3_256, DefaultRandomCoin},
+//!     crypto::{hashers::Blake3_256, DefaultRandomCoin, MerkleTree},
 //!     math::{fields::f128::BaseElement, FieldElement, ToElements},
 //!     matrix::ColMatrix,
 //!     DefaultTraceLde, ProofOptions, Prover, StarkDomain, Trace, TracePolyTable, TraceTable,
@@ -347,8 +347,9 @@
 //!     type Air = WorkAir;
 //!     type Trace = TraceTable<Self::BaseField>;
 //!     type HashFn = Blake3_256<Self::BaseField>;
+//!     type VC = MerkleTree<Self::HashFn>;
 //!     type RandomCoin = DefaultRandomCoin<Self::HashFn>;
-//!     type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
+//!     type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn, Self::VC>;
 //!     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
 //!         DefaultConstraintEvaluator<'a, Self::Air, E>;
 //!
@@ -394,7 +395,7 @@
 //!
 //! ```
 //! # use winterfell::{
-//! #    crypto::{hashers::Blake3_256, DefaultRandomCoin},
+//! #    crypto::{hashers::Blake3_256, DefaultRandomCoin, MerkleTree},
 //! #    math::{fields::f128::BaseElement, FieldElement, ToElements},
 //! #    matrix::ColMatrix,
 //! #    Air, AirContext, Assertion, AuxRandElements, ByteWriter, DefaultConstraintEvaluator,
@@ -490,8 +491,9 @@
 //! #    type Air = WorkAir;
 //! #    type Trace = TraceTable<Self::BaseField>;
 //! #    type HashFn = Blake3_256<Self::BaseField>;
+//! #    type VC = MerkleTree<Self::HashFn>;
 //! #    type RandomCoin = DefaultRandomCoin<Self::HashFn>;
-//! #    type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
+//! #    type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn, Self::VC>;
 //! #    type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
 //! #        DefaultConstraintEvaluator<'a, Self::Air, E>;
 //! #
@@ -559,7 +561,8 @@
 //! let pub_inputs = PublicInputs { start, result };
 //! assert!(winterfell::verify::<WorkAir,
 //!                              Blake3_256<BaseElement>,
-//!                              DefaultRandomCoin<Blake3_256<BaseElement>>
+//!                              DefaultRandomCoin<Blake3_256<BaseElement>>,
+//!                              MerkleTree<Blake3_256<BaseElement>>
 //!                             >(proof, pub_inputs, &min_opts).is_ok());
 //! ```
 //!
@@ -593,15 +596,15 @@ extern crate std;
 
 pub use air::{AuxRandElements, GkrVerifier};
 pub use prover::{
-    crypto, iterators, math, matrix, Air, AirContext, Assertion, AuxTraceWithMetadata,
-    BoundaryConstraint, BoundaryConstraintGroup, ByteReader, ByteWriter, CompositionPolyTrace,
+    crypto, math, matrix, Air, AirContext, Assertion, AuxTraceWithMetadata,
+    BoundaryConstraint, BoundaryConstraintGroup, CompositionPolyTrace,
     ConstraintCompositionCoefficients, ConstraintDivisor, ConstraintEvaluator,
-    DeepCompositionCoefficients, DefaultConstraintEvaluator, DefaultTraceLde, Deserializable,
-    DeserializationError, EvaluationFrame, FieldExtension, Proof, ProofOptions, Prover,
-    ProverError, ProverGkrProof, Serializable, SliceReader, StarkDomain, Trace, TraceInfo,
+    DeepCompositionCoefficients, DefaultConstraintEvaluator, DefaultTraceLde,
+    EvaluationFrame, FieldExtension, Proof, ProofOptions, Prover,
+    ProverError, ProverGkrProof, StarkDomain, Trace, TraceInfo,
     TraceLde, TracePolyTable, TraceTable, TraceTableFragment, TransitionConstraintDegree,
 };
-pub use verifier::{verify, AcceptableOptions, VerifierError};
+pub use verifier::{verify, AcceptableOptions, VerifierError, ByteWriter};
 
 #[cfg(test)]
 mod tests;

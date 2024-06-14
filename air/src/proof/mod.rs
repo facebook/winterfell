@@ -7,8 +7,7 @@
 
 use alloc::vec::Vec;
 use core::cmp;
-
-use crypto::Hasher;
+use crypto::{Hasher, MerkleTree};
 use fri::FriProof;
 use math::FieldElement;
 use utils::{ByteReader, Deserializable, DeserializationError, Serializable, SliceReader};
@@ -154,9 +153,8 @@ impl Proof {
             num_unique_queries: 0,
             commitments: Commitments::default(),
             trace_queries: Vec::new(),
-            constraint_queries: Queries::new::<_, DummyField>(
+            constraint_queries: Queries::new::<DummyHasher<DummyField>, DummyField, MerkleTree<_>>(
                 BatchMerkleProof::<DummyHasher<DummyField>> {
-                    leaves: Vec::new(),
                     nodes: Vec::new(),
                     depth: 0,
                 },

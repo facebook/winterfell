@@ -49,8 +49,6 @@ pub use air::{
     TransitionConstraintDegree,
 };
 use air::{AuxRandElements, GkrRandElements};
-pub use crypto;
-use crypto::{ElementHasher, RandomCoin};
 use fri::FriProver;
 pub use math;
 use math::{
@@ -58,12 +56,9 @@ use math::{
     fields::{CubeExtension, QuadExtension},
     ExtensibleField, FieldElement, StarkField, ToElements,
 };
-use maybe_async::{maybe_async, maybe_await};
-use tracing::{event, info_span, instrument, Level};
-pub use utils::{
-    iterators, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
-    SliceReader,
-};
+
+pub use crypto;
+use crypto::{ElementHasher, RandomCoin, VectorCommitment};
 
 mod domain;
 pub use domain::StarkDomain;
@@ -81,6 +76,7 @@ mod composer;
 use composer::DeepCompositionPoly;
 
 mod trace;
+use maybe_async::{maybe_await, maybe_async};
 pub use trace::{
     AuxTraceWithMetadata, DefaultTraceLde, Trace, TraceLde, TracePolyTable, TraceTable,
     TraceTableFragment,
@@ -91,6 +87,8 @@ use channel::ProverChannel;
 
 mod errors;
 pub use errors::ProverError;
+use tracing::{event, info_span, instrument, Level};
+use utils::Serializable;
 
 #[cfg(test)]
 pub mod tests;
@@ -137,13 +135,19 @@ pub trait Prover {
     type Trace: Trace<BaseField = Self::BaseField> + Send + Sync;
 
     /// Hash function to be used.
-    type HashFn: ElementHasher<BaseField = Self::BaseField>;
+    type HashFn: ElementHasher<
+        BaseField = Self::BaseField,
+        Digest = <Self::VC as VectorCommitment>::Item,
+    >;
+
+    /// Vector commitment to be used.
+    type VC: VectorCommitment;
 
     /// PRNG to be used for generating random field elements.
-    type RandomCoin: RandomCoin<BaseField = Self::BaseField, Hasher = Self::HashFn> + Send + Sync;
+    type RandomCoin: RandomCoin<BaseField = Self::BaseField, Hasher = Self::HashFn, VC = Self::VC>;
 
     /// Trace low-degree extension for building the LDEs of trace segments and their commitments.
-    type TraceLde<E>: TraceLde<E, HashFn = Self::HashFn> + Send + Sync
+    type TraceLde<E>: TraceLde<E, HashFn = Self::HashFn, VC = Self::VC>
     where
         E: FieldElement<BaseField = Self::BaseField>;
 
@@ -288,10 +292,11 @@ pub trait Prover {
         // create a channel which is used to simulate interaction between the prover and the
         // verifier; the channel will be used to commit to values and to draw randomness that
         // should come from the verifier.
-        let mut channel = ProverChannel::<Self::Air, E, Self::HashFn, Self::RandomCoin>::new(
-            &air,
-            pub_inputs_elements,
-        );
+        let mut channel =
+            ProverChannel::<Self::Air, E, Self::HashFn, Self::RandomCoin, Self::VC>::new(
+                &air,
+                pub_inputs_elements,
+            );
 
         // 1 ----- Commit to the execution trace --------------------------------------------------
 
@@ -304,8 +309,22 @@ pub trait Prover {
         assert_eq!(domain.trace_length(), trace_length);
 
         // commit to the main trace segment
-        let (mut trace_lde, mut trace_polys) =
-            maybe_await!(self.commit_to_main_trace_segment(&trace, &domain, &mut channel));
+        let (mut trace_lde, mut trace_polys) = {
+            // extend the main execution trace and commit to the extended trace
+            let span = info_span!("commit_to_main_trace_segment").entered();
+            let (trace_lde, trace_polys) =
+                self.new_trace_lde(trace.info(), trace.main_segment(), &domain);
+
+            // get the commitment to the main trace segment LDE
+            let main_trace_root = trace_lde.get_main_trace_commitment();
+
+            // commit to the LDE of the main trace by writing its commitment into the channel
+            channel.commit_trace(main_trace_root);
+
+            drop(span);
+
+            (trace_lde, trace_polys)
+        };
 
         // build the auxiliary trace segment, and append the resulting segments to trace commitment
         // and trace polynomial table structs
@@ -334,14 +353,13 @@ pub trait Prover {
 
             // commit to the auxiliary trace segment
             let aux_segment_polys = {
-                // extend the auxiliary trace segment and build a Merkle tree from the extended
-                // trace
+                // extend the auxiliary trace segment and commit to the extended trace
                 let span = info_span!("commit_to_aux_trace_segment").entered();
                 let (aux_segment_polys, aux_segment_root) =
                     trace_lde.set_aux_trace(&aux_trace, &domain);
 
-                // commit to the LDE of the extended auxiliary trace segment by writing the root of
-                // its Merkle tree into the channel
+                // commit to the LDE of the extended auxiliary trace segment by writing its
+                // commitment into the channel
                 channel.commit_trace(aux_segment_root);
 
                 drop(span);
@@ -386,8 +404,24 @@ pub trait Prover {
         assert_eq!(composition_poly_trace.num_rows(), ce_domain_size);
 
         // 3 ----- commit to constraint evaluations -----------------------------------------------
-        let (constraint_commitment, composition_poly) = maybe_await!(self
-            .commit_to_constraint_evaluations(&air, composition_poly_trace, &domain, &mut channel));
+        let (constraint_commitment, composition_poly) = {
+            let span = info_span!("commit_to_constraint_evaluations").entered();
+
+            // first, build a commitment to the evaluations of the constraint composition
+            // polynomial columns
+            let (constraint_commitment, composition_poly) = self.build_constraint_commitment::<E>(
+                composition_poly_trace,
+                air.context().num_constraint_composition_columns(),
+                &domain,
+            );
+
+            // then, commit to the evaluations of constraints by writing its commitment into
+            // the channel
+            channel.commit_constraints(constraint_commitment.commitment());
+
+            drop(span);
+            (constraint_commitment, composition_poly)
+        };
 
         // 4 ----- build DEEP composition polynomial ----------------------------------------------
         let deep_composition_poly = {
@@ -479,13 +513,12 @@ pub trait Prover {
             let fri_proof = fri_prover.build_proof(&query_positions);
 
             // query the execution trace at the selected position; for each query, we need the
-            // state of the trace at that position + Merkle authentication path
+            // state of the trace at that position and a batch opening proof at specified queries
             let trace_queries = trace_lde.query(&query_positions);
 
             // query the constraint commitment at the selected positions; for each query, we need
-            // just a Merkle authentication path. this is because constraint evaluations for each
-            // step are merged into a single value and Merkle authentication paths contain these
-            // values already
+            // the state of the trace at that position and a batch opening proof at specified
+            // queries
             let constraint_queries = constraint_commitment.query(&query_positions);
 
             // build the proof object
@@ -512,15 +545,14 @@ pub trait Prover {
     /// columns each of size equal to trace length, and finally evaluating each composition
     /// polynomial column over the LDE domain.
     ///
-    /// The commitment is computed by hashing each row in the evaluation matrix, and then building
-    /// a Merkle tree from the resulting hashes.
-    #[maybe_async]
+    /// The commitment is computed by building a vector containing the hashes of each row in
+    /// the evaluation matrix, and then building vector commitment of the resulting vector.
     fn build_constraint_commitment<E>(
         &self,
         composition_poly_trace: CompositionPolyTrace<E>,
         num_constraint_composition_columns: usize,
         domain: &StarkDomain<Self::BaseField>,
-    ) -> (ConstraintCommitment<E, Self::HashFn>, CompositionPoly<E>)
+    ) -> (ConstraintCommitment<E, Self::HashFn, Self::VC>, CompositionPoly<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
@@ -552,10 +584,9 @@ pub trait Prover {
             tree_depth = domain_size.ilog2()
         )
         .in_scope(|| {
-            let commitment = composed_evaluations.commit_to_rows();
+            let commitment = composed_evaluations.commit_to_rows::<Self::HashFn, Self::VC>();
             ConstraintCommitment::new(composed_evaluations, commitment)
         });
-        assert_eq!(constraint_commitment.tree_depth(), domain_size.ilog2() as usize);
 
         (constraint_commitment, composition_poly)
     }
@@ -567,7 +598,7 @@ pub trait Prover {
         &self,
         trace: &Self::Trace,
         domain: &StarkDomain<Self::BaseField>,
-        channel: &mut ProverChannel<'_, Self::Air, E, Self::HashFn, Self::RandomCoin>,
+        channel: &mut ProverChannel<'_, Self::Air, E, Self::HashFn, Self::RandomCoin, Self::VC>,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
@@ -594,8 +625,8 @@ pub trait Prover {
         air: &Self::Air,
         composition_poly_trace: CompositionPolyTrace<E>,
         domain: &StarkDomain<Self::BaseField>,
-        channel: &mut ProverChannel<'_, Self::Air, E, Self::HashFn, Self::RandomCoin>,
-    ) -> (ConstraintCommitment<E, Self::HashFn>, CompositionPoly<E>)
+        channel: &mut ProverChannel<'_, Self::Air, E, Self::HashFn, Self::RandomCoin, Self::VC>,
+    ) -> (ConstraintCommitment<E, Self::HashFn, Self::VC>, CompositionPoly<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
@@ -610,7 +641,7 @@ pub trait Prover {
 
         // then, commit to the evaluations of constraints by writing the root of the constraint
         // Merkle tree into the channel
-        channel.commit_constraints(constraint_commitment.root());
+        channel.commit_constraints(constraint_commitment.commitment());
 
         (constraint_commitment, composition_poly)
     }
