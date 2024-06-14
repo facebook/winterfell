@@ -39,6 +39,9 @@ pub use air::{
     EvaluationFrame, FieldExtension, ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
 use air::{AuxRandElements, GkrVerifier};
+pub use crypto;
+use crypto::{ElementHasher, Hasher, RandomCoin, VectorCommitment};
+use fri::FriVerifier;
 pub use math;
 use math::{
     fields::{CubeExtension, QuadExtension},
@@ -47,11 +50,6 @@ use math::{
 pub use utils::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
 };
-
-pub use crypto;
-use crypto::{ElementHasher, Hasher, RandomCoin, VectorCommitment};
-
-use fri::FriVerifier;
 
 mod channel;
 use channel::VerifierChannel;
@@ -115,7 +113,7 @@ where
                 channel,
                 public_coin,
             )
-        }
+        },
         FieldExtension::Quadratic => {
             if !<QuadExtension<AIR::BaseField>>::is_supported() {
                 return Err(VerifierError::UnsupportedFieldExtension(2));

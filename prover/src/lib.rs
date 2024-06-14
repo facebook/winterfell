@@ -49,6 +49,8 @@ pub use air::{
     TransitionConstraintDegree,
 };
 use air::{AuxRandElements, GkrRandElements};
+pub use crypto;
+use crypto::{ElementHasher, RandomCoin, VectorCommitment};
 use fri::FriProver;
 pub use math;
 use math::{
@@ -56,9 +58,12 @@ use math::{
     fields::{CubeExtension, QuadExtension},
     ExtensibleField, FieldElement, StarkField, ToElements,
 };
-
-pub use crypto;
-use crypto::{ElementHasher, RandomCoin, VectorCommitment};
+use maybe_async::{maybe_async, maybe_await};
+use tracing::{event, info_span, instrument, Level};
+pub use utils::{
+    iterators, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+    SliceReader,
+};
 
 mod domain;
 pub use domain::StarkDomain;
@@ -309,22 +314,8 @@ pub trait Prover {
         assert_eq!(domain.trace_length(), trace_length);
 
         // commit to the main trace segment
-        let (mut trace_lde, mut trace_polys) = {
-            // extend the main execution trace and commit to the extended trace
-            let span = info_span!("commit_to_main_trace_segment").entered();
-            let (trace_lde, trace_polys) =
-                self.new_trace_lde(trace.info(), trace.main_segment(), &domain);
-
-            // get the commitment to the main trace segment LDE
-            let main_trace_root = trace_lde.get_main_trace_commitment();
-
-            // commit to the LDE of the main trace by writing its commitment into the channel
-            channel.commit_trace(main_trace_root);
-
-            drop(span);
-
-            (trace_lde, trace_polys)
-        };
+        let (mut trace_lde, mut trace_polys) =
+            maybe_await!(self.commit_to_main_trace_segment(&trace, &domain, &mut channel));
 
         // build the auxiliary trace segment, and append the resulting segments to trace commitment
         // and trace polynomial table structs
@@ -355,12 +346,12 @@ pub trait Prover {
             let aux_segment_polys = {
                 // extend the auxiliary trace segment and commit to the extended trace
                 let span = info_span!("commit_to_aux_trace_segment").entered();
-                let (aux_segment_polys, aux_segment_root) =
+                let (aux_segment_polys, aux_segment_commitment) =
                     trace_lde.set_aux_trace(&aux_trace, &domain);
 
                 // commit to the LDE of the extended auxiliary trace segment by writing its
                 // commitment into the channel
-                channel.commit_trace(aux_segment_root);
+                channel.commit_trace(aux_segment_commitment);
 
                 drop(span);
                 aux_segment_polys
@@ -404,24 +395,8 @@ pub trait Prover {
         assert_eq!(composition_poly_trace.num_rows(), ce_domain_size);
 
         // 3 ----- commit to constraint evaluations -----------------------------------------------
-        let (constraint_commitment, composition_poly) = {
-            let span = info_span!("commit_to_constraint_evaluations").entered();
-
-            // first, build a commitment to the evaluations of the constraint composition
-            // polynomial columns
-            let (constraint_commitment, composition_poly) = self.build_constraint_commitment::<E>(
-                composition_poly_trace,
-                air.context().num_constraint_composition_columns(),
-                &domain,
-            );
-
-            // then, commit to the evaluations of constraints by writing its commitment into
-            // the channel
-            channel.commit_constraints(constraint_commitment.commitment());
-
-            drop(span);
-            (constraint_commitment, composition_poly)
-        };
+        let (constraint_commitment, composition_poly) = maybe_await!(self
+            .commit_to_constraint_evaluations(&air, composition_poly_trace, &domain, &mut channel));
 
         // 4 ----- build DEEP composition polynomial ----------------------------------------------
         let deep_composition_poly = {
@@ -547,6 +522,7 @@ pub trait Prover {
     ///
     /// The commitment is computed by building a vector containing the hashes of each row in
     /// the evaluation matrix, and then building vector commitment of the resulting vector.
+    #[maybe_async]
     fn build_constraint_commitment<E>(
         &self,
         composition_poly_trace: CompositionPolyTrace<E>,
@@ -603,16 +579,16 @@ pub trait Prover {
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
-        // extend the main execution trace and build a Merkle tree from the extended trace
+        // extend the main execution trace and commit to the extended trace
         let (trace_lde, trace_polys) =
             maybe_await!(self.new_trace_lde(trace.info(), trace.main_segment(), domain));
 
         // get the commitment to the main trace segment LDE
-        let main_trace_root = trace_lde.get_main_trace_commitment();
+        let main_trace_commitment = trace_lde.get_main_trace_commitment();
 
-        // commit to the LDE of the main trace by writing the root of its Merkle tree into
+        // commit to the LDE of the main trace by writing the the commitment string into
         // the channel
-        channel.commit_trace(main_trace_root);
+        channel.commit_trace(main_trace_commitment);
 
         (trace_lde, trace_polys)
     }
@@ -639,8 +615,8 @@ pub trait Prover {
                 domain,
             ));
 
-        // then, commit to the evaluations of constraints by writing the root of the constraint
-        // Merkle tree into the channel
+        // then, commit to the evaluations of constraints by writing the commitment string of
+        // the constraint commitment into the channel
         channel.commit_constraints(constraint_commitment.commitment());
 
         (constraint_commitment, composition_poly)

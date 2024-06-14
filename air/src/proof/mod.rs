@@ -7,6 +7,7 @@
 
 use alloc::vec::Vec;
 use core::cmp;
+
 use crypto::{Hasher, MerkleTree};
 use fri::FriProof;
 use math::FieldElement;
@@ -154,10 +155,7 @@ impl Proof {
             commitments: Commitments::default(),
             trace_queries: Vec::new(),
             constraint_queries: Queries::new::<DummyHasher<DummyField>, DummyField, MerkleTree<_>>(
-                BatchMerkleProof::<DummyHasher<DummyField>> {
-                    nodes: Vec::new(),
-                    depth: 0,
-                },
+                BatchMerkleProof::<DummyHasher<DummyField>> { nodes: Vec::new(), depth: 0 },
                 vec![vec![DummyField::ONE]],
             ),
             ood_frame: OodFrame::default(),

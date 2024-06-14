@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::vec::Vec;
+
 use crypto::{ElementHasher, VectorCommitment};
 use math::{fft, FieldElement, StarkField};
 #[cfg(feature = "concurrent")]

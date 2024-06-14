@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::vec::Vec;
+
 use crypto::{ElementHasher, Hasher, VectorCommitment};
 use math::FieldElement;
 use utils::{
@@ -68,10 +69,7 @@ impl Queries {
         }
         let opening_proof = opening_proof.to_bytes();
 
-        Queries {
-            opening_proof,
-            values,
-        }
+        Queries { opening_proof, values }
     }
 
     // PARSER
@@ -159,9 +157,6 @@ impl Deserializable for Queries {
         let num_paths_bytes = source.read_u32()?;
         let paths = source.read_vec(num_paths_bytes as usize)?;
 
-        Ok(Queries {
-            opening_proof: paths,
-            values,
-        })
+        Ok(Queries { opening_proof: paths, values })
     }
 }

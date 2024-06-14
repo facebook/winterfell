@@ -1,5 +1,6 @@
 use alloc::vec::Vec;
 use core::fmt::Debug;
+
 use utils::{Deserializable, Serializable};
 
 /// A vector commitment (VC) scheme.

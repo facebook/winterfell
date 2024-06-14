@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::{collections::BTreeMap, vec::Vec};
+
 use utils::{ByteReader, Deserializable, DeserializationError, Serializable};
 
 use crate::{errors::MerkleTreeError, Hasher};
@@ -103,10 +104,7 @@ impl<H: Hasher> BatchMerkleProof<H> {
             core::mem::swap(&mut path_map, &mut next_path_map);
         }
 
-        BatchMerkleProof {
-            nodes,
-            depth: (depth) as u8,
-        }
+        BatchMerkleProof { nodes, depth: (depth) as u8 }
     }
 
     /// Computes a node to which all Merkle paths aggregated in this proof resolve.
@@ -181,7 +179,7 @@ impl<H: Hasher> BatchMerkleProof<H> {
                                 return Err(MerkleTreeError::InvalidProof);
                             }
                             buf[1] = leaves[index2];
-                        }
+                        },
                         None => return Err(MerkleTreeError::InvalidProof),
                     }
                     proof_pointers.push(1);
@@ -330,7 +328,7 @@ impl<H: Hasher> BatchMerkleProof<H> {
                                 return Err(MerkleTreeError::InvalidProof);
                             }
                             buf[1] = leaves[index2];
-                        }
+                        },
                         None => return Err(MerkleTreeError::InvalidProof),
                     }
                     proof_pointers.push(1);

@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::{string::ToString, vec::Vec};
+
 use crypto::{ElementHasher, VectorCommitment};
 use math::FieldElement;
 use utils::{
@@ -254,10 +255,7 @@ impl FriProofLayer {
         let mut proof_bytes = Vec::new();
         proof.write_into(&mut proof_bytes);
 
-        FriProofLayer {
-            values: value_bytes,
-            paths: proof_bytes,
-        }
+        FriProofLayer { values: value_bytes, paths: proof_bytes }
     }
 
     // PUBLIC ACCESSORS

@@ -4,12 +4,12 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::{string::ToString, vec::Vec};
+use core::marker::PhantomData;
 
 use air::{
     proof::{Proof, Queries, Table, TraceOodFrame},
     Air,
 };
-use core::marker::PhantomData;
 use crypto::{ElementHasher, VectorCommitment};
 use fri::VerifierChannel as FriVerifierChannel;
 use math::{FieldElement, StarkField};
@@ -30,13 +30,13 @@ pub struct VerifierChannel<
     V: VectorCommitment,
 > {
     // trace queries
-    trace_roots: Vec<V::Commitment>,
+    trace_commitments: Vec<V::Commitment>,
     trace_queries: Option<TraceQueries<E, H, V>>,
     // constraint queries
-    constraint_root: V::Commitment,
+    constraint_commitment: V::Commitment,
     constraint_queries: Option<ConstraintQueries<E, H, V>>,
     // FRI proof
-    fri_roots: Option<Vec<V::Commitment>>,
+    fri_commitments: Option<Vec<V::Commitment>>,
     fri_layer_proofs: Vec<V::MultiProof>,
     fri_layer_queries: Vec<Vec<E>>,
     fri_remainder: Option<Vec<E>>,
@@ -87,7 +87,7 @@ impl<
         let fri_options = air.options().to_fri_options();
 
         // --- parse commitments ------------------------------------------------------------------
-        let (trace_roots, constraint_root, fri_roots) = commitments
+        let (trace_commitments, constraint_commitment, fri_commitments) = commitments
             .parse::<V>(num_trace_segments, fri_options.num_fri_layers(lde_domain_size))
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
@@ -116,13 +116,13 @@ impl<
 
         Ok(VerifierChannel {
             // trace queries
-            trace_roots,
+            trace_commitments,
             trace_queries: Some(trace_queries),
             // constraint queries
-            constraint_root,
+            constraint_commitment,
             constraint_queries: Some(constraint_queries),
             // FRI proof
-            fri_roots: Some(fri_roots),
+            fri_commitments: Some(fri_commitments),
             fri_layer_proofs,
             fri_layer_queries,
             fri_remainder: Some(fri_remainder),
@@ -144,12 +144,12 @@ impl<
     /// For computations requiring multiple trace segment, the returned slice will contain a
     /// commitment for each trace segment.
     pub fn read_trace_commitments(&self) -> &[V::Commitment] {
-        &self.trace_roots
+        &self.trace_commitments
     }
 
     /// Returns constraint evaluation commitment sent by the prover.
     pub fn read_constraint_commitment(&self) -> V::Commitment {
-        self.constraint_root
+        self.constraint_commitment
     }
 
     /// Returns trace polynomial evaluations at out-of-domain points z and z * g, where g is the
@@ -195,7 +195,7 @@ impl<
         let items: Vec<V::Item> =
             { queries.main_states.rows().map(|row| H::hash_elements(row)).collect() };
         <V as VectorCommitment>::verify_many(
-            self.trace_roots[0],
+            self.trace_commitments[0],
             positions,
             &items,
             &queries.query_proofs[0],
@@ -213,7 +213,7 @@ impl<
                     .collect()
             };
             <V as VectorCommitment>::verify_many(
-                self.trace_roots[1],
+                self.trace_commitments[1],
                 positions,
                 &items,
                 &queries.query_proofs[1],
@@ -235,7 +235,7 @@ impl<
         let items: Vec<V::Item> =
             queries.evaluations.rows().map(|row| H::hash_elements(row)).collect();
         <V as VectorCommitment>::verify_many(
-            self.constraint_root,
+            self.constraint_commitment,
             positions,
             &items,
             &queries.query_proofs,
@@ -263,7 +263,7 @@ where
     }
 
     fn read_fri_layer_commitments(&mut self) -> Vec<V::Commitment> {
-        self.fri_roots.take().expect("already read")
+        self.fri_commitments.take().expect("already read")
     }
 
     fn take_next_fri_layer_proof(&mut self) -> V::MultiProof {

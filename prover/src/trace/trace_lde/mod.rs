@@ -5,6 +5,8 @@
 
 use air::{proof::Queries, LagrangeKernelEvaluationFrame, TraceInfo};
 use alloc::vec::Vec;
+
+use air::{proof::Queries, LagrangeKernelEvaluationFrame, TraceInfo};
 use crypto::{ElementHasher, VectorCommitment};
 
 use super::{ColMatrix, EvaluationFrame, FieldElement, TracePolyTable};

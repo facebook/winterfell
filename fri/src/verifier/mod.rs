@@ -7,6 +7,7 @@
 
 use alloc::vec::Vec;
 use core::{marker::PhantomData, mem};
+
 use crypto::{ElementHasher, RandomCoin, VectorCommitment};
 use math::{polynom, FieldElement, StarkField};
 

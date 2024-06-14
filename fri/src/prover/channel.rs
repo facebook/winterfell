@@ -5,6 +5,7 @@
 
 use alloc::vec::Vec;
 use core::marker::PhantomData;
+
 use crypto::{ElementHasher, RandomCoin, VectorCommitment};
 use math::FieldElement;
 

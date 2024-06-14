@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::vec::Vec;
+use core::marker::PhantomData;
 
 use air::{proof::Queries, LagrangeKernelEvaluationFrame, TraceInfo};
 use tracing::info_span;
