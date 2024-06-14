@@ -6,7 +6,7 @@
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
-use crypto::{ElementHasher, Hasher, MerkleTree};
+use crypto::{ElementHasher, Hasher, VectorCommitment};
 use math::{fft, FieldElement, StarkField};
 use utils::{flatten_vector_elements, group_slice_elements, transpose_slice};
 
@@ -29,9 +29,10 @@ mod tests;
 /// Implements the prover component of the FRI protocol.
 ///
 /// Given evaluations of a function *f* over domain *D* (`evaluations`), a FRI prover generates
-/// a proof that *f* is a polynomial of some bounded degree *d*, such that *d* < |*D*| / *blowup_factor*.
-/// The proof is succinct: it exponentially smaller than `evaluations` and the verifier can verify it
-/// exponentially faster than it would have taken them to read all `evaluations`.
+/// a proof that *f* is a polynomial of some bounded degree *d*, such that
+/// *d* < |*D*| / *blowup_factor*.
+/// The proof is succinct: it exponentially smaller than `evaluations` and the verifier can verify
+/// it exponentially faster than it would have taken them to read all `evaluations`.
 ///
 /// The prover is parametrized with the following types:
 ///
@@ -40,8 +41,9 @@ mod tests;
 ///   base field `B`, but it can also be an extension of the base field in cases when the base
 ///   field is too small to provide desired security level for the FRI protocol.
 /// * `C` specifies the type used to simulate prover-verifier interaction.
-/// * `H` specifies the hash function used to build layer Merkle trees. The same hash function
-///   must be used in the prover channel to generate pseudo random values.
+/// * `H` specifies the hash function used to build for each layer the vector of values commited to
+///   using the specified vector commitment scheme. The same hash function must be used in
+///   the prover channel to generate pseudo random values.
 ///
 /// Proof generation is performed in two phases: commit phase and query phase.
 ///
@@ -54,12 +56,12 @@ mod tests;
 /// a number of coefficients less than or equal to `remainder_max_degree_plus_1`.
 ///
 /// At each layer of reduction, the prover commits to the current set of evaluations. This is done
-/// by building a Merkle tree from the evaluations and sending the root of the tree to the verifier
-/// (via [ProverChannel]). The Merkle tree is build in such a way that all evaluations needed to
-/// compute a single value in the next FRI layer are grouped into the same leaf (the number of
-/// evaluations needed to compute a single element in the next FRI layer is equal to the
-/// `folding_factor`). This allows us to decommit all these values using a single Merkle
-/// authentication path.
+/// by building a vector commitment to hashed evaluations and sending the commitment string
+/// to the verifier (via [ProverChannel]). The vector commitment is build in such a way that all
+/// evaluations needed to compute a single value in the next FRI layer are grouped into the same
+/// leaf (the number of evaluations needed to compute a single element in the next FRI layer is
+/// equal to the `folding_factor`). This allows us to decommit all these values using a single
+/// individual opening proof.
 ///
 /// After committing to the set of evaluations at the current layer, the prover draws a random
 /// field element α from the channel, and uses it to build the next FRI layer. In the interactive
@@ -67,8 +69,8 @@ mod tests;
 /// sends it to the prover. In the non-interactive version, α is pseudo-randomly generated based
 /// on the values the prover has written into the channel up to that point.
 ///
-/// The prover keeps all FRI layers (consisting of evaluations and corresponding Merkle trees) in
-/// its internal state.
+/// The prover keeps all FRI layers (consisting of evaluations and corresponding vector
+/// commitments) in its internal state.
 ///
 /// # Query phase
 /// In the query phase, which is executed via [build_proof()](FriProver::build_proof()) function,
@@ -89,23 +91,30 @@ mod tests;
 ///
 /// Calling [build_layers()](FriProver::build_layers()) when the internal state is dirty, or
 /// calling [build_proof()](FriProver::build_proof()) on a clean state will result in a panic.
-pub struct FriProver<B, E, C, H>
+pub struct FriProver<B, E, C, H, V>
 where
     B: StarkField,
     E: FieldElement<BaseField = B>,
     C: ProverChannel<E, Hasher = H>,
-    H: ElementHasher<BaseField = B>,
+    H: ElementHasher<BaseField = B, Digest = <V as VectorCommitment>::Item>,
+    V: VectorCommitment,
 {
     options: FriOptions,
-    layers: Vec<FriLayer<B, E, H>>,
+    layers: Vec<FriLayer<B, E, H, V>>,
     remainder_poly: FriRemainder<E>,
     _channel: PhantomData<C>,
 }
 
-struct FriLayer<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher> {
-    tree: MerkleTree<H>,
+struct FriLayer<
+    B: StarkField,
+    E: FieldElement<BaseField = B>,
+    H: Hasher<Digest = <V as VectorCommitment>::Item>,
+    V: VectorCommitment,
+> {
+    commitment: V,
     evaluations: Vec<E>,
     _base_field: PhantomData<B>,
+    _h: PhantomData<H>,
 }
 
 struct FriRemainder<E: FieldElement>(Vec<E>);
@@ -113,12 +122,13 @@ struct FriRemainder<E: FieldElement>(Vec<E>);
 // PROVER IMPLEMENTATION
 // ================================================================================================
 
-impl<B, E, C, H> FriProver<B, E, C, H>
+impl<B, E, C, H, V> FriProver<B, E, C, H, V>
 where
     B: StarkField,
     E: FieldElement<BaseField = B>,
-    C: ProverChannel<E, Hasher = H>,
-    H: ElementHasher<BaseField = B>,
+    C: ProverChannel<E, Hasher = H, VectorCommitment = V>,
+    H: ElementHasher<BaseField = B, Digest = <V as VectorCommitment>::Item>,
+    V: VectorCommitment,
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -166,9 +176,10 @@ where
     /// application of the DRP the degree of the function (and size of the domain) is reduced by
     /// `folding_factor` until the remaining evaluations can be represented by a remainder polynomial
     /// with at most `remainder_max_degree_plus_1` number of coefficients.
-    /// At each layer of reduction the current evaluations are committed to using a Merkle tree,
-    /// and the root of this tree is written into the channel. After this the prover draws a random
-    /// field element α from the channel, and uses it in the next application of the DRP.
+    /// At each layer of reduction the current evaluations are committed to using a vector commitment
+    /// scheme, and the commitment string of this vector commitment is written into the channel.
+    /// After this the prover draws a random field element α from the channel, and uses it in
+    /// the next application of the DRP.
     ///
     /// # Panics
     /// Panics if the prover state is dirty (the vector of layers is not empty).
@@ -197,23 +208,27 @@ where
     /// alpha from the channel and use it to perform degree-respecting projection.
     fn build_layer<const N: usize>(&mut self, channel: &mut C, evaluations: &mut Vec<E>) {
         // commit to the evaluations at the current layer; we do this by first transposing the
-        // evaluations into a matrix of N columns, and then building a Merkle tree from the
-        // rows of this matrix; we do this so that we could de-commit to N values with a single
-        // Merkle authentication path.
+        // evaluations into a matrix of N columns, then hashing each row into a digest, and finally
+        // commiting to vector of these digests; we do this so that we could de-commit to N values
+        // with a single opening proof.
         let transposed_evaluations = transpose_slice(evaluations);
         let hashed_evaluations = hash_values::<H, E, N>(&transposed_evaluations);
-        let evaluation_tree =
-            MerkleTree::<H>::new(hashed_evaluations).expect("failed to construct FRI layer tree");
-        channel.commit_fri_layer(*evaluation_tree.root());
+        let evaluation_vector_commitment = <V as VectorCommitment>::new(
+            hashed_evaluations,
+            <V as VectorCommitment>::Options::default(),
+        )
+        .expect("failed to construct FRI layer commitment");
+        channel.commit_fri_layer(evaluation_vector_commitment.commitment());
 
         // draw a pseudo-random coefficient from the channel, and use it in degree-respecting
         // projection to reduce the degree of evaluations by N
         let alpha = channel.draw_fri_alpha();
         *evaluations = apply_drp(&transposed_evaluations, self.domain_offset(), alpha);
         self.layers.push(FriLayer {
-            tree: evaluation_tree,
+            commitment: evaluation_vector_commitment,
             evaluations: flatten_vector_elements(transposed_evaluations),
             _base_field: PhantomData,
+            _h: PhantomData,
         });
     }
 
@@ -224,7 +239,7 @@ where
         let remainder_poly_size = evaluations.len() / self.options.blowup_factor();
         let remainder_poly = evaluations[..remainder_poly_size].to_vec();
         let commitment = <H as ElementHasher>::hash_elements(&remainder_poly);
-        channel.commit_fri_layer(commitment);
+        channel.commit_fri_layer(commitment.into());
         self.remainder_poly = FriRemainder(remainder_poly);
     }
 
@@ -233,9 +248,9 @@ where
     /// Executes query phase of FRI protocol.
     ///
     /// For each of the provided `positions`, corresponding evaluations from each of the layers
-    /// (excluding the remainder layer) are recorded into the proof together with Merkle
-    /// authentication paths from the root of layer commitment trees. For the remainder, we send
-    /// the whole remainder polynomial resulting from interpolating the remainder layer.
+    /// (excluding the remainder layer) are recorded into the proof together with a batch opening
+    /// proof against the sent vector commitment. For the remainder, we send the whole remainder
+    /// polynomial resulting from interpolating the remainder layer evaluations.
     ///
     /// # Panics
     /// Panics is the prover state is clean (no FRI layers have been build yet).
@@ -256,10 +271,10 @@ where
 
                 // sort of a static dispatch for folding_factor parameter
                 let proof_layer = match folding_factor {
-                    2 => query_layer::<B, E, H, 2>(&self.layers[i], &positions),
-                    4 => query_layer::<B, E, H, 4>(&self.layers[i], &positions),
-                    8 => query_layer::<B, E, H, 8>(&self.layers[i], &positions),
-                    16 => query_layer::<B, E, H, 16>(&self.layers[i], &positions),
+                    2 => query_layer::<B, E, H, 2, V>(&self.layers[i], &positions),
+                    4 => query_layer::<B, E, H, 4, V>(&self.layers[i], &positions),
+                    8 => query_layer::<B, E, H, 8, V>(&self.layers[i], &positions),
+                    16 => query_layer::<B, E, H, 16, V>(&self.layers[i], &positions),
                     _ => unimplemented!("folding factor {} is not supported", folding_factor),
                 };
 
@@ -283,15 +298,21 @@ where
 
 /// Builds a single proof layer by querying the evaluations of the passed in FRI layer at the
 /// specified positions.
-fn query_layer<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher, const N: usize>(
-    layer: &FriLayer<B, E, H>,
+fn query_layer<
+    B: StarkField,
+    E: FieldElement<BaseField = B>,
+    H: Hasher<Digest = <V as VectorCommitment>::Item>,
+    const N: usize,
+    V: VectorCommitment,
+>(
+    layer: &FriLayer<B, E, H, V>,
     positions: &[usize],
 ) -> FriProofLayer {
-    // build Merkle authentication paths for all query positions
+    // build a batch opening proof for all query positions
     let proof = layer
-        .tree
-        .prove_batch(positions)
-        .expect("failed to generate a Merkle proof for FRI layer queries");
+        .commitment
+        .open_many(positions)
+        .expect("failed to generate a batch opening proof for FRI layer queries");
 
     // build a list of polynomial evaluations at each position; since evaluations in FRI layers
     // are stored in transposed form, a position refers to N evaluations which are committed
@@ -301,6 +322,5 @@ fn query_layer<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher, const N
     for &position in positions.iter() {
         queried_values.push(evaluations[position]);
     }
-
-    FriProofLayer::new(queried_values, proof)
+    FriProofLayer::new::<_, N, V>(queried_values, proof.1)
 }

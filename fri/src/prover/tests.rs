@@ -5,7 +5,7 @@
 
 use alloc::vec::Vec;
 
-use crypto::{hashers::Blake3_256, DefaultRandomCoin, Hasher, RandomCoin};
+use crypto::{hashers::Blake3_256, DefaultRandomCoin, Hasher, MerkleTree, RandomCoin};
 use math::{fft, fields::f128::BaseElement, FieldElement};
 use utils::{Deserializable, Serializable, SliceReader};
 
@@ -44,7 +44,7 @@ fn fri_folding_4() {
 pub fn build_prover_channel(
     trace_length: usize,
     options: &FriOptions,
-) -> DefaultProverChannel<BaseElement, Blake3, DefaultRandomCoin<Blake3>> {
+) -> DefaultProverChannel<BaseElement, Blake3, DefaultRandomCoin<Blake3>, MerkleTree<Blake3>> {
     DefaultProverChannel::new(trace_length * options.blowup_factor(), 32)
 }
 
@@ -76,14 +76,14 @@ pub fn verify_proof(
     let proof = FriProof::read_from(&mut reader).unwrap();
 
     // verify the proof
-    let mut channel = DefaultVerifierChannel::<BaseElement, Blake3>::new(
+    let mut channel = DefaultVerifierChannel::<BaseElement, Blake3, MerkleTree<Blake3>>::new(
         proof,
         commitments,
         domain_size,
         options.folding_factor(),
     )
     .unwrap();
-    let mut coin = DefaultRandomCoin::<Blake3>::new(&[]);
+    let mut coin = crypto::DefaultRandomCoin::<Blake3>::new(&[]);
     let verifier = FriVerifier::new(&mut channel, &mut coin, options.clone(), max_degree)?;
     let queried_evaluations = positions.iter().map(|&p| evaluations[p]).collect::<Vec<_>>();
     verifier.verify(&mut channel, &queried_evaluations, positions)
@@ -107,7 +107,7 @@ fn fri_prove_verify(
     let mut prover = FriProver::new(options.clone());
     prover.build_layers(&mut channel, evaluations.clone());
     let positions = channel.draw_query_positions(0);
-    let proof = prover.build_proof(&positions);
+    let proof = prover.build_proof(&positions); //  assert_eq!(1, 0 );
 
     // make sure the proof can be verified
     let commitments = channel.layer_commitments().to_vec();

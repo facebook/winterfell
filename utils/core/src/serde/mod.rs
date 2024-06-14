@@ -196,7 +196,7 @@ impl<T: Serializable, const C: usize> Serializable for [T; C] {
 }
 
 impl<T: Serializable> Serializable for [T] {
-    fn write_into<W: ?Sized + ByteWriter>(&self, target: &mut W) {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_usize(self.len());
         for element in self.iter() {
             element.write_into(target);
@@ -226,7 +226,7 @@ impl<T: Serializable> Serializable for BTreeSet<T> {
 }
 
 impl Serializable for str {
-    fn write_into<W: ?Sized + ByteWriter>(&self, target: &mut W) {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_usize(self.len());
         target.write_many(self.as_bytes());
     }

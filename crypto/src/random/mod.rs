@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 
 use math::{FieldElement, StarkField};
 
-use crate::{errors::RandomCoinError, ElementHasher, Hasher};
+use crate::{errors::RandomCoinError, ElementHasher, VectorCommitment};
 
 mod default;
 pub use default::DefaultRandomCoin;
@@ -28,6 +28,7 @@ pub trait RandomCoin: Sync {
 
     /// Hash function which is used by the random coin to generate random field elements.
     type Hasher: ElementHasher<BaseField = Self::BaseField>;
+    type VC: VectorCommitment;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -36,7 +37,7 @@ pub trait RandomCoin: Sync {
     fn new(seed: &[Self::BaseField]) -> Self;
 
     /// Reseeds the coin with the specified data by setting the new seed to hash(`seed` || `data`).
-    fn reseed(&mut self, data: <Self::Hasher as Hasher>::Digest);
+    fn reseed(&mut self, data: <Self::VC as VectorCommitment>::Commitment);
 
     /// Computes hash(`seed` || `value`) and returns the number of leading zeros in the resulting
     /// value if it is interpreted as an integer in big-endian byte order.

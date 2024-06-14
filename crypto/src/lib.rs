@@ -39,3 +39,6 @@ pub use random::{DefaultRandomCoin, RandomCoin};
 
 mod errors;
 pub use errors::{MerkleTreeError, RandomCoinError};
+
+mod commitment;
+pub use commitment::VectorCommitment;

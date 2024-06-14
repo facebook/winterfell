@@ -11,7 +11,7 @@ use math::FieldElement;
 use utils::iterators::*;
 use utils::{iter_mut, uninit_vector};
 
-/// Maps positions in the evaluation domain to indexes of commitment Merkle tree.
+/// Maps positions in the evaluation domain to indexes of of the vector commitment.
 pub fn map_positions_to_indexes(
     positions: &[usize],
     source_domain_size: usize,

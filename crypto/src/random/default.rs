@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 
 use math::{FieldElement, StarkField};
 
-use crate::{errors::RandomCoinError, Digest, ElementHasher, RandomCoin};
+use crate::{errors::RandomCoinError, Digest, ElementHasher, MerkleTree, RandomCoin};
 
 // DEFAULT RANDOM COIN IMPLEMENTATION
 // ================================================================================================
@@ -78,6 +78,7 @@ impl<H: ElementHasher> DefaultRandomCoin<H> {
 impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRandomCoin<H> {
     type BaseField = B;
     type Hasher = H;
+    type VC = MerkleTree<H>;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------

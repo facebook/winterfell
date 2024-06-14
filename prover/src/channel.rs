@@ -10,7 +10,7 @@ use air::{
     proof::{Commitments, Context, OodFrame, Proof, Queries, TraceOodFrame},
     Air, ConstraintCompositionCoefficients, DeepCompositionCoefficients,
 };
-use crypto::{ElementHasher, RandomCoin};
+use crypto::{ElementHasher, RandomCoin, VectorCommitment};
 use fri::FriProof;
 use math::{FieldElement, ToElements};
 #[cfg(feature = "concurrent")]
@@ -19,12 +19,13 @@ use utils::iterators::*;
 // TYPES AND INTERFACES
 // ================================================================================================
 
-pub struct ProverChannel<'a, A, E, H, R>
+pub struct ProverChannel<'a, A, E, H, R, V>
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseField>,
     H: ElementHasher<BaseField = A::BaseField>,
     R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
+    V: VectorCommitment,
 {
     air: &'a A,
     public_coin: R,
@@ -33,17 +34,19 @@ where
     ood_frame: OodFrame,
     pow_nonce: u64,
     _field_element: PhantomData<E>,
+    _vector_commitment: PhantomData<V>,
 }
 
 // PROVER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-impl<'a, A, E, H, R> ProverChannel<'a, A, E, H, R>
+impl<'a, A, E, H, R, V> ProverChannel<'a, A, E, H, R, V>
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseField>,
-    H: ElementHasher<BaseField = A::BaseField>,
-    R: RandomCoin<BaseField = A::BaseField, Hasher = H>,
+    H: ElementHasher<BaseField = A::BaseField, Digest = <V as VectorCommitment>::Item>,
+    R: RandomCoin<BaseField = A::BaseField, Hasher = H, VC = V>,
+    V: VectorCommitment,
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -65,6 +68,7 @@ where
             ood_frame: OodFrame::default(),
             pow_nonce: 0,
             _field_element: PhantomData,
+            _vector_commitment: PhantomData,
         }
     }
 
@@ -72,14 +76,14 @@ where
     // --------------------------------------------------------------------------------------------
 
     /// Commits the prover the extended execution trace.
-    pub fn commit_trace(&mut self, trace_root: H::Digest) {
-        self.commitments.add::<H>(&trace_root);
+    pub fn commit_trace(&mut self, trace_root: V::Commitment) {
+        self.commitments.add::<V>(&trace_root);
         self.public_coin.reseed(trace_root);
     }
 
     /// Commits the prover to the evaluations of the constraint composition polynomial.
-    pub fn commit_constraints(&mut self, constraint_root: H::Digest) {
-        self.commitments.add::<H>(&constraint_root);
+    pub fn commit_constraints(&mut self, constraint_root: V::Commitment) {
+        self.commitments.add::<V>(&constraint_root);
         self.public_coin.reseed(constraint_root);
     }
 
@@ -87,14 +91,14 @@ where
     /// also reseeds the public coin with the hashes of the evaluation frame states.
     pub fn send_ood_trace_states(&mut self, trace_ood_frame: &TraceOodFrame<E>) {
         let trace_states_hash = self.ood_frame.set_trace_states::<E, H>(trace_ood_frame);
-        self.public_coin.reseed(trace_states_hash);
+        self.public_coin.reseed(trace_states_hash.into());
     }
 
     /// Saves the evaluations of constraint composition polynomial columns at the out-of-domain
     /// point. This also reseeds the public coin wit the hash of the evaluations.
     pub fn send_ood_constraint_evaluations(&mut self, evaluations: &[E]) {
         self.ood_frame.set_constraint_evaluations(evaluations);
-        self.public_coin.reseed(H::hash_elements(evaluations));
+        self.public_coin.reseed(H::hash_elements(evaluations).into());
     }
 
     // PUBLIC COIN METHODS
@@ -199,18 +203,20 @@ where
 // FRI PROVER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-impl<'a, A, E, H, R> fri::ProverChannel<E> for ProverChannel<'a, A, E, H, R>
+impl<'a, A, E, H, R, V> fri::ProverChannel<E> for ProverChannel<'a, A, E, H, R, V>
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseField>,
-    H: ElementHasher<BaseField = A::BaseField>,
-    R: RandomCoin<BaseField = A::BaseField, Hasher = H>,
+    H: ElementHasher<BaseField = A::BaseField, Digest = <V as VectorCommitment>::Item>,
+    R: RandomCoin<BaseField = A::BaseField, Hasher = H, VC = V>,
+    V: VectorCommitment,
 {
     type Hasher = H;
+    type VectorCommitment = V;
 
     /// Commits the prover to a FRI layer.
-    fn commit_fri_layer(&mut self, layer_root: H::Digest) {
-        self.commitments.add::<H>(&layer_root);
+    fn commit_fri_layer(&mut self, layer_root: <V as VectorCommitment>::Commitment) {
+        self.commitments.add::<V>(&layer_root);
         self.public_coin.reseed(layer_root);
     }
 

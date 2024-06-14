@@ -29,11 +29,10 @@ pub enum VerifierError {
     /// This error occurs when constraints evaluated over out-of-domain trace rows do not match
     /// evaluations of the constraint composition polynomial at the out-of-domain point.
     InconsistentOodConstraintEvaluations,
-    /// This error occurs when Merkle authentication paths of trace queries do not resolve to the
-    /// execution trace commitment included in the proof.
+    /// This error occurs when the batch opening proof fails to verify for trace queries.
     TraceQueryDoesNotMatchCommitment,
-    /// This error occurs when Merkle authentication paths of constraint evaluation queries do not
-    /// resolve to the constraint evaluation commitment included in the proof.
+    /// This error occurs when the batch opening proof fails to verify for constraint evaluation
+    /// queries.
     ConstraintQueryDoesNotMatchCommitment,
     /// This error occurs when the proof-of-work nonce hashed with the current state of the public
     /// coin resolves to a value which does not meet the proof-of-work threshold specified by the
@@ -79,10 +78,10 @@ impl fmt::Display for VerifierError {
                 write!(f, "constraint evaluations over the out-of-domain frame are inconsistent")
             }
             Self::TraceQueryDoesNotMatchCommitment => {
-                write!(f, "trace query did not match the commitment")
+                write!(f, "failed to open trace query against the given commitment")
             }
             Self::ConstraintQueryDoesNotMatchCommitment => {
-                write!(f, "constraint query did not match the commitment")
+                write!(f, "failed to open constraint query against the given commitment")
             }
             Self::QuerySeedProofOfWorkVerificationFailed => {
                 write!(f, "query seed proof-of-work verification failed")
