@@ -269,7 +269,7 @@ pub trait Air: Send + Sync {
         main_frame: &EvaluationFrame<F>,
         aux_frame: &EvaluationFrame<E>,
         periodic_values: &[F],
-        aux_rand_elements: &[E],
+        aux_rand_elements: &AuxRandElements<E>,
         result: &mut [E],
     ) where
         F: FieldElement<BaseField = Self::BaseField>,
@@ -298,7 +298,7 @@ pub trait Air: Send + Sync {
     #[allow(unused_variables)]
     fn get_aux_assertions<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        aux_rand_elements: &[E],
+        aux_rand_elements: &AuxRandElements<E>,
     ) -> Vec<Assertion<E>> {
         Vec::new()
     }
@@ -422,7 +422,7 @@ pub trait Air: Send + Sync {
     /// combination of boundary constraints during constraint merging.
     fn get_boundary_constraints<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        aux_rand_elements: Option<&[E]>,
+        aux_rand_elements: Option<&AuxRandElements<E>>,
         composition_coefficients: &[E],
     ) -> BoundaryConstraints<E> {
         BoundaryConstraints::new(

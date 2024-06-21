@@ -54,7 +54,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
             main_trace_frame,
             aux_trace_frame,
             &periodic_values,
-            aux_rand_elements.rand_elements(),
+            aux_rand_elements,
             &mut t_evaluations2,
         );
     }
@@ -67,10 +67,8 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     // 2 ----- evaluate boundary constraints ------------------------------------------------------
 
     // get boundary constraints grouped by common divisor from the AIR
-    let b_constraints = air.get_boundary_constraints(
-        aux_rand_elements.as_ref().map(|eles| eles.rand_elements()),
-        &composition_coefficients.boundary,
-    );
+    let b_constraints =
+        air.get_boundary_constraints(aux_rand_elements, &composition_coefficients.boundary);
 
     // iterate over boundary constraint groups for the main trace segment (each group has a
     // distinct divisor), evaluate constraints in each group and add their combination to the

@@ -168,7 +168,7 @@ impl Air for LagrangeKernelComplexAir {
         _main_frame: &EvaluationFrame<F>,
         _aux_frame: &EvaluationFrame<E>,
         _periodic_values: &[F],
-        _aux_rand_elements: &[E],
+        _aux_rand_elements: &AuxRandElements<E>,
         _result: &mut [E],
     ) where
         F: FieldElement<BaseField = Self::BaseField>,
@@ -179,7 +179,7 @@ impl Air for LagrangeKernelComplexAir {
 
     fn get_aux_assertions<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        _aux_rand_elements: &[E],
+        _aux_rand_elements: &AuxRandElements<E>,
     ) -> Vec<Assertion<E>> {
         vec![Assertion::single(0, 0, E::ZERO)]
     }
