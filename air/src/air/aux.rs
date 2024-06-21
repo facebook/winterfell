@@ -6,6 +6,7 @@ use utils::Deserializable;
 
 use super::lagrange::LagrangeKernelRandElements;
 
+// TODOP: fix all docs and naming
 /// Holds the randomly generated elements necessary to build the auxiliary trace.
 ///
 /// Specifically, [`AuxRandElements`] currently supports 2 types of random elements:
@@ -14,23 +15,20 @@ use super::lagrange::LagrangeKernelRandElements;
 #[derive(Debug, Clone)]
 pub struct AuxRandElements<E> {
     rand_elements: Vec<E>,
-    lagrange: Option<LagrangeKernelRandElements<E>>,
+    gkr: Option<GkrRandElements<E>>,
 }
 
 impl<E> AuxRandElements<E> {
     /// Creates a new [`AuxRandElements`], where the auxiliary trace doesn't contain a Lagrange
     /// kernel column.
     pub fn new(rand_elements: Vec<E>) -> Self {
-        Self { rand_elements, lagrange: None }
+        Self { rand_elements, gkr: None }
     }
 
     /// Creates a new [`AuxRandElements`], where the auxiliary trace contains a Lagrange kernel
     /// column.
-    pub fn new_with_lagrange(
-        rand_elements: Vec<E>,
-        lagrange: Option<LagrangeKernelRandElements<E>>,
-    ) -> Self {
-        Self { rand_elements, lagrange }
+    pub fn new_with_gkr(rand_elements: Vec<E>, gkr: Option<GkrRandElements<E>>) -> Self {
+        Self { rand_elements, gkr }
     }
 
     /// Returns the random elements needed to build all columns other than the Lagrange kernel one.
@@ -40,7 +38,33 @@ impl<E> AuxRandElements<E> {
 
     /// Returns the random elements needed to build the Lagrange kernel column.
     pub fn lagrange(&self) -> Option<&LagrangeKernelRandElements<E>> {
-        self.lagrange.as_ref()
+        self.gkr.as_ref().map(|gkr| &gkr.lagrange)
+    }
+
+    pub fn gkr_lambdas(&self) -> Option<&[E]> {
+        self.gkr.as_ref().map(|gkr| gkr.lambdas.as_ref())
+    }
+}
+
+/// TODOP: Document and fix naming. Consider making this type private or pub(crate), depending on if
+/// `AuxRandElements` exposes it (currently not).
+#[derive(Clone, Debug)]
+pub struct GkrRandElements<E> {
+    lagrange: LagrangeKernelRandElements<E>,
+    lambdas: Vec<E>,
+}
+
+impl<E> GkrRandElements<E> {
+    pub fn new(lagrange: LagrangeKernelRandElements<E>, lambdas: Vec<E>) -> Self {
+        Self { lagrange, lambdas }
+    }
+
+    pub fn lagrange_kernel_rand_elements(&self) -> &LagrangeKernelRandElements<E> {
+        &self.lagrange
+    }
+
+    pub fn lambdas(&self) -> &[E] {
+        &self.lambdas
     }
 }
 
@@ -61,7 +85,7 @@ pub trait GkrVerifier {
         &self,
         gkr_proof: Self::GkrProof,
         public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> Result<LagrangeKernelRandElements<E>, Self::Error>
+    ) -> Result<GkrRandElements<E>, Self::Error>
     where
         E: FieldElement,
         Hasher: ElementHasher<BaseField = E::BaseField>;
@@ -75,11 +99,11 @@ impl GkrVerifier for () {
         &self,
         _gkr_proof: Self::GkrProof,
         _public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> Result<LagrangeKernelRandElements<E>, Self::Error>
+    ) -> Result<GkrRandElements<E>, Self::Error>
     where
         E: FieldElement,
         Hasher: ElementHasher<BaseField = E::BaseField>,
     {
-        Ok(LagrangeKernelRandElements::new(Vec::new()))
+        Ok(GkrRandElements::new(LagrangeKernelRandElements::default(), Vec::new()))
     }
 }

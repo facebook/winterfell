@@ -11,7 +11,7 @@ use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElemen
 use crate::ProofOptions;
 
 mod aux;
-pub use aux::{AuxRandElements, GkrVerifier};
+pub use aux::{AuxRandElements, GkrRandElements, GkrVerifier};
 
 mod trace_info;
 pub use trace_info::TraceInfo;
@@ -309,7 +309,7 @@ pub trait Air: Send + Sync {
     /// Returns the [`GkrVerifier`] to be used to verify the GKR proof.
     ///
     /// Leave unimplemented if the `Air` doesn't use a GKR proof.
-    fn get_auxiliary_proof_verifier<E: FieldElement<BaseField = Self::BaseField>>(
+    fn get_gkr_proof_verifier<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
     ) -> Self::GkrVerifier {
         unimplemented!("`get_auxiliary_proof_verifier()` must be implemented when the proof contains a GKR proof");

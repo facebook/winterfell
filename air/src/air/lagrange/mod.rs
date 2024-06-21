@@ -46,7 +46,7 @@ impl<E: FieldElement> LagrangeKernelConstraints<E> {
 }
 
 /// Holds the randomly generated elements needed to build the Lagrange kernel auxiliary column.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct LagrangeKernelRandElements<E> {
     elements: Vec<E>,
 }

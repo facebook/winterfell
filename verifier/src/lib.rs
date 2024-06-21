@@ -178,8 +178,8 @@ where
                 Deserializable::read_from_bytes(gkr_proof_serialized)
                     .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?
             };
-            let lagrange_rand_elements = air
-                .get_auxiliary_proof_verifier::<E>()
+            let gkr_rand_elements = air
+                .get_gkr_proof_verifier::<E>()
                 .verify::<E, _>(gkr_proof, &mut public_coin)
                 .map_err(|err| VerifierError::GkrProofVerificationFailed(err.to_string()))?;
 
@@ -189,7 +189,7 @@ where
 
             public_coin.reseed(trace_commitments[AUX_TRACE_IDX]);
 
-            Some(AuxRandElements::new_with_lagrange(rand_elements, Some(lagrange_rand_elements)))
+            Some(AuxRandElements::new_with_gkr(rand_elements, Some(gkr_rand_elements)))
         } else {
             let rand_elements = air.get_aux_rand_elements(&mut public_coin).expect(
                 "failed to generate the random elements needed to build the auxiliary trace",

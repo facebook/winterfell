@@ -42,13 +42,13 @@
 #[macro_use]
 extern crate alloc;
 
-use air::AuxRandElements;
 pub use air::{
     proof, proof::Proof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
     ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
     EvaluationFrame, FieldExtension, LagrangeKernelRandElements, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
+use air::{AuxRandElements, GkrRandElements};
 pub use crypto;
 use crypto::{ElementHasher, RandomCoin};
 use fri::FriProver;
@@ -205,7 +205,7 @@ pub trait Prover {
         &self,
         main_trace: &Self::Trace,
         public_coin: &mut Self::RandomCoin,
-    ) -> (ProverGkrProof<Self>, LagrangeKernelRandElements<E>)
+    ) -> (ProverGkrProof<Self>, GkrRandElements<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
@@ -280,7 +280,7 @@ pub trait Prover {
         let pub_inputs = self.get_pub_inputs(&trace);
         let pub_inputs_elements = pub_inputs.to_elements();
 
-        // create an instance of AIR for the provided parameters. this takes a generic description
+        // create an instance of AIR for the provided parameters. This takes a generic description
         // of the computation (provided via AIR type), and creates a description of a specific
         // execution of the computation for the provided public inputs.
         let air = Self::Air::new(trace.info().clone(), pub_inputs, self.options().clone());
@@ -310,22 +310,21 @@ pub trait Prover {
         // build the auxiliary trace segment, and append the resulting segments to trace commitment
         // and trace polynomial table structs
         let aux_trace_with_metadata = if air.trace_info().is_multi_segment() {
-            let (gkr_proof, lagrange_rand_elements) =
-                if air.context().has_lagrange_kernel_aux_column() {
-                    let (gkr_proof, lagrange_rand_elements) =
-                        maybe_await!(self.generate_gkr_proof(&trace, channel.public_coin()));
+            let (gkr_proof, gkr_rand_elements) = if air.context().has_lagrange_kernel_aux_column() {
+                let (gkr_proof, gkr_rand_elements) =
+                    maybe_await!(self.generate_gkr_proof(&trace, channel.public_coin()));
 
-                    (Some(gkr_proof), Some(lagrange_rand_elements))
-                } else {
-                    (None, None)
-                };
+                (Some(gkr_proof), Some(gkr_rand_elements))
+            } else {
+                (None, None)
+            };
 
             let aux_rand_elements = {
                 let rand_elements = air
                     .get_aux_rand_elements(channel.public_coin())
                     .expect("failed to draw random elements for the auxiliary trace segment");
 
-                AuxRandElements::new_with_lagrange(rand_elements, lagrange_rand_elements)
+                AuxRandElements::new_with_gkr(rand_elements, gkr_rand_elements)
             };
 
             let aux_trace = maybe_await!(self.build_aux_trace(&trace, &aux_rand_elements));
