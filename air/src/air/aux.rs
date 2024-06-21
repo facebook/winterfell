@@ -6,11 +6,11 @@ use utils::Deserializable;
 
 use super::lagrange::LagrangeKernelRandElements;
 
-// TODOP: fix all docs and naming
 /// Holds the randomly generated elements necessary to build the auxiliary trace.
 ///
-/// Specifically, [`AuxRandElements`] currently supports 2 types of random elements:
+/// Specifically, [`AuxRandElements`] currently supports 3 types of random elements:
 /// - the ones needed to build the Lagrange kernel column (when using GKR to accelerate LogUp),
+/// - the ones needed to build the "s" auxiliary column (when using GKR to accelerate LogUp),
 /// - the ones needed to build all the other auxiliary columns
 #[derive(Debug, Clone)]
 pub struct AuxRandElements<E> {
@@ -25,13 +25,13 @@ impl<E> AuxRandElements<E> {
         Self { rand_elements, gkr: None }
     }
 
-    /// Creates a new [`AuxRandElements`], where the auxiliary trace contains a Lagrange kernel
-    /// column.
+    /// Creates a new [`AuxRandElements`], where the auxiliary trace contains columns needed when
+    /// using GKR to accelerate LogUp (i.e. a Lagrange kernel column and the "s" column).
     pub fn new_with_gkr(rand_elements: Vec<E>, gkr: Option<GkrRandElements<E>>) -> Self {
         Self { rand_elements, gkr }
     }
 
-    /// Returns the random elements needed to build all columns other than the Lagrange kernel one.
+    /// Returns the random elements needed to build all columns other than the two GKR-related ones.
     pub fn rand_elements(&self) -> &[E] {
         &self.rand_elements
     }
@@ -41,30 +41,39 @@ impl<E> AuxRandElements<E> {
         self.gkr.as_ref().map(|gkr| &gkr.lagrange)
     }
 
-    pub fn gkr_lambdas(&self) -> Option<&[E]> {
-        self.gkr.as_ref().map(|gkr| gkr.lambdas.as_ref())
+    /// Returns the random values used to linearly combine the openings returned from the GKR proof.
+    ///
+    /// These correspond to the lambdas in our documentation.
+    pub fn gkr_openings_combining_randomness(&self) -> Option<&[E]> {
+        self.gkr.as_ref().map(|gkr| gkr.openings_combining_randomness.as_ref())
     }
 }
 
-/// TODOP: Document and fix naming. Consider making this type private or pub(crate), depending on if
-/// `AuxRandElements` exposes it (currently not).
+/// Holds all the random elements needed when using GKR to accelerate LogUp.
 #[derive(Clone, Debug)]
 pub struct GkrRandElements<E> {
     lagrange: LagrangeKernelRandElements<E>,
-    lambdas: Vec<E>,
+    openings_combining_randomness: Vec<E>,
 }
 
 impl<E> GkrRandElements<E> {
-    pub fn new(lagrange: LagrangeKernelRandElements<E>, lambdas: Vec<E>) -> Self {
-        Self { lagrange, lambdas }
+    pub fn new(
+        lagrange: LagrangeKernelRandElements<E>,
+        openings_combining_randomness: Vec<E>,
+    ) -> Self {
+        Self { lagrange, openings_combining_randomness }
     }
 
+    /// Returns the random elements needed to build the Lagrange kernel column.
     pub fn lagrange_kernel_rand_elements(&self) -> &LagrangeKernelRandElements<E> {
         &self.lagrange
     }
 
-    pub fn lambdas(&self) -> &[E] {
-        &self.lambdas
+    /// Returns the random values used to linearly combine the openings returned from the GKR proof.
+    ///
+    /// These correspond to the lambdas in our documentation.
+    pub fn openings_combining_randomness(&self) -> &[E] {
+        &self.openings_combining_randomness
     }
 }
 
