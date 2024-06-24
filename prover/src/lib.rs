@@ -310,21 +310,24 @@ pub trait Prover {
         // build the auxiliary trace segment, and append the resulting segments to trace commitment
         // and trace polynomial table structs
         let aux_trace_with_metadata = if air.trace_info().is_multi_segment() {
-            let (gkr_proof, gkr_rand_elements) = if air.context().has_lagrange_kernel_aux_column() {
+            let (gkr_proof, aux_rand_elements) = if air.context().has_lagrange_kernel_aux_column() {
                 let (gkr_proof, gkr_rand_elements) =
                     maybe_await!(self.generate_gkr_proof(&trace, channel.public_coin()));
 
-                (Some(gkr_proof), Some(gkr_rand_elements))
-            } else {
-                (None, None)
-            };
-
-            let aux_rand_elements = {
                 let rand_elements = air
                     .get_aux_rand_elements(channel.public_coin())
                     .expect("failed to draw random elements for the auxiliary trace segment");
 
-                AuxRandElements::new_with_gkr(rand_elements, gkr_rand_elements)
+                let aux_rand_elements =
+                    AuxRandElements::new_with_gkr(rand_elements, gkr_rand_elements);
+
+                (Some(gkr_proof), aux_rand_elements)
+            } else {
+                let rand_elements = air
+                    .get_aux_rand_elements(channel.public_coin())
+                    .expect("failed to draw random elements for the auxiliary trace segment");
+
+                (None, AuxRandElements::new(rand_elements))
             };
 
             let aux_trace = maybe_await!(self.build_aux_trace(&trace, &aux_rand_elements));

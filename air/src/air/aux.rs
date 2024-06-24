@@ -27,8 +27,8 @@ impl<E> AuxRandElements<E> {
 
     /// Creates a new [`AuxRandElements`], where the auxiliary trace contains columns needed when
     /// using GKR to accelerate LogUp (i.e. a Lagrange kernel column and the "s" column).
-    pub fn new_with_gkr(rand_elements: Vec<E>, gkr: Option<GkrRandElements<E>>) -> Self {
-        Self { rand_elements, gkr }
+    pub fn new_with_gkr(rand_elements: Vec<E>, gkr: GkrRandElements<E>) -> Self {
+        Self { rand_elements, gkr: Some(gkr) }
     }
 
     /// Returns the random elements needed to build all columns other than the two GKR-related ones.
