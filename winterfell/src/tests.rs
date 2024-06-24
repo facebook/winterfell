@@ -5,7 +5,7 @@
 
 use std::{vec, vec::Vec};
 
-use air::LagrangeKernelRandElements;
+use air::{GkrRandElements, LagrangeKernelRandElements};
 use prover::{
     crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin},
     math::{fields::f64::BaseElement, ExtensionOf, FieldElement},
@@ -96,7 +96,7 @@ impl GkrVerifier for DummyGkrVerifier {
         &self,
         gkr_proof: usize,
         public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> Result<LagrangeKernelRandElements<E>, Self::Error>
+    ) -> Result<GkrRandElements<E>, Self::Error>
     where
         E: FieldElement,
         Hasher: crypto::ElementHasher<BaseField = E::BaseField>,
@@ -111,7 +111,7 @@ impl GkrVerifier for DummyGkrVerifier {
             LagrangeKernelRandElements::new(rand_elements)
         };
 
-        Ok(lagrange_kernel_rand_elements)
+        Ok(GkrRandElements::new(lagrange_kernel_rand_elements, Vec::new()))
     }
 }
 
@@ -168,7 +168,7 @@ impl Air for LagrangeKernelComplexAir {
         _main_frame: &EvaluationFrame<F>,
         _aux_frame: &EvaluationFrame<E>,
         _periodic_values: &[F],
-        _aux_rand_elements: &[E],
+        _aux_rand_elements: &AuxRandElements<E>,
         _result: &mut [E],
     ) where
         F: FieldElement<BaseField = Self::BaseField>,
@@ -179,12 +179,12 @@ impl Air for LagrangeKernelComplexAir {
 
     fn get_aux_assertions<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        _aux_rand_elements: &[E],
+        _aux_rand_elements: &AuxRandElements<E>,
     ) -> Vec<Assertion<E>> {
         vec![Assertion::single(0, 0, E::ZERO)]
     }
 
-    fn get_auxiliary_proof_verifier<E: FieldElement<BaseField = Self::BaseField>>(
+    fn get_gkr_proof_verifier<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
     ) -> Self::GkrVerifier {
         DummyGkrVerifier
@@ -253,22 +253,22 @@ impl Prover for LagrangeComplexProver {
         &self,
         main_trace: &Self::Trace,
         public_coin: &mut Self::RandomCoin,
-    ) -> (ProverGkrProof<Self>, LagrangeKernelRandElements<E>)
+    ) -> (ProverGkrProof<Self>, GkrRandElements<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
         let main_trace = main_trace.main_segment();
         let log_trace_len = main_trace.num_rows().ilog2() as usize;
-        let lagrange_kernel_rand_elements: Vec<E> = {
+        let lagrange_kernel_rand_elements = {
             let mut rand_elements = Vec::with_capacity(log_trace_len);
             for _ in 0..log_trace_len {
                 rand_elements.push(public_coin.draw().unwrap());
             }
 
-            rand_elements
+            LagrangeKernelRandElements::new(rand_elements)
         };
 
-        (log_trace_len, LagrangeKernelRandElements::new(lagrange_kernel_rand_elements))
+        (log_trace_len, GkrRandElements::new(lagrange_kernel_rand_elements, Vec::new()))
     }
 
     fn build_aux_trace<E>(

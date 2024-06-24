@@ -7,8 +7,8 @@ use std::time::Duration;
 
 use air::{
     Air, AirContext, Assertion, AuxRandElements, ConstraintCompositionCoefficients,
-    EvaluationFrame, FieldExtension, LagrangeKernelRandElements, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
+    EvaluationFrame, FieldExtension, GkrRandElements, LagrangeKernelRandElements, ProofOptions,
+    TraceInfo, TransitionConstraintDegree,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin};
@@ -144,7 +144,7 @@ impl Air for LagrangeKernelAir {
         _main_frame: &EvaluationFrame<F>,
         _aux_frame: &EvaluationFrame<E>,
         _periodic_values: &[F],
-        _aux_rand_elements: &[E],
+        _aux_rand_elements: &AuxRandElements<E>,
         _result: &mut [E],
     ) where
         F: FieldElement<BaseField = Self::BaseField>,
@@ -155,7 +155,7 @@ impl Air for LagrangeKernelAir {
 
     fn get_aux_assertions<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        _aux_rand_elements: &[E],
+        _aux_rand_elements: &AuxRandElements<E>,
     ) -> Vec<Assertion<E>> {
         vec![Assertion::single(1, 0, E::ZERO)]
     }
@@ -223,22 +223,22 @@ impl Prover for LagrangeProver {
         &self,
         main_trace: &Self::Trace,
         public_coin: &mut Self::RandomCoin,
-    ) -> (ProverGkrProof<Self>, LagrangeKernelRandElements<E>)
+    ) -> (ProverGkrProof<Self>, GkrRandElements<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
         let main_trace = main_trace.main_segment();
-        let lagrange_kernel_rand_elements: Vec<E> = {
+        let lagrange_kernel_rand_elements = {
             let log_trace_len = main_trace.num_rows().ilog2() as usize;
             let mut rand_elements = Vec::with_capacity(log_trace_len);
             for _ in 0..log_trace_len {
                 rand_elements.push(public_coin.draw().unwrap());
             }
 
-            rand_elements
+            LagrangeKernelRandElements::new(rand_elements)
         };
 
-        ((), LagrangeKernelRandElements::new(lagrange_kernel_rand_elements))
+        ((), GkrRandElements::new(lagrange_kernel_rand_elements, Vec::new()))
     }
 
     fn build_aux_trace<E>(
