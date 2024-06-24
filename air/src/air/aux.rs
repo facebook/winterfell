@@ -50,11 +50,11 @@ impl<E> AuxRandElements<E> {
 }
 
 /// Holds all the random elements needed when using GKR to accelerate LogUp.
-/// 
+///
 /// This consists of two sets of random values:
 /// 1. The Lagrange kernel random elements (expanded on in [`LagrangeKernelRandElements`]), and
 /// 2. The "openings combining randomness".
-/// 
+///
 /// After the verifying the LogUp-GKR circuit, the verifier is left with unproven claims provided
 /// nondeterministically by the prover about the evaluations of the MLE of the main trace columns at
 /// the Lagrange kernel random elements. Those claims are (linearly) combined into one using the
@@ -68,7 +68,7 @@ pub struct GkrRandElements<E> {
 impl<E> GkrRandElements<E> {
     /// Constructs a new [`GkrRandElements`] from [`LagrangeKernelRandElements`], and the openings
     /// combining randomness.
-    /// 
+    ///
     /// See [`GkrRandElements`] for a more detailed description.
     pub fn new(
         lagrange: LagrangeKernelRandElements<E>,
