@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.9.1 (2024-06-24) - `utils/core` crate only
+- Fixed `useize` serialization in `ByteWriter`.
+
 ## 0.9.0 (2024-05-09)
 - [BREAKING] Merged `TraceLayout` into `TraceInfo` (#245).
 - Implemented Lagrange Kernel constraints (#247, )
