@@ -46,6 +46,10 @@ impl<E: FieldElement> LagrangeKernelConstraints<E> {
 }
 
 /// Holds the randomly generated elements needed to build the Lagrange kernel auxiliary column.
+/// 
+/// The Lagrange kernel consists of evaluating the function $eq(x, r)$, where $x$ is the binary
+/// decomposition of the row index, and $r$ is some random point. The "Lagrange kernel random
+/// elements" refer to this (multidimensional) point $r$.
 #[derive(Debug, Clone, Default)]
 pub struct LagrangeKernelRandElements<E> {
     elements: Vec<E>,
