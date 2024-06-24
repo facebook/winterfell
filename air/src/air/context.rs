@@ -263,7 +263,7 @@ impl<B: StarkField> AirContext<B> {
     ///
     /// This is the maximum of:
     /// 1. The maximum evaluation degree over all transition constraints minus the degree of the
-    /// transition constraint divisor divided by trace length.
+    ///    transition constraint divisor divided by trace length.
     /// 2. `1`, because the constraint composition polynomial requires at least one column.
     ///
     /// Since the degree of a constraint `C(x)` can be computed as `[constraint.base +
