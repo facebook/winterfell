@@ -22,7 +22,7 @@ mod tests;
 
 /// Defines an [`AuxTraceWithMetadata`] type where the type arguments use their equivalents in an
 /// [`Air`].
-type AirAuxTraceWithMetadata<A, E> = AuxTraceWithMetadata<E, <A as Air>::GkrProof>;
+type AirAuxTraceWithMetadata<A, E> = AuxTraceWithMetadata<E, <A as Air>::GkrProof<E>>;
 
 // AUX TRACE WITH METADATA
 // ================================================================================================

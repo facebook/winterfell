@@ -75,8 +75,8 @@ impl MockAir {
 impl Air for MockAir {
     type BaseField = BaseElement;
     type PublicInputs = ();
-    type GkrProof = ();
-    type GkrVerifier = ();
+    type GkrProof<E> = ();
+    type GkrVerifier<E> = ();
 
     fn new(trace_info: TraceInfo, _pub_inputs: (), _options: ProofOptions) -> Self {
         let context = build_context(trace_info, 8, 1);

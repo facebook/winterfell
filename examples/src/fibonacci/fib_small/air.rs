@@ -21,8 +21,8 @@ pub struct FibSmall {
 impl Air for FibSmall {
     type BaseField = BaseElement;
     type PublicInputs = BaseElement;
-    type GkrProof = ();
-    type GkrVerifier = ();
+    type GkrProof<E> = ();
+    type GkrVerifier<E> = ();
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------

@@ -59,8 +59,8 @@ pub struct RescueRapsAir {
 impl Air for RescueRapsAir {
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
-    type GkrProof = ();
-    type GkrVerifier = ();
+    type GkrProof<E> = ();
+    type GkrVerifier<E> = ();
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------

@@ -99,8 +99,8 @@ struct LagrangeKernelAir {
 
 impl Air for LagrangeKernelAir {
     type BaseField = BaseElement;
-    type GkrProof = ();
-    type GkrVerifier = ();
+    type GkrProof<E> = ();
+    type GkrVerifier<E> = ();
 
     type PublicInputs = ();
 
@@ -223,7 +223,7 @@ impl Prover for LagrangeProver {
         &self,
         main_trace: &Self::Trace,
         public_coin: &mut Self::RandomCoin,
-    ) -> (ProverGkrProof<Self>, GkrRandElements<E>)
+    ) -> (ProverGkrProof<Self, E>, GkrRandElements<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {

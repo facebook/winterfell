@@ -23,8 +23,8 @@ pub struct MulFib2Air {
 impl Air for MulFib2Air {
     type BaseField = BaseElement;
     type PublicInputs = BaseElement;
-    type GkrProof = ();
-    type GkrVerifier = ();
+    type GkrProof<E> = ();
+    type GkrVerifier<E> = ();
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------

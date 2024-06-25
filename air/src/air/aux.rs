@@ -95,7 +95,7 @@ impl<E> GkrRandElements<E> {
 /// GKR](https://eprint.iacr.org/2023/1284.pdf).
 pub trait GkrVerifier {
     /// The GKR proof.
-    type GkrProof: Deserializable;
+    type GkrProof<E>: Deserializable;
     /// The error that can occur during GKR proof verification.
     type Error: ToString;
 
@@ -103,7 +103,7 @@ pub trait GkrVerifier {
     /// the Lagrange kernel auxiliary column.
     fn verify<E, Hasher>(
         &self,
-        gkr_proof: Self::GkrProof,
+        gkr_proof: Self::GkrProof<E>,
         public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
     ) -> Result<GkrRandElements<E>, Self::Error>
     where
@@ -112,12 +112,12 @@ pub trait GkrVerifier {
 }
 
 impl GkrVerifier for () {
-    type GkrProof = ();
+    type GkrProof<E> = ();
     type Error = RandomCoinError;
 
     fn verify<E, Hasher>(
         &self,
-        _gkr_proof: Self::GkrProof,
+        _gkr_proof: Self::GkrProof<E>,
         _public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
     ) -> Result<GkrRandElements<E>, Self::Error>
     where

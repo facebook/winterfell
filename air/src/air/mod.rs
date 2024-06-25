@@ -195,10 +195,10 @@ pub trait Air: Send + Sync {
     type PublicInputs: ToElements<Self::BaseField> + Send;
 
     /// An GKR proof object. If not needed, set to `()`.
-    type GkrProof: Serializable + Deserializable + Send;
+    type GkrProof<E>: Serializable + Deserializable + Send;
 
     /// A verifier for verifying GKR proofs. If not needed, set to `()`.
-    type GkrVerifier: GkrVerifier<GkrProof = Self::GkrProof>;
+    type GkrVerifier<E>: GkrVerifier<GkrProof<E> = Self::GkrProof<E>>;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -311,7 +311,7 @@ pub trait Air: Send + Sync {
     /// Leave unimplemented if the `Air` doesn't use a GKR proof.
     fn get_gkr_proof_verifier<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-    ) -> Self::GkrVerifier {
+    ) -> Self::GkrVerifier<E> {
         unimplemented!("`get_auxiliary_proof_verifier()` must be implemented when the proof contains a GKR proof");
     }
 
