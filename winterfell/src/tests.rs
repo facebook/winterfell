@@ -89,7 +89,7 @@ struct DummyGkrVerifier;
 impl GkrVerifier for DummyGkrVerifier {
     // `GkrProof` is log(trace_len) for this dummy example, so that the verifier knows how many aux
     // random variables to generate
-    type GkrProof<E> = usize;
+    type GkrProof<E: FieldElement> = usize;
     type Error = VerifierError;
 
     fn verify<E, Hasher>(
@@ -123,8 +123,8 @@ impl Air for LagrangeKernelComplexAir {
     type BaseField = BaseElement;
     // `GkrProof` is log(trace_len) for this dummy example, so that the verifier knows how many aux
     // random variables to generate
-    type GkrProof<E> = usize;
-    type GkrVerifier<E> = DummyGkrVerifier;
+    type GkrProof<E: FieldElement> = usize;
+    type GkrVerifier<E: FieldElement> = DummyGkrVerifier;
 
     type PublicInputs = ();
 

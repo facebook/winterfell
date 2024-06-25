@@ -32,8 +32,8 @@ pub struct MerkleAir {
 impl Air for MerkleAir {
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
-    type GkrProof<E> = ();
-    type GkrVerifier<E> = ();
+    type GkrProof<E: FieldElement> = ();
+    type GkrVerifier<E: FieldElement> = ();
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------

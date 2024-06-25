@@ -95,7 +95,7 @@ impl<E> GkrRandElements<E> {
 /// GKR](https://eprint.iacr.org/2023/1284.pdf).
 pub trait GkrVerifier {
     /// The GKR proof.
-    type GkrProof<E>: Deserializable;
+    type GkrProof<E: FieldElement>: Deserializable;
     /// The error that can occur during GKR proof verification.
     type Error: ToString;
 
@@ -112,7 +112,7 @@ pub trait GkrVerifier {
 }
 
 impl GkrVerifier for () {
-    type GkrProof<E> = ();
+    type GkrProof<E: FieldElement> = ();
     type Error = RandomCoinError;
 
     fn verify<E, Hasher>(

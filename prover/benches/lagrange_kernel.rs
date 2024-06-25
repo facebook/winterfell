@@ -99,8 +99,8 @@ struct LagrangeKernelAir {
 
 impl Air for LagrangeKernelAir {
     type BaseField = BaseElement;
-    type GkrProof<E> = ();
-    type GkrVerifier<E> = ();
+    type GkrProof<E: FieldElement> = ();
+    type GkrVerifier<E: FieldElement> = ();
 
     type PublicInputs = ();
 
