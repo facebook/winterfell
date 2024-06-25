@@ -102,7 +102,7 @@ pub mod tests;
 const DEFAULT_SEGMENT_WIDTH: usize = 8;
 
 /// Accesses the `GkrProof` type in a [`Prover`].
-pub type ProverGkrProof<P> = <<P as Prover>::Air as Air>::GkrProof;
+pub type ProverGkrProof<P, E> = <<P as Prover>::Air as Air>::GkrProof<E>;
 
 /// Defines a STARK prover for a computation.
 ///
@@ -190,6 +190,7 @@ pub trait Prover {
         &self,
         air: &'a Self::Air,
         aux_rand_elements: Option<AuxRandElements<E>>,
+        gkr_proof: Option<&ProverGkrProof<Self, E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E>
     where
@@ -205,7 +206,7 @@ pub trait Prover {
         &self,
         main_trace: &Self::Trace,
         public_coin: &mut Self::RandomCoin,
-    ) -> (ProverGkrProof<Self>, GkrRandElements<E>)
+    ) -> (ProverGkrProof<Self, E>, GkrRandElements<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
@@ -238,7 +239,6 @@ pub trait Prover {
     fn prove(&self, trace: Self::Trace) -> Result<Proof, ProverError>
     where
         <Self::Air as Air>::PublicInputs: Send,
-        <Self::Air as Air>::GkrProof: Send,
     {
         // figure out which version of the generic proof generation procedure to run. this is a sort
         // of static dispatch for selecting two generic parameter: extension field and hash
@@ -272,7 +272,6 @@ pub trait Prover {
     where
         E: FieldElement<BaseField = Self::BaseField>,
         <Self::Air as Air>::PublicInputs: Send,
-        <Self::Air as Air>::GkrProof: Send,
     {
         // 0 ----- instantiate AIR and prover channel ---------------------------------------------
 
@@ -380,6 +379,7 @@ pub trait Prover {
         let composition_poly_trace = maybe_await!(self.new_evaluator(
             &air,
             aux_rand_elements,
+            gkr_proof.as_ref(),
             channel.get_constraint_composition_coeffs()
         ))
         .evaluate(&trace_lde, &domain);

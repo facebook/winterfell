@@ -168,7 +168,7 @@ where
     public_coin.reseed(trace_commitments[MAIN_TRACE_IDX]);
 
     // process auxiliary trace segments (if any), to build a set of random elements for each segment
-    let aux_trace_rand_elements = if air.trace_info().is_multi_segment() {
+    let (aux_trace_rand_elements, gkr_proof) = if air.trace_info().is_multi_segment() {
         if air.context().has_lagrange_kernel_aux_column() {
             let gkr_proof = {
                 let gkr_proof_serialized = channel
@@ -180,7 +180,7 @@ where
             };
             let gkr_rand_elements = air
                 .get_gkr_proof_verifier::<E>()
-                .verify::<E, _>(gkr_proof, &mut public_coin)
+                .verify::<E, _>(&gkr_proof, &mut public_coin)
                 .map_err(|err| VerifierError::GkrProofVerificationFailed(err.to_string()))?;
 
             let rand_elements = air.get_aux_rand_elements(&mut public_coin).expect(
@@ -189,7 +189,10 @@ where
 
             public_coin.reseed(trace_commitments[AUX_TRACE_IDX]);
 
-            Some(AuxRandElements::new_with_gkr(rand_elements, gkr_rand_elements))
+            (
+                Some(AuxRandElements::new_with_gkr(rand_elements, gkr_rand_elements)),
+                Some(gkr_proof),
+            )
         } else {
             let rand_elements = air.get_aux_rand_elements(&mut public_coin).expect(
                 "failed to generate the random elements needed to build the auxiliary trace",
@@ -197,10 +200,10 @@ where
 
             public_coin.reseed(trace_commitments[AUX_TRACE_IDX]);
 
-            Some(AuxRandElements::new(rand_elements))
+            (Some(AuxRandElements::new(rand_elements)), None)
         }
     } else {
-        None
+        (None, None)
     };
 
     // build random coefficients for the composition polynomial
@@ -236,6 +239,7 @@ where
         &ood_aux_trace_frame,
         ood_lagrange_kernel_frame,
         aux_trace_rand_elements.as_ref(),
+        gkr_proof.as_ref(),
         z,
     );
     public_coin.reseed(ood_trace_frame.hash::<H>());

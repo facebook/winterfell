@@ -195,10 +195,10 @@ pub trait Air: Send + Sync {
     type PublicInputs: ToElements<Self::BaseField> + Send;
 
     /// An GKR proof object. If not needed, set to `()`.
-    type GkrProof: Serializable + Deserializable + Send;
+    type GkrProof<E: FieldElement>: Serializable + Deserializable + Send;
 
     /// A verifier for verifying GKR proofs. If not needed, set to `()`.
-    type GkrVerifier: GkrVerifier<GkrProof = Self::GkrProof>;
+    type GkrVerifier<E: FieldElement>: GkrVerifier<GkrProof<E> = Self::GkrProof<E>>;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -299,6 +299,7 @@ pub trait Air: Send + Sync {
     fn get_aux_assertions<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         aux_rand_elements: &AuxRandElements<E>,
+        gkr_proof: Option<&Self::GkrProof<E>>,
     ) -> Vec<Assertion<E>> {
         Vec::new()
     }
@@ -311,7 +312,7 @@ pub trait Air: Send + Sync {
     /// Leave unimplemented if the `Air` doesn't use a GKR proof.
     fn get_gkr_proof_verifier<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-    ) -> Self::GkrVerifier {
+    ) -> Self::GkrVerifier<E> {
         unimplemented!("`get_auxiliary_proof_verifier()` must be implemented when the proof contains a GKR proof");
     }
 
@@ -423,13 +424,14 @@ pub trait Air: Send + Sync {
     fn get_boundary_constraints<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         aux_rand_elements: Option<&AuxRandElements<E>>,
+        gkr_proof: Option<&Self::GkrProof<E>>,
         composition_coefficients: &[E],
     ) -> BoundaryConstraints<E> {
         BoundaryConstraints::new(
             self.context(),
             self.get_assertions(),
             aux_rand_elements
-                .map(|aux_rand_elements| self.get_aux_assertions(aux_rand_elements))
+                .map(|aux_rand_elements| self.get_aux_assertions(aux_rand_elements, gkr_proof))
                 .unwrap_or_default(),
             composition_coefficients,
         )

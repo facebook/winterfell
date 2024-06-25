@@ -141,6 +141,7 @@ where
     pub fn new(
         air: &'a A,
         aux_rand_elements: Option<AuxRandElements<E>>,
+        gkr_proof: Option<&A::GkrProof<E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self {
         // build transition constraint groups; these will be used to compose transition constraint
@@ -155,6 +156,7 @@ where
         let boundary_constraints = BoundaryConstraints::new(
             air,
             aux_rand_elements.as_ref(),
+            gkr_proof,
             &composition_coefficients.boundary,
         );
 
