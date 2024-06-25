@@ -156,6 +156,7 @@ impl Air for LagrangeKernelAir {
     fn get_aux_assertions<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         _aux_rand_elements: &AuxRandElements<E>,
+        _gkr_proof: Option<&Self::GkrProof<E>>,
     ) -> Vec<Assertion<E>> {
         vec![Assertion::single(1, 0, E::ZERO)]
     }
@@ -211,12 +212,13 @@ impl Prover for LagrangeProver {
         &self,
         air: &'a Self::Air,
         aux_rand_elements: Option<AuxRandElements<E>>,
+        gkr_proof: Option<&()>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E>
     where
         E: math::FieldElement<BaseField = Self::BaseField>,
     {
-        DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
+        DefaultConstraintEvaluator::new(air, aux_rand_elements, gkr_proof, composition_coefficients)
     }
 
     fn generate_gkr_proof<E>(

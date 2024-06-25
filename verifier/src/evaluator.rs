@@ -15,6 +15,7 @@ use math::{polynom, FieldElement};
 // ================================================================================================
 
 /// Evaluates constraints for the specified evaluation frame.
+#[allow(clippy::too_many_arguments)]
 pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     air: &A,
     composition_coefficients: ConstraintCompositionCoefficients<E>,
@@ -22,6 +23,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     aux_trace_frame: &Option<EvaluationFrame<E>>,
     lagrange_kernel_frame: Option<&LagrangeKernelEvaluationFrame<E>>,
     aux_rand_elements: Option<&AuxRandElements<E>>,
+    gkr_proof: Option<&A::GkrProof<E>>,
     x: E,
 ) -> E {
     // 1 ----- evaluate transition constraints ----------------------------------------------------
@@ -67,8 +69,11 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     // 2 ----- evaluate boundary constraints ------------------------------------------------------
 
     // get boundary constraints grouped by common divisor from the AIR
-    let b_constraints =
-        air.get_boundary_constraints(aux_rand_elements, &composition_coefficients.boundary);
+    let b_constraints = air.get_boundary_constraints(
+        aux_rand_elements,
+        gkr_proof,
+        &composition_coefficients.boundary,
+    );
 
     // iterate over boundary constraint groups for the main trace segment (each group has a
     // distinct divisor), evaluate constraints in each group and add their combination to the

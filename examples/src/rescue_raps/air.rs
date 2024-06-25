@@ -235,7 +235,11 @@ impl Air for RescueRapsAir {
         ]
     }
 
-    fn get_aux_assertions<E>(&self, _aux_rand_elements: &AuxRandElements<E>) -> Vec<Assertion<E>>
+    fn get_aux_assertions<E>(
+        &self,
+        _aux_rand_elements: &AuxRandElements<E>,
+        _gkr_proof: Option<&()>,
+    ) -> Vec<Assertion<E>>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {

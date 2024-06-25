@@ -103,7 +103,7 @@ pub trait GkrVerifier {
     /// the Lagrange kernel auxiliary column.
     fn verify<E, Hasher>(
         &self,
-        gkr_proof: Self::GkrProof<E>,
+        gkr_proof: &Self::GkrProof<E>,
         public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
     ) -> Result<GkrRandElements<E>, Self::Error>
     where
@@ -117,7 +117,7 @@ impl GkrVerifier for () {
 
     fn verify<E, Hasher>(
         &self,
-        _gkr_proof: Self::GkrProof<E>,
+        _gkr_proof: &Self::GkrProof<E>,
         _public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
     ) -> Result<GkrRandElements<E>, Self::Error>
     where

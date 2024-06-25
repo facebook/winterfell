@@ -190,6 +190,7 @@ pub trait Prover {
         &self,
         air: &'a Self::Air,
         aux_rand_elements: Option<AuxRandElements<E>>,
+        gkr_proof: Option<&ProverGkrProof<Self, E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E>
     where
@@ -378,6 +379,7 @@ pub trait Prover {
         let composition_poly_trace = maybe_await!(self.new_evaluator(
             &air,
             aux_rand_elements,
+            gkr_proof.as_ref(),
             channel.get_constraint_composition_coeffs()
         ))
         .evaluate(&trace_lde, &domain);

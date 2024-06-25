@@ -94,14 +94,14 @@ impl GkrVerifier for DummyGkrVerifier {
 
     fn verify<E, Hasher>(
         &self,
-        gkr_proof: usize,
+        gkr_proof: &usize,
         public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
     ) -> Result<GkrRandElements<E>, Self::Error>
     where
         E: FieldElement,
         Hasher: crypto::ElementHasher<BaseField = E::BaseField>,
     {
-        let log_trace_len = gkr_proof;
+        let log_trace_len = *gkr_proof;
         let lagrange_kernel_rand_elements: LagrangeKernelRandElements<E> = {
             let mut rand_elements = Vec::with_capacity(log_trace_len);
             for _ in 0..log_trace_len {
@@ -180,6 +180,7 @@ impl Air for LagrangeKernelComplexAir {
     fn get_aux_assertions<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         _aux_rand_elements: &AuxRandElements<E>,
+        _gkr_proof: Option<&usize>,
     ) -> Vec<Assertion<E>> {
         vec![Assertion::single(0, 0, E::ZERO)]
     }
@@ -241,12 +242,13 @@ impl Prover for LagrangeComplexProver {
         &self,
         air: &'a Self::Air,
         aux_rand_elements: Option<AuxRandElements<E>>,
+        gkr_proof: Option<&usize>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E>
     where
         E: math::FieldElement<BaseField = Self::BaseField>,
     {
-        DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
+        DefaultConstraintEvaluator::new(air, aux_rand_elements, gkr_proof, composition_coefficients)
     }
 
     fn generate_gkr_proof<E>(

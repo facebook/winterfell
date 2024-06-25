@@ -127,7 +127,9 @@ pub trait Trace: Sized {
             let aux_trace = &aux_trace_with_metadata.aux_trace;
             let aux_rand_elements = &aux_trace_with_metadata.aux_rand_elements;
 
-            for assertion in air.get_aux_assertions(aux_rand_elements) {
+            for assertion in air
+                .get_aux_assertions(aux_rand_elements, aux_trace_with_metadata.gkr_proof.as_ref())
+            {
                 // get the matrix and verify the assertion against it
                 assertion.apply(self.length(), |step, value| {
                     assert!(

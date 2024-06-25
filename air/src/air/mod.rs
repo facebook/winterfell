@@ -299,6 +299,7 @@ pub trait Air: Send + Sync {
     fn get_aux_assertions<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         aux_rand_elements: &AuxRandElements<E>,
+        gkr_proof: Option<&Self::GkrProof<E>>,
     ) -> Vec<Assertion<E>> {
         Vec::new()
     }
@@ -423,13 +424,14 @@ pub trait Air: Send + Sync {
     fn get_boundary_constraints<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         aux_rand_elements: Option<&AuxRandElements<E>>,
+        gkr_proof: Option<&Self::GkrProof<E>>,
         composition_coefficients: &[E],
     ) -> BoundaryConstraints<E> {
         BoundaryConstraints::new(
             self.context(),
             self.get_assertions(),
             aux_rand_elements
-                .map(|aux_rand_elements| self.get_aux_assertions(aux_rand_elements))
+                .map(|aux_rand_elements| self.get_aux_assertions(aux_rand_elements, gkr_proof))
                 .unwrap_or_default(),
             composition_coefficients,
         )
