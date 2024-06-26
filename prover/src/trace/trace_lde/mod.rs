@@ -28,10 +28,10 @@ pub trait TraceLde<E: FieldElement>: Sync {
     /// The hash function used for hashing the rows of trace segment LDEs.
     type HashFn: ElementHasher<BaseField = E::BaseField>;
 
-    type VC: VectorCommitment;
+    type VC: VectorCommitment<Self::HashFn>;
 
     /// Returns the commitment to the low-degree extension of the main trace segment.
-    fn get_main_trace_commitment(&self) -> <Self::VC as VectorCommitment>::Commitment;
+    fn get_main_trace_commitment(&self) -> <Self::VC as VectorCommitment<Self::HashFn>>::Commitment;
 
     /// Takes auxiliary trace segment columns as input, interpolates them into polynomials in
     /// coefficient form, evaluates the polynomials over the LDE domain, and commits to the
@@ -49,7 +49,7 @@ pub trait TraceLde<E: FieldElement>: Sync {
         &mut self,
         aux_trace: &ColMatrix<E>,
         domain: &StarkDomain<E::BaseField>,
-    ) -> (ColMatrix<E>, <Self::VC as VectorCommitment>::Commitment);
+    ) -> (ColMatrix<E>, <Self::VC as VectorCommitment<Self::HashFn>>::Commitment);
 
     /// Reads current and next rows from the main trace segment into the specified frame.
     fn read_main_trace_frame_into(

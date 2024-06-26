@@ -5,7 +5,7 @@
 
 use alloc::{string::ToString, vec::Vec};
 
-use crypto::{ElementHasher, VectorCommitment};
+use crypto::{ElementHasher, Hasher, VectorCommitment};
 use math::FieldElement;
 use utils::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
@@ -130,11 +130,11 @@ impl FriProof {
         self,
         mut domain_size: usize,
         folding_factor: usize,
-    ) -> Result<(Vec<Vec<E>>, Vec<<V as VectorCommitment>::MultiProof>), DeserializationError>
+    ) -> Result<(Vec<Vec<E>>, Vec<<V as VectorCommitment<H>>::MultiProof>), DeserializationError>
     where
         E: FieldElement,
         H: ElementHasher<BaseField = E::BaseField>,
-        V: VectorCommitment,
+        V: VectorCommitment<H>,
     {
         assert!(domain_size.is_power_of_two(), "domain size must be a power of two");
         assert!(folding_factor.is_power_of_two(), "folding factor must be a power of two");
@@ -241,9 +241,9 @@ impl FriProofLayer {
     ///
     /// # Panics
     /// Panics if `query_values` is an empty slice.
-    pub(crate) fn new<E: FieldElement, const N: usize, V: VectorCommitment>(
+    pub(crate) fn new<E: FieldElement, H: Hasher, const N: usize, V: VectorCommitment<H>>(
         query_values: Vec<[E; N]>,
-        proof: <V as VectorCommitment>::MultiProof,
+        proof: <V as VectorCommitment<H>>::MultiProof,
     ) -> Self {
         assert!(!query_values.is_empty(), "query values cannot be empty");
 
@@ -280,11 +280,11 @@ impl FriProofLayer {
     pub fn parse<H, E, V>(
         self,
         folding_factor: usize,
-    ) -> Result<(Vec<E>, <V as VectorCommitment>::MultiProof), DeserializationError>
+    ) -> Result<(Vec<E>, <V as VectorCommitment<H>>::MultiProof), DeserializationError>
     where
         E: FieldElement,
         H: ElementHasher<BaseField = E::BaseField>,
-        V: VectorCommitment,
+        V: VectorCommitment<H>,
     {
         // make sure the number of value bytes can be parsed into a whole number of queries
         let num_query_bytes = E::ELEMENT_BYTES * folding_factor;

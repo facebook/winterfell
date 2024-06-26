@@ -142,14 +142,14 @@ pub trait Prover {
     /// Hash function to be used.
     type HashFn: ElementHasher<
         BaseField = Self::BaseField,
-        Digest = <Self::VC as VectorCommitment>::Item,
+        Digest = <Self::VC as VectorCommitment<Self::HashFn>>::Item,
     >;
 
     /// Vector commitment to be used.
-    type VC: VectorCommitment;
+    type VC: VectorCommitment<Self::HashFn>;
 
     /// PRNG to be used for generating random field elements.
-    type RandomCoin: RandomCoin<BaseField = Self::BaseField, Hasher = Self::HashFn, VC = Self::VC>;
+    type RandomCoin: RandomCoin<BaseField = Self::BaseField, Hasher = Self::HashFn>;
 
     /// Trace low-degree extension for building the LDEs of trace segments and their commitments.
     type TraceLde<E>: TraceLde<E, HashFn = Self::HashFn, VC = Self::VC>

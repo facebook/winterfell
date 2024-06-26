@@ -24,8 +24,8 @@ use super::RowMatrix;
 ///   the composition polynomial evaluation matrix.
 pub struct ConstraintCommitment<
     E: FieldElement,
-    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment>::Item>,
-    V: VectorCommitment,
+    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
+    V: VectorCommitment<H>,
 > {
     evaluations: RowMatrix<E>,
     vector_commitment: V,
@@ -34,8 +34,8 @@ pub struct ConstraintCommitment<
 
 impl<
         E: FieldElement,
-        H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment>::Item>,
-        V: VectorCommitment,
+        H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
+        V: VectorCommitment<H>,
     > ConstraintCommitment<E, H, V>
 {
     /// Creates a new constraint evaluation commitment from the provided composition polynomial

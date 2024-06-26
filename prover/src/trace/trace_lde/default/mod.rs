@@ -33,7 +33,7 @@ mod tests;
 pub struct DefaultTraceLde<
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
-    V: VectorCommitment,
+    V: VectorCommitment<H>,
 > {
     // low-degree extension of the main segment of the trace
     main_segment_lde: RowMatrix<E::BaseField>,
@@ -50,8 +50,8 @@ pub struct DefaultTraceLde<
 
 impl<
         E: FieldElement,
-        H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment>::Item>,
-        V: VectorCommitment,
+        H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
+        V: VectorCommitment<H>,
     > DefaultTraceLde<E, H, V>
 {
     /// Takes the main trace segment columns as input, interpolates them into polynomials in
@@ -111,9 +111,9 @@ impl<
 impl<E, H, V> TraceLde<E> for DefaultTraceLde<E, H, V>
 where
     E: FieldElement,
-    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment>::Item>
+    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment<H>>::Item>
         + core::marker::Sync,
-    V: VectorCommitment + core::marker::Sync,
+    V: VectorCommitment<H> + core::marker::Sync,
 {
     type HashFn = H;
     type VC = V;
@@ -270,8 +270,8 @@ fn build_trace_commitment<E, F, H, V>(
 where
     E: FieldElement,
     F: FieldElement<BaseField = E::BaseField>,
-    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment>::Item>,
-    V: VectorCommitment,
+    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
+    V: VectorCommitment<H>,
 {
     // extend the execution trace
     let (trace_lde, trace_polys) = {
@@ -308,7 +308,7 @@ fn build_segment_queries<E, H, V>(
 where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
-    V: VectorCommitment,
+    V: VectorCommitment<H>,
 {
     // for each position, get the corresponding row from the trace segment LDE and put all these
     // rows into a single vector

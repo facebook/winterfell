@@ -396,7 +396,7 @@ fn normalize_indexes(indexes: &[usize]) -> Vec<usize> {
 // VECTOR COMMITMENT IMPLEMENTATION
 // ================================================================================================
 
-impl<H: Hasher> VectorCommitment for MerkleTree<H> {
+impl<H: Hasher> VectorCommitment<H> for MerkleTree<H> {
     type Options = ();
 
     type Item = H::Digest;

@@ -8,7 +8,7 @@
 use alloc::vec::Vec;
 use core::{marker::PhantomData, mem};
 
-use crypto::{ElementHasher, RandomCoin, VectorCommitment};
+use crypto::{ElementHasher, Hasher, RandomCoin, VectorCommitment};
 use math::{polynom, FieldElement, StarkField};
 
 use crate::{folding::fold_positions, utils::map_positions_to_indexes, FriOptions, VerifierError};
@@ -60,15 +60,15 @@ pub use channel::{DefaultVerifierChannel, VerifierChannel};
 pub struct FriVerifier<E, C, H, R, V>
 where
     E: FieldElement,
-    C: VerifierChannel<E, Hasher = H>,
+    C: VerifierChannel<E, H, Hasher = H>,
     H: ElementHasher<BaseField = E::BaseField>,
-    R: RandomCoin<BaseField = E::BaseField, Hasher = H, VC = V>,
-    V: VectorCommitment,
+    R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
+    V: VectorCommitment<H>,
 {
     max_poly_degree: usize,
     domain_size: usize,
     domain_generator: E::BaseField,
-    layer_commitments: Vec<<V as VectorCommitment>::Commitment>,
+    layer_commitments: Vec<<V as VectorCommitment<H>>::Commitment>,
     layer_alphas: Vec<E>,
     options: FriOptions,
     num_partitions: usize,
@@ -79,10 +79,10 @@ where
 impl<E, C, H, R, V> FriVerifier<E, C, H, R, V>
 where
     E: FieldElement,
-    C: VerifierChannel<E, Hasher = H, VectorCommitment = V>,
+    C: VerifierChannel<E, H, Hasher = H, VectorCommitment = V>,
     H: ElementHasher<BaseField = E::BaseField>,
-    R: RandomCoin<BaseField = E::BaseField, Hasher = H, VC = V>,
-    V: VectorCommitment,
+    R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
+    V: VectorCommitment<H>,
 {
     /// Returns a new instance of FRI verifier created from the specified parameters.
     ///
@@ -120,7 +120,8 @@ where
         let mut layer_alphas = Vec::with_capacity(layer_commitments.len());
         let mut max_degree_plus_1 = max_poly_degree + 1;
         for (depth, commitment) in layer_commitments.iter().enumerate() {
-            public_coin.reseed(*commitment);
+            let commitment: <H as Hasher>::Digest = (*commitment).into();
+            public_coin.reseed(commitment);
             let alpha = public_coin.draw().map_err(VerifierError::RandomCoinError)?;
             layer_alphas.push(alpha);
 

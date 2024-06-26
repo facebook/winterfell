@@ -95,9 +95,9 @@ pub struct FriProver<B, E, C, H, V>
 where
     B: StarkField,
     E: FieldElement<BaseField = B>,
-    C: ProverChannel<E, Hasher = H>,
-    H: ElementHasher<BaseField = B, Digest = <V as VectorCommitment>::Item>,
-    V: VectorCommitment,
+    C: ProverChannel<E, H, Hasher = H>,
+    H: ElementHasher<BaseField = B>, //, Digest = <V as VectorCommitment<H>>::Item>,
+    V: VectorCommitment<H>,
 {
     options: FriOptions,
     layers: Vec<FriLayer<B, E, H, V>>,
@@ -108,8 +108,8 @@ where
 struct FriLayer<
     B: StarkField,
     E: FieldElement<BaseField = B>,
-    H: Hasher<Digest = <V as VectorCommitment>::Item>,
-    V: VectorCommitment,
+    H: Hasher, //<Digest = <V as VectorCommitment<H>>::Item>,
+    V: VectorCommitment<H>,
 > {
     commitment: V,
     evaluations: Vec<E>,
@@ -126,9 +126,9 @@ impl<B, E, C, H, V> FriProver<B, E, C, H, V>
 where
     B: StarkField,
     E: FieldElement<BaseField = B>,
-    C: ProverChannel<E, Hasher = H, VectorCommitment = V>,
-    H: ElementHasher<BaseField = B, Digest = <V as VectorCommitment>::Item>,
-    V: VectorCommitment,
+    C: ProverChannel<E, H, Hasher = H, VectorCommitment = V>,
+    H: ElementHasher<BaseField = B, Digest = <V as VectorCommitment<H>>::Item>,
+    V: VectorCommitment<H>,
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -213,9 +213,9 @@ where
         // with a single opening proof.
         let transposed_evaluations = transpose_slice(evaluations);
         let hashed_evaluations = hash_values::<H, E, N>(&transposed_evaluations);
-        let evaluation_vector_commitment = <V as VectorCommitment>::new(
+        let evaluation_vector_commitment = <V as VectorCommitment<H>>::new(
             hashed_evaluations,
-            <V as VectorCommitment>::Options::default(),
+            <V as VectorCommitment<H>>::Options::default(),
         )
         .expect("failed to construct FRI layer commitment");
         channel.commit_fri_layer(evaluation_vector_commitment.commitment());
@@ -301,9 +301,9 @@ where
 fn query_layer<
     B: StarkField,
     E: FieldElement<BaseField = B>,
-    H: Hasher<Digest = <V as VectorCommitment>::Item>,
+    H: Hasher<Digest = <V as VectorCommitment<H>>::Item>,
     const N: usize,
-    V: VectorCommitment,
+    V: VectorCommitment<H>,
 >(
     layer: &FriLayer<B, E, H, V>,
     positions: &[usize],
@@ -322,5 +322,5 @@ fn query_layer<
     for &position in positions.iter() {
         queried_values.push(evaluations[position]);
     }
-    FriProofLayer::new::<_, N, V>(queried_values, proof.1)
+    FriProofLayer::new::<_, _, N, V>(queried_values, proof.1)
 }

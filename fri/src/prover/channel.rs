@@ -6,7 +6,7 @@
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
-use crypto::{ElementHasher, RandomCoin, VectorCommitment};
+use crypto::{ElementHasher, Hasher, RandomCoin, VectorCommitment};
 use math::FieldElement;
 
 // PROVER CHANNEL TRAIT
@@ -21,13 +21,13 @@ use math::FieldElement;
 /// In the interactive version of the protocol, the verifier chooses α uniformly at random from
 /// the entire field. In the non-interactive version, the α is drawn pseudo-randomly based on the
 /// commitments the prover has written into the channel up to this point.
-pub trait ProverChannel<E: FieldElement> {
+pub trait ProverChannel<E: FieldElement, H: Hasher> {
     /// Hash function used by the prover to commit to polynomial evaluations.
     type Hasher: ElementHasher<
         BaseField = E::BaseField,
-        Digest = <Self::VectorCommitment as VectorCommitment>::Item,
+        Digest = <Self::VectorCommitment as VectorCommitment<H>>::Item,
     >;
-    type VectorCommitment: VectorCommitment;
+    type VectorCommitment: VectorCommitment<H>;
 
     /// Sends a layer commitment to the verifier.
     ///
@@ -40,7 +40,7 @@ pub trait ProverChannel<E: FieldElement> {
     /// construction.
     fn commit_fri_layer(
         &mut self,
-        layer_root: <<Self as ProverChannel<E>>::VectorCommitment as VectorCommitment>::Commitment,
+        layer_root: <<Self as ProverChannel<E, H>>::VectorCommitment as VectorCommitment<H>>::Commitment,
     );
 
     /// Returns a random α drawn uniformly at random from the entire field.
@@ -65,7 +65,7 @@ where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
     R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
-    V: VectorCommitment,
+    V: VectorCommitment<H>,
 {
     public_coin: R,
     commitments: Vec<V::Commitment>,
@@ -79,7 +79,7 @@ where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
     R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
-    V: VectorCommitment,
+    V: VectorCommitment<H>,
 {
     /// Returns a new prover channel instantiated from the specified parameters.
     ///
@@ -125,19 +125,19 @@ where
     }
 }
 
-impl<E, H, R, V> ProverChannel<E> for DefaultProverChannel<E, H, R, V>
+impl<E, H, R, V> ProverChannel<E, H> for DefaultProverChannel<E, H, R, V>
 where
     E: FieldElement,
-    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment>::Item>,
-    R: RandomCoin<BaseField = E::BaseField, Hasher = H, VC = V>,
-    V: VectorCommitment,
+    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
+    R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
+    V: VectorCommitment<H>,
 {
     type Hasher = H;
     type VectorCommitment = V;
 
     fn commit_fri_layer(&mut self, layer_root: V::Commitment) {
         self.commitments.push(layer_root);
-        self.public_coin.reseed(layer_root);
+        self.public_coin.reseed(layer_root.into());
     }
 
     fn draw_fri_alpha(&mut self) -> E {

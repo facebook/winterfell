@@ -23,13 +23,13 @@ use crate::{FriProof, VerifierError};
 ///
 /// Note: that reading removes the data from the channel. Thus, reading duplicated values from
 /// the channel should not be possible.
-pub trait VerifierChannel<E: FieldElement> {
+pub trait VerifierChannel<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> {
     /// Hash function used by the prover to commit to polynomial evaluations.
     type Hasher: ElementHasher<
         BaseField = E::BaseField,
-        Digest = <Self::VectorCommitment as VectorCommitment>::Item,
+        Digest = <Self::VectorCommitment as VectorCommitment<H>>::Item,
     >;
-    type VectorCommitment: VectorCommitment;
+    type VectorCommitment: VectorCommitment<H>;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -46,7 +46,7 @@ pub trait VerifierChannel<E: FieldElement> {
     /// locally.
     fn read_fri_layer_commitments(
         &mut self,
-    ) -> Vec<<<Self as VerifierChannel<E>>::VectorCommitment as VectorCommitment>::Commitment>;
+    ) -> Vec<<<Self as VerifierChannel<E, H>>::VectorCommitment as VectorCommitment<H>>::Commitment>;
 
     /// Reads and removes from the channel evaluations of the polynomial at the queried positions
     /// for the next FRI layer.
@@ -69,7 +69,7 @@ pub trait VerifierChannel<E: FieldElement> {
     /// vector commitment scheme.
     fn take_next_fri_layer_proof(
         &mut self,
-    ) -> <Self::VectorCommitment as VectorCommitment>::MultiProof;
+    ) -> <Self::VectorCommitment as VectorCommitment<H>>::MultiProof;
 
     /// Reads and removes the remainder polynomial from the channel.
     fn take_fri_remainder(&mut self) -> Vec<E>;
@@ -87,19 +87,19 @@ pub trait VerifierChannel<E: FieldElement> {
     fn read_layer_queries<const N: usize>(
         &mut self,
         positions: &[usize],
-        commitment: &<<Self as VerifierChannel<E>>::VectorCommitment as VectorCommitment>::Commitment,
+        commitment: &<<Self as VerifierChannel<E, H>>::VectorCommitment as VectorCommitment<H>>::Commitment,
     ) -> Result<Vec<[E; N]>, VerifierError> {
         let layer_proof = self.take_next_fri_layer_proof();
         let layer_queries = self.take_next_fri_layer_queries();
         let leaf_values = group_slice_elements(&layer_queries);
         let hashed_values: Vec<
-            <<Self as VerifierChannel<E>>::VectorCommitment as VectorCommitment>::Item,
+            <<Self as VerifierChannel<E, H>>::VectorCommitment as VectorCommitment<H>>::Item,
         > = leaf_values
             .iter()
             .map(|seg| <Self::Hasher as ElementHasher>::hash_elements(seg))
             .collect();
 
-        <<Self as VerifierChannel<E>>::VectorCommitment as VectorCommitment>::verify_many(
+        <<Self as VerifierChannel<E, H>>::VectorCommitment as VectorCommitment<H>>::verify_many(
             *commitment,
             positions,
             &hashed_values,
@@ -130,7 +130,7 @@ pub trait VerifierChannel<E: FieldElement> {
 pub struct DefaultVerifierChannel<
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
-    V: VectorCommitment,
+    V: VectorCommitment<H>,
 > {
     layer_commitments: Vec<V::Commitment>,
     layer_proofs: Vec<V::MultiProof>,
@@ -144,7 +144,7 @@ impl<E, H, V> DefaultVerifierChannel<E, H, V>
 where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
-    V: VectorCommitment,
+    V: VectorCommitment<H>,
 {
     /// Builds a new verifier channel from the specified [FriProof].
     ///
@@ -173,11 +173,11 @@ where
     }
 }
 
-impl<E, H, V> VerifierChannel<E> for DefaultVerifierChannel<E, H, V>
+impl<E, H, V> VerifierChannel<E, H> for DefaultVerifierChannel<E, H, V>
 where
     E: FieldElement,
-    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment>::Item>,
-    V: VectorCommitment,
+    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
+    V: VectorCommitment<H>,
 {
     type Hasher = H;
     type VectorCommitment = V;

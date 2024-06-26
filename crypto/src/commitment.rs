@@ -3,6 +3,8 @@ use core::fmt::Debug;
 
 use utils::{Deserializable, Serializable};
 
+use crate::Hasher;
+
 /// A vector commitment (VC) scheme.
 ///
 /// This is a cryptographic primitive allowing one to commit, using a commitment string `com`, to
@@ -14,13 +16,13 @@ use utils::{Deserializable, Serializable};
 /// Vector commitment schemes usually have some batching properties in the sense that opening
 /// proofs for number of `(i, v_i)` can be batched together into one batch opening proof in order
 /// to optimize both the proof size as well as the verification time.
-pub trait VectorCommitment: Sized {
+pub trait VectorCommitment<H: Hasher>: Sized {
     /// Options defining the VC i.e., public parameters.
     type Options: Default;
     /// Values commited to.
     type Item: Clone + Serializable + Deserializable + Send;
     /// Commitment string.
-    type Commitment: Copy + Serializable + Deserializable + From<Self::Item>;
+    type Commitment: Copy + Serializable + Deserializable + From<Self::Item> + Into<H::Digest>;
     /// Opening proof of some value at some position index.
     type Proof: Clone + Serializable + Deserializable;
     /// Batch opening proof of a number of {(i, v_i)}_{i ∈ S} for an index set.

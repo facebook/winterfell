@@ -48,7 +48,7 @@ impl Queries {
     /// * No queries were provided (`query_values` is an empty vector).
     /// * Any of the queries does not contain any evaluations.
     /// * Not all queries contain the same number of evaluations.
-    pub fn new<H: Hasher, E: FieldElement, V: VectorCommitment>(
+    pub fn new<H: Hasher, E: FieldElement, V: VectorCommitment<H>>(
         opening_proof: V::MultiProof,
         query_values: Vec<Vec<E>>,
     ) -> Self {
@@ -91,7 +91,7 @@ impl Queries {
     where
         E: FieldElement,
         H: ElementHasher<BaseField = E::BaseField>,
-        V: VectorCommitment,
+        V: VectorCommitment<H>,
     {
         assert!(domain_size.is_power_of_two(), "domain size must be a power of two");
         assert!(num_queries > 0, "there must be at least one query");

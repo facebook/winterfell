@@ -261,8 +261,8 @@ impl<E: FieldElement> ColMatrix<E> {
     /// * The resulting commitment is returned as the commitment to the entire matrix.
     pub fn commit_to_rows<H, V>(&self) -> V
     where
-        H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment>::Item>,
-        V: VectorCommitment,
+        H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
+        V: VectorCommitment<H>,
     {
         // allocate vector to store row hashes
         let mut row_hashes = unsafe { uninit_vector::<H::Digest>(self.num_rows()) };

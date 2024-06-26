@@ -26,8 +26,8 @@ use crate::VerifierError;
 /// well-formed in the context of the computation for the specified [Air].
 pub struct VerifierChannel<
     E: FieldElement,
-    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment>::Item>,
-    V: VectorCommitment,
+    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
+    V: VectorCommitment<H>,
 > {
     // trace queries
     trace_commitments: Vec<V::Commitment>,
@@ -51,8 +51,8 @@ pub struct VerifierChannel<
 
 impl<
         E: FieldElement,
-        H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment>::Item>,
-        V: VectorCommitment,
+        H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
+        V: VectorCommitment<H>,
     > VerifierChannel<E, H, V>
 {
     // CONSTRUCTOR
@@ -88,7 +88,7 @@ impl<
 
         // --- parse commitments ------------------------------------------------------------------
         let (trace_commitments, constraint_commitment, fri_commitments) = commitments
-            .parse::<V>(num_trace_segments, fri_options.num_fri_layers(lde_domain_size))
+            .parse::<V, H>(num_trace_segments, fri_options.num_fri_layers(lde_domain_size))
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         // --- parse trace and constraint queries -------------------------------------------------
@@ -194,7 +194,7 @@ impl<
 
         let items: Vec<V::Item> =
             { queries.main_states.rows().map(|row| H::hash_elements(row)).collect() };
-        <V as VectorCommitment>::verify_many(
+        <V as VectorCommitment<H>>::verify_many(
             self.trace_commitments[0],
             positions,
             &items,
@@ -212,7 +212,7 @@ impl<
                     .map(|row| H::hash_elements(row))
                     .collect()
             };
-            <V as VectorCommitment>::verify_many(
+            <V as VectorCommitment<H>>::verify_many(
                 self.trace_commitments[1],
                 positions,
                 &items,
@@ -234,7 +234,7 @@ impl<
         let queries = self.constraint_queries.take().expect("already read");
         let items: Vec<V::Item> =
             queries.evaluations.rows().map(|row| H::hash_elements(row)).collect();
-        <V as VectorCommitment>::verify_many(
+        <V as VectorCommitment<H>>::verify_many(
             self.constraint_commitment,
             positions,
             &items,
@@ -249,11 +249,11 @@ impl<
 // FRI VERIFIER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-impl<E, H, V> FriVerifierChannel<E> for VerifierChannel<E, H, V>
+impl<E, H, V> FriVerifierChannel<E, H> for VerifierChannel<E, H, V>
 where
     E: FieldElement,
-    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment>::Item>,
-    V: VectorCommitment,
+    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
+    V: VectorCommitment<H>,
 {
     type Hasher = H;
     type VectorCommitment = V;
@@ -289,8 +289,8 @@ where
 /// Trace states for all auxiliary segments are stored in a single table.
 struct TraceQueries<
     E: FieldElement,
-    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment>::Item>,
-    V: VectorCommitment,
+    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
+    V: VectorCommitment<H>,
 > {
     query_proofs: Vec<V::MultiProof>,
     main_states: Table<E::BaseField>,
@@ -300,8 +300,8 @@ struct TraceQueries<
 
 impl<
         E: FieldElement,
-        H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment>::Item>,
-        V: VectorCommitment,
+        H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
+        V: VectorCommitment<H>,
     > TraceQueries<E, H, V>
 {
     /// Parses the provided trace queries into trace states in the specified field and
@@ -374,14 +374,14 @@ impl<
 struct ConstraintQueries<
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
-    V: VectorCommitment,
+    V: VectorCommitment<H>,
 > {
     query_proofs: V::MultiProof,
     evaluations: Table<E>,
     _h: PhantomData<H>,
 }
 
-impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>, V: VectorCommitment>
+impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>, V: VectorCommitment<H>>
     ConstraintQueries<E, H, V>
 {
     /// Parses the provided constraint queries into evaluations in the specified field and

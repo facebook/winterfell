@@ -25,7 +25,7 @@ where
     E: FieldElement<BaseField = A::BaseField>,
     H: ElementHasher<BaseField = A::BaseField>,
     R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
-    V: VectorCommitment,
+    V: VectorCommitment<H>,
 {
     air: &'a A,
     public_coin: R,
@@ -44,9 +44,9 @@ impl<'a, A, E, H, R, V> ProverChannel<'a, A, E, H, R, V>
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseField>,
-    H: ElementHasher<BaseField = A::BaseField, Digest = <V as VectorCommitment>::Item>,
-    R: RandomCoin<BaseField = A::BaseField, Hasher = H, VC = V>,
-    V: VectorCommitment,
+    H: ElementHasher<BaseField = A::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
+    R: RandomCoin<BaseField = A::BaseField, Hasher = H>,
+    V: VectorCommitment<H>,
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -77,14 +77,14 @@ where
 
     /// Commits the prover the extended execution trace.
     pub fn commit_trace(&mut self, trace_root: V::Commitment) {
-        self.commitments.add::<V>(&trace_root);
-        self.public_coin.reseed(trace_root);
+        self.commitments.add::<V, H>(&trace_root);
+        self.public_coin.reseed(trace_root.into());
     }
 
     /// Commits the prover to the evaluations of the constraint composition polynomial.
     pub fn commit_constraints(&mut self, constraint_root: V::Commitment) {
-        self.commitments.add::<V>(&constraint_root);
-        self.public_coin.reseed(constraint_root);
+        self.commitments.add::<V, H>(&constraint_root);
+        self.public_coin.reseed(constraint_root.into());
     }
 
     /// Saves the evaluations of trace polynomials over the out-of-domain evaluation frame. This
@@ -203,21 +203,21 @@ where
 // FRI PROVER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-impl<'a, A, E, H, R, V> fri::ProverChannel<E> for ProverChannel<'a, A, E, H, R, V>
+impl<'a, A, E, H, R, V> fri::ProverChannel<E, H> for ProverChannel<'a, A, E, H, R, V>
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseField>,
-    H: ElementHasher<BaseField = A::BaseField, Digest = <V as VectorCommitment>::Item>,
-    R: RandomCoin<BaseField = A::BaseField, Hasher = H, VC = V>,
-    V: VectorCommitment,
+    H: ElementHasher<BaseField = A::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
+    R: RandomCoin<BaseField = A::BaseField, Hasher = H>,
+    V: VectorCommitment<H>,
 {
     type Hasher = H;
     type VectorCommitment = V;
 
     /// Commits the prover to a FRI layer.
-    fn commit_fri_layer(&mut self, layer_root: <V as VectorCommitment>::Commitment) {
-        self.commitments.add::<V>(&layer_root);
-        self.public_coin.reseed(layer_root);
+    fn commit_fri_layer(&mut self, layer_root: <V as VectorCommitment<H>>::Commitment) {
+        self.commitments.add::<V, H>(&layer_root);
+        self.public_coin.reseed(layer_root.into());
     }
 
     /// Returns a new alpha drawn from the public coin.
