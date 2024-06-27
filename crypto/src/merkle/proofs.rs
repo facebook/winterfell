@@ -7,12 +7,8 @@ use alloc::{collections::BTreeMap, vec::Vec};
 
 use utils::{ByteReader, Deserializable, DeserializationError, Serializable};
 
+use super::MerkleTreeOpening;
 use crate::{errors::MerkleTreeError, Hasher};
-
-// CONSTANTS
-// ================================================================================================
-
-pub(super) const MAX_PATHS: usize = 255;
 
 // BATCH MERKLE PROOF
 // ================================================================================================
@@ -23,9 +19,6 @@ pub(super) const MAX_PATHS: usize = 255;
 /// it is possible to achieve non-negligible compression as compared to naively concatenating
 /// individual Merkle paths. The algorithm is for aggregation is a variation of
 /// [Octopus](https://eprint.iacr.org/2017/933).
-///
-/// Currently, at most 255 paths can be aggregated into a single proof. This limitation is
-/// imposed primarily for serialization purposes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BatchMerkleProof<H: Hasher> {
     /// Hashes of Merkle Tree proof values above the leaf layer
@@ -40,23 +33,21 @@ impl<H: Hasher> BatchMerkleProof<H> {
     /// # Panics
     /// Panics if:
     /// * No paths have been provided (i.e., `paths` is an empty slice).
-    /// * More than 255 paths have been provided.
     /// * Number of paths is not equal to the number of indexes.
     /// * Not all paths have the same length.
     pub fn from_single_proofs(
-        paths: &[(H::Digest, Vec<H::Digest>)],
+        proofs: &[MerkleTreeOpening<H>],
         indexes: &[usize],
     ) -> BatchMerkleProof<H> {
         // TODO: optimize this to reduce amount of vector cloning.
-        assert!(!paths.is_empty(), "at least one path must be provided");
-        assert!(paths.len() <= MAX_PATHS, "number of paths cannot exceed {MAX_PATHS}");
-        assert_eq!(paths.len(), indexes.len(), "number of paths must equal number of indexes");
+        assert!(!proofs.is_empty(), "at least one proof must be provided");
+        assert_eq!(proofs.len(), indexes.len(), "number of proofs must equal number of indexes");
 
-        let depth = paths[0].1.len();
+        let depth = proofs[0].1.len();
 
-        // sort indexes in ascending order, and also re-arrange paths accordingly
+        // sort indexes in ascending order, and also re-arrange proofs accordingly
         let mut path_map = BTreeMap::new();
-        for (&index, path) in indexes.iter().zip(paths.iter().cloned()) {
+        for (&index, path) in indexes.iter().zip(proofs.iter().cloned()) {
             assert_eq!(depth, path.1.len(), "not all paths have the same length");
             path_map.insert(index, path);
         }
@@ -112,7 +103,6 @@ impl<H: Hasher> BatchMerkleProof<H> {
     /// # Errors
     /// Returns an error if:
     /// * No indexes were provided (i.e., `indexes` is an empty slice).
-    /// * Number of provided indexes is greater than 255.
     /// * Any of the specified `indexes` is greater than or equal to the number of leaves in the
     ///   tree for which this batch proof was generated.
     /// * List of indexes contains duplicates.
@@ -124,9 +114,6 @@ impl<H: Hasher> BatchMerkleProof<H> {
     ) -> Result<H::Digest, MerkleTreeError> {
         if indexes.is_empty() {
             return Err(MerkleTreeError::TooFewLeafIndexes);
-        }
-        if indexes.len() > MAX_PATHS {
-            return Err(MerkleTreeError::TooManyLeafIndexes(MAX_PATHS, indexes.len()));
         }
 
         let mut buf = [H::Digest::default(); 2];
@@ -253,19 +240,15 @@ impl<H: Hasher> BatchMerkleProof<H> {
     /// # Errors
     /// Returns an error if:
     /// * No indexes were provided (i.e., `indexes` is an empty slice).
-    /// * Number of provided indexes is greater than 255.
     /// * Number of provided indexes does not match the number of leaf nodes in the proof.
     #[allow(clippy::type_complexity)]
     pub fn into_paths(
         self,
         leaves: &[H::Digest],
         indexes: &[usize],
-    ) -> Result<Vec<(H::Digest, Vec<H::Digest>)>, MerkleTreeError> {
+    ) -> Result<Vec<MerkleTreeOpening<H>>, MerkleTreeError> {
         if indexes.is_empty() {
             return Err(MerkleTreeError::TooFewLeafIndexes);
-        }
-        if indexes.len() > MAX_PATHS {
-            return Err(MerkleTreeError::TooManyLeafIndexes(MAX_PATHS, indexes.len()));
         }
         if indexes.len() != leaves.len() {
             return Err(MerkleTreeError::InvalidProof);
@@ -403,21 +386,14 @@ impl<H: Hasher> BatchMerkleProof<H> {
 }
 
 impl<H: Hasher> Serializable for BatchMerkleProof<H> {
-    /// Converts all internal proof nodes into a vector of bytes.
-    ///
-    /// # Panics
-    /// Panics if:
-    /// * The proof contains more than 255 Merkle paths.
-    /// * The Merkle paths consist of more than 255 nodes.
+    /// Writes all internal proof nodes into the provided target.
     fn write_into<W: utils::ByteWriter>(&self, target: &mut W) {
         target.write_u8(self.depth);
-        assert!(self.nodes.len() <= u8::MAX as usize, "too many paths");
-        target.write_u8(self.nodes.len() as u8);
+        target.write_usize(self.nodes.len());
 
         for nodes in self.nodes.iter() {
-            assert!(nodes.len() <= u8::MAX as usize, "too many nodes");
             // record the number of nodes, and append all nodes to the paths buffer
-            target.write_u8(nodes.len() as u8);
+            target.write_usize(nodes.len());
             for node in nodes.iter() {
                 target.write(node);
             }
@@ -437,12 +413,12 @@ impl<H: Hasher> Deserializable for BatchMerkleProof<H> {
     /// * `source` could not be deserialized into a valid set of internal nodes.
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let depth = source.read_u8()?;
-        let num_node_vectors = source.read_u8()? as usize;
+        let num_node_vectors = source.read_usize()?;
 
         let mut nodes = Vec::with_capacity(num_node_vectors);
         for _ in 0..num_node_vectors {
             // read the number of digests in the vector
-            let num_digests = source.read_u8()? as usize;
+            let num_digests = source.read_usize()?;
 
             // read the digests and add them to the node vector
             let digests = source.read_many(num_digests)?;
@@ -467,7 +443,7 @@ pub fn get_path<H: Hasher>(
     index: usize,
     tree: &BTreeMap<usize, <H as Hasher>::Digest>,
     depth: usize,
-) -> Result<(H::Digest, Vec<H::Digest>), MerkleTreeError> {
+) -> Result<MerkleTreeOpening<H>, MerkleTreeError> {
     let mut index = index + (1 << depth);
     let leaf = if let Some(leaf) = tree.get(&index) {
         *leaf

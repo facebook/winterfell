@@ -23,10 +23,7 @@ use math::FieldElement;
 /// commitments the prover has written into the channel up to this point.
 pub trait ProverChannel<E: FieldElement, H: Hasher> {
     /// Hash function used by the prover to commit to polynomial evaluations.
-    type Hasher: ElementHasher<
-        BaseField = E::BaseField,
-        Digest = <Self::VectorCommitment as VectorCommitment<H>>::Item,
-    >;
+    type Hasher: ElementHasher<BaseField = E::BaseField>;
     type VectorCommitment: VectorCommitment<H>;
 
     /// Sends a layer commitment to the verifier.
@@ -128,7 +125,7 @@ where
 impl<E, H, R, V> ProverChannel<E, H> for DefaultProverChannel<E, H, R, V>
 where
     E: FieldElement,
-    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
+    H: ElementHasher<BaseField = E::BaseField>,
     R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
     V: VectorCommitment<H>,
 {

@@ -10,7 +10,7 @@ use air::{
     proof::{Proof, Queries, Table, TraceOodFrame},
     Air,
 };
-use crypto::{ElementHasher, VectorCommitment};
+use crypto::{ElementHasher, Hasher, VectorCommitment};
 use fri::VerifierChannel as FriVerifierChannel;
 use math::{FieldElement, StarkField};
 
@@ -26,9 +26,11 @@ use crate::VerifierError;
 /// well-formed in the context of the computation for the specified [Air].
 pub struct VerifierChannel<
     E: FieldElement,
-    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
+    H: ElementHasher<BaseField = E::BaseField>,
     V: VectorCommitment<H>,
-> {
+> where
+    <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
+{
     // trace queries
     trace_commitments: Vec<V::Commitment>,
     trace_queries: Option<TraceQueries<E, H, V>>,
@@ -49,11 +51,10 @@ pub struct VerifierChannel<
     gkr_proof: Option<Vec<u8>>,
 }
 
-impl<
-        E: FieldElement,
-        H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
-        V: VectorCommitment<H>,
-    > VerifierChannel<E, H, V>
+impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>, V: VectorCommitment<H>>
+    VerifierChannel<E, H, V>
+where
+    <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -193,7 +194,7 @@ impl<
         // make sure the states included in the proof correspond to the trace commitment
 
         let items: Vec<V::Item> =
-            { queries.main_states.rows().map(|row| H::hash_elements(row)).collect() };
+            { queries.main_states.rows().map(|row| H::hash_elements(row).into()).collect() };
         <V as VectorCommitment<H>>::verify_many(
             self.trace_commitments[0],
             positions,
@@ -209,7 +210,7 @@ impl<
                     .clone()
                     .unwrap()
                     .rows()
-                    .map(|row| H::hash_elements(row))
+                    .map(|row| H::hash_elements(row).into())
                     .collect()
             };
             <V as VectorCommitment<H>>::verify_many(
@@ -233,7 +234,7 @@ impl<
     ) -> Result<Table<E>, VerifierError> {
         let queries = self.constraint_queries.take().expect("already read");
         let items: Vec<V::Item> =
-            queries.evaluations.rows().map(|row| H::hash_elements(row)).collect();
+            queries.evaluations.rows().map(|row| H::hash_elements(row).into()).collect();
         <V as VectorCommitment<H>>::verify_many(
             self.constraint_commitment,
             positions,
@@ -249,11 +250,12 @@ impl<
 // FRI VERIFIER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-impl<E, H, V> FriVerifierChannel<E, H> for VerifierChannel<E, H, V>
+impl<E, H, V> FriVerifierChannel<E> for VerifierChannel<E, H, V>
 where
     E: FieldElement,
-    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
+    H: ElementHasher<BaseField = E::BaseField>,
     V: VectorCommitment<H>,
+    <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
 {
     type Hasher = H;
     type VectorCommitment = V;
@@ -289,7 +291,7 @@ where
 /// Trace states for all auxiliary segments are stored in a single table.
 struct TraceQueries<
     E: FieldElement,
-    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
+    H: ElementHasher<BaseField = E::BaseField>,
     V: VectorCommitment<H>,
 > {
     query_proofs: Vec<V::MultiProof>,
@@ -298,11 +300,8 @@ struct TraceQueries<
     _h: PhantomData<H>,
 }
 
-impl<
-        E: FieldElement,
-        H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
-        V: VectorCommitment<H>,
-    > TraceQueries<E, H, V>
+impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>, V: VectorCommitment<H>>
+    TraceQueries<E, H, V>
 {
     /// Parses the provided trace queries into trace states in the specified field and
     /// corresponding batch opening proof.

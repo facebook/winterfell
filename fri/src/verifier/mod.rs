@@ -60,7 +60,7 @@ pub use channel::{DefaultVerifierChannel, VerifierChannel};
 pub struct FriVerifier<E, C, H, R, V>
 where
     E: FieldElement,
-    C: VerifierChannel<E, H, Hasher = H>,
+    C: VerifierChannel<E, Hasher = H>,
     H: ElementHasher<BaseField = E::BaseField>,
     R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
     V: VectorCommitment<H>,
@@ -79,7 +79,7 @@ where
 impl<E, C, H, R, V> FriVerifier<E, C, H, R, V>
 where
     E: FieldElement,
-    C: VerifierChannel<E, H, Hasher = H, VectorCommitment = V>,
+    C: VerifierChannel<E, Hasher = H, VectorCommitment = V>,
     H: ElementHasher<BaseField = E::BaseField>,
     R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
     V: VectorCommitment<H>,
@@ -211,7 +211,10 @@ where
         channel: &mut C,
         evaluations: &[E],
         positions: &[usize],
-    ) -> Result<(), VerifierError> {
+    ) -> Result<(), VerifierError>
+    where
+        <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
+    {
         if evaluations.len() != positions.len() {
             return Err(VerifierError::NumPositionEvaluationMismatch(
                 positions.len(),
@@ -237,7 +240,10 @@ where
         channel: &mut C,
         evaluations: &[E],
         positions: &[usize],
-    ) -> Result<(), VerifierError> {
+    ) -> Result<(), VerifierError>
+    where
+        <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
+    {
         // pre-compute roots of unity used in computing x coordinates in the folded domain
         let folding_roots = (0..N)
             .map(|i| self.domain_generator.exp_vartime(((self.domain_size / N * i) as u64).into()))

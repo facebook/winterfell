@@ -63,7 +63,7 @@ impl Commitments {
     /// Returns an error if the bytes stored in self could not be parsed into the requested number
     /// of commitments, or if there are any unconsumed bytes remaining after the parsing completes.
     #[allow(clippy::type_complexity)]
-    pub fn parse<V: VectorCommitment<H> , H: Hasher>(
+    pub fn parse<V: VectorCommitment<H>, H: Hasher>(
         self,
         num_trace_segments: usize,
         num_fri_layers: usize,

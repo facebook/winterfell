@@ -96,7 +96,7 @@ where
     B: StarkField,
     E: FieldElement<BaseField = B>,
     C: ProverChannel<E, H, Hasher = H>,
-    H: ElementHasher<BaseField = B>, //, Digest = <V as VectorCommitment<H>>::Item>,
+    H: ElementHasher<BaseField = B>,
     V: VectorCommitment<H>,
 {
     options: FriOptions,
@@ -105,12 +105,7 @@ where
     _channel: PhantomData<C>,
 }
 
-struct FriLayer<
-    B: StarkField,
-    E: FieldElement<BaseField = B>,
-    H: Hasher, //<Digest = <V as VectorCommitment<H>>::Item>,
-    V: VectorCommitment<H>,
-> {
+struct FriLayer<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher, V: VectorCommitment<H>> {
     commitment: V,
     evaluations: Vec<E>,
     _base_field: PhantomData<B>,
@@ -127,8 +122,10 @@ where
     B: StarkField,
     E: FieldElement<BaseField = B>,
     C: ProverChannel<E, H, Hasher = H, VectorCommitment = V>,
-    H: ElementHasher<BaseField = B, Digest = <V as VectorCommitment<H>>::Item>,
+    H: ElementHasher<BaseField = B>,
     V: VectorCommitment<H>,
+    <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
+    <V as VectorCommitment<H>>::Commitment: From<<H as Hasher>::Digest>,
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -212,8 +209,8 @@ where
         // commiting to vector of these digests; we do this so that we could de-commit to N values
         // with a single opening proof.
         let transposed_evaluations = transpose_slice(evaluations);
-        let hashed_evaluations = hash_values::<H, E, N>(&transposed_evaluations);
-        let evaluation_vector_commitment = <V as VectorCommitment<H>>::new(
+        let hashed_evaluations = hash_values::<H, E, V, N>(&transposed_evaluations);
+        let evaluation_vector_commitment = <V as VectorCommitment<H>>::with_options(
             hashed_evaluations,
             <V as VectorCommitment<H>>::Options::default(),
         )
@@ -301,7 +298,7 @@ where
 fn query_layer<
     B: StarkField,
     E: FieldElement<BaseField = B>,
-    H: Hasher<Digest = <V as VectorCommitment<H>>::Item>,
+    H: Hasher,
     const N: usize,
     V: VectorCommitment<H>,
 >(

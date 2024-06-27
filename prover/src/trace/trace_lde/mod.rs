@@ -31,7 +31,8 @@ pub trait TraceLde<E: FieldElement>: Sync {
     type VC: VectorCommitment<Self::HashFn>;
 
     /// Returns the commitment to the low-degree extension of the main trace segment.
-    fn get_main_trace_commitment(&self) -> <Self::VC as VectorCommitment<Self::HashFn>>::Commitment;
+    fn get_main_trace_commitment(&self)
+        -> <Self::VC as VectorCommitment<Self::HashFn>>::Commitment;
 
     /// Takes auxiliary trace segment columns as input, interpolates them into polynomials in
     /// coefficient form, evaluates the polynomials over the LDE domain, and commits to the

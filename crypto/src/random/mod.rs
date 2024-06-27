@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 
 use math::{FieldElement, StarkField};
 
-use crate::{errors::RandomCoinError, ElementHasher, Hasher, VectorCommitment};
+use crate::{errors::RandomCoinError, ElementHasher, Hasher};
 
 mod default;
 pub use default::DefaultRandomCoin;

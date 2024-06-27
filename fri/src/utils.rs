@@ -5,7 +5,7 @@
 
 use alloc::vec::Vec;
 
-use crypto::ElementHasher;
+use crypto::{ElementHasher, Hasher, VectorCommitment};
 use math::FieldElement;
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
@@ -39,14 +39,18 @@ pub fn map_positions_to_indexes(
 }
 
 /// Hashes each of the arrays in the provided slice and returns a vector of resulting hashes.
-pub fn hash_values<H, E, const N: usize>(values: &[[E; N]]) -> Vec<H::Digest>
+pub fn hash_values<H, E, V: VectorCommitment<H>, const N: usize>(
+    values: &[[E; N]],
+) -> Vec<<V as VectorCommitment<H>>::Item>
 where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
+    <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
 {
-    let mut result: Vec<H::Digest> = unsafe { uninit_vector(values.len()) };
+    let mut result: Vec<V::Item> = unsafe { uninit_vector(values.len()) };
     iter_mut!(result, 1024).zip(values).for_each(|(r, v)| {
-        *r = H::hash_elements(v);
+        let digest: V::Item = H::hash_elements(v).into();
+        *r = digest
     });
     result
 }

@@ -1,3 +1,8 @@
+// Copyright (c) Facebook, Inc. and its affiliates.
+//
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
 use alloc::vec::Vec;
 use core::fmt::Debug;
 
@@ -30,9 +35,15 @@ pub trait VectorCommitment<H: Hasher>: Sized {
     /// Error returned by the scheme.
     type Error: Debug;
 
+    /// Creates a commitment to a vector of values (v_0, ..., v_{n-1}) using the default
+    /// options.
+    fn new(items: Vec<Self::Item>) -> Result<Self, Self::Error> {
+        Self::with_options(items, Self::Options::default())
+    }
+
     /// Creates a commitment to a vector of values (v_0, ..., v_{n-1}) given a set of
     /// options.
-    fn new(items: Vec<Self::Item>, options: Self::Options) -> Result<Self, Self::Error>;
+    fn with_options(items: Vec<Self::Item>, options: Self::Options) -> Result<Self, Self::Error>;
 
     /// Returns the commitment string to the commited values.
     fn commitment(&self) -> Self::Commitment;

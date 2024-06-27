@@ -7,6 +7,7 @@ use alloc::vec::Vec;
 use core::marker::PhantomData;
 
 use air::{proof::Queries, LagrangeKernelEvaluationFrame, TraceInfo};
+use crypto::{Hasher, VectorCommitment};
 use tracing::info_span;
 
 use super::{
@@ -48,11 +49,8 @@ pub struct DefaultTraceLde<
     _h: PhantomData<H>,
 }
 
-impl<
-        E: FieldElement,
-        H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
-        V: VectorCommitment<H>,
-    > DefaultTraceLde<E, H, V>
+impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>, V: VectorCommitment<H>>
+    DefaultTraceLde<E, H, V>
 {
     /// Takes the main trace segment columns as input, interpolates them into polynomials in
     /// coefficient form, evaluates the polynomials over the LDE domain, commits to the
@@ -65,7 +63,10 @@ impl<
         trace_info: &TraceInfo,
         main_trace: &ColMatrix<E::BaseField>,
         domain: &StarkDomain<E::BaseField>,
-    ) -> (Self, TracePolyTable<E>) {
+    ) -> (Self, TracePolyTable<E>)
+    where
+        <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
+    {
         // extend the main execution trace and build a commitment to the extended trace
         let (main_segment_lde, main_segment_tree, main_segment_polys) =
             build_trace_commitment::<E, E::BaseField, H, V>(main_trace, domain);
@@ -111,9 +112,9 @@ impl<
 impl<E, H, V> TraceLde<E> for DefaultTraceLde<E, H, V>
 where
     E: FieldElement,
-    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment<H>>::Item>
-        + core::marker::Sync,
+    H: ElementHasher<BaseField = E::BaseField> + core::marker::Sync,
     V: VectorCommitment<H> + core::marker::Sync,
+    <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
 {
     type HashFn = H;
     type VC = V;
@@ -270,8 +271,9 @@ fn build_trace_commitment<E, F, H, V>(
 where
     E: FieldElement,
     F: FieldElement<BaseField = E::BaseField>,
-    H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
+    H: ElementHasher<BaseField = E::BaseField>,
     V: VectorCommitment<H>,
+    <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
 {
     // extend the execution trace
     let (trace_lde, trace_polys) = {

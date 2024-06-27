@@ -91,6 +91,9 @@ pub struct MerkleTree<H: Hasher> {
     leaves: Vec<H::Digest>,
 }
 
+/// MERKLE OPENING PROOF
+pub type MerkleTreeOpening<H> = (<H as Hasher>::Digest, Vec<<H as Hasher>::Digest>);
+
 // MERKLE TREE IMPLEMENTATION
 // ================================================================================================
 
@@ -184,7 +187,7 @@ impl<H: Hasher> MerkleTree<H> {
     /// # Errors
     /// Returns an error if the specified index is greater than or equal to the number of leaves
     /// in the tree.
-    pub fn prove(&self, index: usize) -> Result<(H::Digest, Vec<H::Digest>), MerkleTreeError> {
+    pub fn prove(&self, index: usize) -> Result<MerkleTreeOpening<H>, MerkleTreeError> {
         if index >= self.leaves.len() {
             return Err(MerkleTreeError::LeafIndexOutOfBounds(self.leaves.len(), index));
         }
@@ -205,7 +208,6 @@ impl<H: Hasher> MerkleTree<H> {
     /// # Errors
     /// Returns an error if:
     /// * No indexes were provided (i.e., `indexes` is an empty slice).
-    /// * Number of provided indexes is greater than 255.
     /// * Any of the provided indexes are greater than or equal to the number of leaves in the
     ///   tree.
     /// * List of indexes contains duplicates.
@@ -215,9 +217,6 @@ impl<H: Hasher> MerkleTree<H> {
     ) -> Result<(Vec<H::Digest>, BatchMerkleProof<H>), MerkleTreeError> {
         if indexes.is_empty() {
             return Err(MerkleTreeError::TooFewLeafIndexes);
-        }
-        if indexes.len() > proofs::MAX_PATHS {
-            return Err(MerkleTreeError::TooManyLeafIndexes(proofs::MAX_PATHS, indexes.len()));
         }
 
         let index_map = map_indexes(indexes, self.depth())?;
@@ -311,7 +310,6 @@ impl<H: Hasher> MerkleTree<H> {
     /// # Errors
     /// Returns an error if:
     /// * No indexes were provided (i.e., `indexes` is an empty slice).
-    /// * Number of provided indexes is greater than 255.
     /// * Any of the specified `indexes` is greater than or equal to the number of leaves in the
     ///   tree from which the batch proof was generated.
     /// * List of indexes contains duplicates.
@@ -409,7 +407,7 @@ impl<H: Hasher> VectorCommitment<H> for MerkleTree<H> {
 
     type Error = MerkleTreeError;
 
-    fn new(items: Vec<Self::Item>, _options: Self::Options) -> Result<Self, Self::Error> {
+    fn with_options(items: Vec<Self::Item>, _options: Self::Options) -> Result<Self, Self::Error> {
         MerkleTree::new(items)
     }
 

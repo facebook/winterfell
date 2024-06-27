@@ -5,7 +5,7 @@
 
 use alloc::vec::Vec;
 
-use crypto::{ElementHasher, VectorCommitment};
+use crypto::{ElementHasher, Hasher, VectorCommitment};
 use math::{fft, FieldElement, StarkField};
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
@@ -182,26 +182,27 @@ impl<E: FieldElement> RowMatrix<E> {
     /// * The resulting vector commitment is returned as the commitment to the entire matrix.
     pub fn commit_to_rows<H, V>(&self) -> V
     where
-        H: ElementHasher<BaseField = E::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
+        H: ElementHasher<BaseField = E::BaseField>,
         V: VectorCommitment<H>,
+        <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
     {
         // allocate vector to store row hashes
-        let mut row_hashes = unsafe { uninit_vector::<H::Digest>(self.num_rows()) };
+        let mut row_hashes = unsafe { uninit_vector::<V::Item>(self.num_rows()) };
 
         // iterate though matrix rows, hashing each row
         batch_iter_mut!(
             &mut row_hashes,
             128, // min batch size
-            |batch: &mut [H::Digest], batch_offset: usize| {
+            |batch: &mut [V::Item], batch_offset: usize| {
                 for (i, row_hash) in batch.iter_mut().enumerate() {
-                    *row_hash = H::hash_elements(self.row(batch_offset + i));
+                    *row_hash = H::hash_elements(self.row(batch_offset + i)).into();
                 }
             }
         );
 
         // build the vector commitment to the hashed rows
         // TODO: the options should be an input to the function
-        V::new(row_hashes, V::Options::default()).unwrap()
+        V::with_options(row_hashes, V::Options::default()).unwrap()
     }
 }
 

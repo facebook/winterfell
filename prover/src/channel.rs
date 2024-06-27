@@ -44,7 +44,7 @@ impl<'a, A, E, H, R, V> ProverChannel<'a, A, E, H, R, V>
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseField>,
-    H: ElementHasher<BaseField = A::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
+    H: ElementHasher<BaseField = A::BaseField>,
     R: RandomCoin<BaseField = A::BaseField, Hasher = H>,
     V: VectorCommitment<H>,
 {
@@ -91,14 +91,14 @@ where
     /// also reseeds the public coin with the hashes of the evaluation frame states.
     pub fn send_ood_trace_states(&mut self, trace_ood_frame: &TraceOodFrame<E>) {
         let trace_states_hash = self.ood_frame.set_trace_states::<E, H>(trace_ood_frame);
-        self.public_coin.reseed(trace_states_hash.into());
+        self.public_coin.reseed(trace_states_hash);
     }
 
     /// Saves the evaluations of constraint composition polynomial columns at the out-of-domain
     /// point. This also reseeds the public coin wit the hash of the evaluations.
     pub fn send_ood_constraint_evaluations(&mut self, evaluations: &[E]) {
         self.ood_frame.set_constraint_evaluations(evaluations);
-        self.public_coin.reseed(H::hash_elements(evaluations).into());
+        self.public_coin.reseed(H::hash_elements(evaluations));
     }
 
     // PUBLIC COIN METHODS
@@ -207,7 +207,7 @@ impl<'a, A, E, H, R, V> fri::ProverChannel<E, H> for ProverChannel<'a, A, E, H, 
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseField>,
-    H: ElementHasher<BaseField = A::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
+    H: ElementHasher<BaseField = A::BaseField>,
     R: RandomCoin<BaseField = A::BaseField, Hasher = H>,
     V: VectorCommitment<H>,
 {

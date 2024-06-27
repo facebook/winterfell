@@ -85,9 +85,10 @@ pub fn verify<AIR, HashFn, RandCoin, V>(
 ) -> Result<(), VerifierError>
 where
     AIR: Air,
-    HashFn: ElementHasher<BaseField = AIR::BaseField, Digest = <V as VectorCommitment<HashFn>>::Item>,
-    RandCoin: RandomCoin<BaseField = AIR::BaseField, Hasher = HashFn >,
+    HashFn: ElementHasher<BaseField = AIR::BaseField>,
+    RandCoin: RandomCoin<BaseField = AIR::BaseField, Hasher = HashFn>,
     V: VectorCommitment<HashFn>,
+    <V as VectorCommitment<HashFn>>::Item: From<<HashFn as Hasher>::Digest>,
 {
     // check that `proof` was generated with an acceptable set of parameters from the point of view
     // of the verifier
@@ -153,9 +154,10 @@ fn perform_verification<A, E, H, R, V>(
 where
     E: FieldElement<BaseField = A::BaseField>,
     A: Air,
-    H: ElementHasher<BaseField = A::BaseField, Digest = <V as VectorCommitment<H>>::Item>,
+    H: ElementHasher<BaseField = A::BaseField>,
     R: RandomCoin<BaseField = A::BaseField, Hasher = H>,
     V: VectorCommitment<H>,
+    <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
 {
     // 1 ----- trace commitment -------------------------------------------------------------------
     // Read the commitments to evaluations of the trace polynomials over the LDE domain sent by the
@@ -244,7 +246,7 @@ where
         aux_trace_rand_elements.as_ref(),
         z,
     );
-    public_coin.reseed(ood_trace_frame.hash::<H>().into());
+    public_coin.reseed(ood_trace_frame.hash::<H>());
 
     // read evaluations of composition polynomial columns sent by the prover, and reduce them into
     // a single value by computing \sum_{i=0}^{m-1}(z^(i * l) * value_i), where value_i is the
@@ -261,7 +263,7 @@ where
             .fold(E::ZERO, |result, (i, &value)| {
                 result + z.exp_vartime(((i * (air.trace_length())) as u32).into()) * value
             });
-    public_coin.reseed(H::hash_elements(&ood_constraint_evaluations).into());
+    public_coin.reseed(H::hash_elements(&ood_constraint_evaluations));
 
     // finally, make sure the values are the same
     if ood_constraint_evaluation_1 != ood_constraint_evaluation_2 {
