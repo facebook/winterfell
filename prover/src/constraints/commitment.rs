@@ -46,7 +46,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>, V: VectorCommi
     }
 
     /// Returns the commitment.
-    pub fn commitment(&self) -> V::Commitment {
+    pub fn commitment(&self) -> H::Digest {
         self.vector_commitment.commitment()
     }
 

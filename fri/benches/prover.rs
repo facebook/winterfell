@@ -28,7 +28,8 @@ pub fn build_layers(c: &mut Criterion) {
             BenchmarkId::new("build_layers", domain_size),
             &evaluations,
             |b, e| {
-                let mut prover = FriProver::new(options.clone());
+                let mut prover =
+                    FriProver::<_, _, _, MerkleTree<Blake3_256<BaseElement>>>::new(options.clone());
                 b.iter_batched(
                     || e.clone(),
                     |evaluations| {
@@ -36,7 +37,6 @@ pub fn build_layers(c: &mut Criterion) {
                             BaseElement,
                             Blake3_256<BaseElement>,
                             DefaultRandomCoin<Blake3_256<BaseElement>>,
-                            MerkleTree<Blake3_256<BaseElement>>,
                         >::new(domain_size, 32);
                         prover.build_layers(&mut channel, evaluations);
                         prover.reset();

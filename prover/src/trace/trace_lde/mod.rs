@@ -7,7 +7,7 @@ use air::{proof::Queries, LagrangeKernelEvaluationFrame, TraceInfo};
 use alloc::vec::Vec;
 
 use air::{proof::Queries, LagrangeKernelEvaluationFrame, TraceInfo};
-use crypto::{ElementHasher, VectorCommitment};
+use crypto::{ElementHasher, Hasher, VectorCommitment};
 
 use super::{ColMatrix, EvaluationFrame, FieldElement, TracePolyTable};
 use crate::StarkDomain;
@@ -28,11 +28,11 @@ pub trait TraceLde<E: FieldElement>: Sync {
     /// The hash function used for hashing the rows of trace segment LDEs.
     type HashFn: ElementHasher<BaseField = E::BaseField>;
 
+    /// The vector commitment scheme used for commiting to the trace.
     type VC: VectorCommitment<Self::HashFn>;
 
     /// Returns the commitment to the low-degree extension of the main trace segment.
-    fn get_main_trace_commitment(&self)
-        -> <Self::VC as VectorCommitment<Self::HashFn>>::Commitment;
+    fn get_main_trace_commitment(&self) -> <Self::HashFn as Hasher>::Digest;
 
     /// Takes auxiliary trace segment columns as input, interpolates them into polynomials in
     /// coefficient form, evaluates the polynomials over the LDE domain, and commits to the
@@ -50,7 +50,7 @@ pub trait TraceLde<E: FieldElement>: Sync {
         &mut self,
         aux_trace: &ColMatrix<E>,
         domain: &StarkDomain<E::BaseField>,
-    ) -> (ColMatrix<E>, <Self::VC as VectorCommitment<Self::HashFn>>::Commitment);
+    ) -> (ColMatrix<E>, <Self::HashFn as Hasher>::Digest);
 
     /// Reads current and next rows from the main trace segment into the specified frame.
     fn read_main_trace_frame_into(

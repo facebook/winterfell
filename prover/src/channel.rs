@@ -76,15 +76,15 @@ where
     // --------------------------------------------------------------------------------------------
 
     /// Commits the prover the extended execution trace.
-    pub fn commit_trace(&mut self, trace_root: V::Commitment) {
-        self.commitments.add::<V, H>(&trace_root);
-        self.public_coin.reseed(trace_root.into());
+    pub fn commit_trace(&mut self, trace_root: H::Digest) {
+        self.commitments.add::<H>(&trace_root);
+        self.public_coin.reseed(trace_root);
     }
 
     /// Commits the prover to the evaluations of the constraint composition polynomial.
-    pub fn commit_constraints(&mut self, constraint_root: V::Commitment) {
-        self.commitments.add::<V, H>(&constraint_root);
-        self.public_coin.reseed(constraint_root.into());
+    pub fn commit_constraints(&mut self, constraint_root: H::Digest) {
+        self.commitments.add::<H>(&constraint_root);
+        self.public_coin.reseed(constraint_root);
     }
 
     /// Saves the evaluations of trace polynomials over the out-of-domain evaluation frame. This
@@ -212,12 +212,11 @@ where
     V: VectorCommitment<H>,
 {
     type Hasher = H;
-    type VectorCommitment = V;
 
     /// Commits the prover to a FRI layer.
-    fn commit_fri_layer(&mut self, layer_root: <V as VectorCommitment<H>>::Commitment) {
-        self.commitments.add::<V, H>(&layer_root);
-        self.public_coin.reseed(layer_root.into());
+    fn commit_fri_layer(&mut self, layer_root: H::Digest) {
+        self.commitments.add::<H>(&layer_root);
+        self.public_coin.reseed(layer_root);
     }
 
     /// Returns a new alpha drawn from the public coin.

@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 use core::marker::PhantomData;
 
 use air::{proof::Queries, LagrangeKernelEvaluationFrame, TraceInfo};
-use crypto::{Hasher, VectorCommitment};
+use crypto::VectorCommitment;
 use tracing::info_span;
 
 use super::{
@@ -63,10 +63,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>, V: VectorCommi
         trace_info: &TraceInfo,
         main_trace: &ColMatrix<E::BaseField>,
         domain: &StarkDomain<E::BaseField>,
-    ) -> (Self, TracePolyTable<E>)
-    where
-        <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
-    {
+    ) -> (Self, TracePolyTable<E>) {
         // extend the main execution trace and build a commitment to the extended trace
         let (main_segment_lde, main_segment_tree, main_segment_polys) =
             build_trace_commitment::<E, E::BaseField, H, V>(main_trace, domain);
@@ -114,13 +111,12 @@ where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField> + core::marker::Sync,
     V: VectorCommitment<H> + core::marker::Sync,
-    <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
 {
     type HashFn = H;
     type VC = V;
 
     /// Returns the commitment to the low-degree extension of the main trace segment.
-    fn get_main_trace_commitment(&self) -> V::Commitment {
+    fn get_main_trace_commitment(&self) -> H::Digest {
         self.main_segment_tree.commitment()
     }
 
@@ -140,7 +136,7 @@ where
         &mut self,
         aux_trace: &ColMatrix<E>,
         domain: &StarkDomain<E::BaseField>,
-    ) -> (ColMatrix<E>, V::Commitment) {
+    ) -> (ColMatrix<E>, H::Digest) {
         // extend the auxiliary trace segment and build a commitment to the extended trace
         let (aux_segment_lde, aux_segment_tree, aux_segment_polys) =
             build_trace_commitment::<E, E, H, Self::VC>(aux_trace, domain);
@@ -273,7 +269,6 @@ where
     F: FieldElement<BaseField = E::BaseField>,
     H: ElementHasher<BaseField = E::BaseField>,
     V: VectorCommitment<H>,
-    <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
 {
     // extend the execution trace
     let (trace_lde, trace_polys) = {

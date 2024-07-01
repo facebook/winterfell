@@ -8,7 +8,7 @@
 use alloc::vec::Vec;
 use core::{marker::PhantomData, mem};
 
-use crypto::{ElementHasher, Hasher, RandomCoin, VectorCommitment};
+use crypto::{ElementHasher, RandomCoin, VectorCommitment};
 use math::{polynom, FieldElement, StarkField};
 
 use crate::{folding::fold_positions, utils::map_positions_to_indexes, FriOptions, VerifierError};
@@ -68,12 +68,13 @@ where
     max_poly_degree: usize,
     domain_size: usize,
     domain_generator: E::BaseField,
-    layer_commitments: Vec<<V as VectorCommitment<H>>::Commitment>,
+    layer_commitments: Vec<H::Digest>,
     layer_alphas: Vec<E>,
     options: FriOptions,
     num_partitions: usize,
     _channel: PhantomData<C>,
     _public_coin: PhantomData<R>,
+    _vector_com: PhantomData<V>,
 }
 
 impl<E, C, H, R, V> FriVerifier<E, C, H, R, V>
@@ -120,8 +121,7 @@ where
         let mut layer_alphas = Vec::with_capacity(layer_commitments.len());
         let mut max_degree_plus_1 = max_poly_degree + 1;
         for (depth, commitment) in layer_commitments.iter().enumerate() {
-            let commitment: <H as Hasher>::Digest = (*commitment).into();
-            public_coin.reseed(commitment);
+            public_coin.reseed(*commitment);
             let alpha = public_coin.draw().map_err(VerifierError::RandomCoinError)?;
             layer_alphas.push(alpha);
 
@@ -149,6 +149,7 @@ where
             num_partitions,
             _channel: PhantomData,
             _public_coin: PhantomData,
+            _vector_com: PhantomData,
         })
     }
 
@@ -211,10 +212,7 @@ where
         channel: &mut C,
         evaluations: &[E],
         positions: &[usize],
-    ) -> Result<(), VerifierError>
-    where
-        <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
-    {
+    ) -> Result<(), VerifierError> {
         if evaluations.len() != positions.len() {
             return Err(VerifierError::NumPositionEvaluationMismatch(
                 positions.len(),
@@ -240,10 +238,7 @@ where
         channel: &mut C,
         evaluations: &[E],
         positions: &[usize],
-    ) -> Result<(), VerifierError>
-    where
-        <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
-    {
+    ) -> Result<(), VerifierError> {
         // pre-compute roots of unity used in computing x coordinates in the folded domain
         let folding_roots = (0..N)
             .map(|i| self.domain_generator.exp_vartime(((self.domain_size / N * i) as u64).into()))

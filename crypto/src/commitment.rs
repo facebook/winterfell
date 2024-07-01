@@ -19,15 +19,11 @@ use crate::Hasher;
 /// posessing `com` can be convinced, with high confidence, that the claim is true.
 ///
 /// Vector commitment schemes usually have some batching properties in the sense that opening
-/// proofs for number of `(i, v_i)` can be batched together into one batch opening proof in order
+/// proofs for a number of `(i, v_i)` can be batched together into one batch opening proof in order
 /// to optimize both the proof size as well as the verification time.
 pub trait VectorCommitment<H: Hasher>: Sized {
     /// Options defining the VC i.e., public parameters.
     type Options: Default;
-    /// Values commited to.
-    type Item: Clone + Serializable + Deserializable + Send;
-    /// Commitment string.
-    type Commitment: Copy + Serializable + Deserializable + From<Self::Item> + Into<H::Digest>;
     /// Opening proof of some value at some position index.
     type Proof: Clone + Serializable + Deserializable;
     /// Batch opening proof of a number of {(i, v_i)}_{i ∈ S} for an index set.
@@ -37,16 +33,16 @@ pub trait VectorCommitment<H: Hasher>: Sized {
 
     /// Creates a commitment to a vector of values (v_0, ..., v_{n-1}) using the default
     /// options.
-    fn new(items: Vec<Self::Item>) -> Result<Self, Self::Error> {
+    fn new(items: Vec<H::Digest>) -> Result<Self, Self::Error> {
         Self::with_options(items, Self::Options::default())
     }
 
     /// Creates a commitment to a vector of values (v_0, ..., v_{n-1}) given a set of
     /// options.
-    fn with_options(items: Vec<Self::Item>, options: Self::Options) -> Result<Self, Self::Error>;
+    fn with_options(items: Vec<H::Digest>, options: Self::Options) -> Result<Self, Self::Error>;
 
     /// Returns the commitment string to the commited values.
-    fn commitment(&self) -> Self::Commitment;
+    fn commitment(&self) -> H::Digest;
 
     /// Returns the length of the vector commited to for `Self::Proof`.
     fn get_proof_domain_len(proof: &Self::Proof) -> usize;
@@ -55,7 +51,7 @@ pub trait VectorCommitment<H: Hasher>: Sized {
     fn get_multiproof_domain_len(proof: &Self::MultiProof) -> usize;
 
     /// Opens the value at a given index and provides a proof for the correctness of claimed value.
-    fn open(&self, index: usize) -> Result<(Self::Item, Self::Proof), Self::Error>;
+    fn open(&self, index: usize) -> Result<(H::Digest, Self::Proof), Self::Error>;
 
     #[allow(clippy::type_complexity)]
     /// Opens the values at a given index set and provides a proof for the correctness of claimed
@@ -63,21 +59,21 @@ pub trait VectorCommitment<H: Hasher>: Sized {
     fn open_many(
         &self,
         indexes: &[usize],
-    ) -> Result<(Vec<Self::Item>, Self::MultiProof), Self::Error>;
+    ) -> Result<(Vec<H::Digest>, Self::MultiProof), Self::Error>;
 
     /// Verifies that the claimed value is at the given index using a proof.
     fn verify(
-        commitment: Self::Commitment,
+        commitment: H::Digest,
         index: usize,
-        item: Self::Item,
+        item: H::Digest,
         proof: &Self::Proof,
     ) -> Result<(), Self::Error>;
 
     /// Verifies that the claimed values are at the given set of indices using a batch proof.
     fn verify_many(
-        commitment: Self::Commitment,
+        commitment: H::Digest,
         indexes: &[usize],
-        items: &[Self::Item],
+        items: &[H::Digest],
         proof: &Self::MultiProof,
     ) -> Result<(), Self::Error>;
 }

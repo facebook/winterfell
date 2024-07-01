@@ -10,7 +10,7 @@ use air::{
     proof::{Proof, Queries, Table, TraceOodFrame},
     Air,
 };
-use crypto::{ElementHasher, Hasher, VectorCommitment};
+use crypto::{ElementHasher, VectorCommitment};
 use fri::VerifierChannel as FriVerifierChannel;
 use math::{FieldElement, StarkField};
 
@@ -28,17 +28,15 @@ pub struct VerifierChannel<
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
     V: VectorCommitment<H>,
-> where
-    <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
-{
+> {
     // trace queries
-    trace_commitments: Vec<V::Commitment>,
+    trace_commitments: Vec<H::Digest>,
     trace_queries: Option<TraceQueries<E, H, V>>,
     // constraint queries
-    constraint_commitment: V::Commitment,
+    constraint_commitment: H::Digest,
     constraint_queries: Option<ConstraintQueries<E, H, V>>,
     // FRI proof
-    fri_commitments: Option<Vec<V::Commitment>>,
+    fri_commitments: Option<Vec<H::Digest>>,
     fri_layer_proofs: Vec<V::MultiProof>,
     fri_layer_queries: Vec<Vec<E>>,
     fri_remainder: Option<Vec<E>>,
@@ -53,8 +51,6 @@ pub struct VerifierChannel<
 
 impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>, V: VectorCommitment<H>>
     VerifierChannel<E, H, V>
-where
-    <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -89,7 +85,7 @@ where
 
         // --- parse commitments ------------------------------------------------------------------
         let (trace_commitments, constraint_commitment, fri_commitments) = commitments
-            .parse::<V, H>(num_trace_segments, fri_options.num_fri_layers(lde_domain_size))
+            .parse::<H>(num_trace_segments, fri_options.num_fri_layers(lde_domain_size))
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         // --- parse trace and constraint queries -------------------------------------------------
@@ -144,12 +140,12 @@ where
     ///
     /// For computations requiring multiple trace segment, the returned slice will contain a
     /// commitment for each trace segment.
-    pub fn read_trace_commitments(&self) -> &[V::Commitment] {
+    pub fn read_trace_commitments(&self) -> &[H::Digest] {
         &self.trace_commitments
     }
 
     /// Returns constraint evaluation commitment sent by the prover.
-    pub fn read_constraint_commitment(&self) -> V::Commitment {
+    pub fn read_constraint_commitment(&self) -> H::Digest {
         self.constraint_commitment
     }
 
@@ -193,8 +189,8 @@ where
 
         // make sure the states included in the proof correspond to the trace commitment
 
-        let items: Vec<V::Item> =
-            { queries.main_states.rows().map(|row| H::hash_elements(row).into()).collect() };
+        let items: Vec<H::Digest> =
+            { queries.main_states.rows().map(|row| H::hash_elements(row)).collect() };
         <V as VectorCommitment<H>>::verify_many(
             self.trace_commitments[0],
             positions,
@@ -204,13 +200,13 @@ where
         .map_err(|_| VerifierError::TraceQueryDoesNotMatchCommitment)?;
 
         if queries.aux_states.is_some() {
-            let items: Vec<V::Item> = {
+            let items: Vec<H::Digest> = {
                 queries
                     .aux_states
                     .clone()
                     .unwrap()
                     .rows()
-                    .map(|row| H::hash_elements(row).into())
+                    .map(|row| H::hash_elements(row))
                     .collect()
             };
             <V as VectorCommitment<H>>::verify_many(
@@ -233,8 +229,8 @@ where
         positions: &[usize],
     ) -> Result<Table<E>, VerifierError> {
         let queries = self.constraint_queries.take().expect("already read");
-        let items: Vec<V::Item> =
-            queries.evaluations.rows().map(|row| H::hash_elements(row).into()).collect();
+        let items: Vec<H::Digest> =
+            queries.evaluations.rows().map(|row| H::hash_elements(row)).collect();
         <V as VectorCommitment<H>>::verify_many(
             self.constraint_commitment,
             positions,
@@ -255,7 +251,6 @@ where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
     V: VectorCommitment<H>,
-    <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
 {
     type Hasher = H;
     type VectorCommitment = V;
@@ -264,7 +259,7 @@ where
         self.fri_num_partitions
     }
 
-    fn read_fri_layer_commitments(&mut self) -> Vec<V::Commitment> {
+    fn read_fri_layer_commitments(&mut self) -> Vec<H::Digest> {
         self.fri_commitments.take().expect("already read")
     }
 

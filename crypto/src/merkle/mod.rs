@@ -400,21 +400,17 @@ fn normalize_indexes(indexes: &[usize]) -> Vec<usize> {
 impl<H: Hasher> VectorCommitment<H> for MerkleTree<H> {
     type Options = ();
 
-    type Item = H::Digest;
-
-    type Commitment = H::Digest;
-
     type Proof = Vec<H::Digest>;
 
     type MultiProof = BatchMerkleProof<H>;
 
     type Error = MerkleTreeError;
 
-    fn with_options(items: Vec<Self::Item>, _options: Self::Options) -> Result<Self, Self::Error> {
+    fn with_options(items: Vec<H::Digest>, _options: Self::Options) -> Result<Self, Self::Error> {
         MerkleTree::new(items)
     }
 
-    fn commitment(&self) -> Self::Commitment {
+    fn commitment(&self) -> H::Digest {
         *self.root()
     }
 
@@ -426,30 +422,30 @@ impl<H: Hasher> VectorCommitment<H> for MerkleTree<H> {
         1 << proof.depth
     }
 
-    fn open(&self, index: usize) -> Result<(Self::Item, Self::Proof), Self::Error> {
+    fn open(&self, index: usize) -> Result<(H::Digest, Self::Proof), Self::Error> {
         self.prove(index)
     }
 
     fn open_many(
         &self,
         indexes: &[usize],
-    ) -> Result<(Vec<Self::Item>, Self::MultiProof), Self::Error> {
+    ) -> Result<(Vec<H::Digest>, Self::MultiProof), Self::Error> {
         self.prove_batch(indexes)
     }
 
     fn verify(
-        commitment: Self::Commitment,
+        commitment: H::Digest,
         index: usize,
-        item: Self::Item,
+        item: H::Digest,
         proof: &Self::Proof,
     ) -> Result<(), Self::Error> {
         MerkleTree::<H>::verify(commitment, index, item, proof)
     }
 
     fn verify_many(
-        commitment: Self::Commitment,
+        commitment: H::Digest,
         indexes: &[usize],
-        items: &[Self::Item],
+        items: &[H::Digest],
         proof: &Self::MultiProof,
     ) -> Result<(), Self::Error> {
         MerkleTree::<H>::verify_batch(&commitment, indexes, items, proof)

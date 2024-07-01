@@ -88,7 +88,6 @@ where
     HashFn: ElementHasher<BaseField = AIR::BaseField>,
     RandCoin: RandomCoin<BaseField = AIR::BaseField, Hasher = HashFn>,
     V: VectorCommitment<HashFn>,
-    <V as VectorCommitment<HashFn>>::Item: From<<HashFn as Hasher>::Digest>,
 {
     // check that `proof` was generated with an acceptable set of parameters from the point of view
     // of the verifier
@@ -157,7 +156,6 @@ where
     H: ElementHasher<BaseField = A::BaseField>,
     R: RandomCoin<BaseField = A::BaseField, Hasher = H>,
     V: VectorCommitment<H>,
-    <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
 {
     // 1 ----- trace commitment -------------------------------------------------------------------
     // Read the commitments to evaluations of the trace polynomials over the LDE domain sent by the
@@ -173,7 +171,7 @@ where
     let trace_commitments = channel.read_trace_commitments();
 
     // reseed the coin with the commitment to the main trace segment
-    public_coin.reseed(trace_commitments[MAIN_TRACE_IDX].into());
+    public_coin.reseed(trace_commitments[MAIN_TRACE_IDX]);
 
     // process auxiliary trace segments (if any), to build a set of random elements for each segment
     let aux_trace_rand_elements = if air.trace_info().is_multi_segment() {
@@ -195,7 +193,7 @@ where
                 "failed to generate the random elements needed to build the auxiliary trace",
             );
 
-            public_coin.reseed(trace_commitments[AUX_TRACE_IDX].into());
+            public_coin.reseed(trace_commitments[AUX_TRACE_IDX]);
 
             Some(AuxRandElements::new_with_gkr(rand_elements, gkr_rand_elements))
         } else {
@@ -203,7 +201,7 @@ where
                 "failed to generate the random elements needed to build the auxiliary trace",
             );
 
-            public_coin.reseed(trace_commitments[AUX_TRACE_IDX].into());
+            public_coin.reseed(trace_commitments[AUX_TRACE_IDX]);
 
             Some(AuxRandElements::new(rand_elements))
         }
@@ -223,7 +221,7 @@ where
     // to the prover, and the prover evaluates trace and constraint composition polynomials at z,
     // and sends the results back to the verifier.
     let constraint_commitment = channel.read_constraint_commitment();
-    public_coin.reseed(constraint_commitment.into());
+    public_coin.reseed(constraint_commitment);
     let z = public_coin.draw::<E>().map_err(|_| VerifierError::RandomCoinError)?;
 
     // 3 ----- OOD consistency check --------------------------------------------------------------

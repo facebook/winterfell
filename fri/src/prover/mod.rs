@@ -122,11 +122,9 @@ struct FriRemainder<E: FieldElement>(Vec<E>);
 impl<E, C, H, V> FriProver<E, C, H, V>
 where
     E: FieldElement,
-    C: ProverChannel<E, H, Hasher = H, VectorCommitment = V>,
+    C: ProverChannel<E, H, Hasher = H>,
     H: ElementHasher<BaseField = E::BaseField>,
     V: VectorCommitment<H>,
-    <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
-    <V as VectorCommitment<H>>::Commitment: From<<H as Hasher>::Digest>,
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -233,7 +231,7 @@ where
         let remainder_poly_size = evaluations.len() / self.options.blowup_factor();
         let remainder_poly = evaluations[..remainder_poly_size].to_vec();
         let commitment = <H as ElementHasher>::hash_elements(&remainder_poly);
-        channel.commit_fri_layer(commitment.into());
+        channel.commit_fri_layer(commitment);
         self.remainder_poly = FriRemainder(remainder_poly);
     }
 
@@ -322,11 +320,10 @@ where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
     V: VectorCommitment<H>,
-    <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
 {
-    let mut hashed_evaluations: Vec<V::Item> = unsafe { uninit_vector(values.len()) };
+    let mut hashed_evaluations: Vec<H::Digest> = unsafe { uninit_vector(values.len()) };
     iter_mut!(hashed_evaluations, 1024).zip(values).for_each(|(e, v)| {
-        let digest: V::Item = H::hash_elements(v).into();
+        let digest: H::Digest = H::hash_elements(v);
         *e = digest
     });
 

@@ -6,7 +6,7 @@
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
-use crypto::{ElementHasher, Hasher, RandomCoin, VectorCommitment};
+use crypto::{ElementHasher, Hasher, RandomCoin};
 use math::FieldElement;
 
 // PROVER CHANNEL TRAIT
@@ -24,7 +24,6 @@ use math::FieldElement;
 pub trait ProverChannel<E: FieldElement, H: Hasher> {
     /// Hash function used by the prover to commit to polynomial evaluations.
     type Hasher: ElementHasher<BaseField = E::BaseField>;
-    type VectorCommitment: VectorCommitment<H>;
 
     /// Sends a layer commitment to the verifier.
     ///
@@ -35,10 +34,7 @@ pub trait ProverChannel<E: FieldElement, H: Hasher> {
     /// the hash of each row to get one entry of the vector being commited to. Thus, the number
     /// of elements grouped into a single leaf is equal to the `folding_factor` used for FRI layer
     /// construction.
-    fn commit_fri_layer(
-        &mut self,
-        layer_root: <<Self as ProverChannel<E, H>>::VectorCommitment as VectorCommitment<H>>::Commitment,
-    );
+    fn commit_fri_layer(&mut self, layer_root: H::Digest);
 
     /// Returns a random α drawn uniformly at random from the entire field.
     ///
@@ -57,26 +53,24 @@ pub trait ProverChannel<E: FieldElement, H: Hasher> {
 ///
 /// Though this implementation is intended primarily for testing purposes, it can be used in
 /// production use cases as well.
-pub struct DefaultProverChannel<E, H, R, V>
+pub struct DefaultProverChannel<E, H, R>
 where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
     R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
-    V: VectorCommitment<H>,
 {
     public_coin: R,
-    commitments: Vec<V::Commitment>,
+    commitments: Vec<H::Digest>,
     domain_size: usize,
     num_queries: usize,
     _field_element: PhantomData<E>,
 }
 
-impl<E, H, R, V> DefaultProverChannel<E, H, R, V>
+impl<E, H, R> DefaultProverChannel<E, H, R>
 where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
     R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
-    V: VectorCommitment<H>,
 {
     /// Returns a new prover channel instantiated from the specified parameters.
     ///
@@ -117,24 +111,22 @@ where
     }
 
     /// Returns a list of FRI layer commitments written by the prover into this channel.
-    pub fn layer_commitments(&self) -> &[V::Commitment] {
+    pub fn layer_commitments(&self) -> &[H::Digest] {
         &self.commitments
     }
 }
 
-impl<E, H, R, V> ProverChannel<E, H> for DefaultProverChannel<E, H, R, V>
+impl<E, H, R> ProverChannel<E, H> for DefaultProverChannel<E, H, R>
 where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
     R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
-    V: VectorCommitment<H>,
 {
     type Hasher = H;
-    type VectorCommitment = V;
 
-    fn commit_fri_layer(&mut self, layer_root: V::Commitment) {
+    fn commit_fri_layer(&mut self, layer_root: H::Digest) {
         self.commitments.push(layer_root);
-        self.public_coin.reseed(layer_root.into());
+        self.public_coin.reseed(layer_root);
     }
 
     fn draw_fri_alpha(&mut self) -> E {

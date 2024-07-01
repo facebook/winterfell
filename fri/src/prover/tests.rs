@@ -44,7 +44,7 @@ fn fri_folding_4() {
 pub fn build_prover_channel(
     trace_length: usize,
     options: &FriOptions,
-) -> DefaultProverChannel<BaseElement, Blake3, DefaultRandomCoin<Blake3>, MerkleTree<Blake3>> {
+) -> DefaultProverChannel<BaseElement, Blake3, DefaultRandomCoin<Blake3>> {
     DefaultProverChannel::new(trace_length * options.blowup_factor(), 32)
 }
 
@@ -104,7 +104,7 @@ fn fri_prove_verify(
     let evaluations = build_evaluations(trace_length, lde_blowup);
 
     // instantiate the prover and generate the proof
-    let mut prover = FriProver::new(options.clone());
+    let mut prover = FriProver::<_, _, _, MerkleTree<Blake3>>::new(options.clone());
     prover.build_layers(&mut channel, evaluations.clone());
     let positions = channel.draw_query_positions(0);
     let proof = prover.build_proof(&positions); //  assert_eq!(1, 0 );

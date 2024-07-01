@@ -6,7 +6,7 @@
 use alloc::vec::Vec;
 use core::{iter::FusedIterator, slice};
 
-use crypto::{ElementHasher, Hasher, VectorCommitment};
+use crypto::{ElementHasher, VectorCommitment};
 use math::{fft, polynom, FieldElement};
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
@@ -263,10 +263,9 @@ impl<E: FieldElement> ColMatrix<E> {
     where
         H: ElementHasher<BaseField = E::BaseField>,
         V: VectorCommitment<H>,
-        <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
     {
         // allocate vector to store row hashes
-        let mut row_hashes = unsafe { uninit_vector::<V::Item>(self.num_rows()) };
+        let mut row_hashes = unsafe { uninit_vector::<H::Digest>(self.num_rows()) };
 
         // iterate though matrix rows, hashing each row; the hashing is done by first copying a
         // row into row_buf to avoid heap allocations, and then by applying the hash function to
@@ -274,17 +273,16 @@ impl<E: FieldElement> ColMatrix<E> {
         batch_iter_mut!(
             &mut row_hashes,
             128, // min batch size
-            |batch: &mut [V::Item], batch_offset: usize| {
+            |batch: &mut [H::Digest], batch_offset: usize| {
                 let mut row_buf = vec![E::ZERO; self.num_cols()];
                 for (i, row_hash) in batch.iter_mut().enumerate() {
                     self.read_row_into(i + batch_offset, &mut row_buf);
-                    *row_hash = H::hash_elements(&row_buf).into();
+                    *row_hash = H::hash_elements(&row_buf);
                 }
             }
         );
 
-        // TODO: the options should be an input to the function
-        V::with_options(row_hashes, V::Options::default()).unwrap()
+        V::new(row_hashes).unwrap()
     }
 
     // CONVERSIONS

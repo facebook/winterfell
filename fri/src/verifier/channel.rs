@@ -41,9 +41,7 @@ pub trait VerifierChannel<E: FieldElement> {
     /// from the entire field after each layer commitment is received. In the non-interactive
     /// version, the verifier can read all layer commitments at once, and then generate α values
     /// locally.
-    fn read_fri_layer_commitments(
-        &mut self,
-    ) -> Vec<<<Self as VerifierChannel<E>>::VectorCommitment as VectorCommitment<Self::Hasher>>::Commitment>;
+    fn read_fri_layer_commitments(&mut self) -> Vec<<Self::Hasher as Hasher>::Digest>;
 
     /// Reads and removes from the channel evaluations of the polynomial at the queried positions
     /// for the next FRI layer.
@@ -84,23 +82,14 @@ pub trait VerifierChannel<E: FieldElement> {
     fn read_layer_queries<const N: usize>(
         &mut self,
         positions: &[usize],
-        commitment: &<<Self as VerifierChannel<E>>::VectorCommitment as VectorCommitment<
-            Self::Hasher,
-        >>::Commitment,
-    ) -> Result<Vec<[E; N]>, VerifierError>
-    where
-        <<Self as VerifierChannel<E>>::VectorCommitment as VectorCommitment<
-            <Self as VerifierChannel<E>>::Hasher,
-        >>::Item: From<<<Self as VerifierChannel<E>>::Hasher as Hasher>::Digest>,
-    {
+        commitment: &<Self::Hasher as Hasher>::Digest,
+    ) -> Result<Vec<[E; N]>, VerifierError> {
         let layer_proof = self.take_next_fri_layer_proof();
         let layer_queries = self.take_next_fri_layer_queries();
         let leaf_values = group_slice_elements(&layer_queries);
-        let hashed_values: Vec<
-            <<Self as VerifierChannel<E>>::VectorCommitment as VectorCommitment<Self::Hasher>>::Item,
-        > = leaf_values
+        let hashed_values: Vec<<Self::Hasher as Hasher>::Digest> = leaf_values
             .iter()
-            .map(|seg| <Self::Hasher as ElementHasher>::hash_elements(seg).into())
+            .map(|seg| <Self::Hasher as ElementHasher>::hash_elements(seg))
             .collect();
 
         <<Self as VerifierChannel<E>>::VectorCommitment as VectorCommitment<Self::Hasher>>::verify_many(
@@ -136,7 +125,7 @@ pub struct DefaultVerifierChannel<
     H: ElementHasher<BaseField = E::BaseField>,
     V: VectorCommitment<H>,
 > {
-    layer_commitments: Vec<V::Commitment>,
+    layer_commitments: Vec<H::Digest>,
     layer_proofs: Vec<V::MultiProof>,
     layer_queries: Vec<Vec<E>>,
     remainder: Vec<E>,
@@ -156,7 +145,7 @@ where
     /// Returns an error if the specified `proof` could not be parsed correctly.
     pub fn new(
         proof: FriProof,
-        layer_commitments: Vec<V::Commitment>,
+        layer_commitments: Vec<H::Digest>,
         domain_size: usize,
         folding_factor: usize,
     ) -> Result<Self, DeserializationError> {
@@ -190,7 +179,7 @@ where
         self.num_partitions
     }
 
-    fn read_fri_layer_commitments(&mut self) -> Vec<V::Commitment> {
+    fn read_fri_layer_commitments(&mut self) -> Vec<H::Digest> {
         self.layer_commitments.drain(..).collect()
     }
 
