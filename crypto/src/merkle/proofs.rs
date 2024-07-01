@@ -13,11 +13,11 @@ use crate::{errors::MerkleTreeError, Hasher};
 // BATCH MERKLE PROOF
 // ================================================================================================
 
-/// Multiple Merkle paths aggregated into a single proof.
+/// Multiple Merkle proofs aggregated into a single proof.
 ///
 /// The aggregation is done in a way which removes all duplicate internal nodes, and thus,
 /// it is possible to achieve non-negligible compression as compared to naively concatenating
-/// individual Merkle paths. The algorithm is for aggregation is a variation of
+/// individual Merkle proofs. The algorithm is for aggregation is a variation of
 /// [Octopus](https://eprint.iacr.org/2017/933).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BatchMerkleProof<H: Hasher> {
@@ -32,9 +32,9 @@ impl<H: Hasher> BatchMerkleProof<H> {
     ///
     /// # Panics
     /// Panics if:
-    /// * No paths have been provided (i.e., `paths` is an empty slice).
-    /// * Number of paths is not equal to the number of indexes.
-    /// * Not all paths have the same length.
+    /// * No proofs have been provided (i.e., `proofs` is an empty slice).
+    /// * Number of proofs is not equal to the number of indexes.
+    /// * Not all proofs have the same length.
     pub fn from_single_proofs(
         proofs: &[MerkleTreeOpening<H>],
         indexes: &[usize],
@@ -46,14 +46,14 @@ impl<H: Hasher> BatchMerkleProof<H> {
         let depth = proofs[0].1.len();
 
         // sort indexes in ascending order, and also re-arrange proofs accordingly
-        let mut path_map = BTreeMap::new();
-        for (&index, path) in indexes.iter().zip(proofs.iter().cloned()) {
-            assert_eq!(depth, path.1.len(), "not all paths have the same length");
-            path_map.insert(index, path);
+        let mut proof_map = BTreeMap::new();
+        for (&index, proof) in indexes.iter().zip(proofs.iter().cloned()) {
+            assert_eq!(depth, proof.1.len(), "not all proofs have the same length");
+            proof_map.insert(index, proof);
         }
-        let indexes = path_map.keys().cloned().collect::<Vec<_>>();
-        let paths = path_map.values().cloned().collect::<Vec<_>>();
-        path_map.clear();
+        let indexes = proof_map.keys().cloned().collect::<Vec<_>>();
+        let proofs = proof_map.values().cloned().collect::<Vec<_>>();
+        proof_map.clear();
 
         let mut leaves = vec![H::Digest::default(); indexes.len()];
         let mut nodes: Vec<Vec<H::Digest>> = Vec::with_capacity(indexes.len());
@@ -61,44 +61,44 @@ impl<H: Hasher> BatchMerkleProof<H> {
         // populate values and the first layer of proof nodes
         let mut i = 0;
         while i < indexes.len() {
-            leaves[i] = paths[i].0;
+            leaves[i] = proofs[i].0;
 
             if indexes.len() > i + 1 && are_siblings(indexes[i], indexes[i + 1]) {
-                leaves[i + 1] = paths[i].1[0];
+                leaves[i + 1] = proofs[i].1[0];
                 nodes.push(vec![]);
                 i += 1;
             } else {
-                nodes.push(vec![paths[i].1[0]]);
+                nodes.push(vec![proofs[i].1[0]]);
             }
-            path_map.insert(indexes[i] >> 1, paths[i].clone());
+            proof_map.insert(indexes[i] >> 1, proofs[i].clone());
             i += 1;
         }
 
         // populate all remaining layers of proof nodes
         for d in 1..depth {
-            let indexes = path_map.keys().cloned().collect::<Vec<_>>();
-            let mut next_path_map = BTreeMap::new();
+            let indexes = proof_map.keys().cloned().collect::<Vec<_>>();
+            let mut next_proof_map = BTreeMap::new();
 
             let mut i = 0;
             while i < indexes.len() {
                 let index = indexes[i];
-                let path = path_map.get(&index).unwrap();
+                let proof = proof_map.get(&index).unwrap();
                 if indexes.len() > i + 1 && are_siblings(index, indexes[i + 1]) {
                     i += 1;
                 } else {
-                    nodes[i].push(path.1[d]);
+                    nodes[i].push(proof.1[d]);
                 }
-                next_path_map.insert(index >> 1, path.clone());
+                next_proof_map.insert(index >> 1, proof.clone());
                 i += 1;
             }
 
-            core::mem::swap(&mut path_map, &mut next_path_map);
+            core::mem::swap(&mut proof_map, &mut next_proof_map);
         }
 
         BatchMerkleProof { nodes, depth: (depth) as u8 }
     }
 
-    /// Computes a node to which all Merkle paths aggregated in this proof resolve.
+    /// Computes a node to which all Merkle proofs aggregated in this proof resolve.
     ///
     /// # Errors
     /// Returns an error if:
@@ -241,8 +241,7 @@ impl<H: Hasher> BatchMerkleProof<H> {
     /// Returns an error if:
     /// * No indexes were provided (i.e., `indexes` is an empty slice).
     /// * Number of provided indexes does not match the number of leaf nodes in the proof.
-    #[allow(clippy::type_complexity)]
-    pub fn into_paths(
+    pub fn into_openings(
         self,
         leaves: &[H::Digest],
         indexes: &[usize],
@@ -380,10 +379,13 @@ impl<H: Hasher> BatchMerkleProof<H> {
 
         original_indexes
             .iter()
-            .map(|&i| get_path::<H>(i, &partial_tree_map, self.depth as usize))
+            .map(|&i| get_proof::<H>(i, &partial_tree_map, self.depth as usize))
             .collect()
     }
 }
+
+// SERIALIZATION / DESERIALIZATION
+// --------------------------------------------------------------------------------------------
 
 impl<H: Hasher> Serializable for BatchMerkleProof<H> {
     /// Writes all internal proof nodes into the provided target.
@@ -392,17 +394,11 @@ impl<H: Hasher> Serializable for BatchMerkleProof<H> {
         target.write_usize(self.nodes.len());
 
         for nodes in self.nodes.iter() {
-            // record the number of nodes, and append all nodes to the paths buffer
-            target.write_usize(nodes.len());
-            for node in nodes.iter() {
-                target.write(node);
-            }
+            // record the number of nodes, and append all nodes to the proof buffer
+            nodes.write_into(target);
         }
     }
 }
-
-// SERIALIZATION / DESERIALIZATION
-// --------------------------------------------------------------------------------------------
 
 impl<H: Hasher> Deserializable for BatchMerkleProof<H> {
     /// Parses internal nodes from the provided `source`, and constructs a batch Merkle proof
@@ -417,11 +413,8 @@ impl<H: Hasher> Deserializable for BatchMerkleProof<H> {
 
         let mut nodes = Vec::with_capacity(num_node_vectors);
         for _ in 0..num_node_vectors {
-            // read the number of digests in the vector
-            let num_digests = source.read_usize()?;
-
             // read the digests and add them to the node vector
-            let digests = source.read_many(num_digests)?;
+            let digests = Vec::<_>::read_from(source)?;
             nodes.push(digests);
         }
 
@@ -439,7 +432,7 @@ fn are_siblings(left: usize, right: usize) -> bool {
 }
 
 /// Computes the Merkle proof from the computed (partial) tree.
-pub fn get_path<H: Hasher>(
+pub fn get_proof<H: Hasher>(
     index: usize,
     tree: &BTreeMap<usize, <H as Hasher>::Digest>,
     depth: usize,

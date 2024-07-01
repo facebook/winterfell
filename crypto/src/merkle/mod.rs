@@ -91,7 +91,8 @@ pub struct MerkleTree<H: Hasher> {
     leaves: Vec<H::Digest>,
 }
 
-/// MERKLE OPENING PROOF
+/// Merkle tree opening consisting of a leaf value and a Merkle path leading from this leaf
+/// up to the root (excluding the root itself).
 pub type MerkleTreeOpening<H> = (<H as Hasher>::Digest, Vec<<H as Hasher>::Digest>);
 
 // MERKLE TREE IMPLEMENTATION
@@ -180,7 +181,7 @@ impl<H: Hasher> MerkleTree<H> {
     // PROVING METHODS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a Merkle path to a leaf at the specified `index`.
+    /// Returns a Merkle proof to a leaf at the specified `index`.
     ///
     /// The leaf itself will be the first element of the returned tuple.
     ///
@@ -203,7 +204,8 @@ impl<H: Hasher> MerkleTree<H> {
         Ok((leaf, proof))
     }
 
-    /// Computes Merkle paths for the provided indexes and compresses the paths into a single proof.
+    /// Computes Merkle proofs for the provided indexes, compresses the proofs into a single batch
+    /// and returns the batch proof alongside the leaves at the provided indexes.
     ///
     /// # Errors
     /// Returns an error if:
@@ -305,7 +307,8 @@ impl<H: Hasher> MerkleTree<H> {
         Ok(())
     }
 
-    /// Checks whether the batch proof contains Merkle paths for the of the specified `indexes`.
+    /// Checks whether the batch `proof` contains Merkle proofs resolving to `root` for
+    /// the provided `leaves` at the specified `indexes`.
     ///
     /// # Errors
     /// Returns an error if:
@@ -313,7 +316,7 @@ impl<H: Hasher> MerkleTree<H> {
     /// * Any of the specified `indexes` is greater than or equal to the number of leaves in the
     ///   tree from which the batch proof was generated.
     /// * List of indexes contains duplicates.
-    /// * Any of the paths in the batch proof does not resolve to the specified `root`.
+    /// * Any of the proofs in the batch proof does not resolve to the specified `root`.
     pub fn verify_batch(
         root: &H::Digest,
         indexes: &[usize],
@@ -413,6 +416,14 @@ impl<H: Hasher> VectorCommitment<H> for MerkleTree<H> {
 
     fn commitment(&self) -> Self::Commitment {
         *self.root()
+    }
+
+    fn get_proof_domain_len(proof: &Self::Proof) -> usize {
+        1 << proof.len()
+    }
+
+    fn get_multiproof_domain_len(proof: &Self::MultiProof) -> usize {
+        1 << proof.depth
     }
 
     fn open(&self, index: usize) -> Result<(Self::Item, Self::Proof), Self::Error> {

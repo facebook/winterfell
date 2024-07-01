@@ -48,6 +48,12 @@ pub trait VectorCommitment<H: Hasher>: Sized {
     /// Returns the commitment string to the commited values.
     fn commitment(&self) -> Self::Commitment;
 
+    /// Returns the length of the vector commited to for `Self::Proof`.
+    fn get_proof_domain_len(proof: &Self::Proof) -> usize;
+
+    /// Returns the length of the vector commited to for `Self::MultiProof`.
+    fn get_multiproof_domain_len(proof: &Self::MultiProof) -> usize;
+
     /// Opens the value at a given index and provides a proof for the correctness of claimed value.
     fn open(&self, index: usize) -> Result<(Self::Item, Self::Proof), Self::Error>;
 

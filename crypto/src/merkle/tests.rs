@@ -213,14 +213,14 @@ fn verify_batch() {
 }
 
 #[test]
-fn verify_into_paths() {
+fn verify_into_openings() {
     let leaves = Digest256::bytes_as_digests(&LEAVES8).to_vec();
     let tree = MerkleTree::<Blake3_256>::new(leaves).unwrap();
 
     let (_, proof1) = tree.prove(1).unwrap();
     let (_, proof2) = tree.prove(2).unwrap();
     let (leaves1_2, proof1_2) = tree.prove_batch(&[1, 2]).unwrap();
-    let result = proof1_2.into_paths(&leaves1_2, &[1, 2]).unwrap();
+    let result = proof1_2.into_openings(&leaves1_2, &[1, 2]).unwrap();
 
     assert_eq!(proof1, result[0].1);
     assert_eq!(proof2, result[1].1);
@@ -229,7 +229,7 @@ fn verify_into_paths() {
     let (_, proof4) = tree.prove(4).unwrap();
     let (_, proof6) = tree.prove(5).unwrap();
     let (leaves, proof3_4_6) = tree.prove_batch(&[3, 4, 5]).unwrap();
-    let result = proof3_4_6.into_paths(&leaves, &[3, 4, 5]).unwrap();
+    let result = proof3_4_6.into_openings(&leaves, &[3, 4, 5]).unwrap();
 
     assert_eq!(proof3, result[0].1);
     assert_eq!(proof4, result[1].1);
@@ -237,18 +237,18 @@ fn verify_into_paths() {
 }
 
 #[test]
-fn from_paths() {
+fn from_proofs() {
     let leaves = Digest256::bytes_as_digests(&LEAVES8).to_vec();
     let tree = MerkleTree::<Blake3_256>::new(leaves).unwrap();
     let indices: Vec<usize> = vec![1, 2];
     let (_, proof1) = tree.prove_batch(&indices[..]).unwrap();
 
-    let mut paths = Vec::new();
+    let mut proofs = Vec::new();
     for &idx in indices.iter() {
-        paths.push(tree.prove(idx).unwrap());
+        proofs.push(tree.prove(idx).unwrap());
     }
     let proof2: BatchMerkleProof<Blake3_256> =
-        BatchMerkleProof::from_single_proofs(&paths, &indices);
+        BatchMerkleProof::from_single_proofs(&proofs, &indices);
 
     assert!(proof1.nodes == proof2.nodes);
     assert_eq!(proof1.depth, proof2.depth);
@@ -276,38 +276,38 @@ proptest! {
     }
 
     #[test]
-    fn batch_proof_from_paths(tree in random_blake3_merkle_tree(128),
+    fn batch_proof_from_proofs(tree in random_blake3_merkle_tree(128),
                       proof_indices in prop::collection::vec(any::<prop::sample::Index>(), 10..20)
     )  {
         let mut indices: Vec<usize> = proof_indices.iter().map(|idx| idx.index(128)).collect();
         indices.sort_unstable(); indices.dedup();
         let (_, proof1) = tree.prove_batch(&indices[..]).unwrap();
 
-        let mut paths = Vec::new();
+        let mut proofs = Vec::new();
         for &idx in indices.iter() {
-            paths.push(tree.prove(idx).unwrap());
+            proofs.push(tree.prove(idx).unwrap());
         }
-        let proof2 = BatchMerkleProof::from_single_proofs(&paths, &indices);
+        let proof2 = BatchMerkleProof::from_single_proofs(&proofs, &indices);
 
         prop_assert!(proof1 == proof2);
     }
 
     #[test]
-    fn into_paths(tree in random_blake3_merkle_tree(32),
+    fn into_openings(tree in random_blake3_merkle_tree(32),
                       proof_indices in prop::collection::vec(any::<prop::sample::Index>(), 1..30)
     )  {
         let mut indices: Vec<usize> = proof_indices.iter().map(|idx| idx.index(32)).collect();
         indices.sort_unstable(); indices.dedup();
         let (values1, proof1) = tree.prove_batch(&indices[..]).unwrap();
 
-        let mut paths_expected = Vec::new();
+        let mut proofs_expected = Vec::new();
         for &idx in indices.iter() {
-            paths_expected.push(tree.prove(idx).unwrap().1);
+            proofs_expected.push(tree.prove(idx).unwrap().1);
         }
 
-        let paths: Vec<_> = proof1.into_paths(&values1, &indices).unwrap().into_iter().map(|(_, paths)| paths).collect();
+        let proofs: Vec<_> = proof1.into_openings(&values1, &indices).unwrap().into_iter().map(|(_, proofs)| proofs).collect();
 
-        prop_assert!(paths_expected == paths);
+        prop_assert!(proofs_expected == proofs);
     }
 }
 

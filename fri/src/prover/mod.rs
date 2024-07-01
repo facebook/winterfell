@@ -7,13 +7,16 @@ use alloc::vec::Vec;
 use core::marker::PhantomData;
 
 use crypto::{ElementHasher, Hasher, VectorCommitment};
-use math::{fft, FieldElement, StarkField};
-use utils::{flatten_vector_elements, group_slice_elements, transpose_slice};
+use math::{fft, FieldElement};
+#[cfg(feature = "concurrent")]
+use utils::iterators::*;
+use utils::{
+    flatten_vector_elements, group_slice_elements, iter_mut, transpose_slice, uninit_vector,
+};
 
 use crate::{
     folding::{apply_drp, fold_positions},
     proof::{FriProof, FriProofLayer},
-    utils::hash_values,
     FriOptions,
 };
 
@@ -44,6 +47,7 @@ mod tests;
 /// * `H` specifies the hash function used to build for each layer the vector of values commited to
 ///   using the specified vector commitment scheme. The same hash function must be used in
 ///   the prover channel to generate pseudo random values.
+/// * `V` specifies the vector commitment scheme used in order to commit to each layer.
 ///
 /// Proof generation is performed in two phases: commit phase and query phase.
 ///
@@ -91,24 +95,22 @@ mod tests;
 ///
 /// Calling [build_layers()](FriProver::build_layers()) when the internal state is dirty, or
 /// calling [build_proof()](FriProver::build_proof()) on a clean state will result in a panic.
-pub struct FriProver<B, E, C, H, V>
+pub struct FriProver<E, C, H, V>
 where
-    B: StarkField,
-    E: FieldElement<BaseField = B>,
+    E: FieldElement,
     C: ProverChannel<E, H, Hasher = H>,
-    H: ElementHasher<BaseField = B>,
+    H: ElementHasher<BaseField = E::BaseField>,
     V: VectorCommitment<H>,
 {
     options: FriOptions,
-    layers: Vec<FriLayer<B, E, H, V>>,
+    layers: Vec<FriLayer<E, H, V>>,
     remainder_poly: FriRemainder<E>,
     _channel: PhantomData<C>,
 }
 
-struct FriLayer<B: StarkField, E: FieldElement<BaseField = B>, H: Hasher, V: VectorCommitment<H>> {
+struct FriLayer<E: FieldElement, H: Hasher, V: VectorCommitment<H>> {
     commitment: V,
     evaluations: Vec<E>,
-    _base_field: PhantomData<B>,
     _h: PhantomData<H>,
 }
 
@@ -117,12 +119,11 @@ struct FriRemainder<E: FieldElement>(Vec<E>);
 // PROVER IMPLEMENTATION
 // ================================================================================================
 
-impl<B, E, C, H, V> FriProver<B, E, C, H, V>
+impl<E, C, H, V> FriProver<E, C, H, V>
 where
-    B: StarkField,
-    E: FieldElement<BaseField = B>,
+    E: FieldElement,
     C: ProverChannel<E, H, Hasher = H, VectorCommitment = V>,
-    H: ElementHasher<BaseField = B>,
+    H: ElementHasher<BaseField = E::BaseField>,
     V: VectorCommitment<H>,
     <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
     <V as VectorCommitment<H>>::Commitment: From<<H as Hasher>::Digest>,
@@ -148,7 +149,7 @@ where
     }
 
     /// Returns offset of the domain over which FRI protocol is executed by this prover.
-    pub fn domain_offset(&self) -> B {
+    pub fn domain_offset(&self) -> E::BaseField {
         self.options.domain_offset()
     }
 
@@ -209,12 +210,9 @@ where
         // commiting to vector of these digests; we do this so that we could de-commit to N values
         // with a single opening proof.
         let transposed_evaluations = transpose_slice(evaluations);
-        let hashed_evaluations = hash_values::<H, E, V, N>(&transposed_evaluations);
-        let evaluation_vector_commitment = <V as VectorCommitment<H>>::with_options(
-            hashed_evaluations,
-            <V as VectorCommitment<H>>::Options::default(),
-        )
-        .expect("failed to construct FRI layer commitment");
+        let evaluation_vector_commitment =
+            build_layer_commitment::<_, _, V, N>(&transposed_evaluations)
+                .expect("failed to construct FRI layer commitment");
         channel.commit_fri_layer(evaluation_vector_commitment.commitment());
 
         // draw a pseudo-random coefficient from the channel, and use it in degree-respecting
@@ -224,7 +222,6 @@ where
         self.layers.push(FriLayer {
             commitment: evaluation_vector_commitment,
             evaluations: flatten_vector_elements(transposed_evaluations),
-            _base_field: PhantomData,
             _h: PhantomData,
         });
     }
@@ -268,10 +265,10 @@ where
 
                 // sort of a static dispatch for folding_factor parameter
                 let proof_layer = match folding_factor {
-                    2 => query_layer::<B, E, H, 2, V>(&self.layers[i], &positions),
-                    4 => query_layer::<B, E, H, 4, V>(&self.layers[i], &positions),
-                    8 => query_layer::<B, E, H, 8, V>(&self.layers[i], &positions),
-                    16 => query_layer::<B, E, H, 16, V>(&self.layers[i], &positions),
+                    2 => query_layer::<E, H, V, 2>(&self.layers[i], &positions),
+                    4 => query_layer::<E, H, V, 4>(&self.layers[i], &positions),
+                    8 => query_layer::<E, H, V, 8>(&self.layers[i], &positions),
+                    16 => query_layer::<E, H, V, 16>(&self.layers[i], &positions),
                     _ => unimplemented!("folding factor {} is not supported", folding_factor),
                 };
 
@@ -295,14 +292,8 @@ where
 
 /// Builds a single proof layer by querying the evaluations of the passed in FRI layer at the
 /// specified positions.
-fn query_layer<
-    B: StarkField,
-    E: FieldElement<BaseField = B>,
-    H: Hasher,
-    const N: usize,
-    V: VectorCommitment<H>,
->(
-    layer: &FriLayer<B, E, H, V>,
+fn query_layer<E: FieldElement, H: Hasher, V: VectorCommitment<H>, const N: usize>(
+    layer: &FriLayer<E, H, V>,
     positions: &[usize],
 ) -> FriProofLayer {
     // build a batch opening proof for all query positions
@@ -320,4 +311,24 @@ fn query_layer<
         queried_values.push(evaluations[position]);
     }
     FriProofLayer::new::<_, _, N, V>(queried_values, proof.1)
+}
+
+/// Hashes each of the arrays in the provided slice and returns a vector commitment to resulting
+/// hashes.
+pub fn build_layer_commitment<H, E, V, const N: usize>(
+    values: &[[E; N]],
+) -> Result<V, <V as VectorCommitment<H>>::Error>
+where
+    E: FieldElement,
+    H: ElementHasher<BaseField = E::BaseField>,
+    V: VectorCommitment<H>,
+    <V as VectorCommitment<H>>::Item: From<<H as Hasher>::Digest>,
+{
+    let mut hashed_evaluations: Vec<V::Item> = unsafe { uninit_vector(values.len()) };
+    iter_mut!(hashed_evaluations, 1024).zip(values).for_each(|(e, v)| {
+        let digest: V::Item = H::hash_elements(v).into();
+        *e = digest
+    });
+
+    V::new(hashed_evaluations)
 }

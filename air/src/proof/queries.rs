@@ -114,6 +114,13 @@ impl Queries {
         // build batch opening proof
         let mut reader = SliceReader::new(&self.opening_proof);
         let opening_proof = <V::MultiProof as Deserializable>::read_from(&mut reader)?;
+
+        // check that the opening proof matches the domain length
+        assert_eq!(
+            <V as VectorCommitment<H>>::get_multiproof_domain_len(&opening_proof),
+            domain_size
+        );
+
         if reader.has_more_bytes() {
             return Err(DeserializationError::UnconsumedBytes);
         }
@@ -129,12 +136,10 @@ impl Serializable for Queries {
     /// Serializes `self` and writes the resulting bytes into the `target`.
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         // write value bytes
-        target.write_u32(self.values.len() as u32);
-        target.write_bytes(&self.values);
+        self.values.write_into(target);
 
         // write path bytes
-        target.write_u32(self.opening_proof.len() as u32);
-        target.write_bytes(&self.opening_proof);
+        self.opening_proof.write_into(target);
     }
 
     /// Returns an estimate of how many bytes are needed to represent self.

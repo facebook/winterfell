@@ -50,7 +50,7 @@ pub use air::{
 };
 use air::{AuxRandElements, GkrRandElements};
 pub use crypto;
-use crypto::{ElementHasher, RandomCoin, VectorCommitment};
+use crypto::{ElementHasher, Hasher, RandomCoin, VectorCommitment};
 use fri::FriProver;
 pub use math;
 use math::{
@@ -140,10 +140,7 @@ pub trait Prover {
     type Trace: Trace<BaseField = Self::BaseField> + Send + Sync;
 
     /// Hash function to be used.
-    type HashFn: ElementHasher<
-        BaseField = Self::BaseField,
-        Digest = <Self::VC as VectorCommitment<Self::HashFn>>::Item,
-    >;
+    type HashFn: ElementHasher<BaseField = Self::BaseField>;
 
     /// Vector commitment to be used.
     type VC: VectorCommitment<Self::HashFn>;
@@ -248,6 +245,10 @@ pub trait Prover {
     where
         <Self::Air as Air>::PublicInputs: Send,
         <Self::Air as Air>::GkrProof: Send,
+        <<Self as Prover>::VC as VectorCommitment<<Self as Prover>::HashFn>>::Item:
+            From<<<Self as Prover>::HashFn as Hasher>::Digest>,
+        <<Self as Prover>::VC as VectorCommitment<<Self as Prover>::HashFn>>::Commitment:
+            From<<<Self as Prover>::HashFn as Hasher>::Digest>,
     {
         // figure out which version of the generic proof generation procedure to run. this is a sort
         // of static dispatch for selecting two generic parameter: extension field and hash
@@ -282,6 +283,10 @@ pub trait Prover {
         E: FieldElement<BaseField = Self::BaseField>,
         <Self::Air as Air>::PublicInputs: Send,
         <Self::Air as Air>::GkrProof: Send,
+        <<Self as Prover>::VC as VectorCommitment<<Self as Prover>::HashFn>>::Item:
+            From<<<Self as Prover>::HashFn as Hasher>::Digest>,
+        <<Self as Prover>::VC as VectorCommitment<<Self as Prover>::HashFn>>::Commitment:
+            From<<<Self as Prover>::HashFn as Hasher>::Digest>,
     {
         // 0 ----- instantiate AIR and prover channel ---------------------------------------------
 
@@ -531,6 +536,8 @@ pub trait Prover {
     ) -> (ConstraintCommitment<E, Self::HashFn, Self::VC>, CompositionPoly<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
+        <<Self as Prover>::VC as VectorCommitment<<Self as Prover>::HashFn>>::Item:
+            From<<<Self as Prover>::HashFn as Hasher>::Digest>,
     {
         // first, build constraint composition polynomial from its trace as follows:
         // - interpolate the trace into a polynomial in coefficient form
@@ -605,6 +612,8 @@ pub trait Prover {
     ) -> (ConstraintCommitment<E, Self::HashFn, Self::VC>, CompositionPoly<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
+        <<Self as Prover>::VC as VectorCommitment<<Self as Prover>::HashFn>>::Item:
+            From<<<Self as Prover>::HashFn as Hasher>::Digest>,
     {
         // first, build a commitment to the evaluations of the constraint composition polynomial
         // columns
