@@ -49,8 +49,11 @@ pub struct VerifierChannel<
     gkr_proof: Option<Vec<u8>>,
 }
 
-impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>, V: VectorCommitment<H>>
-    VerifierChannel<E, H, V>
+impl<E, H, V> VerifierChannel<E, H, V>
+where
+    E: FieldElement,
+    H: ElementHasher<BaseField = E::BaseField>,
+    V: VectorCommitment<H>,
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -103,7 +106,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>, V: VectorCommi
             .parse_remainder()
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
         let (fri_layer_queries, fri_layer_proofs) = fri_proof
-            .parse_layers::<H, E, V>(lde_domain_size, fri_options.folding_factor())
+            .parse_layers::<E, H, V>(lde_domain_size, fri_options.folding_factor())
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         // --- parse out-of-domain evaluation frame -----------------------------------------------
@@ -190,7 +193,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>, V: VectorCommi
         // make sure the states included in the proof correspond to the trace commitment
 
         let items: Vec<H::Digest> =
-            { queries.main_states.rows().map(|row| H::hash_elements(row)).collect() };
+            queries.main_states.rows().map(|row| H::hash_elements(row)).collect();
         <V as VectorCommitment<H>>::verify_many(
             self.trace_commitments[0],
             positions,
@@ -199,16 +202,9 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>, V: VectorCommi
         )
         .map_err(|_| VerifierError::TraceQueryDoesNotMatchCommitment)?;
 
-        if queries.aux_states.is_some() {
-            let items: Vec<H::Digest> = {
-                queries
-                    .aux_states
-                    .clone()
-                    .unwrap()
-                    .rows()
-                    .map(|row| H::hash_elements(row))
-                    .collect()
-            };
+        if let Some(ref aux_states) = queries.aux_states {
+            let items: Vec<H::Digest> =
+                aux_states.rows().map(|row| H::hash_elements(row)).collect();
             <V as VectorCommitment<H>>::verify_many(
                 self.trace_commitments[1],
                 positions,
@@ -295,8 +291,11 @@ struct TraceQueries<
     _h: PhantomData<H>,
 }
 
-impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>, V: VectorCommitment<H>>
-    TraceQueries<E, H, V>
+impl<E, H, V> TraceQueries<E, H, V>
+where
+    E: FieldElement,
+    H: ElementHasher<BaseField = E::BaseField>,
+    V: VectorCommitment<H>,
 {
     /// Parses the provided trace queries into trace states in the specified field and
     /// corresponding batch opening proof.
@@ -317,7 +316,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>, V: VectorCommi
         let main_segment_width = air.trace_info().main_trace_width();
         let main_segment_queries = queries.remove(0);
         let (main_segment_query_proofs, main_segment_states) = main_segment_queries
-            .parse::<H, E::BaseField, V>(air.lde_domain_size(), num_queries, main_segment_width)
+            .parse::<E::BaseField, H, V>(air.lde_domain_size(), num_queries, main_segment_width)
             .map_err(|err| {
                 VerifierError::ProofDeserializationError(format!(
                     "main trace segment query deserialization failed: {err}"
@@ -334,7 +333,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>, V: VectorCommi
             let segment_queries = queries.remove(0);
             let segment_width = air.trace_info().get_aux_segment_width();
             let (segment_query_proof, segment_trace_states) = segment_queries
-                .parse::<H, E, V>(air.lde_domain_size(), num_queries, segment_width)
+                .parse::<E, H, V>(air.lde_domain_size(), num_queries, segment_width)
                 .map_err(|err| {
                     VerifierError::ProofDeserializationError(format!(
                         "auxiliary trace segment query deserialization failed: {err}"
@@ -375,8 +374,11 @@ struct ConstraintQueries<
     _h: PhantomData<H>,
 }
 
-impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>, V: VectorCommitment<H>>
-    ConstraintQueries<E, H, V>
+impl<E, H, V> ConstraintQueries<E, H, V>
+where
+    E: FieldElement,
+    H: ElementHasher<BaseField = E::BaseField>,
+    V: VectorCommitment<H>,
 {
     /// Parses the provided constraint queries into evaluations in the specified field and
     /// corresponding batch opening proof.
@@ -388,7 +390,7 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>, V: VectorCommi
         let constraint_frame_width = air.context().num_constraint_composition_columns();
 
         let (query_proofs, evaluations) = queries
-            .parse::<H, E, V>(air.lde_domain_size(), num_queries, constraint_frame_width)
+            .parse::<E, H, V>(air.lde_domain_size(), num_queries, constraint_frame_width)
             .map_err(|err| {
                 VerifierError::ProofDeserializationError(format!(
                     "constraint evaluation query deserialization failed: {err}"

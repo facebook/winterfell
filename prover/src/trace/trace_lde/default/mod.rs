@@ -39,18 +39,21 @@ pub struct DefaultTraceLde<
     // low-degree extension of the main segment of the trace
     main_segment_lde: RowMatrix<E::BaseField>,
     // commitment to the main segment of the trace
-    main_segment_tree: V,
+    main_segment_vector_com: V,
     // low-degree extensions of the auxiliary segment of the trace
     aux_segment_lde: Option<RowMatrix<E>>,
     // commitment to the auxiliary segment of the trace
-    aux_segment_tree: Option<V>,
+    aux_segment_vector_com: Option<V>,
     blowup: usize,
     trace_info: TraceInfo,
     _h: PhantomData<H>,
 }
 
-impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>, V: VectorCommitment<H>>
-    DefaultTraceLde<E, H, V>
+impl<E, H, V> DefaultTraceLde<E, H, V>
+where
+    E: FieldElement,
+    H: ElementHasher<BaseField = E::BaseField>,
+    V: VectorCommitment<H>,
 {
     /// Takes the main trace segment columns as input, interpolates them into polynomials in
     /// coefficient form, evaluates the polynomials over the LDE domain, commits to the
@@ -65,15 +68,15 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>, V: VectorCommi
         domain: &StarkDomain<E::BaseField>,
     ) -> (Self, TracePolyTable<E>) {
         // extend the main execution trace and build a commitment to the extended trace
-        let (main_segment_lde, main_segment_tree, main_segment_polys) =
+        let (main_segment_lde, main_segment_vector_com, main_segment_polys) =
             build_trace_commitment::<E, E::BaseField, H, V>(main_trace, domain);
 
         let trace_poly_table = TracePolyTable::new(main_segment_polys);
         let trace_lde = DefaultTraceLde {
             main_segment_lde,
-            main_segment_tree,
+            main_segment_vector_com,
             aux_segment_lde: None,
-            aux_segment_tree: None,
+            aux_segment_vector_com: None,
             blowup: domain.trace_to_lde_blowup(),
             trace_info: trace_info.clone(),
             _h: PhantomData,
@@ -117,7 +120,7 @@ where
 
     /// Returns the commitment to the low-degree extension of the main trace segment.
     fn get_main_trace_commitment(&self) -> H::Digest {
-        self.main_segment_tree.commitment()
+        self.main_segment_vector_com.commitment()
     }
 
     /// Takes auxiliary trace segment columns as input, interpolates them into polynomials in
@@ -138,7 +141,7 @@ where
         domain: &StarkDomain<E::BaseField>,
     ) -> (ColMatrix<E>, H::Digest) {
         // extend the auxiliary trace segment and build a commitment to the extended trace
-        let (aux_segment_lde, aux_segment_tree, aux_segment_polys) =
+        let (aux_segment_lde, aux_segment_vector_com, aux_segment_polys) =
             build_trace_commitment::<E, E, H, Self::VC>(aux_trace, domain);
 
         // check errors
@@ -154,10 +157,10 @@ where
 
         // save the lde and commitment
         self.aux_segment_lde = Some(aux_segment_lde);
-        let root_hash = aux_segment_tree.commitment();
-        self.aux_segment_tree = Some(aux_segment_tree);
+        let commitment_string = aux_segment_vector_com.commitment();
+        self.aux_segment_vector_com = Some(aux_segment_vector_com);
 
-        (aux_segment_polys, root_hash)
+        (aux_segment_polys, commitment_string)
     }
 
     /// Reads current and next rows from the main trace segment into the specified frame.
@@ -218,15 +221,19 @@ where
         // build queries for the main trace segment
         let mut result = vec![build_segment_queries::<E::BaseField, H, V>(
             &self.main_segment_lde,
-            &self.main_segment_tree,
+            &self.main_segment_vector_com,
             positions,
         )];
 
         // build queries for the auxiliary trace segment
-        if let Some(ref segment_tree) = self.aux_segment_tree {
+        if let Some(ref segment_vector_com) = self.aux_segment_vector_com {
             let segment_lde =
                 self.aux_segment_lde.as_ref().expect("expected aux segment to be present");
-            result.push(build_segment_queries::<E, H, V>(segment_lde, segment_tree, positions));
+            result.push(build_segment_queries::<E, H, V>(
+                segment_lde,
+                segment_vector_com,
+                positions,
+            ));
         }
 
         result
@@ -290,16 +297,17 @@ where
     assert_eq!(trace_lde.num_rows(), domain.lde_domain_size());
 
     // build trace commitment
-    let tree_depth = trace_lde.num_rows().ilog2() as usize;
-    let trace_tree = info_span!("compute_execution_trace_commitment", tree_depth)
+    let commitment_domain_size = trace_lde.num_rows();
+    let trace_vector_com = info_span!("compute_execution_trace_commitment", commitment_domain_size)
         .in_scope(|| trace_lde.commit_to_rows::<H, V>());
+    assert_eq!(trace_vector_com.get_domain_len(), commitment_domain_size);
 
-    (trace_lde, trace_tree, trace_polys)
+    (trace_lde, trace_vector_com, trace_polys)
 }
 
 fn build_segment_queries<E, H, V>(
     segment_lde: &RowMatrix<E>,
-    segment_tree: &V,
+    segment_vector_com: &V,
     positions: &[usize],
 ) -> Queries
 where
@@ -313,7 +321,7 @@ where
         positions.iter().map(|&pos| segment_lde.row(pos).to_vec()).collect::<Vec<_>>();
 
     // build a batch opening proof to the leaves specified by positions
-    let trace_proof = segment_tree
+    let trace_proof = segment_vector_com
         .open_many(positions)
         .expect("failed to generate a batch opening proof for trace queries");
 

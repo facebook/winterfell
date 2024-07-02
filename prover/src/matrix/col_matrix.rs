@@ -256,7 +256,7 @@ impl<E: FieldElement> ColMatrix<E> {
     ///
     /// The commitment is built as follows:
     /// * Each row of the matrix is hashed into a single digest of the specified hash function.
-    /// * The resulting vector of digests is commited to using the specified vector commitment
+    /// * The resulting vector of digests is committed to using the specified vector commitment
     ///   scheme.
     /// * The resulting commitment is returned as the commitment to the entire matrix.
     pub fn commit_to_rows<H, V>(&self) -> V
@@ -282,7 +282,7 @@ impl<E: FieldElement> ColMatrix<E> {
             }
         );
 
-        V::new(row_hashes).unwrap()
+        V::new(row_hashes).expect("failed to construct trace vector commitment")
     }
 
     // CONVERSIONS

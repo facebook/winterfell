@@ -126,7 +126,7 @@ impl FriProof {
     /// * This proof is not consistent with the specified `domain_size` and `folding_factor`.
     /// * Any of the layers could not be parsed successfully.
     #[allow(clippy::type_complexity)]
-    pub fn parse_layers<H, E, V>(
+    pub fn parse_layers<E, H, V>(
         self,
         mut domain_size: usize,
         folding_factor: usize,
@@ -146,9 +146,19 @@ impl FriProof {
         // parse all layers
         for (i, layer) in self.layers.into_iter().enumerate() {
             domain_size /= folding_factor;
-            let (qv, op) = layer.parse::<H, _, V>(folding_factor).map_err(|err| {
+            let (qv, op) = layer.parse::<_, H, V>(folding_factor).map_err(|err| {
                 DeserializationError::InvalidValue(format!("failed to parse FRI layer {i}: {err}"))
             })?;
+
+            // check that the opening proof matches the domain length
+            if <V as VectorCommitment<H>>::get_multiproof_domain_len(&op) != domain_size {
+                return Err(DeserializationError::InvalidValue(format!(
+                    "expected a domain of size {} but was {}",
+                    domain_size,
+                    <V as VectorCommitment<H>>::get_multiproof_domain_len(&op),
+                )));
+            }
+
             layer_proofs.push(op);
             layer_queries.push(qv);
         }
@@ -241,7 +251,7 @@ impl FriProofLayer {
     ///
     /// # Panics
     /// Panics if `query_values` is an empty slice.
-    pub(crate) fn new<E: FieldElement, H: Hasher, const N: usize, V: VectorCommitment<H>>(
+    pub(crate) fn new<E: FieldElement, H: Hasher, V: VectorCommitment<H>, const N: usize>(
         query_values: Vec<[E; N]>,
         proof: <V as VectorCommitment<H>>::MultiProof,
     ) -> Self {
@@ -277,7 +287,7 @@ impl FriProofLayer {
     /// * This layer does not contain at least one query.
     /// * Parsing of any of the query values or the corresponding batch opening proof fails.
     /// * Not all bytes have been consumed while parsing this layer.
-    pub fn parse<H, E, V>(
+    pub fn parse<E, H, V>(
         self,
         folding_factor: usize,
     ) -> Result<(Vec<E>, <V as VectorCommitment<H>>::MultiProof), DeserializationError>

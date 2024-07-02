@@ -107,7 +107,7 @@ fn fri_prove_verify(
     let mut prover = FriProver::<_, _, _, MerkleTree<Blake3>>::new(options.clone());
     prover.build_layers(&mut channel, evaluations.clone());
     let positions = channel.draw_query_positions(0);
-    let proof = prover.build_proof(&positions); //  assert_eq!(1, 0 );
+    let proof = prover.build_proof(&positions);
 
     // make sure the proof can be verified
     let commitments = channel.layer_commitments().to_vec();

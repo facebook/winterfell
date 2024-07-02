@@ -39,12 +39,9 @@ mod tests;
 ///
 /// The prover is parametrized with the following types:
 ///
-/// * `B` specifies the base field of the STARK protocol.
-/// * `E` specifies the field in which the FRI protocol is executed. This can be the same as the
-///   base field `B`, but it can also be an extension of the base field in cases when the base
-///   field is too small to provide desired security level for the FRI protocol.
+/// * `E` specifies the field in which the FRI protocol is executed.
 /// * `C` specifies the type used to simulate prover-verifier interaction.
-/// * `H` specifies the hash function used to build for each layer the vector of values commited to
+/// * `H` specifies the hash function used to build for each layer the vector of values committed to
 ///   using the specified vector commitment scheme. The same hash function must be used in
 ///   the prover channel to generate pseudo random values.
 /// * `V` specifies the vector commitment scheme used in order to commit to each layer.
@@ -98,7 +95,7 @@ mod tests;
 pub struct FriProver<E, C, H, V>
 where
     E: FieldElement,
-    C: ProverChannel<E, H, Hasher = H>,
+    C: ProverChannel<E, Hasher = H>,
     H: ElementHasher<BaseField = E::BaseField>,
     V: VectorCommitment<H>,
 {
@@ -122,7 +119,7 @@ struct FriRemainder<E: FieldElement>(Vec<E>);
 impl<E, C, H, V> FriProver<E, C, H, V>
 where
     E: FieldElement,
-    C: ProverChannel<E, H, Hasher = H>,
+    C: ProverChannel<E, Hasher = H>,
     H: ElementHasher<BaseField = E::BaseField>,
     V: VectorCommitment<H>,
 {
@@ -308,12 +305,12 @@ fn query_layer<E: FieldElement, H: Hasher, V: VectorCommitment<H>, const N: usiz
     for &position in positions.iter() {
         queried_values.push(evaluations[position]);
     }
-    FriProofLayer::new::<_, _, N, V>(queried_values, proof.1)
+    FriProofLayer::new::<_, _, V, N>(queried_values, proof.1)
 }
 
 /// Hashes each of the arrays in the provided slice and returns a vector commitment to resulting
 /// hashes.
-pub fn build_layer_commitment<H, E, V, const N: usize>(
+pub fn build_layer_commitment<E, H, V, const N: usize>(
     values: &[[E; N]],
 ) -> Result<V, <V as VectorCommitment<H>>::Error>
 where

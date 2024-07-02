@@ -32,12 +32,22 @@ pub struct ConstraintCommitment<
     _h: PhantomData<H>,
 }
 
-impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>, V: VectorCommitment<H>>
-    ConstraintCommitment<E, H, V>
+impl<E, H, V> ConstraintCommitment<E, H, V>
+where
+    E: FieldElement,
+    H: ElementHasher<BaseField = E::BaseField>,
+    V: VectorCommitment<H>,
 {
     /// Creates a new constraint evaluation commitment from the provided composition polynomial
     /// evaluations and the corresponding vector commitment.
     pub fn new(evaluations: RowMatrix<E>, commitment: V) -> ConstraintCommitment<E, H, V> {
+        assert_eq!(
+            evaluations.num_rows(),
+            commitment.get_domain_len(),
+            "number of rows in constraint evaluation matrix must be the same as the size
+            of the vector commitment domain"
+        );
+
         ConstraintCommitment {
             evaluations,
             vector_commitment: commitment,

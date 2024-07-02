@@ -200,7 +200,7 @@ impl<E: FieldElement> RowMatrix<E> {
         );
 
         // build the vector commitment to the hashed rows
-        V::new(row_hashes).unwrap()
+        V::new(row_hashes).expect("failed to construct trace vector commitment")
     }
 }
 

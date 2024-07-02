@@ -82,7 +82,7 @@ impl Queries {
     /// * `domain_size` is not a power of two.
     /// * `num_queries` is zero.
     /// * `values_per_query` is zero.
-    pub fn parse<H, E, V>(
+    pub fn parse<E, H, V>(
         self,
         domain_size: usize,
         num_queries: usize,
@@ -116,10 +116,13 @@ impl Queries {
         let opening_proof = <V::MultiProof as Deserializable>::read_from(&mut reader)?;
 
         // check that the opening proof matches the domain length
-        assert_eq!(
-            <V as VectorCommitment<H>>::get_multiproof_domain_len(&opening_proof),
-            domain_size
-        );
+        if <V as VectorCommitment<H>>::get_multiproof_domain_len(&opening_proof) != domain_size {
+            return Err(DeserializationError::InvalidValue(format!(
+                "expected a domain of size {} but was {}",
+                domain_size,
+                <V as VectorCommitment<H>>::get_multiproof_domain_len(&opening_proof),
+            )));
+        }
 
         if reader.has_more_bytes() {
             return Err(DeserializationError::UnconsumedBytes);
@@ -155,12 +158,10 @@ impl Deserializable for Queries {
     /// Returns an error of a valid query struct could not be read from the specified source.
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         // read values
-        let num_value_bytes = source.read_u32()?;
-        let values = source.read_vec(num_value_bytes as usize)?;
+        let values = Vec::<_>::read_from(source)?;
 
         // read paths
-        let num_paths_bytes = source.read_u32()?;
-        let paths = source.read_vec(num_paths_bytes as usize)?;
+        let paths = Vec::<_>::read_from(source)?;
 
         Ok(Queries { opening_proof: paths, values })
     }

@@ -21,7 +21,7 @@ use math::FieldElement;
 /// In the interactive version of the protocol, the verifier chooses α uniformly at random from
 /// the entire field. In the non-interactive version, the α is drawn pseudo-randomly based on the
 /// commitments the prover has written into the channel up to this point.
-pub trait ProverChannel<E: FieldElement, H: Hasher> {
+pub trait ProverChannel<E: FieldElement> {
     /// Hash function used by the prover to commit to polynomial evaluations.
     type Hasher: ElementHasher<BaseField = E::BaseField>;
 
@@ -31,10 +31,10 @@ pub trait ProverChannel<E: FieldElement, H: Hasher> {
     /// evaluations of a polynomial at a given layer. The vector commitment is built by
     /// first transposing evaluations into a two-dimensional matrix where each row contains
     /// values needed to compute a single value of the next FRI layer, and then computing
-    /// the hash of each row to get one entry of the vector being commited to. Thus, the number
+    /// the hash of each row to get one entry of the vector being committed to. Thus, the number
     /// of elements grouped into a single leaf is equal to the `folding_factor` used for FRI layer
     /// construction.
-    fn commit_fri_layer(&mut self, layer_root: H::Digest);
+    fn commit_fri_layer(&mut self, layer_root: <Self::Hasher as Hasher>::Digest);
 
     /// Returns a random α drawn uniformly at random from the entire field.
     ///
@@ -116,7 +116,7 @@ where
     }
 }
 
-impl<E, H, R> ProverChannel<E, H> for DefaultProverChannel<E, H, R>
+impl<E, H, R> ProverChannel<E> for DefaultProverChannel<E, H, R>
 where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,

@@ -26,6 +26,7 @@ use crate::{FriProof, VerifierError};
 pub trait VerifierChannel<E: FieldElement> {
     /// Hash function used by the prover to commit to polynomial evaluations.
     type Hasher: ElementHasher<BaseField = E::BaseField>;
+    /// Vector commitment used to commit to polynomial evaluations.
     type VectorCommitment: VectorCommitment<Self::Hasher>;
 
     // REQUIRED METHODS
@@ -60,7 +61,7 @@ pub trait VerifierChannel<E: FieldElement> {
     /// prover to the verifier during the query phase of the FRI protocol.
     ///
     /// It is expected that layer proofs and layer queries at the same FRI layer are consistent.
-    /// That is, query values hash into the elements of the vector commited to using the specified
+    /// That is, query values hash into the elements of the vector committed to using the specified
     /// vector commitment scheme.
     fn take_next_fri_layer_proof(
         &mut self,
@@ -86,7 +87,11 @@ pub trait VerifierChannel<E: FieldElement> {
     ) -> Result<Vec<[E; N]>, VerifierError> {
         let layer_proof = self.take_next_fri_layer_proof();
         let layer_queries = self.take_next_fri_layer_queries();
+        // build the values (i.e., polynomial evaluations over a coset of a multiplicative subgroup
+        // of the current evaluation domain) corresponding to each leaf of the layer commitment
         let leaf_values = group_slice_elements(&layer_queries);
+        // hash the aforementioned values to get the leaves to be verified against the previously
+        // received commitment
         let hashed_values: Vec<<Self::Hasher as Hasher>::Digest> = leaf_values
             .iter()
             .map(|seg| <Self::Hasher as ElementHasher>::hash_elements(seg))
@@ -153,7 +158,7 @@ where
 
         let remainder = proof.parse_remainder()?;
         let (layer_queries, layer_proofs) =
-            proof.parse_layers::<H, E, V>(domain_size, folding_factor)?;
+            proof.parse_layers::<E, H, V>(domain_size, folding_factor)?;
 
         Ok(DefaultVerifierChannel {
             layer_commitments,

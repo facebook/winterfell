@@ -554,7 +554,7 @@ pub trait Prover {
         // finally, build constraint evaluation commitment
         let constraint_commitment = info_span!(
             "compute_constraint_evaluation_commitment",
-            tree_depth = domain_size.ilog2()
+            log_domain_size = domain_size.ilog2()
         )
         .in_scope(|| {
             let commitment = composed_evaluations.commit_to_rows::<Self::HashFn, Self::VC>();

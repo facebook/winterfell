@@ -78,7 +78,7 @@ pub use errors::VerifierError;
 /// - The specified proof was generated for a different computation.
 /// - The specified proof was generated for this computation but for different public inputs.
 /// - The specified proof was generated with parameters not providing an acceptable security level.
-pub fn verify<AIR, HashFn, RandCoin, V>(
+pub fn verify<AIR, HashFn, RandCoin, VC>(
     proof: Proof,
     pub_inputs: AIR::PublicInputs,
     acceptable_options: &AcceptableOptions,
@@ -87,7 +87,7 @@ where
     AIR: Air,
     HashFn: ElementHasher<BaseField = AIR::BaseField>,
     RandCoin: RandomCoin<BaseField = AIR::BaseField, Hasher = HashFn>,
-    V: VectorCommitment<HashFn>,
+    VC: VectorCommitment<HashFn>,
 {
     // check that `proof` was generated with an acceptable set of parameters from the point of view
     // of the verifier
@@ -108,7 +108,7 @@ where
         FieldExtension::None => {
             let public_coin = RandCoin::new(&public_coin_seed);
             let channel = VerifierChannel::new(&air, proof)?;
-            perform_verification::<AIR, AIR::BaseField, HashFn, RandCoin, V>(
+            perform_verification::<AIR, AIR::BaseField, HashFn, RandCoin, VC>(
                 air,
                 channel,
                 public_coin,
@@ -120,7 +120,7 @@ where
             }
             let public_coin = RandCoin::new(&public_coin_seed);
             let channel = VerifierChannel::new(&air, proof)?;
-            perform_verification::<AIR, QuadExtension<AIR::BaseField>, HashFn, RandCoin, V>(
+            perform_verification::<AIR, QuadExtension<AIR::BaseField>, HashFn, RandCoin, VC>(
                 air,
                 channel,
                 public_coin,
@@ -132,7 +132,7 @@ where
             }
             let public_coin = RandCoin::new(&public_coin_seed);
             let channel = VerifierChannel::new(&air, proof)?;
-            perform_verification::<AIR, CubeExtension<AIR::BaseField>, HashFn, RandCoin, V>(
+            perform_verification::<AIR, CubeExtension<AIR::BaseField>, HashFn, RandCoin, VC>(
                 air,
                 channel,
                 public_coin,

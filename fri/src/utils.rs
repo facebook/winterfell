@@ -12,7 +12,7 @@ pub fn map_positions_to_indexes(
     folding_factor: usize,
     num_partitions: usize,
 ) -> Vec<usize> {
-    // if there was only 1 partition, order of elements in the commitment tree
+    // if there was only 1 partition, order of elements in the vector commitment
     // is the same as the order of elements in the evaluation domain
     if num_partitions == 1 {
         return positions.to_vec();
