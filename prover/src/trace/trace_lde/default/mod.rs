@@ -39,11 +39,11 @@ pub struct DefaultTraceLde<
     // low-degree extension of the main segment of the trace
     main_segment_lde: RowMatrix<E::BaseField>,
     // commitment to the main segment of the trace
-    main_segment_vector_com: V,
+    main_segment_oracles: V,
     // low-degree extensions of the auxiliary segment of the trace
     aux_segment_lde: Option<RowMatrix<E>>,
     // commitment to the auxiliary segment of the trace
-    aux_segment_vector_com: Option<V>,
+    aux_segment_oracles: Option<V>,
     blowup: usize,
     trace_info: TraceInfo,
     _h: PhantomData<H>,
@@ -74,9 +74,9 @@ where
         let trace_poly_table = TracePolyTable::new(main_segment_polys);
         let trace_lde = DefaultTraceLde {
             main_segment_lde,
-            main_segment_vector_com,
+            main_segment_oracles: main_segment_vector_com,
             aux_segment_lde: None,
-            aux_segment_vector_com: None,
+            aux_segment_oracles: None,
             blowup: domain.trace_to_lde_blowup(),
             trace_info: trace_info.clone(),
             _h: PhantomData,
@@ -120,7 +120,7 @@ where
 
     /// Returns the commitment to the low-degree extension of the main trace segment.
     fn get_main_trace_commitment(&self) -> H::Digest {
-        self.main_segment_vector_com.commitment()
+        self.main_segment_oracles.commitment()
     }
 
     /// Takes auxiliary trace segment columns as input, interpolates them into polynomials in
@@ -141,7 +141,7 @@ where
         domain: &StarkDomain<E::BaseField>,
     ) -> (ColMatrix<E>, H::Digest) {
         // extend the auxiliary trace segment and build a commitment to the extended trace
-        let (aux_segment_lde, aux_segment_vector_com, aux_segment_polys) =
+        let (aux_segment_lde, aux_segment_oracles, aux_segment_polys) =
             build_trace_commitment::<E, E, H, Self::VC>(aux_trace, domain);
 
         // check errors
@@ -157,8 +157,8 @@ where
 
         // save the lde and commitment
         self.aux_segment_lde = Some(aux_segment_lde);
-        let commitment_string = aux_segment_vector_com.commitment();
-        self.aux_segment_vector_com = Some(aux_segment_vector_com);
+        let commitment_string = aux_segment_oracles.commitment();
+        self.aux_segment_oracles = Some(aux_segment_oracles);
 
         (aux_segment_polys, commitment_string)
     }
@@ -221,17 +221,17 @@ where
         // build queries for the main trace segment
         let mut result = vec![build_segment_queries::<E::BaseField, H, V>(
             &self.main_segment_lde,
-            &self.main_segment_vector_com,
+            &self.main_segment_oracles,
             positions,
         )];
 
         // build queries for the auxiliary trace segment
-        if let Some(ref segment_vector_com) = self.aux_segment_vector_com {
+        if let Some(ref segment_oracles) = self.aux_segment_oracles {
             let segment_lde =
                 self.aux_segment_lde.as_ref().expect("expected aux segment to be present");
             result.push(build_segment_queries::<E, H, V>(
                 segment_lde,
-                segment_vector_com,
+                segment_oracles,
                 positions,
             ));
         }
