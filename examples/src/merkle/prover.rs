@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use winterfell::{
-    matrix::ColMatrix, AuxRandElements, ConstraintCompositionCoefficients,
+    crypto::MerkleTree, matrix::ColMatrix, AuxRandElements, ConstraintCompositionCoefficients,
     DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable,
     TraceTable,
 };
@@ -99,14 +99,16 @@ impl<H: ElementHasher> MerkleProver<H> {
 
 impl<H: ElementHasher> Prover for MerkleProver<H>
 where
-    H: ElementHasher<BaseField = BaseElement>,
+    H: ElementHasher<BaseField = BaseElement> + Sync,
 {
     type BaseField = BaseElement;
     type Air = MerkleAir;
     type Trace = TraceTable<BaseElement>;
     type HashFn = H;
+    type VC = MerkleTree<H>;
     type RandomCoin = DefaultRandomCoin<Self::HashFn>;
-    type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
+    type TraceLde<E: FieldElement<BaseField = Self::BaseField>> =
+        DefaultTraceLde<E, Self::HashFn, Self::VC>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
         DefaultConstraintEvaluator<'a, Self::Air, E>;
 

@@ -27,8 +27,11 @@ fn extend_trace_table() {
     let domain = StarkDomain::new(&air);
 
     // build the trace polynomials, extended trace, and commitment using the default TraceLde impl
-    let (trace_lde, trace_polys) =
-        DefaultTraceLde::<BaseElement, Blake3>::new(trace.info(), trace.main_segment(), &domain);
+    let (trace_lde, trace_polys) = DefaultTraceLde::<BaseElement, Blake3, MerkleTree<Blake3>>::new(
+        trace.info(),
+        trace.main_segment(),
+        &domain,
+    );
 
     // check the width and length of the extended trace
     assert_eq!(2, trace_lde.main_segment_width());
@@ -74,10 +77,13 @@ fn commit_trace_table() {
     let domain = StarkDomain::new(&air);
 
     // build the trace polynomials, extended trace, and commitment using the default TraceLde impl
-    let (trace_lde, _) =
-        DefaultTraceLde::<BaseElement, Blake3>::new(trace.info(), trace.main_segment(), &domain);
+    let (trace_lde, _) = DefaultTraceLde::<BaseElement, Blake3, MerkleTree<Blake3>>::new(
+        trace.info(),
+        trace.main_segment(),
+        &domain,
+    );
 
-    // build Merkle tree from trace rows
+    // build commitment, using a Merkle tree, to the trace rows
     let mut hashed_states = Vec::new();
     let mut trace_state = vec![BaseElement::ZERO; trace_lde.main_segment_width()];
     #[allow(clippy::needless_range_loop)]

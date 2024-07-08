@@ -40,7 +40,7 @@ pub use air::{
 };
 use air::{AuxRandElements, GkrVerifier};
 pub use crypto;
-use crypto::{ElementHasher, Hasher, RandomCoin};
+use crypto::{ElementHasher, Hasher, RandomCoin, VectorCommitment};
 use fri::FriVerifier;
 pub use math;
 use math::{
@@ -78,7 +78,7 @@ pub use errors::VerifierError;
 /// - The specified proof was generated for a different computation.
 /// - The specified proof was generated for this computation but for different public inputs.
 /// - The specified proof was generated with parameters not providing an acceptable security level.
-pub fn verify<AIR, HashFn, RandCoin>(
+pub fn verify<AIR, HashFn, RandCoin, VC>(
     proof: Proof,
     pub_inputs: AIR::PublicInputs,
     acceptable_options: &AcceptableOptions,
@@ -87,6 +87,7 @@ where
     AIR: Air,
     HashFn: ElementHasher<BaseField = AIR::BaseField>,
     RandCoin: RandomCoin<BaseField = AIR::BaseField, Hasher = HashFn>,
+    VC: VectorCommitment<HashFn>,
 {
     // check that `proof` was generated with an acceptable set of parameters from the point of view
     // of the verifier
@@ -107,7 +108,11 @@ where
         FieldExtension::None => {
             let public_coin = RandCoin::new(&public_coin_seed);
             let channel = VerifierChannel::new(&air, proof)?;
-            perform_verification::<AIR, AIR::BaseField, HashFn, RandCoin>(air, channel, public_coin)
+            perform_verification::<AIR, AIR::BaseField, HashFn, RandCoin, VC>(
+                air,
+                channel,
+                public_coin,
+            )
         },
         FieldExtension::Quadratic => {
             if !<QuadExtension<AIR::BaseField>>::is_supported() {
@@ -115,7 +120,7 @@ where
             }
             let public_coin = RandCoin::new(&public_coin_seed);
             let channel = VerifierChannel::new(&air, proof)?;
-            perform_verification::<AIR, QuadExtension<AIR::BaseField>, HashFn, RandCoin>(
+            perform_verification::<AIR, QuadExtension<AIR::BaseField>, HashFn, RandCoin, VC>(
                 air,
                 channel,
                 public_coin,
@@ -127,7 +132,7 @@ where
             }
             let public_coin = RandCoin::new(&public_coin_seed);
             let channel = VerifierChannel::new(&air, proof)?;
-            perform_verification::<AIR, CubeExtension<AIR::BaseField>, HashFn, RandCoin>(
+            perform_verification::<AIR, CubeExtension<AIR::BaseField>, HashFn, RandCoin, VC>(
                 air,
                 channel,
                 public_coin,
@@ -140,9 +145,9 @@ where
 // ================================================================================================
 /// Performs the actual verification by reading the data from the `channel` and making sure it
 /// attests to a correct execution of the computation specified by the provided `air`.
-fn perform_verification<A, E, H, R>(
+fn perform_verification<A, E, H, R, V>(
     air: A,
-    mut channel: VerifierChannel<E, H>,
+    mut channel: VerifierChannel<E, H, V>,
     mut public_coin: R,
 ) -> Result<(), VerifierError>
 where
@@ -150,6 +155,7 @@ where
     A: Air,
     H: ElementHasher<BaseField = A::BaseField>,
     R: RandomCoin<BaseField = A::BaseField, Hasher = H>,
+    V: VectorCommitment<H>,
 {
     // 1 ----- trace commitment -------------------------------------------------------------------
     // Read the commitments to evaluations of the trace polynomials over the LDE domain sent by the

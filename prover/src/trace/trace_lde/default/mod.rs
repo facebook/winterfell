@@ -4,14 +4,14 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::vec::Vec;
+use core::marker::PhantomData;
 
-use air::LagrangeKernelEvaluationFrame;
-use crypto::MerkleTree;
+use air::{proof::Queries, LagrangeKernelEvaluationFrame, TraceInfo};
+use crypto::VectorCommitment;
 use tracing::info_span;
 
 use super::{
-    ColMatrix, ElementHasher, EvaluationFrame, FieldElement, Hasher, Queries, StarkDomain,
-    TraceInfo, TraceLde, TracePolyTable,
+    ColMatrix, ElementHasher, EvaluationFrame, FieldElement, StarkDomain, TraceLde, TracePolyTable,
 };
 use crate::{RowMatrix, DEFAULT_SEGMENT_WIDTH};
 
@@ -28,20 +28,30 @@ mod tests;
 ///   will always be elements in the base field (even when an extension field is used).
 /// - Auxiliary segments: a list of 0 or more segments for traces generated after the prover
 ///   commits to the first trace segment. Currently, at most 1 auxiliary segment is possible.
-pub struct DefaultTraceLde<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> {
+pub struct DefaultTraceLde<
+    E: FieldElement,
+    H: ElementHasher<BaseField = E::BaseField>,
+    V: VectorCommitment<H>,
+> {
     // low-degree extension of the main segment of the trace
     main_segment_lde: RowMatrix<E::BaseField>,
     // commitment to the main segment of the trace
-    main_segment_tree: MerkleTree<H>,
+    main_segment_oracles: V,
     // low-degree extensions of the auxiliary segment of the trace
     aux_segment_lde: Option<RowMatrix<E>>,
     // commitment to the auxiliary segment of the trace
-    aux_segment_tree: Option<MerkleTree<H>>,
+    aux_segment_oracles: Option<V>,
     blowup: usize,
     trace_info: TraceInfo,
+    _h: PhantomData<H>,
 }
 
-impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> DefaultTraceLde<E, H> {
+impl<E, H, V> DefaultTraceLde<E, H, V>
+where
+    E: FieldElement,
+    H: ElementHasher<BaseField = E::BaseField>,
+    V: VectorCommitment<H>,
+{
     /// Takes the main trace segment columns as input, interpolates them into polynomials in
     /// coefficient form, evaluates the polynomials over the LDE domain, commits to the
     /// polynomial evaluations, and creates a new [DefaultTraceLde] with the LDE of the main trace
@@ -54,18 +64,19 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> DefaultTraceLd
         main_trace: &ColMatrix<E::BaseField>,
         domain: &StarkDomain<E::BaseField>,
     ) -> (Self, TracePolyTable<E>) {
-        // extend the main execution trace and build a Merkle tree from the extended trace
-        let (main_segment_lde, main_segment_tree, main_segment_polys) =
-            build_trace_commitment::<E, E::BaseField, H>(main_trace, domain);
+        // extend the main execution trace and build a commitment to the extended trace
+        let (main_segment_lde, main_segment_vector_com, main_segment_polys) =
+            build_trace_commitment::<E, E::BaseField, H, V>(main_trace, domain);
 
         let trace_poly_table = TracePolyTable::new(main_segment_polys);
         let trace_lde = DefaultTraceLde {
             main_segment_lde,
-            main_segment_tree,
+            main_segment_oracles: main_segment_vector_com,
             aux_segment_lde: None,
-            aux_segment_tree: None,
+            aux_segment_oracles: None,
             blowup: domain.trace_to_lde_blowup(),
             trace_info: trace_info.clone(),
+            _h: PhantomData,
         };
 
         (trace_lde, trace_poly_table)
@@ -95,17 +106,18 @@ impl<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>> DefaultTraceLd
     }
 }
 
-impl<E, H> TraceLde<E> for DefaultTraceLde<E, H>
+impl<E, H, V> TraceLde<E> for DefaultTraceLde<E, H, V>
 where
     E: FieldElement,
-    H: ElementHasher<BaseField = E::BaseField>,
+    H: ElementHasher<BaseField = E::BaseField> + core::marker::Sync,
+    V: VectorCommitment<H> + core::marker::Sync,
 {
     type HashFn = H;
+    type VC = V;
 
     /// Returns the commitment to the low-degree extension of the main trace segment.
-    fn get_main_trace_commitment(&self) -> <Self::HashFn as Hasher>::Digest {
-        let root_hash = self.main_segment_tree.root();
-        *root_hash
+    fn get_main_trace_commitment(&self) -> H::Digest {
+        self.main_segment_oracles.commitment()
     }
 
     /// Takes auxiliary trace segment columns as input, interpolates them into polynomials in
@@ -124,10 +136,10 @@ where
         &mut self,
         aux_trace: &ColMatrix<E>,
         domain: &StarkDomain<E::BaseField>,
-    ) -> (ColMatrix<E>, <Self::HashFn as Hasher>::Digest) {
-        // extend the auxiliary trace segment and build a Merkle tree from the extended trace
-        let (aux_segment_lde, aux_segment_tree, aux_segment_polys) =
-            build_trace_commitment::<E, E, H>(aux_trace, domain);
+    ) -> (ColMatrix<E>, H::Digest) {
+        // extend the auxiliary trace segment and build a commitment to the extended trace
+        let (aux_segment_lde, aux_segment_oracles, aux_segment_polys) =
+            build_trace_commitment::<E, E, H, Self::VC>(aux_trace, domain);
 
         // check errors
         assert!(
@@ -142,10 +154,10 @@ where
 
         // save the lde and commitment
         self.aux_segment_lde = Some(aux_segment_lde);
-        let root_hash = *aux_segment_tree.root();
-        self.aux_segment_tree = Some(aux_segment_tree);
+        let commitment_string = aux_segment_oracles.commitment();
+        self.aux_segment_oracles = Some(aux_segment_oracles);
 
-        (aux_segment_polys, root_hash)
+        (aux_segment_polys, commitment_string)
     }
 
     /// Reads current and next rows from the main trace segment into the specified frame.
@@ -200,21 +212,21 @@ where
         }
     }
 
-    /// Returns trace table rows at the specified positions along with Merkle authentication paths
-    /// from the commitment root to these rows.
+    /// Returns trace table rows at the specified positions along with an opening proof to these
+    /// rows againt the already computed commitment.
     fn query(&self, positions: &[usize]) -> Vec<Queries> {
         // build queries for the main trace segment
-        let mut result = vec![build_segment_queries(
+        let mut result = vec![build_segment_queries::<E::BaseField, H, V>(
             &self.main_segment_lde,
-            &self.main_segment_tree,
+            &self.main_segment_oracles,
             positions,
         )];
 
         // build queries for the auxiliary trace segment
-        if let Some(ref segment_tree) = self.aux_segment_tree {
+        if let Some(ref segment_oracles) = self.aux_segment_oracles {
             let segment_lde =
                 self.aux_segment_lde.as_ref().expect("expected aux segment to be present");
-            result.push(build_segment_queries(segment_lde, segment_tree, positions));
+            result.push(build_segment_queries::<E, H, V>(segment_lde, segment_oracles, positions));
         }
 
         result
@@ -246,16 +258,17 @@ where
 /// polynomial of degree = trace_length - 1, and then evaluating the polynomial over the LDE
 /// domain.
 ///
-/// The trace commitment is computed by hashing each row of the extended execution trace, then
-/// building a Merkle tree from the resulting hashes.
-fn build_trace_commitment<E, F, H>(
+/// The trace commitment is computed by building a vector containing the hashes of each row of
+/// the extended execution trace, then building a vector commitment to the resulting vector.
+fn build_trace_commitment<E, F, H, V>(
     trace: &ColMatrix<F>,
     domain: &StarkDomain<E::BaseField>,
-) -> (RowMatrix<F>, MerkleTree<H>, ColMatrix<F>)
+) -> (RowMatrix<F>, V, ColMatrix<F>)
 where
     E: FieldElement,
     F: FieldElement<BaseField = E::BaseField>,
     H: ElementHasher<BaseField = E::BaseField>,
+    V: VectorCommitment<H>,
 {
     // extend the execution trace
     let (trace_lde, trace_polys) = {
@@ -277,32 +290,33 @@ where
     assert_eq!(trace_lde.num_rows(), domain.lde_domain_size());
 
     // build trace commitment
-    let tree_depth = trace_lde.num_rows().ilog2() as usize;
-    let trace_tree = info_span!("compute_execution_trace_commitment", tree_depth)
-        .in_scope(|| trace_lde.commit_to_rows());
-    assert_eq!(trace_tree.depth(), tree_depth);
+    let commitment_domain_size = trace_lde.num_rows();
+    let trace_vector_com = info_span!("compute_execution_trace_commitment", commitment_domain_size)
+        .in_scope(|| trace_lde.commit_to_rows::<H, V>());
+    assert_eq!(trace_vector_com.domain_len(), commitment_domain_size);
 
-    (trace_lde, trace_tree, trace_polys)
+    (trace_lde, trace_vector_com, trace_polys)
 }
 
-fn build_segment_queries<E, H>(
+fn build_segment_queries<E, H, V>(
     segment_lde: &RowMatrix<E>,
-    segment_tree: &MerkleTree<H>,
+    segment_vector_com: &V,
     positions: &[usize],
 ) -> Queries
 where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
+    V: VectorCommitment<H>,
 {
     // for each position, get the corresponding row from the trace segment LDE and put all these
     // rows into a single vector
     let trace_states =
         positions.iter().map(|&pos| segment_lde.row(pos).to_vec()).collect::<Vec<_>>();
 
-    // build Merkle authentication paths to the leaves specified by positions
-    let trace_proof = segment_tree
-        .prove_batch(positions)
-        .expect("failed to generate a Merkle proof for trace queries");
+    // build a batch opening proof to the leaves specified by positions
+    let trace_proof = segment_vector_com
+        .open_many(positions)
+        .expect("failed to generate a batch opening proof for trace queries");
 
-    Queries::new(trace_proof, trace_states)
+    Queries::new::<H, E, V>(trace_proof.1, trace_states)
 }

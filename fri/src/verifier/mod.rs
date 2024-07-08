@@ -8,7 +8,7 @@
 use alloc::vec::Vec;
 use core::{marker::PhantomData, mem};
 
-use crypto::{ElementHasher, RandomCoin};
+use crypto::{ElementHasher, RandomCoin, VectorCommitment};
 use math::{polynom, FieldElement, StarkField};
 
 use crate::{folding::fold_positions, utils::map_positions_to_indexes, FriOptions, VerifierError};
@@ -48,21 +48,22 @@ pub use channel::{DefaultVerifierChannel, VerifierChannel};
 /// # Query phase
 /// During the query phase, which is executed via [verify()](FriVerifier::verify()) function,
 /// the verifier sends a set of positions in the domain *D* to the prover, and the prover responds
-/// with polynomial evaluations at these positions (together with corresponding Merkle paths)
+/// with polynomial evaluations at these positions (together with corresponding opening proofs)
 /// across all FRI layers. The verifier then checks that:
-/// * The Merkle paths are valid against the layer commitments the verifier received during
+/// * The opening proofs are valid against the layer commitments the verifier received during
 ///   the commit phase.
 /// * The evaluations are consistent across FRI layers (i.e., the degree-respecting projection
 ///   was applied correctly).
 /// * The degree of the polynomial implied by evaluations at the last FRI layer (the remainder)
 ///   is smaller than the degree resulting from reducing degree *d* by `folding_factor` at each
 ///   FRI layer.
-pub struct FriVerifier<E, C, H, R>
+pub struct FriVerifier<E, C, H, R, V>
 where
     E: FieldElement,
     C: VerifierChannel<E, Hasher = H>,
     H: ElementHasher<BaseField = E::BaseField>,
     R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
+    V: VectorCommitment<H>,
 {
     max_poly_degree: usize,
     domain_size: usize,
@@ -73,14 +74,16 @@ where
     num_partitions: usize,
     _channel: PhantomData<C>,
     _public_coin: PhantomData<R>,
+    _vector_com: PhantomData<V>,
 }
 
-impl<E, C, H, R> FriVerifier<E, C, H, R>
+impl<E, C, H, R, V> FriVerifier<E, C, H, R, V>
 where
     E: FieldElement,
-    C: VerifierChannel<E, Hasher = H>,
+    C: VerifierChannel<E, Hasher = H, VectorCommitment = V>,
     H: ElementHasher<BaseField = E::BaseField>,
     R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
+    V: VectorCommitment<H>,
 {
     /// Returns a new instance of FRI verifier created from the specified parameters.
     ///
@@ -146,6 +149,7 @@ where
             num_partitions,
             _channel: PhantomData,
             _public_coin: PhantomData,
+            _vector_com: PhantomData,
         })
     }
 
@@ -251,14 +255,14 @@ where
             // determine which evaluations were queried in the folded layer
             let mut folded_positions =
                 fold_positions(&positions, domain_size, self.options.folding_factor());
-            // determine where these evaluations are in the commitment Merkle tree
+            // determine where these evaluations are in the vector commitment
             let position_indexes = map_positions_to_indexes(
                 &folded_positions,
                 domain_size,
                 self.options.folding_factor(),
                 self.num_partitions,
             );
-            // read query values from the specified indexes in the Merkle tree
+            // read query values from the specified indexes
             let layer_commitment = self.layer_commitments[depth];
             // TODO: add layer depth to the potential error message
             let layer_values = channel.read_layer_queries(&position_indexes, &layer_commitment)?;

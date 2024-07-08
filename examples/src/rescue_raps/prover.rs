@@ -5,7 +5,7 @@
 
 use core_utils::uninit_vector;
 use winterfell::{
-    matrix::ColMatrix, AuxRandElements, ConstraintCompositionCoefficients,
+    crypto::MerkleTree, matrix::ColMatrix, AuxRandElements, ConstraintCompositionCoefficients,
     DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable,
 };
 
@@ -94,14 +94,16 @@ impl<H: ElementHasher> RescueRapsProver<H> {
 
 impl<H: ElementHasher> Prover for RescueRapsProver<H>
 where
-    H: ElementHasher<BaseField = BaseElement>,
+    H: ElementHasher<BaseField = BaseElement> + Sync,
 {
     type BaseField = BaseElement;
     type Air = RescueRapsAir;
     type Trace = RapTraceTable<BaseElement>;
     type HashFn = H;
+    type VC = MerkleTree<H>;
     type RandomCoin = DefaultRandomCoin<Self::HashFn>;
-    type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
+    type TraceLde<E: FieldElement<BaseField = Self::BaseField>> =
+        DefaultTraceLde<E, Self::HashFn, Self::VC>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
         DefaultConstraintEvaluator<'a, Self::Air, E>;
 

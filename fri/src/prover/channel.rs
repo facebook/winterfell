@@ -23,20 +23,18 @@ use math::FieldElement;
 /// commitments the prover has written into the channel up to this point.
 pub trait ProverChannel<E: FieldElement> {
     /// Hash function used by the prover to commit to polynomial evaluations.
-    type Hasher: Hasher;
+    type Hasher: ElementHasher<BaseField = E::BaseField>;
 
     /// Sends a layer commitment to the verifier.
     ///
-    /// A layer commitment is a root of a Merkle tree built from evaluations of a polynomial
-    /// at a given layer. The Merkle tree is built by first transposing evaluations into a
-    /// two-dimensional matrix where each row contains values needed to compute a single
-    /// value of the next FRI layer, and then putting each row of the matrix into a single
-    /// leaf of the Merkle tree. Thus, the number of elements grouped into a single leaf is
-    /// equal to the `folding_factor` used for FRI layer construction.
-    fn commit_fri_layer(
-        &mut self,
-        layer_root: <<Self as ProverChannel<E>>::Hasher as Hasher>::Digest,
-    );
+    /// A layer commitment is the commitment string of a vector commitment to the vector of
+    /// evaluations of a polynomial at a given layer. The vector commitment is built by
+    /// first transposing evaluations into a two-dimensional matrix where each row contains
+    /// values needed to compute a single value of the next FRI layer, and then computing
+    /// the hash of each row to get one entry of the vector being committed to. Thus, the number
+    /// of elements grouped into a single leaf is equal to the `folding_factor` used for FRI layer
+    /// construction.
+    fn commit_fri_layer(&mut self, layer_root: <Self::Hasher as Hasher>::Digest);
 
     /// Returns a random α drawn uniformly at random from the entire field.
     ///

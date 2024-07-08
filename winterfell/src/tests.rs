@@ -6,6 +6,7 @@
 use std::{vec, vec::Vec};
 
 use air::{GkrRandElements, LagrangeKernelRandElements};
+use crypto::MerkleTree;
 use prover::{
     crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin},
     math::{fields::f64::BaseElement, ExtensionOf, FieldElement},
@@ -28,6 +29,7 @@ fn test_complex_lagrange_kernel_air() {
         LagrangeKernelComplexAir,
         Blake3_256<BaseElement>,
         DefaultRandomCoin<Blake3_256<BaseElement>>,
+        MerkleTree<Blake3_256<BaseElement>>,
     >(proof, (), &AcceptableOptions::MinConjecturedSecurity(0))
     .unwrap()
 }
@@ -213,8 +215,10 @@ impl Prover for LagrangeComplexProver {
     type Air = LagrangeKernelComplexAir;
     type Trace = LagrangeComplexTrace;
     type HashFn = Blake3_256<BaseElement>;
+    type VC = MerkleTree<Blake3_256<BaseElement>>;
     type RandomCoin = DefaultRandomCoin<Self::HashFn>;
-    type TraceLde<E: FieldElement<BaseField = BaseElement>> = DefaultTraceLde<E, Self::HashFn>;
+    type TraceLde<E: FieldElement<BaseField = BaseElement>> =
+        DefaultTraceLde<E, Self::HashFn, Self::VC>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = BaseElement>> =
         DefaultConstraintEvaluator<'a, LagrangeKernelComplexAir, E>;
 

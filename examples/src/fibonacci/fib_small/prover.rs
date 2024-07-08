@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 use winterfell::{
-    matrix::ColMatrix, AuxRandElements, ConstraintCompositionCoefficients,
+    crypto::MerkleTree, matrix::ColMatrix, AuxRandElements, ConstraintCompositionCoefficients,
     DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, Trace, TraceInfo, TracePolyTable,
     TraceTable,
 };
@@ -16,12 +16,18 @@ use super::{
 // FIBONACCI PROVER
 // ================================================================================================
 
-pub struct FibSmallProver<H: ElementHasher> {
+pub struct FibSmallProver<H: ElementHasher>
+where
+    H: Sync,
+{
     options: ProofOptions,
     _hasher: PhantomData<H>,
 }
 
-impl<H: ElementHasher> FibSmallProver<H> {
+impl<H: ElementHasher> FibSmallProver<H>
+where
+    H: Sync,
+{
     pub fn new(options: ProofOptions) -> Self {
         Self { options, _hasher: PhantomData }
     }
@@ -47,7 +53,7 @@ impl<H: ElementHasher> FibSmallProver<H> {
     }
 }
 
-impl<H: ElementHasher> Prover for FibSmallProver<H>
+impl<H: ElementHasher + Sync> Prover for FibSmallProver<H>
 where
     H: ElementHasher<BaseField = BaseElement>,
 {
@@ -55,8 +61,10 @@ where
     type Air = FibSmall;
     type Trace = TraceTable<BaseElement>;
     type HashFn = H;
+    type VC = MerkleTree<Self::HashFn>;
     type RandomCoin = DefaultRandomCoin<Self::HashFn>;
-    type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
+    type TraceLde<E: FieldElement<BaseField = Self::BaseField>> =
+        DefaultTraceLde<E, Self::HashFn, Self::VC>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
         DefaultConstraintEvaluator<'a, Self::Air, E>;
 
