@@ -58,7 +58,6 @@ use math::{
     fields::{CubeExtension, QuadExtension},
     ExtensibleField, FieldElement, StarkField, ToElements,
 };
-
 use tracing::{event, info_span, instrument, Level};
 pub use utils::{
     iterators, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
@@ -81,7 +80,7 @@ mod composer;
 use composer::DeepCompositionPoly;
 
 mod trace;
-use maybe_async::{maybe_await, maybe_async};
+use maybe_async::{maybe_async, maybe_await};
 pub use trace::{
     AuxTraceWithMetadata, DefaultTraceLde, Trace, TraceLde, TracePolyTable, TraceTable,
     TraceTableFragment,

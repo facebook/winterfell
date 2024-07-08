@@ -596,15 +596,14 @@ extern crate std;
 
 pub use air::{AuxRandElements, GkrVerifier};
 pub use prover::{
-    crypto, math, matrix, Air, AirContext, Assertion, AuxTraceWithMetadata,
-    BoundaryConstraint, BoundaryConstraintGroup, CompositionPolyTrace,
-    ConstraintCompositionCoefficients, ConstraintDivisor, ConstraintEvaluator,
-    DeepCompositionCoefficients, DefaultConstraintEvaluator, DefaultTraceLde,
-    EvaluationFrame, FieldExtension, Proof, ProofOptions, Prover,
-    ProverError, ProverGkrProof, StarkDomain, Trace, TraceInfo,
-    TraceLde, TracePolyTable, TraceTable, TraceTableFragment, TransitionConstraintDegree,
+    crypto, math, matrix, Air, AirContext, Assertion, AuxTraceWithMetadata, BoundaryConstraint,
+    BoundaryConstraintGroup, CompositionPolyTrace, ConstraintCompositionCoefficients,
+    ConstraintDivisor, ConstraintEvaluator, DeepCompositionCoefficients,
+    DefaultConstraintEvaluator, DefaultTraceLde, EvaluationFrame, FieldExtension, Proof,
+    ProofOptions, Prover, ProverError, ProverGkrProof, StarkDomain, Trace, TraceInfo, TraceLde,
+    TracePolyTable, TraceTable, TraceTableFragment, TransitionConstraintDegree,
 };
-pub use verifier::{verify, AcceptableOptions, VerifierError, ByteWriter};
+pub use verifier::{verify, AcceptableOptions, ByteWriter, VerifierError};
 
 #[cfg(test)]
 mod tests;

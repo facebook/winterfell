@@ -11,8 +11,7 @@ use crypto::VectorCommitment;
 use tracing::info_span;
 
 use super::{
-    ColMatrix, ElementHasher, EvaluationFrame, FieldElement, StarkDomain, 
-    TraceLde, TracePolyTable,
+    ColMatrix, ElementHasher, EvaluationFrame, FieldElement, StarkDomain, TraceLde, TracePolyTable,
 };
 use crate::{RowMatrix, DEFAULT_SEGMENT_WIDTH};
 
@@ -227,11 +226,7 @@ where
         if let Some(ref segment_oracles) = self.aux_segment_oracles {
             let segment_lde =
                 self.aux_segment_lde.as_ref().expect("expected aux segment to be present");
-            result.push(build_segment_queries::<E, H, V>(
-                segment_lde,
-                segment_oracles,
-                positions,
-            ));
+            result.push(build_segment_queries::<E, H, V>(segment_lde, segment_oracles, positions));
         }
 
         result
