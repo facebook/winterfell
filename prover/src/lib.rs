@@ -58,7 +58,7 @@ use math::{
     fields::{CubeExtension, QuadExtension},
     ExtensibleField, FieldElement, StarkField, ToElements,
 };
-use maybe_async::{maybe_async, maybe_await};
+
 use tracing::{event, info_span, instrument, Level};
 pub use utils::{
     iterators, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
@@ -92,8 +92,6 @@ use channel::ProverChannel;
 
 mod errors;
 pub use errors::ProverError;
-use tracing::{event, info_span, instrument, Level};
-use utils::Serializable;
 
 #[cfg(test)]
 pub mod tests;

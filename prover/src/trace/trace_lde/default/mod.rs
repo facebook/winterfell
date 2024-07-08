@@ -15,8 +15,6 @@ use super::{
     TraceLde, TracePolyTable,
 };
 use crate::{RowMatrix, DEFAULT_SEGMENT_WIDTH};
-use core::marker::PhantomData;
-use crypto::VectorCommitment;
 
 #[cfg(test)]
 mod tests;

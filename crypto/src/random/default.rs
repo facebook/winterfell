@@ -5,7 +5,7 @@
 
 use alloc::vec::Vec;
 
-use crate::{errors::RandomCoinError, Digest, ElementHasher, MerkleTree, RandomCoin};
+use crate::{errors::RandomCoinError, Digest, ElementHasher, RandomCoin};
 use math::{FieldElement, StarkField};
 
 // DEFAULT RANDOM COIN IMPLEMENTATION

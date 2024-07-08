@@ -12,6 +12,8 @@ use core::slice;
 mod proofs;
 pub use proofs::BatchMerkleProof;
 
+use crate::{Hasher, MerkleTreeError, VectorCommitment};
+
 #[cfg(feature = "concurrent")]
 pub mod concurrent;
 
