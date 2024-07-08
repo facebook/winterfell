@@ -136,9 +136,6 @@ impl OodFrame {
             None
         };
 
-        // if there is a Lagrange kernel, we treat its associated entries separately above
-        let aux_trace_width = aux_trace_width - (lagrange_kernel_frame.is_some() as usize);
-
         // parse main and auxiliary trace evaluation frames. This does the reverse operation done in
         // `set_trace_states()`.
         let (current_row, next_row) = {

@@ -6,7 +6,7 @@
 use alloc::vec::Vec;
 
 use air::{proof::TraceOodFrame, LagrangeKernelEvaluationFrame};
-use math::{FieldElement, StarkField};
+use math::{polynom, FieldElement, StarkField};
 
 use crate::{matrix::ColumnIter, ColMatrix};
 
@@ -73,6 +73,10 @@ impl<E: FieldElement> TracePolyTable<E> {
         let mut result = self.main_trace_polys.evaluate_columns_at(x);
         for aux_polys in self.aux_trace_polys.iter() {
             result.append(&mut aux_polys.evaluate_columns_at(x));
+        }
+
+        if let Some(lagrange_kernel_poly) = &self.lagrange_kernel_poly {
+            result.push(polynom::eval(lagrange_kernel_poly, x));
         }
         result
     }
