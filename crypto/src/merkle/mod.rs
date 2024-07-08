@@ -414,7 +414,7 @@ impl<H: Hasher> VectorCommitment<H> for MerkleTree<H> {
         *self.root()
     }
 
-    fn get_domain_len(&self) -> usize {
+    fn domain_len(&self) -> usize {
         1 << self.depth()
     }
 

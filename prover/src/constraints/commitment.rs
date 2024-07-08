@@ -43,8 +43,8 @@ where
     pub fn new(evaluations: RowMatrix<E>, commitment: V) -> ConstraintCommitment<E, H, V> {
         assert_eq!(
             evaluations.num_rows(),
-            commitment.get_domain_len(),
-            "number of rows in constraint evaluation matrix must be the same as the size
+            commitment.domain_len(),
+            "number of rows in constraint evaluation matrix must be the same as the size \
             of the vector commitment domain"
         );
 

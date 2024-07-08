@@ -49,7 +49,7 @@ pub trait VectorCommitment<H: Hasher>: Sized {
     fn commitment(&self) -> H::Digest;
 
     /// Returns the length of the vector committed to for `Self`.
-    fn get_domain_len(&self) -> usize;
+    fn domain_len(&self) -> usize;
 
     /// Returns the length of the vector committed to for `Self::Proof`.
     fn get_proof_domain_len(proof: &Self::Proof) -> usize;
