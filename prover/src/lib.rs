@@ -201,6 +201,7 @@ pub trait Prover {
 
     /// Builds the GKR proof. If the [`Air`] doesn't use a GKR proof, leave unimplemented.
     #[allow(unused_variables)]
+    #[instrument(skip_all)]
     #[maybe_async]
     fn generate_gkr_proof<E>(
         &self,
@@ -215,6 +216,7 @@ pub trait Prover {
 
     /// Builds and returns the auxiliary trace.
     #[allow(unused_variables)]
+    #[instrument(skip_all)]
     #[maybe_async]
     fn build_aux_trace<E>(
         &self,
