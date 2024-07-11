@@ -10,6 +10,7 @@ use air::{
     LagrangeKernelEvaluationFrame, LagrangeKernelRandElements,
 };
 use math::{batch_inversion, FieldElement};
+use tracing::instrument;
 
 use crate::{StarkDomain, TraceLde};
 
@@ -49,6 +50,7 @@ impl<E: FieldElement> LagrangeKernelConstraintsBatchEvaluator<E> {
     ///
     /// Writes the evaluations in `combined_evaluations_acc` at the corresponding (constraint
     /// evaluation) domain index.
+    #[instrument(skip_all)]
     pub fn evaluate_constraints<T>(
         &self,
         trace: &T,
