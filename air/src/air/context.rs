@@ -468,7 +468,7 @@ impl ZkParameters {
     pub fn degree_witness_randomizer(&self) -> usize {
         self.degree_witness_randomizer
     }
-    
+
     pub fn degree_constraint_randomizer(&self) -> usize {
         self.degree_constraint_randomizer
     }

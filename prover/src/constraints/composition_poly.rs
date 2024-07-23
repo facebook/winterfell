@@ -49,6 +49,11 @@ impl<E: FieldElement> CompositionPolyTrace<E> {
 ///
 /// For example, if the composition polynomial has degree 2N - 1, where N is the trace length,
 /// it will be stored as two columns of size N (each of degree N - 1).
+/// 
+/// When zero-knowledge is enabled, the composition polynomial is split into segment polynomials
+/// such that each segment polynomial's degree is small enough to accommodate adding a randomizer
+/// polynomial without the degree of the resulting ranomized segment polynomial exceeding
+/// `domain.trace_length()`.
 pub struct CompositionPoly<E: FieldElement> {
     data: ColMatrix<E>,
 }
@@ -138,6 +143,10 @@ impl<E: FieldElement> CompositionPoly<E> {
     }
 }
 
+/// Takes a vector of coefficients representing the segment polynomials of a given composition
+/// polynomial as input, and generates coefficients of their randomized version.
+/// 
+/// The randomization technique is the one in section 4.1 in https://eprint.iacr.org/2024/1037.pdf.
 fn complement_to<R: RngCore, E: FieldElement>(
     polys: Vec<Vec<E>>,
     l: usize,

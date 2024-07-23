@@ -296,6 +296,10 @@ where
         .entered();
 
         let trace_polys = trace.interpolate_columns();
+
+        // when zero-knowledge is enabled, we randomize the witness polynomials by adding a random
+        // polynomial times the zerofier over the trace domain. The degree of the random polynomial
+        // is a function of the number of FRI queries.
         let trace_polys = if let Some(parameters) = zk_parameters {
             trace_polys.randomize(parameters.zk_blowup_witness(), prng)
         } else {

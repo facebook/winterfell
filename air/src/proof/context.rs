@@ -154,6 +154,8 @@ impl Deserializable for Context {
 
         // read options
         let options = ProofOptions::read_from(source)?;
+
+        // TODO: should we validate it?
         let zk_blowup = usize::read_from(source)?;
 
         Ok(Context {

@@ -298,6 +298,21 @@ impl<E: FieldElement> ColMatrix<E> {
         self.columns
     }
 
+    /// Randomizes the trace polynomials when zero-knowledge is enabled.
+    /// 
+    /// Takes as input a factor that is a power of two which is used to determine the size (i.e., 
+    /// the number of coefficients) of the randomized witness polynomial.
+    /// 
+    /// The randomized witness polynomial has the form:
+    /// 
+    ///         \hat{w}(x) = w(x) + r(x) * Z_H(x)
+    /// 
+    /// where:
+    /// 
+    /// 1. w(x) is the witness polynomial of degree trace length minus one.
+    /// 2. \hat{w}(x) is the randomized witness polynomial.
+    /// 3. r(x) is the randomizer polynomial and has degree `(zk_blowup - 1) * n`.
+    /// 4. Z_H(x) = (x^n - 1). 
     pub(crate) fn randomize<R: RngCore>(&self, zk_blowup: usize, prng: &mut R) -> Self {
         let cur_len = self.num_rows();
         let extended_len = zk_blowup * cur_len;
