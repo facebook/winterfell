@@ -32,13 +32,15 @@ name = "poly_div_lagrange"
 harness = false
 
 [features]
-concurrent = ["utils/concurrent", "std"]
+concurrent = ["utils/concurrent", "rayon", "std"]
 default = ["std"]
 std = ["utils/std"]
 
 [dependencies]
 serde = { version = "1.0", features = [ "derive" ], optional = true, default-features = false }
+thiserror = { version = "1.0", git = "https://github.com/bitwalker/thiserror", branch = "no-std", default-features = false }
 utils = { version = "0.9", path = "../utils/core", package = "winter-utils", default-features = false }
+rayon = { version = "1.8", optional = true }
 
 [dev-dependencies]
 criterion = "0.5"

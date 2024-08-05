@@ -34,6 +34,12 @@ use crate::{field::FieldElement, utils::batch_inversion};
 #[cfg(test)]
 mod tests;
 
+mod multi_linear;
+pub use multi_linear::{EqFunction, MultiLinearPoly};
+
+mod univariate;
+pub use univariate::{CompressedUnivariatePolyCoef, CompressedUnivariatePolyEvals};
+
 // POLYNOMIAL EVALUATION
 // ================================================================================================
 
