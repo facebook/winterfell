@@ -5,6 +5,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::vec::Vec;
+use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 use math::{batch_inversion, polynom, FieldElement};
 
 
@@ -17,7 +18,7 @@ use math::{batch_inversion, polynom, FieldElement};
 /// This compressed representation is useful during the sum-check protocol as the full uncompressed
 /// representation can be recovered from the compressed one and the current sum-check round claim.
 #[derive(Clone, Debug)]
-pub struct CompressedUnivariatePoly<E: FieldElement>(Vec<E>);
+pub struct CompressedUnivariatePoly<E: FieldElement>(pub(crate) Vec<E>);
 
 impl<E: FieldElement> CompressedUnivariatePoly<E> {
     /// Evaluates a polynomial at a challenge point using a round claim.
@@ -38,13 +39,28 @@ impl<E: FieldElement> CompressedUnivariatePoly<E> {
     }
 }
 
+impl<E: FieldElement> Serializable for CompressedUnivariatePoly <E> {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.0.write_into(target);
+    }
+}
+
+impl<E> Deserializable for CompressedUnivariatePoly <E>
+where
+    E: FieldElement,
+{
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        Ok(Self(Deserializable::read_from(source)?))
+    }
+}
+
 /// The evaluations of a univariate polynomial of degree n at 0, 1, ..., n with the evaluation at 0
 /// omitted.
 ///
 /// This compressed representation is useful during the sum-check protocol as the full uncompressed
 /// representation can be recovered from the compressed one and the current sum-check round claim.
 #[derive(Clone, Debug)]
-pub struct CompressedUnivariatePolyEvals<E>(Vec<E>);
+pub struct CompressedUnivariatePolyEvals<E>(pub(crate) Vec<E>);
 
 impl<E: FieldElement> CompressedUnivariatePolyEvals<E> {
     /// Gives the coefficient representation of a polynomial represented in evaluation form.

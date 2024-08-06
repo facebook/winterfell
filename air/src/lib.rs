@@ -47,6 +47,6 @@ pub use air::{
     DeepCompositionCoefficients, EvaluationFrame, GkrRandElements, GkrVerifier,
     LagrangeConstraintsCompositionCoefficients, LagrangeKernelBoundaryConstraint,
     LagrangeKernelConstraints, LagrangeKernelEvaluationFrame, LagrangeKernelRandElements,
-    LagrangeKernelTransitionConstraints, TraceInfo, TransitionConstraintDegree,
-    TransitionConstraints,
+    LagrangeKernelTransitionConstraints, LogUpGkrEvaluator, LogUpGkrOracle, TraceInfo,
+    TransitionConstraintDegree, TransitionConstraints,
 };

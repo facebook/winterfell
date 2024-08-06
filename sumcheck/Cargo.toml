@@ -18,9 +18,12 @@ default = ["std"]
 std = ["utils/std"]
 
 [dependencies]
+air = { version = "0.9", path = "../air", package = "winter-air", default-features = false }
+crypto = { version = "0.9", path = "../crypto", package = "winter-crypto", default-features = false }
 math = { version = "0.9", path = "../math", package = "winter-math", default-features = false }
 utils = { version = "0.9", path = "../utils/core", package = "winter-utils", default-features = false }
 rayon = { version = "1.8", optional = true }
+thiserror = { version = "1.0", git = "https://github.com/bitwalker/thiserror", branch = "no-std", default-features = false }
 
 [dev-dependencies]
 criterion = "0.5"
