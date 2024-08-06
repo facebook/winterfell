@@ -4,5 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 mod univariate;
+pub use univariate::{CompressedUnivariatePoly, CompressedUnivariatePolyEvals};
 
 mod multilinear;
+pub use multilinear::{EqFunction, MultiLinearPoly};
