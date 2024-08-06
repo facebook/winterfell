@@ -605,7 +605,6 @@ pub trait Air: Send + Sync {
     }
 }
 
-
 pub trait LogUpGkrEvaluator: Clone {
     /// Defines the base field of the evaluator.
     type BaseField: StarkField;
