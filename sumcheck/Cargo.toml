@@ -1,0 +1,27 @@
+[package]
+name = "winter-sumcheck"
+version = "0.1.0"
+description = "Implementation of the sum-check protocol for the LogUp-GKR protocol"
+authors = ["winterfell contributors"]
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/novifinancial/winterfell"
+documentation = "https://docs.rs/winter-sumcheck/0.1.0"
+categories = ["cryptography", "no-std"]
+keywords = ["crypto", "sumcheck", "iop"]
+edition = "2021"
+rust-version = "1.78"
+
+[features]
+concurrent = ["utils/concurrent", "dep:rayon", "std"]
+default = ["std"]
+std = ["utils/std"]
+
+[dependencies]
+math = { version = "0.9", path = "../math", package = "winter-math", default-features = false }
+utils = { version = "0.9", path = "../utils/core", package = "winter-utils", default-features = false }
+rayon = { version = "1.8", optional = true }
+
+[dev-dependencies]
+criterion = "0.5"
+rand-utils = { version = "0.9", path = "../utils/rand", package = "winter-rand-utils" }
