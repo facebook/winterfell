@@ -121,6 +121,45 @@ pub fn sum_check_prove_higher_degree<
     })
 }
 
+/// Computes the polynomial
+///
+/// $$
+/// s_i(X_i) := \sum_{(x_{i + 1},\cdots, x_{\nu - 1})
+///                                  w(r_0,\cdots, r_{i - 1}, X_i, x_{i + 1}, \cdots, x_{\nu - 1}).
+/// $$
+///
+/// where
+///
+/// $$
+/// w(x_0,\cdots, x_{\nu - 1}) := g(f_0((x_0,\cdots, x_{\nu - 1})),
+///                                                       \cdots , f_c((x_0,\cdots, x_{\nu - 1}))).
+/// $$
+///
+/// Given a degree bound `d_max` for all variables, it suffices to compute the evaluations of `s_i`
+/// at `d_max + 1` points. Given that $s_{i}(0) = s_{i}(1) - s_{i - 1}(r_{i - 1})$ it is sufficient
+/// to compute the evaluations on only `d_max` points.
+///
+/// The algorithm works by iterating over the variables $(x_{i + 1}, \cdots, x_{\nu - 1})$ in
+/// ${0, 1}^{\nu - 1 - i}$. For each such tuple, we store the evaluations of the (folded)
+/// multi-linears at $(0, x_{i + 1}, \cdots, x_{\nu - 1})$ and
+/// $(1, x_{i + 1}, \cdots, x_{\nu - 1})$ in two arrays, `evals_zero` and `evals_one`.
+/// Using `evals_one`, remember that we optimize evaluating at 0 away, we get the first evaluation
+/// i.e., $s_i(1)$.
+///
+/// For the remaining evaluations, we use the fact that the folded `f_i` is multi-linear and hence
+/// we can write
+///
+/// $$
+///     f_i(X_i, x_{i + 1}, \cdots, x_{\nu - 1}) =
+///        (1 - X_i) . f_i(0, x_{i + 1}, \cdots, x_{\nu - 1}) +
+///        X_i . f_i(1, x_{i + 1}, \cdots, x_{\nu - 1})
+/// $$
+///
+/// Note that we omitted writing the folding randomness for readability.
+/// Since the evaluation domain is $\{0, 1, ... , d_max\}$, we can compute the evaluations based on
+/// the previous one using only additions. This is the purpose of `deltas`, to hold the increments
+/// added to each multi-linear to compute the evaluation at the next point, and `evals_x` to hold
+/// the current evaluation at $x$ in $\{2, ... , d_max\}$.
 fn sumcheck_round<E: FieldElement>(
     evaluator: impl LogUpGkrEvaluator<BaseField = <E as FieldElement>::BaseField>,
     mls: &[MultiLinearPoly<E>],
