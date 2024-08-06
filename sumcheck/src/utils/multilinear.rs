@@ -5,8 +5,8 @@
 
 use alloc::vec::Vec;
 use core::ops::Index;
-use math::FieldElement;
 
+use math::FieldElement;
 #[cfg(feature = "concurrent")]
 pub use rayon::prelude::*;
 
@@ -178,7 +178,7 @@ impl<E: FieldElement> EqFunction<E> {
 
 /// Computes the evaluations of the Lagrange basis polynomials over the interpolating
 /// set ${0 , 1}^ν$ at $(r_0, ..., r_{ν - 1})$ i.e., the Lagrange kernel at $(r_0, ..., r_{ν - 1})$.
-/// 
+///
 /// TODO: This is a critical function and parallelizing would have a significant impact on
 /// performance.
 fn compute_lagrange_basis_evals_at<E: FieldElement>(query: &[E]) -> Vec<E> {
@@ -198,9 +198,8 @@ fn compute_lagrange_basis_evals_at<E: FieldElement>(query: &[E]) -> Vec<E> {
     evals
 }
 
-/// Computes the inner product in the extension field of two iterators that must yield the same
-/// number of items.
-/// 
+/// Computes the inner product in the extension field of two slices with the same number of items.
+///
 /// If `concurrent` feature is enabled, this function can make use of multi-threading.
 pub fn inner_product<E: FieldElement>(x: &[E], y: &[E]) -> E {
     #[cfg(not(feature = "concurrent"))]
@@ -218,6 +217,26 @@ pub fn inner_product<E: FieldElement>(x: &[E], y: &[E]) -> E {
 // ================================================================================================
 
 #[test]
+fn multi_linear_sanity_checks() {
+    use math::fields::f64::BaseElement;
+    let nu = 3;
+    let n = 1 << nu;
+
+    // the zero multi-linear should evaluate to zero
+    let p = MultiLinearPoly::from_evaluations(vec![BaseElement::ZERO; n]);
+    let challenge: Vec<BaseElement> = rand_utils::rand_vector(nu);
+
+    assert_eq!(BaseElement::ZERO, p.evaluate(&challenge));
+
+    // the constant multi-linear should be constant everywhere
+    let constant = rand_utils::rand_value();
+    let p = MultiLinearPoly::from_evaluations(vec![constant; n]);
+    let challenge: Vec<BaseElement> = rand_utils::rand_vector(nu);
+
+    assert_eq!(constant, p.evaluate(&challenge))
+}
+
+#[test]
 fn test_bind() {
     use math::fields::f64::BaseElement;
     let mut p = MultiLinearPoly::from_evaluations(vec![BaseElement::ONE; 8]);
@@ -226,4 +245,30 @@ fn test_bind() {
     let challenge = rand_utils::rand_value();
     p.bind_least_significant_variable(challenge);
     assert_eq!(p, expected)
+}
+
+#[test]
+fn test_eq_function() {
+    use math::fields::f64::BaseElement;
+    use rand_utils::rand_value;
+
+    let one = BaseElement::ONE;
+
+    // Lagrange kernel is computed correctly
+    let r0 = rand_value();
+    let r1 = rand_value();
+    let eq_function = EqFunction::new(vec![r0, r1]);
+
+    let expected = vec![(one - r0) * (one - r1), r0 * (one - r1), (one - r0) * r1, r0 * r1];
+
+    assert_eq!(expected, eq_function.evaluations());
+
+    // Lagrange kernel evaluation is correct
+    let q0 = rand_value();
+    let q1 = rand_value();
+    let tensored_query = vec![(one - q0) * (one - q1), q0 * (one - q1), (one - q0) * q1, q0 * q1];
+
+    let expected = inner_product(&tensored_query, &eq_function.evaluations());
+
+    assert_eq!(expected, eq_function.evaluate(&[q0, q1]))
 }
