@@ -1,13 +1,12 @@
-
 // Copyright (c) Facebook, Inc. and its affiliates.
 //
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
 use alloc::vec::Vec;
-use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
-use math::{batch_inversion, polynom, FieldElement};
 
+use math::{batch_inversion, polynom, FieldElement};
+use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 // COMPRESSED UNIVARIATE POLYNOMIAL
 // ================================================================================================
@@ -39,13 +38,13 @@ impl<E: FieldElement> CompressedUnivariatePoly<E> {
     }
 }
 
-impl<E: FieldElement> Serializable for CompressedUnivariatePoly <E> {
+impl<E: FieldElement> Serializable for CompressedUnivariatePoly<E> {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.0.write_into(target);
     }
 }
 
-impl<E> Deserializable for CompressedUnivariatePoly <E>
+impl<E> Deserializable for CompressedUnivariatePoly<E>
 where
     E: FieldElement,
 {
