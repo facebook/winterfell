@@ -3,12 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-
 #![no_std]
 
 use alloc::vec::Vec;
-use math::FieldElement;
+
 use ::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+use math::FieldElement;
 
 #[macro_use]
 extern crate alloc;
@@ -124,7 +124,6 @@ pub struct SumCheckRoundClaim<E: FieldElement> {
     pub claim: E,
 }
 
-
 /// The non-linear composition polynomial of the LogUp-GKR protocol specific to the input layer.
 pub fn evaluate_composition_poly<E: FieldElement>(
     numerators: &[E],
@@ -140,14 +139,14 @@ pub fn evaluate_composition_poly<E: FieldElement>(
     let (left_denominators, right_denominators) = denominators.project_least_significant_variable();
 
     let eval_left_numerators =
-        left_numerators.evaluate_with_lagrange_kernel(&tensored_merge_randomness);
+        left_numerators.evaluate_with_lagrange_kernel(tensored_merge_randomness);
     let eval_right_numerators =
-        right_numerators.evaluate_with_lagrange_kernel(&tensored_merge_randomness);
+        right_numerators.evaluate_with_lagrange_kernel(tensored_merge_randomness);
 
     let eval_left_denominators =
-        left_denominators.evaluate_with_lagrange_kernel(&tensored_merge_randomness);
+        left_denominators.evaluate_with_lagrange_kernel(tensored_merge_randomness);
     let eval_right_denominators =
-        right_denominators.evaluate_with_lagrange_kernel(&tensored_merge_randomness);
+        right_denominators.evaluate_with_lagrange_kernel(tensored_merge_randomness);
 
     eq_eval
         * ((eval_left_numerators * eval_right_denominators

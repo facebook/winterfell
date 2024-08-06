@@ -20,6 +20,7 @@ pub use error::SumCheckProverError;
 
 /// A sum-check prover for the input layer which can accommodate non-linear expressions in
 /// the numerators of the LogUp relation.
+#[allow(clippy::too_many_arguments)]
 pub fn sum_check_prove_higher_degree<
     E: FieldElement,
     C: RandomCoin<Hasher = H, BaseField = E::BaseField>,
@@ -30,8 +31,8 @@ pub fn sum_check_prove_higher_degree<
     r_sum_check: E,
     rand_merge: Vec<E>,
     log_up_randomness: Vec<E>,
-    merged_mls: &mut Vec<MultiLinearPoly<E>>,
-    mls: &mut Vec<MultiLinearPoly<E>>,
+    merged_mls: &mut [MultiLinearPoly<E>],
+    mls: &mut [MultiLinearPoly<E>],
     coin: &mut C,
 ) -> Result<SumCheckProof<E>, SumCheckProverError> {
     let num_rounds = mls[0].num_variables();
@@ -46,7 +47,7 @@ pub fn sum_check_prove_higher_degree<
     let round_poly_evals = sumcheck_round(
         evaluator.clone(),
         mls,
-        &merged_mls,
+        merged_mls,
         &log_up_randomness,
         r_sum_check,
         &tensored_merge_randomness,
@@ -141,7 +142,7 @@ fn sumcheck_round<E: FieldElement>(
     let mut denominators = vec![E::ZERO; evaluator.get_num_fractions()];
 
     let total_evals = (0..1 << num_rounds).map(|i| {
-        let mut total_evals = vec![E::ZERO; evaluator.max_degree() as usize];
+        let mut total_evals = vec![E::ZERO; evaluator.max_degree()];
 
         for (j, ml) in mls.iter().enumerate() {
             evals_zero[j] = ml.evaluations()[2 * i];
@@ -177,7 +178,7 @@ fn sumcheck_round<E: FieldElement>(
 
             evaluator.evaluate_query(
                 &evals_x,
-                &log_up_randomness,
+                log_up_randomness,
                 &mut numerators,
                 &mut denominators,
             );
@@ -187,23 +188,23 @@ fn sumcheck_round<E: FieldElement>(
                 &denominators,
                 eq_x,
                 r_sum_check,
-                &tensored_merge_randomness,
+                tensored_merge_randomness,
             );
         }
 
         total_evals
     });
 
-    let evaluations =
-        total_evals.fold(vec![E::ZERO; evaluator.max_degree() as usize], |mut acc, evals| {
-            acc.iter_mut().zip(evals.iter()).for_each(|(a, ev)| *a += *ev);
-            acc
-        });
+    let evaluations = total_evals.fold(vec![E::ZERO; evaluator.max_degree()], |mut acc, evals| {
+        acc.iter_mut().zip(evals.iter()).for_each(|(a, ev)| *a += *ev);
+        acc
+    });
 
     CompressedUnivariatePolyEvals(evaluations)
 }
 
 /// Sum-check prover for non-linear multivariate polynomial of the simple LogUp-GKR.
+#[allow(clippy::too_many_arguments)]
 pub fn sumcheck_prove_plain<
     E: FieldElement,
     C: RandomCoin<Hasher = H, BaseField = E::BaseField>,

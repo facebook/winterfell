@@ -3,9 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use crate::{RoundProof, SumCheckRoundClaim};
 use crypto::{ElementHasher, RandomCoin};
 use math::FieldElement;
+
+use crate::{RoundProof, SumCheckRoundClaim};
 
 /// Verifies a round of the sum-check protocol.
 pub fn verify_rounds<E, C, H>(
