@@ -45,7 +45,7 @@ pub fn sum_check_prove_higher_degree<
 
     // run the first round of the protocol
     let round_poly_evals = sumcheck_round(
-        evaluator.clone(),
+        evaluator,
         mls,
         merged_mls,
         &log_up_randomness,
@@ -79,7 +79,7 @@ pub fn sum_check_prove_higher_degree<
         // run the i-th round of the protocol using the folded multi-linears for the new reduced
         // claim. This basically computes the s_i polynomial.
         let round_poly_evals = sumcheck_round(
-            evaluator.clone(),
+            evaluator,
             mls,
             merged_mls,
             &log_up_randomness,
@@ -161,7 +161,7 @@ pub fn sum_check_prove_higher_degree<
 /// added to each multi-linear to compute the evaluation at the next point, and `evals_x` to hold
 /// the current evaluation at $x$ in $\{2, ... , d_max\}$.
 fn sumcheck_round<E: FieldElement>(
-    evaluator: impl LogUpGkrEvaluator<BaseField = <E as FieldElement>::BaseField>,
+    evaluator: &impl LogUpGkrEvaluator<BaseField = <E as FieldElement>::BaseField>,
     mls: &[MultiLinearPoly<E>],
     merged_mls: &[MultiLinearPoly<E>],
     log_up_randomness: &[E],
@@ -239,7 +239,7 @@ fn sumcheck_round<E: FieldElement>(
         acc
     });
 
-    CompressedUnivariatePolyEvals(evaluations)
+    CompressedUnivariatePolyEvals(evaluations.into())
 }
 
 /// Sum-check prover for non-linear multivariate polynomial of the simple LogUp-GKR.
@@ -272,6 +272,7 @@ pub fn sumcheck_prove_plain<
         for i in 0..len {
             eval_point_0 +=
                 comb_func(&p0[2 * i], &p1[2 * i], &q0[2 * i], &q1[2 * i], &eq[2 * i], &r_batch);
+
             let p0_delta = p0[2 * i + 1] - p0[2 * i];
             let p1_delta = p1[2 * i + 1] - p1[2 * i];
             let q0_delta = q0[2 * i + 1] - q0[2 * i];
@@ -290,7 +291,6 @@ pub fn sumcheck_prove_plain<
             q0_evx += q0_delta;
             q1_evx += q1_delta;
             eq_evx += eq_delta;
-
             eval_point_3 += comb_func(&p0_evx, &p1_evx, &q0_evx, &q1_evx, &eq_evx, &r_batch);
         }
 
@@ -299,7 +299,7 @@ pub fn sumcheck_prove_plain<
             eval_point_2,
             eval_point_3,
         ];
-        let poly = CompressedUnivariatePolyEvals(evals);
+        let poly = CompressedUnivariatePolyEvals(evals.into());
         let round_poly_coefs = poly.to_poly(claim);
 
         // reseed with the s_i polynomial
