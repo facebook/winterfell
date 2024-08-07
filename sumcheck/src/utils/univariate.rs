@@ -6,7 +6,14 @@
 use alloc::vec::Vec;
 
 use math::{batch_inversion, polynom, FieldElement};
+use smallvec::SmallVec;
 use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+
+// CONSTANTS
+// ================================================================================================
+
+/// Maximum expected size of the round polynomials. This is needed for `SmallVec`.
+const MAX_POLY_SIZE: usize = 10;
 
 // COMPRESSED UNIVARIATE POLYNOMIAL
 // ================================================================================================
@@ -16,8 +23,8 @@ use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serial
 ///
 /// This compressed representation is useful during the sum-check protocol as the full uncompressed
 /// representation can be recovered from the compressed one and the current sum-check round claim.
-#[derive(Clone, Debug)]
-pub struct CompressedUnivariatePoly<E: FieldElement>(pub(crate) Vec<E>);
+#[derive(Clone, Debug, PartialEq)]
+pub struct CompressedUnivariatePoly<E: FieldElement>(pub(crate) SmallVec<[E; MAX_POLY_SIZE]>);
 
 impl<E: FieldElement> CompressedUnivariatePoly<E> {
     /// Evaluates a polynomial at a challenge point using a round claim.
@@ -40,7 +47,8 @@ impl<E: FieldElement> CompressedUnivariatePoly<E> {
 
 impl<E: FieldElement> Serializable for CompressedUnivariatePoly<E> {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.0.write_into(target);
+        let vector: Vec<E> = self.0.clone().into_vec();
+        vector.write_into(target);
     }
 }
 
@@ -49,7 +57,8 @@ where
     E: FieldElement,
 {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        Ok(Self(Deserializable::read_from(source)?))
+        let vector: Vec<E> = Vec::<E>::read_from(source)?;
+        Ok(Self(vector.into()))
     }
 }
 
@@ -59,7 +68,7 @@ where
 /// This compressed representation is useful during the sum-check protocol as the full uncompressed
 /// representation can be recovered from the compressed one and the current sum-check round claim.
 #[derive(Clone, Debug)]
-pub struct CompressedUnivariatePolyEvals<E>(pub(crate) Vec<E>);
+pub struct CompressedUnivariatePolyEvals<E>(pub(crate) SmallVec<[E; MAX_POLY_SIZE]>);
 
 impl<E: FieldElement> CompressedUnivariatePolyEvals<E> {
     /// Gives the coefficient representation of a polynomial represented in evaluation form.
@@ -104,7 +113,7 @@ impl<E: FieldElement> CompressedUnivariatePolyEvals<E> {
         // append c0 to the coefficients of q to get the coefficients of p. The linear term
         // coefficient is removed as this can be recovered from the other coefficients using
         // the reduced claim.
-        let mut coefficients = Vec::with_capacity(self.0.len() + 1);
+        let mut coefficients = SmallVec::with_capacity(self.0.len() + 1);
         coefficients.push(c0);
         coefficients.extend_from_slice(&q_coefs[1..]);
 
@@ -257,11 +266,25 @@ fn test_poly_partial() {
     let mut partial_evals = evals.clone();
     partial_evals.remove(0);
 
-    let partial_poly = CompressedUnivariatePolyEvals(partial_evals);
+    let partial_poly = CompressedUnivariatePolyEvals(partial_evals.into());
     let claim = evals[0] + evals[1];
     let poly_coeff = partial_poly.to_poly(claim);
 
     let r = rand_utils::rand_vector(1);
 
     assert_eq!(polynom::eval(&p, r[0]), poly_coeff.evaluate_using_claim(&claim, &r[0]))
+}
+
+#[test]
+fn test_serialization() {
+    use math::fields::f64::BaseElement;
+
+    let original_poly =
+        CompressedUnivariatePoly(rand_utils::rand_array::<BaseElement, MAX_POLY_SIZE>().into());
+    let poly_bytes = original_poly.to_bytes();
+
+    let deserialized_poly =
+        CompressedUnivariatePoly::<BaseElement>::read_from_bytes(&poly_bytes).unwrap();
+
+    assert_eq!(original_poly, deserialized_poly)
 }
