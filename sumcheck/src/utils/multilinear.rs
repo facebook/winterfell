@@ -9,6 +9,7 @@ use core::ops::Index;
 use math::FieldElement;
 #[cfg(feature = "concurrent")]
 pub use rayon::prelude::*;
+use smallvec::SmallVec;
 
 // MULTI-LINEAR POLYNOMIAL
 // ================================================================================================
@@ -102,6 +103,9 @@ impl<E: FieldElement> Index<usize> for MultiLinearPoly<E> {
 // EQ FUNCTION
 // ================================================================================================
 
+/// Maximal expected size of the point of a given Lagrange kernel.
+const MAX_EQ_SIZE: usize = 25;
+
 /// The EQ (equality) function is the binary function defined by
 ///
 /// $$
@@ -139,13 +143,13 @@ impl<E: FieldElement> Index<usize> for MultiLinearPoly<E> {
 /// as well as a method to evaluate $EQ^{~}((r_0, ..., r_{ν - 1}), (t_0, ..., t_{ν - 1})))$ for
 /// $(t_0, ..., t_{ν - 1}) ∈ 𝔽^ν$.
 pub struct EqFunction<E> {
-    r: Vec<E>,
+    r: SmallVec<[E; MAX_EQ_SIZE]>,
 }
 
 impl<E: FieldElement> EqFunction<E> {
     /// Creates a new [EqFunction].
     pub fn new(r: Vec<E>) -> Self {
-        let tmp = r.clone();
+        let tmp = r.into();
         EqFunction { r: tmp }
     }
 
