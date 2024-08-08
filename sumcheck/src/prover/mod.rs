@@ -20,6 +20,122 @@ pub use error::SumCheckProverError;
 
 /// A sum-check prover for the input layer which can accommodate non-linear expressions in
 /// the numerators of the LogUp relation.
+///
+/// The LogUp-GKR protocol in [1] is an IOP for the following statement
+///
+/// $$
+/// \sum_{v_i, x_i} \frac{p_n\left(v_1, \cdots, v_{\mu}, x_1, \cdots, x_{\nu}\right)}
+///                         {q_n\left(v_1, \cdots, v_{\mu}, x_1, \cdots, x_{\nu}\right)} = C
+/// $$
+///
+/// where:
+///
+/// $$
+/// p_n\left(v_1, \cdots, v_{\mu}, x_1, \cdots, x_{\nu}\right) =
+///     \sum_{w\in\{0, 1\}^\mu} EQ\left(\left(v_1, \cdots, v_{\mu}\right),
+///                              \left(w_1, \cdots, w_{\mu}\right)\right)
+///      g_{[w]}\left(f_1\left(x_1, \cdots, x_{\nu}\right),
+///                                 \cdots, f_l\left(x_1, \cdots, x_{\nu}\right)\right)
+/// $$
+///
+/// and  
+///
+/// $$
+/// q_n\left(v_1, \cdots, v_{\mu}, x_1, \cdots, x_{\nu}\right) =
+///     \sum_{w\in\{0, 1\}^\mu} EQ\left(\left(v_1, \cdots, v_{\mu}\right),
+///                              \left(w_1, \cdots, w_{\mu}\right)\right)
+///      h_{[w]}\left(f_1\left(x_1, \cdots, x_{\nu}\right),
+///                                 \cdots, f_l\left(x_1, \cdots, x_{\nu}\right)\right)
+/// $$
+///
+/// and
+///
+/// 1. $f_i$ are multi-linears.
+/// 2. ${[w]} := \sum_i w_i \cdot 2^i$ and $w := (w_1, \cdots, w_{\mu})$.
+/// 3. $h_{j}$ and $g_{j}$ are multi-variate polynomials for $j = 0, \cdots, 2^{\mu} - 1$.
+/// 4. $n := \nu + \mu$
+///
+/// The sum above is evaluated using a layered circuit with the equation linking the input layer
+/// values $p_n$ to the next layer values $p_{n-1}$ given by the following relations
+///
+/// $$
+/// p_{n-1}\left(v_2, \cdots, v_{\mu}, x_1, \cdots, x_{\nu}\right) = \sum_{w_i, y_i}
+///             EQ\left(\left(v_2, \cdots, v_{\mu}, x_1, \cdots, x_{\nu}\right),
+///                  \left(w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)\right)
+///                      \cdot \left( p_n\left(1, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)
+///                       \cdot q_n\left(0, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right) +
+///              p_n\left(0, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)  \cdot
+///                 q_n\left(1, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)\right)
+/// $$
+///
+/// and
+///
+/// $$
+/// q_{n-1}\left(v_2, \cdots, v_{\mu}, x_1, \cdots, x_{\nu}\right) = \sum_{w_i, y_i}
+///             EQ\left(\left(v_2, \cdots, v_{\mu}, x_1, \cdots, x_{\nu}\right),
+///                  \left(w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)\right)
+///                     \cdot \left( q_n\left(1, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)
+///                       \cdot q_n\left(0, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)\right)
+/// $$
+///
+/// and similarly for all subsequent layers.
+///
+/// These expressions are nothing but the equations in Section 3.2 in [1] but with the projection
+/// happening at the first argument instead of the last.
+///
+/// We can now note a few things about the above:
+///
+/// 1. During the evaluation phase of the circuit, the prover needs to compute every tuple
+///    $\left(p_k, q_k\right)$ for $k = n, \cdots, 1$ over the boolean hyper-cubes of
+///    the appropriate sizes. In particular, the prover will have the evaluations
+///    $\left(p_n, q_n\right)$ over $\{0, 1\}^{\mu + \nu}$ stored.
+/// 2. Since $p_n$ and $q_n$ are linear in the first $\mu$ variables, we can directly use
+///    the stored evaluations of $p_n$ and $q_n$ during the final sum-check, the one linking
+///    the input layer to its next layer, for the first $\mu - 1$ rounds. This means that for
+///    the first $\mu - 1$ rounds, the last sum-check protocol can be treated like the sum-checks
+///    for the other layers i.e., the original degree $3$ sum-check of the LogUp-GKR paper.
+/// 3. For the last $\nu$ rounds of the final sum-check, we can still use the evaluations of
+///    $\left(p_k, q_k\right)$, or more precisely the result of their binding with the $\mu -1$
+///    round challenges from point 2 above, in order to optimize the computation of the sum-check
+///    round polynomials but due to the non-linearity of $\left(p_n, q_n\right)$ in the last $\nu$
+///    variables, we will have to work with
+///
+/// $$
+/// p_n\left(v_1, r_1, \cdots, r_{\mu - 1}, x_1, \cdots, x_{\nu}\right) = \sum_{w\in\{0, 1\}^{\mu}}
+///      EQ\left(\left(v_1, r_1, \cdots, r_{\mu - 1}\right), \left(w_1, \cdots, w_{\mu}\right)\right)
+///      g_{[w]}\left(f_1\left(x_1, \cdots, x_{\nu}\right), \cdots,
+///                                                 f_l\left(x_1, \cdots, x_{\nu}\right)\right)
+/// $$
+///
+/// and
+///
+/// $$
+/// q_n\left(v_1, r_1, \cdots, r_{\mu - 1}, x_1, \cdots, x_{\nu}\right) = \sum_{w\in\{0, 1\}^{\mu}}
+///     EQ\left(\left(v_1, r_1, \cdots, r_{\mu - 1}\right), \left(w_1, \cdots, w_{\mu}\right)\right)
+///     h_{[w]}\left(f_1\left(x_1, \cdots, x_{\nu}\right), \cdots,
+///                                                 f_l\left(x_1, \cdots, x_{\nu}\right)\right)
+/// $$
+///
+/// where $r_i$ is the sum-check round challenges of the first $\mu - 1$ rounds.
+///
+/// The current function executes the last $\nu$ parts of the sum-check and uses
+/// the [`LogUpGkrEvaluator`] to evaluate $g_i$ and $h_i$ during the computation of the evaluations
+/// of the round polynomials.
+///
+/// As an optimization, the function uses the five polynomials, refered to as [`merged_mls`]:
+///
+/// 1. $p_n\left(0, r_1, \cdots, r_{\mu - 1}, x_1, \cdots, x_{\nu}\right)$
+/// 2. $p_n\left(1, r_1, \cdots, r_{\mu - 1}, x_1, \cdots, x_{\nu}\right)$
+/// 3. $q_n\left(0, r_1, \cdots, r_{\mu - 1}, x_1, \cdots, x_{\nu}\right)$
+/// 4. $q_n\left(1, r_1, \cdots, r_{\mu - 1}, x_1, \cdots, x_{\nu}\right)$
+/// 5. $$\left(y_1, \cdots, y_{\nu}\right) \longrightarrow
+///     EQ\left(\left(t_1, \cdots, t_{\mu + \nu - 1}\right),
+///     \left(r_1, \cdots, r_{\mu - 1}, y_1, \cdots, y_{\nu}\right)\right)
+///    $$
+///    where $t_i$ is the sum-check randomness from the previous layer.
+///
+///
+/// [1]: https://eprint.iacr.org/2023/1284
 #[allow(clippy::too_many_arguments)]
 pub fn sum_check_prove_higher_degree<
     E: FieldElement,
@@ -41,6 +157,9 @@ pub fn sum_check_prove_higher_degree<
 
     // setup first round claim
     let mut current_round_claim = SumCheckRoundClaim { eval_point: vec![], claim };
+
+    // compute, for all (w_1, \cdots, w_{\mu - 1}) in {0, 1}^{\mu - 1}:
+    // EQ\left(\left(r_1, \cdots, r_{\mu - 1}\right), \left(w_1, \cdots, w_{\mu - 1}\right)\right)
     let tensored_merge_randomness = EqFunction::ml_at(rand_merge.to_vec()).evaluations().to_vec();
 
     // run the first round of the protocol
@@ -134,6 +253,8 @@ pub fn sum_check_prove_higher_degree<
 /// w(x_0,\cdots, x_{\nu - 1}) := g(f_0((x_0,\cdots, x_{\nu - 1})),
 ///                                                       \cdots , f_c((x_0,\cdots, x_{\nu - 1}))).
 /// $$
+///
+/// where `g` is the expression defined in the documentation of [`sum_check_prove_higher_degree`]
 ///
 /// Given a degree bound `d_max` for all variables, it suffices to compute the evaluations of `s_i`
 /// at `d_max + 1` points. Given that $s_{i}(0) = s_{i}(1) - s_{i - 1}(r_{i - 1})$ it is sufficient
@@ -243,6 +364,35 @@ fn sumcheck_round<E: FieldElement>(
 }
 
 /// Sum-check prover for non-linear multivariate polynomial of the simple LogUp-GKR.
+///
+/// More specifically, the following function implements the logic of the sum-check prover as
+/// described in Section 3.2 in [1], that is, given verifier challenges  , the following implements
+/// the sum-check prover for the following two statements
+/// $$
+/// p_{\nu - \kappa}\left(v_{\kappa+1}, \cdots, v_{\nu}\right) = \sum_{w_i}
+///     EQ\left(\left(v_{\kappa+1}, \cdots, v_{\nu}\right), \left(w_{\kappa+1}, \cdots,
+///                              w_{\nu}\right)\right) \cdot
+///      \left( p_{\nu-\kappa+1}\left(1, w_{\kappa+1}, \cdots, w_{\nu}\right)  \cdot
+///              q_{\nu-\kappa+1}\left(0, w_{\kappa+1}, \cdots, w_{\nu}\right) +
+///     p_{\nu-\kappa+1}\left(0, w_{\kappa+1}, \cdots, w_{\nu}\right)  \cdot
+///     q_{\nu-\kappa+1}\left(1, w_{\kappa+1}, \cdots, w_{\nu}\right)\right)
+/// $$
+///
+/// and
+///
+/// $$
+/// q_{\nu -k}\left(v_{\kappa+1}, \cdots, v_{\nu}\right) = \sum_{w_i}EQ\left(\left(v_{\kappa+1},
+///  \cdots, v_{\nu}\right), \left(w_{\kappa+1}, \cdots, w_{\nu }\right)\right) \cdot
+/// \left( q_{\nu-\kappa+1}\left(1, w_{\kappa+1}, \cdots, w_{\nu}\right)  \cdot
+///  q_{\nu-\kappa+1}\left(0, w_{\kappa+1}, \cdots, w_{\nu}\right)\right)
+/// $$
+///
+/// for $k = 1, \cdots, \nu - 1$  
+///
+/// Instead of executing two runs of the sum-check protocol, a batching randomness `r_batch` is
+/// sent by the verifier at the outset in order to batch the two statments.
+///
+/// [1]: https://eprint.iacr.org/2023/1284
 #[allow(clippy::too_many_arguments)]
 pub fn sumcheck_prove_plain<
     E: FieldElement,
