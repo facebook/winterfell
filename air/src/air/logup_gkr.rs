@@ -200,3 +200,52 @@ pub enum LogUpGkrOracle<B: StarkField> {
     /// must be a power of 2.
     PeriodicValue(Vec<B>),
 }
+
+impl LogUpGkrEvaluator for () {
+    type BaseField = BaseElement;
+
+    type PublicInputs = ();
+
+    fn get_oracles(&self) -> Vec<LogUpGkrOracle<Self::BaseField>> {
+        unimplemented!()
+    }
+
+    fn get_num_rand_values(&self) -> usize {
+        unimplemented!()
+    }
+
+    fn get_num_fractions(&self) -> usize {
+        unimplemented!()
+    }
+
+    fn max_degree(&self) -> usize {
+        unimplemented!()
+    }
+
+    fn build_query<E>(&self, _frame: &EvaluationFrame<E>, _periodic_values: &[E]) -> Vec<E>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        unimplemented!()
+    }
+
+    fn evaluate_query<F, E>(
+        &self,
+        _query: &[F],
+        _rand_values: &[E],
+        _numerator: &mut [E],
+        _denominator: &mut [E],
+    ) where
+        F: FieldElement<BaseField = Self::BaseField>,
+        E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
+    {
+        unimplemented!()
+    }
+
+    fn compute_claim<E>(&self, _inputs: &Self::PublicInputs, _rand_values: &[E]) -> E
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        unimplemented!()
+    }
+}

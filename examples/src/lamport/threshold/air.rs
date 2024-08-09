@@ -3,6 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use std::marker::PhantomData;
+
+use air::LogUpGkrEvaluator;
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement, StarkField, ToElements},
     Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
@@ -361,3 +364,57 @@ const HASH_CYCLE_MASK: [BaseElement; HASH_CYCLE_LEN] = [
     BaseElement::ONE,
     BaseElement::ZERO,
 ];
+
+#[derive(Clone, Default)]
+pub struct PlainLogUpGkrEval<B: FieldElement> {
+    _field: PhantomData<B>,
+}
+
+impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
+    type BaseField = BaseElement;
+
+    type PublicInputs = PublicInputs;
+
+    fn get_oracles(&self) -> Vec<air::LogUpGkrOracle<Self::BaseField>> {
+        unimplemented!()
+    }
+
+    fn get_num_rand_values(&self) -> usize {
+        unimplemented!()
+    }
+
+    fn get_num_fractions(&self) -> usize {
+        unimplemented!()
+    }
+
+    fn max_degree(&self) -> usize {
+        unimplemented!()
+    }
+
+    fn build_query<E>(&self, _frame: &EvaluationFrame<E>, _periodic_values: &[E]) -> Vec<E>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        unimplemented!()
+    }
+
+    fn evaluate_query<F, E>(
+        &self,
+        _query: &[F],
+        _rand_values: &[E],
+        _numerator: &mut [E],
+        _denominator: &mut [E],
+    ) where
+        F: FieldElement<BaseField = Self::BaseField>,
+        E: FieldElement<BaseField = Self::BaseField> + winterfell::math::ExtensionOf<F>,
+    {
+        unimplemented!()
+    }
+
+    fn compute_claim<E>(&self, _inputs: &Self::PublicInputs, _rand_values: &[E]) -> E
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        unimplemented!()
+    }
+}

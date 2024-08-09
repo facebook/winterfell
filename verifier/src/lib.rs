@@ -350,6 +350,41 @@ where
         .map_err(VerifierError::FriVerificationFailed)
 }
 
+fn verify_gkr<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>>(
+    gkr_proof: GkrCircuitProof<E>,
+    evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
+    public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = H>,
+) -> Result<GkrData<E>, GkrVerifierError> {
+    let claim = E::ZERO;
+    let num_logup_random_values = evaluator.get_num_rand_values();
+    let mut logup_randomness: Vec<E> = Vec::with_capacity(num_logup_random_values);
+
+    for _ in 0..num_logup_random_values {
+        logup_randomness.push(public_coin.draw().expect("failed to generate randomness"));
+    }
+
+    let final_eval_claim =
+        verify_logup_gkr(claim, evaluator, &gkr_proof, logup_randomness, public_coin)?;
+
+    let FinalOpeningClaim { eval_point, openings } = final_eval_claim;
+
+    public_coin.reseed(H::hash_elements(&openings));
+
+    let mut batching_randomness = Vec::with_capacity(openings.len() - 1);
+    for _ in 0..openings.len() - 1 {
+        batching_randomness.push(public_coin.draw().expect("failed to generate randomness"))
+    }
+
+    let gkr_rand_elements = GkrData::new(
+        LagrangeKernelRandElements::new(eval_point),
+        batching_randomness,
+        openings,
+        evaluator.get_oracles(),
+    );
+
+    Ok(gkr_rand_elements)
+}
+
 // ACCEPTABLE OPTIONS
 // ================================================================================================
 // Specifies either the minimal, conjectured or proven, security level or a set of
