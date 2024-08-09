@@ -154,6 +154,14 @@ pub struct SumCheckRoundClaim<E: FieldElement> {
     pub claim: E,
 }
 
+/// The non-linear composition polynomial of the LogUp-GKR protocol.
+///
+/// This is the result of batching the `p_k` and `q_k` of section 3.2 in
+/// https://eprint.iacr.org/2023/1284.pdf.
+fn comb_func<E: FieldElement>(p0: &E, p1: &E, q0: &E, q1: &E, eq: &E, r_batch: &E) -> E {
+    (*p0 * *q1 + *p1 * *q0 + *r_batch * *q0 * *q1) * *eq
+}
+
 /// The non-linear composition polynomial of the LogUp-GKR protocol specific to the input layer.
 pub fn evaluate_composition_poly<E: FieldElement>(
     numerators: &[E],
