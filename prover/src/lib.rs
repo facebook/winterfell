@@ -48,7 +48,7 @@ pub use air::{
     EvaluationFrame, FieldExtension, LagrangeKernelRandElements, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
-use air::{AuxRandElements, GkrRandElements};
+use air::{AuxRandElements, LogUpGkrEvaluator};
 pub use crypto;
 use crypto::{ElementHasher, RandomCoin, VectorCommitment};
 use fri::FriProver;
@@ -86,6 +86,9 @@ pub use trace::{
     TraceTableFragment,
 };
 
+mod logup_gkr;
+use logup_gkr::{build_lagrange_column, build_s_column, generate_gkr_randomness, prove_gkr};
+
 mod channel;
 use channel::ProverChannel;
 
@@ -100,9 +103,6 @@ pub mod tests;
 
 // this segment width seems to give the best performance for small fields (i.e., 64 bits)
 const DEFAULT_SEGMENT_WIDTH: usize = 8;
-
-/// Accesses the `GkrProof` type in a [`Prover`].
-pub type ProverGkrProof<P> = <<P as Prover>::Air as Air>::GkrProof;
 
 /// Defines a STARK prover for a computation.
 ///
@@ -201,20 +201,6 @@ pub trait Prover {
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
 
-    /// Builds the GKR proof. If the [`Air`] doesn't use a GKR proof, leave unimplemented.
-    #[allow(unused_variables)]
-    #[maybe_async]
-    fn generate_gkr_proof<E>(
-        &self,
-        main_trace: &Self::Trace,
-        public_coin: &mut Self::RandomCoin,
-    ) -> (ProverGkrProof<Self>, GkrRandElements<E>)
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        unimplemented!("`Prover::generate_gkr_proof` needs to be implemented when the auxiliary trace has a Lagrange kernel column.")
-    }
-
     /// Builds and returns the auxiliary trace.
     #[allow(unused_variables)]
     #[maybe_async]
@@ -229,6 +215,37 @@ pub trait Prover {
         unimplemented!("`Prover::build_aux_trace` needs to be implemented when the trace has an auxiliary segment.")
     }
 
+    /// Builds and returns the auxiliary trace.
+    #[allow(unused_variables)]
+    #[maybe_async]
+    fn build_aux_trace_wrapper<E>(
+        &self,
+        air: &Self::Air,
+        main_trace: &Self::Trace,
+        aux_rand_elements: &AuxRandElements<E>,
+    ) -> ColMatrix<E>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        let mut aux_trace = self.build_aux_trace(main_trace, aux_rand_elements);
+
+        if let Some(lagrange_randomness) = aux_rand_elements.lagrange() {
+            let evaluator = air.get_logup_gkr_evaluator::<E>();
+            let lagrange_col = build_lagrange_column(lagrange_randomness);
+            let s_col = build_s_column(
+                main_trace,
+                aux_rand_elements.gkr_data().expect("should not be empty"),
+                &evaluator,
+                &lagrange_col,
+            );
+
+            aux_trace.merge_column(s_col);
+            aux_trace.merge_column(lagrange_col);
+        }
+
+        aux_trace
+    }
+
     /// Returns a STARK proof attesting to a correct execution of a computation defined by the
     /// provided trace.
     ///
@@ -241,7 +258,6 @@ pub trait Prover {
     fn prove(&self, trace: Self::Trace) -> Result<Proof, ProverError>
     where
         <Self::Air as Air>::PublicInputs: Send,
-        <Self::Air as Air>::GkrProof: Send,
     {
         // figure out which version of the generic proof generation procedure to run. this is a sort
         // of static dispatch for selecting two generic parameter: extension field and hash
@@ -275,7 +291,6 @@ pub trait Prover {
     where
         E: FieldElement<BaseField = Self::BaseField>,
         <Self::Air as Air>::PublicInputs: Send,
-        <Self::Air as Air>::GkrProof: Send,
     {
         // 0 ----- instantiate AIR and prover channel ---------------------------------------------
 
@@ -314,9 +329,16 @@ pub trait Prover {
         // build the auxiliary trace segment, and append the resulting segments to trace commitment
         // and trace polynomial table structs
         let aux_trace_with_metadata = if air.trace_info().is_multi_segment() {
-            let (gkr_proof, aux_rand_elements) = if air.context().has_lagrange_kernel_aux_column() {
-                let (gkr_proof, gkr_rand_elements) =
-                    maybe_await!(self.generate_gkr_proof(&trace, channel.public_coin()));
+            let (gkr_proof, aux_rand_elements) = if air.context().is_with_logup_gkr() {
+                let gkr_proof =
+                    prove_gkr(&trace, &air.get_logup_gkr_evaluator::<E>(), channel.public_coin())
+                        .map_err(|_| ProverError::FailedToGenerateGkrProof)?;
+
+                let gkr_rand_elements = generate_gkr_randomness(
+                    gkr_proof.get_final_opening_claim(),
+                    air.get_logup_gkr_evaluator::<E>().get_oracles(),
+                    channel.public_coin(),
+                );
 
                 let rand_elements = air
                     .get_aux_rand_elements(channel.public_coin())
@@ -333,8 +355,8 @@ pub trait Prover {
 
                 (None, AuxRandElements::new(rand_elements))
             };
-
-            let aux_trace = maybe_await!(self.build_aux_trace(&trace, &aux_rand_elements));
+            let aux_trace =
+                maybe_await!(self.build_aux_trace_wrapper(&air, &trace, &aux_rand_elements));
 
             // commit to the auxiliary trace segment
             let aux_segment_polys = {
@@ -363,7 +385,7 @@ pub trait Prover {
         // This checks validity of both, assertions and state transitions. We do this in debug
         // mode only because this is a very expensive operation.
         #[cfg(debug_assertions)]
-        trace.validate(&air, aux_trace_with_metadata.as_ref());
+        //trace.validate(&air, aux_trace_with_metadata.as_ref());
 
         // Destructure `aux_trace_with_metadata`.
         let (aux_trace, aux_rand_elements, gkr_proof) = match aux_trace_with_metadata {

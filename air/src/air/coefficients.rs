@@ -32,6 +32,7 @@ pub struct ConstraintCompositionCoefficients<E: FieldElement> {
     pub transition: Vec<E>,
     pub boundary: Vec<E>,
     pub lagrange: Option<LagrangeConstraintsCompositionCoefficients<E>>,
+    pub s_col: Option<E>,
 }
 
 /// Stores the constraint composition coefficients for the Lagrange kernel transition and boundary
@@ -109,4 +110,6 @@ pub struct DeepCompositionCoefficients<E: FieldElement> {
     pub constraints: Vec<E>,
     /// Lagrange kernel trace polynomial composition coefficient $\gamma$.
     pub lagrange: Option<E>,
+    /// TODO
+    pub s_col: Option<E>,
 }

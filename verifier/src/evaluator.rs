@@ -92,25 +92,28 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
         let lagrange_coefficients = composition_coefficients
             .lagrange
             .expect("expected Lagrange kernel composition coefficients to be present");
-        let lagrange_kernel_aux_rand_elements = {
-            let aux_rand_elements =
-                aux_rand_elements.expect("expected aux rand elements to be present");
+        let air::GkrData {
+            lagrange_kernel_eval_point: lagrange_kernel_evaluation_point,
+            openings_combining_randomness: _,
+            openings: _,
+            oracles: _,
+        } = aux_rand_elements
+            .expect("expected aux rand elements to be present")
+            .gkr_data()
+            .expect("expected LogUp-GKR rand elements to be present");
 
-            aux_rand_elements
-                .lagrange()
-                .expect("expected lagrange rand elements to be present")
-        };
+        // Lagrange kernel constraints
 
         let lagrange_constraints = air
             .get_lagrange_kernel_constraints(
                 lagrange_coefficients,
-                lagrange_kernel_aux_rand_elements,
+                &lagrange_kernel_evaluation_point,
             )
             .expect("expected Lagrange kernel constraints to be present");
 
         result += lagrange_constraints.transition.evaluate_and_combine::<E>(
             lagrange_kernel_column_frame,
-            lagrange_kernel_aux_rand_elements,
+            &lagrange_kernel_evaluation_point,
             x,
         );
 

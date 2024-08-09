@@ -9,7 +9,7 @@ use air::{
     Air, AirContext, Assertion, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
-use math::{fields::f128::BaseElement, FieldElement, StarkField};
+use math::{fields::f64::BaseElement, FieldElement, StarkField};
 
 use crate::TraceTable;
 
@@ -75,8 +75,7 @@ impl MockAir {
 impl Air for MockAir {
     type BaseField = BaseElement;
     type PublicInputs = ();
-    type GkrProof = ();
-    type GkrVerifier = ();
+    type LogUpGkrEvaluator = ();
 
     fn new(trace_info: TraceInfo, _pub_inputs: (), _options: ProofOptions) -> Self {
         let context = build_context(trace_info, 8, 1);

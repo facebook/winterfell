@@ -3,57 +3,81 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use std::{vec, vec::Vec};
+use std::{marker::PhantomData, vec, vec::Vec};
 
-use air::{GkrRandElements, LagrangeKernelRandElements};
-use crypto::MerkleTree;
-use prover::{
-    crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin},
-    math::{fields::f64::BaseElement, ExtensionOf, FieldElement},
-    matrix::ColMatrix,
+use air::{
+    Air, AirContext, Assertion, AuxRandElements, ConstraintCompositionCoefficients, FieldExtension,
+    LogUpGkrEvaluator, LogUpGkrOracle, ProofOptions, TraceInfo,
 };
+use crypto::MerkleTree;
 
 use super::*;
-
-const AUX_TRACE_WIDTH: usize = 2;
+use crate::{
+    crypto::{hashers::Blake3_256, DefaultRandomCoin},
+    math::{fields::f64::BaseElement, ExtensionOf, FieldElement},
+    matrix::ColMatrix,
+    DefaultConstraintEvaluator, DefaultTraceLde, Prover, StarkDomain, TracePolyTable,
+};
 
 #[test]
-fn test_complex_lagrange_kernel_air() {
-    let trace = LagrangeComplexTrace::new(2_usize.pow(10), AUX_TRACE_WIDTH);
+fn test_logup_gkr() {
+    let trace = LogUpGkrSimple::new(2_usize.pow(7), 1);
 
-    let prover = LagrangeComplexProver::new(AUX_TRACE_WIDTH);
+    let prover = LogUpGkrSimpleProver::new(1);
 
-    let proof = prover.prove(trace).unwrap();
+    let _proof = prover.prove(trace).unwrap();
 
     verify::<
-        LagrangeKernelComplexAir,
+        LogUpGkrSimpleAir,
         Blake3_256<BaseElement>,
         DefaultRandomCoin<Blake3_256<BaseElement>>,
         MerkleTree<Blake3_256<BaseElement>>,
-    >(proof, (), &AcceptableOptions::MinConjecturedSecurity(0))
+    >(_proof, (), &AcceptableOptions::MinConjecturedSecurity(0))
     .unwrap()
 }
 
-// LagrangeComplexTrace
+// LogUpGkrSimple
 // =================================================================================================
 
 #[derive(Clone, Debug)]
-struct LagrangeComplexTrace {
+struct LogUpGkrSimple {
     // dummy main trace
     main_trace: ColMatrix<BaseElement>,
     info: TraceInfo,
 }
 
-impl LagrangeComplexTrace {
+impl LogUpGkrSimple {
     fn new(trace_len: usize, aux_segment_width: usize) -> Self {
         assert!(trace_len < u32::MAX.try_into().unwrap());
 
-        let main_trace_col: Vec<BaseElement> =
+        let table: Vec<BaseElement> =
             (0..trace_len).map(|idx| BaseElement::from(idx as u32)).collect();
+        let mut multiplicity: Vec<BaseElement> =
+            (0..trace_len).map(|_idx| BaseElement::ZERO).collect();
+        multiplicity[0] = BaseElement::new(3 * trace_len as u64 - 3 * 4);
+        multiplicity[1] = BaseElement::new(3 * 4);
+
+        let mut values_0: Vec<BaseElement> = (0..trace_len).map(|_idx| BaseElement::ZERO).collect();
+
+        for i in 0..4 {
+            values_0[i + 4] = BaseElement::ONE;
+        }
+
+        let mut values_1: Vec<BaseElement> = (0..trace_len).map(|_idx| BaseElement::ZERO).collect();
+
+        for i in 0..4 {
+            values_1[i + 4] = BaseElement::ONE;
+        }
+
+        let mut values_2: Vec<BaseElement> = (0..trace_len).map(|_idx| BaseElement::ZERO).collect();
+
+        for i in 0..4 {
+            values_2[i + 4] = BaseElement::ONE;
+        }
 
         Self {
-            main_trace: ColMatrix::new(vec![main_trace_col]),
-            info: TraceInfo::new_multi_segment(1, aux_segment_width, 0, trace_len, vec![]),
+            main_trace: ColMatrix::new(vec![table, multiplicity, values_0, values_1, values_2]),
+            info: TraceInfo::new_multi_segment(5, aux_segment_width + 2, 0, trace_len, vec![]),
         }
     }
 
@@ -62,7 +86,7 @@ impl LagrangeComplexTrace {
     }
 }
 
-impl Trace for LagrangeComplexTrace {
+impl Trace for LogUpGkrSimple {
     type BaseField = BaseElement;
 
     fn info(&self) -> &TraceInfo {
@@ -75,70 +99,32 @@ impl Trace for LagrangeComplexTrace {
 
     fn read_main_frame(&self, row_idx: usize, frame: &mut EvaluationFrame<Self::BaseField>) {
         let next_row_idx = row_idx + 1;
-        assert_ne!(next_row_idx, self.len());
-
         self.main_trace.read_row_into(row_idx, frame.current_mut());
-        self.main_trace.read_row_into(next_row_idx, frame.next_mut());
+        self.main_trace.read_row_into(next_row_idx % self.len(), frame.next_mut());
     }
 }
 
 // AIR
 // =================================================================================================
 
-#[derive(Debug, Clone, Default)]
-struct DummyGkrVerifier;
-
-impl GkrVerifier for DummyGkrVerifier {
-    // `GkrProof` is log(trace_len) for this dummy example, so that the verifier knows how many aux
-    // random variables to generate
-    type GkrProof = usize;
-    type Error = VerifierError;
-
-    fn verify<E, Hasher>(
-        &self,
-        gkr_proof: usize,
-        public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> Result<GkrRandElements<E>, Self::Error>
-    where
-        E: FieldElement,
-        Hasher: crypto::ElementHasher<BaseField = E::BaseField>,
-    {
-        let log_trace_len = gkr_proof;
-        let lagrange_kernel_rand_elements: LagrangeKernelRandElements<E> = {
-            let mut rand_elements = Vec::with_capacity(log_trace_len);
-            for _ in 0..log_trace_len {
-                rand_elements.push(public_coin.draw().unwrap());
-            }
-
-            LagrangeKernelRandElements::new(rand_elements)
-        };
-
-        Ok(GkrRandElements::new(lagrange_kernel_rand_elements, Vec::new()))
-    }
-}
-
-struct LagrangeKernelComplexAir {
+struct LogUpGkrSimpleAir {
     context: AirContext<BaseElement>,
 }
 
-impl Air for LagrangeKernelComplexAir {
+impl Air for LogUpGkrSimpleAir {
     type BaseField = BaseElement;
-    // `GkrProof` is log(trace_len) for this dummy example, so that the verifier knows how many aux
-    // random variables to generate
-    type GkrProof = usize;
-    type GkrVerifier = DummyGkrVerifier;
-
     type PublicInputs = ();
+    type LogUpGkrEvaluator = PlainLogUpGkrEval<Self::BaseField>;
 
     fn new(trace_info: TraceInfo, _pub_inputs: Self::PublicInputs, options: ProofOptions) -> Self {
         Self {
-            context: AirContext::new_multi_segment(
+            context: AirContext::with_logup_gkr(
                 trace_info,
                 vec![TransitionConstraintDegree::new(1)],
-                vec![TransitionConstraintDegree::new(1)],
+                vec![],
                 1,
-                1,
-                Some(1),
+                0,
+                None,
                 options,
             ),
         }
@@ -183,44 +169,114 @@ impl Air for LagrangeKernelComplexAir {
         &self,
         _aux_rand_elements: &AuxRandElements<E>,
     ) -> Vec<Assertion<E>> {
-        vec![Assertion::single(0, 0, E::ZERO)]
+        vec![]
     }
 
-    fn get_gkr_proof_verifier<E: FieldElement<BaseField = Self::BaseField>>(
+    fn get_logup_gkr_evaluator<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-    ) -> Self::GkrVerifier {
-        DummyGkrVerifier
+    ) -> Self::LogUpGkrEvaluator {
+        PlainLogUpGkrEval::default()
     }
 }
 
+#[derive(Clone, Default)]
+pub struct PlainLogUpGkrEval<B: FieldElement> {
+    _field: PhantomData<B>,
+}
+
+impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
+    type BaseField = BaseElement;
+
+    type PublicInputs = ();
+
+    fn get_oracles(&self) -> Vec<LogUpGkrOracle<Self::BaseField>> {
+        let committed_0 = LogUpGkrOracle::CurrentRow(0);
+        let committed_1 = LogUpGkrOracle::CurrentRow(1);
+        let committed_2 = LogUpGkrOracle::CurrentRow(2);
+        let committed_3 = LogUpGkrOracle::CurrentRow(3);
+        let committed_4 = LogUpGkrOracle::CurrentRow(4);
+        vec![committed_0, committed_1, committed_2, committed_3, committed_4]
+    }
+
+    fn get_num_rand_values(&self) -> usize {
+        1
+    }
+
+    fn get_num_fractions(&self) -> usize {
+        4
+    }
+
+    fn max_degree(&self) -> usize {
+        3
+    }
+
+    fn build_query<E>(&self, frame: &EvaluationFrame<E>, _periodic_values: &[E]) -> Vec<E>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        let cur = frame.current();
+        cur.to_vec()
+    }
+
+    fn evaluate_query<F, E>(
+        &self,
+        query: &[F],
+        rand_values: &[E],
+        numerator: &mut [E],
+        denominator: &mut [E],
+    ) where
+        F: FieldElement<BaseField = Self::BaseField>,
+        E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
+    {
+        assert_eq!(numerator.len(), 4);
+        assert_eq!(denominator.len(), 4);
+        assert_eq!(query.len(), 5);
+        numerator[0] = E::from(query[1]);
+        numerator[1] = E::ONE;
+        numerator[2] = E::ONE;
+        numerator[3] = E::ONE;
+
+        denominator[0] = rand_values[0] - E::from(query[0]);
+        denominator[1] = -(rand_values[0] - E::from(query[2]));
+        denominator[2] = -(rand_values[0] - E::from(query[3]));
+        denominator[3] = -(rand_values[0] - E::from(query[4]));
+    }
+
+    fn compute_claim<E>(&self, _inputs: &Self::PublicInputs, _rand_values: &[E]) -> E
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        E::ZERO
+    }
+}
 // LagrangeComplexProver
 // ================================================================================================
 
-struct LagrangeComplexProver {
+struct LogUpGkrSimpleProver {
     aux_trace_width: usize,
     options: ProofOptions,
 }
 
-impl LagrangeComplexProver {
+impl LogUpGkrSimpleProver {
     fn new(aux_trace_width: usize) -> Self {
         Self {
             aux_trace_width,
-            options: ProofOptions::new(1, 2, 0, FieldExtension::None, 2, 1),
+            options: ProofOptions::new(1, 8, 0, FieldExtension::None, 2, 1),
         }
     }
 }
 
-impl Prover for LagrangeComplexProver {
+impl Prover for LogUpGkrSimpleProver {
     type BaseField = BaseElement;
-    type Air = LagrangeKernelComplexAir;
-    type Trace = LagrangeComplexTrace;
+    type Air = LogUpGkrSimpleAir;
+    type Trace = LogUpGkrSimple;
     type HashFn = Blake3_256<BaseElement>;
     type VC = MerkleTree<Blake3_256<BaseElement>>;
     type RandomCoin = DefaultRandomCoin<Self::HashFn>;
     type TraceLde<E: FieldElement<BaseField = BaseElement>> =
         DefaultTraceLde<E, Self::HashFn, Self::VC>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = BaseElement>> =
-        DefaultConstraintEvaluator<'a, LagrangeKernelComplexAir, E>;
+        DefaultConstraintEvaluator<'a, LogUpGkrSimpleAir, E>;
 
     fn get_pub_inputs(&self, _trace: &Self::Trace) -> <<Self as Prover>::Air as Air>::PublicInputs {
     }
@@ -253,46 +309,20 @@ impl Prover for LagrangeComplexProver {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
     }
 
-    fn generate_gkr_proof<E>(
-        &self,
-        main_trace: &Self::Trace,
-        public_coin: &mut Self::RandomCoin,
-    ) -> (ProverGkrProof<Self>, GkrRandElements<E>)
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        let main_trace = main_trace.main_segment();
-        let log_trace_len = main_trace.num_rows().ilog2() as usize;
-        let lagrange_kernel_rand_elements = {
-            let mut rand_elements = Vec::with_capacity(log_trace_len);
-            for _ in 0..log_trace_len {
-                rand_elements.push(public_coin.draw().unwrap());
-            }
-
-            LagrangeKernelRandElements::new(rand_elements)
-        };
-
-        (log_trace_len, GkrRandElements::new(lagrange_kernel_rand_elements, Vec::new()))
-    }
-
     fn build_aux_trace<E>(
         &self,
         main_trace: &Self::Trace,
-        aux_rand_elements: &AuxRandElements<E>,
+        _aux_rand_elements: &AuxRandElements<E>,
     ) -> ColMatrix<E>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
         let main_trace = main_trace.main_segment();
-        let lagrange_kernel_rand_elements = aux_rand_elements
-            .lagrange()
-            .expect("expected lagrange random elements to be present.");
 
         let mut columns = Vec::new();
 
-        // First all other auxiliary columns
-        let rand_summed = lagrange_kernel_rand_elements.iter().fold(E::ZERO, |acc, &r| acc + r);
-        for _ in 1..self.aux_trace_width {
+        let rand_summed = E::from(777_u32);
+        for _ in 0..self.aux_trace_width {
             // building a dummy auxiliary column
             let column = main_trace
                 .get_column(0)
@@ -301,27 +331,6 @@ impl Prover for LagrangeComplexProver {
                 .collect();
 
             columns.push(column);
-        }
-
-        // then build the Lagrange kernel column
-        {
-            let r = &lagrange_kernel_rand_elements;
-
-            let mut lagrange_col = Vec::with_capacity(main_trace.num_rows());
-
-            for row_idx in 0..main_trace.num_rows() {
-                let mut row_value = E::ONE;
-                for (bit_idx, &r_i) in r.iter().enumerate() {
-                    if row_idx & (1 << bit_idx) == 0 {
-                        row_value *= E::ONE - r_i;
-                    } else {
-                        row_value *= r_i;
-                    }
-                }
-                lagrange_col.push(row_value);
-            }
-
-            columns.push(lagrange_col);
         }
 
         ColMatrix::new(columns)

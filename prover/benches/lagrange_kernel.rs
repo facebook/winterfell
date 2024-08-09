@@ -7,8 +7,8 @@ use std::time::Duration;
 
 use air::{
     Air, AirContext, Assertion, AuxRandElements, ConstraintCompositionCoefficients,
-    EvaluationFrame, FieldExtension, GkrRandElements, LagrangeKernelRandElements, ProofOptions,
-    TraceInfo, TransitionConstraintDegree,
+    EvaluationFrame, FieldExtension, GkrData, LagrangeKernelRandElements, ProofOptions, TraceInfo,
+    TransitionConstraintDegree,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, MerkleTree, RandomCoin};
@@ -101,6 +101,7 @@ impl Air for LagrangeKernelAir {
     type BaseField = BaseElement;
     type GkrProof = ();
     type GkrVerifier = ();
+    type LogUpGkrEvaluator = ();
 
     type PublicInputs = ();
 
@@ -225,7 +226,7 @@ impl Prover for LagrangeProver {
         &self,
         main_trace: &Self::Trace,
         public_coin: &mut Self::RandomCoin,
-    ) -> (ProverGkrProof<Self>, GkrRandElements<E>)
+    ) -> (ProverGkrProof<Self>, GkrData<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
@@ -240,7 +241,10 @@ impl Prover for LagrangeProver {
             LagrangeKernelRandElements::new(rand_elements)
         };
 
-        ((), GkrRandElements::new(lagrange_kernel_rand_elements, Vec::new()))
+        (
+            (),
+            GkrData::new(lagrange_kernel_rand_elements, Vec::new(), Vec::new(), Vec::new()),
+        )
     }
 
     fn build_aux_trace<E>(
