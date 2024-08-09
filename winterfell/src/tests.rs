@@ -26,14 +26,14 @@ fn test_logup_gkr() {
     let trace = LogUpGkrSimple::new(2_usize.pow(7), aux_trace_width);
     let prover = LogUpGkrSimpleProver::new(aux_trace_width);
 
-    let proof = prover.prove(trace).unwrap();
+    let _proof = prover.prove(trace).unwrap();
 
     verify::<
         LogUpGkrSimpleAir,
         Blake3_256<BaseElement>,
         DefaultRandomCoin<Blake3_256<BaseElement>>,
         MerkleTree<Blake3_256<BaseElement>>,
-    >(proof, (), &AcceptableOptions::MinConjecturedSecurity(0))
+    >(_proof, (), &AcceptableOptions::MinConjecturedSecurity(0))
     .unwrap()
 }
 
