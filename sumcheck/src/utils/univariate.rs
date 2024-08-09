@@ -12,7 +12,12 @@ use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serial
 // CONSTANTS
 // ================================================================================================
 
-/// Maximum expected size of the round polynomials. This is needed for `SmallVec`.
+/// Maximum expected size of the round polynomials. This is needed for `SmallVec`. The size of
+/// the round polynomials is dictated by the degree of the non-linearity in the sum-check statement
+/// which is direcly influenced by the maximal degrees of the numerators and denominators appearing
+/// in the LogUp-GKR relation and equal to one plus the maximal degree of the numerators and
+/// maximal degree of denominators.
+/// The following value assumes that this degree is at most 10.
 const MAX_POLY_SIZE: usize = 10;
 
 // COMPRESSED UNIVARIATE POLYNOMIAL
