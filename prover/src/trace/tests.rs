@@ -5,7 +5,7 @@
 
 use alloc::vec::Vec;
 
-use math::fields::f128::BaseElement;
+use math::fields::f64::BaseElement;
 
 use crate::{tests::build_fib_trace, Trace};
 

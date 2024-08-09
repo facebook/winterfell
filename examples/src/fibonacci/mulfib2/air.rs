@@ -23,8 +23,7 @@ pub struct MulFib2Air {
 impl Air for MulFib2Air {
     type BaseField = BaseElement;
     type PublicInputs = BaseElement;
-    type GkrProof = ();
-    type GkrVerifier = ();
+    type LogUpGkrEvaluator = PlainLogUpGkrEval<Self::BaseField>;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -69,5 +68,59 @@ impl Air for MulFib2Air {
             Assertion::single(1, 0, Self::BaseField::new(2)),
             Assertion::single(0, last_step, self.result),
         ]
+    }
+}
+
+#[derive(Clone, Default)]
+pub struct PlainLogUpGkrEval<B: FieldElement> {
+    _field: std::marker::PhantomData<B>,
+}
+
+impl air::LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
+    type BaseField = BaseElement;
+
+    type PublicInputs = BaseElement;
+
+    fn get_oracles(&self) -> Vec<air::LogUpGkrOracle<Self::BaseField>> {
+        unimplemented!()
+    }
+
+    fn get_num_rand_values(&self) -> usize {
+        unimplemented!()
+    }
+
+    fn get_num_fractions(&self) -> usize {
+        unimplemented!()
+    }
+
+    fn max_degree(&self) -> usize {
+        unimplemented!()
+    }
+
+    fn build_query<E>(&self, _frame: &EvaluationFrame<E>, _periodic_values: &[E]) -> Vec<E>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        unimplemented!()
+    }
+
+    fn evaluate_query<F, E>(
+        &self,
+        _query: &[F],
+        _rand_values: &[E],
+        _numerator: &mut [E],
+        _denominator: &mut [E],
+    ) where
+        F: FieldElement<BaseField = Self::BaseField>,
+        E: FieldElement<BaseField = Self::BaseField> + winterfell::math::ExtensionOf<F>,
+    {
+        unimplemented!()
+    }
+
+    fn compute_claim<E>(&self, _inputs: &Self::PublicInputs, _rand_values: &[E]) -> E
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        unimplemented!()
     }
 }

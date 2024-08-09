@@ -4,7 +4,7 @@ use crypto::{ElementHasher, RandomCoin, RandomCoinError};
 use math::FieldElement;
 use utils::Deserializable;
 
-use super::lagrange::LagrangeKernelRandElements;
+use super::{lagrange::LagrangeKernelRandElements, LogUpGkrOracle};
 
 /// Holds the randomly generated elements necessary to build the auxiliary trace.
 ///
@@ -13,12 +13,12 @@ use super::lagrange::LagrangeKernelRandElements;
 /// - the ones needed to build the "s" auxiliary column (when using GKR to accelerate LogUp),
 /// - the ones needed to build all the other auxiliary columns
 #[derive(Debug, Clone)]
-pub struct AuxRandElements<E> {
+pub struct AuxRandElements<E: FieldElement> {
     rand_elements: Vec<E>,
-    gkr: Option<GkrRandElements<E>>,
+    gkr: Option<GkrData<E>>,
 }
 
-impl<E> AuxRandElements<E> {
+impl<E: FieldElement> AuxRandElements<E> {
     /// Creates a new [`AuxRandElements`], where the auxiliary trace doesn't contain a Lagrange
     /// kernel column.
     pub fn new(rand_elements: Vec<E>) -> Self {
@@ -27,7 +27,7 @@ impl<E> AuxRandElements<E> {
 
     /// Creates a new [`AuxRandElements`], where the auxiliary trace contains columns needed when
     /// using GKR to accelerate LogUp (i.e. a Lagrange kernel column and the "s" column).
-    pub fn new_with_gkr(rand_elements: Vec<E>, gkr: GkrRandElements<E>) -> Self {
+    pub fn new_with_gkr(rand_elements: Vec<E>, gkr: GkrData<E>) -> Self {
         Self { rand_elements, gkr: Some(gkr) }
     }
 
@@ -38,7 +38,7 @@ impl<E> AuxRandElements<E> {
 
     /// Returns the random elements needed to build the Lagrange kernel column.
     pub fn lagrange(&self) -> Option<&LagrangeKernelRandElements<E>> {
-        self.gkr.as_ref().map(|gkr| &gkr.lagrange)
+        self.gkr.as_ref().map(|gkr| &gkr.lagrange_kernel_eval_point)
     }
 
     /// Returns the random values used to linearly combine the openings returned from the GKR proof.
@@ -46,6 +46,10 @@ impl<E> AuxRandElements<E> {
     /// These correspond to the lambdas in our documentation.
     pub fn gkr_openings_combining_randomness(&self) -> Option<&[E]> {
         self.gkr.as_ref().map(|gkr| gkr.openings_combining_randomness.as_ref())
+    }
+
+    pub fn gkr_data(&self) -> Option<GkrData<E>> {
+        self.gkr.clone()
     }
 }
 
@@ -60,31 +64,67 @@ impl<E> AuxRandElements<E> {
 /// the Lagrange kernel random elements. Those claims are (linearly) combined into one using the
 /// openings combining randomness.
 #[derive(Clone, Debug)]
-pub struct GkrRandElements<E> {
-    lagrange: LagrangeKernelRandElements<E>,
-    openings_combining_randomness: Vec<E>,
+pub struct GkrData<E: FieldElement> {
+    pub lagrange_kernel_eval_point: LagrangeKernelRandElements<E>,
+    pub openings_combining_randomness: Vec<E>,
+    pub openings: Vec<E>,
+    pub oracles: Vec<LogUpGkrOracle<E::BaseField>>,
 }
 
-impl<E> GkrRandElements<E> {
-    /// Constructs a new [`GkrRandElements`] from [`LagrangeKernelRandElements`], and the openings
-    /// combining randomness.
+impl<E: FieldElement> GkrData<E> {
+    /// Constructs a new [`GkrData`] from [`LagrangeKernelRandElements`], the openings combining
+    /// randomness and the LogUp-GKR oracles.
     ///
-    /// See [`GkrRandElements`] for a more detailed description.
+    /// See [`GkrData`] for a more detailed description.
     pub fn new(
-        lagrange: LagrangeKernelRandElements<E>,
+        lagrange_kernel_eval_point: LagrangeKernelRandElements<E>,
         openings_combining_randomness: Vec<E>,
+        openings: Vec<E>,
+        oracles: Vec<LogUpGkrOracle<E::BaseField>>,
     ) -> Self {
-        Self { lagrange, openings_combining_randomness }
+        Self {
+            lagrange_kernel_eval_point,
+            openings_combining_randomness,
+            openings,
+            oracles,
+        }
     }
 
     /// Returns the random elements needed to build the Lagrange kernel column.
     pub fn lagrange_kernel_rand_elements(&self) -> &LagrangeKernelRandElements<E> {
-        &self.lagrange
+        &self.lagrange_kernel_eval_point
     }
 
     /// Returns the random values used to linearly combine the openings returned from the GKR proof.
     pub fn openings_combining_randomness(&self) -> &[E] {
         &self.openings_combining_randomness
+    }
+
+    pub fn openings(&self) -> &[E] {
+        &self.openings
+    }
+
+    pub fn oracles(&self) -> &[LogUpGkrOracle<E::BaseField>] {
+        &self.oracles
+    }
+
+    pub fn compute_batched_claim(&self) -> E {
+        self.openings[0]
+            + self
+                .openings
+                .iter()
+                .skip(1)
+                .zip(self.openings_combining_randomness.iter())
+                .fold(E::ZERO, |acc, (a, b)| acc + *a * *b)
+    }
+
+    pub fn compute_batched_query(&self, query: &[E::BaseField]) -> E {
+        E::from(query[0])
+            + query
+                .iter()
+                .skip(1)
+                .zip(self.openings_combining_randomness.iter())
+                .fold(E::ZERO, |acc, (a, b)| acc + b.mul_base(*a))
     }
 }
 
@@ -105,7 +145,7 @@ pub trait GkrVerifier {
         &self,
         gkr_proof: Self::GkrProof,
         public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> Result<GkrRandElements<E>, Self::Error>
+    ) -> Result<GkrData<E>, Self::Error>
     where
         E: FieldElement,
         Hasher: ElementHasher<BaseField = E::BaseField>;
@@ -119,11 +159,16 @@ impl GkrVerifier for () {
         &self,
         _gkr_proof: Self::GkrProof,
         _public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> Result<GkrRandElements<E>, Self::Error>
+    ) -> Result<GkrData<E>, Self::Error>
     where
         E: FieldElement,
         Hasher: ElementHasher<BaseField = E::BaseField>,
     {
-        Ok(GkrRandElements::new(LagrangeKernelRandElements::default(), Vec::new()))
+        Ok(GkrData::new(
+            LagrangeKernelRandElements::default(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+        ))
     }
 }

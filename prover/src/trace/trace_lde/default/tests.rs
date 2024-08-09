@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 
 use crypto::{hashers::Blake3_256, ElementHasher, MerkleTree};
 use math::{
-    fields::f128::BaseElement, get_power_series, get_power_series_with_offset, polynom,
+    fields::f64::BaseElement, get_power_series, get_power_series_with_offset, polynom,
     FieldElement, StarkField,
 };
 

@@ -157,6 +157,104 @@ pub struct SumCheckRoundClaim<E: FieldElement> {
     pub claim: E,
 }
 
+// GKR CIRCUIT PROOF
+// ===============================================================================================
+
+/// A GKR proof for the correct evaluation of the sum of fractions circuit.
+#[derive(Debug, Clone)]
+pub struct GkrCircuitProof<E: FieldElement> {
+    pub circuit_outputs: CircuitOutput<E>,
+    pub before_final_layer_proofs: BeforeFinalLayerProof<E>,
+    pub final_layer_proof: FinalLayerProof<E>,
+}
+
+impl<E: FieldElement> GkrCircuitProof<E> {
+    pub fn get_final_opening_claim(&self) -> FinalOpeningClaim<E> {
+        self.final_layer_proof.after_merge_proof.openings_claim.clone()
+    }
+}
+
+impl<E> Serializable for GkrCircuitProof<E>
+where
+    E: FieldElement,
+{
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.circuit_outputs.write_into(target);
+        self.before_final_layer_proofs.write_into(target);
+        self.final_layer_proof.write_into(target);
+    }
+}
+
+impl<E> Deserializable for GkrCircuitProof<E>
+where
+    E: FieldElement,
+{
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        Ok(Self {
+            circuit_outputs: CircuitOutput::read_from(source)?,
+            before_final_layer_proofs: BeforeFinalLayerProof::read_from(source)?,
+            final_layer_proof: FinalLayerProof::read_from(source)?,
+        })
+    }
+}
+
+/// A set of sum-check proofs for all GKR layers but for the input circuit layer.
+#[derive(Debug, Clone)]
+pub struct BeforeFinalLayerProof<E: FieldElement> {
+    pub proof: Vec<SumCheckProof<E>>,
+}
+
+impl<E> Serializable for BeforeFinalLayerProof<E>
+where
+    E: FieldElement,
+{
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        let Self { proof } = self;
+        proof.write_into(target);
+    }
+}
+
+impl<E> Deserializable for BeforeFinalLayerProof<E>
+where
+    E: FieldElement,
+{
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        Ok(Self {
+            proof: Deserializable::read_from(source)?,
+        })
+    }
+}
+
+/// Holds the output layer of an [`EvaluatedCircuit`].
+#[derive(Clone, Debug)]
+pub struct CircuitOutput<E: FieldElement> {
+    pub numerators: MultiLinearPoly<E>,
+    pub denominators: MultiLinearPoly<E>,
+}
+
+impl<E> Serializable for CircuitOutput<E>
+where
+    E: FieldElement,
+{
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        let Self { numerators, denominators } = self;
+        numerators.write_into(target);
+        denominators.write_into(target);
+    }
+}
+
+impl<E> Deserializable for CircuitOutput<E>
+where
+    E: FieldElement,
+{
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        Ok(Self {
+            numerators: MultiLinearPoly::read_from(source)?,
+            denominators: MultiLinearPoly::read_from(source)?,
+        })
+    }
+}
+
 /// The non-linear composition polynomial of the LogUp-GKR protocol.
 ///
 /// This is the result of batching the `p_k` and `q_k` of section 3.2 in

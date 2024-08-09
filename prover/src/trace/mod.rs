@@ -5,6 +5,7 @@
 
 use air::{Air, AuxRandElements, EvaluationFrame, LagrangeKernelBoundaryConstraint, TraceInfo};
 use math::{polynom, FieldElement, StarkField};
+use sumcheck::GkrCircuitProof;
 
 use super::ColMatrix;
 
@@ -22,7 +23,7 @@ mod tests;
 
 /// Defines an [`AuxTraceWithMetadata`] type where the type arguments use their equivalents in an
 /// [`Air`].
-type AirAuxTraceWithMetadata<A, E> = AuxTraceWithMetadata<E, <A as Air>::GkrProof>;
+type AirAuxTraceWithMetadata<E> = AuxTraceWithMetadata<E>;
 
 // AUX TRACE WITH METADATA
 // ================================================================================================
@@ -30,10 +31,10 @@ type AirAuxTraceWithMetadata<A, E> = AuxTraceWithMetadata<E, <A as Air>::GkrProo
 /// Holds the auxiliary trace, the random elements used when generating the auxiliary trace, and
 /// optionally, a GKR proof. See [`crate::Proof`] for more information about the auxiliary
 /// proof.
-pub struct AuxTraceWithMetadata<E: FieldElement, GkrProof> {
+pub struct AuxTraceWithMetadata<E: FieldElement> {
     pub aux_trace: ColMatrix<E>,
     pub aux_rand_elements: AuxRandElements<E>,
-    pub gkr_proof: Option<GkrProof>,
+    pub gkr_proof: Option<GkrCircuitProof<E>>,
 }
 
 // TRACE TRAIT
@@ -90,11 +91,8 @@ pub trait Trace: Sized {
     /// Checks if this trace is valid against the specified AIR, and panics if not.
     ///
     /// NOTE: this is a very expensive operation and is intended for use only in debug mode.
-    fn validate<A, E>(
-        &self,
-        air: &A,
-        aux_trace_with_metadata: Option<&AirAuxTraceWithMetadata<A, E>>,
-    ) where
+    fn validate<A, E>(&self, air: &A, aux_trace_with_metadata: Option<&AirAuxTraceWithMetadata<E>>)
+    where
         A: Air<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField>,
     {

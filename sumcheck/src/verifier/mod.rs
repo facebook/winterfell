@@ -19,7 +19,7 @@ pub fn verify_rounds<E, C, H>(
     claim: E,
     round_proofs: &[RoundProof<E>],
     coin: &mut C,
-) -> Result<SumCheckRoundClaim<E>, Error>
+) -> Result<SumCheckRoundClaim<E>, SumCheckVerifierError>
 where
     E: FieldElement,
     C: RandomCoin<Hasher = H, BaseField = E::BaseField>,
@@ -31,7 +31,7 @@ where
         let round_poly_coefs = round_proof.round_poly_coefs.clone();
         coin.reseed(H::hash_elements(&round_poly_coefs.0));
 
-        let r = coin.draw().map_err(|_| Error::FailedToGenerateChallenge)?;
+        let r = coin.draw().map_err(|_| SumCheckVerifierError::FailedToGenerateChallenge)?;
 
         round_claim = round_proof.round_poly_coefs.evaluate_using_claim(&round_claim, &r);
         evaluation_point.push(r);
@@ -54,10 +54,12 @@ pub fn verify_sum_check_intermediate_layers<
     gkr_eval_point: &[E],
     claim: (E, E),
     transcript: &mut C,
-) -> Result<FinalOpeningClaim<E>, Error> {
+) -> Result<FinalOpeningClaim<E>, SumCheckVerifierError> {
     // generate challenge to batch sum-checks
     transcript.reseed(H::hash_elements(&[claim.0, claim.1]));
-    let r_batch: E = transcript.draw().map_err(|_| Error::FailedToGenerateChallenge)?;
+    let r_batch: E = transcript
+        .draw()
+        .map_err(|_| SumCheckVerifierError::FailedToGenerateChallenge)?;
 
     // compute the claim for the batched sum-check
     let reduced_claim = claim.0 + claim.1 * r_batch;
@@ -75,7 +77,7 @@ pub fn verify_sum_check_intermediate_layers<
     let eq = EqFunction::new(gkr_eval_point.to_vec()).evaluate(&openings_claim.eval_point);
 
     if (p0 * q1 + p1 * q0 + r_batch * q0 * q1) * eq != final_round_claim.claim {
-        return Err(Error::FinalEvaluationCheckFailed);
+        return Err(SumCheckVerifierError::FinalEvaluationCheckFailed);
     }
 
     Ok(openings_claim.clone())
@@ -93,12 +95,14 @@ pub fn verify_sum_check_input_layer<
     gkr_eval_point: &[E],
     claim: (E, E),
     transcript: &mut C,
-) -> Result<FinalOpeningClaim<E>, Error> {
+) -> Result<FinalOpeningClaim<E>, SumCheckVerifierError> {
     let FinalLayerProof { before_merge_proof, after_merge_proof } = proof;
 
     // generate challenge to batch sum-checks
     transcript.reseed(H::hash_elements(&[claim.0, claim.1]));
-    let r_batch: E = transcript.draw().map_err(|_| Error::FailedToGenerateChallenge)?;
+    let r_batch: E = transcript
+        .draw()
+        .map_err(|_| SumCheckVerifierError::FailedToGenerateChallenge)?;
 
     // compute the claim for the batched sum-check
     let reduced_claim = claim.0 + claim.1 * r_batch;
@@ -137,7 +141,7 @@ fn verify_sum_check_final<
     gkr_eval_point: &[E],
     evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
     transcript: &mut C,
-) -> Result<FinalOpeningClaim<E>, Error> {
+) -> Result<FinalOpeningClaim<E>, SumCheckVerifierError> {
     let SumCheckProof { openings_claim, round_proofs } = after_merge_proof;
 
     let SumCheckRoundClaim {
@@ -146,7 +150,7 @@ fn verify_sum_check_final<
     } = verify_rounds(claim, round_proofs, transcript)?;
 
     if openings_claim.eval_point != evaluation_point {
-        return Err(Error::WrongOpeningPoint);
+        return Err(SumCheckVerifierError::WrongOpeningPoint);
     }
 
     let mut numerators = vec![E::ZERO; evaluator.get_num_fractions()];
@@ -174,14 +178,14 @@ fn verify_sum_check_final<
     );
 
     if expected_evaluation != claimed_evaluation {
-        Err(Error::FinalEvaluationCheckFailed)
+        Err(SumCheckVerifierError::FinalEvaluationCheckFailed)
     } else {
         Ok(openings_claim.clone())
     }
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum Error {
+pub enum SumCheckVerifierError {
     #[error("the final evaluation check of sum-check failed")]
     FinalEvaluationCheckFailed,
     #[error("failed to generate round challenge")]

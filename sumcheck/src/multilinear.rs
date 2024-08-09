@@ -10,6 +10,7 @@ use math::FieldElement;
 #[cfg(feature = "concurrent")]
 pub use rayon::prelude::*;
 use smallvec::SmallVec;
+use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 // MULTI-LINEAR POLYNOMIAL
 // ================================================================================================
@@ -97,6 +98,27 @@ impl<E: FieldElement> Index<usize> for MultiLinearPoly<E> {
 
     fn index(&self, index: usize) -> &E {
         &(self.evaluations[index])
+    }
+}
+
+impl<E> Serializable for MultiLinearPoly<E>
+where
+    E: FieldElement,
+{
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        let Self { evaluations } = self;
+        evaluations.write_into(target);
+    }
+}
+
+impl<E> Deserializable for MultiLinearPoly<E>
+where
+    E: FieldElement,
+{
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        Ok(Self {
+            evaluations: Deserializable::read_from(source)?,
+        })
     }
 }
 
