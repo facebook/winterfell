@@ -11,4 +11,3 @@ pub use plain::sumcheck_prove_plain;
 
 mod error;
 pub use error::SumCheckProverError;
-

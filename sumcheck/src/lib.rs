@@ -19,8 +19,11 @@ pub use prover::*;
 mod verifier;
 pub use verifier::*;
 
-mod utils;
-pub use utils::*;
+mod univariate;
+pub use univariate::{CompressedUnivariatePoly, CompressedUnivariatePolyEvals};
+
+mod multilinear;
+pub use multilinear::{EqFunction, MultiLinearPoly};
 
 /// Represents an opening claim at an evaluation point against a batch of oracles.
 ///
