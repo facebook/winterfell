@@ -65,6 +65,28 @@ pub struct SumCheckProof<E: FieldElement> {
     pub round_proofs: Vec<RoundProof<E>>,
 }
 
+impl<E> Serializable for SumCheckProof<E>
+where
+    E: FieldElement,
+{
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.openings_claim.write_into(target);
+        self.round_proofs.write_into(target);
+    }
+}
+
+impl<E> Deserializable for SumCheckProof<E>
+where
+    E: FieldElement,
+{
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        Ok(Self {
+            openings_claim: Deserializable::read_from(source)?,
+            round_proofs: Deserializable::read_from(source)?,
+        })
+    }
+}
+
 /// A sum-check round proof.
 ///
 /// This represents the partial polynomial sent by the Prover during one of the rounds of the
@@ -94,24 +116,32 @@ where
     }
 }
 
-impl<E> Serializable for SumCheckProof<E>
+/// A proof for the input circuit layer i.e., the final layer in the GKR protocol.
+#[derive(Debug, Clone)]
+pub struct FinalLayerProof<E: FieldElement> {
+    pub before_merge_proof: Vec<RoundProof<E>>,
+    pub after_merge_proof: SumCheckProof<E>,
+}
+
+impl<E> Serializable for FinalLayerProof<E>
 where
     E: FieldElement,
 {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.openings_claim.write_into(target);
-        self.round_proofs.write_into(target);
+        let Self { before_merge_proof, after_merge_proof } = self;
+        before_merge_proof.write_into(target);
+        after_merge_proof.write_into(target);
     }
 }
 
-impl<E> Deserializable for SumCheckProof<E>
+impl<E> Deserializable for FinalLayerProof<E>
 where
     E: FieldElement,
 {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         Ok(Self {
-            openings_claim: Deserializable::read_from(source)?,
-            round_proofs: Deserializable::read_from(source)?,
+            before_merge_proof: Deserializable::read_from(source)?,
+            after_merge_proof: Deserializable::read_from(source)?,
         })
     }
 }
