@@ -11,7 +11,7 @@ use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElemen
 use crate::ProofOptions;
 
 mod aux;
-pub use aux::{AuxRandElements, GkrData, GkrVerifier};
+pub use aux::{AuxRandElements, GkrData};
 
 mod trace_info;
 pub use trace_info::TraceInfo;
@@ -604,7 +604,7 @@ pub trait Air: Send + Sync {
             None
         };
 
-        let s_col = if self.context().is_with_logup_gkr() {
+        let s_col_cc = if self.context().is_with_logup_gkr() {
             Some(public_coin.draw()?)
         } else {
             None
@@ -614,7 +614,7 @@ pub trait Air: Send + Sync {
             trace: t_coefficients,
             constraints: c_coefficients,
             lagrange: lagrange_cc,
-            s_col,
+            s_col: s_col_cc,
         })
     }
 }

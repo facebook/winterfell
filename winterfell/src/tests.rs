@@ -21,7 +21,7 @@ use crate::{
 
 #[test]
 fn test_logup_gkr() {
-    let aux_trace_width = 2;
+    let aux_trace_width = 1;
     let trace = LogUpGkrSimple::new(2_usize.pow(7), aux_trace_width);
     let prover = LogUpGkrSimpleProver::new(aux_trace_width);
 
@@ -260,7 +260,7 @@ impl LogUpGkrSimpleProver {
     fn new(aux_trace_width: usize) -> Self {
         Self {
             aux_trace_width,
-            options: ProofOptions::new(1, 8, 0, FieldExtension::None, 2, 1),
+            options: ProofOptions::new(1, 8, 0, FieldExtension::Quadratic, 2, 1),
         }
     }
 }

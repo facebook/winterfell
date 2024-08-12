@@ -23,7 +23,7 @@ mod univariate;
 pub use univariate::{CompressedUnivariatePoly, CompressedUnivariatePolyEvals};
 
 mod multilinear;
-pub use multilinear::{EqFunction, MultiLinearPoly};
+pub use multilinear::{inner_product, EqFunction, MultiLinearPoly};
 
 /// Represents an opening claim at an evaluation point against a batch of oracles.
 ///

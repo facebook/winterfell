@@ -420,7 +420,7 @@ pub fn build_s_column<E: FieldElement>(
         main_trace.read_main_frame(i, &mut main_frame);
 
         let query = evaluator.build_query(&main_frame, &[]);
-        let cur_value = last_value - mean + gkr_data.compute_batched_query(&query) * *item;
+        let cur_value = last_value - mean + gkr_data.compute_batched_query_(&query) * *item;
 
         result.push(cur_value);
         last_value = cur_value;

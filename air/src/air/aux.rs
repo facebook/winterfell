@@ -1,8 +1,6 @@
-use alloc::{string::ToString, vec::Vec};
+use alloc::vec::Vec;
 
-use crypto::{ElementHasher, RandomCoin, RandomCoinError};
-use math::FieldElement;
-use utils::Deserializable;
+use math::{ExtensionOf, FieldElement};
 
 use super::{lagrange::LagrangeKernelRandElements, LogUpGkrOracle};
 
@@ -118,57 +116,16 @@ impl<E: FieldElement> GkrData<E> {
                 .fold(E::ZERO, |acc, (a, b)| acc + *a * *b)
     }
 
-    pub fn compute_batched_query(&self, query: &[E::BaseField]) -> E {
+    pub fn compute_batched_query_<F>(&self, query: &[F]) -> E
+    where
+        F: FieldElement<BaseField = E::BaseField>,
+        E: ExtensionOf<F>,
+    {
         E::from(query[0])
             + query
                 .iter()
                 .skip(1)
                 .zip(self.openings_combining_randomness.iter())
                 .fold(E::ZERO, |acc, (a, b)| acc + b.mul_base(*a))
-    }
-}
-
-/// A trait for verifying a GKR proof.
-///
-/// Specifically, the use case in mind is proving the constraints of a LogUp bus using GKR, as
-/// described in [Improving logarithmic derivative lookups using
-/// GKR](https://eprint.iacr.org/2023/1284.pdf).
-pub trait GkrVerifier {
-    /// The GKR proof.
-    type GkrProof: Deserializable;
-    /// The error that can occur during GKR proof verification.
-    type Error: ToString;
-
-    /// Verifies the GKR proof, and returns the random elements that were used in building
-    /// the Lagrange kernel auxiliary column.
-    fn verify<E, Hasher>(
-        &self,
-        gkr_proof: Self::GkrProof,
-        public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> Result<GkrData<E>, Self::Error>
-    where
-        E: FieldElement,
-        Hasher: ElementHasher<BaseField = E::BaseField>;
-}
-
-impl GkrVerifier for () {
-    type GkrProof = ();
-    type Error = RandomCoinError;
-
-    fn verify<E, Hasher>(
-        &self,
-        _gkr_proof: Self::GkrProof,
-        _public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> Result<GkrData<E>, Self::Error>
-    where
-        E: FieldElement,
-        Hasher: ElementHasher<BaseField = E::BaseField>,
-    {
-        Ok(GkrData::new(
-            LagrangeKernelRandElements::default(),
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-        ))
     }
 }
