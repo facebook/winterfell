@@ -21,18 +21,18 @@ use crate::{
 
 #[test]
 fn test_logup_gkr() {
-    let trace = LogUpGkrSimple::new(2_usize.pow(7), 1);
+    let aux_trace_width = 2;
+    let trace = LogUpGkrSimple::new(2_usize.pow(7), aux_trace_width);
+    let prover = LogUpGkrSimpleProver::new(aux_trace_width);
 
-    let prover = LogUpGkrSimpleProver::new(1);
-
-    let _proof = prover.prove(trace).unwrap();
+    let proof = prover.prove(trace).unwrap();
 
     verify::<
         LogUpGkrSimpleAir,
         Blake3_256<BaseElement>,
         DefaultRandomCoin<Blake3_256<BaseElement>>,
         MerkleTree<Blake3_256<BaseElement>>,
-    >(_proof, (), &AcceptableOptions::MinConjecturedSecurity(0))
+    >(proof, (), &AcceptableOptions::MinConjecturedSecurity(0))
     .unwrap()
 }
 
@@ -77,7 +77,7 @@ impl LogUpGkrSimple {
 
         Self {
             main_trace: ColMatrix::new(vec![table, multiplicity, values_0, values_1, values_2]),
-            info: TraceInfo::new_multi_segment(5, aux_segment_width + 2, 0, trace_len, vec![]),
+            info: TraceInfo::new_multi_segment(5, aux_segment_width, 0, trace_len, vec![], true),
         }
     }
 
@@ -124,7 +124,6 @@ impl Air for LogUpGkrSimpleAir {
                 vec![],
                 1,
                 0,
-                None,
                 options,
             ),
         }
