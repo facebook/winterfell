@@ -13,9 +13,9 @@ use utils::iter_mut;
 use utils::{iterators::*, rayon};
 
 use super::{
-    super::EvaluationTableFragment, lagrange::LagrangeKernelConstraintsBatchEvaluator,
-    BoundaryConstraints, CompositionPolyTrace, ConstraintEvaluationTable, ConstraintEvaluator,
-    PeriodicValueTable, StarkDomain, TraceLde,
+    super::EvaluationTableFragment, lagrange::LogUpGkrConstraintsEvaluator, BoundaryConstraints,
+    CompositionPolyTrace, ConstraintEvaluationTable, ConstraintEvaluator, PeriodicValueTable,
+    StarkDomain, TraceLde,
 };
 
 // CONSTANTS
@@ -40,7 +40,7 @@ pub struct DefaultConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A:
     air: &'a A,
     boundary_constraints: BoundaryConstraints<E>,
     transition_constraints: TransitionConstraints<E>,
-    lagrange_constraints_evaluator: Option<LagrangeKernelConstraintsBatchEvaluator<E>>,
+    logup_gkr_constraints_evaluator: Option<LogUpGkrConstraintsEvaluator<'a, E, A>>,
     aux_rand_elements: Option<AuxRandElements<E>>,
     periodic_values: PeriodicValueTable<E::BaseField>,
 }
@@ -117,10 +117,10 @@ where
         evaluation_table.validate_transition_degrees();
 
         // combine all constraint evaluations into a single column, including the evaluations of the
-        // Lagrange kernel constraints (if present)
+        // LogUp-GKR constraints (if present)
         let combined_evaluations = {
             let mut constraints_evaluations = evaluation_table.combine();
-            self.evaluate_lagrange_kernel_constraints(trace, domain, &mut constraints_evaluations);
+            self.evaluate_logup_gkr_constraints(trace, domain, &mut constraints_evaluations);
 
             constraints_evaluations
         };
@@ -161,15 +161,18 @@ where
         let lagrange_constraints_evaluator = if air.context().logup_gkr_enabled() {
             let aux_rand_elements =
                 aux_rand_elements.as_ref().expect("expected aux rand elements to be present");
-            let lagrange_rand_elements = aux_rand_elements
-                .lagrange()
-                .expect("expected lagrange rand elements to be present");
-            Some(LagrangeKernelConstraintsBatchEvaluator::new(
+
+            Some(LogUpGkrConstraintsEvaluator::new(
                 air,
-                lagrange_rand_elements.clone(),
+                aux_rand_elements
+                    .gkr_data()
+                    .expect("expected LogUp-GKR randomness to be present"),
                 composition_coefficients
                     .lagrange
                     .expect("expected Lagrange kernel composition coefficients to be present"),
+                composition_coefficients
+                    .s_col
+                    .expect("expected s-column composition coefficient to be present"),
             ))
         } else {
             None
@@ -179,7 +182,7 @@ where
             air,
             boundary_constraints,
             transition_constraints,
-            lagrange_constraints_evaluator,
+            logup_gkr_constraints_evaluator,
             aux_rand_elements,
             periodic_values,
         }
@@ -295,7 +298,7 @@ where
         }
     }
 
-    /// If present, evaluates the Lagrange kernel constraints over the constraint evaluation domain.
+    /// If present, evaluates the LogUp-GKR constraints over the constraint evaluation domain.
     /// The evaluation of each constraint (both boundary and transition) is divided by its divisor,
     /// multiplied by its composition coefficient, the result of which is added to
     /// `combined_evaluations_accumulator`.
@@ -303,14 +306,14 @@ where
     /// Specifically, `combined_evaluations_accumulator` is a buffer whose length is the size of the
     /// constraint evaluation domain, where each index contains combined evaluations of other
     /// constraints in the system.
-    fn evaluate_lagrange_kernel_constraints<T: TraceLde<E>>(
+    fn evaluate_logup_gkr_constraints<T: TraceLde<E>>(
         &self,
         trace: &T,
         domain: &StarkDomain<A::BaseField>,
         combined_evaluations_accumulator: &mut [E],
     ) {
-        if let Some(ref lagrange_constraints_evaluator) = self.lagrange_constraints_evaluator {
-            lagrange_constraints_evaluator.evaluate_constraints(
+        if let Some(ref logup_gkr_constraints_evaluator) = self.logup_gkr_constraints_evaluator {
+            logup_gkr_constraints_evaluator.evaluate_constraints(
                 trace,
                 domain,
                 combined_evaluations_accumulator,

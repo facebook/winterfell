@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 
 use air::{
     Air, AuxRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
-    LagrangeKernelEvaluationFrame,
+    LagrangeKernelEvaluationFrame, LogUpGkrEvaluator,
 };
 use math::{polynom, FieldElement};
 
@@ -92,12 +92,8 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
         let lagrange_coefficients = composition_coefficients
             .lagrange
             .expect("expected Lagrange kernel composition coefficients to be present");
-        let air::GkrData {
-            lagrange_kernel_eval_point: lagrange_kernel_evaluation_point,
-            openings_combining_randomness: _,
-            openings: _,
-            oracles: _,
-        } = aux_rand_elements
+
+        let gkr_data = aux_rand_elements
             .expect("expected aux rand elements to be present")
             .gkr_data()
             .expect("expected LogUp-GKR rand elements to be present");
@@ -107,17 +103,45 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
         let lagrange_constraints = air
             .get_lagrange_kernel_constraints(
                 lagrange_coefficients,
-                &lagrange_kernel_evaluation_point,
+                &gkr_data.lagrange_kernel_eval_point,
             )
             .expect("expected Lagrange kernel constraints to be present");
 
         result += lagrange_constraints.transition.evaluate_and_combine::<E>(
             lagrange_kernel_column_frame,
-            &lagrange_kernel_evaluation_point,
+            &gkr_data.lagrange_kernel_eval_point,
             x,
         );
-
         result += lagrange_constraints.boundary.evaluate_at(x, lagrange_kernel_column_frame);
+
+        // s-column constraints
+
+        let s_col_idx = air.trace_info().aux_segment_width() - 2;
+        let s_cur = aux_trace_frame
+            .as_ref()
+            .expect("expected aux rand elements to be present")
+            .current()[s_col_idx];
+        let s_nxt = aux_trace_frame
+            .as_ref()
+            .expect("expected aux rand elements to be present")
+            .next()[s_col_idx];
+        let l_cur = lagrange_kernel_column_frame.inner()[0];
+
+        let batched_claim = gkr_data.compute_batched_claim();
+        let mean = batched_claim
+            .mul_base(E::BaseField::ONE / E::BaseField::from(air.trace_length() as u32));
+
+        let query = air.get_logup_gkr_evaluator::<E>().build_query(main_trace_frame, &[]);
+        let batched_claim_at_query = gkr_data.compute_batched_query_::<E>(&query);
+        let rhs = s_cur - mean + batched_claim_at_query * l_cur;
+        let lhs = s_nxt;
+
+        let divisor = x.exp((air.trace_length() as u32).into()) - E::ONE;
+        result += composition_coefficients
+            .s_col
+            .expect("expected constraint composition coefficient for s-column to be present")
+            * (rhs - lhs)
+            / divisor;
     }
 
     result

@@ -610,7 +610,7 @@ pub trait Air: Send + Sync {
             trace: t_coefficients,
             constraints: c_coefficients,
             lagrange: lagrange_cc,
-            s_col,
+            s_col: s_col_cc,
         })
     }
 }
