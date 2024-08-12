@@ -21,7 +21,6 @@ pub struct AirContext<B: StarkField> {
     pub(super) aux_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
     pub(super) num_main_assertions: usize,
     pub(super) num_aux_assertions: usize,
-    pub(super) lagrange_kernel_aux_column_idx: Option<usize>,
     pub(super) ce_blowup_factor: usize,
     pub(super) trace_domain_generator: B,
     pub(super) lde_domain_generator: B,
@@ -63,7 +62,6 @@ impl<B: StarkField> AirContext<B> {
             Vec::new(),
             num_assertions,
             0,
-            None,
             options,
         )
     }
@@ -96,7 +94,6 @@ impl<B: StarkField> AirContext<B> {
         aux_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
         num_main_assertions: usize,
         num_aux_assertions: usize,
-        lagrange_kernel_aux_column_idx: Option<usize>,
         options: ProofOptions,
     ) -> Self {
         assert!(
@@ -105,15 +102,15 @@ impl<B: StarkField> AirContext<B> {
         );
         assert!(num_main_assertions > 0, "at least one assertion must be specified");
 
-        if trace_info.is_multi_segment() && lagrange_kernel_aux_column_idx.is_none() {
-            //assert!(
-            // !aux_transition_constraint_degrees.is_empty(),
-            //"at least one transition constraint degree must be specified for the auxiliary trace segment"
-            //);
-            //assert!(
-            //num_aux_assertions > 0,
-            //"at least one assertion must be specified against the auxiliary trace segment"
-            //);
+        if trace_info.is_multi_segment() && !trace_info.is_with_logup_gkr() {
+            assert!(
+             !aux_transition_constraint_degrees.is_empty(),
+            "at least one transition constraint degree must be specified for the auxiliary trace segment"
+            );
+            assert!(
+                num_aux_assertions > 0,
+                "at least one assertion must be specified against the auxiliary trace segment"
+            );
         } else {
             assert!(
                 aux_transition_constraint_degrees.is_empty(),
@@ -122,15 +119,6 @@ impl<B: StarkField> AirContext<B> {
             assert!(
                 num_aux_assertions == 0,
                 "auxiliary assertions specified for a single-segment trace"
-            );
-        }
-
-        // validate Lagrange kernel aux column, if any
-        if let Some(lagrange_kernel_aux_column_idx) = lagrange_kernel_aux_column_idx {
-            assert!(
-            lagrange_kernel_aux_column_idx == trace_info.get_aux_segment_width() - 1,
-            "Lagrange kernel column should be the last column of the auxiliary trace: index={}, but aux trace width is {}",
-            lagrange_kernel_aux_column_idx, trace_info.get_aux_segment_width()
             );
         }
 
@@ -166,7 +154,6 @@ impl<B: StarkField> AirContext<B> {
             aux_transition_constraint_degrees,
             num_main_assertions,
             num_aux_assertions,
-            lagrange_kernel_aux_column_idx,
             ce_blowup_factor,
             trace_domain_generator: B::get_root_of_unity(trace_length.ilog2()),
             lde_domain_generator: B::get_root_of_unity(lde_domain_size.ilog2()),
@@ -181,7 +168,6 @@ impl<B: StarkField> AirContext<B> {
         aux_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
         num_main_assertions: usize,
         num_aux_assertions: usize,
-        lagrange_kernel_aux_column_idx: Option<usize>,
         options: ProofOptions,
     ) -> Self {
         let mut air_context = Self::new_multi_segment(
@@ -190,7 +176,6 @@ impl<B: StarkField> AirContext<B> {
             aux_transition_constraint_degrees,
             num_main_assertions,
             num_aux_assertions,
-            lagrange_kernel_aux_column_idx,
             options,
         );
         air_context.logup_gkr = true;
@@ -263,12 +248,7 @@ impl<B: StarkField> AirContext<B> {
         }
     }
 
-    /// Returns true if the auxiliary trace segment contains a Lagrange kernel column
-    pub fn has_lagrange_kernel_aux_column(&self) -> bool {
-        self.lagrange_kernel_aux_column_idx().is_some()
-    }
-
-    /// Returns true if the auxiliary trace segment contains a Lagrange kernel column
+    /// Returns true if LogUp-GKR is enabled.
     pub fn is_with_logup_gkr(&self) -> bool {
         self.logup_gkr
     }

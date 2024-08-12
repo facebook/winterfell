@@ -42,7 +42,7 @@ use crate::{matrix::ColMatrix, Trace};
 /// corresponds to the last layer treated by the GKR protocol, is handled differently from the other
 /// layers. More specifically, the sum-check protocol used for the input layer is composed of two
 /// sum-check protocols, the first one works directly with the evaluations of the `m`'s over {0,
-/// 1}^{μ + ν} and runs for μ rounds. After these μ rounds, and using the resulting [`RoundClaim`],
+/// 1}^{μ + ν} and runs for μ - 1 rounds. After these μ - 1 rounds, and using the resulting [`RoundClaim`],
 /// we run the second and final sum-check protocol for ν rounds on the composed multi-linear
 /// polynomial given by
 ///

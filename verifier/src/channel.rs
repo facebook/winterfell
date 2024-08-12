@@ -331,7 +331,7 @@ where
         let aux_trace_states = if air.trace_info().is_multi_segment() {
             let mut aux_trace_states = Vec::new();
             let segment_queries = queries.remove(0);
-            let segment_width = air.trace_info().get_aux_segment_width();
+            let segment_width = air.trace_info().aux_segment_width();
             let (segment_query_proof, segment_trace_states) = segment_queries
                 .parse::<E, H, V>(air.lde_domain_size(), num_queries, segment_width)
                 .map_err(|err| {
