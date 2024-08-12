@@ -248,7 +248,7 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
         E::ZERO
     }
 }
-// LagrangeComplexProver
+// Prover
 // ================================================================================================
 
 struct LogUpGkrSimpleProver {
