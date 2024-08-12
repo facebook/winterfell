@@ -44,7 +44,7 @@ mod air;
 pub use air::{
     Air, AirContext, Assertion, AuxRandElements, BoundaryConstraint, BoundaryConstraintGroup,
     BoundaryConstraints, ConstraintCompositionCoefficients, ConstraintDivisor,
-    DeepCompositionCoefficients, EvaluationFrame, GkrData, GkrVerifier,
+    DeepCompositionCoefficients, EvaluationFrame, GkrData,
     LagrangeConstraintsCompositionCoefficients, LagrangeKernelBoundaryConstraint,
     LagrangeKernelConstraints, LagrangeKernelEvaluationFrame, LagrangeKernelRandElements,
     LagrangeKernelTransitionConstraints, LogUpGkrEvaluator, LogUpGkrOracle, TraceInfo,
