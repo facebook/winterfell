@@ -31,8 +31,8 @@ harness = false
 required-features = ["concurrent"]
 
 [features]
-concurrent = ["utils/concurrent", "dep:rayon", "std"]
-default = ["std"]
+concurrent = ["utils/concurrent", "std"]
+default = ["std", ]
 std = ["utils/std"]
 
 [dependencies]
