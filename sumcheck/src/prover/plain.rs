@@ -15,6 +15,9 @@ use crate::{
     SumCheckProof,
 };
 
+#[cfg(feature = "concurrent")]
+pub use rayon::prelude::*;
+
 /// Sum-check prover for non-linear multivariate polynomial of the simple LogUp-GKR.
 ///
 /// More specifically, the following function implements the logic of the sum-check prover as
