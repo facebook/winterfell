@@ -79,14 +79,6 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
         Ok(Self { layer_polys })
     }
 
-    /// Returns a layer of the evaluated circuit.
-    ///
-    /// Note that the return type is [`LayerPolys`] as opposed to [`Layer`], since the evaluated
-    /// circuit is stored in a representation which can be proved using GKR.
-    pub fn get_layer(&self, layer_idx: usize) -> &CircuitLayerPolys<E> {
-        &self.layer_polys[layer_idx]
-    }
-
     /// Returns all layers of the evaluated circuit, starting from the input layer.
     ///
     /// Note that the return type is a slice of [`CircuitLayerPolys`] as opposed to

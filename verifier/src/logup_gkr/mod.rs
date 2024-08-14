@@ -8,18 +8,6 @@ use sumcheck::{
     FinalOpeningClaim, GkrCircuitProof, SumCheckVerifierError,
 };
 
-#[derive(Debug, thiserror::Error)]
-pub enum VerifierError {
-    #[error("one of the claimed circuit denominators is zero")]
-    ZeroOutputDenominator,
-    #[error("the output of the fraction circuit is not equal to the expected value")]
-    MismatchingCircuitOutput,
-    #[error("failed to generate the random challenge")]
-    FailedToGenerateChallenge,
-    #[error("failed to verify the sum-check proof")]
-    FailedToVerifySumCheck(#[from] SumCheckVerifierError),
-}
-
 /// Verifies the validity of a GKR proof for a LogUp-GKR relation.
 pub fn verify_logup_gkr<
     E: FieldElement,
@@ -104,4 +92,16 @@ pub fn verify_logup_gkr<
         transcript,
     )
     .map_err(VerifierError::FailedToVerifySumCheck)
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum VerifierError {
+    #[error("one of the claimed circuit denominators is zero")]
+    ZeroOutputDenominator,
+    #[error("the output of the fraction circuit is not equal to the expected value")]
+    MismatchingCircuitOutput,
+    #[error("failed to generate the random challenge")]
+    FailedToGenerateChallenge,
+    #[error("failed to verify the sum-check proof")]
+    FailedToVerifySumCheck(#[from] SumCheckVerifierError),
 }
