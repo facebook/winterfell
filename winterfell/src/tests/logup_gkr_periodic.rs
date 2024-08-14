@@ -11,7 +11,7 @@ use air::{
 };
 use crypto::MerkleTree;
 
-use super::*;
+use super::super::*;
 use crate::{
     crypto::{hashers::Blake3_256, DefaultRandomCoin},
     math::{fields::f64::BaseElement, ExtensionOf, FieldElement},
@@ -20,15 +20,15 @@ use crate::{
 };
 
 #[test]
-fn test_logup_gkr() {
+fn test_logup_gkr_periodic() {
     let aux_trace_width = 1;
-    let trace = LogUpGkrSimple::new(2_usize.pow(7), aux_trace_width);
-    let prover = LogUpGkrSimpleProver::new(aux_trace_width);
+    let trace = LogUpGkrPeriodic::new(2_usize.pow(7), aux_trace_width);
+    let prover = LogUpGkrPeriodicProver::new(aux_trace_width);
 
     let proof = prover.prove(trace).unwrap();
 
     verify::<
-        LogUpGkrSimpleAir,
+        LogUpGkrPeriodicAir,
         Blake3_256<BaseElement>,
         DefaultRandomCoin<Blake3_256<BaseElement>>,
         MerkleTree<Blake3_256<BaseElement>>,
@@ -36,220 +36,7 @@ fn test_logup_gkr() {
     .unwrap()
 }
 
-// LogUpGkrSimple
-// =================================================================================================
-
-#[derive(Clone, Debug)]
-struct LogUpGkrSimple {
-    // dummy main trace
-    main_trace: ColMatrix<BaseElement>,
-    info: TraceInfo,
-}
-
-impl LogUpGkrSimple {
-    fn new(trace_len: usize, aux_segment_width: usize) -> Self {
-        assert!(trace_len < u32::MAX.try_into().unwrap());
-
-        let table: Vec<BaseElement> =
-            (0..trace_len).map(|idx| BaseElement::from(idx as u32)).collect();
-        let mut multiplicity: Vec<BaseElement> =
-            (0..trace_len).map(|_idx| BaseElement::ZERO).collect();
-        multiplicity[0] = BaseElement::new(3 * trace_len as u64 - 3 * 4);
-        multiplicity[1] = BaseElement::new(3 * 4);
-
-        let mut values_0: Vec<BaseElement> = (0..trace_len).map(|_idx| BaseElement::ZERO).collect();
-
-        for i in 0..4 {
-            values_0[i + 4] = BaseElement::ONE;
-        }
-
-        let mut values_1: Vec<BaseElement> = (0..trace_len).map(|_idx| BaseElement::ZERO).collect();
-
-        for i in 0..4 {
-            values_1[i + 4] = BaseElement::ONE;
-        }
-
-        let mut values_2: Vec<BaseElement> = (0..trace_len).map(|_idx| BaseElement::ZERO).collect();
-
-        for i in 0..4 {
-            values_2[i + 4] = BaseElement::ONE;
-        }
-
-        Self {
-            main_trace: ColMatrix::new(vec![table, multiplicity, values_0, values_1, values_2]),
-            info: TraceInfo::new_multi_segment(5, aux_segment_width, 0, trace_len, vec![], true),
-        }
-    }
-
-    fn len(&self) -> usize {
-        self.main_trace.num_rows()
-    }
-}
-
-impl Trace for LogUpGkrSimple {
-    type BaseField = BaseElement;
-
-    fn info(&self) -> &TraceInfo {
-        &self.info
-    }
-
-    fn main_segment(&self) -> &ColMatrix<Self::BaseField> {
-        &self.main_trace
-    }
-
-    fn read_main_frame(&self, row_idx: usize, frame: &mut EvaluationFrame<Self::BaseField>) {
-        let next_row_idx = row_idx + 1;
-        self.main_trace.read_row_into(row_idx, frame.current_mut());
-        self.main_trace.read_row_into(next_row_idx % self.len(), frame.next_mut());
-    }
-}
-
-// AIR
-// =================================================================================================
-
-struct LogUpGkrSimpleAir {
-    context: AirContext<BaseElement>,
-}
-
-impl Air for LogUpGkrSimpleAir {
-    type BaseField = BaseElement;
-    type PublicInputs = ();
-    type LogUpGkrEvaluator = PlainLogUpGkrEval<Self::BaseField>;
-
-    fn new(trace_info: TraceInfo, _pub_inputs: Self::PublicInputs, options: ProofOptions) -> Self {
-        Self {
-            context: AirContext::with_logup_gkr(
-                trace_info,
-                vec![TransitionConstraintDegree::new(1)],
-                vec![],
-                1,
-                0,
-                options,
-            ),
-        }
-    }
-
-    fn context(&self) -> &AirContext<Self::BaseField> {
-        &self.context
-    }
-
-    fn evaluate_transition<E: math::FieldElement<BaseField = Self::BaseField>>(
-        &self,
-        frame: &EvaluationFrame<E>,
-        _periodic_values: &[E],
-        result: &mut [E],
-    ) {
-        let current = frame.current()[0];
-        let next = frame.next()[0];
-
-        // increments by 1
-        result[0] = next - current - E::ONE;
-    }
-
-    fn get_assertions(&self) -> Vec<Assertion<Self::BaseField>> {
-        vec![Assertion::single(0, 0, BaseElement::ZERO)]
-    }
-
-    fn evaluate_aux_transition<F, E>(
-        &self,
-        _main_frame: &EvaluationFrame<F>,
-        _aux_frame: &EvaluationFrame<E>,
-        _periodic_values: &[F],
-        _aux_rand_elements: &AuxRandElements<E>,
-        _result: &mut [E],
-    ) where
-        F: FieldElement<BaseField = Self::BaseField>,
-        E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
-    {
-        // do nothing
-    }
-
-    fn get_aux_assertions<E: FieldElement<BaseField = Self::BaseField>>(
-        &self,
-        _aux_rand_elements: &AuxRandElements<E>,
-    ) -> Vec<Assertion<E>> {
-        vec![]
-    }
-
-    fn get_logup_gkr_evaluator<E: FieldElement<BaseField = Self::BaseField>>(
-        &self,
-    ) -> Self::LogUpGkrEvaluator {
-        PlainLogUpGkrEval::default()
-    }
-}
-
-#[derive(Clone, Default)]
-pub struct PlainLogUpGkrEval<B: FieldElement> {
-    _field: PhantomData<B>,
-}
-
-impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
-    type BaseField = BaseElement;
-
-    type PublicInputs = ();
-
-    fn get_oracles(&self) -> Vec<LogUpGkrOracle<Self::BaseField>> {
-        let committed_0 = LogUpGkrOracle::CurrentRow(0);
-        let committed_1 = LogUpGkrOracle::CurrentRow(1);
-        let committed_2 = LogUpGkrOracle::CurrentRow(2);
-        let committed_3 = LogUpGkrOracle::CurrentRow(3);
-        let committed_4 = LogUpGkrOracle::CurrentRow(4);
-        vec![committed_0, committed_1, committed_2, committed_3, committed_4]
-    }
-
-    fn get_num_rand_values(&self) -> usize {
-        1
-    }
-
-    fn get_num_fractions(&self) -> usize {
-        4
-    }
-
-    fn max_degree(&self) -> usize {
-        3
-    }
-
-    fn build_query<E>(&self, frame: &EvaluationFrame<E>, _periodic_values: &[E]) -> Vec<E>
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        let cur = frame.current();
-        cur.to_vec()
-    }
-
-    fn evaluate_query<F, E>(
-        &self,
-        query: &[F],
-        rand_values: &[E],
-        numerator: &mut [E],
-        denominator: &mut [E],
-    ) where
-        F: FieldElement<BaseField = Self::BaseField>,
-        E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
-    {
-        assert_eq!(numerator.len(), 4);
-        assert_eq!(denominator.len(), 4);
-        assert_eq!(query.len(), 5);
-        numerator[0] = E::from(query[1]);
-        numerator[1] = E::ONE;
-        numerator[2] = E::ONE;
-        numerator[3] = E::ONE;
-
-        denominator[0] = rand_values[0] - E::from(query[0]);
-        denominator[1] = -(rand_values[0] - E::from(query[2]));
-        denominator[2] = -(rand_values[0] - E::from(query[3]));
-        denominator[3] = -(rand_values[0] - E::from(query[4]));
-    }
-
-    fn compute_claim<E>(&self, _inputs: &Self::PublicInputs, _rand_values: &[E]) -> E
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        E::ZERO
-    }
-}
-
-// LogUpGkrSimple
+// LogUpGkrPeriodic
 // =================================================================================================
 
 #[derive(Clone, Debug)]
@@ -267,8 +54,6 @@ impl LogUpGkrPeriodic {
             (0..trace_len).map(|idx| BaseElement::from(idx as u32)).collect();
         let mut multiplicity: Vec<BaseElement> =
             (0..trace_len).map(|_idx| BaseElement::ZERO).collect();
-        //multiplicity[0] = BaseElement::new(3 * trace_len as u64 - 3 * 4);
-        //multiplicity[1] = BaseElement::new(3 * 4);
         multiplicity.iter_mut().step_by(8).for_each(|m| *m = BaseElement::from(3_u32));
 
         let mut values_0: Vec<BaseElement> = (0..trace_len).map(|_idx| BaseElement::ZERO).collect();
@@ -288,6 +73,13 @@ impl LogUpGkrPeriodic {
         for i in 0..trace_len / 8 {
             values_2[8 * i] = BaseElement::from(8 * i as u32);
         }
+
+        let mut periodic: Vec<BaseElement> = (0..trace_len).map(|_idx| BaseElement::ZERO).collect();
+
+        for i in 0..trace_len / 8 {
+            periodic[8 * i] = BaseElement::ONE;
+        }
+
 
         Self {
             main_trace: ColMatrix::new(vec![table, multiplicity, values_0, values_1, values_2]),
@@ -418,6 +210,8 @@ impl LogUpGkrEvaluator for PeriodicLogUpGkrEval<BaseElement> {
             Self::BaseField::ZERO,
             Self::BaseField::ZERO,
         ]);
+        //let committed_5 = LogUpGkrOracle::CurrentRow(5);
+        //vec![committed_0, committed_1, committed_2, committed_3, committed_4, committed_5]
         vec![committed_0, committed_1, committed_2, committed_3, committed_4, periodic]
     }
 
@@ -433,12 +227,13 @@ impl LogUpGkrEvaluator for PeriodicLogUpGkrEval<BaseElement> {
         3
     }
 
-    fn build_query<E>(&self, frame: &EvaluationFrame<E>, _periodic_values: &[E]) -> Vec<E>
+    fn build_query<E>(&self, frame: &EvaluationFrame<E>, periodic_values: &[E]) -> Vec<E>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
-        let cur = frame.current();
-        cur.to_vec()
+        let mut cur = frame.current().to_vec();
+        cur.extend_from_slice(&periodic_values);
+        cur
     }
 
     fn evaluate_query<F, E>(
@@ -453,11 +248,11 @@ impl LogUpGkrEvaluator for PeriodicLogUpGkrEval<BaseElement> {
     {
         assert_eq!(numerator.len(), 4);
         assert_eq!(denominator.len(), 4);
-        assert_eq!(query.len(), 5);
+        assert_eq!(query.len(), 6);
         numerator[0] = E::from(query[1]);
-        numerator[1] = E::ONE;
-        numerator[2] = E::ONE;
-        numerator[3] = E::ONE;
+        numerator[1] = E::from(query[5]);
+        numerator[2] = E::from(query[5]);
+        numerator[3] = E::from(query[5]);
 
         denominator[0] = rand_values[0] - E::from(query[0]);
         denominator[1] = -(rand_values[0] - E::from(query[2]));
@@ -476,12 +271,12 @@ impl LogUpGkrEvaluator for PeriodicLogUpGkrEval<BaseElement> {
 // Prover
 // ================================================================================================
 
-struct LogUpGkrSimpleProver {
+struct LogUpGkrPeriodicProver {
     aux_trace_width: usize,
     options: ProofOptions,
 }
 
-impl LogUpGkrSimpleProver {
+impl LogUpGkrPeriodicProver {
     fn new(aux_trace_width: usize) -> Self {
         Self {
             aux_trace_width,
@@ -490,17 +285,17 @@ impl LogUpGkrSimpleProver {
     }
 }
 
-impl Prover for LogUpGkrSimpleProver {
+impl Prover for LogUpGkrPeriodicProver {
     type BaseField = BaseElement;
-    type Air = LogUpGkrSimpleAir;
-    type Trace = LogUpGkrSimple;
+    type Air = LogUpGkrPeriodicAir;
+    type Trace = LogUpGkrPeriodic;
     type HashFn = Blake3_256<BaseElement>;
     type VC = MerkleTree<Blake3_256<BaseElement>>;
     type RandomCoin = DefaultRandomCoin<Self::HashFn>;
     type TraceLde<E: FieldElement<BaseField = BaseElement>> =
         DefaultTraceLde<E, Self::HashFn, Self::VC>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = BaseElement>> =
-        DefaultConstraintEvaluator<'a, LogUpGkrSimpleAir, E>;
+        DefaultConstraintEvaluator<'a, LogUpGkrPeriodicAir, E>;
 
     fn get_pub_inputs(&self, _trace: &Self::Trace) -> <<Self as Prover>::Air as Air>::PublicInputs {
     }

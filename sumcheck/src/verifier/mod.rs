@@ -5,13 +5,13 @@
 
 use alloc::vec::Vec;
 
-use air::LogUpGkrEvaluator;
+use air::{LogUpGkrEvaluator, PeriodicTable};
 use crypto::{ElementHasher, RandomCoin};
 use math::FieldElement;
 
 use crate::{
-    evaluate_composition_poly, EqFunction, FinalLayerProof, FinalOpeningClaim, RoundProof,
-    SumCheckProof, SumCheckRoundClaim,
+    evaluate_composition_poly, EqFunction, FinalLayerProof, FinalOpeningClaim, MultiLinearPoly,
+    RoundProof, SumCheckProof, SumCheckRoundClaim,
 };
 
 /// Verifies a round of the sum-check protocol without executing the final check.
@@ -156,18 +156,20 @@ fn verify_sum_check_final<
     let mut numerators = vec![E::ZERO; evaluator.get_num_fractions()];
     let mut denominators = vec![E::ZERO; evaluator.get_num_fractions()];
 
-    evaluator.evaluate_query(
-        &openings_claim.openings,
-        &log_up_randomness,
-        &mut numerators,
-        &mut denominators,
-    );
+    let periodic_columns = evaluator.build_periodic_values::<E, E>();
+    let periodic_columns_evaluations =
+        evaluate_periodic_columns_at(periodic_columns, &openings_claim.eval_point);
+    
+    let mut query = openings_claim.openings.clone();
+    query.extend_from_slice(&periodic_columns_evaluations);
+    evaluator.evaluate_query(&query, &log_up_randomness, &mut numerators, &mut denominators);
 
     let lagrange_ker = EqFunction::new(gkr_eval_point.to_vec());
-    let mut gkr_point = rand_merge.clone();
 
+    let mut gkr_point = rand_merge.clone();
     gkr_point.extend_from_slice(&openings_claim.eval_point.clone());
     let eq_eval = lagrange_ker.evaluate(&gkr_point);
+
     let tensored_merge_randomness = EqFunction::ml_at(rand_merge.to_vec()).evaluations().to_vec();
     let expected_evaluation = evaluate_composition_poly(
         &numerators,
@@ -192,4 +194,24 @@ pub enum SumCheckVerifierError {
     FailedToGenerateChallenge,
     #[error("wrong opening point for the oracles")]
     WrongOpeningPoint,
+}
+
+// HELPER
+// =================================================================================================
+
+/// Evaluate periodic columns as multi-linear extensions.
+fn evaluate_periodic_columns_at<E: FieldElement>(
+    periodic_columns: PeriodicTable<E>,
+    eval_point: &[E],
+) -> Vec<E> {
+    let mut evaluations = vec![];
+    for col in periodic_columns.table() {
+        let ml = MultiLinearPoly::from_evaluations(col.to_vec());
+        let num_variables = ml.num_variables();
+        let point = &eval_point[..num_variables];
+
+        let evaluation = ml.evaluate(point);
+        evaluations.push(evaluation)
+    }
+    evaluations
 }

@@ -35,7 +35,7 @@ pub use lagrange::{
 };
 
 mod logup_gkr;
-pub use logup_gkr::{LogUpGkrEvaluator, LogUpGkrOracle};
+pub use logup_gkr::{LogUpGkrEvaluator, LogUpGkrOracle, PeriodicTable};
 
 mod coefficients;
 pub use coefficients::{

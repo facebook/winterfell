@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 
-use air::LogUpGkrEvaluator;
+use air::{LogUpGkrEvaluator, PeriodicTable};
 use crypto::{ElementHasher, RandomCoin};
 use math::FieldElement;
 use sumcheck::{
@@ -74,7 +74,7 @@ pub fn prove_gkr<E: FieldElement>(
         prove_intermediate_layers(&mut circuit, public_coin)?;
 
     // build the MLEs of the relevant main trace columns
-    let main_trace_mls =
+    let (main_trace_mls, mut periodic_table) =
         build_mls_from_main_trace_segment(evaluator.get_oracles(), main_trace.main_segment())?;
 
     // run the GKR prover for the input layer
@@ -83,6 +83,7 @@ pub fn prove_gkr<E: FieldElement>(
     let final_layer_proof = prove_input_layer(
         evaluator,
         logup_randomness,
+        &mut periodic_table,
         main_trace_mls,
         num_rounds_before_merge,
         gkr_claim,
@@ -108,6 +109,7 @@ fn prove_input_layer<
 >(
     evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
     log_up_randomness: Vec<E>,
+    periodic_table: &mut PeriodicTable<E>,
     mut mls: Vec<MultiLinearPoly<E>>,
     num_rounds_merge: usize,
     gkr_claim: GkrClaim<E>,
@@ -154,6 +156,7 @@ fn prove_input_layer<
         r_sum_check,
         eval_point,
         log_up_randomness,
+        periodic_table,
         &mut merged_mls,
         &mut mls,
         transcript,
@@ -170,8 +173,9 @@ fn prove_input_layer<
 fn build_mls_from_main_trace_segment<E: FieldElement>(
     oracles: Vec<air::LogUpGkrOracle<E::BaseField>>,
     main_trace: &ColMatrix<<E as FieldElement>::BaseField>,
-) -> Result<Vec<MultiLinearPoly<E>>, GkrProverError> {
+) -> Result<(Vec<MultiLinearPoly<E>>, PeriodicTable<E>), GkrProverError> {
     let mut mls = vec![];
+    let mut periodic_values = vec![];
 
     for oracle in oracles {
         match oracle {
@@ -191,10 +195,10 @@ fn build_mls_from_main_trace_segment<E: FieldElement>(
                 let ml = MultiLinearPoly::from_evaluations(values);
                 mls.push(ml)
             },
-            air::LogUpGkrOracle::PeriodicValue(_) => unimplemented!(),
+            air::LogUpGkrOracle::PeriodicValue(values) => periodic_values.push(values),
         };
     }
-    Ok(mls)
+    Ok((mls, PeriodicTable::new(periodic_values)))
 }
 
 /// Proves all GKR layers except for input layer.

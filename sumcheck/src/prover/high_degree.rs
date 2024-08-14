@@ -5,7 +5,7 @@
 
 use alloc::vec::Vec;
 
-use air::LogUpGkrEvaluator;
+use air::{LogUpGkrEvaluator, PeriodicTable};
 use crypto::{ElementHasher, RandomCoin};
 use math::FieldElement;
 
@@ -144,6 +144,7 @@ pub fn sum_check_prove_higher_degree<
     r_sum_check: E,
     rand_merge: Vec<E>,
     log_up_randomness: Vec<E>,
+    periodic_table: &mut PeriodicTable<E>,
     merged_mls: &mut [MultiLinearPoly<E>],
     mls: &mut [MultiLinearPoly<E>],
     coin: &mut C,
@@ -165,6 +166,7 @@ pub fn sum_check_prove_higher_degree<
         mls,
         merged_mls,
         &log_up_randomness,
+        periodic_table,
         r_sum_check,
         &tensored_merge_randomness,
     );
@@ -186,11 +188,12 @@ pub fn sum_check_prove_higher_degree<
         // fold each multi-linear using the round challenge
         mls.iter_mut()
             .for_each(|ml| ml.bind_least_significant_variable(round_challenge));
-
         // fold each merged multi-linear using the round challenge
         merged_mls
             .iter_mut()
             .for_each(|ml| ml.bind_least_significant_variable(round_challenge));
+        // fold each periodic multi-linear using the round challenge
+        periodic_table.bind_least_significant_variable(round_challenge);
 
         // run the i-th round of the protocol using the folded multi-linears for the new reduced
         // claim. This basically computes the s_i polynomial.
@@ -199,6 +202,7 @@ pub fn sum_check_prove_higher_degree<
             mls,
             merged_mls,
             &log_up_randomness,
+            periodic_table,
             r_sum_check,
             &tensored_merge_randomness,
         );
@@ -225,6 +229,8 @@ pub fn sum_check_prove_higher_degree<
     merged_mls
         .iter_mut()
         .for_each(|ml| ml.bind_least_significant_variable(round_challenge));
+    // fold each periodic multi-linear using the last random round challenge
+    periodic_table.bind_least_significant_variable(round_challenge);
 
     let SumCheckRoundClaim { eval_point, claim: _claim } =
         reduce_claim(&round_proofs[num_rounds - 1], current_round_claim, round_challenge);
@@ -283,17 +289,17 @@ fn sumcheck_round<E: FieldElement>(
     mls: &[MultiLinearPoly<E>],
     merged_mls: &[MultiLinearPoly<E>],
     log_up_randomness: &[E],
+    periodic_table: &mut PeriodicTable<E>,
     r_sum_check: E,
     tensored_merge_randomness: &[E],
 ) -> CompressedUnivariatePolyEvals<E> {
     let num_ml = mls.len();
     let num_vars = mls[0].num_variables();
     let num_rounds = num_vars - 1;
-    let mut evals_one = vec![E::ZERO; num_ml];
-    let mut evals_zero = vec![E::ZERO; num_ml];
-    let mut evals_x = vec![E::ZERO; num_ml];
-
-    let mut deltas = vec![E::ZERO; num_ml];
+    let mut evals_one = vec![E::ZERO; num_ml + periodic_table.num_columns()];
+    let mut evals_zero = vec![E::ZERO; num_ml + periodic_table.num_columns()];
+    let mut evals_x = vec![E::ZERO; num_ml + periodic_table.num_columns()];
+    let mut deltas = vec![E::ZERO; num_ml + periodic_table.num_columns()];
 
     let mut numerators = vec![E::ZERO; evaluator.get_num_fractions()];
     let mut denominators = vec![E::ZERO; evaluator.get_num_fractions()];
@@ -309,6 +315,20 @@ fn sumcheck_round<E: FieldElement>(
 
         let eq_at_zero = merged_mls[4].evaluations()[2 * i];
         let eq_at_one = merged_mls[4].evaluations()[2 * i + 1];
+
+        let periodic_at_zero = periodic_table.get_periodic_values(2 * i);
+        let periodic_at_one = periodic_table.get_periodic_values(2 * i + 1);
+
+        evals_zero
+            .iter_mut()
+            .skip(num_ml)
+            .enumerate()
+            .for_each(|(i, ev)| *ev = periodic_at_zero[i]);
+        evals_one
+            .iter_mut()
+            .skip(num_ml)
+            .enumerate()
+            .for_each(|(i, ev)| *ev = periodic_at_one[i]);
 
         let p0 = merged_mls[0][2 * i + 1];
         let p1 = merged_mls[1][2 * i + 1];
