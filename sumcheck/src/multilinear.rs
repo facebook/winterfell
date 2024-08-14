@@ -10,9 +10,7 @@ use math::FieldElement;
 #[cfg(feature = "concurrent")]
 pub use rayon::prelude::*;
 use smallvec::SmallVec;
-use utils::{
-    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
-};
+use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 // MULTI-LINEAR POLYNOMIAL
 // ================================================================================================
