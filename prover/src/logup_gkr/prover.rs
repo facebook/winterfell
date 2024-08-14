@@ -197,7 +197,6 @@ fn prove_intermediate_layers<
 
         // run the sumcheck protocol
         let proof = sum_check_prove_num_rounds_degree_3(
-            left_numerators.num_variables(),
             claim,
             &mut left_numerators,
             &mut right_numerators,
@@ -251,7 +250,6 @@ fn sum_check_prove_num_rounds_degree_3<
     C: RandomCoin<Hasher = H, BaseField = E::BaseField>,
     H: ElementHasher<BaseField = E::BaseField>,
 >(
-    num_rounds: usize,
     claim: (E, E),
     p0: &mut MultiLinearPoly<E>,
     p1: &mut MultiLinearPoly<E>,
@@ -265,7 +263,7 @@ fn sum_check_prove_num_rounds_degree_3<
     let r_batch = transcript.draw().map_err(|_| GkrProverError::FailedToGenerateChallenge)?;
     let claim_ = claim.0 + claim.1 * r_batch;
 
-    let proof = sumcheck_prove_plain(num_rounds, claim_, r_batch, p0, p1, q0, q1, eq, transcript)?;
+    let proof = sumcheck_prove_plain(claim_, r_batch, p0, p1, q0, q1, eq, transcript)?;
 
     Ok(proof)
 }
