@@ -13,6 +13,9 @@ use math::FieldElement;
 #[macro_use]
 extern crate alloc;
 
+#[cfg(feature = "concurrent")]
+pub use rayon::prelude::*;
+
 mod prover;
 pub use prover::*;
 
@@ -122,8 +125,7 @@ where
 /// A proof for the input circuit layer i.e., the final layer in the GKR protocol.
 #[derive(Debug, Clone)]
 pub struct FinalLayerProof<E: FieldElement> {
-    pub before_merge_proof: Vec<RoundProof<E>>,
-    pub after_merge_proof: SumCheckProof<E>,
+    pub proof: SumCheckProof<E>,
 }
 
 impl<E> Serializable for FinalLayerProof<E>
@@ -131,9 +133,8 @@ where
     E: FieldElement,
 {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        let Self { before_merge_proof, after_merge_proof } = self;
-        before_merge_proof.write_into(target);
-        after_merge_proof.write_into(target);
+        let Self { proof } = self;
+        proof.write_into(target);
     }
 }
 
@@ -143,8 +144,7 @@ where
 {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         Ok(Self {
-            before_merge_proof: Deserializable::read_from(source)?,
-            after_merge_proof: Deserializable::read_from(source)?,
+            proof: Deserializable::read_from(source)?,
         })
     }
 }
@@ -157,6 +157,104 @@ pub struct SumCheckRoundClaim<E: FieldElement> {
     pub claim: E,
 }
 
+// GKR CIRCUIT PROOF
+// ===============================================================================================
+
+/// A GKR proof for the correct evaluation of the sum of fractions circuit.
+#[derive(Debug, Clone)]
+pub struct GkrCircuitProof<E: FieldElement> {
+    pub circuit_outputs: CircuitOutput<E>,
+    pub before_final_layer_proofs: BeforeFinalLayerProof<E>,
+    pub final_layer_proof: FinalLayerProof<E>,
+}
+
+impl<E: FieldElement> GkrCircuitProof<E> {
+    pub fn get_final_opening_claim(&self) -> FinalOpeningClaim<E> {
+        self.final_layer_proof.proof.openings_claim.clone()
+    }
+}
+
+impl<E> Serializable for GkrCircuitProof<E>
+where
+    E: FieldElement,
+{
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.circuit_outputs.write_into(target);
+        self.before_final_layer_proofs.write_into(target);
+        self.final_layer_proof.proof.write_into(target);
+    }
+}
+
+impl<E> Deserializable for GkrCircuitProof<E>
+where
+    E: FieldElement,
+{
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        Ok(Self {
+            circuit_outputs: CircuitOutput::read_from(source)?,
+            before_final_layer_proofs: BeforeFinalLayerProof::read_from(source)?,
+            final_layer_proof: FinalLayerProof::read_from(source)?,
+        })
+    }
+}
+
+/// A set of sum-check proofs for all GKR layers but for the input circuit layer.
+#[derive(Debug, Clone)]
+pub struct BeforeFinalLayerProof<E: FieldElement> {
+    pub proof: Vec<SumCheckProof<E>>,
+}
+
+impl<E> Serializable for BeforeFinalLayerProof<E>
+where
+    E: FieldElement,
+{
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        let Self { proof } = self;
+        proof.write_into(target);
+    }
+}
+
+impl<E> Deserializable for BeforeFinalLayerProof<E>
+where
+    E: FieldElement,
+{
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        Ok(Self {
+            proof: Deserializable::read_from(source)?,
+        })
+    }
+}
+
+/// Holds the output layer of an [`EvaluatedCircuit`].
+#[derive(Clone, Debug)]
+pub struct CircuitOutput<E: FieldElement> {
+    pub numerators: MultiLinearPoly<E>,
+    pub denominators: MultiLinearPoly<E>,
+}
+
+impl<E> Serializable for CircuitOutput<E>
+where
+    E: FieldElement,
+{
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        let Self { numerators, denominators } = self;
+        numerators.write_into(target);
+        denominators.write_into(target);
+    }
+}
+
+impl<E> Deserializable for CircuitOutput<E>
+where
+    E: FieldElement,
+{
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        Ok(Self {
+            numerators: MultiLinearPoly::read_from(source)?,
+            denominators: MultiLinearPoly::read_from(source)?,
+        })
+    }
+}
+
 /// The non-linear composition polynomial of the LogUp-GKR protocol.
 ///
 /// This is the result of batching the `p_k` and `q_k` of section 3.2 in
@@ -167,11 +265,11 @@ fn comb_func<E: FieldElement>(p0: E, p1: E, q0: E, q1: E, eq: E, r_batch: E) -> 
 
 /// The non-linear composition polynomial of the LogUp-GKR protocol specific to the input layer.
 pub fn evaluate_composition_poly<E: FieldElement>(
+    eq_at_mu: &[E],
     numerators: &[E],
     denominators: &[E],
     eq_eval: E,
     r_sum_check: E,
-    tensored_merge_randomness: &[E],
 ) -> E {
     let numerators = MultiLinearPoly::from_evaluations(numerators.to_vec());
     let denominators = MultiLinearPoly::from_evaluations(denominators.to_vec());
@@ -179,18 +277,19 @@ pub fn evaluate_composition_poly<E: FieldElement>(
     let (left_numerators, right_numerators) = numerators.project_least_significant_variable();
     let (left_denominators, right_denominators) = denominators.project_least_significant_variable();
 
-    let eval_left_numerators =
-        left_numerators.evaluate_with_lagrange_kernel(tensored_merge_randomness);
-    let eval_right_numerators =
-        right_numerators.evaluate_with_lagrange_kernel(tensored_merge_randomness);
-
-    let eval_left_denominators =
-        left_denominators.evaluate_with_lagrange_kernel(tensored_merge_randomness);
-    let eval_right_denominators =
-        right_denominators.evaluate_with_lagrange_kernel(tensored_merge_randomness);
-
-    eq_eval
-        * ((eval_left_numerators * eval_right_denominators
-            + eval_right_numerators * eval_left_denominators)
-            + eval_left_denominators * eval_right_denominators * r_sum_check)
+    left_numerators
+        .evaluations()
+        .iter()
+        .zip(
+            right_numerators.evaluations().iter().zip(
+                left_denominators
+                    .evaluations()
+                    .iter()
+                    .zip(right_denominators.evaluations().iter().zip(eq_at_mu.iter())),
+            ),
+        )
+        .map(|(p0, (p1, (q0, (q1, eq_w))))| {
+            *eq_w * comb_func(*p0, *p1, *q0, *q1, eq_eval, r_sum_check)
+        })
+        .fold(E::ZERO, |acc, x| acc + x)
 }

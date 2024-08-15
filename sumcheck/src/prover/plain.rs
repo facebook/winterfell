@@ -5,6 +5,8 @@
 
 use crypto::{ElementHasher, RandomCoin};
 use math::FieldElement;
+#[cfg(feature = "concurrent")]
+pub use rayon::prelude::*;
 
 use super::SumCheckProverError;
 use crate::{
@@ -48,7 +50,6 @@ pub fn sumcheck_prove_plain<
     C: RandomCoin<Hasher = H, BaseField = E::BaseField>,
     H: ElementHasher<BaseField = E::BaseField>,
 >(
-    num_rounds: usize,
     claim: E,
     r_batch: E,
     p0: &mut MultiLinearPoly<E>,
@@ -57,44 +58,95 @@ pub fn sumcheck_prove_plain<
     q1: &mut MultiLinearPoly<E>,
     eq: &mut MultiLinearPoly<E>,
     transcript: &mut C,
-) -> Result<(SumCheckProof<E>, E), SumCheckProverError> {
+) -> Result<SumCheckProof<E>, SumCheckProverError> {
     let mut round_proofs = vec![];
 
     let mut claim = claim;
     let mut challenges = vec![];
-    for _ in 0..num_rounds {
-        let mut eval_point_0 = E::ZERO;
-        let mut eval_point_2 = E::ZERO;
-        let mut eval_point_3 = E::ZERO;
 
+    for _ in 0..p0.num_variables() {
         let len = p0.num_evaluations() / 2;
-        for i in 0..len {
-            eval_point_0 +=
-                comb_func(p0[2 * i], p1[2 * i], q0[2 * i], q1[2 * i], eq[2 * i], r_batch);
 
-            let p0_delta = p0[2 * i + 1] - p0[2 * i];
-            let p1_delta = p1[2 * i + 1] - p1[2 * i];
-            let q0_delta = q0[2 * i + 1] - q0[2 * i];
-            let q1_delta = q1[2 * i + 1] - q1[2 * i];
-            let eq_delta = eq[2 * i + 1] - eq[2 * i];
+        #[cfg(not(feature = "concurrent"))]
+        let (eval_point_1, eval_point_2, eval_point_3) =
+            (0..len).fold((E::ZERO, E::ZERO, E::ZERO), |(a, b, c), i| {
+                let eval_point_1 = comb_func(
+                    p0[2 * i + 1],
+                    p1[2 * i + 1],
+                    q0[2 * i + 1],
+                    q1[2 * i + 1],
+                    eq[2 * i + 1],
+                    r_batch,
+                );
 
-            let mut p0_evx = p0[2 * i + 1] + p0_delta;
-            let mut p1_evx = p1[2 * i + 1] + p1_delta;
-            let mut q0_evx = q0[2 * i + 1] + q0_delta;
-            let mut q1_evx = q1[2 * i + 1] + q1_delta;
-            let mut eq_evx = eq[2 * i + 1] + eq_delta;
-            eval_point_2 += comb_func(p0_evx, p1_evx, q0_evx, q1_evx, eq_evx, r_batch);
+                let p0_delta = p0[2 * i + 1] - p0[2 * i];
+                let p1_delta = p1[2 * i + 1] - p1[2 * i];
+                let q0_delta = q0[2 * i + 1] - q0[2 * i];
+                let q1_delta = q1[2 * i + 1] - q1[2 * i];
+                let eq_delta = eq[2 * i + 1] - eq[2 * i];
 
-            p0_evx += p0_delta;
-            p1_evx += p1_delta;
-            q0_evx += q0_delta;
-            q1_evx += q1_delta;
-            eq_evx += eq_delta;
-            eval_point_3 += comb_func(p0_evx, p1_evx, q0_evx, q1_evx, eq_evx, r_batch);
-        }
+                let mut p0_evx = p0[2 * i + 1] + p0_delta;
+                let mut p1_evx = p1[2 * i + 1] + p1_delta;
+                let mut q0_evx = q0[2 * i + 1] + q0_delta;
+                let mut q1_evx = q1[2 * i + 1] + q1_delta;
+                let mut eq_evx = eq[2 * i + 1] + eq_delta;
+                let eval_point_2 = comb_func(p0_evx, p1_evx, q0_evx, q1_evx, eq_evx, r_batch);
+
+                p0_evx += p0_delta;
+                p1_evx += p1_delta;
+                q0_evx += q0_delta;
+                q1_evx += q1_delta;
+                eq_evx += eq_delta;
+                let eval_point_3 = comb_func(p0_evx, p1_evx, q0_evx, q1_evx, eq_evx, r_batch);
+
+                (eval_point_1 + a, eval_point_2 + b, eval_point_3 + c)
+            });
+
+        #[cfg(feature = "concurrent")]
+        let (eval_point_1, eval_point_2, eval_point_3) = (0..len)
+            .into_par_iter()
+            .fold(
+                || (E::ZERO, E::ZERO, E::ZERO),
+                |(a, b, c), i| {
+                    let eval_point_1 = comb_func(
+                        p0[2 * i + 1],
+                        p1[2 * i + 1],
+                        q0[2 * i + 1],
+                        q1[2 * i + 1],
+                        eq[2 * i + 1],
+                        r_batch,
+                    );
+
+                    let p0_delta = p0[2 * i + 1] - p0[2 * i];
+                    let p1_delta = p1[2 * i + 1] - p1[2 * i];
+                    let q0_delta = q0[2 * i + 1] - q0[2 * i];
+                    let q1_delta = q1[2 * i + 1] - q1[2 * i];
+                    let eq_delta = eq[2 * i + 1] - eq[2 * i];
+
+                    let mut p0_evx = p0[2 * i + 1] + p0_delta;
+                    let mut p1_evx = p1[2 * i + 1] + p1_delta;
+                    let mut q0_evx = q0[2 * i + 1] + q0_delta;
+                    let mut q1_evx = q1[2 * i + 1] + q1_delta;
+                    let mut eq_evx = eq[2 * i + 1] + eq_delta;
+                    let eval_point_2 = comb_func(p0_evx, p1_evx, q0_evx, q1_evx, eq_evx, r_batch);
+
+                    p0_evx += p0_delta;
+                    p1_evx += p1_delta;
+                    q0_evx += q0_delta;
+                    q1_evx += q1_delta;
+                    eq_evx += eq_delta;
+                    let eval_point_3 = comb_func(p0_evx, p1_evx, q0_evx, q1_evx, eq_evx, r_batch);
+
+                    (eval_point_1 + a, eval_point_2 + b, eval_point_3 + c)
+                },
+            )
+            .reduce(
+                || (E::ZERO, E::ZERO, E::ZERO),
+                |(a0, b0, c0), (a1, b1, c1)| (a0 + a1, b0 + b1, c0 + c1),
+            );
 
         let evals = vec![
-            claim - eval_point_0, // Optimization applied using the claim to reduce the number of sums computed
+            eval_point_1, // Optimization applied using the claim to reduce the number of sums computed
             eval_point_2,
             eval_point_3,
         ];
@@ -127,14 +179,11 @@ pub fn sumcheck_prove_plain<
         claim = new_claim;
     }
 
-    Ok((
-        SumCheckProof {
-            openings_claim: FinalOpeningClaim {
-                eval_point: challenges,
-                openings: vec![p0[0], p1[0], q0[0], q1[0]],
-            },
-            round_proofs,
+    Ok(SumCheckProof {
+        openings_claim: FinalOpeningClaim {
+            eval_point: challenges,
+            openings: vec![p0[0], p1[0], q0[0], q1[0]],
         },
-        claim,
-    ))
+        round_proofs,
+    })
 }
