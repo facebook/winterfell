@@ -8,7 +8,7 @@ use alloc::vec::Vec;
 use super::EvaluationFrame;
 use math::{ExtensionOf, FieldElement, StarkField, ToElements};
 
-pub trait LogUpGkrEvaluator: Clone {
+pub trait LogUpGkrEvaluator: Clone + Sync {
     /// Defines the base field of the evaluator.
     type BaseField: StarkField;
 
