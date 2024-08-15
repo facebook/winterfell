@@ -6,8 +6,7 @@
 use alloc::vec::Vec;
 
 use air::{
-    Air, EvaluationFrame, GkrData, LagrangeConstraintsCompositionCoefficients,
-    LagrangeKernelConstraints, LagrangeKernelEvaluationFrame, LogUpGkrEvaluator,
+    Air, EvaluationFrame, GkrData, LagrangeConstraintsCompositionCoefficients, LagrangeKernelConstraints, LagrangeKernelEvaluationFrame, LogUpGkrEvaluator, LAGRANGE_KERNEL_OFFSET, S_COLUMN_OFFSET
 };
 use math::{batch_inversion, FieldElement};
 
@@ -49,7 +48,7 @@ where
 
     /// Evaluates the transition and boundary constraints. Specifically, the constraint evaluations
     /// are divided by their corresponding divisors, and the resulting terms are linearly combined
-    /// using the composition coefficients.
+    /// using the constraint composition coefficients.
     ///
     /// Writes the evaluations in `combined_evaluations_acc` at the corresponding (constraint
     /// evaluation) domain index.
@@ -73,8 +72,8 @@ where
         let evaluator = self.air.get_logup_gkr_evaluator::<E>();
         let s_col_constraint_divisor =
             compute_s_col_divisor::<E>(domain.ce_domain_size(), domain, self.air.trace_length());
-        let s_col_idx = trace.trace_info().aux_segment_width() - 2;
-        let l_col_idx = trace.trace_info().aux_segment_width() - 1;
+        let s_col_idx = trace.trace_info().aux_segment_width() - S_COLUMN_OFFSET;
+        let l_col_idx = trace.trace_info().aux_segment_width() - LAGRANGE_KERNEL_OFFSET;
         let mut main_frame = EvaluationFrame::new(trace.trace_info().main_trace_width());
         let mut aux_frame = EvaluationFrame::new(trace.trace_info().aux_segment_width());
 

@@ -13,7 +13,7 @@ use utils::iter_mut;
 use utils::{iterators::*, rayon};
 
 use super::{
-    super::EvaluationTableFragment, lagrange::LogUpGkrConstraintsEvaluator, BoundaryConstraints,
+    super::EvaluationTableFragment, logup_gkr::LogUpGkrConstraintsEvaluator, BoundaryConstraints,
     CompositionPolyTrace, ConstraintEvaluationTable, ConstraintEvaluator, PeriodicValueTable,
     StarkDomain, TraceLde,
 };

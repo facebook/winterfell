@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 
 use air::{
     Air, AuxRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
-    LagrangeKernelEvaluationFrame, LogUpGkrEvaluator,
+    LagrangeKernelEvaluationFrame, LogUpGkrEvaluator, S_COLUMN_OFFSET,
 };
 use math::{polynom, FieldElement};
 
@@ -116,7 +116,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
 
         // s-column constraints
 
-        let s_col_idx = air.trace_info().aux_segment_width() - 2;
+        let s_col_idx = air.trace_info().aux_segment_width() - S_COLUMN_OFFSET;
         let s_cur = aux_trace_frame
             .as_ref()
             .expect("expected aux rand elements to be present")

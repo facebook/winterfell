@@ -36,7 +36,7 @@ pub use lagrange::{
 };
 
 mod logup_gkr;
-pub use logup_gkr::{LogUpGkrEvaluator, LogUpGkrOracle};
+pub use logup_gkr::{LogUpGkrEvaluator, LogUpGkrOracle, PhantomLogUpGkrEval, LAGRANGE_KERNEL_OFFSET, S_COLUMN_OFFSET};
 
 mod coefficients;
 pub use coefficients::{

@@ -10,6 +10,8 @@ use math::StarkField;
 
 use crate::{air::TransitionConstraintDegree, ProofOptions, TraceInfo};
 
+use super::LAGRANGE_KERNEL_OFFSET;
+
 // AIR CONTEXT
 // ================================================================================================
 /// STARK parameters and trace properties for a specific execution of a computation.
