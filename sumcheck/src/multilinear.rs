@@ -235,12 +235,12 @@ impl<E: FieldElement> EqFunction<E> {
 /// We thus have the following algorithm:
 ///
 /// 1. Split current table, stored as a vector, $A^{(j)}\left[\left(w_{1}, \dots, w_{j} \right)\right]$
-/// into two tables $A^{(j)}\left[\left(w_{1}, \dots, w_{j-1}, 0 \right)\right]$ and
-/// $A^{(j)}\left[\left(w_{1}, \dots, w_{j-1}, 1 \right)\right]$,
-/// with the first part initialized to $A^{(j - 1)}\left[\left(w_{1}, \dots, w_{j-1} \right)\right]$.
+///    into two tables $A^{(j)}\left[\left(w_{1}, \dots, w_{j-1}, 0 \right)\right]$ and
+///    $A^{(j)}\left[\left(w_{1}, \dots, w_{j-1}, 1 \right)\right]$,
+///    with the first part initialized to $A^{(j - 1)}\left[\left(w_{1}, \dots, w_{j-1} \right)\right]$.
 /// 2. Iterating over $\left(w_{1}, \dots, w_{j-1} \right)$, do:
 ///     1. Let $factor = A^{(j - 1)}\left[\left(w_{1}, \dots, w_{j-1} \right)\right]$, which is equal
-///     by the above to $A^{(j)}\left[\left(w_{1}, \dots, w_{j-1}, 0 \right)\right]$.
+///        by the above to $A^{(j)}\left[\left(w_{1}, \dots, w_{j-1}, 0 \right)\right]$.
 ///     2. $A^{(j)}\left[\left(w_{1}, \dots, w_{j-1}, 1 \right)\right] = factor \cdot r_j$
 ///     3. $A^{(j)}\left[\left(w_{1}, \dots, w_{j-1}, 0 \right)\right] =
 ///         A^{(j)}\left[\left(w_{1}, \dots, w_{j-1}, 0 \right)\right] -
