@@ -1,7 +1,10 @@
 # Changelog
 
 ## 0.10.0 (2024-06-11) - `utils/maybe-async` crate only
-* [BREAKING] Refactored `maybe-async` macro into simpler `maybe-async` and `maybe-await` macros.
+- [BREAKING] Refactored `maybe-async` macro into simpler `maybe-async` and `maybe-await` macros.
+
+## 0.9.1 (2024-06-24) - `utils/core` crate only
+- Fixed `useize` serialization in `ByteWriter`.
 
 ## 0.9.0 (2024-05-09)
 - [BREAKING] Merged `TraceLayout` into `TraceInfo` (#245).

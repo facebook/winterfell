@@ -266,16 +266,27 @@ impl<B: StarkField> AirContext<B> {
     ///    transition constraint divisor divided by trace length.
     /// 2. `1`, because the constraint composition polynomial requires at least one column.
     ///
-    ///    Since the degree of a constraint `C(x)` can be computed as `[constraint.base +
-    ///    constraint.cycles.len()] * [trace_length - 1]` the degree of the constraint composition
-    ///    polynomial can be computed as: `([constraint.base + constraint.cycles.len()] * [trace_length
-    ///    - 1] - [trace_length - n])` where `constraint` is the constraint attaining the maximum and
-    ///    `n` is the number of exemption points. In the case `n = 1`, the expression simplifies to:
-    ///    `[constraint.base + constraint.cycles.len() - 1] * [trace_length - 1]` Thus, if each column
-    ///    is of length `trace_length`, we would need `[constraint.base + constraint.cycles.len() - 1]`
-    ///    columns to store the coefficients of the constraint composition polynomial. This means that
-    ///    if the highest constraint degree is equal to `5`, the constraint composition polynomial will
-    ///    require four columns and if the highest constraint degree is equal to `7`, it will require six columns to store.
+    /// Since the degree of a constraint `C(x)` can be computed as
+    ///
+    ///   `[constraint.base + constraint.cycles.len()] * [trace_length - 1]`
+    ///
+    /// the degree of the constraint composition polynomial can be computed as:
+    ///
+    ///   `([constraint.base + constraint.cycles.len()] * [trace_length - 1] - [trace_length - n])`
+    ///
+    /// where `constraint` is the constraint attaining the maximum and `n` is the number of
+    /// exemption points. In the case `n = 1`, the expression simplifies to:
+    ///
+    ///   `[constraint.base + constraint.cycles.len() - 1] * [trace_length - 1]`
+    ///
+    /// Thus, if each column is of length `trace_length`, we would need
+    ///
+    ///   `[constraint.base + constraint.cycles.len() - 1]`
+    ///
+    /// columns to store the coefficients of the constraint composition polynomial. This means that
+    /// if the highest constraint degree is equal to `5`, the constraint composition polynomial will
+    /// require four columns and if the highest constraint degree is equal to `7`, it will require
+    /// six columns to store.
     ///
     /// Note that the Lagrange kernel constraints require only 1 column, since the degree of the
     /// numerator is `trace_len - 1` for all transition constraints (i.e. the base degree is 1).
