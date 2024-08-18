@@ -5,10 +5,10 @@
 
 use core::slice;
 
+use core_utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 use winterfell::{
     crypto::{Digest, Hasher},
     math::{fields::f128::BaseElement, FieldElement},
-    ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
 
 use crate::utils::{are_equal, EvaluationResult};

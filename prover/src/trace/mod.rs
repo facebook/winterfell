@@ -127,7 +127,7 @@ pub trait Trace: Sized {
             let aux_trace = &aux_trace_with_metadata.aux_trace;
             let aux_rand_elements = &aux_trace_with_metadata.aux_rand_elements;
 
-            for assertion in air.get_aux_assertions(aux_rand_elements.rand_elements()) {
+            for assertion in air.get_aux_assertions(aux_rand_elements) {
                 // get the matrix and verify the assertion against it
                 assertion.apply(self.length(), |step, value| {
                     assert!(
@@ -209,7 +209,7 @@ pub trait Trace: Sized {
                     &main_frame,
                     aux_frame,
                     &periodic_values,
-                    aux_rand_elements.rand_elements(),
+                    aux_rand_elements,
                     &mut aux_evaluations,
                 );
                 for (i, &evaluation) in aux_evaluations.iter().enumerate() {

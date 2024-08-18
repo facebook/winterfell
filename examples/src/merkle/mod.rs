@@ -82,7 +82,10 @@ impl<H: ElementHasher> MerkleExample<H> {
 
         // compute Merkle path form the leaf specified by the index
         let now = Instant::now();
-        let path = tree.prove(index).unwrap();
+        let (leaf, path) = tree.prove(index).unwrap();
+        let mut result = vec![leaf];
+        result.extend_from_slice(&path);
+
         println!(
             "Computed Merkle path from leaf {} to root {} in {} ms",
             index,
@@ -95,7 +98,7 @@ impl<H: ElementHasher> MerkleExample<H> {
             tree_root: *tree.root(),
             value,
             index,
-            path,
+            path: result,
             _hasher: PhantomData,
         }
     }
@@ -106,7 +109,7 @@ impl<H: ElementHasher> MerkleExample<H> {
 
 impl<H: ElementHasher> Example for MerkleExample<H>
 where
-    H: ElementHasher<BaseField = BaseElement>,
+    H: ElementHasher<BaseField = BaseElement> + Sync,
 {
     fn prove(&self) -> Proof {
         // generate the execution trace
@@ -134,7 +137,7 @@ where
         let pub_inputs = PublicInputs { tree_root: self.tree_root.to_elements() };
         let acceptable_options =
             winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
-        winterfell::verify::<MerkleAir, H, DefaultRandomCoin<H>>(
+        winterfell::verify::<MerkleAir, H, DefaultRandomCoin<H>, MerkleTree<H>>(
             proof,
             pub_inputs,
             &acceptable_options,
@@ -146,7 +149,7 @@ where
         let pub_inputs = PublicInputs { tree_root: [tree_root[1], tree_root[0]] };
         let acceptable_options =
             winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
-        winterfell::verify::<MerkleAir, H, DefaultRandomCoin<H>>(
+        winterfell::verify::<MerkleAir, H, DefaultRandomCoin<H>, MerkleTree<H>>(
             proof,
             pub_inputs,
             &acceptable_options,

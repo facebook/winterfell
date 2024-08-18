@@ -5,7 +5,7 @@
 
 use alloc::{collections::BTreeMap, vec::Vec};
 
-use air::{Air, ConstraintDivisor};
+use air::{Air, AuxRandElements, ConstraintDivisor};
 use math::{fft, ExtensionOf, FieldElement};
 
 use super::StarkDomain;
@@ -35,7 +35,7 @@ impl<E: FieldElement> BoundaryConstraints<E> {
     /// by an instance of AIR for a specific computation.
     pub fn new<A: Air<BaseField = E::BaseField>>(
         air: &A,
-        aux_rand_elements: Option<&[E]>,
+        aux_rand_elements: Option<&AuxRandElements<E>>,
         composition_coefficients: &[E],
     ) -> Self {
         // get constraints from the AIR instance

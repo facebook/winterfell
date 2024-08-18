@@ -78,6 +78,9 @@ impl AggPublicKey {
 
     /// Returns a Merkle path to the specified leaf.
     pub fn get_leaf_path(&self, index: usize) -> Vec<Hash> {
-        self.tree.prove(index).unwrap()
+        let (leaf, path) = self.tree.prove(index).unwrap();
+        let mut result = vec![leaf];
+        result.extend_from_slice(&path);
+        result
     }
 }

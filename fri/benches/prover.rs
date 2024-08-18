@@ -6,7 +6,7 @@
 use std::time::Duration;
 
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
-use crypto::{hashers::Blake3_256, DefaultRandomCoin};
+use crypto::{hashers::Blake3_256, DefaultRandomCoin, MerkleTree};
 use math::{fft, fields::f128::BaseElement, FieldElement};
 use rand_utils::rand_vector;
 use winter_fri::{DefaultProverChannel, FriOptions, FriProver};
@@ -28,7 +28,8 @@ pub fn build_layers(c: &mut Criterion) {
             BenchmarkId::new("build_layers", domain_size),
             &evaluations,
             |b, e| {
-                let mut prover = FriProver::new(options.clone());
+                let mut prover =
+                    FriProver::<_, _, _, MerkleTree<Blake3_256<BaseElement>>>::new(options.clone());
                 b.iter_batched(
                     || e.clone(),
                     |evaluations| {

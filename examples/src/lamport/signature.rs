@@ -5,11 +5,9 @@
 
 use std::cmp::Ordering;
 
+use core_utils::Serializable;
 use rand_utils::prng_vector;
-use winterfell::{
-    math::{fields::f128::BaseElement, FieldElement, StarkField},
-    Serializable,
-};
+use winterfell::math::{fields::f128::BaseElement, FieldElement, StarkField};
 
 use super::rescue::Rescue128;
 

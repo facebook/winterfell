@@ -6,7 +6,7 @@
 use alloc::vec::Vec;
 
 use air::{proof::Queries, LagrangeKernelEvaluationFrame, TraceInfo};
-use crypto::{ElementHasher, Hasher};
+use crypto::{ElementHasher, Hasher, VectorCommitment};
 
 use super::{ColMatrix, EvaluationFrame, FieldElement, TracePolyTable};
 use crate::StarkDomain;
@@ -24,8 +24,11 @@ pub use default::DefaultTraceLde;
 /// - Auxiliary segments: a list of 0 or more segments for traces generated after the prover
 ///   commits to the first trace segment. Currently, at most 1 auxiliary segment is possible.
 pub trait TraceLde<E: FieldElement>: Sync {
-    /// The hash function used for building the Merkle tree commitments to trace segment LDEs.
+    /// The hash function used for hashing the rows of trace segment LDEs.
     type HashFn: ElementHasher<BaseField = E::BaseField>;
+
+    /// The vector commitment scheme used for commiting to the trace.
+    type VC: VectorCommitment<Self::HashFn>;
 
     /// Returns the commitment to the low-degree extension of the main trace segment.
     fn get_main_trace_commitment(&self) -> <Self::HashFn as Hasher>::Digest;
@@ -70,8 +73,8 @@ pub trait TraceLde<E: FieldElement>: Sync {
         frame: &mut LagrangeKernelEvaluationFrame<E>,
     );
 
-    /// Returns trace table rows at the specified positions along with Merkle authentication paths
-    /// from the commitment root to these rows.
+    /// Returns trace table rows at the specified positions along with an opening proof to these
+    /// rows.
     fn query(&self, positions: &[usize]) -> Vec<Queries>;
 
     /// Returns the number of rows in the execution trace.

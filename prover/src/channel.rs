@@ -10,7 +10,7 @@ use air::{
     proof::{Commitments, Context, OodFrame, Proof, Queries, TraceOodFrame},
     Air, ConstraintCompositionCoefficients, DeepCompositionCoefficients,
 };
-use crypto::{ElementHasher, RandomCoin};
+use crypto::{ElementHasher, RandomCoin, VectorCommitment};
 use fri::FriProof;
 use math::{FieldElement, ToElements};
 #[cfg(feature = "concurrent")]
@@ -19,12 +19,13 @@ use utils::iterators::*;
 // TYPES AND INTERFACES
 // ================================================================================================
 
-pub struct ProverChannel<'a, A, E, H, R>
+pub struct ProverChannel<'a, A, E, H, R, V>
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseField>,
     H: ElementHasher<BaseField = A::BaseField>,
     R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
+    V: VectorCommitment<H>,
 {
     air: &'a A,
     public_coin: R,
@@ -33,17 +34,19 @@ where
     ood_frame: OodFrame,
     pow_nonce: u64,
     _field_element: PhantomData<E>,
+    _vector_commitment: PhantomData<V>,
 }
 
 // PROVER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-impl<'a, A, E, H, R> ProverChannel<'a, A, E, H, R>
+impl<'a, A, E, H, R, V> ProverChannel<'a, A, E, H, R, V>
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseField>,
     H: ElementHasher<BaseField = A::BaseField>,
     R: RandomCoin<BaseField = A::BaseField, Hasher = H>,
+    V: VectorCommitment<H>,
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -65,6 +68,7 @@ where
             ood_frame: OodFrame::default(),
             pow_nonce: 0,
             _field_element: PhantomData,
+            _vector_commitment: PhantomData,
         }
     }
 
@@ -199,12 +203,13 @@ where
 // FRI PROVER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-impl<'a, A, E, H, R> fri::ProverChannel<E> for ProverChannel<'a, A, E, H, R>
+impl<'a, A, E, H, R, V> fri::ProverChannel<E> for ProverChannel<'a, A, E, H, R, V>
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseField>,
     H: ElementHasher<BaseField = A::BaseField>,
     R: RandomCoin<BaseField = A::BaseField, Hasher = H>,
+    V: VectorCommitment<H>,
 {
     type Hasher = H;
 
