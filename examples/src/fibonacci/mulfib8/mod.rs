@@ -8,7 +8,7 @@ use std::time::Instant;
 
 use tracing::{field, info_span};
 use winterfell::{
-    crypto::{DefaultRandomCoin, ElementHasher},
+    crypto::{DefaultRandomCoin, ElementHasher, MerkleTree},
     math::{fields::f128::BaseElement, FieldElement},
     Proof, ProofOptions, Prover, Trace, VerifierError,
 };
@@ -87,7 +87,7 @@ impl<H: ElementHasher> MulFib8Example<H> {
 
 impl<H: ElementHasher> Example for MulFib8Example<H>
 where
-    H: ElementHasher<BaseField = BaseElement>,
+    H: ElementHasher<BaseField = BaseElement> + Sync,
 {
     fn prove(&self) -> Proof {
         let sequence_length = self.sequence_length;
@@ -115,7 +115,7 @@ where
     fn verify(&self, proof: Proof) -> Result<(), VerifierError> {
         let acceptable_options =
             winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
-        winterfell::verify::<MulFib8Air, H, DefaultRandomCoin<H>>(
+        winterfell::verify::<MulFib8Air, H, DefaultRandomCoin<H>, MerkleTree<H>>(
             proof,
             self.result,
             &acceptable_options,
@@ -125,7 +125,7 @@ where
     fn verify_with_wrong_inputs(&self, proof: Proof) -> Result<(), VerifierError> {
         let acceptable_options =
             winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
-        winterfell::verify::<MulFib8Air, H, DefaultRandomCoin<H>>(
+        winterfell::verify::<MulFib8Air, H, DefaultRandomCoin<H>, MerkleTree<H>>(
             proof,
             self.result + BaseElement::ONE,
             &acceptable_options,

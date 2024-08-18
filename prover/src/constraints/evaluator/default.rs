@@ -154,9 +154,7 @@ where
         // constraint evaluations.
         let boundary_constraints = BoundaryConstraints::new(
             air,
-            aux_rand_elements
-                .as_ref()
-                .map(|aux_rand_elements| aux_rand_elements.rand_elements()),
+            aux_rand_elements.as_ref(),
             &composition_coefficients.boundary,
         );
 
@@ -378,8 +376,7 @@ where
             periodic_values,
             self.aux_rand_elements
                 .as_ref()
-                .expect("expected aux rand elements to be present")
-                .rand_elements(),
+                .expect("expected aux rand elements to be present"),
             evaluations,
         );
 

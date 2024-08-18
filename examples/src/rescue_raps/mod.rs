@@ -9,7 +9,7 @@ use std::time::Instant;
 use rand_utils::rand_array;
 use tracing::{field, info_span};
 use winterfell::{
-    crypto::{DefaultRandomCoin, ElementHasher},
+    crypto::{DefaultRandomCoin, ElementHasher, MerkleTree},
     math::{fields::f128::BaseElement, ExtensionOf, FieldElement},
     Proof, ProofOptions, Prover, Trace, VerifierError,
 };
@@ -107,7 +107,7 @@ impl<H: ElementHasher> RescueRapsExample<H> {
 
 impl<H: ElementHasher> Example for RescueRapsExample<H>
 where
-    H: ElementHasher<BaseField = BaseElement>,
+    H: ElementHasher<BaseField = BaseElement> + Sync,
 {
     fn prove(&self) -> Proof {
         // generate the execution trace
@@ -134,7 +134,7 @@ where
         let acceptable_options =
             winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
 
-        winterfell::verify::<RescueRapsAir, H, DefaultRandomCoin<H>>(
+        winterfell::verify::<RescueRapsAir, H, DefaultRandomCoin<H>, MerkleTree<H>>(
             proof,
             pub_inputs,
             &acceptable_options,
@@ -146,7 +146,7 @@ where
         let acceptable_options =
             winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
 
-        winterfell::verify::<RescueRapsAir, H, DefaultRandomCoin<H>>(
+        winterfell::verify::<RescueRapsAir, H, DefaultRandomCoin<H>, MerkleTree<H>>(
             proof,
             pub_inputs,
             &acceptable_options,
