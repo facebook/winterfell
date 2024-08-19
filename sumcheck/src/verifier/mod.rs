@@ -142,13 +142,12 @@ where
 /// i.e., the circuit input layer.
 pub fn verify_sum_check_intermediate_layers<
     E: FieldElement,
-    C: RandomCoin<Hasher = H, BaseField = E::BaseField>,
     H: ElementHasher<BaseField = E::BaseField>,
 >(
     proof: &SumCheckProof<E>,
     gkr_eval_point: &[E],
     claim: (E, E),
-    transcript: &mut C,
+    transcript: &mut impl RandomCoin<Hasher = H, BaseField = E::BaseField>,
 ) -> Result<FinalOpeningClaim<E>, SumCheckVerifierError> {
     // generate challenge to batch sum-checks
     transcript.reseed(H::hash_elements(&[claim.0, claim.1]));
@@ -171,7 +170,7 @@ pub fn verify_sum_check_intermediate_layers<
 
     let eq = EqFunction::new(gkr_eval_point.into()).evaluate(&openings_claim.eval_point);
 
-    if (p0 * q1 + p1 * q0 + r_batch * q0 * q1) * eq != final_round_claim.claim {
+    if comb_func(p0, p1, q0, q1, eq, r_batch) != final_round_claim.claim {
         return Err(SumCheckVerifierError::FinalEvaluationCheckFailed);
     }
 
@@ -181,17 +180,13 @@ pub fn verify_sum_check_intermediate_layers<
 /// Verifies the final sum-check proof i.e., the one for the input layer, including the final check,
 /// and returns a [`FinalOpeningClaim`] to the STARK verifier in order to verify the correctness of
 /// the openings.
-pub fn verify_sum_check_input_layer<
-    E: FieldElement,
-    C: RandomCoin<Hasher = H, BaseField = E::BaseField>,
-    H: ElementHasher<BaseField = E::BaseField>,
->(
+pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>>(
     evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
     proof: &FinalLayerProof<E>,
     log_up_randomness: Vec<E>,
     gkr_eval_point: &[E],
     claim: (E, E),
-    transcript: &mut C,
+    transcript: &mut impl RandomCoin<Hasher = H, BaseField = E::BaseField>,
 ) -> Result<FinalOpeningClaim<E>, SumCheckVerifierError> {
     let FinalLayerProof { proof } = proof;
 
@@ -237,6 +232,34 @@ pub fn verify_sum_check_input_layer<
     } else {
         Ok(proof.openings_claim.clone())
     }
+}
+
+/// Verifies a round of the sum-check protocol without executing the final check.
+fn verify_rounds<E, H>(
+    claim: E,
+    round_proofs: &[RoundProof<E>],
+    coin: &mut impl RandomCoin<Hasher = H, BaseField = E::BaseField>,
+) -> Result<SumCheckRoundClaim<E>, SumCheckVerifierError>
+where
+    E: FieldElement,
+    H: ElementHasher<BaseField = E::BaseField>,
+{
+    let mut round_claim = claim;
+    let mut evaluation_point = vec![];
+    for round_proof in round_proofs {
+        let round_poly_coefs = round_proof.round_poly_coefs.clone();
+        coin.reseed(H::hash_elements(&round_poly_coefs.0));
+
+        let r = coin.draw().map_err(|_| SumCheckVerifierError::FailedToGenerateChallenge)?;
+
+        round_claim = round_proof.round_poly_coefs.evaluate_using_claim(&round_claim, &r);
+        evaluation_point.push(r);
+    }
+
+    Ok(SumCheckRoundClaim {
+        eval_point: evaluation_point,
+        claim: round_claim,
+    })
 }
 
 #[derive(Debug, thiserror::Error)]
