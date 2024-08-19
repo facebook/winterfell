@@ -13,7 +13,6 @@ use rand_utils::{rand_value, rand_vector};
 pub use rayon::prelude::*;
 use winter_sumcheck::{sumcheck_prove_plain, EqFunction, MultiLinearPoly};
 
-
 const LOG_POLY_SIZE: [usize; 2] = [18, 20];
 
 fn sum_check_plain(c: &mut Criterion) {
@@ -25,7 +24,11 @@ fn sum_check_plain(c: &mut Criterion) {
         group.bench_function(BenchmarkId::new("", log_poly_size), |b| {
             b.iter_batched(
                 || {
-                    let transcript = DefaultRandomCoin::<Blake3_192<BaseElement>>::new(&vec![BaseElement::ZERO; 4]);
+                    let transcript =
+                        DefaultRandomCoin::<Blake3_192<BaseElement>>::new(&vec![
+                            BaseElement::ZERO;
+                            4
+                        ]);
                     (setup_sum_check::<BaseElement>(log_poly_size), transcript)
                 },
                 |((claim, r_batch, p0, p1, q0, q1, eq), transcript)| {
@@ -36,7 +39,16 @@ fn sum_check_plain(c: &mut Criterion) {
                     let mut eq = eq;
                     let mut transcript = transcript;
 
-                    sumcheck_prove_plain(claim, r_batch,&mut p0,&mut p1, &mut q0,&mut q1,&mut eq,&mut transcript)
+                    sumcheck_prove_plain(
+                        claim,
+                        r_batch,
+                        &mut p0,
+                        &mut p1,
+                        &mut q0,
+                        &mut q1,
+                        &mut eq,
+                        &mut transcript,
+                    )
                 },
                 BatchSize::SmallInput,
             )
@@ -44,7 +56,9 @@ fn sum_check_plain(c: &mut Criterion) {
     }
 }
 
-fn setup_sum_check<E: FieldElement>(log_size: usize) -> (
+fn setup_sum_check<E: FieldElement>(
+    log_size: usize,
+) -> (
     E,
     E,
     MultiLinearPoly<E>,
@@ -73,7 +87,6 @@ fn setup_sum_check<E: FieldElement>(log_size: usize) -> (
 
     (claim, r_batch, p0, p1, q0, q1, eq)
 }
-
 
 criterion_group!(group, sum_check_plain);
 criterion_main!(group);

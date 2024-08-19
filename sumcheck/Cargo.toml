@@ -17,6 +17,10 @@ name = "sum_check_plain"
 harness = false
 
 [[bench]]
+name = "sum_check_high_degree"
+harness = false
+
+[[bench]]
 name = "eq_function"
 harness = false
 required-features = ["concurrent"]
