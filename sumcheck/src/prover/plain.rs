@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crypto::{ElementHasher, RandomCoin};
+use smallvec::smallvec;
 use math::FieldElement;
 #[cfg(feature = "concurrent")]
 pub use rayon::prelude::*;
