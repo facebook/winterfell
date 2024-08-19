@@ -26,6 +26,10 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
     fn get_num_fractions(&self) -> usize;
 
     /// Returns the maximal degree of the multi-variate associated to the input layer.
+    /// 
+    /// This is equal to the max of $1 + deg_k(\text{numerator}_i) * deg_k(\text{denominator}_j)$ where
+    /// $i$ and $j$ range over the number of numerators and denominators, respectively, and $deg_k$
+    /// is the degree of a multi-variate polynomial in its $k$-th variable.
     fn max_degree(&self) -> usize;
 
     /// Builds a query from the provided main trace frame and periodic values.

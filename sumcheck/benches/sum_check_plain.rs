@@ -24,8 +24,7 @@ fn sum_check_plain(c: &mut Criterion) {
         group.bench_function(BenchmarkId::new("", log_poly_size), |b| {
             b.iter_batched(
                 || {
-                    let transcript =
-                        DefaultRandomCoin::<Blake3_192<BaseElement>>::new(&vec![
+                    let transcript = DefaultRandomCoin::<Blake3_192<BaseElement>>::new(&vec![
                             BaseElement::ZERO;
                             4
                         ]);
