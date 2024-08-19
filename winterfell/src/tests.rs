@@ -209,12 +209,11 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
         3
     }
 
-    fn build_query<E>(&self, frame: &EvaluationFrame<E>, _periodic_values: &[E]) -> Vec<E>
+    fn build_query<E>(&self, frame: &EvaluationFrame<E>, _periodic_values: &[E], query: &mut [E])
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
-        let cur = frame.current();
-        cur.to_vec()
+        query.iter_mut().zip(frame.current().iter()).for_each(|(q, f)| *q = *f)
     }
 
     fn evaluate_query<F, E>(

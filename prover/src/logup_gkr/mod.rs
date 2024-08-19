@@ -116,13 +116,14 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
             Vec::with_capacity(main_trace.main_segment().num_rows() * num_fractions);
         let mut main_frame = EvaluationFrame::new(main_trace.main_segment().num_cols());
 
+        let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
         let mut numerators = vec![E::ZERO; num_fractions];
         let mut denominators = vec![E::ZERO; num_fractions];
         for i in 0..main_trace.main_segment().num_rows() {
             let wires_from_trace_row = {
                 main_trace.read_main_frame(i, &mut main_frame);
 
-                let query = evaluator.build_query(&main_frame, &[]);
+                evaluator.build_query(&main_frame, &[], &mut query);
 
                 evaluator.evaluate_query(
                     &query,
@@ -406,12 +407,13 @@ pub fn build_s_column<E: FieldElement>(
     let mut last_value = E::ZERO;
     result.push(last_value);
 
+    let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
     let mut main_frame = EvaluationFrame::new(main_trace.main_segment().num_cols());
 
     for (i, item) in lagrange_kernel_col.iter().enumerate().take(main_segment.num_rows() - 1) {
         main_trace.read_main_frame(i, &mut main_frame);
 
-        let query = evaluator.build_query(&main_frame, &[]);
+        evaluator.build_query(&main_frame, &[], &mut query);
         let cur_value = last_value - mean + gkr_data.compute_batched_query(&query) * *item;
 
         result.push(cur_value);
