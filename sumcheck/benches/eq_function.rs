@@ -51,7 +51,6 @@ fn evaluate_eq_parallel(c: &mut Criterion) {
     }
 }
 
-
 fn eq_evaluations<E: FieldElement>(query: &[E]) -> Vec<E> {
     let n = 1 << query.len();
     let mut evals = unsafe { utils::uninit_vector(n) };
@@ -92,7 +91,6 @@ fn eq_evaluations_par<E: FieldElement>(query: &[E]) -> Vec<E> {
     }
     evals
 }
-
 
 criterion_group!(group, evaluate_eq_serial, evaluate_eq_parallel);
 criterion_main!(group);

@@ -271,25 +271,9 @@ pub fn evaluate_composition_poly<E: FieldElement>(
     eq_eval: E,
     r_sum_check: E,
 ) -> E {
-    let numerators = MultiLinearPoly::from_evaluations(numerators.to_vec());
-    let denominators = MultiLinearPoly::from_evaluations(denominators.to_vec());
-
-    let (left_numerators, right_numerators) = numerators.project_least_significant_variable();
-    let (left_denominators, right_denominators) = denominators.project_least_significant_variable();
-
-    left_numerators
-        .evaluations()
-        .iter()
-        .zip(
-            right_numerators.evaluations().iter().zip(
-                left_denominators
-                    .evaluations()
-                    .iter()
-                    .zip(right_denominators.evaluations().iter().zip(eq_at_mu.iter())),
-            ),
-        )
-        .map(|(p0, (p1, (q0, (q1, eq_w))))| {
-            *eq_w * comb_func(*p0, *p1, *q0, *q1, eq_eval, r_sum_check)
-        })
+    numerators
+        .chunks(2)
+        .zip(denominators.chunks(2).zip(eq_at_mu.iter()))
+        .map(|(p, (q, eq_w))| *eq_w * comb_func(p[0], p[1], q[0], q[1], eq_eval, r_sum_check))
         .fold(E::ZERO, |acc, x| acc + x)
 }

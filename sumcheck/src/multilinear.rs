@@ -184,8 +184,7 @@ pub struct EqFunction<E> {
 impl<E: FieldElement> EqFunction<E> {
     /// Creates a new [EqFunction].
     pub fn new(r: SmallVec<[E; MAX_EQ_SIZE]>) -> Self {
-        let tmp = r.into();
-        EqFunction { r: tmp }
+        EqFunction { r }
     }
 
     /// Computes $\tilde{EQ}((r_0, ..., r_{{\nu} - 1}), (t_0, ..., t_{{\nu} - 1})))$.

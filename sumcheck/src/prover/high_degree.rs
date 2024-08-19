@@ -327,13 +327,10 @@ fn sumcheck_round<E: FieldElement>(
                 );
 
                 // compute the evaluations at 2, ..., d_max points
-                evals_zero
-                    .iter()
-                    .zip(evals_one.iter().zip(deltas.iter_mut().zip(evals_x.iter_mut())))
-                    .for_each(|(a0, (a1, (delta, evx)))| {
-                        *delta = *a1 - *a0;
-                        *evx = *a1;
-                    });
+                for i in 0..num_ml {
+                    deltas[i] = evals_one[i] - evals_zero[i];
+                    evals_x[i] = evals_one[i];
+                }
                 eq_delta = eq_at_one - eq_at_zero;
                 eq_x = eq_at_one;
 
@@ -417,13 +414,10 @@ fn sumcheck_round<E: FieldElement>(
                 );
 
                 // compute the evaluations at 2, ..., d_max points
-                evals_zero
-                    .iter()
-                    .zip(evals_one.iter().zip(deltas.iter_mut().zip(evals_x.iter_mut())))
-                    .for_each(|(a0, (a1, (delta, evx)))| {
-                        *delta = *a1 - *a0;
-                        *evx = *a1;
-                    });
+                for i in 0..num_ml {
+                    deltas[i] = evals_one[i] - evals_zero[i];
+                    evals_x[i] = evals_one[i];
+                }
                 let eq_delta = eq_at_one - eq_at_zero;
                 let mut eq_x = eq_at_one;
 
@@ -466,7 +460,7 @@ fn sumcheck_round<E: FieldElement>(
 }
 
 /// Reduces an old claim to a new claim using the round challenge.
-pub fn reduce_claim<E: FieldElement>(
+fn reduce_claim<E: FieldElement>(
     current_poly: &RoundProof<E>,
     current_round_claim: SumCheckRoundClaim<E>,
     round_challenge: E,
