@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use crypto::{ElementHasher, RandomCoin};
+use smallvec::smallvec;
 use math::FieldElement;
 #[cfg(feature = "concurrent")]
 pub use rayon::prelude::*;
@@ -47,7 +48,6 @@ use crate::{
 #[allow(clippy::too_many_arguments)]
 pub fn sumcheck_prove_plain<
     E: FieldElement,
-    C: RandomCoin<Hasher = H, BaseField = E::BaseField>,
     H: ElementHasher<BaseField = E::BaseField>,
 >(
     claim: E,
@@ -57,7 +57,7 @@ pub fn sumcheck_prove_plain<
     q0: &mut MultiLinearPoly<E>,
     q1: &mut MultiLinearPoly<E>,
     eq: &mut MultiLinearPoly<E>,
-    transcript: &mut C,
+    transcript: &mut impl RandomCoin<Hasher = H, BaseField = E::BaseField>,
 ) -> Result<SumCheckProof<E>, SumCheckProverError> {
     let mut round_proofs = vec![];
 
@@ -145,12 +145,12 @@ pub fn sumcheck_prove_plain<
                 |(a0, b0, c0), (a1, b1, c1)| (a0 + a1, b0 + b1, c0 + c1),
             );
 
-        let evals = vec![
-            eval_point_1, // Optimization applied using the claim to reduce the number of sums computed
+        let evals = smallvec![
+            eval_point_1,
             eval_point_2,
             eval_point_3,
         ];
-        let poly = CompressedUnivariatePolyEvals(evals.into());
+        let poly = CompressedUnivariatePolyEvals(evals);
         let round_poly_coefs = poly.to_poly(claim);
 
         // reseed with the s_i polynomial

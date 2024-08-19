@@ -74,7 +74,7 @@ pub fn verify_sum_check_intermediate_layers<
     let q0 = openings_claim.openings[2];
     let q1 = openings_claim.openings[3];
 
-    let eq = EqFunction::new(gkr_eval_point.to_vec()).evaluate(&openings_claim.eval_point);
+    let eq = EqFunction::new(gkr_eval_point.into()).evaluate(&openings_claim.eval_point);
 
     if (p0 * q1 + p1 * q0 + r_batch * q0 * q1) * eq != final_round_claim.claim {
         return Err(SumCheckVerifierError::FinalEvaluationCheckFailed);
@@ -130,8 +130,8 @@ pub fn verify_sum_check_input_layer<
     let mu = evaluator.get_num_fractions().trailing_zeros() - 1;
     let (evaluation_point_mu, evaluation_point_nu) = gkr_eval_point.split_at(mu as usize);
 
-    let eq_mu = EqFunction::new(evaluation_point_mu.to_vec()).evaluations();
-    let eq_nu = EqFunction::new(evaluation_point_nu.to_vec());
+    let eq_mu = EqFunction::new(evaluation_point_mu.into()).evaluations();
+    let eq_nu = EqFunction::new(evaluation_point_nu.into());
 
     let eq_nu_eval = eq_nu.evaluate(&proof.openings_claim.eval_point);
     let expected_evaluation =

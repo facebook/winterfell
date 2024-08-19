@@ -183,7 +183,7 @@ pub struct EqFunction<E> {
 
 impl<E: FieldElement> EqFunction<E> {
     /// Creates a new [EqFunction].
-    pub fn new(r: Vec<E>) -> Self {
+    pub fn new(r: SmallVec<[E; MAX_EQ_SIZE]>) -> Self {
         let tmp = r.into();
         EqFunction { r: tmp }
     }
@@ -206,8 +206,8 @@ impl<E: FieldElement> EqFunction<E> {
     /// Returns the evaluations of
     /// $((y_0, ..., y_{{\nu} - 1}) \mapsto \tilde{EQ}((r_0, ..., r_{{\nu} - 1}), (y_0, ..., y_{{\nu} - 1})))$
     /// over ${0 , 1}^{\nu}$.
-    pub fn ml_at(evaluation_point: Vec<E>) -> MultiLinearPoly<E> {
-        let eq_evals = EqFunction::new(evaluation_point.clone()).evaluations();
+    pub fn ml_at(evaluation_point: SmallVec<[E; MAX_EQ_SIZE]>) -> MultiLinearPoly<E> {
+        let eq_evals = EqFunction::new(evaluation_point).evaluations();
         MultiLinearPoly::from_evaluations(eq_evals)
     }
 }
@@ -345,13 +345,14 @@ fn test_bind() {
 fn test_eq_function() {
     use math::fields::f64::BaseElement;
     use rand_utils::rand_value;
+    use smallvec::smallvec;
 
     let one = BaseElement::ONE;
 
     // Lagrange kernel is computed correctly
     let r0 = rand_value();
     let r1 = rand_value();
-    let eq_function = EqFunction::new(vec![r0, r1]);
+    let eq_function = EqFunction::new(smallvec![r0, r1]);
 
     let expected = vec![(one - r0) * (one - r1), r0 * (one - r1), (one - r0) * r1, r0 * r1];
 

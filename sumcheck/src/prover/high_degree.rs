@@ -152,7 +152,6 @@ use crate::{
 #[allow(clippy::too_many_arguments)]
 pub fn sum_check_prove_higher_degree<
     E: FieldElement,
-    C: RandomCoin<Hasher = H, BaseField = E::BaseField>,
     H: ElementHasher<BaseField = E::BaseField>,
 >(
     evaluator: &impl LogUpGkrEvaluator<BaseField = <E as FieldElement>::BaseField>,
@@ -161,7 +160,7 @@ pub fn sum_check_prove_higher_degree<
     r_sum_check: E,
     log_up_randomness: Vec<E>,
     mls: &mut [MultiLinearPoly<E>],
-    coin: &mut C,
+    coin: &mut impl RandomCoin<Hasher = H, BaseField = E::BaseField>,
 ) -> Result<SumCheckProof<E>, SumCheckProverError> {
     let num_rounds = mls[0].num_variables();
 
@@ -170,8 +169,8 @@ pub fn sum_check_prove_higher_degree<
     // split the evaluation point into two points of dimension mu and nu, respectively
     let mu = evaluator.get_num_fractions().trailing_zeros() - 1;
     let (evaluation_point_mu, evaluation_point_nu) = evaluation_point.split_at(mu as usize);
-    let eq_mu = EqFunction::ml_at(evaluation_point_mu.to_vec()).evaluations().to_vec();
-    let mut eq_nu = EqFunction::ml_at(evaluation_point_nu.to_vec());
+    let eq_mu = EqFunction::ml_at(evaluation_point_mu.into()).evaluations().to_vec();
+    let mut eq_nu = EqFunction::ml_at(evaluation_point_nu.into());
 
     // setup first round claim
     let mut current_round_claim = SumCheckRoundClaim { eval_point: vec![], claim };

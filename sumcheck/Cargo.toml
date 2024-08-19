@@ -12,6 +12,16 @@ keywords = ["crypto", "sumcheck", "iop"]
 edition = "2021"
 rust-version = "1.78"
 
+[[bench]]
+name = "eq_function"
+harness = false
+required-features = ["concurrent"]
+
+[[bench]]
+name = "bind_variable"
+harness = false
+required-features = ["concurrent"]
+
 [features]
 concurrent = ["utils/concurrent", "dep:rayon", "std"]
 default = ["std"]

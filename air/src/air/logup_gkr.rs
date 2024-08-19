@@ -34,7 +34,7 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
     /// information returned from `get_oracles()`. However, this implementation is likely to be
     /// expensive compared to the hand-written implementation. However, we could provide a test
     /// which verifies that `get_oracles()` and `build_query()` methods are consistent.
-    fn build_query<E>(&self, frame: &EvaluationFrame<E>, periodic_values: &[E]) -> Vec<E>
+    fn build_query<E>(&self, frame: &EvaluationFrame<E>, periodic_values: &[E], query: &mut [E])
     where
         E: FieldElement<BaseField = Self::BaseField>;
 
@@ -49,8 +49,8 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
         &self,
         query: &[F],
         rand_values: &[E],
-        numerator: &mut [E],
-        denominator: &mut [E],
+        numerators: &mut [E],
+        denominators: &mut [E],
     ) where
         F: FieldElement<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>;
@@ -61,9 +61,11 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
     /// fractional sums will cancel out. However, in cases when some boundary conditions need to
     /// be imposed on the LogUp-GKR relations, this method can be overridden to compute the final
     /// expected claim.
-    fn compute_claim<E>(&self, inputs: &Self::PublicInputs, rand_values: &[E]) -> E
+    fn compute_claim<E>(&self, _inputs: &Self::PublicInputs, _rand_values: &[E]) -> E
     where
-        E: FieldElement<BaseField = Self::BaseField>;
+        E: FieldElement<BaseField = Self::BaseField>{
+            E::ZERO
+        }
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
