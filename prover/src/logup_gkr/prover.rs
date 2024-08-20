@@ -190,18 +190,16 @@ fn prove_intermediate_layers<
 
         // construct the vector of multi-linear polynomials
         // TODO: avoid unnecessary allocation
-        let (mut left_numerators, mut right_numerators) =
-            inner_layer.numerators.project_least_significant_variable();
-        let (mut left_denominators, mut right_denominators) =
-            inner_layer.denominators.project_least_significant_variable();
+        //let (mut left_numerators, mut right_numerators) =
+            //inner_layer.numerators.project_least_significant_variable();
+        //let (mut left_denominators, mut right_denominators) =
+            //inner_layer.denominators.project_least_significant_variable();
 
         // run the sumcheck protocol
         let proof = sum_check_prove_num_rounds_degree_3(
             claimed_evaluation,
-            &mut left_numerators,
-            &mut right_numerators,
-            &mut left_denominators,
-            &mut right_denominators,
+            &inner_layer.numerators,
+            &inner_layer.denominators,
             &mut eq_mle,
             transcript,
         )?;
@@ -251,10 +249,8 @@ fn sum_check_prove_num_rounds_degree_3<
     H: ElementHasher<BaseField = E::BaseField>,
 >(
     claim: (E, E),
-    p0: &mut MultiLinearPoly<E>,
-    p1: &mut MultiLinearPoly<E>,
-    q0: &mut MultiLinearPoly<E>,
-    q1: &mut MultiLinearPoly<E>,
+    p: & MultiLinearPoly<E>,
+    q: & MultiLinearPoly<E>,
     eq: &mut MultiLinearPoly<E>,
     transcript: &mut C,
 ) -> Result<SumCheckProof<E>, GkrProverError> {
@@ -263,7 +259,7 @@ fn sum_check_prove_num_rounds_degree_3<
     let r_batch = transcript.draw().map_err(|_| GkrProverError::FailedToGenerateChallenge)?;
     let claim_ = claim.0 + claim.1 * r_batch;
 
-    let proof = sumcheck_prove_plain(claim_, r_batch, p0, p1, q0, q1, eq, transcript)?;
+    let proof = sumcheck_prove_plain(claim_, r_batch, p, q, eq, transcript)?;
 
     Ok(proof)
 }
