@@ -55,11 +55,11 @@ pub fn verify_logup_gkr<
 
     // verify all GKR layers but for the last one
     let num_layers = before_final_layer_proofs.proof.len();
-    let mut rand = vec![r];
+    let mut evaluation_point = vec![r];
     for i in 0..num_layers {
         let FinalOpeningClaim { eval_point, openings } = verify_sum_check_intermediate_layers(
             &before_final_layer_proofs.proof[i],
-            &rand,
+            &evaluation_point,
             reduced_claim,
             transcript,
         )?;
@@ -78,7 +78,7 @@ pub fn verify_logup_gkr<
         let rand_sumcheck = eval_point;
         let mut ext = vec![r_layer];
         ext.extend_from_slice(&rand_sumcheck);
-        rand = ext;
+        evaluation_point = ext;
     }
 
     // verify the proof of the final GKR layer and pass final opening claim for verification
@@ -87,7 +87,7 @@ pub fn verify_logup_gkr<
         evaluator,
         final_layer_proof,
         log_up_randomness,
-        &rand,
+        &evaluation_point,
         reduced_claim,
         transcript,
     )

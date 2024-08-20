@@ -297,7 +297,7 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
         unimplemented!()
     }
 
-    fn build_query<E>(&self, _frame: &EvaluationFrame<E>, _periodic_values: &[E]) -> Vec<E>
+    fn build_query<E>(&self, _frame: &EvaluationFrame<E>, _periodic_values: &[E], _query: &mut [E])
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {

@@ -73,11 +73,11 @@ pub fn prove_gkr<E: FieldElement>(
         prove_intermediate_layers(&mut circuit, public_coin)?;
 
     // build the MLEs of the relevant main trace columns
-    let main_trace_mls =
+    let mut main_trace_mls =
         build_mls_from_main_trace_segment(evaluator.get_oracles(), main_trace.main_segment())?;
 
     let final_layer_proof =
-        prove_input_layer(evaluator, logup_randomness, main_trace_mls, gkr_claim, public_coin)?;
+        prove_input_layer(evaluator, logup_randomness, &mut main_trace_mls, gkr_claim, public_coin)?;
 
     // include the circuit output as part of the final proof
     let CircuitLayerPolys { numerators, denominators } = circuit.output_layer().clone();
@@ -97,12 +97,12 @@ fn prove_input_layer<
 >(
     evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
     log_up_randomness: Vec<E>,
-    mut mls: Vec<MultiLinearPoly<E>>,
-    gkr_claim: GkrClaim<E>,
+    multi_linear_ext_polys: &mut[MultiLinearPoly<E>],
+    claim: GkrClaim<E>,
     transcript: &mut C,
 ) -> Result<FinalLayerProof<E>, GkrProverError> {
     // parse the [GkrClaim] resulting from the previous GKR layer
-    let GkrClaim { evaluation_point, claimed_evaluation } = gkr_claim;
+    let GkrClaim { evaluation_point, claimed_evaluation } = claim;
 
     transcript.reseed(H::hash_elements(&[claimed_evaluation.0, claimed_evaluation.1]));
     let r_batch = transcript.draw().map_err(|_| GkrProverError::FailedToGenerateChallenge)?;
@@ -114,11 +114,11 @@ fn prove_input_layer<
         claim,
         r_batch,
         log_up_randomness,
-        &mut mls,
+        multi_linear_ext_polys,
         transcript,
     )?;
 
-    Ok(FinalLayerProof { proof })
+    Ok(FinalLayerProof::new(proof))
 }
 
 // TODO: Make the multi-linears over the base field and define an operation of folding with a challenge
@@ -172,10 +172,10 @@ fn prove_intermediate_layers<
 
     // generate the challenge and reduce [p0, p1, q0, q1] to [pr, qr]
     let r = transcript.draw().map_err(|_| GkrProverError::FailedToGenerateChallenge)?;
-    let mut claim = circuit.evaluate_output_layer(r);
+    let mut claimed_evaluation = circuit.evaluate_output_layer(r);
 
-    let mut proof_layers: Vec<SumCheckProof<E>> = Vec::new();
-    let mut rand = vec![r];
+    let mut layer_proofs: Vec<SumCheckProof<E>> = Vec::new();
+    let mut evaluation_point = vec![r];
 
     // Loop over all inner layers, from output to input.
     //
@@ -186,7 +186,7 @@ fn prove_intermediate_layers<
     // reduced in terms of the input layer separately in `prove_final_circuit_layer`.
     for inner_layer in circuit.layers().iter().skip(1).rev().skip(1) {
         // construct the Lagrange kernel evaluated at the previous GKR round randomness
-        let mut poly_x = EqFunction::ml_at(rand.into());
+        let mut eq_mle = EqFunction::ml_at(evaluation_point.into());
 
         // construct the vector of multi-linear polynomials
         // TODO: avoid unnecessary allocation
@@ -197,12 +197,12 @@ fn prove_intermediate_layers<
 
         // run the sumcheck protocol
         let proof = sum_check_prove_num_rounds_degree_3(
-            claim,
+            claimed_evaluation,
             &mut left_numerators,
             &mut right_numerators,
             &mut left_denominators,
             &mut right_denominators,
-            &mut poly_x,
+            &mut eq_mle,
             transcript,
         )?;
 
@@ -211,7 +211,7 @@ fn prove_intermediate_layers<
         let r_layer = transcript.draw().map_err(|_| GkrProverError::FailedToGenerateChallenge)?;
 
         // reduce the claim
-        claim = {
+        claimed_evaluation = {
             let left_numerators_opening = proof.openings_claim.openings[0];
             let right_numerators_opening = proof.openings_claim.openings[1];
             let left_denominators_opening = proof.openings_claim.openings[2];
@@ -229,16 +229,16 @@ fn prove_intermediate_layers<
         // collect the randomness used for the current layer
         let mut ext = vec![r_layer];
         ext.extend_from_slice(&proof.openings_claim.eval_point);
-        rand = ext;
+        evaluation_point = ext;
 
-        proof_layers.push(proof);
+        layer_proofs.push(proof);
     }
 
     Ok((
-        BeforeFinalLayerProof { proof: proof_layers },
+        BeforeFinalLayerProof { proof: layer_proofs },
         GkrClaim {
-            evaluation_point: rand,
-            claimed_evaluation: claim,
+            evaluation_point,
+            claimed_evaluation,
         },
     ))
 }
