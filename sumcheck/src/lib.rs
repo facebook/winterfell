@@ -259,6 +259,7 @@ where
 ///
 /// This is the result of batching the `p_k` and `q_k` of section 3.2 in
 /// https://eprint.iacr.org/2023/1284.pdf.
+#[inline(always)]
 fn comb_func<E: FieldElement>(p0: E, p1: E, q0: E, q1: E, eq: E, r_batch: E) -> E {
     (p0 * q1 + p1 * q0 + r_batch * q0 * q1) * eq
 }

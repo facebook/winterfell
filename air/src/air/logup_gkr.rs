@@ -5,8 +5,9 @@
 
 use alloc::vec::Vec;
 
-use super::EvaluationFrame;
 use math::{ExtensionOf, FieldElement, StarkField, ToElements};
+
+use super::EvaluationFrame;
 
 pub trait LogUpGkrEvaluator: Clone + Sync {
     /// Defines the base field of the evaluator.
@@ -26,7 +27,7 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
     fn get_num_fractions(&self) -> usize;
 
     /// Returns the maximal degree of the multi-variate associated to the input layer.
-    /// 
+    ///
     /// This is equal to the max of $1 + deg_k(\text{numerator}_i) * deg_k(\text{denominator}_j)$ where
     /// $i$ and $j$ range over the number of numerators and denominators, respectively, and $deg_k$
     /// is the degree of a multi-variate polynomial in its $k$-th variable.
@@ -67,9 +68,10 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
     /// expected claim.
     fn compute_claim<E>(&self, _inputs: &Self::PublicInputs, _rand_values: &[E]) -> E
     where
-        E: FieldElement<BaseField = Self::BaseField>{
-            E::ZERO
-        }
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        E::ZERO
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]

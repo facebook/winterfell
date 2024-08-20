@@ -24,10 +24,8 @@ fn sum_check_plain(c: &mut Criterion) {
         group.bench_function(BenchmarkId::new("", log_poly_size), |b| {
             b.iter_batched(
                 || {
-                    let transcript = DefaultRandomCoin::<Blake3_192<BaseElement>>::new(&vec![
-                            BaseElement::ZERO;
-                            4
-                        ]);
+                    let transcript =
+                        DefaultRandomCoin::<Blake3_192<BaseElement>>::new(&[BaseElement::ZERO; 4]);
                     (setup_sum_check::<BaseElement>(log_poly_size), transcript)
                 },
                 |((claim, r_batch, p0, p1, q0, q1, eq), transcript)| {
@@ -55,6 +53,7 @@ fn sum_check_plain(c: &mut Criterion) {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn setup_sum_check<E: FieldElement>(
     log_size: usize,
 ) -> (
