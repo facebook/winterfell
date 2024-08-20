@@ -6,7 +6,9 @@
 use alloc::vec::Vec;
 
 use air::{
-    Air, EvaluationFrame, GkrData, LagrangeConstraintsCompositionCoefficients, LagrangeKernelConstraints, LagrangeKernelEvaluationFrame, LogUpGkrEvaluator, LAGRANGE_KERNEL_OFFSET, S_COLUMN_OFFSET
+    Air, EvaluationFrame, GkrData, LagrangeConstraintsCompositionCoefficients,
+    LagrangeKernelConstraints, LagrangeKernelEvaluationFrame, LogUpGkrEvaluator,
+    LAGRANGE_KERNEL_OFFSET, S_COLUMN_OFFSET,
 };
 use math::{batch_inversion, FieldElement};
 
@@ -79,6 +81,7 @@ where
 
         let c = self.gkr_data.compute_batched_claim();
         let mean = c / E::from(E::BaseField::from(trace.trace_info().length() as u32));
+        let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
 
         for step in 0..domain.ce_domain_size() {
             // compute Lagrange kernel frame
@@ -129,8 +132,8 @@ where
                 let s_cur = aux_frame.current()[s_col_idx];
                 let s_nxt = aux_frame.next()[s_col_idx];
 
-                let query = evaluator.build_query(&main_frame, &[]);
-                let batched_query = self.gkr_data.compute_batched_query_(&query);
+                evaluator.build_query(&main_frame, &[], &mut query);
+                let batched_query = self.gkr_data.compute_batched_query(&query);
 
                 let rhs = s_cur - mean + batched_query * l_cur;
                 let lhs = s_nxt;

@@ -130,7 +130,7 @@ impl<E: FieldElement> GkrData<E> {
                 .fold(E::ZERO, |acc, (a, b)| acc + *a * *b)
     }
 
-    pub fn compute_batched_query_<F>(&self, query: &[F]) -> E
+    pub fn compute_batched_query<F>(&self, query: &[F]) -> E
     where
         F: FieldElement<BaseField = E::BaseField>,
         E: ExtensionOf<F>,

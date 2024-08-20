@@ -8,9 +8,8 @@ use core::cmp;
 
 use math::StarkField;
 
-use crate::{air::TransitionConstraintDegree, ProofOptions, TraceInfo};
-
 use super::LAGRANGE_KERNEL_OFFSET;
+use crate::{air::TransitionConstraintDegree, ProofOptions, TraceInfo};
 
 // AIR CONTEXT
 // ================================================================================================
@@ -263,11 +262,6 @@ impl<B: StarkField, P> AirContext<B, P> {
 
     /// Returns true if LogUp-GKR is enabled.
     pub fn logup_gkr_enabled(&self) -> bool {
-        self.logup_gkr
-    }
-
-    /// Returns true if the auxiliary trace segment contains a Lagrange kernel column
-    pub fn is_with_logup_gkr(&self) -> bool {
         self.logup_gkr
     }
 

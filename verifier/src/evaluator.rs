@@ -131,8 +131,10 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
         let mean = batched_claim
             .mul_base(E::BaseField::ONE / E::BaseField::from(air.trace_length() as u32));
 
-        let query = air.get_logup_gkr_evaluator::<E>().build_query(main_trace_frame, &[]);
-        let batched_claim_at_query = gkr_data.compute_batched_query_::<E>(&query);
+        let mut query = vec![E::ZERO; air.get_logup_gkr_evaluator::<E>().get_oracles().len()];
+        air.get_logup_gkr_evaluator::<E>()
+            .build_query(main_trace_frame, &[], &mut query);
+        let batched_claim_at_query = gkr_data.compute_batched_query::<E>(&query);
         let rhs = s_cur - mean + batched_claim_at_query * l_cur;
         let lhs = s_nxt;
 
