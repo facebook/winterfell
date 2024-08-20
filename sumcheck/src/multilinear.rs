@@ -94,15 +94,28 @@ impl<E: FieldElement> MultiLinearPoly<E> {
 
     /// Given the multilinear polynomial $f(y_0, y_1, ..., y_{{\nu} - 1})$, returns two polynomials:
     /// $f(0, y_1, ..., y_{{\nu} - 1})$ and $f(1, y_1, ..., y_{{\nu} - 1})$.
-    pub fn project_least_significant_variable(&self) -> (Self, Self) {
-        let mut p0 = Vec::with_capacity(self.num_evaluations() / 2);
-        let mut p1 = Vec::with_capacity(self.num_evaluations() / 2);
-        for chunk in self.evaluations.chunks_exact(2) {
-            p0.push(chunk[0]);
-            p1.push(chunk[1]);
-        }
+    pub fn project_least_significant_variable(mut self) -> (Self, Self) {
+        let odds: Vec<E> = self
+            .evaluations
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, x)| if idx % 2 == 1 { Some(*x) } else { None })
+            .collect();
 
-        (MultiLinearPoly::from_evaluations(p0), MultiLinearPoly::from_evaluations(p1))
+        // Builds the evens multilinear from the current `self.evaluations` buffer, which saves an
+        // allocation.
+        let evens = {
+            let evens_size = self.num_evaluations() / 2;
+            for write_idx in 0..evens_size {
+                let read_idx = write_idx * 2;
+                self.evaluations[write_idx] = self.evaluations[read_idx];
+            }
+            self.evaluations.truncate(evens_size);
+
+            self.evaluations
+        };
+
+        (Self::from_evaluations(evens), Self::from_evaluations(odds))
     }
 }
 

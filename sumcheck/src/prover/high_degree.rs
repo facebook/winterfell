@@ -159,7 +159,7 @@ pub fn sum_check_prove_higher_degree<
     claim: E,
     r_sum_check: E,
     log_up_randomness: Vec<E>,
-    mls: &mut [MultiLinearPoly<E>],
+    mut mls: Vec<MultiLinearPoly<E>>,
     coin: &mut impl RandomCoin<Hasher = H, BaseField = E::BaseField>,
 ) -> Result<SumCheckProof<E>, SumCheckProverError> {
     let num_rounds = mls[0].num_variables();
@@ -177,7 +177,7 @@ pub fn sum_check_prove_higher_degree<
 
     // run the first round of the protocol
     let round_poly_evals =
-        sumcheck_round(&eq_mu, evaluator, &eq_nu, mls, &log_up_randomness, r_sum_check);
+        sumcheck_round(&eq_mu, evaluator, &eq_nu, &mls, &log_up_randomness, r_sum_check);
     let round_poly_coefs = round_poly_evals.to_poly(current_round_claim.claim);
 
     // reseed with the s_0 polynomial
@@ -201,7 +201,7 @@ pub fn sum_check_prove_higher_degree<
         // run the i-th round of the protocol using the folded multi-linears for the new reduced
         // claim. This basically computes the s_i polynomial.
         let round_poly_evals =
-            sumcheck_round(&eq_mu, evaluator, &eq_nu, mls, &log_up_randomness, r_sum_check);
+            sumcheck_round(&eq_mu, evaluator, &eq_nu, &mls, &log_up_randomness, r_sum_check);
 
         // update the claim
         current_round_claim = new_round_claim;

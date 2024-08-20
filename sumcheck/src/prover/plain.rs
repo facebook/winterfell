@@ -49,10 +49,8 @@ use crate::{
 pub fn sumcheck_prove_plain<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>>(
     claim: E,
     r_batch: E,
-    p0: &mut MultiLinearPoly<E>,
-    p1: &mut MultiLinearPoly<E>,
-    q0: &mut MultiLinearPoly<E>,
-    q1: &mut MultiLinearPoly<E>,
+    p: MultiLinearPoly<E>,
+    q: MultiLinearPoly<E>,
     eq: &mut MultiLinearPoly<E>,
     transcript: &mut impl RandomCoin<Hasher = H, BaseField = E::BaseField>,
 ) -> Result<SumCheckProof<E>, SumCheckProverError> {
@@ -60,6 +58,11 @@ pub fn sumcheck_prove_plain<E: FieldElement, H: ElementHasher<BaseField = E::Bas
 
     let mut claim = claim;
     let mut challenges = vec![];
+
+    // construct the vector of multi-linear polynomials
+    // TODO: avoid unnecessary allocation
+    let (mut p0, mut p1) = p.project_least_significant_variable();
+    let (mut q0, mut q1) = q.project_least_significant_variable();
 
     for _ in 0..p0.num_variables() {
         let len = p0.num_evaluations() / 2;

@@ -53,7 +53,7 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
     fn evaluate_query<F, E>(
         &self,
         query: &[F],
-        rand_values: &[E],
+        logup_randomness: &[E],
         numerators: &mut [E],
         denominators: &mut [E],
     ) where

@@ -42,7 +42,7 @@ fn sum_check_high_degree(c: &mut Criterion) {
                     logup_randomness,
                     transcript,
                 )| {
-                    let mut mls = vec![ml0, ml1, ml2, ml3, ml4];
+                    let mls = vec![ml0, ml1, ml2, ml3, ml4];
                     let mut transcript = transcript;
 
                     sum_check_prove_higher_degree(
@@ -51,7 +51,7 @@ fn sum_check_high_degree(c: &mut Criterion) {
                         claim,
                         r_batch,
                         logup_randomness,
-                        &mut mls,
+                        mls,
                         &mut transcript,
                     )
                 },
