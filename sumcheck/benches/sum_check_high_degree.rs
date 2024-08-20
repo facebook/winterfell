@@ -27,10 +27,8 @@ fn sum_check_high_degree(c: &mut Criterion) {
                 || {
                     let logup_randomness = rand_vector(1);
                     let evaluator = PlainLogUpGkrEval::<BaseElement>::default();
-                    let transcript = DefaultRandomCoin::<Blake3_192<BaseElement>>::new(&vec![
-                            BaseElement::ZERO;
-                            4
-                        ]);
+                    let transcript =
+                        DefaultRandomCoin::<Blake3_192<BaseElement>>::new(&[BaseElement::ZERO; 4]);
                     (
                         setup_sum_check::<BaseElement>(log_poly_size),
                         evaluator,
@@ -63,6 +61,7 @@ fn sum_check_high_degree(c: &mut Criterion) {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn setup_sum_check<E: FieldElement>(
     log_size: usize,
 ) -> (
