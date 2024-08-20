@@ -10,11 +10,11 @@ use math::{ExtensionOf, FieldElement, StarkField, ToElements};
 use super::EvaluationFrame;
 
 /// A trait containing the necessary information in order to run the LogUp-GKR protocol of [1].
-/// 
+///
 /// The trait contains useful information for running the GKR protocol as well as for implementing
 /// the univariate IOP for multi-linear evaluation of Section 5 in [1] for the final evaluation
 /// check resulting from GKR.
-/// 
+///
 /// [1]: https://eprint.iacr.org/2023/1284
 pub trait LogUpGkrEvaluator: Clone + Sync {
     /// Defines the base field of the evaluator.

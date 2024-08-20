@@ -44,6 +44,8 @@ use crate::{
 /// Instead of executing two runs of the sum-check protocol, a batching randomness `r_batch` is
 /// sent by the verifier at the outset in order to batch the two statments.
 ///
+/// Note that the degree of the non-linear composition polynomial is 3.
+///
 /// [1]: https://eprint.iacr.org/2023/1284
 #[allow(clippy::too_many_arguments)]
 pub fn sumcheck_prove_plain<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>>(
