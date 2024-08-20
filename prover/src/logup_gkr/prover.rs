@@ -75,7 +75,7 @@ pub fn prove_gkr<E: FieldElement>(
     let (before_final_layer_proofs, gkr_claim) = prove_intermediate_layers(circuit, public_coin)?;
 
     // build the MLEs of the relevant main trace columns
-    let mut main_trace_mls =
+    let main_trace_mls =
         build_mls_from_main_trace_segment(evaluator.get_oracles(), main_trace.main_segment())?;
 
     let final_layer_proof =
