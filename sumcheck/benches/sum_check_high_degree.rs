@@ -62,6 +62,7 @@ fn sum_check_high_degree(c: &mut Criterion) {
 }
 
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::type_complexity)]
 fn setup_sum_check<E: FieldElement>(
     log_size: usize,
 ) -> (
