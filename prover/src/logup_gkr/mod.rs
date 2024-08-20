@@ -84,8 +84,8 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
     /// Note that the return type is a slice of [`CircuitLayerPolys`] as opposed to
     /// [`CircuitLayer`], since the evaluated layers are stored in a representation which can be
     /// proved using GKR.
-    pub fn layers(&self) -> &[CircuitLayerPolys<E>] {
-        &self.layer_polys
+    pub fn layers(self) -> Vec<CircuitLayerPolys<E>> {
+        self.layer_polys
     }
 
     /// Returns the numerator/denominator polynomials representing the output layer of the circuit.
@@ -195,6 +195,10 @@ where
             numerators: MultiLinearPoly::from_evaluations(numerators),
             denominators: MultiLinearPoly::from_evaluations(denominators),
         }
+    }
+
+    fn into_numerators_denominators(self) -> (MultiLinearPoly<E>, MultiLinearPoly<E>) {
+        (self.numerators, self.denominators)
     }
 }
 
