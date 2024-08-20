@@ -75,11 +75,11 @@ pub fn prove_gkr<E: FieldElement>(
     let (before_final_layer_proofs, gkr_claim) = prove_intermediate_layers(circuit, public_coin)?;
 
     // build the MLEs of the relevant main trace columns
-    let main_trace_mls =
+    let mut main_trace_mls =
         build_mls_from_main_trace_segment(evaluator.get_oracles(), main_trace.main_segment())?;
 
     let final_layer_proof =
-        prove_input_layer(evaluator, logup_randomness, main_trace_mls, gkr_claim, public_coin)?;
+        prove_input_layer(evaluator, logup_randomness, &mut main_trace_mls, gkr_claim, public_coin)?;
 
     Ok(GkrCircuitProof {
         circuit_outputs: CircuitOutput { numerators, denominators },
