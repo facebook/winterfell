@@ -186,7 +186,7 @@ fn prove_intermediate_layers<
     // reduced in terms of the input layer separately in `prove_final_circuit_layer`.
     for inner_layer in circuit.layers().iter().skip(1).rev().skip(1) {
         // construct the Lagrange kernel evaluated at the previous GKR round randomness
-        let mut poly_x = EqFunction::ml_at(rand.clone());
+        let mut poly_x = EqFunction::ml_at(rand.into());
 
         // construct the vector of multi-linear polynomials
         // TODO: avoid unnecessary allocation

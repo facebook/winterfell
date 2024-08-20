@@ -425,7 +425,7 @@ pub fn build_s_column<E: FieldElement>(
 
 /// Builds the Lagrange kernel column at a given point.
 pub fn build_lagrange_column<E: FieldElement>(lagrange_randomness: &[E]) -> Vec<E> {
-    EqFunction::new(lagrange_randomness.to_vec()).evaluations()
+    EqFunction::new(lagrange_randomness.into()).evaluations()
 }
 
 #[derive(Debug, thiserror::Error)]
