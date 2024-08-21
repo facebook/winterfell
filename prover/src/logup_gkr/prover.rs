@@ -120,8 +120,8 @@ fn prove_input_layer<
     Ok(FinalLayerProof::new(proof))
 }
 
-// TODO: Make the multi-linears over the base field and define an operation of folding with a challenge
-// in an extension field.
+/// Builds the multi-linear extension polynomials needed to run the final sum-check of GKR for
+/// LogUp-GKR.
 fn build_mls_from_main_trace_segment<E: FieldElement>(
     oracles: &[LogUpGkrOracle<E::BaseField>],
     main_trace: &ColMatrix<<E as FieldElement>::BaseField>,
