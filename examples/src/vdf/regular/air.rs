@@ -83,7 +83,7 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
 
     type PublicInputs = VdfInputs;
 
-    fn get_oracles(&self) -> Vec<air::LogUpGkrOracle<Self::BaseField>> {
+    fn get_oracles(&self) -> &[air::LogUpGkrOracle<Self::BaseField>] {
         unimplemented!()
     }
 

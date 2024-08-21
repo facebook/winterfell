@@ -206,27 +206,27 @@ impl LogUpGkrEvaluator for () {
 
     type PublicInputs = ();
 
-    fn get_oracles(&self) -> Vec<LogUpGkrOracle<Self::BaseField>> {
-        unimplemented!()
+    fn get_oracles(&self) -> &[LogUpGkrOracle<Self::BaseField>] {
+        panic!("LogUpGkrEvaluator method called but LogUp-GKR is not implemented")
     }
 
     fn get_num_rand_values(&self) -> usize {
-        unimplemented!()
+        panic!("LogUpGkrEvaluator method called but LogUp-GKR is not implemented")
     }
 
     fn get_num_fractions(&self) -> usize {
-        unimplemented!()
+        panic!("LogUpGkrEvaluator method called but LogUp-GKR is not implemented")
     }
 
     fn max_degree(&self) -> usize {
-        unimplemented!()
+        panic!("LogUpGkrEvaluator method called but LogUp-GKR is not implemented")
     }
 
     fn build_query<E>(&self, _frame: &EvaluationFrame<E>, _periodic_values: &[E], _query: &mut [E])
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
-        unimplemented!()
+        panic!("LogUpGkrEvaluator method called but LogUp-GKR is not implemented")
     }
 
     fn evaluate_query<F, E>(
@@ -239,13 +239,17 @@ impl LogUpGkrEvaluator for () {
         F: FieldElement<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
     {
-        unimplemented!()
+        panic!("LogUpGkrEvaluator method called but LogUp-GKR is not implemented")
     }
+}
 
-    fn compute_claim<E>(&self, _inputs: &Self::PublicInputs, _rand_values: &[E]) -> E
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        unimplemented!()
-    }
+#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
+pub enum LogUpGkrOracle<B: StarkField> {
+    // a column with a given index in the main trace segment
+    CurrentRow(usize),
+    // a column with a given index in the main trace segment but shifted upwards
+    NextRow(usize),
+    // a virtual periodic column defined by its values in a given cycle. Note that the cycle length
+    // must be a power of 2.
+    PeriodicValue(Vec<B>),
 }

@@ -379,7 +379,7 @@ fn verify_gkr<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>>(
         LagrangeKernelRandElements::new(eval_point),
         batching_randomness,
         openings,
-        evaluator.get_oracles(),
+        evaluator.get_oracles().to_vec(),
     );
 
     Ok(gkr_rand_elements)
