@@ -363,7 +363,7 @@ pub fn generate_gkr_randomness<
     H: ElementHasher<BaseField = E::BaseField>,
 >(
     final_opening_claim: FinalOpeningClaim<E>,
-    oracles: Vec<LogUpGkrOracle<E::BaseField>>,
+    oracles: &[LogUpGkrOracle<E::BaseField>],
     public_coin: &mut C,
 ) -> GkrData<E> {
     let FinalOpeningClaim { eval_point, openings } = final_opening_claim;
@@ -379,7 +379,7 @@ pub fn generate_gkr_randomness<
         LagrangeKernelRandElements::new(eval_point),
         batching_randomness,
         openings,
-        oracles,
+        oracles.to_vec(),
     )
 }
 

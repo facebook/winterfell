@@ -241,7 +241,7 @@ impl<B: StarkField> AirContext<B> {
 
     /// Returns the index of the auxiliary column which implements the Lagrange kernel, if any
     pub fn lagrange_kernel_aux_column_idx(&self) -> Option<usize> {
-        if self.is_with_logup_gkr() {
+        if self.uses_logup_gkr() {
             Some(self.trace_info().aux_segment_width() - 1)
         } else {
             None
@@ -249,7 +249,7 @@ impl<B: StarkField> AirContext<B> {
     }
 
     /// Returns true if LogUp-GKR is enabled.
-    pub fn is_with_logup_gkr(&self) -> bool {
+    pub fn uses_logup_gkr(&self) -> bool {
         self.logup_gkr
     }
 

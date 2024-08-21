@@ -10,6 +10,7 @@ use air::{
     LogUpGkrEvaluator, LogUpGkrOracle, ProofOptions, TraceInfo,
 };
 use crypto::MerkleTree;
+use math::StarkField;
 
 use super::*;
 use crate::{
@@ -174,13 +175,26 @@ impl Air for LogUpGkrSimpleAir {
     fn get_logup_gkr_evaluator<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
     ) -> Self::LogUpGkrEvaluator {
-        PlainLogUpGkrEval::default()
+        PlainLogUpGkrEval::new()
     }
 }
 
 #[derive(Clone, Default)]
-pub struct PlainLogUpGkrEval<B: FieldElement> {
+pub struct PlainLogUpGkrEval<B: FieldElement + StarkField> {
+    oracles: Vec<LogUpGkrOracle<B>>,
     _field: PhantomData<B>,
+}
+
+impl<B: FieldElement + StarkField> PlainLogUpGkrEval<B> {
+    pub fn new() -> Self {
+        let committed_0 = LogUpGkrOracle::CurrentRow(0);
+        let committed_1 = LogUpGkrOracle::CurrentRow(1);
+        let committed_2 = LogUpGkrOracle::CurrentRow(2);
+        let committed_3 = LogUpGkrOracle::CurrentRow(3);
+        let committed_4 = LogUpGkrOracle::CurrentRow(4);
+        let oracles = vec![committed_0, committed_1, committed_2, committed_3, committed_4];
+        Self { oracles, _field: PhantomData }
+    }
 }
 
 impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
@@ -188,13 +202,8 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
 
     type PublicInputs = ();
 
-    fn get_oracles(&self) -> Vec<LogUpGkrOracle<Self::BaseField>> {
-        let committed_0 = LogUpGkrOracle::CurrentRow(0);
-        let committed_1 = LogUpGkrOracle::CurrentRow(1);
-        let committed_2 = LogUpGkrOracle::CurrentRow(2);
-        let committed_3 = LogUpGkrOracle::CurrentRow(3);
-        let committed_4 = LogUpGkrOracle::CurrentRow(4);
-        vec![committed_0, committed_1, committed_2, committed_3, committed_4]
+    fn get_oracles(&self) -> &[LogUpGkrOracle<Self::BaseField>] {
+        &self.oracles
     }
 
     fn get_num_rand_values(&self) -> usize {

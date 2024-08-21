@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 
-use air::LogUpGkrEvaluator;
+use air::{LogUpGkrEvaluator, LogUpGkrOracle};
 use crypto::{ElementHasher, RandomCoin};
 use math::FieldElement;
 use sumcheck::{
@@ -123,21 +123,21 @@ fn prove_input_layer<
 // TODO: Make the multi-linears over the base field and define an operation of folding with a challenge
 // in an extension field.
 fn build_mls_from_main_trace_segment<E: FieldElement>(
-    oracles: Vec<air::LogUpGkrOracle<E::BaseField>>,
+    oracles: &[LogUpGkrOracle<E::BaseField>],
     main_trace: &ColMatrix<<E as FieldElement>::BaseField>,
 ) -> Result<Vec<MultiLinearPoly<E>>, GkrProverError> {
     let mut mls = vec![];
 
     for oracle in oracles {
         match oracle {
-            air::LogUpGkrOracle::CurrentRow(index) => {
-                let col = main_trace.get_column(index);
+            LogUpGkrOracle::CurrentRow(index) => {
+                let col = main_trace.get_column(*index);
                 let values: Vec<E> = col.iter().map(|value| E::from(*value)).collect();
                 let ml = MultiLinearPoly::from_evaluations(values);
                 mls.push(ml)
             },
-            air::LogUpGkrOracle::NextRow(index) => {
-                let col = main_trace.get_column(index);
+            LogUpGkrOracle::NextRow(index) => {
+                let col = main_trace.get_column(*index);
                 let mut values: Vec<E> = col.iter().map(|value| E::from(*value)).collect();
                 if let Some(value) = values.last_mut() {
                     *value = E::ZERO
@@ -146,7 +146,7 @@ fn build_mls_from_main_trace_segment<E: FieldElement>(
                 let ml = MultiLinearPoly::from_evaluations(values);
                 mls.push(ml)
             },
-            air::LogUpGkrOracle::PeriodicValue(_) => unimplemented!(),
+            LogUpGkrOracle::PeriodicValue(_) => unimplemented!(),
         };
     }
     Ok(mls)

@@ -179,7 +179,7 @@ where
 
     // process auxiliary trace segments (if any), to build a set of random elements for each segment
     let aux_trace_rand_elements = if air.trace_info().is_multi_segment() {
-        if air.context().is_with_logup_gkr() {
+        if air.context().uses_logup_gkr() {
             let gkr_proof = {
                 let gkr_proof_serialized =
                     channel.read_gkr_proof().expect("Expected a GKR proof but there was none");
@@ -373,7 +373,7 @@ fn verify_gkr<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>>(
         LagrangeKernelRandElements::new(eval_point),
         batching_randomness,
         openings,
-        evaluator.get_oracles(),
+        evaluator.get_oracles().to_vec(),
     );
 
     Ok(gkr_rand_elements)

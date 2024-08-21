@@ -8,7 +8,7 @@ use std::{marker::PhantomData, time::Duration};
 use air::{EvaluationFrame, LogUpGkrEvaluator, LogUpGkrOracle};
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use crypto::{hashers::Blake3_192, DefaultRandomCoin, RandomCoin};
-use math::{fields::f64::BaseElement, ExtensionOf, FieldElement};
+use math::{fields::f64::BaseElement, ExtensionOf, FieldElement, StarkField};
 use rand_utils::{rand_value, rand_vector};
 #[cfg(feature = "concurrent")]
 pub use rayon::prelude::*;
@@ -94,8 +94,21 @@ fn setup_sum_check<E: FieldElement>(
 }
 
 #[derive(Clone, Default)]
-pub struct PlainLogUpGkrEval<B: FieldElement> {
+pub struct PlainLogUpGkrEval<B: FieldElement + StarkField> {
+    oracles: Vec<LogUpGkrOracle<B>>,
     _field: PhantomData<B>,
+}
+
+impl<B: FieldElement + StarkField> PlainLogUpGkrEval<B> {
+    pub fn new() -> Self {
+        let committed_0 = LogUpGkrOracle::CurrentRow(0);
+        let committed_1 = LogUpGkrOracle::CurrentRow(1);
+        let committed_2 = LogUpGkrOracle::CurrentRow(2);
+        let committed_3 = LogUpGkrOracle::CurrentRow(3);
+        let committed_4 = LogUpGkrOracle::CurrentRow(4);
+        let oracles = vec![committed_0, committed_1, committed_2, committed_3, committed_4];
+        Self { oracles, _field: PhantomData }
+    }
 }
 
 impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
@@ -103,13 +116,8 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
 
     type PublicInputs = ();
 
-    fn get_oracles(&self) -> Vec<LogUpGkrOracle<Self::BaseField>> {
-        let committed_0 = LogUpGkrOracle::CurrentRow(0);
-        let committed_1 = LogUpGkrOracle::CurrentRow(1);
-        let committed_2 = LogUpGkrOracle::CurrentRow(2);
-        let committed_3 = LogUpGkrOracle::CurrentRow(3);
-        let committed_4 = LogUpGkrOracle::CurrentRow(4);
-        vec![committed_0, committed_1, committed_2, committed_3, committed_4]
+    fn get_oracles(&self) -> &[LogUpGkrOracle<Self::BaseField>] {
+        &self.oracles
     }
 
     fn get_num_rand_values(&self) -> usize {
