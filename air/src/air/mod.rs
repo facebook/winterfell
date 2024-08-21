@@ -34,6 +34,9 @@ pub use lagrange::{
     LagrangeKernelRandElements, LagrangeKernelTransitionConstraints,
 };
 
+mod logup_gkr;
+pub use logup_gkr::{LogUpGkrEvaluator, LogUpGkrOracle};
+
 mod coefficients;
 pub use coefficients::{
     ConstraintCompositionCoefficients, DeepCompositionCoefficients,
