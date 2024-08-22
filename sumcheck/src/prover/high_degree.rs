@@ -53,7 +53,7 @@ use crate::{
 /// 2. ${[w]} := \sum_i w_i \cdot 2^i$ and $w := (w_1, \cdots, w_{\mu})$.
 /// 3. $h_{j}$ and $g_{j}$ are multi-variate polynomials for $j = 0, \cdots, 2^{\mu} - 1$.
 /// 4. $n := \nu + \mu$
-/// 5. $\mathbb{B}_{\gamma} := \{0, 1\}^{\gamma}$ for positive integer $\gamma$.
+/// 5. $\\B_{\gamma} := \{0, 1\}^{\gamma}$ for positive integer $\gamma$.
 ///
 /// The sum above is evaluated using a layered circuit with the equation linking the input layer
 /// values $p_n$ to the next layer values $p_{n-1}$ given by the following relations
@@ -111,14 +111,14 @@ use crate::{
 ///
 /// $$
 /// p_{n-1}\left(v_2, \cdots, v_{\mu}, x_1, \cdots, x_{\nu}\right) =
-/// \sum_{y\in\mathbb{B}_{\nu}} G(y_{1}, ..., y_{\nu})
+/// \sum_{y\in\\B_{\nu}} G(y_{1}, ..., y_{\nu})
 /// $$
 ///
 /// and
 ///
 /// $$
 /// q_{n-1}\left(v_2, \cdots, v_{\mu}, x_1, \cdots, x_{\nu}\right) =
-/// \sum_{y\in\mathbb{B}_{\nu}} H\left(y_1, \cdots, y_{\nu} \right)
+/// \sum_{y\in\\B_{\nu}} H\left(y_1, \cdots, y_{\nu} \right)
 /// $$
 ///
 /// where
