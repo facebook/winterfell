@@ -5,7 +5,7 @@
 
 use std::{marker::PhantomData, time::Duration};
 
-use air::{EvaluationFrame, LogUpGkrEvaluator, LogUpGkrOracle};
+use air::{EvaluationFrame, LogUpGkrEvaluator, LogUpGkrOracle, PeriodicTable};
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use crypto::{hashers::Blake3_192, DefaultRandomCoin, RandomCoin};
 use math::{fields::f64::BaseElement, ExtensionOf, FieldElement, StarkField};
@@ -37,13 +37,14 @@ fn sum_check_high_degree(c: &mut Criterion) {
                     )
                 },
                 |(
-                    (claim, r_batch, rand_pt, (ml0, ml1, ml2, ml3, ml4)),
+                    (claim, r_batch, rand_pt, (ml0, ml1, ml2, ml3, ml4), periodic_table),
                     evaluator,
                     logup_randomness,
                     transcript,
                 )| {
                     let mls = vec![ml0, ml1, ml2, ml3, ml4];
                     let mut transcript = transcript;
+                    let mut periodic_table = periodic_table;
 
                     sum_check_prove_higher_degree(
                         &evaluator,
@@ -52,6 +53,7 @@ fn sum_check_high_degree(c: &mut Criterion) {
                         r_batch,
                         logup_randomness,
                         mls,
+                        &mut periodic_table,
                         &mut transcript,
                     )
                 },
@@ -76,6 +78,7 @@ fn setup_sum_check<E: FieldElement>(
         MultiLinearPoly<E>,
         MultiLinearPoly<E>,
     ),
+    PeriodicTable<E>
 ) {
     let n = 1 << log_size;
     let table = MultiLinearPoly::from_evaluations(rand_vector(n));
@@ -83,6 +86,7 @@ fn setup_sum_check<E: FieldElement>(
     let values_0 = MultiLinearPoly::from_evaluations(rand_vector(n));
     let values_1 = MultiLinearPoly::from_evaluations(rand_vector(n));
     let values_2 = MultiLinearPoly::from_evaluations(rand_vector(n));
+    let periodic_table = PeriodicTable::default();
 
     // this will not generate the correct claim with overwhelming probability but should be fine
     // for benchmarking
@@ -90,7 +94,7 @@ fn setup_sum_check<E: FieldElement>(
     let r_batch: E = rand_value();
     let claim: E = rand_value();
 
-    (claim, r_batch, rand_pt, (table, multiplicity, values_0, values_1, values_2))
+    (claim, r_batch, rand_pt, (table, multiplicity, values_0, values_1, values_2), periodic_table)
 }
 
 #[derive(Clone, Default)]

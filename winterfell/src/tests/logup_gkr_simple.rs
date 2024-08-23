@@ -1,7 +1,3 @@
-// Copyright (c) Facebook, Inc. and its affiliates.
-//
-// This source code is licensed under the MIT license found in the
-// LICENSE file in the root directory of this source tree.
 
 use std::{marker::PhantomData, vec, vec::Vec};
 
@@ -12,7 +8,7 @@ use air::{
 use crypto::MerkleTree;
 use math::StarkField;
 
-use super::*;
+use super::super::*;
 use crate::{
     crypto::{hashers::Blake3_256, DefaultRandomCoin},
     math::{fields::f64::BaseElement, ExtensionOf, FieldElement},
@@ -180,12 +176,12 @@ impl Air for LogUpGkrSimpleAir {
 }
 
 #[derive(Clone, Default)]
-pub struct PlainLogUpGkrEval<B: FieldElement + StarkField> {
+pub struct PlainLogUpGkrEval<B: StarkField> {
     oracles: Vec<LogUpGkrOracle<B>>,
     _field: PhantomData<B>,
 }
 
-impl<B: FieldElement + StarkField> PlainLogUpGkrEval<B> {
+impl<B: StarkField> PlainLogUpGkrEval<B> {
     pub fn new() -> Self {
         let committed_0 = LogUpGkrOracle::CurrentRow(0);
         let committed_1 = LogUpGkrOracle::CurrentRow(1);

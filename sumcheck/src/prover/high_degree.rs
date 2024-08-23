@@ -5,7 +5,7 @@
 
 use alloc::vec::Vec;
 
-use air::LogUpGkrEvaluator;
+use air::{LogUpGkrEvaluator, PeriodicTable};
 use crypto::{ElementHasher, RandomCoin};
 use math::FieldElement;
 #[cfg(feature = "concurrent")]
@@ -160,6 +160,7 @@ pub fn sum_check_prove_higher_degree<
     r_sum_check: E,
     log_up_randomness: Vec<E>,
     mut mls: Vec<MultiLinearPoly<E>>,
+    periodic_table: &mut PeriodicTable<E>,
     coin: &mut impl RandomCoin<Hasher = H, BaseField = E::BaseField>,
 ) -> Result<SumCheckProof<E>, SumCheckProverError> {
     let num_rounds = mls[0].num_variables();
@@ -176,8 +177,15 @@ pub fn sum_check_prove_higher_degree<
     let mut current_round_claim = SumCheckRoundClaim { eval_point: vec![], claim };
 
     // run the first round of the protocol
-    let round_poly_evals =
-        sumcheck_round(&eq_mu, evaluator, &eq_nu, &mls, &log_up_randomness, r_sum_check);
+    let round_poly_evals = sumcheck_round(
+        &eq_mu,
+        evaluator,
+        &eq_nu,
+        &mls,
+        periodic_table,
+        &log_up_randomness,
+        r_sum_check,
+    );
     let round_poly_coefs = round_poly_evals.to_poly(current_round_claim.claim);
 
     // reseed with the s_0 polynomial
@@ -198,10 +206,20 @@ pub fn sum_check_prove_higher_degree<
             .for_each(|ml| ml.bind_least_significant_variable(round_challenge));
         eq_nu.bind_least_significant_variable(round_challenge);
 
+        // fold each periodic multi-linear using the round challenge
+        periodic_table.bind_least_significant_variable(round_challenge);
+
         // run the i-th round of the protocol using the folded multi-linears for the new reduced
         // claim. This basically computes the s_i polynomial.
-        let round_poly_evals =
-            sumcheck_round(&eq_mu, evaluator, &eq_nu, &mls, &log_up_randomness, r_sum_check);
+        let round_poly_evals = sumcheck_round(
+            &eq_mu,
+            evaluator,
+            &eq_nu,
+            &mls,
+            periodic_table,
+            &log_up_randomness,
+            r_sum_check,
+        );
 
         // update the claim
         current_round_claim = new_round_claim;
@@ -222,6 +240,9 @@ pub fn sum_check_prove_higher_degree<
     mls.iter_mut()
         .for_each(|ml| ml.bind_least_significant_variable(round_challenge));
     eq_nu.bind_least_significant_variable(round_challenge);
+
+    // fold each periodic multi-linear using the round challenge
+    periodic_table.bind_least_significant_variable(round_challenge);
 
     let SumCheckRoundClaim { eval_point, claim: _claim } =
         reduce_claim(&round_proofs[num_rounds - 1], current_round_claim, round_challenge);
@@ -280,21 +301,22 @@ fn sumcheck_round<E: FieldElement>(
     evaluator: &impl LogUpGkrEvaluator<BaseField = <E as FieldElement>::BaseField>,
     eq_ml: &MultiLinearPoly<E>,
     mls: &[MultiLinearPoly<E>],
+    periodic_table: &mut PeriodicTable<E>,
     log_up_randomness: &[E],
     r_sum_check: E,
 ) -> CompressedUnivariatePolyEvals<E> {
-    let num_ml = mls.len();
+    let num_oracles = mls.len() + periodic_table.num_columns();
     let num_vars = mls[0].num_variables();
     let num_rounds = num_vars - 1;
 
     #[cfg(not(feature = "concurrent"))]
     let evaluations = {
-        let mut evals_one = vec![E::ZERO; num_ml];
-        let mut evals_zero = vec![E::ZERO; num_ml];
-        let mut evals_x = vec![E::ZERO; num_ml];
+        let mut evals_one = vec![E::ZERO; num_oracles];
+        let mut evals_zero = vec![E::ZERO; num_oracles];
+        let mut evals_x = vec![E::ZERO; num_oracles];
         let mut eq_x = E::ZERO;
 
-        let mut deltas = vec![E::ZERO; num_ml];
+        let mut deltas = vec![E::ZERO; num_oracles];
         let mut eq_delta = E::ZERO;
 
         let mut numerators = vec![E::ZERO; evaluator.get_num_fractions()];
@@ -310,6 +332,21 @@ fn sumcheck_round<E: FieldElement>(
 
                 let eq_at_zero = eq_ml.evaluations()[2 * i];
                 let eq_at_one = eq_ml.evaluations()[2 * i + 1];
+
+                let periodic_at_zero = periodic_table.get_periodic_values_at(2 * i);
+                let periodic_at_one = periodic_table.get_periodic_values_at(2 * i + 1);
+
+                // add evaluation of periodic columns
+                evals_zero
+                    .iter_mut()
+                    .skip(num_oracles)
+                    .enumerate()
+                    .for_each(|(i, ev)| *ev = periodic_at_zero[i]);
+                evals_one
+                    .iter_mut()
+                    .skip(num_oracles)
+                    .enumerate()
+                    .for_each(|(i, ev)| *ev = periodic_at_one[i]);
 
                 // compute the evaluation at 1
                 evaluator.evaluate_query(
@@ -327,7 +364,7 @@ fn sumcheck_round<E: FieldElement>(
                 );
 
                 // compute the evaluations at 2, ..., d_max points
-                for i in 0..num_ml {
+                for i in 0..num_oracles {
                     deltas[i] = evals_one[i] - evals_zero[i];
                     evals_x[i] = evals_one[i];
                 }
@@ -371,13 +408,13 @@ fn sumcheck_round<E: FieldElement>(
         .fold(
             || {
                 (
-                    vec![E::ZERO; num_ml],
-                    vec![E::ZERO; num_ml],
-                    vec![E::ZERO; num_ml],
+                    vec![E::ZERO; num_oracles],
+                    vec![E::ZERO; num_oracles],
+                    vec![E::ZERO; num_oracles],
                     vec![E::ZERO; evaluator.max_degree()],
                     vec![E::ZERO; evaluator.get_num_fractions()],
                     vec![E::ZERO; evaluator.get_num_fractions()],
-                    vec![E::ZERO; num_ml],
+                    vec![E::ZERO; num_oracles],
                 )
             },
             |(
@@ -398,6 +435,21 @@ fn sumcheck_round<E: FieldElement>(
                 let eq_at_zero = eq_ml.evaluations()[2 * i];
                 let eq_at_one = eq_ml.evaluations()[2 * i + 1];
 
+                let periodic_at_zero = periodic_table.get_periodic_values(2 * i);
+                let periodic_at_one = periodic_table.get_periodic_values(2 * i + 1);
+
+                // add evaluation of periodic columns
+                evals_zero
+                    .iter_mut()
+                    .skip(num_oracles)
+                    .enumerate()
+                    .for_each(|(i, ev)| *ev = periodic_at_zero[i]);
+                evals_one
+                    .iter_mut()
+                    .skip(num_oracles)
+                    .enumerate()
+                    .for_each(|(i, ev)| *ev = periodic_at_one[i]);
+
                 // compute the evaluation at 1
                 evaluator.evaluate_query(
                     &evals_one,
@@ -414,7 +466,7 @@ fn sumcheck_round<E: FieldElement>(
                 );
 
                 // compute the evaluations at 2, ..., d_max points
-                for i in 0..num_ml {
+                for i in 0..num_oracles {
                     deltas[i] = evals_one[i] - evals_zero[i];
                     evals_x[i] = evals_one[i];
                 }
