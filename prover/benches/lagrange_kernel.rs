@@ -7,7 +7,8 @@ use std::time::Duration;
 
 use air::{
     Air, AirContext, Assertion, AuxRandElements, ConstraintCompositionCoefficients,
-    EvaluationFrame, FieldExtension, ProofOptions, TraceInfo, TransitionConstraintDegree,
+    DummyLogUpGkrEval, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo,
+    TransitionConstraintDegree,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, MerkleTree};
@@ -98,7 +99,7 @@ struct LagrangeKernelAir {
 
 impl Air for LagrangeKernelAir {
     type BaseField = BaseElement;
-    type LogUpGkrEvaluator = ();
+    type LogUpGkrEvaluator = DummyLogUpGkrEval<Self::BaseField, ()>;
     type PublicInputs = ();
 
     fn new(trace_info: TraceInfo, _pub_inputs: Self::PublicInputs, options: ProofOptions) -> Self {

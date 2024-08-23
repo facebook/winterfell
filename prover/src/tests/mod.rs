@@ -6,8 +6,8 @@
 use alloc::vec::Vec;
 
 use air::{
-    Air, AirContext, Assertion, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
+    Air, AirContext, Assertion, DummyLogUpGkrEval, EvaluationFrame, FieldExtension, ProofOptions,
+    TraceInfo, TransitionConstraintDegree,
 };
 use math::{fields::f64::BaseElement, FieldElement, StarkField};
 
@@ -75,7 +75,7 @@ impl MockAir {
 impl Air for MockAir {
     type BaseField = BaseElement;
     type PublicInputs = ();
-    type LogUpGkrEvaluator = ();
+    type LogUpGkrEvaluator = DummyLogUpGkrEval<Self::BaseField, ()>;
 
     fn new(trace_info: TraceInfo, _pub_inputs: (), _options: ProofOptions) -> Self {
         let context = build_context(trace_info, 8, 1);

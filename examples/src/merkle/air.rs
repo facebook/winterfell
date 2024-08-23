@@ -17,6 +17,7 @@ use crate::utils::{are_equal, is_binary, is_zero, not, EvaluationResult};
 // MERKLE PATH VERIFICATION AIR
 // ================================================================================================
 
+#[derive(Clone)]
 pub struct PublicInputs {
     pub tree_root: [BaseElement; 2],
 }
@@ -35,7 +36,7 @@ pub struct MerkleAir {
 impl Air for MerkleAir {
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
-    type LogUpGkrEvaluator = PlainLogUpGkrEval<Self::BaseField>;
+    type LogUpGkrEvaluator = air::DummyLogUpGkrEval<Self::BaseField, Self::PublicInputs>;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -135,57 +136,3 @@ const HASH_CYCLE_MASK: [BaseElement; HASH_CYCLE_LEN] = [
     BaseElement::ONE,
     BaseElement::ZERO,
 ];
-
-#[derive(Clone, Default)]
-pub struct PlainLogUpGkrEval<B: FieldElement> {
-    _field: PhantomData<B>,
-}
-
-impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
-    type BaseField = BaseElement;
-
-    type PublicInputs = PublicInputs;
-
-    fn get_oracles(&self) -> &[air::LogUpGkrOracle<Self::BaseField>] {
-        unimplemented!()
-    }
-
-    fn get_num_rand_values(&self) -> usize {
-        unimplemented!()
-    }
-
-    fn get_num_fractions(&self) -> usize {
-        unimplemented!()
-    }
-
-    fn max_degree(&self) -> usize {
-        unimplemented!()
-    }
-
-    fn build_query<E>(&self, _frame: &EvaluationFrame<E>, _periodic_values: &[E], _query: &mut [E])
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        unimplemented!()
-    }
-
-    fn evaluate_query<F, E>(
-        &self,
-        _query: &[F],
-        _rand_values: &[E],
-        _numerator: &mut [E],
-        _denominator: &mut [E],
-    ) where
-        F: FieldElement<BaseField = Self::BaseField>,
-        E: FieldElement<BaseField = Self::BaseField> + winterfell::math::ExtensionOf<F>,
-    {
-        unimplemented!()
-    }
-
-    fn compute_claim<E>(&self, _inputs: &Self::PublicInputs, _rand_values: &[E]) -> E
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        unimplemented!()
-    }
-}

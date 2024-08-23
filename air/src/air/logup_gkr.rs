@@ -4,8 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::vec::Vec;
+use core::marker::PhantomData;
 
-use math::{fields::f64::BaseElement, ExtensionOf, FieldElement, StarkField, ToElements};
+use math::{ExtensionOf, FieldElement, StarkField, ToElements};
 
 use super::EvaluationFrame;
 
@@ -81,10 +82,20 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
     }
 }
 
-impl LogUpGkrEvaluator for () {
-    type BaseField = BaseElement;
+#[derive(Clone, Default)]
+pub struct DummyLogUpGkrEval<B: StarkField, P: Clone + Send + Sync + ToElements<B>> {
+    _field: PhantomData<B>,
+    _public_inputs: PhantomData<P>,
+}
 
-    type PublicInputs = ();
+impl<B, P> LogUpGkrEvaluator for DummyLogUpGkrEval<B, P>
+where
+    B: StarkField,
+    P: Clone + Send + Sync + ToElements<B>,
+{
+    type BaseField = B;
+
+    type PublicInputs = P;
 
     fn get_oracles(&self) -> &[LogUpGkrOracle<Self::BaseField>] {
         panic!("LogUpGkrEvaluator method called but LogUp-GKR is not implemented")
@@ -118,6 +129,13 @@ impl LogUpGkrEvaluator for () {
     ) where
         F: FieldElement<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
+    {
+        panic!("LogUpGkrEvaluator method called but LogUp-GKR is not implemented")
+    }
+
+    fn compute_claim<E>(&self, _inputs: &Self::PublicInputs, _rand_values: &[E]) -> E
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
     {
         panic!("LogUpGkrEvaluator method called but LogUp-GKR is not implemented")
     }
