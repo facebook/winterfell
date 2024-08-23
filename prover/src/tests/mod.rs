@@ -6,8 +6,8 @@
 use alloc::vec::Vec;
 
 use air::{
-    Air, AirContext, Assertion, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
+    Air, AirContext, Assertion, DummyLogUpGkrEval, EvaluationFrame, FieldExtension, ProofOptions,
+    TraceInfo, TransitionConstraintDegree,
 };
 use math::{fields::f64::BaseElement, FieldElement, StarkField};
 

@@ -201,10 +201,20 @@ pub enum LogUpGkrOracle<B: StarkField> {
     PeriodicValue(Vec<B>),
 }
 
-impl LogUpGkrEvaluator for () {
-    type BaseField = BaseElement;
+#[derive(Clone, Default)]
+pub struct DummyLogUpGkrEval<B: StarkField, P: Clone + Send + Sync + ToElements<B>> {
+    _field: PhantomData<B>,
+    _public_inputs: PhantomData<P>,
+}
 
-    type PublicInputs = ();
+impl<B, P> LogUpGkrEvaluator for DummyLogUpGkrEval<B, P>
+where
+    B: StarkField,
+    P: Clone + Send + Sync + ToElements<B>,
+{
+    type BaseField = B;
+
+    type PublicInputs = P;
 
     fn get_oracles(&self) -> &[LogUpGkrOracle<Self::BaseField>] {
         panic!("LogUpGkrEvaluator method called but LogUp-GKR is not implemented")
@@ -241,15 +251,11 @@ impl LogUpGkrEvaluator for () {
     {
         panic!("LogUpGkrEvaluator method called but LogUp-GKR is not implemented")
     }
-}
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
-pub enum LogUpGkrOracle<B: StarkField> {
-    // a column with a given index in the main trace segment
-    CurrentRow(usize),
-    // a column with a given index in the main trace segment but shifted upwards
-    NextRow(usize),
-    // a virtual periodic column defined by its values in a given cycle. Note that the cycle length
-    // must be a power of 2.
-    PeriodicValue(Vec<B>),
+    fn compute_claim<E>(&self, _inputs: &Self::PublicInputs, _rand_values: &[E]) -> E
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        panic!("LogUpGkrEvaluator method called but LogUp-GKR is not implemented")
+    }
 }

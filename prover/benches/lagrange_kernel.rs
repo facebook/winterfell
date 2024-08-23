@@ -7,7 +7,8 @@ use std::time::Duration;
 
 use air::{
     Air, AirContext, Assertion, AuxRandElements, ConstraintCompositionCoefficients,
-    EvaluationFrame, FieldExtension, ProofOptions, TraceInfo, TransitionConstraintDegree,
+    DummyLogUpGkrEval, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo,
+    TransitionConstraintDegree,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, MerkleTree};
