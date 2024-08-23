@@ -3,9 +3,6 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use std::marker::PhantomData;
-
-use air::LogUpGkrEvaluator;
 use core_utils::flatten_slice_elements;
 use winterfell::{
     math::ToElements, Air, AirContext, Assertion, AuxRandElements, EvaluationFrame, TraceInfo,
