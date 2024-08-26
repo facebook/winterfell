@@ -104,7 +104,7 @@ where
     public_coin_seed.append(&mut pub_inputs.to_elements());
 
     // create AIR instance for the computation specified in the proof
-    let air = AIR::new(proof.trace_info().clone(), pub_inputs, proof.options().clone());
+    let air = AIR::new(proof.trace_info().clone(), pub_inputs.clone(), proof.options().clone());
 
     // figure out which version of the generic proof verification procedure to run. this is a sort
     // of static dispatch for selecting two generic parameter: extension field and hash function.
@@ -116,6 +116,7 @@ where
                 air,
                 channel,
                 public_coin,
+                pub_inputs,
             )
         },
         FieldExtension::Quadratic => {
@@ -128,6 +129,7 @@ where
                 air,
                 channel,
                 public_coin,
+                pub_inputs,
             )
         },
         FieldExtension::Cubic => {
@@ -140,6 +142,7 @@ where
                 air,
                 channel,
                 public_coin,
+                pub_inputs,
             )
         },
     }
@@ -153,6 +156,7 @@ fn perform_verification<A, E, H, R, V>(
     air: A,
     mut channel: VerifierChannel<E, H, V>,
     mut public_coin: R,
+    pub_inputs: A::PublicInputs,
 ) -> Result<(), VerifierError>
 where
     E: FieldElement<BaseField = A::BaseField>,
@@ -348,41 +352,6 @@ where
     fri_verifier
         .verify(&mut channel, &deep_evaluations, &query_positions)
         .map_err(VerifierError::FriVerificationFailed)
-}
-
-fn verify_gkr<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>>(
-    gkr_proof: GkrCircuitProof<E>,
-    evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
-    public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = H>,
-) -> Result<GkrData<E>, GkrVerifierError> {
-    let claim = E::ZERO;
-    let num_logup_random_values = evaluator.get_num_rand_values();
-    let mut logup_randomness: Vec<E> = Vec::with_capacity(num_logup_random_values);
-
-    for _ in 0..num_logup_random_values {
-        logup_randomness.push(public_coin.draw().expect("failed to generate randomness"));
-    }
-
-    let final_eval_claim =
-        verify_logup_gkr(claim, evaluator, &gkr_proof, logup_randomness, public_coin)?;
-
-    let FinalOpeningClaim { eval_point, openings } = final_eval_claim;
-
-    public_coin.reseed(H::hash_elements(&openings));
-
-    let mut batching_randomness = Vec::with_capacity(openings.len() - 1);
-    for _ in 0..openings.len() - 1 {
-        batching_randomness.push(public_coin.draw().expect("failed to generate randomness"))
-    }
-
-    let gkr_rand_elements = GkrData::new(
-        LagrangeKernelRandElements::new(eval_point),
-        batching_randomness,
-        openings,
-        evaluator.get_oracles().to_vec(),
-    );
-
-    Ok(gkr_rand_elements)
 }
 
 // ACCEPTABLE OPTIONS

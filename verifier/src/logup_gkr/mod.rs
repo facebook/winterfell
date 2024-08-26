@@ -113,3 +113,38 @@ pub enum VerifierError {
     #[error("failed to verify the sum-check proof")]
     FailedToVerifySumCheck(#[from] SumCheckVerifierError),
 }
+
+// UNIVARIATE IOP FOR MULTI-LINEAR EVALUATION
+// ===============================================================================================
+
+/// Generates the batching randomness used to batch a number of multi-linear evaluation claims.
+///
+/// This is the $\lambda$ randomness in section 5.2 in [1] but using different random values for
+/// each term instead of powers of a single random element.
+///
+/// [1]: https://eprint.iacr.org/2023/1284
+pub fn generate_gkr_randomness<
+    E: FieldElement,
+    C: RandomCoin<Hasher = H, BaseField = E::BaseField>,
+    H: ElementHasher<BaseField = E::BaseField>,
+>(
+    final_opening_claim: FinalOpeningClaim<E>,
+    oracles: &[LogUpGkrOracle<E::BaseField>],
+    public_coin: &mut C,
+) -> GkrData<E> {
+    let FinalOpeningClaim { eval_point, openings } = final_opening_claim;
+
+    public_coin.reseed(H::hash_elements(&openings));
+
+    let mut batching_randomness = Vec::with_capacity(openings.len() - 1);
+    for _ in 0..openings.len() - 1 {
+        batching_randomness.push(public_coin.draw().expect("failed to generate randomness"))
+    }
+
+    GkrData::new(
+        LagrangeKernelRandElements::new(eval_point),
+        batching_randomness,
+        openings,
+        oracles.to_vec(),
+    )
+}
