@@ -329,7 +329,7 @@ pub trait Prover {
         // build the auxiliary trace segment, and append the resulting segments to trace commitment
         // and trace polynomial table structs
         let aux_trace_with_metadata = if air.trace_info().is_multi_segment() {
-            let (gkr_proof, aux_rand_elements) = if air.context().uses_logup_gkr() {
+            let (gkr_proof, aux_rand_elements) = if air.context().logup_gkr_enabled() {
                 let gkr_proof =
                     prove_gkr(&trace, &air.get_logup_gkr_evaluator::<E>(), channel.public_coin())
                         .map_err(|_| ProverError::FailedToGenerateGkrProof)?;

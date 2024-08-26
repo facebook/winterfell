@@ -60,7 +60,6 @@ pub struct RescueRapsAir {
 impl Air for RescueRapsAir {
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
-    type LogUpGkrEvaluator = air::DummyLogUpGkrEval<Self::BaseField, Self::PublicInputs>;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------

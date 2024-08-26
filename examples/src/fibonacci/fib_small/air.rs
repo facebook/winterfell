@@ -21,7 +21,6 @@ pub struct FibSmall {
 impl Air for FibSmall {
     type BaseField = BaseElement;
     type PublicInputs = BaseElement;
-    type LogUpGkrEvaluator = air::DummyLogUpGkrEval<Self::BaseField, Self::PublicInputs>;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------

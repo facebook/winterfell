@@ -115,7 +115,6 @@ struct LogUpGkrSimpleAir {
 impl Air for LogUpGkrSimpleAir {
     type BaseField = BaseElement;
     type PublicInputs = ();
-    type LogUpGkrEvaluator = PlainLogUpGkrEval<Self::BaseField>;
 
     fn new(trace_info: TraceInfo, _pub_inputs: Self::PublicInputs, options: ProofOptions) -> Self {
         Self {
@@ -174,7 +173,8 @@ impl Air for LogUpGkrSimpleAir {
 
     fn get_logup_gkr_evaluator<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-    ) -> Self::LogUpGkrEvaluator {
+    ) -> impl LogUpGkrEvaluator<BaseField = Self::BaseField, PublicInputs = Self::PublicInputs>
+    {
         PlainLogUpGkrEval::new()
     }
 }

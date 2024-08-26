@@ -158,7 +158,7 @@ where
             &composition_coefficients.boundary,
         );
 
-        let lagrange_constraints_evaluator = if air.context().uses_logup_gkr() {
+        let lagrange_constraints_evaluator = if air.context().logup_gkr_enabled() {
             let aux_rand_elements =
                 aux_rand_elements.as_ref().expect("expected aux rand elements to be present");
             let lagrange_rand_elements = aux_rand_elements

@@ -38,7 +38,7 @@ pub use air::{
     ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
     EvaluationFrame, FieldExtension, ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
-use air::{AuxRandElements, GkrData, LagrangeKernelRandElements, LogUpGkrEvaluator};
+use air::{AuxRandElements, LogUpGkrEvaluator};
 pub use crypto;
 use crypto::{ElementHasher, Hasher, RandomCoin, VectorCommitment};
 use fri::FriVerifier;
@@ -47,7 +47,7 @@ use math::{
     fields::{CubeExtension, QuadExtension},
     FieldElement, ToElements,
 };
-use sumcheck::{FinalOpeningClaim, GkrCircuitProof};
+use sumcheck::GkrCircuitProof;
 pub use utils::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
 };
@@ -62,7 +62,7 @@ mod composer;
 use composer::DeepComposer;
 
 mod logup_gkr;
-use logup_gkr::{verify_logup_gkr, VerifierError as GkrVerifierError};
+use logup_gkr::{generate_gkr_randomness, verify_gkr};
 
 mod errors;
 pub use errors::VerifierError;
@@ -104,7 +104,7 @@ where
     public_coin_seed.append(&mut pub_inputs.to_elements());
 
     // create AIR instance for the computation specified in the proof
-    let air = AIR::new(proof.trace_info().clone(), pub_inputs, proof.options().clone());
+    let air = AIR::new(proof.trace_info().clone(), pub_inputs.clone(), proof.options().clone());
 
     // figure out which version of the generic proof verification procedure to run. this is a sort
     // of static dispatch for selecting two generic parameter: extension field and hash function.
@@ -116,6 +116,7 @@ where
                 air,
                 channel,
                 public_coin,
+                pub_inputs,
             )
         },
         FieldExtension::Quadratic => {
@@ -128,6 +129,7 @@ where
                 air,
                 channel,
                 public_coin,
+                pub_inputs,
             )
         },
         FieldExtension::Cubic => {
@@ -140,6 +142,7 @@ where
                 air,
                 channel,
                 public_coin,
+                pub_inputs,
             )
         },
     }
@@ -153,6 +156,7 @@ fn perform_verification<A, E, H, R, V>(
     air: A,
     mut channel: VerifierChannel<E, H, V>,
     mut public_coin: R,
+    pub_inputs: A::PublicInputs,
 ) -> Result<(), VerifierError>
 where
     E: FieldElement<BaseField = A::BaseField>,
@@ -179,7 +183,7 @@ where
 
     // process auxiliary trace segments (if any), to build a set of random elements for each segment
     let aux_trace_rand_elements = if air.trace_info().is_multi_segment() {
-        if air.context().uses_logup_gkr() {
+        if air.context().logup_gkr_enabled() {
             let gkr_proof = {
                 let gkr_proof_serialized =
                     channel.read_gkr_proof().expect("Expected a GKR proof but there was none");
@@ -188,9 +192,19 @@ where
                     .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?
             };
 
-            let gkr_rand_elements =
-                verify_gkr(gkr_proof, &air.get_logup_gkr_evaluator::<E>(), &mut public_coin)
-                    .map_err(|err| VerifierError::GkrProofVerificationFailed(err.to_string()))?;
+            let final_evaluation_claim = verify_gkr::<A, _, _, _>(
+                &pub_inputs,
+                &gkr_proof,
+                &air.get_logup_gkr_evaluator::<E>(),
+                &mut public_coin,
+            )
+            .map_err(|err| VerifierError::GkrProofVerificationFailed(err.to_string()))?;
+
+            let gkr_rand_elements = generate_gkr_randomness(
+                final_evaluation_claim,
+                air.get_logup_gkr_evaluator::<E>().get_oracles(),
+                &mut public_coin,
+            );
 
             let rand_elements = air.get_aux_rand_elements(&mut public_coin).expect(
                 "failed to generate the random elements needed to build the auxiliary trace",
@@ -342,41 +356,6 @@ where
     fri_verifier
         .verify(&mut channel, &deep_evaluations, &query_positions)
         .map_err(VerifierError::FriVerificationFailed)
-}
-
-fn verify_gkr<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>>(
-    gkr_proof: GkrCircuitProof<E>,
-    evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
-    public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = H>,
-) -> Result<GkrData<E>, GkrVerifierError> {
-    let claim = E::ZERO;
-    let num_logup_random_values = evaluator.get_num_rand_values();
-    let mut logup_randomness: Vec<E> = Vec::with_capacity(num_logup_random_values);
-
-    for _ in 0..num_logup_random_values {
-        logup_randomness.push(public_coin.draw().expect("failed to generate randomness"));
-    }
-
-    let final_eval_claim =
-        verify_logup_gkr(claim, evaluator, &gkr_proof, logup_randomness, public_coin)?;
-
-    let FinalOpeningClaim { eval_point, openings } = final_eval_claim;
-
-    public_coin.reseed(H::hash_elements(&openings));
-
-    let mut batching_randomness = Vec::with_capacity(openings.len() - 1);
-    for _ in 0..openings.len() - 1 {
-        batching_randomness.push(public_coin.draw().expect("failed to generate randomness"))
-    }
-
-    let gkr_rand_elements = GkrData::new(
-        LagrangeKernelRandElements::new(eval_point),
-        batching_randomness,
-        openings,
-        evaluator.get_oracles().to_vec(),
-    );
-
-    Ok(gkr_rand_elements)
 }
 
 // ACCEPTABLE OPTIONS

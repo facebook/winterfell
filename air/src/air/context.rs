@@ -102,7 +102,7 @@ impl<B: StarkField> AirContext<B> {
         );
         assert!(num_main_assertions > 0, "at least one assertion must be specified");
 
-        if trace_info.is_multi_segment() && !trace_info.is_with_logup_gkr() {
+        if trace_info.is_multi_segment() && !trace_info.logup_gkr_enabled() {
             assert!(
              !aux_transition_constraint_degrees.is_empty(),
             "at least one transition constraint degree must be specified for the auxiliary trace segment"
@@ -241,7 +241,7 @@ impl<B: StarkField> AirContext<B> {
 
     /// Returns the index of the auxiliary column which implements the Lagrange kernel, if any
     pub fn lagrange_kernel_aux_column_idx(&self) -> Option<usize> {
-        if self.uses_logup_gkr() {
+        if self.logup_gkr_enabled() {
             Some(self.trace_info().aux_segment_width() - 1)
         } else {
             None
@@ -249,7 +249,7 @@ impl<B: StarkField> AirContext<B> {
     }
 
     /// Returns true if LogUp-GKR is enabled.
-    pub fn uses_logup_gkr(&self) -> bool {
+    pub fn logup_gkr_enabled(&self) -> bool {
         self.logup_gkr
     }
 

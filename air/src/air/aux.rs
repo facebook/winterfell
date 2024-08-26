@@ -56,16 +56,25 @@ impl<E: FieldElement> AuxRandElements<E> {
     }
 }
 
-/// Holds all the random elements needed when using GKR to accelerate LogUp.
+/// Holds all the data needed when using LogUp-GKR in order to build the two extra auxiliary columns
+/// for running the univariate IOP for multi-linear evaluations of [1].
 ///
-/// This consists of two sets of random values:
-/// 1. The Lagrange kernel random elements (expanded on in [`LagrangeKernelRandElements`]), and
+/// This consists of:
+/// 1. The Lagrange kernel random elements (expanded on in [`LagrangeKernelRandElements`]). These
+///    make up the evaluation point of the multi-linear extension polynomials underlying the oracles
+///    in point 4 below.
 /// 2. The "openings combining randomness".
+/// 3. The openings of the multi-linear extension polynomials of the main trace columns involved
+///    in LogUp.
+/// 4. A description of the each of the oracles involved in LogUp.
 ///
-/// After the verifying the LogUp-GKR circuit, the verifier is left with unproven claims provided
-/// nondeterministically by the prover about the evaluations of the MLE of the main trace columns at
-/// the Lagrange kernel random elements. Those claims are (linearly) combined into one using the
-/// openings combining randomness.
+/// After verifying the LogUp-GKR circuit, the verifier is left with unproven claims provided
+/// by the prover about the evaluations of the MLEs of the main trace columns at the evaluation
+/// point defining the Lagrange kernel. Those claims are (linearly) batched into one using the
+/// openings combining randomness and checked against the batched oracles using univariate IOP
+/// for multi-linear evaluations of [1].
+///
+/// [1]: https://eprint.iacr.org/2023/1284
 #[derive(Clone, Debug)]
 pub struct GkrData<E: FieldElement> {
     pub lagrange_kernel_eval_point: LagrangeKernelRandElements<E>,

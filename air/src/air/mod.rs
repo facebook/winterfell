@@ -35,7 +35,7 @@ pub use lagrange::{
 };
 
 mod logup_gkr;
-pub use logup_gkr::{DummyLogUpGkrEval, LogUpGkrEvaluator, LogUpGkrOracle};
+pub use logup_gkr::{LogUpGkrEvaluator, LogUpGkrOracle, PhantomLogUpGkrEval};
 
 mod coefficients;
 pub use coefficients::{
@@ -194,13 +194,7 @@ pub trait Air: Send + Sync {
 
     /// A type defining shape of public inputs for the computation described by this protocol.
     /// This could be any type as long as it can be serialized into a sequence of field elements.
-    type PublicInputs: ToElements<Self::BaseField> + Send;
-
-    /// An object needed for LogUp-GKR, when enabled.
-    type LogUpGkrEvaluator: LogUpGkrEvaluator<
-        BaseField = Self::BaseField,
-        PublicInputs = Self::PublicInputs,
-    >;
+    type PublicInputs: Clone + Sync + ToElements<Self::BaseField> + Send;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -311,8 +305,9 @@ pub trait Air: Send + Sync {
     /// Returns the object needed for the LogUp-GKR argument.
     fn get_logup_gkr_evaluator<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-    ) -> Self::LogUpGkrEvaluator {
-        unimplemented!("`get_logup_gkr_evaluator()` must be implemented when LogUp-GKR is enabled");
+    ) -> impl LogUpGkrEvaluator<BaseField = Self::BaseField, PublicInputs = Self::PublicInputs>
+    {
+        PhantomLogUpGkrEval::new()
     }
 
     // PROVIDED METHODS
@@ -342,7 +337,7 @@ pub trait Air: Send + Sync {
         lagrange_composition_coefficients: LagrangeConstraintsCompositionCoefficients<E>,
         lagrange_kernel_rand_elements: &LagrangeKernelRandElements<E>,
     ) -> Option<LagrangeKernelConstraints<E>> {
-        if self.context().uses_logup_gkr() {
+        if self.context().logup_gkr_enabled() {
             let col_idx = self.context().trace_info().aux_segment_width() - 1;
             Some(LagrangeKernelConstraints::new(
                 lagrange_composition_coefficients,
@@ -548,7 +543,7 @@ pub trait Air: Send + Sync {
             b_coefficients.push(public_coin.draw()?);
         }
 
-        let lagrange = if self.context().uses_logup_gkr() {
+        let lagrange = if self.context().logup_gkr_enabled() {
             let mut lagrange_kernel_t_coefficients = Vec::new();
             for _ in 0..self.context().trace_len().ilog2() {
                 lagrange_kernel_t_coefficients.push(public_coin.draw()?);
@@ -564,7 +559,7 @@ pub trait Air: Send + Sync {
             None
         };
 
-        let s_col = if self.context().uses_logup_gkr() {
+        let s_col = if self.context().logup_gkr_enabled() {
             Some(public_coin.draw()?)
         } else {
             None
@@ -598,13 +593,13 @@ pub trait Air: Send + Sync {
             c_coefficients.push(public_coin.draw()?);
         }
 
-        let lagrange_cc = if self.context().uses_logup_gkr() {
+        let lagrange_cc = if self.context().logup_gkr_enabled() {
             Some(public_coin.draw()?)
         } else {
             None
         };
 
-        let s_col = if self.context().uses_logup_gkr() {
+        let s_col = if self.context().logup_gkr_enabled() {
             Some(public_coin.draw()?)
         } else {
             None

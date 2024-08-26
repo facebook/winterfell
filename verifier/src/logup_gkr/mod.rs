@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 
-use air::LogUpGkrEvaluator;
+use air::{Air, GkrData, LagrangeKernelRandElements, LogUpGkrEvaluator, LogUpGkrOracle};
 use crypto::{ElementHasher, RandomCoin};
 use math::FieldElement;
 use sumcheck::{
@@ -9,17 +9,24 @@ use sumcheck::{
 };
 
 /// Verifies the validity of a GKR proof for a LogUp-GKR relation.
-pub fn verify_logup_gkr<
+pub fn verify_gkr<
+    A: Air,
     E: FieldElement,
     C: RandomCoin<Hasher = H, BaseField = E::BaseField>,
     H: ElementHasher<BaseField = E::BaseField>,
 >(
-    claim: E,
-    evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
+    pub_inputs: &A::PublicInputs,
     proof: &GkrCircuitProof<E>,
-    log_up_randomness: Vec<E>,
+    evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField, PublicInputs = A::PublicInputs>,
     transcript: &mut C,
 ) -> Result<FinalOpeningClaim<E>, VerifierError> {
+    let num_logup_random_values = evaluator.get_num_rand_values();
+    let mut logup_randomness: Vec<E> = Vec::with_capacity(num_logup_random_values);
+
+    for _ in 0..num_logup_random_values {
+        logup_randomness.push(transcript.draw().expect("failed to generate randomness"));
+    }
+
     let GkrCircuitProof {
         circuit_outputs,
         before_final_layer_proofs,
@@ -38,6 +45,7 @@ pub fn verify_logup_gkr<
     }
 
     // check that the output matches the expected `claim`
+    let claim = evaluator.compute_claim(pub_inputs, &logup_randomness);
     if (p0 * q1 + p1 * q0) / (q0 * q1) != claim {
         return Err(VerifierError::MismatchingCircuitOutput);
     }
@@ -86,7 +94,7 @@ pub fn verify_logup_gkr<
     verify_sum_check_input_layer(
         evaluator,
         final_layer_proof,
-        log_up_randomness,
+        logup_randomness,
         &evaluation_point,
         reduced_claim,
         transcript,
@@ -104,4 +112,39 @@ pub enum VerifierError {
     FailedToGenerateChallenge,
     #[error("failed to verify the sum-check proof")]
     FailedToVerifySumCheck(#[from] SumCheckVerifierError),
+}
+
+// UNIVARIATE IOP FOR MULTI-LINEAR EVALUATION
+// ===============================================================================================
+
+/// Generates the batching randomness used to batch a number of multi-linear evaluation claims.
+///
+/// This is the $\lambda$ randomness in section 5.2 in [1] but using different random values for
+/// each term instead of powers of a single random element.
+///
+/// [1]: https://eprint.iacr.org/2023/1284
+pub fn generate_gkr_randomness<
+    E: FieldElement,
+    C: RandomCoin<Hasher = H, BaseField = E::BaseField>,
+    H: ElementHasher<BaseField = E::BaseField>,
+>(
+    final_opening_claim: FinalOpeningClaim<E>,
+    oracles: &[LogUpGkrOracle<E::BaseField>],
+    public_coin: &mut C,
+) -> GkrData<E> {
+    let FinalOpeningClaim { eval_point, openings } = final_opening_claim;
+
+    public_coin.reseed(H::hash_elements(&openings));
+
+    let mut batching_randomness = Vec::with_capacity(openings.len() - 1);
+    for _ in 0..openings.len() - 1 {
+        batching_randomness.push(public_coin.draw().expect("failed to generate randomness"))
+    }
+
+    GkrData::new(
+        LagrangeKernelRandElements::new(eval_point),
+        batching_randomness,
+        openings,
+        oracles.to_vec(),
+    )
 }

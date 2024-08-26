@@ -9,7 +9,7 @@ use crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin};
 use math::{fields::f64::BaseElement, get_power_series, polynom, FieldElement, StarkField};
 
 use super::{
-    logup_gkr::DummyLogUpGkrEval, Air, AirContext, Assertion, EvaluationFrame, ProofOptions,
+    logup_gkr::PhantomLogUpGkrEval, Air, AirContext, Assertion, EvaluationFrame, ProofOptions,
     TraceInfo, TransitionConstraintDegree,
 };
 use crate::FieldExtension;
@@ -225,7 +225,7 @@ impl MockAir {
 impl Air for MockAir {
     type BaseField = BaseElement;
     type PublicInputs = ();
-    type LogUpGkrEvaluator = DummyLogUpGkrEval<Self::BaseField, ()>;
+    //type LogUpGkrEvaluator = DummyLogUpGkrEval<Self::BaseField, ()>;
 
     fn new(trace_info: TraceInfo, _pub_inputs: (), _options: ProofOptions) -> Self {
         let num_assertions = trace_info.meta()[0] as usize;
@@ -255,6 +255,13 @@ impl Air for MockAir {
         _periodic_values: &[E],
         _result: &mut [E],
     ) {
+    }
+
+    fn get_logup_gkr_evaluator<E: FieldElement<BaseField = Self::BaseField>>(
+        &self,
+    ) -> impl super::LogUpGkrEvaluator<BaseField = Self::BaseField, PublicInputs = Self::PublicInputs>
+    {
+        PhantomLogUpGkrEval::default()
     }
 }
 
