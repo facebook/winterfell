@@ -212,7 +212,7 @@ pub trait Prover {
         let mut aux_trace = self.build_aux_trace(main_trace, aux_rand_elements);
 
         if let Some(lagrange_randomness) = aux_rand_elements.lagrange() {
-            let evaluator = air.get_logup_gkr_evaluator::<E>();
+            let evaluator = air.get_logup_gkr_evaluator::<E::BaseField>();
             let lagrange_col = build_lagrange_column(lagrange_randomness);
             let s_col = build_s_column(
                 main_trace,
