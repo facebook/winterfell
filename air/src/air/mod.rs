@@ -303,7 +303,7 @@ pub trait Air: Send + Sync {
     // --------------------------------------------------------------------------------------------
 
     /// Returns the object needed for the LogUp-GKR argument.
-    fn get_logup_gkr_evaluator<E: FieldElement<BaseField = Self::BaseField>>(
+    fn get_logup_gkr_evaluator<B: StarkField>(
         &self,
     ) -> impl LogUpGkrEvaluator<BaseField = Self::BaseField, PublicInputs = Self::PublicInputs>
     {

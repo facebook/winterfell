@@ -171,7 +171,7 @@ impl Air for LogUpGkrSimpleAir {
         vec![]
     }
 
-    fn get_logup_gkr_evaluator<E: FieldElement<BaseField = Self::BaseField>>(
+    fn get_logup_gkr_evaluator<B: StarkField>(
         &self,
     ) -> impl LogUpGkrEvaluator<BaseField = Self::BaseField, PublicInputs = Self::PublicInputs>
     {

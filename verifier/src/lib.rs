@@ -195,14 +195,14 @@ where
             let final_evaluation_claim = verify_gkr::<A, _, _, _>(
                 &pub_inputs,
                 &gkr_proof,
-                &air.get_logup_gkr_evaluator::<E>(),
+                &air.get_logup_gkr_evaluator::<E::BaseField>(),
                 &mut public_coin,
             )
             .map_err(|err| VerifierError::GkrProofVerificationFailed(err.to_string()))?;
 
             let gkr_rand_elements = generate_gkr_randomness(
                 final_evaluation_claim,
-                air.get_logup_gkr_evaluator::<E>().get_oracles(),
+                air.get_logup_gkr_evaluator::<E::BaseField>().get_oracles(),
                 &mut public_coin,
             );
 

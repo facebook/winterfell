@@ -230,7 +230,7 @@ pub trait Prover {
         let mut aux_trace = self.build_aux_trace(main_trace, aux_rand_elements);
 
         if let Some(lagrange_randomness) = aux_rand_elements.lagrange() {
-            let evaluator = air.get_logup_gkr_evaluator::<E>();
+            let evaluator = air.get_logup_gkr_evaluator::<E::BaseField>();
             let lagrange_col = build_lagrange_column(lagrange_randomness);
             let s_col = build_s_column(
                 main_trace,
@@ -330,13 +330,16 @@ pub trait Prover {
         // and trace polynomial table structs
         let aux_trace_with_metadata = if air.trace_info().is_multi_segment() {
             let (gkr_proof, aux_rand_elements) = if air.context().logup_gkr_enabled() {
-                let gkr_proof =
-                    prove_gkr(&trace, &air.get_logup_gkr_evaluator::<E>(), channel.public_coin())
-                        .map_err(|_| ProverError::FailedToGenerateGkrProof)?;
+                let gkr_proof = prove_gkr(
+                    &trace,
+                    &air.get_logup_gkr_evaluator::<E::BaseField>(),
+                    channel.public_coin(),
+                )
+                .map_err(|_| ProverError::FailedToGenerateGkrProof)?;
 
                 let gkr_rand_elements = generate_gkr_randomness(
                     gkr_proof.get_final_opening_claim(),
-                    air.get_logup_gkr_evaluator::<E>().get_oracles(),
+                    air.get_logup_gkr_evaluator::<E::BaseField>().get_oracles(),
                     channel.public_coin(),
                 );
 
