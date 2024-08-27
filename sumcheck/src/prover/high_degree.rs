@@ -305,7 +305,8 @@ fn sumcheck_round<E: FieldElement>(
     log_up_randomness: &[E],
     r_sum_check: E,
 ) -> CompressedUnivariatePolyEvals<E> {
-    let num_oracles = mls.len() + periodic_table.num_columns();
+    let num_mls = mls.len();
+    let num_oracles = num_mls + periodic_table.num_columns();
     let num_vars = mls[0].num_variables();
     let num_rounds = num_vars - 1;
 
@@ -339,12 +340,12 @@ fn sumcheck_round<E: FieldElement>(
                 // add evaluation of periodic columns
                 evals_zero
                     .iter_mut()
-                    .skip(num_oracles)
+                    .skip(num_mls)
                     .enumerate()
                     .for_each(|(i, ev)| *ev = periodic_at_zero[i]);
                 evals_one
                     .iter_mut()
-                    .skip(num_oracles)
+                    .skip(num_mls)
                     .enumerate()
                     .for_each(|(i, ev)| *ev = periodic_at_one[i]);
 
@@ -435,18 +436,18 @@ fn sumcheck_round<E: FieldElement>(
                 let eq_at_zero = eq_ml.evaluations()[2 * i];
                 let eq_at_one = eq_ml.evaluations()[2 * i + 1];
 
-                let periodic_at_zero = periodic_table.get_periodic_values(2 * i);
-                let periodic_at_one = periodic_table.get_periodic_values(2 * i + 1);
+                let periodic_at_zero = periodic_table.get_periodic_values_at(2 * i);
+                let periodic_at_one = periodic_table.get_periodic_values_at(2 * i + 1);
 
                 // add evaluation of periodic columns
                 evals_zero
                     .iter_mut()
-                    .skip(num_oracles)
+                    .skip(num_mls)
                     .enumerate()
                     .for_each(|(i, ev)| *ev = periodic_at_zero[i]);
                 evals_one
                     .iter_mut()
-                    .skip(num_oracles)
+                    .skip(num_mls)
                     .enumerate()
                     .for_each(|(i, ev)| *ev = periodic_at_one[i]);
 
