@@ -5,10 +5,11 @@
 
 use alloc::vec::Vec;
 use core::marker::PhantomData;
+use crypto::{ElementHasher, RandomCoin};
 
 use math::{ExtensionOf, FieldElement, StarkField, ToElements};
 
-use super::EvaluationFrame;
+use super::{EvaluationFrame, GkrData, LagrangeKernelRandElements};
 
 /// A trait containing the necessary information in order to run the LogUp-GKR protocol of [1].
 ///
@@ -79,6 +80,43 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
         E: FieldElement<BaseField = Self::BaseField>,
     {
         E::ZERO
+    }
+
+    /// Generates the data needed for running the univariate IOP for multi-linear evaluation of [1].
+    ///
+    /// This mainly generates the batching randomness used to batch a number of multi-linear
+    /// evaluation claims and includes some additional data that is needed for building/verifying
+    /// the univariate IOP for multi-linear evaluation of [1].
+    ///
+    /// This is the $\lambda$ randomness in section 5.2 in [1] but using different random values for
+    /// each term instead of powers of a single random element.
+    ///
+    /// [1]: https://eprint.iacr.org/2023/1284
+    fn generate_univariate_iop_for_multi_linear_opening_data<
+        E: FieldElement,
+        H: ElementHasher<BaseField = E::BaseField>,
+    >(
+        &self,
+        openings: Vec<E>,
+        eval_point: Vec<E>,
+        public_coin: &mut impl RandomCoin<Hasher = H, BaseField = E::BaseField>,
+    ) -> GkrData<E>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+    {
+        public_coin.reseed(H::hash_elements(&openings));
+
+        let mut batching_randomness = Vec::with_capacity(openings.len() - 1);
+        for _ in 0..openings.len() - 1 {
+            batching_randomness.push(public_coin.draw().expect("failed to generate randomness"))
+        }
+
+        GkrData::new(
+            LagrangeKernelRandElements::new(eval_point),
+            batching_randomness,
+            openings,
+            self.get_oracles().to_vec(),
+        )
     }
 }
 

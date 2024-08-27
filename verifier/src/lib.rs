@@ -47,6 +47,7 @@ use math::{
     fields::{CubeExtension, QuadExtension},
     FieldElement, ToElements,
 };
+use sumcheck::FinalOpeningClaim;
 pub use utils::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
 };
@@ -61,7 +62,7 @@ mod composer;
 use composer::DeepComposer;
 
 mod logup_gkr;
-use logup_gkr::{generate_gkr_randomness, verify_gkr};
+use logup_gkr::verify_gkr;
 
 mod errors;
 pub use errors::VerifierError;
@@ -181,7 +182,7 @@ where
         if air.context().logup_gkr_enabled() {
             let gkr_proof = channel.read_gkr_proof()?;
 
-            let final_evaluation_claim = verify_gkr::<A, _, _, _>(
+            let FinalOpeningClaim { eval_point, openings } = verify_gkr::<A, _, _, _>(
                 air.context().public_inputs(),
                 &gkr_proof,
                 &air.get_logup_gkr_evaluator::<E::BaseField>(),
@@ -189,11 +190,9 @@ where
             )
             .map_err(|err| VerifierError::GkrProofVerificationFailed(err.to_string()))?;
 
-            let gkr_rand_elements = generate_gkr_randomness(
-                final_evaluation_claim,
-                air.get_logup_gkr_evaluator::<E::BaseField>().get_oracles(),
-                &mut public_coin,
-            );
+            let gkr_rand_elements = air
+                .get_logup_gkr_evaluator::<E::BaseField>()
+                .generate_univariate_iop_for_multi_linear_opening_data(openings, eval_point, &mut public_coin);
 
             let rand_elements = air.get_aux_rand_elements(&mut public_coin).expect(
                 "failed to generate the random elements needed to build the auxiliary trace",

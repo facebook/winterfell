@@ -58,6 +58,7 @@ use math::{
     fields::{CubeExtension, QuadExtension},
     ExtensibleField, FieldElement, StarkField, ToElements,
 };
+use sumcheck::FinalOpeningClaim;
 use tracing::{event, info_span, instrument, Level};
 pub use utils::{
     iterators, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
@@ -87,7 +88,7 @@ pub use trace::{
 };
 
 mod logup_gkr;
-use logup_gkr::{build_lagrange_column, build_s_column, generate_gkr_randomness, prove_gkr};
+use logup_gkr::{build_lagrange_column, build_s_column, prove_gkr};
 
 mod channel;
 use channel::ProverChannel;
@@ -306,11 +307,16 @@ pub trait Prover {
                 )
                 .map_err(|_| ProverError::FailedToGenerateGkrProof)?;
 
-                let gkr_rand_elements = generate_gkr_randomness(
-                    gkr_proof.get_final_opening_claim(),
-                    air.get_logup_gkr_evaluator::<E::BaseField>().get_oracles(),
-                    channel.public_coin(),
-                );
+                let FinalOpeningClaim { eval_point, openings } =
+                    gkr_proof.get_final_opening_claim();
+
+                let gkr_rand_elements = air
+                    .get_logup_gkr_evaluator::<E::BaseField>()
+                    .generate_univariate_iop_for_multi_linear_opening_data(
+                        openings,
+                        eval_point,
+                        channel.public_coin(),
+                    );
 
                 let rand_elements = air
                     .get_aux_rand_elements(channel.public_coin())
