@@ -5,6 +5,8 @@
 
 use alloc::{string::ToString, vec::Vec};
 use core::marker::PhantomData;
+use sumcheck::GkrCircuitProof;
+use utils::Deserializable;
 
 use air::{
     proof::{Proof, Queries, Table, TraceOodFrame},
