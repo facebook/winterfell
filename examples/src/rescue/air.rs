@@ -52,7 +52,7 @@ impl ToElements<BaseElement> for PublicInputs {
 }
 
 pub struct RescueAir {
-    context: AirContext<BaseElement>,
+    context: AirContext<BaseElement, PublicInputs>,
     seed: [BaseElement; 2],
     result: [BaseElement; 2],
 }
@@ -72,13 +72,13 @@ impl Air for RescueAir {
         ];
         assert_eq!(TRACE_WIDTH, trace_info.width());
         RescueAir {
-            context: AirContext::new(trace_info, degrees, 4, options),
+            context: AirContext::new(trace_info, pub_inputs.clone(), degrees, 4, options),
             seed: pub_inputs.seed,
             result: pub_inputs.result,
         }
     }
 
-    fn context(&self) -> &AirContext<Self::BaseField> {
+    fn context(&self) -> &AirContext<Self::BaseField, Self::PublicInputs> {
         &self.context
     }
 

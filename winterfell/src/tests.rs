@@ -109,7 +109,7 @@ impl Trace for LogUpGkrSimple {
 // =================================================================================================
 
 struct LogUpGkrSimpleAir {
-    context: AirContext<BaseElement>,
+    context: AirContext<BaseElement, ()>,
 }
 
 impl Air for LogUpGkrSimpleAir {
@@ -120,6 +120,7 @@ impl Air for LogUpGkrSimpleAir {
         Self {
             context: AirContext::with_logup_gkr(
                 trace_info,
+                _pub_inputs,
                 vec![TransitionConstraintDegree::new(1)],
                 vec![],
                 1,
@@ -129,7 +130,7 @@ impl Air for LogUpGkrSimpleAir {
         }
     }
 
-    fn context(&self) -> &AirContext<Self::BaseField> {
+    fn context(&self) -> &AirContext<Self::BaseField, ()> {
         &self.context
     }
 

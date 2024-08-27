@@ -16,7 +16,7 @@ use crate::utils::are_equal;
 // ================================================================================================
 
 pub struct MulFib8Air {
-    context: AirContext<BaseElement>,
+    context: AirContext<BaseElement, BaseElement>,
     result: BaseElement,
 }
 
@@ -39,12 +39,12 @@ impl Air for MulFib8Air {
         ];
         assert_eq!(TRACE_WIDTH, trace_info.width());
         MulFib8Air {
-            context: AirContext::new(trace_info, degrees, 3, options),
+            context: AirContext::new(trace_info, pub_inputs, degrees, 3, options),
             result: pub_inputs,
         }
     }
 
-    fn context(&self) -> &AirContext<Self::BaseField> {
+    fn context(&self) -> &AirContext<Self::BaseField, Self::PublicInputs> {
         &self.context
     }
 

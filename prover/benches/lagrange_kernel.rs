@@ -93,7 +93,7 @@ impl Trace for LagrangeTrace {
 // =================================================================================================
 
 struct LagrangeKernelAir {
-    context: AirContext<BaseElement>,
+    context: AirContext<BaseElement, ()>,
 }
 
 impl Air for LagrangeKernelAir {
@@ -104,6 +104,7 @@ impl Air for LagrangeKernelAir {
         Self {
             context: AirContext::new_multi_segment(
                 trace_info,
+                _pub_inputs,
                 vec![TransitionConstraintDegree::new(1)],
                 vec![TransitionConstraintDegree::new(1)],
                 1,
@@ -113,7 +114,7 @@ impl Air for LagrangeKernelAir {
         }
     }
 
-    fn context(&self) -> &AirContext<Self::BaseField> {
+    fn context(&self) -> &AirContext<Self::BaseField, Self::PublicInputs> {
         &self.context
     }
 

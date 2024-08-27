@@ -29,7 +29,7 @@ impl ToElements<BaseElement> for VdfInputs {
 // ================================================================================================
 
 pub struct VdfAir {
-    context: AirContext<BaseElement>,
+    context: AirContext<BaseElement, VdfInputs>,
     seed: BaseElement,
     result: BaseElement,
 }
@@ -43,8 +43,8 @@ impl Air for VdfAir {
         assert_eq!(TRACE_WIDTH, trace_info.width());
         // make sure the last two rows are excluded from transition constraints as we populate
         // values in the last row with garbage
-        let context =
-            AirContext::new(trace_info, degrees, 2, options).set_num_transition_exemptions(2);
+        let context = AirContext::new(trace_info, pub_inputs.clone(), degrees, 2, options)
+            .set_num_transition_exemptions(2);
         Self {
             context,
             seed: pub_inputs.seed,
@@ -74,7 +74,7 @@ impl Air for VdfAir {
         ]
     }
 
-    fn context(&self) -> &AirContext<Self::BaseField> {
+    fn context(&self) -> &AirContext<Self::BaseField, Self::PublicInputs> {
         &self.context
     }
 }

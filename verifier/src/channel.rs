@@ -5,8 +5,6 @@
 
 use alloc::{string::ToString, vec::Vec};
 use core::marker::PhantomData;
-use sumcheck::GkrCircuitProof;
-use utils::Deserializable;
 
 use air::{
     proof::{Proof, Queries, Table, TraceOodFrame},
@@ -15,6 +13,8 @@ use air::{
 use crypto::{ElementHasher, VectorCommitment};
 use fri::VerifierChannel as FriVerifierChannel;
 use math::{FieldElement, StarkField};
+use sumcheck::GkrCircuitProof;
+use utils::Deserializable;
 
 use crate::VerifierError;
 

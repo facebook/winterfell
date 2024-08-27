@@ -26,7 +26,7 @@ impl ToElements<BaseElement> for PublicInputs {
 }
 
 pub struct MerkleAir {
-    context: AirContext<BaseElement>,
+    context: AirContext<BaseElement, PublicInputs>,
     tree_root: [BaseElement; 2],
 }
 
@@ -48,12 +48,12 @@ impl Air for MerkleAir {
         ];
         assert_eq!(TRACE_WIDTH, trace_info.width());
         MerkleAir {
-            context: AirContext::new(trace_info, degrees, 4, options),
+            context: AirContext::new(trace_info, pub_inputs.clone(), degrees, 4, options),
             tree_root: pub_inputs.tree_root,
         }
     }
 
-    fn context(&self) -> &AirContext<Self::BaseField> {
+    fn context(&self) -> &AirContext<Self::BaseField, Self::PublicInputs> {
         &self.context
     }
 

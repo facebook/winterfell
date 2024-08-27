@@ -103,7 +103,7 @@ where
     public_coin_seed.append(&mut pub_inputs.to_elements());
 
     // create AIR instance for the computation specified in the proof
-    let air = AIR::new(proof.trace_info().clone(), pub_inputs.clone(), proof.options().clone());
+    let air = AIR::new(proof.trace_info().clone(), pub_inputs, proof.options().clone());
 
     // figure out which version of the generic proof verification procedure to run. this is a sort
     // of static dispatch for selecting two generic parameter: extension field and hash function.
@@ -115,7 +115,6 @@ where
                 air,
                 channel,
                 public_coin,
-                pub_inputs,
             )
         },
         FieldExtension::Quadratic => {
@@ -128,7 +127,6 @@ where
                 air,
                 channel,
                 public_coin,
-                pub_inputs,
             )
         },
         FieldExtension::Cubic => {
@@ -141,7 +139,6 @@ where
                 air,
                 channel,
                 public_coin,
-                pub_inputs,
             )
         },
     }
@@ -155,7 +152,6 @@ fn perform_verification<A, E, H, R, V>(
     air: A,
     mut channel: VerifierChannel<E, H, V>,
     mut public_coin: R,
-    pub_inputs: A::PublicInputs,
 ) -> Result<(), VerifierError>
 where
     E: FieldElement<BaseField = A::BaseField>,
@@ -186,7 +182,7 @@ where
             let gkr_proof = channel.read_gkr_proof()?;
 
             let final_evaluation_claim = verify_gkr::<A, _, _, _>(
-                &pub_inputs,
+                air.context().public_inputs(),
                 &gkr_proof,
                 &air.get_logup_gkr_evaluator::<E::BaseField>(),
                 &mut public_coin,

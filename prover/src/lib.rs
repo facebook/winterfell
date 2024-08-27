@@ -215,37 +215,6 @@ pub trait Prover {
         unimplemented!("`Prover::build_aux_trace` needs to be implemented when the trace has an auxiliary segment.")
     }
 
-    /// Builds and returns the auxiliary trace.
-    #[allow(unused_variables)]
-    #[maybe_async]
-    fn build_aux_trace_wrapper<E>(
-        &self,
-        air: &Self::Air,
-        main_trace: &Self::Trace,
-        aux_rand_elements: &AuxRandElements<E>,
-    ) -> ColMatrix<E>
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        let mut aux_trace = self.build_aux_trace(main_trace, aux_rand_elements);
-
-        if let Some(lagrange_randomness) = aux_rand_elements.lagrange() {
-            let evaluator = air.get_logup_gkr_evaluator::<E::BaseField>();
-            let lagrange_col = build_lagrange_column(lagrange_randomness);
-            let s_col = build_s_column(
-                main_trace,
-                aux_rand_elements.gkr_data().expect("should not be empty"),
-                &evaluator,
-                &lagrange_col,
-            );
-
-            aux_trace.merge_column(s_col);
-            aux_trace.merge_column(lagrange_col);
-        }
-
-        aux_trace
-    }
-
     /// Returns a STARK proof attesting to a correct execution of a computation defined by the
     /// provided trace.
     ///
@@ -358,8 +327,10 @@ pub trait Prover {
 
                 (None, AuxRandElements::new(rand_elements))
             };
-            let aux_trace =
-                maybe_await!(self.build_aux_trace_wrapper(&air, &trace, &aux_rand_elements));
+            let mut aux_trace = maybe_await!(self.build_aux_trace(&trace, &aux_rand_elements));
+
+            // add the extra columns required for LogUp-GKR, if enabled
+            maybe_await!(build_logup_gkr_columns(&air, &trace, &mut aux_trace, &aux_rand_elements));
 
             // commit to the auxiliary trace segment
             let aux_segment_polys = {
@@ -639,5 +610,35 @@ pub trait Prover {
         channel.commit_constraints(constraint_commitment.commitment());
 
         (constraint_commitment, composition_poly)
+    }
+}
+
+/// Builds and appends to the auxiliary segment two additional columns needed for implementing
+/// the univariate IOP for multi-linear evaluation of Section 5 in [1].
+///
+/// [1]: https://eprint.iacr.org/2023/1284
+#[maybe_async]
+fn build_logup_gkr_columns<E, A, T>(
+    air: &A,
+    main_trace: &T,
+    aux_trace: &mut ColMatrix<E>,
+    aux_rand_elements: &AuxRandElements<E>,
+) where
+    E: FieldElement<BaseField = A::BaseField>,
+    A: Air,
+    T: Trace<BaseField = A::BaseField>,
+{
+    if let Some(lagrange_randomness) = aux_rand_elements.lagrange() {
+        let evaluator = air.get_logup_gkr_evaluator::<E::BaseField>();
+        let lagrange_col = build_lagrange_column(lagrange_randomness);
+        let s_col = build_s_column(
+            main_trace,
+            aux_rand_elements.gkr_data().expect("should not be empty"),
+            &evaluator,
+            &lagrange_col,
+        );
+
+        aux_trace.merge_column(s_col);
+        aux_trace.merge_column(lagrange_col);
     }
 }

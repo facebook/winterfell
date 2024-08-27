@@ -53,7 +53,7 @@ impl<E: FieldElement> AuxRandElements<E> {
 
     /// Returns a collection of data necessary for implementing the univariate IOP for multi-linear
     /// evaluations of [1] when LogUp-GKR is enabled, else returns a `None`.
-    /// 
+    ///
     /// [1]: https://eprint.iacr.org/2023/1284
     pub fn gkr_data(&self) -> Option<GkrData<E>> {
         self.gkr.clone()

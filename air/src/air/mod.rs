@@ -194,7 +194,7 @@ pub trait Air: Send + Sync {
 
     /// A type defining shape of public inputs for the computation described by this protocol.
     /// This could be any type as long as it can be serialized into a sequence of field elements.
-    type PublicInputs: Clone + Default + Sync + ToElements<Self::BaseField> + Send;
+    type PublicInputs: Clone + Sync + ToElements<Self::BaseField> + Send;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------

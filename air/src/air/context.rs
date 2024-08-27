@@ -225,6 +225,10 @@ impl<B: StarkField, P> AirContext<B, P> {
         self.trace_info.length() * self.options.blowup_factor()
     }
 
+    pub fn public_inputs(&self) -> &P {
+        &self.pub_inputs
+    }
+
     /// Returns the number of transition constraints for a computation, excluding the Lagrange
     /// kernel transition constraints, which are managed separately.
     ///
