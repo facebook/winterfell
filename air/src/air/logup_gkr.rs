@@ -5,8 +5,8 @@
 
 use alloc::vec::Vec;
 use core::marker::PhantomData;
-use crypto::{ElementHasher, RandomCoin};
 
+use crypto::{ElementHasher, RandomCoin};
 use math::{ExtensionOf, FieldElement, StarkField, ToElements};
 
 use super::{EvaluationFrame, GkrData, LagrangeKernelRandElements};
@@ -92,10 +92,7 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
     /// each term instead of powers of a single random element.
     ///
     /// [1]: https://eprint.iacr.org/2023/1284
-    fn generate_univariate_iop_for_multi_linear_opening_data<
-        E: FieldElement,
-        H: ElementHasher<BaseField = E::BaseField>,
-    >(
+    fn generate_univariate_iop_for_multi_linear_opening_data<E, H>(
         &self,
         openings: Vec<E>,
         eval_point: Vec<E>,
@@ -103,6 +100,7 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
     ) -> GkrData<E>
     where
         E: FieldElement<BaseField = Self::BaseField>,
+        H: ElementHasher<BaseField = E::BaseField>,
     {
         public_coin.reseed(H::hash_elements(&openings));
 

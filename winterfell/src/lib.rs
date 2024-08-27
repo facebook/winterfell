@@ -150,12 +150,13 @@
 //! ```no_run
 //! use winterfell::{
 //!     math::{fields::f128::BaseElement, FieldElement, ToElements},
-//!     Air, AirContext, Assertion, GkrVerifier, EvaluationFrame,
+//!     Air, AirContext, Assertion, EvaluationFrame,
 //!     ProofOptions, TraceInfo, TransitionConstraintDegree,
 //!     crypto::{hashers::Blake3_256, DefaultRandomCoin, MerkleTree},
 //! };
 //!
 //! // Public inputs for our computation will consist of the starting value and the end result.
+//! #[derive(Clone)]
 //! pub struct PublicInputs {
 //!     start: BaseElement,
 //!     result: BaseElement,
@@ -172,7 +173,7 @@
 //! // the computation's context which we'll build in the constructor. The context is used
 //! // internally by the Winterfell prover/verifier when interpreting this AIR.
 //! pub struct WorkAir {
-//!     context: AirContext<BaseElement>,
+//!     context: AirContext<BaseElement, PublicInputs>,
 //!     start: BaseElement,
 //!     result: BaseElement,
 //! }
@@ -182,8 +183,6 @@
 //!     // the public inputs must look like.
 //!     type BaseField = BaseElement;
 //!     type PublicInputs = PublicInputs;
-//!     type GkrProof = ();
-//!     type GkrVerifier = ();
 //!
 //!     // Here, we'll construct a new instance of our computation which is defined by 3
 //!     // parameters: starting value, number of steps, and the end result. Another way to
@@ -206,7 +205,7 @@
 //!         let num_assertions = 2;
 //!
 //!         WorkAir {
-//!             context: AirContext::new(trace_info, degrees, num_assertions, options),
+//!             context: AirContext::new(trace_info, pub_inputs.clone(), degrees, num_assertions, options),
 //!             start: pub_inputs.start,
 //!             result: pub_inputs.result,
 //!         }
@@ -246,7 +245,7 @@
 //!
 //!     // This is just boilerplate which is used by the Winterfell prover/verifier to retrieve
 //!     // the context of the computation.
-//!     fn context(&self) -> &AirContext<Self::BaseField> {
+//!     fn context(&self) -> &AirContext<Self::BaseField, Self::PublicInputs> {
 //!         &self.context
 //!     }
 //! }
@@ -269,6 +268,7 @@
 //! #   EvaluationFrame, TraceInfo, TransitionConstraintDegree,
 //! # };
 //! #
+//! # #[derive(Clone)]
 //! # pub struct PublicInputs {
 //! #     start: BaseElement,
 //! #     result: BaseElement,
@@ -281,7 +281,7 @@
 //! # }
 //! #
 //! # pub struct WorkAir {
-//! #     context: AirContext<BaseElement>,
+//! #     context: AirContext<BaseElement, PublicInputs>,
 //! #     start: BaseElement,
 //! #     result: BaseElement,
 //! # }
@@ -289,14 +289,12 @@
 //! # impl Air for WorkAir {
 //! #     type BaseField = BaseElement;
 //! #     type PublicInputs = PublicInputs;
-//! #     type GkrProof = ();
-//! #     type GkrVerifier = ();
 //! #
 //! #     fn new(trace_info: TraceInfo, pub_inputs: PublicInputs, options: ProofOptions) -> Self {
 //! #         assert_eq!(1, trace_info.width());
 //! #         let degrees = vec![TransitionConstraintDegree::new(3)];
 //! #         WorkAir {
-//! #             context: AirContext::new(trace_info, degrees, 2, options),
+//! #             context: AirContext::new(trace_info, pub_inputs.clone(), degrees, 2, options),
 //! #             start: pub_inputs.start,
 //! #             result: pub_inputs.result,
 //! #         }
@@ -321,7 +319,7 @@
 //! #         ]
 //! #     }
 //! #
-//! #     fn context(&self) -> &AirContext<Self::BaseField> {
+//! #     fn context(&self) -> &AirContext<Self::BaseField, Self::PublicInputs> {
 //! #         &self.context
 //! #     }
 //! # }
@@ -418,7 +416,7 @@
 //! #     trace
 //! # }
 //! #
-//! #
+//! # #[derive(Clone)]
 //! # pub struct PublicInputs {
 //! #     start: BaseElement,
 //! #     result: BaseElement,
@@ -431,7 +429,7 @@
 //! # }
 //! #
 //! # pub struct WorkAir {
-//! #     context: AirContext<BaseElement>,
+//! #     context: AirContext<BaseElement, PublicInputs>,
 //! #     start: BaseElement,
 //! #     result: BaseElement,
 //! # }
@@ -439,14 +437,12 @@
 //! # impl Air for WorkAir {
 //! #     type BaseField = BaseElement;
 //! #     type PublicInputs = PublicInputs;
-//! #     type GkrProof = ();
-//! #     type GkrVerifier = ();
 //! #
 //! #     fn new(trace_info: TraceInfo, pub_inputs: PublicInputs, options: ProofOptions) -> Self {
 //! #         assert_eq!(1, trace_info.width());
 //! #         let degrees = vec![TransitionConstraintDegree::new(3)];
 //! #         WorkAir {
-//! #             context: AirContext::new(trace_info, degrees, 2, options),
+//! #             context: AirContext::new(trace_info, pub_inputs.clone(), degrees, 2, options),
 //! #             start: pub_inputs.start,
 //! #             result: pub_inputs.result,
 //! #         }
@@ -471,7 +467,7 @@
 //! #         ]
 //! #     }
 //! #
-//! #     fn context(&self) -> &AirContext<Self::BaseField> {
+//! #     fn context(&self) -> &AirContext<Self::BaseField, Self::PublicInputs> {
 //! #         &self.context
 //! #     }
 //! # }

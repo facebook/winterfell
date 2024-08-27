@@ -192,7 +192,11 @@ where
 
             let gkr_rand_elements = air
                 .get_logup_gkr_evaluator::<E::BaseField>()
-                .generate_univariate_iop_for_multi_linear_opening_data(openings, eval_point, &mut public_coin);
+                .generate_univariate_iop_for_multi_linear_opening_data(
+                    openings,
+                    eval_point,
+                    &mut public_coin,
+                );
 
             let rand_elements = air.get_aux_rand_elements(&mut public_coin).expect(
                 "failed to generate the random elements needed to build the auxiliary trace",
