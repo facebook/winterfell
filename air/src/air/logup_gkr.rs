@@ -11,6 +11,11 @@ use math::{ExtensionOf, FieldElement, StarkField, ToElements};
 
 use super::{EvaluationFrame, GkrData, LagrangeKernelRandElements};
 
+// CONSTANTS
+// ===============================================================================================
+pub const LAGRANGE_KERNEL_OFFSET: usize = 1;
+pub const S_COLUMN_OFFSET: usize = 2;
+
 /// A trait containing the necessary information in order to run the LogUp-GKR protocol of [1].
 ///
 /// The trait contains useful information for running the GKR protocol as well as for implementing

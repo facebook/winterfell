@@ -36,7 +36,9 @@ pub use lagrange::{
 };
 
 mod logup_gkr;
-pub use logup_gkr::{LogUpGkrEvaluator, LogUpGkrOracle, PhantomLogUpGkrEval, LAGRANGE_KERNEL_OFFSET, S_COLUMN_OFFSET};
+pub use logup_gkr::{
+    LogUpGkrEvaluator, LogUpGkrOracle, PhantomLogUpGkrEval, LAGRANGE_KERNEL_OFFSET, S_COLUMN_OFFSET,
+};
 
 mod coefficients;
 pub use coefficients::{
@@ -600,7 +602,7 @@ pub trait Air: Send + Sync {
             None
         };
 
-        let s_col = if self.context().logup_gkr_enabled() {
+        let s_col_cc = if self.context().logup_gkr_enabled() {
             Some(public_coin.draw()?)
         } else {
             None

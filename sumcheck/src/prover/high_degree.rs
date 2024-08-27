@@ -17,9 +17,6 @@ use crate::{
     MultiLinearPoly, RoundProof, SumCheckProof, SumCheckRoundClaim,
 };
 
-#[cfg(feature = "concurrent")]
-pub use rayon::prelude::*;
-
 /// A sum-check prover for the input layer which can accommodate non-linear expressions in
 /// the numerators of the LogUp relation.
 ///

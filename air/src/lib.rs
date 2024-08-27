@@ -48,5 +48,6 @@ pub use air::{
     LagrangeConstraintsCompositionCoefficients, LagrangeKernelBoundaryConstraint,
     LagrangeKernelConstraints, LagrangeKernelEvaluationFrame, LagrangeKernelRandElements,
     LagrangeKernelTransitionConstraints, LogUpGkrEvaluator, LogUpGkrOracle, PhantomLogUpGkrEval,
-    TraceInfo, TransitionConstraintDegree, TransitionConstraints,
+    TraceInfo, TransitionConstraintDegree, TransitionConstraints, LAGRANGE_KERNEL_OFFSET,
+    S_COLUMN_OFFSET,
 };

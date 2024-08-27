@@ -71,12 +71,12 @@ where
 
         let mut lagrange_frame = LagrangeKernelEvaluationFrame::new_empty();
 
-        let evaluator = self.air.get_logup_gkr_evaluator::<E>();
+        let evaluator = self.air.get_logup_gkr_evaluator::<E::BaseField>();
         let s_col_constraint_divisor =
             compute_s_col_divisor::<E>(domain.ce_domain_size(), domain, self.air.trace_length());
         let s_col_idx = trace.trace_info().aux_segment_width() - S_COLUMN_OFFSET;
         let l_col_idx = trace.trace_info().aux_segment_width() - LAGRANGE_KERNEL_OFFSET;
-        let mut main_frame = EvaluationFrame::new(trace.trace_info().main_trace_width());
+        let mut main_frame = EvaluationFrame::new(trace.trace_info().main_segment_width());
         let mut aux_frame = EvaluationFrame::new(trace.trace_info().aux_segment_width());
 
         let c = self.gkr_data.compute_batched_claim();
