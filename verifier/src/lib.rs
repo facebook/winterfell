@@ -47,7 +47,6 @@ use math::{
     fields::{CubeExtension, QuadExtension},
     FieldElement, ToElements,
 };
-use sumcheck::GkrCircuitProof;
 pub use utils::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
 };
@@ -184,13 +183,7 @@ where
     // process auxiliary trace segments (if any), to build a set of random elements for each segment
     let aux_trace_rand_elements = if air.trace_info().is_multi_segment() {
         if air.context().logup_gkr_enabled() {
-            let gkr_proof = {
-                let gkr_proof_serialized =
-                    channel.read_gkr_proof().expect("Expected a GKR proof but there was none");
-
-                GkrCircuitProof::read_from_bytes(gkr_proof_serialized)
-                    .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?
-            };
+            let gkr_proof = channel.read_gkr_proof()?;
 
             let final_evaluation_claim = verify_gkr::<A, _, _, _>(
                 &pub_inputs,

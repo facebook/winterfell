@@ -194,7 +194,7 @@ pub trait Air: Send + Sync {
 
     /// A type defining shape of public inputs for the computation described by this protocol.
     /// This could be any type as long as it can be serialized into a sequence of field elements.
-    type PublicInputs: Clone + Sync + ToElements<Self::BaseField> + Send;
+    type PublicInputs: Clone + Default + Sync + ToElements<Self::BaseField> + Send;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -210,7 +210,7 @@ pub trait Air: Send + Sync {
     fn new(trace_info: TraceInfo, pub_inputs: Self::PublicInputs, options: ProofOptions) -> Self;
 
     /// Returns context for this instance of the computation.
-    fn context(&self) -> &AirContext<Self::BaseField>;
+    fn context(&self) -> &AirContext<Self::BaseField, Self::PublicInputs>;
 
     /// Evaluates transition constraints over the specified evaluation frame.
     ///

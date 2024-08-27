@@ -51,13 +51,18 @@ impl<E: FieldElement> AuxRandElements<E> {
         self.gkr.as_ref().map(|gkr| gkr.openings_combining_randomness.as_ref())
     }
 
+    /// Returns a collection of data necessary for implementing the univariate IOP for multi-linear
+    /// evaluations of [1] when LogUp-GKR is enabled, else returns a `None`.
+    /// 
+    /// [1]: https://eprint.iacr.org/2023/1284
     pub fn gkr_data(&self) -> Option<GkrData<E>> {
         self.gkr.clone()
     }
 }
 
-/// Holds all the data needed when using LogUp-GKR in order to build the two extra auxiliary columns
-/// for running the univariate IOP for multi-linear evaluations of [1].
+/// Holds all the data needed when using LogUp-GKR in order to build and verify the correctness of
+/// two extra auxiliary columns required for running the univariate IOP for multi-linear
+/// evaluations of [1].
 ///
 /// This consists of:
 /// 1. The Lagrange kernel random elements (expanded on in [`LagrangeKernelRandElements`]). These

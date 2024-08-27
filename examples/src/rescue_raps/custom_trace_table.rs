@@ -113,7 +113,7 @@ impl<B: StarkField> RapTraceTable<B> {
         I: Fn(&mut [B]),
         U: Fn(usize, &mut [B]),
     {
-        let mut state = vec![B::ZERO; self.info.main_trace_width()];
+        let mut state = vec![B::ZERO; self.info.main_segment_width()];
         init(&mut state);
         self.update_row(0, &state);
 
@@ -133,7 +133,7 @@ impl<B: StarkField> RapTraceTable<B> {
 
     /// Returns the number of columns in this execution trace.
     pub fn width(&self) -> usize {
-        self.info.main_trace_width()
+        self.info.main_segment_width()
     }
 
     /// Returns value of the cell in the specified column at the specified row of this trace.

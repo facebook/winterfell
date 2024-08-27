@@ -5,6 +5,8 @@
 
 use alloc::{string::ToString, vec::Vec};
 use core::marker::PhantomData;
+use sumcheck::GkrCircuitProof;
+use utils::Deserializable;
 
 use air::{
     proof::{Proof, Queries, Table, TraceOodFrame},
@@ -81,7 +83,7 @@ where
         let constraint_frame_width = air.context().num_constraint_composition_columns();
 
         let num_trace_segments = air.trace_info().num_segments();
-        let main_trace_width = air.trace_info().main_trace_width();
+        let main_trace_width = air.trace_info().main_segment_width();
         let aux_trace_width = air.trace_info().aux_segment_width();
         let lde_domain_size = air.lde_domain_size();
         let fri_options = air.options().to_fri_options();
@@ -172,9 +174,12 @@ where
         self.pow_nonce
     }
 
-    /// Returns the serialized GKR proof, if any.
-    pub fn read_gkr_proof(&self) -> Option<&Vec<u8>> {
-        self.gkr_proof.as_ref()
+    /// Returns the GKR proof, if any.
+    pub fn read_gkr_proof(&self) -> Result<GkrCircuitProof<E>, VerifierError> {
+        GkrCircuitProof::read_from_bytes(
+            self.gkr_proof.as_ref().expect("Expected a GKR proof but there was none"),
+        )
+        .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))
     }
 
     /// Returns trace states at the specified positions of the LDE domain. This also checks if
@@ -313,7 +318,7 @@ where
         );
 
         // parse main trace segment queries
-        let main_segment_width = air.trace_info().main_trace_width();
+        let main_segment_width = air.trace_info().main_segment_width();
         let main_segment_queries = queries.remove(0);
         let (main_segment_query_proofs, main_segment_states) = main_segment_queries
             .parse::<E::BaseField, H, V>(air.lde_domain_size(), num_queries, main_segment_width)

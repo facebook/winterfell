@@ -192,7 +192,7 @@ fn get_boundary_constraints() {
 // ================================================================================================
 
 struct MockAir {
-    context: AirContext<BaseElement>,
+    context: AirContext<BaseElement, ()>,
     assertions: Vec<Assertion<BaseElement>>,
     periodic_columns: Vec<Vec<BaseElement>>,
 }
@@ -237,7 +237,7 @@ impl Air for MockAir {
         }
     }
 
-    fn context(&self) -> &AirContext<Self::BaseField> {
+    fn context(&self) -> &AirContext<Self::BaseField, Self::PublicInputs> {
         &self.context
     }
 
@@ -272,11 +272,11 @@ pub fn build_context<B: StarkField>(
     trace_length: usize,
     trace_width: usize,
     num_assertions: usize,
-) -> AirContext<B> {
+) -> AirContext<B, ()> {
     let options = ProofOptions::new(32, 8, 0, FieldExtension::None, 4, 31);
     let t_degrees = vec![TransitionConstraintDegree::new(2)];
     let trace_info = TraceInfo::new(trace_width, trace_length);
-    AirContext::new(trace_info, t_degrees, num_assertions, options)
+    AirContext::new(trace_info, (), t_degrees, num_assertions, options)
 }
 
 pub fn build_prng() -> DefaultRandomCoin<Blake3_256<BaseElement>> {

@@ -178,7 +178,7 @@ impl TraceInfo {
     /// Returns the number of columns in the main segment of an execution trace.
     ///
     /// This is guaranteed to be between 1 and 255.
-    pub fn main_trace_width(&self) -> usize {
+    pub fn main_segment_width(&self) -> usize {
         self.main_segment_width
     }
 
