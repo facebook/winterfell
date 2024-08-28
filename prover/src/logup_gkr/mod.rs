@@ -361,7 +361,7 @@ where
 /// [1]: https://eprint.iacr.org/2023/1284
 pub fn build_s_column<E: FieldElement>(
     main_trace: &impl Trace<BaseField = E::BaseField>,
-    gkr_data: GkrData<E>,
+    gkr_data: &GkrData<E>,
     evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
     lagrange_kernel_col: &[E],
 ) -> Vec<E> {

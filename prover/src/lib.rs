@@ -48,7 +48,7 @@ pub use air::{
     EvaluationFrame, FieldExtension, LagrangeKernelRandElements, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
-use air::{AuxRandElements, LogUpGkrEvaluator};
+use air::{AuxRandElements, GkrData, LogUpGkrEvaluator};
 pub use crypto;
 use crypto::{ElementHasher, RandomCoin, VectorCommitment};
 use fri::FriProver;
@@ -320,15 +320,15 @@ pub trait Prover {
                         channel.public_coin(),
                     );
 
+                // add the extra columns required for LogUp-GKR
+                maybe_await!(build_logup_gkr_columns(&air, &trace, &mut aux_trace, &gkr_data));
+
                 (Some(gkr_proof), Some(gkr_data))
             } else {
                 (None, None)
             };
             // build the set of all random values associated to the auxiliary segment
             let aux_rand_elements = AuxRandElements::new(aux_rand_elements, gkr_rand_elements);
-
-            // add the extra columns required for LogUp-GKR, if enabled
-            maybe_await!(build_logup_gkr_columns(&air, &trace, &mut aux_trace, &aux_rand_elements));
 
             // commit to the auxiliary trace segment
             let aux_segment_polys = {
@@ -620,23 +620,16 @@ fn build_logup_gkr_columns<E, A, T>(
     air: &A,
     main_trace: &T,
     aux_trace: &mut ColMatrix<E>,
-    aux_rand_elements: &AuxRandElements<E>,
+    gkr_data: &GkrData<E>,
 ) where
     E: FieldElement<BaseField = A::BaseField>,
     A: Air,
     T: Trace<BaseField = A::BaseField>,
 {
-    if let Some(lagrange_randomness) = aux_rand_elements.lagrange() {
-        let evaluator = air.get_logup_gkr_evaluator();
-        let lagrange_col = build_lagrange_column(lagrange_randomness);
-        let s_col = build_s_column(
-            main_trace,
-            aux_rand_elements.gkr_data().expect("should not be empty"),
-            &evaluator,
-            &lagrange_col,
-        );
+    let evaluator = air.get_logup_gkr_evaluator();
+    let lagrange_col = build_lagrange_column(&gkr_data.lagrange_kernel_eval_point);
+    let s_col = build_s_column(main_trace, gkr_data, &evaluator, &lagrange_col);
 
-        aux_trace.merge_column(s_col);
-        aux_trace.merge_column(lagrange_col);
-    }
+    aux_trace.merge_column(s_col);
+    aux_trace.merge_column(lagrange_col);
 }
