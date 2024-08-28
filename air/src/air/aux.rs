@@ -9,12 +9,14 @@ use math::FieldElement;
 
 use super::{lagrange::LagrangeKernelRandElements, LogUpGkrOracle};
 
-/// Holds the randomly generated elements necessary to build the auxiliary trace.
+/// Holds the randomly generated elements used in defining the auxiliary segment of the trace.
 ///
-/// Specifically, [`AuxRandElements`] currently supports 3 types of random elements:
-/// - the ones needed to build the Lagrange kernel column (when using GKR to accelerate LogUp),
-/// - the ones needed to build the "s" auxiliary column (when using GKR to accelerate LogUp),
-/// - the ones needed to build all the other auxiliary columns
+/// Specifically, [`AuxRandElements`] currently supports 2 types of random elements:
+/// - the ones needed to build all the auxiliary columns except for the ones associated
+///   to LogUp-GKR.
+/// - the ones needed to build the "s" and Lagrange kernel auxiliary columns (when using GKR to
+///   accelerate LogUp). These also include additional information needed to evaluate constraints
+///   one these two columns.
 #[derive(Debug, Clone)]
 pub struct AuxRandElements<E: FieldElement> {
     rand_elements: Vec<E>,
@@ -22,18 +24,11 @@ pub struct AuxRandElements<E: FieldElement> {
 }
 
 impl<E: FieldElement> AuxRandElements<E> {
-    /// Creates a new [`AuxRandElements`], where the auxiliary trace doesn't contain a Lagrange
-    /// kernel column.
-    pub fn new(rand_elements: Vec<E>) -> Self {
-        Self { rand_elements, gkr: None }
-    }
-
-    /// Creates a new [`AuxRandElements`], where the auxiliary trace contains columns needed when
+    /// Creates a new [`AuxRandElements`], where the auxiliary segment may contain columns needed when
     /// using GKR to accelerate LogUp (i.e. a Lagrange kernel column and the "s" column).
-    pub fn new_with_gkr(rand_elements: Vec<E>, gkr: GkrData<E>) -> Self {
-        Self { rand_elements, gkr: Some(gkr) }
+    pub fn new(rand_elements: Vec<E>, gkr: Option<GkrData<E>>) -> Self {
+        Self { rand_elements, gkr }
     }
-
     /// Returns the random elements needed to build all columns other than the two GKR-related ones.
     pub fn rand_elements(&self) -> &[E] {
         &self.rand_elements

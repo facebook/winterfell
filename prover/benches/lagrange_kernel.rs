@@ -217,20 +217,14 @@ impl Prover for LagrangeProver {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
     }
 
-    fn build_aux_trace<E>(
-        &self,
-        main_trace: &Self::Trace,
-        aux_rand_elements: &AuxRandElements<E>,
-    ) -> ColMatrix<E>
+    fn build_aux_trace<E>(&self, main_trace: &Self::Trace, aux_rand_elements: &[E]) -> ColMatrix<E>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
         let main_trace = main_trace.main_segment();
         let mut columns = Vec::new();
 
-        let lagrange_kernel_rand_elements = aux_rand_elements
-            .lagrange()
-            .expect("expected lagrange kernel random elements to be present.");
+        let lagrange_kernel_rand_elements = aux_rand_elements;
 
         // first build the Lagrange kernel column
         {

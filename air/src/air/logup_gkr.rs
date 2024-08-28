@@ -119,7 +119,7 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
 }
 
 #[derive(Clone, Default)]
-pub struct PhantomLogUpGkrEval<B: StarkField, P: Clone + Send + Sync + ToElements<B>> {
+pub(crate) struct PhantomLogUpGkrEval<B: StarkField, P: Clone + Send + Sync + ToElements<B>> {
     _field: PhantomData<B>,
     _public_inputs: PhantomData<P>,
 }

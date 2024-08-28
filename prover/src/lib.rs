@@ -205,11 +205,7 @@ pub trait Prover {
     /// Builds and returns the auxiliary trace.
     #[allow(unused_variables)]
     #[maybe_async]
-    fn build_aux_trace<E>(
-        &self,
-        main_trace: &Self::Trace,
-        aux_rand_elements: &AuxRandElements<E>,
-    ) -> ColMatrix<E>
+    fn build_aux_trace<E>(&self, main_trace: &Self::Trace, aux_rand_elements: &[E]) -> ColMatrix<E>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
@@ -299,41 +295,37 @@ pub trait Prover {
         // build the auxiliary trace segment, and append the resulting segments to trace commitment
         // and trace polynomial table structs
         let aux_trace_with_metadata = if air.trace_info().is_multi_segment() {
-            let (gkr_proof, aux_rand_elements) = if air.context().logup_gkr_enabled() {
-                let gkr_proof = prove_gkr(
-                    &trace,
-                    &air.get_logup_gkr_evaluator::<E::BaseField>(),
-                    channel.public_coin(),
-                )
-                .map_err(|_| ProverError::FailedToGenerateGkrProof)?;
+            // build the auxiliary segment without the LogUp-GKR related part
+            let aux_rand_elements = air
+                .get_aux_rand_elements(channel.public_coin())
+                .expect("failed to draw random elements for the auxiliary trace segment");
+            let mut aux_trace = maybe_await!(self.build_aux_trace(&trace, &aux_rand_elements));
+
+            // build the LogUp-GKR related section of the auxiliary segment, if any. This will also
+            // build an object containing randomness and data related to the LogUp-GKR section of
+            // the auxiliary trace segment.
+            let (gkr_proof, gkr_rand_elements) = if air.context().logup_gkr_enabled() {
+                let gkr_proof =
+                    prove_gkr(&trace, &air.get_logup_gkr_evaluator(), channel.public_coin())
+                        .map_err(|_| ProverError::FailedToGenerateGkrProof)?;
 
                 let FinalOpeningClaim { eval_point, openings } =
                     gkr_proof.get_final_opening_claim();
 
-                let gkr_rand_elements = air
-                    .get_logup_gkr_evaluator::<E::BaseField>()
+                let gkr_data = air
+                    .get_logup_gkr_evaluator()
                     .generate_univariate_iop_for_multi_linear_opening_data(
                         openings,
                         eval_point,
                         channel.public_coin(),
                     );
 
-                let rand_elements = air
-                    .get_aux_rand_elements(channel.public_coin())
-                    .expect("failed to draw random elements for the auxiliary trace segment");
-
-                let aux_rand_elements =
-                    AuxRandElements::new_with_gkr(rand_elements, gkr_rand_elements);
-
-                (Some(gkr_proof), aux_rand_elements)
+                (Some(gkr_proof), Some(gkr_data))
             } else {
-                let rand_elements = air
-                    .get_aux_rand_elements(channel.public_coin())
-                    .expect("failed to draw random elements for the auxiliary trace segment");
-
-                (None, AuxRandElements::new(rand_elements))
+                (None, None)
             };
-            let mut aux_trace = maybe_await!(self.build_aux_trace(&trace, &aux_rand_elements));
+            // build the set of all random values associated to the auxiliary segment
+            let aux_rand_elements = AuxRandElements::new(aux_rand_elements, gkr_rand_elements);
 
             // add the extra columns required for LogUp-GKR, if enabled
             maybe_await!(build_logup_gkr_columns(&air, &trace, &mut aux_trace, &aux_rand_elements));
@@ -635,7 +627,7 @@ fn build_logup_gkr_columns<E, A, T>(
     T: Trace<BaseField = A::BaseField>,
 {
     if let Some(lagrange_randomness) = aux_rand_elements.lagrange() {
-        let evaluator = air.get_logup_gkr_evaluator::<E::BaseField>();
+        let evaluator = air.get_logup_gkr_evaluator();
         let lagrange_col = build_lagrange_column(lagrange_randomness);
         let s_col = build_s_column(
             main_trace,

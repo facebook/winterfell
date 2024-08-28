@@ -172,7 +172,7 @@ impl Air for LogUpGkrSimpleAir {
         vec![]
     }
 
-    fn get_logup_gkr_evaluator<B: StarkField>(
+    fn get_logup_gkr_evaluator(
         &self,
     ) -> impl LogUpGkrEvaluator<BaseField = Self::BaseField, PublicInputs = Self::PublicInputs>
     {
@@ -317,11 +317,7 @@ impl Prover for LogUpGkrSimpleProver {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
     }
 
-    fn build_aux_trace<E>(
-        &self,
-        main_trace: &Self::Trace,
-        _aux_rand_elements: &AuxRandElements<E>,
-    ) -> ColMatrix<E>
+    fn build_aux_trace<E>(&self, main_trace: &Self::Trace, _aux_rand_elements: &[E]) -> ColMatrix<E>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {

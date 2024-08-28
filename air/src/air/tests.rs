@@ -257,7 +257,7 @@ impl Air for MockAir {
     ) {
     }
 
-    fn get_logup_gkr_evaluator<B: StarkField>(
+    fn get_logup_gkr_evaluator(
         &self,
     ) -> impl super::LogUpGkrEvaluator<BaseField = Self::BaseField, PublicInputs = Self::PublicInputs>
     {

@@ -6,6 +6,7 @@
 use alloc::{collections::BTreeMap, vec::Vec};
 
 use crypto::{RandomCoin, RandomCoinError};
+use logup_gkr::PhantomLogUpGkrEval;
 use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElements};
 
 use crate::ProofOptions;
@@ -35,7 +36,7 @@ pub use lagrange::{
 };
 
 mod logup_gkr;
-pub use logup_gkr::{LogUpGkrEvaluator, LogUpGkrOracle, PhantomLogUpGkrEval};
+pub use logup_gkr::{LogUpGkrEvaluator, LogUpGkrOracle};
 
 mod coefficients;
 pub use coefficients::{
@@ -194,7 +195,7 @@ pub trait Air: Send + Sync {
 
     /// A type defining shape of public inputs for the computation described by this protocol.
     /// This could be any type as long as it can be serialized into a sequence of field elements.
-    type PublicInputs: Clone + Sync + ToElements<Self::BaseField> + Send;
+    type PublicInputs: ToElements<Self::BaseField> + Clone + Send + Sync;
 
     // REQUIRED METHODS
     // --------------------------------------------------------------------------------------------
@@ -303,7 +304,7 @@ pub trait Air: Send + Sync {
     // --------------------------------------------------------------------------------------------
 
     /// Returns the object needed for the LogUp-GKR argument.
-    fn get_logup_gkr_evaluator<B: StarkField>(
+    fn get_logup_gkr_evaluator(
         &self,
     ) -> impl LogUpGkrEvaluator<BaseField = Self::BaseField, PublicInputs = Self::PublicInputs>
     {

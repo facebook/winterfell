@@ -179,40 +179,40 @@ where
 
     // process auxiliary trace segments (if any), to build a set of random elements for each segment
     let aux_trace_rand_elements = if air.trace_info().is_multi_segment() {
+        // build the set of random elements related to the auxiliary segment without the LogUp-GKR
+        // related ones.
+        let trace_rand_elements = air
+            .get_aux_rand_elements(&mut public_coin)
+            .expect("failed to generate the random elements needed to build the auxiliary trace");
+
+        // if LogUp-GKR is enabled, verify the attached proof and build an object which includes
+        // randomness and data related to LogUp-GKR
         if air.context().logup_gkr_enabled() {
             let gkr_proof = channel.read_gkr_proof()?;
+            let logup_gkr_evaluator = air.get_logup_gkr_evaluator();
 
             let FinalOpeningClaim { eval_point, openings } = verify_gkr::<A, _, _, _>(
                 air.context().public_inputs(),
                 &gkr_proof,
-                &air.get_logup_gkr_evaluator::<E::BaseField>(),
+                &logup_gkr_evaluator,
                 &mut public_coin,
             )
             .map_err(|err| VerifierError::GkrProofVerificationFailed(err.to_string()))?;
 
-            let gkr_rand_elements = air
-                .get_logup_gkr_evaluator::<E::BaseField>()
+            let gkr_data = logup_gkr_evaluator
                 .generate_univariate_iop_for_multi_linear_opening_data(
                     openings,
                     eval_point,
                     &mut public_coin,
                 );
 
-            let rand_elements = air.get_aux_rand_elements(&mut public_coin).expect(
-                "failed to generate the random elements needed to build the auxiliary trace",
-            );
-
             public_coin.reseed(trace_commitments[AUX_TRACE_IDX]);
 
-            Some(AuxRandElements::new_with_gkr(rand_elements, gkr_rand_elements))
+            Some(AuxRandElements::new(trace_rand_elements, Some(gkr_data)))
         } else {
-            let rand_elements = air.get_aux_rand_elements(&mut public_coin).expect(
-                "failed to generate the random elements needed to build the auxiliary trace",
-            );
-
             public_coin.reseed(trace_commitments[AUX_TRACE_IDX]);
 
-            Some(AuxRandElements::new(rand_elements))
+            Some(AuxRandElements::new(trace_rand_elements, None))
         }
     } else {
         None
