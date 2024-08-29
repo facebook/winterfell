@@ -53,6 +53,8 @@ pub fn verify_sum_check_intermediate_layers<
     Ok(openings_claim.clone())
 }
 
+/// Sum-check verifier for the input layer.
+/// 
 /// Verifies the final sum-check proof i.e., the one for the input layer, including the final check,
 /// and returns a [`FinalOpeningClaim`] to the STARK verifier in order to verify the correctness of
 /// the openings.
