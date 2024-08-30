@@ -38,7 +38,7 @@ pub use air::{
     ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
     EvaluationFrame, FieldExtension, ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
-use air::{AuxRandElements, GkrData, LagrangeKernelRandElements, LogUpGkrEvaluator};
+use air::{AuxRandElements, LogUpGkrEvaluator};
 pub use crypto;
 use crypto::{ElementHasher, Hasher, RandomCoin, VectorCommitment};
 use fri::FriVerifier;
@@ -47,7 +47,7 @@ use math::{
     fields::{CubeExtension, QuadExtension},
     FieldElement, ToElements,
 };
-use sumcheck::{FinalOpeningClaim, GkrCircuitProof};
+use sumcheck::FinalOpeningClaim;
 pub use utils::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
 };
@@ -62,7 +62,7 @@ mod composer;
 use composer::DeepComposer;
 
 mod logup_gkr;
-use logup_gkr::{verify_logup_gkr, VerifierError as GkrVerifierError};
+use logup_gkr::verify_gkr;
 
 mod errors;
 pub use errors::VerifierError;
@@ -179,34 +179,40 @@ where
 
     // process auxiliary trace segments (if any), to build a set of random elements for each segment
     let aux_trace_rand_elements = if air.trace_info().is_multi_segment() {
-        if air.context().uses_logup_gkr() {
-            let gkr_proof = {
-                let gkr_proof_serialized =
-                    channel.read_gkr_proof().expect("Expected a GKR proof but there was none");
+        // build the set of random elements related to the auxiliary segment without the LogUp-GKR
+        // related ones.
+        let trace_rand_elements = air
+            .get_aux_rand_elements(&mut public_coin)
+            .expect("failed to generate the random elements needed to build the auxiliary trace");
 
-                GkrCircuitProof::read_from_bytes(gkr_proof_serialized)
-                    .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?
-            };
+        // if LogUp-GKR is enabled, verify the attached proof and build an object which includes
+        // randomness and data related to LogUp-GKR
+        if air.context().logup_gkr_enabled() {
+            let gkr_proof = channel.read_gkr_proof()?;
+            let logup_gkr_evaluator = air.get_logup_gkr_evaluator();
 
-            let gkr_rand_elements =
-                verify_gkr(gkr_proof, &air.get_logup_gkr_evaluator::<E>(), &mut public_coin)
-                    .map_err(|err| VerifierError::GkrProofVerificationFailed(err.to_string()))?;
+            let FinalOpeningClaim { eval_point, openings } = verify_gkr::<A, _, _, _>(
+                air.context().public_inputs(),
+                &gkr_proof,
+                &logup_gkr_evaluator,
+                &mut public_coin,
+            )
+            .map_err(|err| VerifierError::GkrProofVerificationFailed(err.to_string()))?;
 
-            let rand_elements = air.get_aux_rand_elements(&mut public_coin).expect(
-                "failed to generate the random elements needed to build the auxiliary trace",
-            );
+            let gkr_data = logup_gkr_evaluator
+                .generate_univariate_iop_for_multi_linear_opening_data(
+                    openings,
+                    eval_point,
+                    &mut public_coin,
+                );
 
             public_coin.reseed(trace_commitments[AUX_TRACE_IDX]);
 
-            Some(AuxRandElements::new_with_gkr(rand_elements, gkr_rand_elements))
+            Some(AuxRandElements::new(trace_rand_elements, Some(gkr_data)))
         } else {
-            let rand_elements = air.get_aux_rand_elements(&mut public_coin).expect(
-                "failed to generate the random elements needed to build the auxiliary trace",
-            );
-
             public_coin.reseed(trace_commitments[AUX_TRACE_IDX]);
 
-            Some(AuxRandElements::new(rand_elements))
+            Some(AuxRandElements::new(trace_rand_elements, None))
         }
     } else {
         None

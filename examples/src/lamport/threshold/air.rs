@@ -22,7 +22,7 @@ const TWO: BaseElement = BaseElement::new(2);
 // THRESHOLD LAMPORT PLUS SIGNATURE AIR
 // ================================================================================================
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct PublicInputs {
     pub pub_key_root: [BaseElement; 2],
     pub num_pub_keys: usize,
@@ -41,7 +41,7 @@ impl ToElements<BaseElement> for PublicInputs {
 }
 
 pub struct LamportThresholdAir {
-    context: AirContext<BaseElement>,
+    context: AirContext<BaseElement, PublicInputs>,
     pub_key_root: [BaseElement; 2],
     num_pub_keys: usize,
     num_signatures: usize,
@@ -51,7 +51,6 @@ pub struct LamportThresholdAir {
 impl Air for LamportThresholdAir {
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
-    type LogUpGkrEvaluator = air::DummyLogUpGkrEval<Self::BaseField, Self::PublicInputs>;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -98,7 +97,7 @@ impl Air for LamportThresholdAir {
         ];
         assert_eq!(TRACE_WIDTH, trace_info.width());
         LamportThresholdAir {
-            context: AirContext::new(trace_info, degrees, 26, options),
+            context: AirContext::new(trace_info, pub_inputs.clone(), degrees, 26, options),
             pub_key_root: pub_inputs.pub_key_root,
             num_pub_keys: pub_inputs.num_pub_keys,
             num_signatures: pub_inputs.num_signatures,
@@ -243,7 +242,7 @@ impl Air for LamportThresholdAir {
         result
     }
 
-    fn context(&self) -> &AirContext<Self::BaseField> {
+    fn context(&self) -> &AirContext<Self::BaseField, Self::PublicInputs> {
         &self.context
     }
 }

@@ -80,7 +80,7 @@ pub trait Trace: Sized {
 
     /// Returns the number of columns in the main segment of this trace.
     fn main_trace_width(&self) -> usize {
-        self.info().main_trace_width()
+        self.info().main_segment_width()
     }
 
     /// Returns the number of columns in the auxiliary trace segment.
@@ -99,10 +99,10 @@ pub trait Trace: Sized {
         // make sure the width align; if they don't something went terribly wrong
         assert_eq!(
             self.main_trace_width(),
-            air.trace_info().main_trace_width(),
+            air.trace_info().main_segment_width(),
             "inconsistent trace width: expected {}, but was {}",
             self.main_trace_width(),
-            air.trace_info().main_trace_width(),
+            air.trace_info().main_segment_width(),
         );
 
         // --- 1. make sure the assertions are valid ----------------------------------------------

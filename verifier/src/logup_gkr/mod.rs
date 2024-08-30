@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 
-use air::LogUpGkrEvaluator;
+use air::{Air, LogUpGkrEvaluator};
 use crypto::{ElementHasher, RandomCoin};
 use math::FieldElement;
 use sumcheck::{
@@ -9,7 +9,8 @@ use sumcheck::{
 };
 
 /// Verifies the validity of a GKR proof for a LogUp-GKR relation.
-pub fn verify_logup_gkr<
+pub fn verify_gkr<
+    A: Air,
     E: FieldElement,
     C: RandomCoin<Hasher = H, BaseField = E::BaseField>,
     H: ElementHasher<BaseField = E::BaseField>,
@@ -38,6 +39,7 @@ pub fn verify_logup_gkr<
     }
 
     // check that the output matches the expected `claim`
+    let claim = evaluator.compute_claim(pub_inputs, &logup_randomness);
     if (p0 * q1 + p1 * q0) / (q0 * q1) != claim {
         return Err(VerifierError::MismatchingCircuitOutput);
     }
@@ -86,7 +88,7 @@ pub fn verify_logup_gkr<
     verify_sum_check_input_layer(
         evaluator,
         final_layer_proof,
-        log_up_randomness,
+        logup_randomness,
         &evaluation_point,
         reduced_claim,
         transcript,

@@ -29,7 +29,7 @@ impl ToElements<BaseElement> for VdfInputs {
 // ================================================================================================
 
 pub struct VdfAir {
-    context: AirContext<BaseElement>,
+    context: AirContext<BaseElement, VdfInputs>,
     seed: BaseElement,
     result: BaseElement,
 }
@@ -37,13 +37,12 @@ pub struct VdfAir {
 impl Air for VdfAir {
     type BaseField = BaseElement;
     type PublicInputs = VdfInputs;
-    type LogUpGkrEvaluator = air::DummyLogUpGkrEval<Self::BaseField, Self::PublicInputs>;
 
     fn new(trace_info: TraceInfo, pub_inputs: VdfInputs, options: ProofOptions) -> Self {
         let degrees = vec![TransitionConstraintDegree::new(3)];
         assert_eq!(TRACE_WIDTH, trace_info.width());
         Self {
-            context: AirContext::new(trace_info, degrees, 2, options),
+            context: AirContext::new(trace_info, pub_inputs.clone(), degrees, 2, options),
             seed: pub_inputs.seed,
             result: pub_inputs.result,
         }
@@ -66,7 +65,7 @@ impl Air for VdfAir {
         vec![Assertion::single(0, 0, self.seed), Assertion::single(0, last_step, self.result)]
     }
 
-    fn context(&self) -> &AirContext<Self::BaseField> {
+    fn context(&self) -> &AirContext<Self::BaseField, Self::PublicInputs> {
         &self.context
     }
 }

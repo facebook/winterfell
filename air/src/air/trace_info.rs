@@ -149,6 +149,10 @@ impl TraceInfo {
 
     /// Returns the total number of columns in an execution trace.
     ///
+    /// When LogUp-GKR is enabled, we also account for two extra columns, in the auxiliary segment,
+    /// which are needed for implementing the univariate IOP for multi-linear evaluation in
+    /// https://eprint.iacr.org/2023/1284.
+    ///
     /// This is guaranteed to be between 1 and 255.
     pub fn width(&self) -> usize {
         self.main_segment_width + self.aux_segment_width + 2 * self.logup_gkr as usize
@@ -174,7 +178,7 @@ impl TraceInfo {
     /// Returns the number of columns in the main segment of an execution trace.
     ///
     /// This is guaranteed to be between 1 and 255.
-    pub fn main_trace_width(&self) -> usize {
+    pub fn main_segment_width(&self) -> usize {
         self.main_segment_width
     }
 
@@ -201,7 +205,8 @@ impl TraceInfo {
         }
     }
 
-    pub fn is_with_logup_gkr(&self) -> bool {
+    /// Returns a boolean indicating whether LogUp-GKR is enabled.
+    pub fn logup_gkr_enabled(&self) -> bool {
         self.logup_gkr
     }
 

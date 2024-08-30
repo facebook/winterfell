@@ -14,9 +14,10 @@ use crate::{air::TransitionConstraintDegree, ProofOptions, TraceInfo};
 // ================================================================================================
 /// STARK parameters and trace properties for a specific execution of a computation.
 #[derive(Clone, PartialEq, Eq)]
-pub struct AirContext<B: StarkField> {
+pub struct AirContext<B: StarkField, P> {
     pub(super) options: ProofOptions,
     pub(super) trace_info: TraceInfo,
+    pub(super) pub_inputs: P,
     pub(super) main_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
     pub(super) aux_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
     pub(super) num_main_assertions: usize,
@@ -28,7 +29,7 @@ pub struct AirContext<B: StarkField> {
     pub(super) logup_gkr: bool,
 }
 
-impl<B: StarkField> AirContext<B> {
+impl<B: StarkField, P> AirContext<B, P> {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
     /// Returns a new instance of [AirContext] instantiated for computations which require a single
@@ -48,6 +49,7 @@ impl<B: StarkField> AirContext<B> {
     /// * `trace_info` describes a multi-segment execution trace.
     pub fn new(
         trace_info: TraceInfo,
+        pub_inputs: P,
         transition_constraint_degrees: Vec<TransitionConstraintDegree>,
         num_assertions: usize,
         options: ProofOptions,
@@ -58,6 +60,7 @@ impl<B: StarkField> AirContext<B> {
         );
         Self::new_multi_segment(
             trace_info,
+            pub_inputs,
             transition_constraint_degrees,
             Vec::new(),
             num_assertions,
@@ -90,6 +93,7 @@ impl<B: StarkField> AirContext<B> {
     ///   of the specified transition constraints.
     pub fn new_multi_segment(
         trace_info: TraceInfo,
+        pub_inputs: P,
         main_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
         aux_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
         num_main_assertions: usize,
@@ -102,7 +106,7 @@ impl<B: StarkField> AirContext<B> {
         );
         assert!(num_main_assertions > 0, "at least one assertion must be specified");
 
-        if trace_info.is_multi_segment() && !trace_info.is_with_logup_gkr() {
+        if trace_info.is_multi_segment() && !trace_info.logup_gkr_enabled() {
             assert!(
              !aux_transition_constraint_degrees.is_empty(),
             "at least one transition constraint degree must be specified for the auxiliary trace segment"
@@ -150,6 +154,7 @@ impl<B: StarkField> AirContext<B> {
         AirContext {
             options,
             trace_info,
+            pub_inputs,
             main_transition_constraint_degrees,
             aux_transition_constraint_degrees,
             num_main_assertions,
@@ -164,6 +169,7 @@ impl<B: StarkField> AirContext<B> {
 
     pub fn with_logup_gkr(
         trace_info: TraceInfo,
+        pub_inputs: P,
         main_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
         aux_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
         num_main_assertions: usize,
@@ -172,6 +178,7 @@ impl<B: StarkField> AirContext<B> {
     ) -> Self {
         let mut air_context = Self::new_multi_segment(
             trace_info,
+            pub_inputs,
             main_transition_constraint_degrees,
             aux_transition_constraint_degrees,
             num_main_assertions,
@@ -218,6 +225,10 @@ impl<B: StarkField> AirContext<B> {
         self.trace_info.length() * self.options.blowup_factor()
     }
 
+    pub fn public_inputs(&self) -> &P {
+        &self.pub_inputs
+    }
+
     /// Returns the number of transition constraints for a computation, excluding the Lagrange
     /// kernel transition constraints, which are managed separately.
     ///
@@ -241,7 +252,7 @@ impl<B: StarkField> AirContext<B> {
 
     /// Returns the index of the auxiliary column which implements the Lagrange kernel, if any
     pub fn lagrange_kernel_aux_column_idx(&self) -> Option<usize> {
-        if self.uses_logup_gkr() {
+        if self.logup_gkr_enabled() {
             Some(self.trace_info().aux_segment_width() - 1)
         } else {
             None
@@ -249,7 +260,7 @@ impl<B: StarkField> AirContext<B> {
     }
 
     /// Returns true if LogUp-GKR is enabled.
-    pub fn uses_logup_gkr(&self) -> bool {
+    pub fn logup_gkr_enabled(&self) -> bool {
         self.logup_gkr
     }
 

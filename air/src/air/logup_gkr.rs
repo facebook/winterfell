@@ -6,9 +6,10 @@
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
+use crypto::{ElementHasher, RandomCoin};
 use math::{ExtensionOf, FieldElement, StarkField, ToElements};
 
-use super::EvaluationFrame;
+use super::{EvaluationFrame, GkrData, LagrangeKernelRandElements};
 
 /// A trait containing the necessary information in order to run the LogUp-GKR protocol of [1].
 ///
@@ -104,12 +105,25 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
 }
 
 #[derive(Clone, Default)]
-pub struct DummyLogUpGkrEval<B: StarkField, P: Clone + Send + Sync + ToElements<B>> {
+pub(crate) struct PhantomLogUpGkrEval<B: StarkField, P: Clone + Send + Sync + ToElements<B>> {
     _field: PhantomData<B>,
     _public_inputs: PhantomData<P>,
 }
 
-impl<B, P> LogUpGkrEvaluator for DummyLogUpGkrEval<B, P>
+impl<B, P> PhantomLogUpGkrEval<B, P>
+where
+    B: StarkField,
+    P: Clone + Send + Sync + ToElements<B>,
+{
+    pub fn new() -> Self {
+        Self {
+            _field: PhantomData,
+            _public_inputs: PhantomData,
+        }
+    }
+}
+
+impl<B, P> LogUpGkrEvaluator for PhantomLogUpGkrEval<B, P>
 where
     B: StarkField,
     P: Clone + Send + Sync + ToElements<B>,
@@ -164,12 +178,12 @@ where
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub enum LogUpGkrOracle<B: StarkField> {
-    // a column with a given index in the main trace segment
+    /// A column with a given index in the main trace segment.
     CurrentRow(usize),
-    // a column with a given index in the main trace segment but shifted upwards
+    /// A column with a given index in the main trace segment but shifted upwards.
     NextRow(usize),
-    // a virtual periodic column defined by its values in a given cycle. Note that the cycle length
-    // must be a power of 2.
+    /// A virtual periodic column defined by its values in a given cycle. Note that the cycle length
+    /// must be a power of 2.
     PeriodicValue(Vec<B>),
 }
 

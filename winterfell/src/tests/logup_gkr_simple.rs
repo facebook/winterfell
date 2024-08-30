@@ -105,7 +105,7 @@ impl Trace for LogUpGkrSimple {
 // =================================================================================================
 
 struct LogUpGkrSimpleAir {
-    context: AirContext<BaseElement>,
+    context: AirContext<BaseElement, ()>,
 }
 
 impl Air for LogUpGkrSimpleAir {
@@ -117,6 +117,7 @@ impl Air for LogUpGkrSimpleAir {
         Self {
             context: AirContext::with_logup_gkr(
                 trace_info,
+                _pub_inputs,
                 vec![TransitionConstraintDegree::new(1)],
                 vec![],
                 1,
@@ -126,7 +127,7 @@ impl Air for LogUpGkrSimpleAir {
         }
     }
 
-    fn context(&self) -> &AirContext<Self::BaseField> {
+    fn context(&self) -> &AirContext<Self::BaseField, ()> {
         &self.context
     }
 
@@ -168,20 +169,21 @@ impl Air for LogUpGkrSimpleAir {
         vec![]
     }
 
-    fn get_logup_gkr_evaluator<E: FieldElement<BaseField = Self::BaseField>>(
+    fn get_logup_gkr_evaluator(
         &self,
-    ) -> Self::LogUpGkrEvaluator {
+    ) -> impl LogUpGkrEvaluator<BaseField = Self::BaseField, PublicInputs = Self::PublicInputs>
+    {
         PlainLogUpGkrEval::new()
     }
 }
 
 #[derive(Clone, Default)]
-pub struct PlainLogUpGkrEval<B: StarkField> {
+pub struct PlainLogUpGkrEval<B: FieldElement + StarkField> {
     oracles: Vec<LogUpGkrOracle<B>>,
     _field: PhantomData<B>,
 }
 
-impl<B: StarkField> PlainLogUpGkrEval<B> {
+impl<B: FieldElement + StarkField> PlainLogUpGkrEval<B> {
     pub fn new() -> Self {
         let committed_0 = LogUpGkrOracle::CurrentRow(0);
         let committed_1 = LogUpGkrOracle::CurrentRow(1);
@@ -312,11 +314,7 @@ impl Prover for LogUpGkrSimpleProver {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
     }
 
-    fn build_aux_trace<E>(
-        &self,
-        main_trace: &Self::Trace,
-        _aux_rand_elements: &AuxRandElements<E>,
-    ) -> ColMatrix<E>
+    fn build_aux_trace<E>(&self, main_trace: &Self::Trace, _aux_rand_elements: &[E]) -> ColMatrix<E>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {

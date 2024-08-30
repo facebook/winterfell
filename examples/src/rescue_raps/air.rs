@@ -53,14 +53,13 @@ impl ToElements<BaseElement> for PublicInputs {
 }
 
 pub struct RescueRapsAir {
-    context: AirContext<BaseElement>,
+    context: AirContext<BaseElement, PublicInputs>,
     result: [[BaseElement; 2]; 2],
 }
 
 impl Air for RescueRapsAir {
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
-    type LogUpGkrEvaluator = air::DummyLogUpGkrEval<Self::BaseField, Self::PublicInputs>;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -76,6 +75,7 @@ impl Air for RescueRapsAir {
         RescueRapsAir {
             context: AirContext::new_multi_segment(
                 trace_info,
+                pub_inputs.clone(),
                 main_degrees,
                 aux_degrees,
                 8,
@@ -86,7 +86,7 @@ impl Air for RescueRapsAir {
         }
     }
 
-    fn context(&self) -> &AirContext<Self::BaseField> {
+    fn context(&self) -> &AirContext<Self::BaseField, Self::PublicInputs> {
         &self.context
     }
 

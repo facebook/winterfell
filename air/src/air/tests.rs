@@ -9,7 +9,7 @@ use crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin};
 use math::{fields::f64::BaseElement, get_power_series, polynom, FieldElement, StarkField};
 
 use super::{
-    logup_gkr::DummyLogUpGkrEval, Air, AirContext, Assertion, EvaluationFrame, ProofOptions,
+    logup_gkr::PhantomLogUpGkrEval, Air, AirContext, Assertion, EvaluationFrame, ProofOptions,
     TraceInfo, TransitionConstraintDegree,
 };
 use crate::FieldExtension;
@@ -192,7 +192,7 @@ fn get_boundary_constraints() {
 // ================================================================================================
 
 struct MockAir {
-    context: AirContext<BaseElement>,
+    context: AirContext<BaseElement, ()>,
     assertions: Vec<Assertion<BaseElement>>,
     periodic_columns: Vec<Vec<BaseElement>>,
 }
@@ -225,7 +225,6 @@ impl MockAir {
 impl Air for MockAir {
     type BaseField = BaseElement;
     type PublicInputs = ();
-    type LogUpGkrEvaluator = DummyLogUpGkrEval<Self::BaseField, ()>;
 
     fn new(trace_info: TraceInfo, _pub_inputs: (), _options: ProofOptions) -> Self {
         let num_assertions = trace_info.meta()[0] as usize;
@@ -237,7 +236,7 @@ impl Air for MockAir {
         }
     }
 
-    fn context(&self) -> &AirContext<Self::BaseField> {
+    fn context(&self) -> &AirContext<Self::BaseField, Self::PublicInputs> {
         &self.context
     }
 
@@ -256,6 +255,13 @@ impl Air for MockAir {
         _result: &mut [E],
     ) {
     }
+
+    fn get_logup_gkr_evaluator(
+        &self,
+    ) -> impl super::LogUpGkrEvaluator<BaseField = Self::BaseField, PublicInputs = Self::PublicInputs>
+    {
+        PhantomLogUpGkrEval::default()
+    }
 }
 
 // UTILITY FUNCTIONS
@@ -265,11 +271,11 @@ pub fn build_context<B: StarkField>(
     trace_length: usize,
     trace_width: usize,
     num_assertions: usize,
-) -> AirContext<B> {
+) -> AirContext<B, ()> {
     let options = ProofOptions::new(32, 8, 0, FieldExtension::None, 4, 31);
     let t_degrees = vec![TransitionConstraintDegree::new(2)];
     let trace_info = TraceInfo::new(trace_width, trace_length);
-    AirContext::new(trace_info, t_degrees, num_assertions, options)
+    AirContext::new(trace_info, (), t_degrees, num_assertions, options)
 }
 
 pub fn build_prng() -> DefaultRandomCoin<Blake3_256<BaseElement>> {

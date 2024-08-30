@@ -3,9 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-//! An implementation of a 64-bit STARK-friendly prime field with modulus $2^{64} - 2^{32} + 1$
-//! using Montgomery representation.
-//! Our implementation follows <https://eprint.iacr.org/2022/274.pdf> and is constant-time.
+//! An implementation of a 64-bit STARK-friendly prime field with modulus $2^{64} - 2^{32} + 1$.
+//!
+//! Our implementation uses Montgomery representation and follows
+//! <https://eprint.iacr.org/2022/274.pdf> and is constant-time.
 //!
 //! This field supports very fast modular arithmetic and has a number of other attractive
 //! properties, including:

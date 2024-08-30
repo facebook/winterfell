@@ -7,8 +7,7 @@ use std::time::Duration;
 
 use air::{
     Air, AirContext, Assertion, AuxRandElements, ConstraintCompositionCoefficients,
-    DummyLogUpGkrEval, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
+    EvaluationFrame, FieldExtension, ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, MerkleTree};
@@ -94,18 +93,18 @@ impl Trace for LagrangeTrace {
 // =================================================================================================
 
 struct LagrangeKernelAir {
-    context: AirContext<BaseElement>,
+    context: AirContext<BaseElement, ()>,
 }
 
 impl Air for LagrangeKernelAir {
     type BaseField = BaseElement;
-    type LogUpGkrEvaluator = DummyLogUpGkrEval<Self::BaseField, ()>;
     type PublicInputs = ();
 
     fn new(trace_info: TraceInfo, _pub_inputs: Self::PublicInputs, options: ProofOptions) -> Self {
         Self {
             context: AirContext::new_multi_segment(
                 trace_info,
+                _pub_inputs,
                 vec![TransitionConstraintDegree::new(1)],
                 vec![TransitionConstraintDegree::new(1)],
                 1,
@@ -115,7 +114,7 @@ impl Air for LagrangeKernelAir {
         }
     }
 
-    fn context(&self) -> &AirContext<Self::BaseField> {
+    fn context(&self) -> &AirContext<Self::BaseField, Self::PublicInputs> {
         &self.context
     }
 
@@ -218,20 +217,14 @@ impl Prover for LagrangeProver {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
     }
 
-    fn build_aux_trace<E>(
-        &self,
-        main_trace: &Self::Trace,
-        aux_rand_elements: &AuxRandElements<E>,
-    ) -> ColMatrix<E>
+    fn build_aux_trace<E>(&self, main_trace: &Self::Trace, aux_rand_elements: &[E]) -> ColMatrix<E>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
         let main_trace = main_trace.main_segment();
         let mut columns = Vec::new();
 
-        let lagrange_kernel_rand_elements = aux_rand_elements
-            .lagrange()
-            .expect("expected lagrange kernel random elements to be present.");
+        let lagrange_kernel_rand_elements = aux_rand_elements;
 
         // first build the Lagrange kernel column
         {

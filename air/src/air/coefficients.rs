@@ -27,6 +27,13 @@ use math::FieldElement;
 ///
 /// The coefficients are separated into two lists: one for transition constraints and another one
 /// for boundary constraints. This separation is done for convenience only.
+///
+/// In addition to the above, and when LogUp-GKR is enabled, there are two extra sets of
+/// constraint composition coefficients that are used, namely for:
+///
+/// 1. Lagrange kernel constraints, which include both transition and boundary constraints.
+/// 2. S-column constraint, which is used in implementing the cohomological sum-check argument
+///    of https://eprint.iacr.org/2021/930
 #[derive(Debug, Clone)]
 pub struct ConstraintCompositionCoefficients<E: FieldElement> {
     pub transition: Vec<E>,
@@ -84,8 +91,9 @@ pub struct LagrangeConstraintsCompositionCoefficients<E: FieldElement> {
 ///    negligible increase in soundness error. The formula for the updated error can be found in
 ///    Theorem 8 of https://eprint.iacr.org/2022/1216.
 ///
-/// In the case when the trace polynomials contain a trace polynomial corresponding to a Lagrange
-/// kernel column, the above expression of $Y(x)$ includes the additional term given by
+/// In the case when LogUp-GKR is enabled, the trace polynomials contain an additional trace
+/// polynomial corresponding to a Lagrange kernel column and the above expression of $Y(x)$
+/// includes the additional term given by
 ///
 /// $$
 /// \gamma \cdot \frac{T_l(x) - p_S(x)}{Z_S(x)}
@@ -100,8 +108,13 @@ pub struct LagrangeConstraintsCompositionCoefficients<E: FieldElement> {
 /// 4. $p_S(X)$ is the polynomial of minimal degree interpolating the set ${(a, T_l(a)): a \in S}$.
 /// 5. $Z_S(X)$ is the polynomial of minimal degree vanishing over the set $S$.
 ///
-/// Note that, if a Lagrange kernel trace polynomial is present, then $\rho^{+}$ from above should
-/// be updated to be $\rho^{+} := \frac{\kappa + log_2(\nu) + 1}{\nu}$.
+/// Note that when LogUp-GKR is enabled, we also have to take into account an additional column,
+/// called s-column throughout, used in implementing the univariate IOP for multi-linear evaluation.
+/// This means that we need and additional random value, in addition to $\gamma$ above, when
+/// LogUp-GKR is enabled.
+///
+/// Note that, when LogUp-GKR is enabled, $\rho^{+}$ from above should be updated to be
+/// $\rho^{+} := \frac{\kappa + log_2(\nu) + 1}{\nu}$.
 #[derive(Debug, Clone)]
 pub struct DeepCompositionCoefficients<E: FieldElement> {
     /// Trace polynomial composition coefficients $\alpha_i$.
@@ -110,6 +123,6 @@ pub struct DeepCompositionCoefficients<E: FieldElement> {
     pub constraints: Vec<E>,
     /// Lagrange kernel trace polynomial composition coefficient $\gamma$.
     pub lagrange: Option<E>,
-    /// TODO
+    /// S-column trace polynomial composition coefficient.
     pub s_col: Option<E>,
 }
