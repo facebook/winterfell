@@ -71,7 +71,7 @@ where
 
         let mut lagrange_frame = LagrangeKernelEvaluationFrame::new_empty();
 
-        let evaluator = self.air.get_logup_gkr_evaluator::<E::BaseField>();
+        let evaluator = self.air.get_logup_gkr_evaluator();
         let s_col_constraint_divisor =
             compute_s_col_divisor::<E>(domain.ce_domain_size(), domain, self.air.trace_length());
         let s_col_idx = trace.trace_info().aux_segment_width() - S_COLUMN_OFFSET;

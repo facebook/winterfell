@@ -208,7 +208,7 @@ pub trait Prover {
     fn build_aux_trace<E>(
         &self,
         main_trace: &Self::Trace,
-        aux_rand_elements: &AuxRandElements<E>,
+        aux_rand_elements: &[E],
     ) -> ColMatrix<E>
     where
         E: FieldElement<BaseField = Self::BaseField>,

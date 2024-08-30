@@ -79,7 +79,7 @@ pub fn prove_gkr<E: FieldElement>(
         build_mls_from_main_trace_segment(evaluator.get_oracles(), main_trace.main_segment())?;
 
     let final_layer_proof =
-        prove_input_layer(evaluator, logup_randomness, &mut main_trace_mls, gkr_claim, public_coin)?;
+        prove_input_layer(evaluator, logup_randomness, main_trace_mls, gkr_claim, public_coin)?;
 
     Ok(GkrCircuitProof {
         circuit_outputs: CircuitOutput { numerators, denominators },

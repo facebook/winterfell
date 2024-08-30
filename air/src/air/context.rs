@@ -265,11 +265,6 @@ impl<B: StarkField, P> AirContext<B, P> {
         self.logup_gkr
     }
 
-    /// Returns true if the auxiliary trace segment contains a Lagrange kernel column
-    pub fn is_with_logup_gkr(&self) -> bool {
-        self.logup_gkr
-    }
-
     /// Returns the total number of assertions defined for a computation, excluding the Lagrange
     /// kernel assertion, which is managed separately.
     ///

@@ -132,8 +132,8 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
             .mul_base(E::BaseField::ONE / E::BaseField::from(air.trace_length() as u32));
 
         let mut query =
-            vec![E::ZERO; air.get_logup_gkr_evaluator::<E::BaseField>().get_oracles().len()];
-        air.get_logup_gkr_evaluator::<E::BaseField>().build_query(
+            vec![E::ZERO; air.get_logup_gkr_evaluator().get_oracles().len()];
+        air.get_logup_gkr_evaluator().build_query(
             main_trace_frame,
             &[],
             &mut query,
