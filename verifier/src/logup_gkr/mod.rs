@@ -15,12 +15,18 @@ pub fn verify_gkr<
     C: RandomCoin<Hasher = H, BaseField = E::BaseField>,
     H: ElementHasher<BaseField = E::BaseField>,
 >(
-    claim: E,
-    evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
+    pub_inputs: &A::PublicInputs,
     proof: &GkrCircuitProof<E>,
-    log_up_randomness: Vec<E>,
+    evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField, PublicInputs = A::PublicInputs>,
     transcript: &mut C,
 ) -> Result<FinalOpeningClaim<E>, VerifierError> {
+    let num_logup_random_values = evaluator.get_num_rand_values();
+    let mut logup_randomness: Vec<E> = Vec::with_capacity(num_logup_random_values);
+
+    for _ in 0..num_logup_random_values {
+        logup_randomness.push(transcript.draw().expect("failed to generate randomness"));
+    }
+
     let GkrCircuitProof {
         circuit_outputs,
         before_final_layer_proofs,

@@ -114,18 +114,18 @@ impl Trace for LogUpGkrPeriodic {
 // =================================================================================================
 
 struct LogUpGkrPeriodicAir {
-    context: AirContext<BaseElement>,
+    context: AirContext<BaseElement, ()>,
 }
 
 impl Air for LogUpGkrPeriodicAir {
     type BaseField = BaseElement;
     type PublicInputs = ();
-    type LogUpGkrEvaluator = PeriodicLogUpGkrEval<Self::BaseField>;
 
     fn new(trace_info: TraceInfo, _pub_inputs: Self::PublicInputs, options: ProofOptions) -> Self {
         Self {
             context: AirContext::with_logup_gkr(
                 trace_info,
+                (),
                 vec![TransitionConstraintDegree::new(1)],
                 vec![],
                 1,
@@ -135,7 +135,7 @@ impl Air for LogUpGkrPeriodicAir {
         }
     }
 
-    fn context(&self) -> &AirContext<Self::BaseField> {
+    fn context(&self) -> &AirContext<Self::BaseField, ()> {
         &self.context
     }
 
@@ -177,9 +177,10 @@ impl Air for LogUpGkrPeriodicAir {
         vec![]
     }
 
-    fn get_logup_gkr_evaluator<E: FieldElement<BaseField = Self::BaseField>>(
+    fn get_logup_gkr_evaluator(
         &self,
-    ) -> Self::LogUpGkrEvaluator {
+    ) -> impl LogUpGkrEvaluator<BaseField = Self::BaseField, PublicInputs = Self::PublicInputs>
+    {
         PeriodicLogUpGkrEval::new()
     }
 }
@@ -338,11 +339,7 @@ impl Prover for LogUpGkrPeriodicProver {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
     }
 
-    fn build_aux_trace<E>(
-        &self,
-        main_trace: &Self::Trace,
-        _aux_rand_elements: &AuxRandElements<E>,
-    ) -> ColMatrix<E>
+    fn build_aux_trace<E>(&self, main_trace: &Self::Trace, _aux_rand_elements: &[E]) -> ColMatrix<E>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {

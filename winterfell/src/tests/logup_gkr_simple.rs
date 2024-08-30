@@ -1,4 +1,3 @@
-
 use std::{marker::PhantomData, vec, vec::Vec};
 
 use air::{
@@ -111,7 +110,6 @@ struct LogUpGkrSimpleAir {
 impl Air for LogUpGkrSimpleAir {
     type BaseField = BaseElement;
     type PublicInputs = ();
-    type LogUpGkrEvaluator = PlainLogUpGkrEval<Self::BaseField>;
 
     fn new(trace_info: TraceInfo, _pub_inputs: Self::PublicInputs, options: ProofOptions) -> Self {
         Self {

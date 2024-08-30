@@ -209,23 +209,7 @@ pub trait Prover {
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
-        let mut aux_trace = self.build_aux_trace(main_trace, aux_rand_elements);
-
-        if let Some(lagrange_randomness) = aux_rand_elements.lagrange() {
-            let evaluator = air.get_logup_gkr_evaluator::<E>();
-            let lagrange_col = build_lagrange_column(lagrange_randomness);
-            let s_col = build_s_column(
-                main_trace,
-                aux_rand_elements.gkr_data().expect("should not be empty"),
-                &evaluator,
-                &lagrange_col,
-            );
-
-            aux_trace.merge_column(s_col);
-            aux_trace.merge_column(lagrange_col);
-        }
-
-        aux_trace
+        unimplemented!("`Prover::build_aux_trace` needs to be implemented when the trace has an auxiliary segment.")
     }
 
     /// Returns a STARK proof attesting to a correct execution of a computation defined by the

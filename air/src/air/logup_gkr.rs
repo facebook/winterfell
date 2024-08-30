@@ -82,6 +82,41 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
         E::ZERO
     }
 
+    /// Generates the data needed for running the univariate IOP for multi-linear evaluation of [1].
+    ///
+    /// This mainly generates the batching randomness used to batch a number of multi-linear
+    /// evaluation claims and includes some additional data that is needed for building/verifying
+    /// the univariate IOP for multi-linear evaluation of [1].
+    ///
+    /// This is the $\lambda$ randomness in section 5.2 in [1] but using different random values for
+    /// each term instead of powers of a single random element.
+    ///
+    /// [1]: https://eprint.iacr.org/2023/1284
+    fn generate_univariate_iop_for_multi_linear_opening_data<E, H>(
+        &self,
+        openings: Vec<E>,
+        eval_point: Vec<E>,
+        public_coin: &mut impl RandomCoin<Hasher = H, BaseField = E::BaseField>,
+    ) -> GkrData<E>
+    where
+        E: FieldElement<BaseField = Self::BaseField>,
+        H: ElementHasher<BaseField = E::BaseField>,
+    {
+        public_coin.reseed(H::hash_elements(&openings));
+
+        let mut batching_randomness = Vec::with_capacity(openings.len() - 1);
+        for _ in 0..openings.len() - 1 {
+            batching_randomness.push(public_coin.draw().expect("failed to generate randomness"))
+        }
+
+        GkrData::new(
+            LagrangeKernelRandElements::new(eval_point),
+            batching_randomness,
+            openings,
+            self.get_oracles().to_vec(),
+        )
+    }
+
     /// Returns the periodic values used in the LogUp-GKR statement, either as base field element
     /// during circuit evaluation or as extension field element during the run of sum-check for
     /// the input layer.
@@ -196,7 +231,7 @@ pub enum LogUpGkrOracle<B: StarkField> {
 /// with the given periodic values. Due to the periodic nature of the values, storing, binding of
 /// an argument and evaluating the said multi-linear extension can be all done linearly in the size
 /// of the smallest cycle defining the periodic values. Hence we only store the values of this
-/// smallest cycle. The cycle is assumed throughout to be a power of 2. 
+/// smallest cycle. The cycle is assumed throughout to be a power of 2.
 #[derive(Clone, Debug, Default, PartialEq, PartialOrd, Eq, Ord)]
 pub struct PeriodicTable<E: FieldElement> {
     pub table: Vec<Vec<E>>,

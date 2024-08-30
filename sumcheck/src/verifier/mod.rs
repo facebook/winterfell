@@ -10,7 +10,8 @@ use crypto::{ElementHasher, RandomCoin};
 use math::FieldElement;
 
 use crate::{
-    comb_func, evaluate_composition_poly, EqFunction, FinalLayerProof, FinalOpeningClaim, MultiLinearPoly, RoundProof, SumCheckProof, SumCheckRoundClaim
+    comb_func, evaluate_composition_poly, EqFunction, FinalLayerProof, FinalOpeningClaim,
+    MultiLinearPoly, RoundProof, SumCheckProof, SumCheckRoundClaim,
 };
 
 /// Verifies sum-check proofs, as part of the GKR proof, for all GKR layers except for the last one

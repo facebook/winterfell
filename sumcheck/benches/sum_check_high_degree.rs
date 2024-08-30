@@ -78,7 +78,7 @@ fn setup_sum_check<E: FieldElement>(
         MultiLinearPoly<E>,
         MultiLinearPoly<E>,
     ),
-    PeriodicTable<E>
+    PeriodicTable<E>,
 ) {
     let n = 1 << log_size;
     let table = MultiLinearPoly::from_evaluations(rand_vector(n));
@@ -94,7 +94,13 @@ fn setup_sum_check<E: FieldElement>(
     let r_batch: E = rand_value();
     let claim: E = rand_value();
 
-    (claim, r_batch, rand_pt, (table, multiplicity, values_0, values_1, values_2), periodic_table)
+    (
+        claim,
+        r_batch,
+        rand_pt,
+        (table, multiplicity, values_0, values_1, values_2),
+        periodic_table,
+    )
 }
 
 #[derive(Clone, Default)]

@@ -109,8 +109,7 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
         log_up_randomness: &[E],
     ) -> CircuitLayer<E> {
         let num_fractions = evaluator.get_num_fractions();
-        let periodic_values =
-            evaluator.build_periodic_values::<E::BaseField, E>();
+        let periodic_values = evaluator.build_periodic_values::<E::BaseField, E>();
         let mut input_layer_wires =
             Vec::with_capacity(main_trace.main_segment().num_rows() * num_fractions);
         let mut main_frame = EvaluationFrame::new(main_trace.main_segment().num_cols());
