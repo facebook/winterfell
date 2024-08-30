@@ -53,6 +53,8 @@ pub fn verify_sum_check_intermediate_layers<
     Ok(openings_claim.clone())
 }
 
+/// Sum-check verifier for the input layer.
+///
 /// Verifies the final sum-check proof i.e., the one for the input layer, including the final check,
 /// and returns a [`FinalOpeningClaim`] to the STARK verifier in order to verify the correctness of
 /// the openings.
@@ -64,8 +66,6 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
     claim: (E, E),
     transcript: &mut impl RandomCoin<Hasher = H, BaseField = E::BaseField>,
 ) -> Result<FinalOpeningClaim<E>, SumCheckVerifierError> {
-    let FinalLayerProof { proof } = proof;
-
     // generate challenge to batch sum-checks
     transcript.reseed(H::hash_elements(&[claim.0, claim.1]));
     let r_batch: E = transcript
@@ -77,17 +77,17 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
 
     // verify the sum-check proof
     let SumCheckRoundClaim { eval_point, claim } =
-        verify_rounds(reduced_claim, &proof.round_proofs, transcript)?;
+        verify_rounds(reduced_claim, &proof.0.round_proofs, transcript)?;
 
     // execute the final evaluation check
-    if proof.openings_claim.eval_point != eval_point {
+    if proof.0.openings_claim.eval_point != eval_point {
         return Err(SumCheckVerifierError::WrongOpeningPoint);
     }
 
     let mut numerators = vec![E::ZERO; evaluator.get_num_fractions()];
     let mut denominators = vec![E::ZERO; evaluator.get_num_fractions()];
     evaluator.evaluate_query(
-        &proof.openings_claim.openings,
+        &proof.0.openings_claim.openings,
         &log_up_randomness,
         &mut numerators,
         &mut denominators,
@@ -99,14 +99,14 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
     let eq_mu = EqFunction::new(evaluation_point_mu.into()).evaluations();
     let eq_nu = EqFunction::new(evaluation_point_nu.into());
 
-    let eq_nu_eval = eq_nu.evaluate(&proof.openings_claim.eval_point);
+    let eq_nu_eval = eq_nu.evaluate(&proof.0.openings_claim.eval_point);
     let expected_evaluation =
         evaluate_composition_poly(&eq_mu, &numerators, &denominators, eq_nu_eval, r_batch);
 
     if expected_evaluation != claim {
         Err(SumCheckVerifierError::FinalEvaluationCheckFailed)
     } else {
-        Ok(proof.openings_claim.clone())
+        Ok(proof.0.openings_claim.clone())
     }
 }
 

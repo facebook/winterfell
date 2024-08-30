@@ -94,7 +94,7 @@ mod tests {
 
     use air::Air;
     use math::{
-        fields::f128::BaseElement, get_power_series_with_offset, polynom, FieldElement, StarkField,
+        fields::f64::BaseElement, get_power_series_with_offset, polynom, FieldElement, StarkField,
     };
 
     use crate::tests::MockAir;
@@ -104,8 +104,8 @@ mod tests {
         let trace_length = 32;
 
         // instantiate AIR with 2 periodic columns
-        let col1 = vec![1u128, 2].into_iter().map(BaseElement::new).collect::<Vec<_>>();
-        let col2 = vec![3u128, 4, 5, 6].into_iter().map(BaseElement::new).collect::<Vec<_>>();
+        let col1 = vec![1u64, 2].into_iter().map(BaseElement::new).collect::<Vec<_>>();
+        let col2 = vec![3u64, 4, 5, 6].into_iter().map(BaseElement::new).collect::<Vec<_>>();
         let air = MockAir::with_periodic_columns(vec![col1, col2], trace_length);
 
         // build a table of periodic values

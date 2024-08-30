@@ -3,39 +3,32 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use alloc::{string::ToString, vec::Vec};
+use alloc::vec::Vec;
 
-use crypto::{ElementHasher, RandomCoin, RandomCoinError};
 use math::FieldElement;
-use utils::Deserializable;
 
-use super::lagrange::LagrangeKernelRandElements;
+use super::{lagrange::LagrangeKernelRandElements, LogUpGkrOracle};
 
-/// Holds the randomly generated elements necessary to build the auxiliary trace.
+/// Holds the randomly generated elements used in defining the auxiliary segment of the trace.
 ///
-/// Specifically, [`AuxRandElements`] currently supports 3 types of random elements:
-/// - the ones needed to build the Lagrange kernel column (when using GKR to accelerate LogUp),
-/// - the ones needed to build the "s" auxiliary column (when using GKR to accelerate LogUp),
-/// - the ones needed to build all the other auxiliary columns
+/// Specifically, [`AuxRandElements`] currently supports 2 types of random elements:
+/// - the ones needed to build all the auxiliary columns except for the ones associated
+///   to LogUp-GKR.
+/// - the ones needed to build the "s" and Lagrange kernel auxiliary columns (when using GKR to
+///   accelerate LogUp). These also include additional information needed to evaluate constraints
+///   one these two columns.
 #[derive(Debug, Clone)]
-pub struct AuxRandElements<E> {
+pub struct AuxRandElements<E: FieldElement> {
     rand_elements: Vec<E>,
-    gkr: Option<GkrRandElements<E>>,
+    gkr: Option<GkrData<E>>,
 }
 
-impl<E> AuxRandElements<E> {
-    /// Creates a new [`AuxRandElements`], where the auxiliary trace doesn't contain a Lagrange
-    /// kernel column.
-    pub fn new(rand_elements: Vec<E>) -> Self {
-        Self { rand_elements, gkr: None }
-    }
-
-    /// Creates a new [`AuxRandElements`], where the auxiliary trace contains columns needed when
+impl<E: FieldElement> AuxRandElements<E> {
+    /// Creates a new [`AuxRandElements`], where the auxiliary segment may contain columns needed when
     /// using GKR to accelerate LogUp (i.e. a Lagrange kernel column and the "s" column).
-    pub fn new_with_gkr(rand_elements: Vec<E>, gkr: GkrRandElements<E>) -> Self {
-        Self { rand_elements, gkr: Some(gkr) }
+    pub fn new(rand_elements: Vec<E>, gkr: Option<GkrData<E>>) -> Self {
+        Self { rand_elements, gkr }
     }
-
     /// Returns the random elements needed to build all columns other than the two GKR-related ones.
     pub fn rand_elements(&self) -> &[E] {
         &self.rand_elements
@@ -43,7 +36,7 @@ impl<E> AuxRandElements<E> {
 
     /// Returns the random elements needed to build the Lagrange kernel column.
     pub fn lagrange(&self) -> Option<&LagrangeKernelRandElements<E>> {
-        self.gkr.as_ref().map(|gkr| &gkr.lagrange)
+        self.gkr.as_ref().map(|gkr| &gkr.lagrange_kernel_eval_point)
     }
 
     /// Returns the random values used to linearly combine the openings returned from the GKR proof.
@@ -52,83 +45,97 @@ impl<E> AuxRandElements<E> {
     pub fn gkr_openings_combining_randomness(&self) -> Option<&[E]> {
         self.gkr.as_ref().map(|gkr| gkr.openings_combining_randomness.as_ref())
     }
-}
 
-/// Holds all the random elements needed when using GKR to accelerate LogUp.
-///
-/// This consists of two sets of random values:
-/// 1. The Lagrange kernel random elements (expanded on in [`LagrangeKernelRandElements`]), and
-/// 2. The "openings combining randomness".
-///
-/// After the verifying the LogUp-GKR circuit, the verifier is left with unproven claims provided
-/// nondeterministically by the prover about the evaluations of the MLE of the main trace columns at
-/// the Lagrange kernel random elements. Those claims are (linearly) combined into one using the
-/// openings combining randomness.
-#[derive(Clone, Debug)]
-pub struct GkrRandElements<E> {
-    lagrange: LagrangeKernelRandElements<E>,
-    openings_combining_randomness: Vec<E>,
-}
-
-impl<E> GkrRandElements<E> {
-    /// Constructs a new [`GkrRandElements`] from [`LagrangeKernelRandElements`], and the openings
-    /// combining randomness.
+    /// Returns a collection of data necessary for implementing the univariate IOP for multi-linear
+    /// evaluations of [1] when LogUp-GKR is enabled, else returns a `None`.
     ///
-    /// See [`GkrRandElements`] for a more detailed description.
+    /// [1]: https://eprint.iacr.org/2023/1284
+    pub fn gkr_data(&self) -> Option<GkrData<E>> {
+        self.gkr.clone()
+    }
+}
+
+/// Holds all the data needed when using LogUp-GKR in order to build and verify the correctness of
+/// two extra auxiliary columns required for running the univariate IOP for multi-linear
+/// evaluations of [1].
+///
+/// This consists of:
+/// 1. The Lagrange kernel random elements (expanded on in [`LagrangeKernelRandElements`]). These
+///    make up the evaluation point of the multi-linear extension polynomials underlying the oracles
+///    in point 4 below.
+/// 2. The "openings combining randomness".
+/// 3. The openings of the multi-linear extension polynomials of the main trace columns involved
+///    in LogUp.
+/// 4. A description of the each of the oracles involved in LogUp.
+///
+/// After verifying the LogUp-GKR circuit, the verifier is left with unproven claims provided
+/// by the prover about the evaluations of the MLEs of the main trace columns at the evaluation
+/// point defining the Lagrange kernel. Those claims are (linearly) batched into one using the
+/// openings combining randomness and checked against the batched oracles using univariate IOP
+/// for multi-linear evaluations of [1].
+///
+/// [1]: https://eprint.iacr.org/2023/1284
+#[derive(Clone, Debug)]
+pub struct GkrData<E: FieldElement> {
+    pub lagrange_kernel_eval_point: LagrangeKernelRandElements<E>,
+    pub openings_combining_randomness: Vec<E>,
+    pub openings: Vec<E>,
+    pub oracles: Vec<LogUpGkrOracle<E::BaseField>>,
+}
+
+impl<E: FieldElement> GkrData<E> {
+    /// Constructs a new [`GkrData`] from [`LagrangeKernelRandElements`], the openings combining
+    /// randomness and the LogUp-GKR oracles.
+    ///
+    /// See [`GkrData`] for a more detailed description.
     pub fn new(
-        lagrange: LagrangeKernelRandElements<E>,
+        lagrange_kernel_eval_point: LagrangeKernelRandElements<E>,
         openings_combining_randomness: Vec<E>,
+        openings: Vec<E>,
+        oracles: Vec<LogUpGkrOracle<E::BaseField>>,
     ) -> Self {
-        Self { lagrange, openings_combining_randomness }
+        Self {
+            lagrange_kernel_eval_point,
+            openings_combining_randomness,
+            openings,
+            oracles,
+        }
     }
 
     /// Returns the random elements needed to build the Lagrange kernel column.
     pub fn lagrange_kernel_rand_elements(&self) -> &LagrangeKernelRandElements<E> {
-        &self.lagrange
+        &self.lagrange_kernel_eval_point
     }
 
     /// Returns the random values used to linearly combine the openings returned from the GKR proof.
     pub fn openings_combining_randomness(&self) -> &[E] {
         &self.openings_combining_randomness
     }
-}
 
-/// A trait for verifying a GKR proof.
-///
-/// Specifically, the use case in mind is proving the constraints of a LogUp bus using GKR, as
-/// described in [Improving logarithmic derivative lookups using
-/// GKR](https://eprint.iacr.org/2023/1284.pdf).
-pub trait GkrVerifier {
-    /// The GKR proof.
-    type GkrProof: Deserializable;
-    /// The error that can occur during GKR proof verification.
-    type Error: ToString;
+    pub fn openings(&self) -> &[E] {
+        &self.openings
+    }
 
-    /// Verifies the GKR proof, and returns the random elements that were used in building
-    /// the Lagrange kernel auxiliary column.
-    fn verify<E, Hasher>(
-        &self,
-        gkr_proof: Self::GkrProof,
-        public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> Result<GkrRandElements<E>, Self::Error>
-    where
-        E: FieldElement,
-        Hasher: ElementHasher<BaseField = E::BaseField>;
-}
+    pub fn oracles(&self) -> &[LogUpGkrOracle<E::BaseField>] {
+        &self.oracles
+    }
 
-impl GkrVerifier for () {
-    type GkrProof = ();
-    type Error = RandomCoinError;
+    pub fn compute_batched_claim(&self) -> E {
+        self.openings[0]
+            + self
+                .openings
+                .iter()
+                .skip(1)
+                .zip(self.openings_combining_randomness.iter())
+                .fold(E::ZERO, |acc, (a, b)| acc + *a * *b)
+    }
 
-    fn verify<E, Hasher>(
-        &self,
-        _gkr_proof: Self::GkrProof,
-        _public_coin: &mut impl RandomCoin<BaseField = E::BaseField, Hasher = Hasher>,
-    ) -> Result<GkrRandElements<E>, Self::Error>
-    where
-        E: FieldElement,
-        Hasher: ElementHasher<BaseField = E::BaseField>,
-    {
-        Ok(GkrRandElements::new(LagrangeKernelRandElements::default(), Vec::new()))
+    pub fn compute_batched_query(&self, query: &[E::BaseField]) -> E {
+        E::from(query[0])
+            + query
+                .iter()
+                .skip(1)
+                .zip(self.openings_combining_randomness.iter())
+                .fold(E::ZERO, |acc, (a, b)| acc + b.mul_base(*a))
     }
 }

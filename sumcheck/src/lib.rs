@@ -124,8 +124,12 @@ where
 
 /// A proof for the input circuit layer i.e., the final layer in the GKR protocol.
 #[derive(Debug, Clone)]
-pub struct FinalLayerProof<E: FieldElement> {
-    pub proof: SumCheckProof<E>,
+pub struct FinalLayerProof<E: FieldElement>(SumCheckProof<E>);
+
+impl<E: FieldElement> FinalLayerProof<E> {
+    pub fn new(proof: SumCheckProof<E>) -> Self {
+        Self(proof)
+    }
 }
 
 impl<E> Serializable for FinalLayerProof<E>
@@ -133,8 +137,7 @@ where
     E: FieldElement,
 {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        let Self { proof } = self;
-        proof.write_into(target);
+        self.0.write_into(target);
     }
 }
 
@@ -143,9 +146,7 @@ where
     E: FieldElement,
 {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        Ok(Self {
-            proof: Deserializable::read_from(source)?,
-        })
+        Ok(Self(Deserializable::read_from(source)?))
     }
 }
 
@@ -170,7 +171,7 @@ pub struct GkrCircuitProof<E: FieldElement> {
 
 impl<E: FieldElement> GkrCircuitProof<E> {
     pub fn get_final_opening_claim(&self) -> FinalOpeningClaim<E> {
-        self.final_layer_proof.proof.openings_claim.clone()
+        self.final_layer_proof.0.openings_claim.clone()
     }
 }
 
@@ -181,7 +182,7 @@ where
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.circuit_outputs.write_into(target);
         self.before_final_layer_proofs.write_into(target);
-        self.final_layer_proof.proof.write_into(target);
+        self.final_layer_proof.0.write_into(target);
     }
 }
 
