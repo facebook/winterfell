@@ -142,7 +142,7 @@ pub trait Trace: Sized {
             }
 
             // then, check the Lagrange kernel assertion, if any
-            if let Some(lagrange_kernel_col_idx) = air.context().lagrange_kernel_aux_column_idx() {
+            if let Some(lagrange_kernel_col_idx) = air.context().lagrange_kernel_column_idx() {
                 let boundary_constraint_assertion_value =
                     LagrangeKernelBoundaryConstraint::assertion_value(
                         aux_rand_elements

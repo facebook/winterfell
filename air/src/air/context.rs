@@ -251,7 +251,7 @@ impl<B: StarkField, P> AirContext<B, P> {
     }
 
     /// Returns the index of the auxiliary column which implements the Lagrange kernel, if any.
-    pub fn lagrange_kernel_aux_column_idx(&self) -> Option<usize> {
+    pub fn lagrange_kernel_column_idx(&self) -> Option<usize> {
         self.trace_info.lagrange_kernel_column_idx()
     }
 

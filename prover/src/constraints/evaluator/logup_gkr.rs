@@ -71,8 +71,7 @@ where
         let mut lagrange_frame = LagrangeKernelEvaluationFrame::new_empty();
 
         let evaluator = self.air.get_logup_gkr_evaluator();
-        let s_col_constraint_divisor =
-            compute_s_col_divisor::<E>(domain.ce_domain_size(), domain, self.air.trace_length());
+        let s_col_constraint_divisor = compute_s_col_divisor::<E>(domain, self.air.trace_length());
         let s_col_idx = trace.trace_info().s_column_idx().expect("S-column should be present");
         let l_col_idx = trace
             .trace_info()
@@ -145,10 +144,10 @@ where
                 let rhs = s_cur - mean + batched_query * l_cur;
                 let lhs = s_nxt;
 
-                (rhs - lhs)
-                    * self
-                        .s_col_composition_coefficient
-                        .mul_base(s_col_constraint_divisor[step % (domain.trace_to_ce_blowup())])
+                let divisor_at_step =
+                    s_col_constraint_divisor[step % (domain.trace_to_ce_blowup())];
+
+                (rhs - lhs) * self.s_col_composition_coefficient.mul_base(divisor_at_step)
             };
 
             combined_evaluations_acc[step] +=
@@ -348,12 +347,11 @@ impl<E: FieldElement> TransitionDivisorEvaluator<E> {
 /// The divisor for the s-column is $X^n - 1$ where $n$ is the trace length. This means that
 /// we need only compute `ce_blowup` many values and thus only that many exponentiations.
 fn compute_s_col_divisor<E: FieldElement>(
-    ce_domain_size: usize,
     domain: &StarkDomain<E::BaseField>,
     trace_length: usize,
 ) -> Vec<E::BaseField> {
     let degree = trace_length as u32;
-    let mut result = Vec::with_capacity(ce_domain_size);
+    let mut result = Vec::with_capacity(domain.trace_to_ce_blowup());
 
     for row in 0..domain.trace_to_ce_blowup() {
         let x = domain.get_ce_x_at(row).exp(degree.into()) - E::BaseField::ONE;

@@ -346,7 +346,7 @@ pub trait Prover {
             };
 
             trace_polys
-                .add_aux_segment(aux_segment_polys, air.context().lagrange_kernel_aux_column_idx());
+                .add_aux_segment(aux_segment_polys, air.context().lagrange_kernel_column_idx());
 
             Some(AuxTraceWithMetadata { aux_trace, aux_rand_elements, gkr_proof })
         } else {

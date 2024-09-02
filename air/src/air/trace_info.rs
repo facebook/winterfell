@@ -116,7 +116,7 @@ impl TraceInfo {
 
         // validate trace segment widths
         assert!(main_segment_width > 0, "main trace segment must consist of at least one column");
-        let full_width = main_segment_width + aux_segment_width;
+        let full_width = main_segment_width + aux_segment_width + 2 * logup_gkr as usize;
         assert!(
             full_width <= TraceInfo::MAX_TRACE_WIDTH,
             "total number of columns in the trace cannot be greater than {}, but was {}",
@@ -174,9 +174,9 @@ impl TraceInfo {
         &self.trace_meta
     }
 
-    /// Returns true if an execution trace contains the auxiliary trace segment.
+    /// Returns true if an execution trace contains an auxiliary trace segment.
     pub fn is_multi_segment(&self) -> bool {
-        self.aux_segment_width > 0
+        self.aux_segment_width > 0 || self.logup_gkr
     }
 
     /// Returns the number of columns in the main segment of an execution trace.
