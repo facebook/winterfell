@@ -245,7 +245,7 @@ pub trait Trace: Sized {
             let gkr_data = aux_rand_elements.gkr_data().expect("should not be None");
             let r = gkr_data.lagrange_kernel_rand_elements();
 
-            // Loop over every constraint
+            // Loop over every Lagrange kernel constraint
             for constraint_idx in 1..v + 1 {
                 let domain_step = 2_usize.pow((v - constraint_idx + 1) as u32);
                 let domain_half_step = 2_usize.pow((v - constraint_idx) as u32);
@@ -266,6 +266,7 @@ pub trait Trace: Sized {
                 }
             }
 
+            // Validate the s-column constraint
             let evaluator = air.get_logup_gkr_evaluator();
             let mut aux_frame = EvaluationFrame::new(self.aux_trace_width());
 
