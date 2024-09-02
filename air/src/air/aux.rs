@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 
 use math::{ExtensionOf, FieldElement};
 
-use super::{lagrange::LagrangeKernelRandElements, LogUpGkrOracle};
+use super::{LagrangeKernelRandElements, LogUpGkrOracle};
 
 /// Holds the randomly generated elements used in defining the auxiliary segment of the trace.
 ///

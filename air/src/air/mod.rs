@@ -6,7 +6,6 @@
 use alloc::{collections::BTreeMap, vec::Vec};
 
 use crypto::{RandomCoin, RandomCoinError};
-use logup_gkr::PhantomLogUpGkrEval;
 use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElements};
 
 use crate::ProofOptions;
@@ -29,17 +28,12 @@ pub use boundary::{BoundaryConstraint, BoundaryConstraintGroup, BoundaryConstrai
 mod transition;
 pub use transition::{EvaluationFrame, TransitionConstraintDegree, TransitionConstraints};
 
-mod lagrange;
-pub use lagrange::{
-    LagrangeKernelBoundaryConstraint, LagrangeKernelConstraints, LagrangeKernelEvaluationFrame,
-    LagrangeKernelRandElements, LagrangeKernelTransitionConstraints,
-};
-
-mod s_column;
-
 mod logup_gkr;
+use logup_gkr::PhantomLogUpGkrEval;
 pub use logup_gkr::{
-    LogUpGkrEvaluator, LogUpGkrOracle, 
+    LagrangeKernelBoundaryConstraint, LagrangeKernelConstraints, LagrangeKernelEvaluationFrame,
+    LagrangeKernelRandElements, LagrangeKernelTransitionConstraints, LogUpGkrEvaluator,
+    LogUpGkrOracle,
 };
 
 mod coefficients;
