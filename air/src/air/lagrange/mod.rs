@@ -22,7 +22,6 @@ use crate::LagrangeConstraintsCompositionCoefficients;
 pub struct LagrangeKernelConstraints<E: FieldElement> {
     pub transition: LagrangeKernelTransitionConstraints<E>,
     pub boundary: LagrangeKernelBoundaryConstraint<E>,
-    pub lagrange_kernel_col_idx: usize,
 }
 
 impl<E: FieldElement> LagrangeKernelConstraints<E> {
@@ -30,7 +29,6 @@ impl<E: FieldElement> LagrangeKernelConstraints<E> {
     pub fn new(
         lagrange_composition_coefficients: LagrangeConstraintsCompositionCoefficients<E>,
         lagrange_kernel_rand_elements: &LagrangeKernelRandElements<E>,
-        lagrange_kernel_col_idx: usize,
     ) -> Self {
         Self {
             transition: LagrangeKernelTransitionConstraints::new(
@@ -40,7 +38,6 @@ impl<E: FieldElement> LagrangeKernelConstraints<E> {
                 lagrange_composition_coefficients.boundary,
                 lagrange_kernel_rand_elements,
             ),
-            lagrange_kernel_col_idx,
         }
     }
 }

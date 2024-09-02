@@ -205,11 +205,7 @@ pub trait Prover {
     /// Builds and returns the auxiliary trace.
     #[allow(unused_variables)]
     #[maybe_async]
-    fn build_aux_trace<E>(
-        &self,
-        main_trace: &Self::Trace,
-        aux_rand_elements: &[E],
-    ) -> ColMatrix<E>
+    fn build_aux_trace<E>(&self, main_trace: &Self::Trace, aux_rand_elements: &[E]) -> ColMatrix<E>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
@@ -361,7 +357,7 @@ pub trait Prover {
         // This checks validity of both, assertions and state transitions. We do this in debug
         // mode only because this is a very expensive operation.
         #[cfg(debug_assertions)]
-        //trace.validate(&air, aux_trace_with_metadata.as_ref());
+        trace.validate(&air, aux_trace_with_metadata.as_ref());
 
         // Destructure `aux_trace_with_metadata`.
         let (aux_trace, aux_rand_elements, gkr_proof) = match aux_trace_with_metadata {

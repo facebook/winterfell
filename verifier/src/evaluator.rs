@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 
 use air::{
     Air, AuxRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
-    LagrangeKernelEvaluationFrame, LogUpGkrEvaluator, S_COLUMN_OFFSET,
+    LagrangeKernelEvaluationFrame, LogUpGkrEvaluator,
 };
 use math::{polynom, FieldElement};
 
@@ -100,12 +100,10 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
 
         // Lagrange kernel constraints
 
-        let lagrange_constraints = air
-            .get_lagrange_kernel_constraints(
-                lagrange_coefficients,
-                &gkr_data.lagrange_kernel_eval_point,
-            )
-            .expect("expected Lagrange kernel constraints to be present");
+        let lagrange_constraints = air.get_logup_gkr_evaluator().get_lagrange_kernel_constraints(
+            lagrange_coefficients,
+            &gkr_data.lagrange_kernel_eval_point,
+        );
 
         result += lagrange_constraints.transition.evaluate_and_combine::<E>(
             lagrange_kernel_column_frame,
@@ -116,7 +114,7 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
 
         // s-column constraints
 
-        let s_col_idx = air.trace_info().aux_segment_width() - S_COLUMN_OFFSET;
+        let s_col_idx = air.trace_info().s_column_idx().expect("s-column should be present");
         let s_cur = aux_trace_frame
             .as_ref()
             .expect("expected aux rand elements to be present")
@@ -131,13 +129,8 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
         let mean = batched_claim
             .mul_base(E::BaseField::ONE / E::BaseField::from(air.trace_length() as u32));
 
-        let mut query =
-            vec![E::ZERO; air.get_logup_gkr_evaluator().get_oracles().len()];
-        air.get_logup_gkr_evaluator().build_query(
-            main_trace_frame,
-            &[],
-            &mut query,
-        );
+        let mut query = vec![E::ZERO; air.get_logup_gkr_evaluator().get_oracles().len()];
+        air.get_logup_gkr_evaluator().build_query(main_trace_frame, &[], &mut query);
         let batched_claim_at_query = gkr_data.compute_batched_query::<E>(&query);
         let rhs = s_cur - mean + batched_claim_at_query * l_cur;
         let lhs = s_nxt;

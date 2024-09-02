@@ -39,6 +39,10 @@ impl TraceInfo {
     pub const MAX_META_LENGTH: usize = 65535;
     /// Maximum number of random elements in the auxiliary trace segment; currently set to 255.
     pub const MAX_RAND_SEGMENT_ELEMENTS: usize = 255;
+    /// The Lagrange kernel, if present, is the last column of the auxiliary trace.
+    pub const LAGRANGE_KERNEL_OFFSET: usize = 1;
+    /// The s-column, if present, is the second to last column of the auxiliary trace.
+    pub const S_COLUMN_OFFSET: usize = 2;
 
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
@@ -208,6 +212,24 @@ impl TraceInfo {
     /// Returns a boolean indicating whether LogUp-GKR is enabled.
     pub fn logup_gkr_enabled(&self) -> bool {
         self.logup_gkr
+    }
+
+    /// Returns the index of the auxiliary column which implements the Lagrange kernel, if any.
+    pub fn lagrange_kernel_column_idx(&self) -> Option<usize> {
+        if self.logup_gkr_enabled() {
+            Some(self.aux_segment_width() - TraceInfo::LAGRANGE_KERNEL_OFFSET)
+        } else {
+            None
+        }
+    }
+
+    /// Returns the index of the auxiliary column which implements the s-column, if any.
+    pub fn s_column_idx(&self) -> Option<usize> {
+        if self.logup_gkr_enabled() {
+            Some(self.aux_segment_width() - TraceInfo::S_COLUMN_OFFSET)
+        } else {
+            None
+        }
     }
 
     /// Returns the number of random elements needed to build all auxiliary columns, except for the

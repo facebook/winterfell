@@ -8,7 +8,6 @@ use alloc::vec::Vec;
 use air::{
     Air, EvaluationFrame, GkrData, LagrangeConstraintsCompositionCoefficients,
     LagrangeKernelConstraints, LagrangeKernelEvaluationFrame, LogUpGkrEvaluator,
-    LAGRANGE_KERNEL_OFFSET, S_COLUMN_OFFSET,
 };
 use math::{batch_inversion, FieldElement};
 
@@ -37,11 +36,11 @@ where
     ) -> Self {
         Self {
             lagrange_kernel_constraints: air
+                .get_logup_gkr_evaluator()
                 .get_lagrange_kernel_constraints(
                     lagrange_composition_coefficients,
                     gkr_data.lagrange_kernel_rand_elements(),
-                )
-                .expect("expected Lagrange kernel constraints to be present"),
+                ),
             air,
             gkr_data,
             s_col_composition_coefficient,
@@ -74,8 +73,11 @@ where
         let evaluator = self.air.get_logup_gkr_evaluator();
         let s_col_constraint_divisor =
             compute_s_col_divisor::<E>(domain.ce_domain_size(), domain, self.air.trace_length());
-        let s_col_idx = trace.trace_info().aux_segment_width() - S_COLUMN_OFFSET;
-        let l_col_idx = trace.trace_info().aux_segment_width() - LAGRANGE_KERNEL_OFFSET;
+        let s_col_idx = trace.trace_info().s_column_idx().expect("S-column should be present");
+        let l_col_idx = trace
+            .trace_info()
+            .lagrange_kernel_column_idx()
+            .expect("Lagrange kernel should be present");
         let mut main_frame = EvaluationFrame::new(trace.trace_info().main_segment_width());
         let mut aux_frame = EvaluationFrame::new(trace.trace_info().aux_segment_width());
 
@@ -87,7 +89,7 @@ where
             // compute Lagrange kernel frame
             trace.read_lagrange_kernel_frame_into(
                 step << lde_shift,
-                self.lagrange_kernel_constraints.lagrange_kernel_col_idx,
+                l_col_idx,
                 &mut lagrange_frame,
             );
 
