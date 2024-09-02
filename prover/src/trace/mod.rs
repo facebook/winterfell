@@ -3,7 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use air::{Air, AuxRandElements, EvaluationFrame, LagrangeKernelBoundaryConstraint, TraceInfo};
+use air::{
+    Air, AuxRandElements, EvaluationFrame, LagrangeKernelBoundaryConstraint, LogUpGkrEvaluator,
+    TraceInfo,
+};
 use math::{polynom, FieldElement, StarkField};
 use sumcheck::GkrCircuitProof;
 
@@ -222,17 +225,25 @@ pub trait Trace: Sized {
             x *= g;
         }
 
-        // evaluate transition constraints for Lagrange kernel column (if any) and make sure
-        // they all evaluate to zeros
-        if let Some(col_idx) = air.context().lagrange_kernel_aux_column_idx() {
+        // evaluate transition constraints for Lagrange kernel column and s-column, when LogUp-GKR
+        // is enabled, and make sure they all evaluate to zeros
+        if air.context().logup_gkr_enabled() {
             let aux_trace_with_metadata =
                 aux_trace_with_metadata.expect("expected aux trace to be present");
             let aux_trace = &aux_trace_with_metadata.aux_trace;
             let aux_rand_elements = &aux_trace_with_metadata.aux_rand_elements;
+            let l_col_idx = air
+                .context()
+                .trace_info()
+                .lagrange_kernel_column_idx()
+                .expect("should not be None");
+            let s_col_idx = air.context().trace_info().s_column_idx().expect("should not be None");
 
-            let c = aux_trace.get_column(col_idx);
-            let v = self.length().ilog2() as usize;
-            let r = aux_rand_elements.lagrange().expect("expected Lagrange column to be present");
+            let c = aux_trace.get_column(l_col_idx);
+            let trace_length = self.length();
+            let v = trace_length.ilog2() as usize;
+            let gkr_data = aux_rand_elements.gkr_data().expect("should not be None");
+            let r = gkr_data.lagrange_kernel_rand_elements();
 
             // Loop over every constraint
             for constraint_idx in 1..v + 1 {
@@ -253,6 +264,35 @@ pub trait Trace: Sized {
                         "Lagrange transition constraint {constraint_idx} did not evaluate to ZERO at step {x_current}"
                     );
                 }
+            }
+
+            let evaluator = air.get_logup_gkr_evaluator();
+            let mut aux_frame = EvaluationFrame::new(self.aux_trace_width());
+
+            let c = gkr_data.compute_batched_claim();
+            let mean = c / E::from(E::BaseField::from(trace_length as u32));
+
+            let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
+            for step in 0..self.length() {
+                self.read_main_frame(step, &mut main_frame);
+                read_aux_frame(aux_trace, step, &mut aux_frame);
+
+                let l_cur = aux_frame.current()[l_col_idx];
+                let s_cur = aux_frame.current()[s_col_idx];
+                let s_nxt = aux_frame.next()[s_col_idx];
+
+                evaluator.build_query(&main_frame, &[], &mut query);
+                let batched_query = gkr_data.compute_batched_query(&query);
+
+                let rhs = s_cur - mean + batched_query * l_cur;
+                let lhs = s_nxt;
+
+                let evaluation = rhs - lhs;
+
+                assert!(
+                    evaluation == E::ZERO,
+                    "s-column transition constraint did not evaluate to ZERO at step {step}"
+                );
             }
         }
     }
