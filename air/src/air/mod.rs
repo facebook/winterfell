@@ -35,6 +35,8 @@ pub use lagrange::{
     LagrangeKernelRandElements, LagrangeKernelTransitionConstraints,
 };
 
+mod s_column;
+
 mod logup_gkr;
 pub use logup_gkr::{
     LogUpGkrEvaluator, LogUpGkrOracle, 

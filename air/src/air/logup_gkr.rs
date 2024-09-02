@@ -9,7 +9,11 @@ use core::marker::PhantomData;
 use crypto::{ElementHasher, RandomCoin};
 use math::{ExtensionOf, FieldElement, StarkField, ToElements};
 
-use super::{EvaluationFrame, GkrData, LagrangeConstraintsCompositionCoefficients, LagrangeKernelConstraints, LagrangeKernelRandElements};
+use super::{
+    s_column::SColumnConstraint, EvaluationFrame, GkrData,
+    LagrangeConstraintsCompositionCoefficients, LagrangeKernelConstraints,
+    LagrangeKernelRandElements,
+};
 
 /// A trait containing the necessary information in order to run the LogUp-GKR protocol of [1].
 ///
@@ -123,11 +127,19 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
         lagrange_composition_coefficients: LagrangeConstraintsCompositionCoefficients<E>,
         lagrange_kernel_rand_elements: &LagrangeKernelRandElements<E>,
     ) -> LagrangeKernelConstraints<E> {
-            LagrangeKernelConstraints::new(
-                lagrange_composition_coefficients,
-                lagrange_kernel_rand_elements,
-            )
-      
+        LagrangeKernelConstraints::new(
+            lagrange_composition_coefficients,
+            lagrange_kernel_rand_elements,
+        )
+    }
+
+    /// Returns a new [`SColumnConstraints`].
+    fn get_s_column_constraints<E: FieldElement<BaseField = Self::BaseField>>(
+        &self,
+        gkr_data: GkrData<E>,
+        composition_coefficient: E,
+    ) -> SColumnConstraint<E> {
+        SColumnConstraint::new(gkr_data, composition_coefficient)
     }
 }
 
@@ -212,63 +224,4 @@ pub enum LogUpGkrOracle<B: StarkField> {
     /// A virtual periodic column defined by its values in a given cycle. Note that the cycle length
     /// must be a power of 2.
     PeriodicValue(Vec<B>),
-}
-
-#[derive(Clone, Default)]
-pub struct DummyLogUpGkrEval<B: StarkField, P: Clone + Send + Sync + ToElements<B>> {
-    _field: PhantomData<B>,
-    _public_inputs: PhantomData<P>,
-}
-
-impl<B, P> LogUpGkrEvaluator for DummyLogUpGkrEval<B, P>
-where
-    B: StarkField,
-    P: Clone + Send + Sync + ToElements<B>,
-{
-    type BaseField = B;
-
-    type PublicInputs = P;
-
-    fn get_oracles(&self) -> &[LogUpGkrOracle<Self::BaseField>] {
-        panic!("LogUpGkrEvaluator method called but LogUp-GKR is not implemented")
-    }
-
-    fn get_num_rand_values(&self) -> usize {
-        panic!("LogUpGkrEvaluator method called but LogUp-GKR is not implemented")
-    }
-
-    fn get_num_fractions(&self) -> usize {
-        panic!("LogUpGkrEvaluator method called but LogUp-GKR is not implemented")
-    }
-
-    fn max_degree(&self) -> usize {
-        panic!("LogUpGkrEvaluator method called but LogUp-GKR is not implemented")
-    }
-
-    fn build_query<E>(&self, _frame: &EvaluationFrame<E>, _periodic_values: &[E], _query: &mut [E])
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        panic!("LogUpGkrEvaluator method called but LogUp-GKR is not implemented")
-    }
-
-    fn evaluate_query<F, E>(
-        &self,
-        _query: &[F],
-        _rand_values: &[E],
-        _numerator: &mut [E],
-        _denominator: &mut [E],
-    ) where
-        F: FieldElement<BaseField = Self::BaseField>,
-        E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
-    {
-        panic!("LogUpGkrEvaluator method called but LogUp-GKR is not implemented")
-    }
-
-    fn compute_claim<E>(&self, _inputs: &Self::PublicInputs, _rand_values: &[E]) -> E
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        panic!("LogUpGkrEvaluator method called but LogUp-GKR is not implemented")
-    }
 }

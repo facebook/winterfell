@@ -126,6 +126,11 @@ where
                 combined_evaluations
             };
 
+            // compute and combine the transition constraints for the s-column.
+            // The s-column implements the cohomological sum-check argument of [1] and
+            // the constraint we enfore is exactly Eq (4) in Lemma 1 in [1].
+            //
+            // [1]: https://eprint.iacr.org/2021/930
             let s_col_combined_evaluation = {
                 trace.read_main_trace_frame_into(step << lde_shift, &mut main_frame);
                 trace.read_aux_trace_frame_into(step << lde_shift, &mut aux_frame);

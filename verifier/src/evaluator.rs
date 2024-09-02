@@ -125,22 +125,14 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
             .next()[s_col_idx];
         let l_cur = lagrange_kernel_column_frame.inner()[0];
 
-        let batched_claim = gkr_data.compute_batched_claim();
-        let mean = batched_claim
-            .mul_base(E::BaseField::ONE / E::BaseField::from(air.trace_length() as u32));
-
-        let mut query = vec![E::ZERO; air.get_logup_gkr_evaluator().get_oracles().len()];
-        air.get_logup_gkr_evaluator().build_query(main_trace_frame, &[], &mut query);
-        let batched_claim_at_query = gkr_data.compute_batched_query::<E>(&query);
-        let rhs = s_cur - mean + batched_claim_at_query * l_cur;
-        let lhs = s_nxt;
-
-        let divisor = x.exp((air.trace_length() as u32).into()) - E::ONE;
-        result += composition_coefficients
+        let s_column_cc = composition_coefficients
             .s_col
-            .expect("expected constraint composition coefficient for s-column to be present")
-            * (rhs - lhs)
-            / divisor;
+            .expect("expected constraint composition coefficient for s-column to be present");
+
+        let s_column_constraint =
+            air.get_logup_gkr_evaluator().get_s_column_constraints(gkr_data, s_column_cc);
+
+        result += s_column_constraint.evaluate(air, main_trace_frame, s_cur, s_nxt, l_cur, x);
     }
 
     result
