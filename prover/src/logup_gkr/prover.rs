@@ -156,7 +156,7 @@ fn build_mls_from_main_trace_segment<E: FieldElement>(
                 let ml = MultiLinearPoly::from_evaluations(values);
                 mls.push(ml)
             },
-            air::LogUpGkrOracle::PeriodicValue(values) => periodic_values.push(values.to_vec()),
+            LogUpGkrOracle::PeriodicValue(values) => periodic_values.push(values.to_vec()),
         };
     }
     Ok((mls, PeriodicTable::new(periodic_values)))

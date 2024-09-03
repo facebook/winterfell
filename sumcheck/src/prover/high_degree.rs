@@ -241,9 +241,6 @@ pub fn sum_check_prove_higher_degree<
         .for_each(|ml| ml.bind_least_significant_variable(round_challenge));
     eq_nu.bind_least_significant_variable(round_challenge);
 
-    // fold each periodic multi-linear using the round challenge
-    periodic_table.bind_least_significant_variable(round_challenge);
-
     let SumCheckRoundClaim { eval_point, claim: _claim } =
         reduce_claim(&round_proofs[num_rounds - 1], current_round_claim, round_challenge);
 
