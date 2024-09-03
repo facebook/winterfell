@@ -39,6 +39,10 @@ impl TraceInfo {
     pub const MAX_META_LENGTH: usize = 65535;
     /// Maximum number of random elements in the auxiliary trace segment; currently set to 255.
     pub const MAX_RAND_SEGMENT_ELEMENTS: usize = 255;
+    /// The Lagrange kernel, if present, is the last column of the auxiliary trace.
+    pub const LAGRANGE_KERNEL_OFFSET: usize = 1;
+    /// The s-column, if present, is the second to last column of the auxiliary trace.
+    pub const S_COLUMN_OFFSET: usize = 2;
 
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
@@ -112,7 +116,7 @@ impl TraceInfo {
 
         // validate trace segment widths
         assert!(main_segment_width > 0, "main trace segment must consist of at least one column");
-        let full_width = main_segment_width + aux_segment_width;
+        let full_width = main_segment_width + aux_segment_width + 2 * logup_gkr as usize;
         assert!(
             full_width <= TraceInfo::MAX_TRACE_WIDTH,
             "total number of columns in the trace cannot be greater than {}, but was {}",
@@ -149,6 +153,10 @@ impl TraceInfo {
 
     /// Returns the total number of columns in an execution trace.
     ///
+    /// When LogUp-GKR is enabled, we also account for two extra columns, in the auxiliary segment,
+    /// which are needed for implementing the univariate IOP for multi-linear evaluation in
+    /// https://eprint.iacr.org/2023/1284.
+    ///
     /// This is guaranteed to be between 1 and 255.
     pub fn width(&self) -> usize {
         self.main_segment_width + self.aux_segment_width + 2 * self.logup_gkr as usize
@@ -166,15 +174,15 @@ impl TraceInfo {
         &self.trace_meta
     }
 
-    /// Returns true if an execution trace contains the auxiliary trace segment.
+    /// Returns true if an execution trace contains an auxiliary trace segment.
     pub fn is_multi_segment(&self) -> bool {
-        self.aux_segment_width > 0
+        self.aux_segment_width > 0 || self.logup_gkr
     }
 
     /// Returns the number of columns in the main segment of an execution trace.
     ///
     /// This is guaranteed to be between 1 and 255.
-    pub fn main_trace_width(&self) -> usize {
+    pub fn main_segment_width(&self) -> usize {
         self.main_segment_width
     }
 
@@ -201,8 +209,27 @@ impl TraceInfo {
         }
     }
 
-    pub fn is_with_logup_gkr(&self) -> bool {
+    /// Returns a boolean indicating whether LogUp-GKR is enabled.
+    pub fn logup_gkr_enabled(&self) -> bool {
         self.logup_gkr
+    }
+
+    /// Returns the index of the auxiliary column which implements the Lagrange kernel, if any.
+    pub fn lagrange_kernel_column_idx(&self) -> Option<usize> {
+        if self.logup_gkr_enabled() {
+            Some(self.aux_segment_width() - TraceInfo::LAGRANGE_KERNEL_OFFSET)
+        } else {
+            None
+        }
+    }
+
+    /// Returns the index of the auxiliary column which implements the s-column, if any.
+    pub fn s_column_idx(&self) -> Option<usize> {
+        if self.logup_gkr_enabled() {
+            Some(self.aux_segment_width() - TraceInfo::S_COLUMN_OFFSET)
+        } else {
+            None
+        }
     }
 
     /// Returns the number of random elements needed to build all auxiliary columns, except for the

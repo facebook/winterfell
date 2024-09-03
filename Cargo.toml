@@ -10,8 +10,8 @@ members = [
   "prover",
   "verifier",
   "winterfell",
-  "examples"
-, "sumcheck"]
+  "examples",
+  "sumcheck",]
 resolver = "2"
 
 [profile.release]

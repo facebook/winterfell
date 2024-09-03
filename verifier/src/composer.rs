@@ -43,7 +43,7 @@ impl<E: FieldElement> DeepComposer<E> {
             x_coordinates,
             z: [z, z * E::from(g_trace)],
             g_trace,
-            lagrange_kernel_column_idx: air.context().lagrange_kernel_aux_column_idx(),
+            lagrange_kernel_column_idx: air.context().lagrange_kernel_column_idx(),
         }
     }
 

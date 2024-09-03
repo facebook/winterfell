@@ -5,14 +5,16 @@
 
 use alloc::vec::Vec;
 
-use air::{LogUpGkrEvaluator, PeriodicTable};
+use air::LogUpGkrEvaluator;
 use crypto::{ElementHasher, RandomCoin};
 use math::FieldElement;
+#[cfg(feature = "concurrent")]
+pub use rayon::prelude::*;
 
 use super::SumCheckProverError;
 use crate::{
-    comb_func, evaluate_composition_poly, CompressedUnivariatePolyEvals, EqFunction,
-    FinalOpeningClaim, MultiLinearPoly, RoundProof, SumCheckProof, SumCheckRoundClaim,
+    evaluate_composition_poly, CompressedUnivariatePolyEvals, EqFunction, FinalOpeningClaim,
+    MultiLinearPoly, RoundProof, SumCheckProof, SumCheckRoundClaim,
 };
 
 /// A sum-check prover for the input layer which can accommodate non-linear expressions in
@@ -51,125 +53,131 @@ use crate::{
 /// 2. ${[w]} := \sum_i w_i \cdot 2^i$ and $w := (w_1, \cdots, w_{\mu})$.
 /// 3. $h_{j}$ and $g_{j}$ are multi-variate polynomials for $j = 0, \cdots, 2^{\mu} - 1$.
 /// 4. $n := \nu + \mu$
+/// 5. $\\B_{\gamma} := \{0, 1\}^{\gamma}$ for positive integer $\gamma$.
 ///
 /// The sum above is evaluated using a layered circuit with the equation linking the input layer
 /// values $p_n$ to the next layer values $p_{n-1}$ given by the following relations
 ///
 /// $$
 /// p_{n-1}\left(v_2, \cdots, v_{\mu}, x_1, \cdots, x_{\nu}\right) = \sum_{w_i, y_i}
-///             EQ\left(\left(v_2, \cdots, v_{\mu}, x_1, \cdots, x_{\nu}\right),
-///                  \left(w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)\right)
-///                      \cdot \left( p_n\left(1, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)
-///                       \cdot q_n\left(0, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right) +
-///              p_n\left(0, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)  \cdot
-///                 q_n\left(1, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)\right)
+/// EQ\left(\left(v_2, \cdots, v_{\mu}, x_1, \cdots, x_{\nu}\right),
+/// \left(w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)\right)
+/// \cdot \left( p_n\left(1, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)
+/// \cdot q_n\left(0, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right) +
+/// p_n\left(0, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)  \cdot
+/// q_n\left(1, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)\right)
 /// $$
 ///
 /// and
 ///
 /// $$
 /// q_{n-1}\left(v_2, \cdots, v_{\mu}, x_1, \cdots, x_{\nu}\right) = \sum_{w_i, y_i}
-///             EQ\left(\left(v_2, \cdots, v_{\mu}, x_1, \cdots, x_{\nu}\right),
-///                  \left(w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)\right)
-///                     \cdot \left( q_n\left(1, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)
-///                       \cdot q_n\left(0, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)\right)
+/// EQ\left(\left(v_2, \cdots, v_{\mu}, x_1, \cdots, x_{\nu}\right),
+/// \left(w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)\right)
+/// \cdot \left( q_n\left(1, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)
+/// \cdot q_n\left(0, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)\right)
 /// $$
 ///
 /// and similarly for all subsequent layers.
 ///
-/// These expressions are nothing but the equations in Section 3.2 in [1] but with the projection
-/// happening at the first argument instead of the last.
-///
-/// We can now note a few things about the above:
-///
-/// 1. During the evaluation phase of the circuit, the prover needs to compute every tuple
-///    $\left(p_k, q_k\right)$ for $k = n, \cdots, 1$ over the boolean hyper-cubes of
-///    the appropriate sizes. In particular, the prover will have the evaluations
-///    $\left(p_n, q_n\right)$ over $\{0, 1\}^{\mu + \nu}$ stored.
-/// 2. Since $p_n$ and $q_n$ are linear in the first $\mu$ variables, we can directly use
-///    the stored evaluations of $p_n$ and $q_n$ during the final sum-check, the one linking
-///    the input layer to its next layer, for the first $\mu - 1$ rounds. This means that for
-///    the first $\mu - 1$ rounds, the last sum-check protocol can be treated like the sum-checks
-///    for the other layers i.e., the original degree $3$ sum-check of the LogUp-GKR paper.
-/// 3. For the last $\nu$ rounds of the final sum-check, we can still use the evaluations of
-///    $\left(p_k, q_k\right)$, or more precisely the result of their binding with the $\mu -1$
-///    round challenges from point 2 above, in order to optimize the computation of the sum-check
-///    round polynomials but due to the non-linearity of $\left(p_n, q_n\right)$ in the last $\nu$
-///    variables, we will have to work with
+/// By the properties of the $EQ$ function, we can write the above as follows:
 ///
 /// $$
-/// p_n\left(v_1, r_1, \cdots, r_{\mu - 1}, x_1, \cdots, x_{\nu}\right) = \sum_{w\in\{0, 1\}^{\mu}}
-///      EQ\left(\left(v_1, r_1, \cdots, r_{\mu - 1}\right), \left(w_1, \cdots, w_{\mu}\right)\right)
-///      g_{[w]}\left(f_1\left(x_1, \cdots, x_{\nu}\right), \cdots,
-///                                                 f_l\left(x_1, \cdots, x_{\nu}\right)\right)
+/// p_{n-1}\left(v_2, \cdots, v_{\mu}, x_1, \cdots, x_{\nu}\right) = \sum_{y_i}
+/// EQ\left(\left(x_1, \cdots, x_{\nu}\right),
+/// \left(y_1, \cdots, y_{\nu}\right)\right)
+/// \left( \sum_{w_i} EQ\left(\left(v_2, \cdots, v_{\mu}\right),
+/// \left(w_2, \cdots, w_{\mu}\right)\right)
+/// \cdot \left( p_n\left(1, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)
+/// \cdot q_n\left(0, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right) +
+/// p_n\left(0, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)  \cdot
+/// q_n\left(1, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)\right) \right)
 /// $$
 ///
 /// and
 ///
 /// $$
-/// q_n\left(v_1, r_1, \cdots, r_{\mu - 1}, x_1, \cdots, x_{\nu}\right) = \sum_{w\in\{0, 1\}^{\mu}}
-///     EQ\left(\left(v_1, r_1, \cdots, r_{\mu - 1}\right), \left(w_1, \cdots, w_{\mu}\right)\right)
-///     h_{[w]}\left(f_1\left(x_1, \cdots, x_{\nu}\right), \cdots,
-///                                                 f_l\left(x_1, \cdots, x_{\nu}\right)\right)
+/// q_{n-1}\left(v_2, \cdots, v_{\mu}, x_1, \cdots, x_{\nu}\right) = \sum_{y_i}
+/// EQ\left(\left(x_1, \cdots, x_{\nu}\right),
+/// \left(y_1, \cdots, y_{\nu}\right)\right)
+/// \left( \sum_{w_i} EQ\left(\left(v_2, \cdots, v_{\mu}\right)\right)
+/// \cdot q_n\left(1, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)
+/// \cdot q_n\left(0, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right) \right)
 /// $$
 ///
-/// where $r_i$ is the sum-check round challenges of the first $\mu - 1$ rounds.
+/// These expressions are nothing but the equations in Section 3.2 in [1] but with the projection
+/// happening in the first argument instead of the last one.
+/// The current function is then tasked with running a batched sum-check protocol for
 ///
-/// The current function executes the last $\nu$ parts of the sum-check and uses
-/// the [`LogUpGkrEvaluator`] to evaluate $g_i$ and $h_i$ during the computation of the evaluations
-/// of the round polynomials.
+/// $$
+/// p_{n-1}\left(v_2, \cdots, v_{\mu}, x_1, \cdots, x_{\nu}\right) =
+/// \sum_{y\in\\B_{\nu}} G(y_{1}, ..., y_{\nu})
+/// $$
 ///
-/// As an optimization, the function uses the five polynomials, refered to as [`merged_mls`]:
+/// and
 ///
-/// 1. $p_n\left(0, r_1, \cdots, r_{\mu - 1}, x_1, \cdots, x_{\nu}\right)$
-/// 2. $p_n\left(1, r_1, \cdots, r_{\mu - 1}, x_1, \cdots, x_{\nu}\right)$
-/// 3. $q_n\left(0, r_1, \cdots, r_{\mu - 1}, x_1, \cdots, x_{\nu}\right)$
-/// 4. $q_n\left(1, r_1, \cdots, r_{\mu - 1}, x_1, \cdots, x_{\nu}\right)$
-/// 5. $$\left(y_1, \cdots, y_{\nu}\right) \longrightarrow
-///     EQ\left(\left(t_1, \cdots, t_{\mu + \nu - 1}\right),
-///     \left(r_1, \cdots, r_{\mu - 1}, y_1, \cdots, y_{\nu}\right)\right)
-///    $$
-///    where $t_i$ is the sum-check randomness from the previous layer.
+/// $$
+/// q_{n-1}\left(v_2, \cdots, v_{\mu}, x_1, \cdots, x_{\nu}\right) =
+/// \sum_{y\in\\B_{\nu}} H\left(y_1, \cdots, y_{\nu} \right)
+/// $$
 ///
+/// where
+///
+/// $$
+/// G := \left( \left(y_1, \cdots, y_{\nu}\right) \longrightarrow
+/// EQ\left(\left(x_1, \cdots, x_{\nu}\right),
+/// \left(y_1, \cdots, y_{\nu}\right)\right)
+/// \left( \sum_{w_i} EQ\left(\left(v_2, \cdots, v_{\mu}\right),
+/// \left(w_2, \cdots, w_{\mu}\right)\right)
+/// \cdot \left( p_n\left(1, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)
+/// \cdot q_n\left(0, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right) +
+/// p_n\left(0, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)  \cdot
+/// q_n\left(1, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)\right) \right)
+/// \right)
+/// $$
+///
+/// and
+///
+/// $$
+/// H := \left( \left(y_1, \cdots, y_{\nu}\right) \longrightarrow
+/// EQ\left(\left(x_1, \cdots, x_{\nu}\right),
+/// \left(y_1, \cdots, y_{\nu}\right)\right)
+/// \left( \sum_{w_i} EQ\left(\left(v_2, \cdots, v_{\mu}\right)\right)
+/// \cdot q_n\left(1, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right)
+/// \cdot q_n\left(0, w_2, \cdots, w_{\mu}, y_1, \cdots, y_{\nu}\right) \right)
+/// \right)
+/// $$
 ///
 /// [1]: https://eprint.iacr.org/2023/1284
 #[allow(clippy::too_many_arguments)]
 pub fn sum_check_prove_higher_degree<
     E: FieldElement,
-    C: RandomCoin<Hasher = H, BaseField = E::BaseField>,
     H: ElementHasher<BaseField = E::BaseField>,
 >(
     evaluator: &impl LogUpGkrEvaluator<BaseField = <E as FieldElement>::BaseField>,
+    evaluation_point: Vec<E>,
     claim: E,
     r_sum_check: E,
-    rand_merge: Vec<E>,
     log_up_randomness: Vec<E>,
-    periodic_table: &mut PeriodicTable<E>,
-    merged_mls: &mut [MultiLinearPoly<E>],
-    mls: &mut [MultiLinearPoly<E>],
-    coin: &mut C,
+    mut mls: Vec<MultiLinearPoly<E>>,
+    coin: &mut impl RandomCoin<Hasher = H, BaseField = E::BaseField>,
 ) -> Result<SumCheckProof<E>, SumCheckProverError> {
     let num_rounds = mls[0].num_variables();
 
     let mut round_proofs = vec![];
 
+    // split the evaluation point into two points of dimension mu and nu, respectively
+    let mu = evaluator.get_num_fractions().trailing_zeros() - 1;
+    let (evaluation_point_mu, evaluation_point_nu) = evaluation_point.split_at(mu as usize);
+    let eq_mu = EqFunction::ml_at(evaluation_point_mu.into()).evaluations().to_vec();
+    let mut eq_nu = EqFunction::ml_at(evaluation_point_nu.into());
+
     // setup first round claim
     let mut current_round_claim = SumCheckRoundClaim { eval_point: vec![], claim };
 
-    // compute, for all (w_1, \cdots, w_{\mu - 1}) in {0, 1}^{\mu - 1}:
-    // EQ\left(\left(r_1, \cdots, r_{\mu - 1}\right), \left(w_1, \cdots, w_{\mu - 1}\right)\right)
-    let tensored_merge_randomness = EqFunction::ml_at(rand_merge.to_vec()).evaluations().to_vec();
-
     // run the first round of the protocol
-    let round_poly_evals = sumcheck_round(
-        evaluator,
-        mls,
-        merged_mls,
-        &log_up_randomness,
-        periodic_table,
-        r_sum_check,
-        &tensored_merge_randomness,
-    );
+    let round_poly_evals =
+        sumcheck_round(&eq_mu, evaluator, &eq_nu, &mls, &log_up_randomness, r_sum_check);
     let round_poly_coefs = round_poly_evals.to_poly(current_round_claim.claim);
 
     // reseed with the s_0 polynomial
@@ -188,24 +196,12 @@ pub fn sum_check_prove_higher_degree<
         // fold each multi-linear using the round challenge
         mls.iter_mut()
             .for_each(|ml| ml.bind_least_significant_variable(round_challenge));
-        // fold each merged multi-linear using the round challenge
-        merged_mls
-            .iter_mut()
-            .for_each(|ml| ml.bind_least_significant_variable(round_challenge));
-        // fold each periodic multi-linear using the round challenge
-        periodic_table.bind_least_significant_variable(round_challenge);
+        eq_nu.bind_least_significant_variable(round_challenge);
 
         // run the i-th round of the protocol using the folded multi-linears for the new reduced
         // claim. This basically computes the s_i polynomial.
-        let round_poly_evals = sumcheck_round(
-            evaluator,
-            mls,
-            merged_mls,
-            &log_up_randomness,
-            periodic_table,
-            r_sum_check,
-            &tensored_merge_randomness,
-        );
+        let round_poly_evals =
+            sumcheck_round(&eq_mu, evaluator, &eq_nu, &mls, &log_up_randomness, r_sum_check);
 
         // update the claim
         current_round_claim = new_round_claim;
@@ -225,12 +221,7 @@ pub fn sum_check_prove_higher_degree<
     // fold each multi-linear using the last random round challenge
     mls.iter_mut()
         .for_each(|ml| ml.bind_least_significant_variable(round_challenge));
-    // fold each merged multi-linear using the last random round challenge
-    merged_mls
-        .iter_mut()
-        .for_each(|ml| ml.bind_least_significant_variable(round_challenge));
-    // fold each periodic multi-linear using the last random round challenge
-    periodic_table.bind_least_significant_variable(round_challenge);
+    eq_nu.bind_least_significant_variable(round_challenge);
 
     let SumCheckRoundClaim { eval_point, claim: _claim } =
         reduce_claim(&round_proofs[num_rounds - 1], current_round_claim, round_challenge);
@@ -285,103 +276,191 @@ pub fn sum_check_prove_higher_degree<
 /// added to each multi-linear to compute the evaluation at the next point, and `evals_x` to hold
 /// the current evaluation at $x$ in $\{2, ... , d_max\}$.
 fn sumcheck_round<E: FieldElement>(
+    eq_mu: &[E],
     evaluator: &impl LogUpGkrEvaluator<BaseField = <E as FieldElement>::BaseField>,
+    eq_ml: &MultiLinearPoly<E>,
     mls: &[MultiLinearPoly<E>],
-    merged_mls: &[MultiLinearPoly<E>],
     log_up_randomness: &[E],
-    periodic_table: &mut PeriodicTable<E>,
     r_sum_check: E,
-    tensored_merge_randomness: &[E],
 ) -> CompressedUnivariatePolyEvals<E> {
     let num_ml = mls.len();
     let num_vars = mls[0].num_variables();
     let num_rounds = num_vars - 1;
-    let mut evals_one = vec![E::ZERO; num_ml + periodic_table.num_columns()];
-    let mut evals_zero = vec![E::ZERO; num_ml + periodic_table.num_columns()];
-    let mut evals_x = vec![E::ZERO; num_ml + periodic_table.num_columns()];
-    let mut deltas = vec![E::ZERO; num_ml + periodic_table.num_columns()];
 
-    let mut numerators = vec![E::ZERO; evaluator.get_num_fractions()];
-    let mut denominators = vec![E::ZERO; evaluator.get_num_fractions()];
+    #[cfg(not(feature = "concurrent"))]
+    let evaluations = {
+        let mut evals_one = vec![E::ZERO; num_ml];
+        let mut evals_zero = vec![E::ZERO; num_ml];
+        let mut evals_x = vec![E::ZERO; num_ml];
+        let mut eq_x = E::ZERO;
 
-    let total_evals = (0..1 << num_rounds).map(|i| {
-        let mut total_evals = vec![E::ZERO; evaluator.max_degree()];
+        let mut deltas = vec![E::ZERO; num_ml];
+        let mut eq_delta = E::ZERO;
 
-        for (j, ml) in mls.iter().enumerate() {
-            evals_zero[j] = ml.evaluations()[2 * i];
+        let mut numerators = vec![E::ZERO; evaluator.get_num_fractions()];
+        let mut denominators = vec![E::ZERO; evaluator.get_num_fractions()];
+        (0..1 << num_rounds)
+            .map(|i| {
+                let mut total_evals = vec![E::ZERO; evaluator.max_degree()];
 
-            evals_one[j] = ml.evaluations()[2 * i + 1];
-        }
+                for (j, ml) in mls.iter().enumerate() {
+                    evals_zero[j] = ml.evaluations()[2 * i];
+                    evals_one[j] = ml.evaluations()[2 * i + 1];
+                }
 
-        let eq_at_zero = merged_mls[4].evaluations()[2 * i];
-        let eq_at_one = merged_mls[4].evaluations()[2 * i + 1];
+                let eq_at_zero = eq_ml.evaluations()[2 * i];
+                let eq_at_one = eq_ml.evaluations()[2 * i + 1];
 
-        let periodic_at_zero = periodic_table.get_periodic_values(2 * i);
-        let periodic_at_one = periodic_table.get_periodic_values(2 * i + 1);
+                // compute the evaluation at 1
+                evaluator.evaluate_query(
+                    &evals_one,
+                    log_up_randomness,
+                    &mut numerators,
+                    &mut denominators,
+                );
+                total_evals[0] = evaluate_composition_poly(
+                    eq_mu,
+                    &numerators,
+                    &denominators,
+                    eq_at_one,
+                    r_sum_check,
+                );
 
-        evals_zero
-            .iter_mut()
-            .skip(num_ml)
-            .enumerate()
-            .for_each(|(i, ev)| *ev = periodic_at_zero[i]);
-        evals_one
-            .iter_mut()
-            .skip(num_ml)
-            .enumerate()
-            .for_each(|(i, ev)| *ev = periodic_at_one[i]);
+                // compute the evaluations at 2, ..., d_max points
+                for i in 0..num_ml {
+                    deltas[i] = evals_one[i] - evals_zero[i];
+                    evals_x[i] = evals_one[i];
+                }
+                eq_delta = eq_at_one - eq_at_zero;
+                eq_x = eq_at_one;
 
-        let p0 = merged_mls[0][2 * i + 1];
-        let p1 = merged_mls[1][2 * i + 1];
-        let q0 = merged_mls[2][2 * i + 1];
-        let q1 = merged_mls[3][2 * i + 1];
+                for e in total_evals.iter_mut().skip(1) {
+                    evals_x.iter_mut().zip(deltas.iter()).for_each(|(evx, delta)| {
+                        *evx += *delta;
+                    });
+                    eq_x += eq_delta;
 
-        total_evals[0] = comb_func(p0, p1, q0, q1, eq_at_one, r_sum_check);
+                    evaluator.evaluate_query(
+                        &evals_x,
+                        log_up_randomness,
+                        &mut numerators,
+                        &mut denominators,
+                    );
+                    *e = evaluate_composition_poly(
+                        eq_mu,
+                        &numerators,
+                        &denominators,
+                        eq_x,
+                        r_sum_check,
+                    );
+                }
 
-        evals_zero
-            .iter()
-            .zip(evals_one.iter().zip(deltas.iter_mut().zip(evals_x.iter_mut())))
-            .for_each(|(a0, (a1, (delta, evx)))| {
-                *delta = *a1 - *a0;
-                *evx = *a1;
-            });
-        let eq_delta = eq_at_one - eq_at_zero;
-        let mut eq_x = eq_at_one;
+                total_evals
+            })
+            .fold(vec![E::ZERO; evaluator.max_degree()], |mut acc, poly_eval| {
+                acc.iter_mut().zip(poly_eval.iter()).for_each(|(a, b)| {
+                    *a += *b;
+                });
+                acc
+            })
+    };
 
-        for e in total_evals.iter_mut().skip(1) {
-            evals_x.iter_mut().zip(deltas.iter()).for_each(|(evx, delta)| {
-                *evx += *delta;
-            });
-            eq_x += eq_delta;
+    #[cfg(feature = "concurrent")]
+    let evaluations = (0..1 << num_rounds)
+        .into_par_iter()
+        .fold(
+            || {
+                (
+                    vec![E::ZERO; num_ml],
+                    vec![E::ZERO; num_ml],
+                    vec![E::ZERO; num_ml],
+                    vec![E::ZERO; evaluator.max_degree()],
+                    vec![E::ZERO; evaluator.get_num_fractions()],
+                    vec![E::ZERO; evaluator.get_num_fractions()],
+                    vec![E::ZERO; num_ml],
+                )
+            },
+            |(
+                mut evals_zero,
+                mut evals_one,
+                mut evals_x,
+                mut poly_evals,
+                mut numerators,
+                mut denominators,
+                mut deltas,
+            ),
+             i| {
+                for (j, ml) in mls.iter().enumerate() {
+                    evals_zero[j] = ml.evaluations()[2 * i];
+                    evals_one[j] = ml.evaluations()[2 * i + 1];
+                }
 
-            evaluator.evaluate_query(
-                &evals_x,
-                log_up_randomness,
-                &mut numerators,
-                &mut denominators,
-            );
+                let eq_at_zero = eq_ml.evaluations()[2 * i];
+                let eq_at_one = eq_ml.evaluations()[2 * i + 1];
 
-            *e = evaluate_composition_poly(
-                &numerators,
-                &denominators,
-                eq_x,
-                r_sum_check,
-                tensored_merge_randomness,
-            );
-        }
+                // compute the evaluation at 1
+                evaluator.evaluate_query(
+                    &evals_one,
+                    log_up_randomness,
+                    &mut numerators,
+                    &mut denominators,
+                );
+                poly_evals[0] = evaluate_composition_poly(
+                    eq_mu,
+                    &numerators,
+                    &denominators,
+                    eq_at_one,
+                    r_sum_check,
+                );
 
-        total_evals
-    });
+                // compute the evaluations at 2, ..., d_max points
+                for i in 0..num_ml {
+                    deltas[i] = evals_one[i] - evals_zero[i];
+                    evals_x[i] = evals_one[i];
+                }
+                let eq_delta = eq_at_one - eq_at_zero;
+                let mut eq_x = eq_at_one;
 
-    let evaluations = total_evals.fold(vec![E::ZERO; evaluator.max_degree()], |mut acc, evals| {
-        acc.iter_mut().zip(evals.iter()).for_each(|(a, ev)| *a += *ev);
-        acc
-    });
+                for e in poly_evals.iter_mut().skip(1) {
+                    evals_x.iter_mut().zip(deltas.iter()).for_each(|(evx, delta)| {
+                        *evx += *delta;
+                    });
+                    eq_x += eq_delta;
+
+                    evaluator.evaluate_query(
+                        &evals_x,
+                        log_up_randomness,
+                        &mut numerators,
+                        &mut denominators,
+                    );
+                    *e = evaluate_composition_poly(
+                        eq_mu,
+                        &numerators,
+                        &denominators,
+                        eq_x,
+                        r_sum_check,
+                    );
+                }
+
+                (evals_zero, evals_one, evals_x, poly_evals, numerators, denominators, deltas)
+            },
+        )
+        .map(|(_, _, _, poly_evals, ..)| poly_evals)
+        .reduce(
+            || vec![E::ZERO; evaluator.max_degree()],
+            |mut acc, poly_eval| {
+                acc.iter_mut().zip(poly_eval.iter()).for_each(|(a, b)| {
+                    *a += *b;
+                });
+                acc
+            },
+        );
 
     CompressedUnivariatePolyEvals(evaluations.into())
 }
 
 /// Reduces an old claim to a new claim using the round challenge.
-pub fn reduce_claim<E: FieldElement>(
+fn reduce_claim<E: FieldElement>(
     current_poly: &RoundProof<E>,
     current_round_claim: SumCheckRoundClaim<E>,
     round_challenge: E,

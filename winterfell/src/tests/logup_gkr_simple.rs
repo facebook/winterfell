@@ -10,8 +10,9 @@ use air::{
     LogUpGkrEvaluator, LogUpGkrOracle, ProofOptions, TraceInfo,
 };
 use crypto::MerkleTree;
+use math::StarkField;
 
-use super::super::*;
+use super::*;
 use crate::{
     crypto::{hashers::Blake3_256, DefaultRandomCoin},
     math::{fields::f64::BaseElement, ExtensionOf, FieldElement},
@@ -108,7 +109,7 @@ impl Trace for LogUpGkrSimple {
 // =================================================================================================
 
 struct LogUpGkrSimpleAir {
-    context: AirContext<BaseElement>,
+    context: AirContext<BaseElement, ()>,
 }
 
 impl Air for LogUpGkrSimpleAir {
@@ -120,6 +121,7 @@ impl Air for LogUpGkrSimpleAir {
         Self {
             context: AirContext::with_logup_gkr(
                 trace_info,
+                _pub_inputs,
                 vec![TransitionConstraintDegree::new(1)],
                 vec![],
                 1,
@@ -129,7 +131,7 @@ impl Air for LogUpGkrSimpleAir {
         }
     }
 
-    fn context(&self) -> &AirContext<Self::BaseField> {
+    fn context(&self) -> &AirContext<Self::BaseField, ()> {
         &self.context
     }
 
@@ -171,16 +173,30 @@ impl Air for LogUpGkrSimpleAir {
         vec![]
     }
 
-    fn get_logup_gkr_evaluator<E: FieldElement<BaseField = Self::BaseField>>(
+    fn get_logup_gkr_evaluator(
         &self,
-    ) -> Self::LogUpGkrEvaluator {
-        PlainLogUpGkrEval::default()
+    ) -> impl LogUpGkrEvaluator<BaseField = Self::BaseField, PublicInputs = Self::PublicInputs>
+    {
+        PlainLogUpGkrEval::new()
     }
 }
 
 #[derive(Clone, Default)]
-pub struct PlainLogUpGkrEval<B: FieldElement> {
+pub struct PlainLogUpGkrEval<B: FieldElement + StarkField> {
+    oracles: Vec<LogUpGkrOracle<B>>,
     _field: PhantomData<B>,
+}
+
+impl<B: FieldElement + StarkField> PlainLogUpGkrEval<B> {
+    pub fn new() -> Self {
+        let committed_0 = LogUpGkrOracle::CurrentRow(0);
+        let committed_1 = LogUpGkrOracle::CurrentRow(1);
+        let committed_2 = LogUpGkrOracle::CurrentRow(2);
+        let committed_3 = LogUpGkrOracle::CurrentRow(3);
+        let committed_4 = LogUpGkrOracle::CurrentRow(4);
+        let oracles = vec![committed_0, committed_1, committed_2, committed_3, committed_4];
+        Self { oracles, _field: PhantomData }
+    }
 }
 
 impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
@@ -188,13 +204,8 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
 
     type PublicInputs = ();
 
-    fn get_oracles(&self) -> Vec<LogUpGkrOracle<Self::BaseField>> {
-        let committed_0 = LogUpGkrOracle::CurrentRow(0);
-        let committed_1 = LogUpGkrOracle::CurrentRow(1);
-        let committed_2 = LogUpGkrOracle::CurrentRow(2);
-        let committed_3 = LogUpGkrOracle::CurrentRow(3);
-        let committed_4 = LogUpGkrOracle::CurrentRow(4);
-        vec![committed_0, committed_1, committed_2, committed_3, committed_4]
+    fn get_oracles(&self) -> &[LogUpGkrOracle<Self::BaseField>] {
+        &self.oracles
     }
 
     fn get_num_rand_values(&self) -> usize {
@@ -209,12 +220,11 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
         3
     }
 
-    fn build_query<E>(&self, frame: &EvaluationFrame<E>, _periodic_values: &[E]) -> Vec<E>
+    fn build_query<E>(&self, frame: &EvaluationFrame<E>, _periodic_values: &[E], query: &mut [E])
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
-        let cur = frame.current();
-        cur.to_vec()
+        query.iter_mut().zip(frame.current().iter()).for_each(|(q, f)| *q = *f)
     }
 
     fn evaluate_query<F, E>(
@@ -248,7 +258,6 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
         E::ZERO
     }
 }
-
 // Prover
 // ================================================================================================
 
@@ -309,11 +318,7 @@ impl Prover for LogUpGkrSimpleProver {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
     }
 
-    fn build_aux_trace<E>(
-        &self,
-        main_trace: &Self::Trace,
-        _aux_rand_elements: &AuxRandElements<E>,
-    ) -> ColMatrix<E>
+    fn build_aux_trace<E>(&self, main_trace: &Self::Trace, _aux_rand_elements: &[E]) -> ColMatrix<E>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {

@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 
-use air::LogUpGkrEvaluator;
+use air::{Air, LogUpGkrEvaluator};
 use crypto::{ElementHasher, RandomCoin};
 use math::FieldElement;
 use sumcheck::{
@@ -8,30 +8,25 @@ use sumcheck::{
     FinalOpeningClaim, GkrCircuitProof, SumCheckVerifierError,
 };
 
-#[derive(Debug, thiserror::Error)]
-pub enum VerifierError {
-    #[error("one of the claimed circuit denominators is zero")]
-    ZeroOutputDenominator,
-    #[error("the output of the fraction circuit is not equal to the expected value")]
-    MismatchingCircuitOutput,
-    #[error("failed to generate the random challenge")]
-    FailedToGenerateChallenge,
-    #[error("failed to verify the sum-check proof")]
-    FailedToVerifySumCheck(#[from] SumCheckVerifierError),
-}
-
 /// Verifies the validity of a GKR proof for a LogUp-GKR relation.
-pub fn verify_logup_gkr<
+pub fn verify_gkr<
+    A: Air,
     E: FieldElement,
     C: RandomCoin<Hasher = H, BaseField = E::BaseField>,
     H: ElementHasher<BaseField = E::BaseField>,
 >(
-    claim: E,
-    evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
+    pub_inputs: &A::PublicInputs,
     proof: &GkrCircuitProof<E>,
-    log_up_randomness: Vec<E>,
+    evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField, PublicInputs = A::PublicInputs>,
     transcript: &mut C,
 ) -> Result<FinalOpeningClaim<E>, VerifierError> {
+    let num_logup_random_values = evaluator.get_num_rand_values();
+    let mut logup_randomness: Vec<E> = Vec::with_capacity(num_logup_random_values);
+
+    for _ in 0..num_logup_random_values {
+        logup_randomness.push(transcript.draw().expect("failed to generate randomness"));
+    }
+
     let GkrCircuitProof {
         circuit_outputs,
         before_final_layer_proofs,
@@ -50,6 +45,7 @@ pub fn verify_logup_gkr<
     }
 
     // check that the output matches the expected `claim`
+    let claim = evaluator.compute_claim(pub_inputs, &logup_randomness);
     if (p0 * q1 + p1 * q0) / (q0 * q1) != claim {
         return Err(VerifierError::MismatchingCircuitOutput);
     }
@@ -67,11 +63,11 @@ pub fn verify_logup_gkr<
 
     // verify all GKR layers but for the last one
     let num_layers = before_final_layer_proofs.proof.len();
-    let mut rand = vec![r];
+    let mut evaluation_point = vec![r];
     for i in 0..num_layers {
         let FinalOpeningClaim { eval_point, openings } = verify_sum_check_intermediate_layers(
             &before_final_layer_proofs.proof[i],
-            &rand,
+            &evaluation_point,
             reduced_claim,
             transcript,
         )?;
@@ -90,7 +86,7 @@ pub fn verify_logup_gkr<
         let rand_sumcheck = eval_point;
         let mut ext = vec![r_layer];
         ext.extend_from_slice(&rand_sumcheck);
-        rand = ext;
+        evaluation_point = ext;
     }
 
     // verify the proof of the final GKR layer and pass final opening claim for verification
@@ -98,10 +94,22 @@ pub fn verify_logup_gkr<
     verify_sum_check_input_layer(
         evaluator,
         final_layer_proof,
-        log_up_randomness,
-        &rand,
+        logup_randomness,
+        &evaluation_point,
         reduced_claim,
         transcript,
     )
     .map_err(VerifierError::FailedToVerifySumCheck)
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum VerifierError {
+    #[error("one of the claimed circuit denominators is zero")]
+    ZeroOutputDenominator,
+    #[error("the output of the fraction circuit is not equal to the expected value")]
+    MismatchingCircuitOutput,
+    #[error("failed to generate the random challenge")]
+    FailedToGenerateChallenge,
+    #[error("failed to verify the sum-check proof")]
+    FailedToVerifySumCheck(#[from] SumCheckVerifierError),
 }

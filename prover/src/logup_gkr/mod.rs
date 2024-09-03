@@ -1,12 +1,9 @@
 use alloc::vec::Vec;
 use core::ops::Add;
 
-use air::{
-    EvaluationFrame, GkrData, LagrangeKernelRandElements, LogUpGkrEvaluator, LogUpGkrOracle,
-};
-use crypto::{ElementHasher, RandomCoin};
+use air::{EvaluationFrame, GkrData, LogUpGkrEvaluator};
 use math::FieldElement;
-use sumcheck::{EqFunction, FinalOpeningClaim, MultiLinearPoly, SumCheckProverError};
+use sumcheck::{EqFunction, MultiLinearPoly, SumCheckProverError};
 use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 use crate::Trace;
@@ -79,21 +76,13 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
         Ok(Self { layer_polys })
     }
 
-    /// Returns a layer of the evaluated circuit.
-    ///
-    /// Note that the return type is [`LayerPolys`] as opposed to [`Layer`], since the evaluated
-    /// circuit is stored in a representation which can be proved using GKR.
-    pub fn get_layer(&self, layer_idx: usize) -> &CircuitLayerPolys<E> {
-        &self.layer_polys[layer_idx]
-    }
-
     /// Returns all layers of the evaluated circuit, starting from the input layer.
     ///
     /// Note that the return type is a slice of [`CircuitLayerPolys`] as opposed to
     /// [`CircuitLayer`], since the evaluated layers are stored in a representation which can be
     /// proved using GKR.
-    pub fn layers(&self) -> &[CircuitLayerPolys<E>] {
-        &self.layer_polys
+    pub fn layers(self) -> Vec<CircuitLayerPolys<E>> {
+        self.layer_polys
     }
 
     /// Returns the numerator/denominator polynomials representing the output layer of the circuit.
@@ -127,6 +116,7 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
             Vec::with_capacity(main_trace.main_segment().num_rows() * num_fractions);
         let mut main_frame = EvaluationFrame::new(main_trace.main_segment().num_cols());
 
+        let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
         let mut numerators = vec![E::ZERO; num_fractions];
         let mut denominators = vec![E::ZERO; num_fractions];
         for i in 0..main_trace.main_segment().num_rows() {
@@ -134,6 +124,8 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
                 main_trace.read_main_frame(i, &mut main_frame);
                 let periodic_values_row = periodic_values.get_periodic_values(i);
                 let query = evaluator.build_query(&main_frame, &periodic_values_row);
+
+                evaluator.build_query(&main_frame, &[], &mut query);
 
                 evaluator.evaluate_query(
                     &query,
@@ -205,6 +197,10 @@ where
             numerators: MultiLinearPoly::from_evaluations(numerators),
             denominators: MultiLinearPoly::from_evaluations(denominators),
         }
+    }
+
+    fn into_numerators_denominators(self) -> (MultiLinearPoly<E>, MultiLinearPoly<E>) {
+        (self.numerators, self.denominators)
     }
 }
 
@@ -354,41 +350,6 @@ where
     )
 }
 
-// UNIVARIATE IOP FOR MULTI-LINEAR EVALUATION
-// ===============================================================================================
-
-/// Generates the batching randomness used to batch a number of multi-linear evaluation claims.
-///
-/// This is the $\lambda$ randomness in section 5.2 in [1] but using different random values for
-/// each term instead of powers of a single random element.
-///
-/// [1]: https://eprint.iacr.org/2023/1284
-pub fn generate_gkr_randomness<
-    E: FieldElement,
-    C: RandomCoin<Hasher = H, BaseField = E::BaseField>,
-    H: ElementHasher<BaseField = E::BaseField>,
->(
-    final_opening_claim: FinalOpeningClaim<E>,
-    oracles: Vec<LogUpGkrOracle<E::BaseField>>,
-    public_coin: &mut C,
-) -> GkrData<E> {
-    let FinalOpeningClaim { eval_point, openings } = final_opening_claim;
-
-    public_coin.reseed(H::hash_elements(&openings));
-
-    let mut batching_randomness = Vec::with_capacity(openings.len() - 1);
-    for _ in 0..openings.len() - 1 {
-        batching_randomness.push(public_coin.draw().expect("failed to generate randomness"))
-    }
-
-    GkrData::new(
-        LagrangeKernelRandElements::new(eval_point),
-        batching_randomness,
-        openings,
-        oracles,
-    )
-}
-
 /// Builds the auxiliary trace column for the univariate sum-check argument.
 ///
 /// Following Section 5.2 in [1] and using the inner product representation of multi-linear queries,
@@ -405,7 +366,7 @@ pub fn generate_gkr_randomness<
 /// [1]: https://eprint.iacr.org/2023/1284
 pub fn build_s_column<E: FieldElement>(
     main_trace: &impl Trace<BaseField = E::BaseField>,
-    gkr_data: GkrData<E>,
+    gkr_data: &GkrData<E>,
     evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
     lagrange_kernel_col: &[E],
 ) -> Vec<E> {
@@ -417,13 +378,14 @@ pub fn build_s_column<E: FieldElement>(
     let mut last_value = E::ZERO;
     result.push(last_value);
 
+    let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
     let mut main_frame = EvaluationFrame::new(main_trace.main_segment().num_cols());
 
     for (i, item) in lagrange_kernel_col.iter().enumerate().take(main_segment.num_rows() - 1) {
         main_trace.read_main_frame(i, &mut main_frame);
 
-        let query = evaluator.build_query(&main_frame, &[]);
-        let cur_value = last_value - mean + gkr_data.compute_batched_query_(&query) * *item;
+        evaluator.build_query(&main_frame, &[], &mut query);
+        let cur_value = last_value - mean + gkr_data.compute_batched_query(&query) * *item;
 
         result.push(cur_value);
         last_value = cur_value;
@@ -434,7 +396,7 @@ pub fn build_s_column<E: FieldElement>(
 
 /// Builds the Lagrange kernel column at a given point.
 pub fn build_lagrange_column<E: FieldElement>(lagrange_randomness: &[E]) -> Vec<E> {
-    EqFunction::new(lagrange_randomness.to_vec()).evaluations()
+    EqFunction::new(lagrange_randomness.into()).evaluations()
 }
 
 #[derive(Debug, thiserror::Error)]

@@ -3,17 +3,18 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-mod boundary;
 use alloc::vec::Vec;
 use core::ops::Deref;
 
+use math::FieldElement;
+
+mod boundary;
 pub use boundary::LagrangeKernelBoundaryConstraint;
 
 mod frame;
 pub use frame::LagrangeKernelEvaluationFrame;
 
 mod transition;
-use math::FieldElement;
 pub use transition::LagrangeKernelTransitionConstraints;
 
 use crate::LagrangeConstraintsCompositionCoefficients;
@@ -22,7 +23,6 @@ use crate::LagrangeConstraintsCompositionCoefficients;
 pub struct LagrangeKernelConstraints<E: FieldElement> {
     pub transition: LagrangeKernelTransitionConstraints<E>,
     pub boundary: LagrangeKernelBoundaryConstraint<E>,
-    pub lagrange_kernel_col_idx: usize,
 }
 
 impl<E: FieldElement> LagrangeKernelConstraints<E> {
@@ -30,7 +30,6 @@ impl<E: FieldElement> LagrangeKernelConstraints<E> {
     pub fn new(
         lagrange_composition_coefficients: LagrangeConstraintsCompositionCoefficients<E>,
         lagrange_kernel_rand_elements: &LagrangeKernelRandElements<E>,
-        lagrange_kernel_col_idx: usize,
     ) -> Self {
         Self {
             transition: LagrangeKernelTransitionConstraints::new(
@@ -40,7 +39,6 @@ impl<E: FieldElement> LagrangeKernelConstraints<E> {
                 lagrange_composition_coefficients.boundary,
                 lagrange_kernel_rand_elements,
             ),
-            lagrange_kernel_col_idx,
         }
     }
 }

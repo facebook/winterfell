@@ -36,11 +36,11 @@ where
     ) -> Self {
         Self {
             lagrange_kernel_constraints: air
+                .get_logup_gkr_evaluator()
                 .get_lagrange_kernel_constraints(
                     lagrange_composition_coefficients,
                     gkr_data.lagrange_kernel_rand_elements(),
-                )
-                .expect("expected Lagrange kernel constraints to be present"),
+                ),
             air,
             gkr_data,
             s_col_composition_coefficient,
@@ -49,7 +49,7 @@ where
 
     /// Evaluates the transition and boundary constraints. Specifically, the constraint evaluations
     /// are divided by their corresponding divisors, and the resulting terms are linearly combined
-    /// using the composition coefficients.
+    /// using the constraint composition coefficients.
     ///
     /// Writes the evaluations in `combined_evaluations_acc` at the corresponding (constraint
     /// evaluation) domain index.
@@ -70,22 +70,25 @@ where
 
         let mut lagrange_frame = LagrangeKernelEvaluationFrame::new_empty();
 
-        let evaluator = self.air.get_logup_gkr_evaluator::<E>();
-        let s_col_constraint_divisor =
-            compute_s_col_divisor::<E>(domain.ce_domain_size(), domain, self.air.trace_length());
-        let s_col_idx = trace.trace_info().aux_segment_width() - 2;
-        let l_col_idx = trace.trace_info().aux_segment_width() - 1;
-        let mut main_frame = EvaluationFrame::new(trace.trace_info().main_trace_width());
+        let evaluator = self.air.get_logup_gkr_evaluator();
+        let s_col_constraint_divisor = compute_s_col_divisor::<E>(domain, self.air.trace_length());
+        let s_col_idx = trace.trace_info().s_column_idx().expect("S-column should be present");
+        let l_col_idx = trace
+            .trace_info()
+            .lagrange_kernel_column_idx()
+            .expect("Lagrange kernel should be present");
+        let mut main_frame = EvaluationFrame::new(trace.trace_info().main_segment_width());
         let mut aux_frame = EvaluationFrame::new(trace.trace_info().aux_segment_width());
 
         let c = self.gkr_data.compute_batched_claim();
         let mean = c / E::from(E::BaseField::from(trace.trace_info().length() as u32));
+        let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
 
         for step in 0..domain.ce_domain_size() {
             // compute Lagrange kernel frame
             trace.read_lagrange_kernel_frame_into(
                 step << lde_shift,
-                self.lagrange_kernel_constraints.lagrange_kernel_col_idx,
+                l_col_idx,
                 &mut lagrange_frame,
             );
 
@@ -122,6 +125,11 @@ where
                 combined_evaluations
             };
 
+            // compute and combine the transition constraints for the s-column.
+            // The s-column implements the cohomological sum-check argument of [1] and
+            // the constraint we enfore is exactly Eq (4) in Lemma 1 in [1].
+            //
+            // [1]: https://eprint.iacr.org/2021/930
             let s_col_combined_evaluation = {
                 trace.read_main_trace_frame_into(step << lde_shift, &mut main_frame);
                 trace.read_aux_trace_frame_into(step << lde_shift, &mut aux_frame);
@@ -130,16 +138,16 @@ where
                 let s_cur = aux_frame.current()[s_col_idx];
                 let s_nxt = aux_frame.next()[s_col_idx];
 
-                let query = evaluator.build_query(&main_frame, &[]);
-                let batched_query = self.gkr_data.compute_batched_query_(&query);
+                evaluator.build_query(&main_frame, &[], &mut query);
+                let batched_query = self.gkr_data.compute_batched_query(&query);
 
                 let rhs = s_cur - mean + batched_query * l_cur;
                 let lhs = s_nxt;
 
-                (rhs - lhs)
-                    * self
-                        .s_col_composition_coefficient
-                        .mul_base(s_col_constraint_divisor[step % (domain.trace_to_ce_blowup())])
+                let divisor_at_step =
+                    s_col_constraint_divisor[step % (domain.trace_to_ce_blowup())];
+
+                (rhs - lhs) * self.s_col_composition_coefficient.mul_base(divisor_at_step)
             };
 
             combined_evaluations_acc[step] +=
@@ -339,12 +347,11 @@ impl<E: FieldElement> TransitionDivisorEvaluator<E> {
 /// The divisor for the s-column is $X^n - 1$ where $n$ is the trace length. This means that
 /// we need only compute `ce_blowup` many values and thus only that many exponentiations.
 fn compute_s_col_divisor<E: FieldElement>(
-    ce_domain_size: usize,
     domain: &StarkDomain<E::BaseField>,
     trace_length: usize,
 ) -> Vec<E::BaseField> {
     let degree = trace_length as u32;
-    let mut result = Vec::with_capacity(ce_domain_size);
+    let mut result = Vec::with_capacity(domain.trace_to_ce_blowup());
 
     for row in 0..domain.trace_to_ce_blowup() {
         let x = domain.get_ce_x_at(row).exp(degree.into()) - E::BaseField::ONE;

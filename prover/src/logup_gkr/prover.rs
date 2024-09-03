@@ -1,12 +1,11 @@
 use alloc::vec::Vec;
 
-use air::{LogUpGkrEvaluator, PeriodicTable};
+use air::{LogUpGkrEvaluator, LogUpGkrOracle};
 use crypto::{ElementHasher, RandomCoin};
 use math::FieldElement;
 use sumcheck::{
     sum_check_prove_higher_degree, sumcheck_prove_plain, BeforeFinalLayerProof, CircuitOutput,
-    EqFunction, FinalLayerProof, FinalOpeningClaim, GkrCircuitProof, MultiLinearPoly,
-    SumCheckProof,
+    EqFunction, FinalLayerProof, GkrCircuitProof, MultiLinearPoly, SumCheckProof,
 };
 
 use super::{reduce_layer_claim, CircuitLayerPolys, EvaluatedCircuit, GkrClaim, GkrProverError};
@@ -67,32 +66,20 @@ pub fn prove_gkr<E: FieldElement>(
     }
 
     // evaluate the GKR fractional sum circuit
-    let mut circuit = EvaluatedCircuit::new(main_trace, evaluator, &logup_randomness)?;
-
-    // run the GKR prover for all layers except the input layer
-    let (before_final_layer_proofs, gkr_claim) =
-        prove_intermediate_layers(&mut circuit, public_coin)?;
-
-    // build the MLEs of the relevant main trace columns
-    let (main_trace_mls, mut periodic_table) =
-        build_mls_from_main_trace_segment(evaluator.get_oracles(), main_trace.main_segment())?;
-
-    // run the GKR prover for the input layer
-    let num_rounds_before_merge = evaluator.get_num_fractions().ilog2() as usize - 1;
-
-    let final_layer_proof = prove_input_layer(
-        evaluator,
-        logup_randomness,
-        &mut periodic_table,
-        main_trace_mls,
-        num_rounds_before_merge,
-        gkr_claim,
-        &mut circuit,
-        public_coin,
-    )?;
+    let circuit = EvaluatedCircuit::new(main_trace, evaluator, &logup_randomness)?;
 
     // include the circuit output as part of the final proof
     let CircuitLayerPolys { numerators, denominators } = circuit.output_layer().clone();
+
+    // run the GKR prover for all layers except the input layer
+    let (before_final_layer_proofs, gkr_claim) = prove_intermediate_layers(circuit, public_coin)?;
+
+    // build the MLEs of the relevant main trace columns
+    let main_trace_mls =
+        build_mls_from_main_trace_segment(evaluator.get_oracles(), main_trace.main_segment())?;
+
+    let final_layer_proof =
+        prove_input_layer(evaluator, logup_randomness, main_trace_mls, gkr_claim, public_coin)?;
 
     Ok(GkrCircuitProof {
         circuit_outputs: CircuitOutput { numerators, denominators },
@@ -109,84 +96,48 @@ fn prove_input_layer<
 >(
     evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
     log_up_randomness: Vec<E>,
-    periodic_table: &mut PeriodicTable<E>,
-    mut mls: Vec<MultiLinearPoly<E>>,
-    num_rounds_merge: usize,
-    gkr_claim: GkrClaim<E>,
-    circuit: &mut EvaluatedCircuit<E>,
+    multi_linear_ext_polys: Vec<MultiLinearPoly<E>>,
+    claim: GkrClaim<E>,
     transcript: &mut C,
 ) -> Result<FinalLayerProof<E>, GkrProverError> {
     // parse the [GkrClaim] resulting from the previous GKR layer
-    let GkrClaim { evaluation_point, claimed_evaluation } = gkr_claim;
+    let GkrClaim { evaluation_point, claimed_evaluation } = claim;
 
-    // compute the EQ function at the evaluation point
-    let mut poly_x = EqFunction::ml_at(evaluation_point.clone());
+    transcript.reseed(H::hash_elements(&[claimed_evaluation.0, claimed_evaluation.1]));
+    let r_batch = transcript.draw().map_err(|_| GkrProverError::FailedToGenerateChallenge)?;
+    let claim = claimed_evaluation.0 + claimed_evaluation.1 * r_batch;
 
-    // get the multi-linears of the 4 merge polynomials
-    let layer = circuit.get_layer(0);
-
-    // construct the vector of multi-linear polynomials
-    let (mut left_numerators, mut right_numerators) =
-        layer.numerators.project_least_significant_variable();
-    let (mut left_denominators, mut right_denominators) =
-        layer.denominators.project_least_significant_variable();
-
-    // run the sumcheck protocol
-    let ((before_merge_proof, claim), r_sum_check) = sum_check_prove_num_rounds_degree_3(
-        num_rounds_merge,
-        claimed_evaluation,
-        &mut left_numerators,
-        &mut right_numerators,
-        &mut left_denominators,
-        &mut right_denominators,
-        &mut poly_x,
-        transcript,
-    )?;
-
-    // parse the output of the first sum-check protocol
-    let FinalOpeningClaim { eval_point, openings: _ } = before_merge_proof.openings_claim.clone();
-
-    let mut merged_mls =
-        vec![left_numerators, right_numerators, left_denominators, right_denominators, poly_x];
-
-    // run the second sum-check protocol
-    let after_merge_proof = sum_check_prove_higher_degree(
+    let proof = sum_check_prove_higher_degree(
         evaluator,
+        evaluation_point,
         claim,
-        r_sum_check,
-        eval_point,
+        r_batch,
         log_up_randomness,
-        periodic_table,
-        &mut merged_mls,
-        &mut mls,
+        multi_linear_ext_polys,
         transcript,
     )?;
 
-    Ok(FinalLayerProof {
-        before_merge_proof: before_merge_proof.round_proofs,
-        after_merge_proof,
-    })
+    Ok(FinalLayerProof::new(proof))
 }
 
-// TODO: Make the multi-linears over the base field and define an operation of folding with a challenge
-// in an extension field.
+/// Builds the multi-linear extension polynomials needed to run the final sum-check of GKR for
+/// LogUp-GKR.
 fn build_mls_from_main_trace_segment<E: FieldElement>(
-    oracles: Vec<air::LogUpGkrOracle<E::BaseField>>,
+    oracles: &[LogUpGkrOracle<E::BaseField>],
     main_trace: &ColMatrix<<E as FieldElement>::BaseField>,
-) -> Result<(Vec<MultiLinearPoly<E>>, PeriodicTable<E>), GkrProverError> {
+) -> Result<Vec<MultiLinearPoly<E>>, GkrProverError> {
     let mut mls = vec![];
-    let mut periodic_values = vec![];
 
     for oracle in oracles {
         match oracle {
-            air::LogUpGkrOracle::CurrentRow(index) => {
-                let col = main_trace.get_column(index);
+            LogUpGkrOracle::CurrentRow(index) => {
+                let col = main_trace.get_column(*index);
                 let values: Vec<E> = col.iter().map(|value| E::from(*value)).collect();
                 let ml = MultiLinearPoly::from_evaluations(values);
                 mls.push(ml)
             },
-            air::LogUpGkrOracle::NextRow(index) => {
-                let col = main_trace.get_column(index);
+            LogUpGkrOracle::NextRow(index) => {
+                let col = main_trace.get_column(*index);
                 let mut values: Vec<E> = col.iter().map(|value| E::from(*value)).collect();
                 if let Some(value) = values.last_mut() {
                     *value = E::ZERO
@@ -207,7 +158,7 @@ fn prove_intermediate_layers<
     C: RandomCoin<Hasher = H, BaseField = E::BaseField>,
     H: ElementHasher<BaseField = E::BaseField>,
 >(
-    circuit: &mut EvaluatedCircuit<E>,
+    circuit: EvaluatedCircuit<E>,
     transcript: &mut C,
 ) -> Result<(BeforeFinalLayerProof<E>, GkrClaim<E>), GkrProverError> {
     // absorb the circuit output layer. This corresponds to sending the four values of the output
@@ -220,10 +171,10 @@ fn prove_intermediate_layers<
 
     // generate the challenge and reduce [p0, p1, q0, q1] to [pr, qr]
     let r = transcript.draw().map_err(|_| GkrProverError::FailedToGenerateChallenge)?;
-    let mut claim = circuit.evaluate_output_layer(r);
+    let mut claimed_evaluation = circuit.evaluate_output_layer(r);
 
-    let mut proof_layers: Vec<SumCheckProof<E>> = Vec::new();
-    let mut rand = vec![r];
+    let mut layer_proofs: Vec<SumCheckProof<E>> = Vec::new();
+    let mut evaluation_point = vec![r];
 
     // Loop over all inner layers, from output to input.
     //
@@ -232,26 +183,18 @@ fn prove_intermediate_layers<
     // loop over all inner layers in order to iteratively reduce a layer in terms of its successor
     // layer. Note that we don't include the input layer, since its predecessor layer will be
     // reduced in terms of the input layer separately in `prove_final_circuit_layer`.
-    for inner_layer in circuit.layers().iter().skip(1).rev().skip(1) {
+    for inner_layer in circuit.layers().into_iter().skip(1).rev().skip(1) {
         // construct the Lagrange kernel evaluated at the previous GKR round randomness
-        let mut poly_x = EqFunction::ml_at(rand.clone());
+        let mut eq_mle = EqFunction::ml_at(evaluation_point.into());
 
-        // construct the vector of multi-linear polynomials
-        // TODO: avoid unnecessary allocation
-        let (mut left_numerators, mut right_numerators) =
-            inner_layer.numerators.project_least_significant_variable();
-        let (mut left_denominators, mut right_denominators) =
-            inner_layer.denominators.project_least_significant_variable();
+        let (numerators, denominators) = inner_layer.into_numerators_denominators();
 
         // run the sumcheck protocol
-        let ((proof, _), _) = sum_check_prove_num_rounds_degree_3(
-            left_numerators.num_variables(),
-            claim,
-            &mut left_numerators,
-            &mut right_numerators,
-            &mut left_denominators,
-            &mut right_denominators,
-            &mut poly_x,
+        let proof = sum_check_prove_num_rounds_degree_3(
+            claimed_evaluation,
+            numerators,
+            denominators,
+            &mut eq_mle,
             transcript,
         )?;
 
@@ -260,7 +203,7 @@ fn prove_intermediate_layers<
         let r_layer = transcript.draw().map_err(|_| GkrProverError::FailedToGenerateChallenge)?;
 
         // reduce the claim
-        claim = {
+        claimed_evaluation = {
             let left_numerators_opening = proof.openings_claim.openings[0];
             let right_numerators_opening = proof.openings_claim.openings[1];
             let left_denominators_opening = proof.openings_claim.openings[2];
@@ -278,17 +221,14 @@ fn prove_intermediate_layers<
         // collect the randomness used for the current layer
         let mut ext = vec![r_layer];
         ext.extend_from_slice(&proof.openings_claim.eval_point);
-        rand = ext;
+        evaluation_point = ext;
 
-        proof_layers.push(proof);
+        layer_proofs.push(proof);
     }
 
     Ok((
-        BeforeFinalLayerProof { proof: proof_layers },
-        GkrClaim {
-            evaluation_point: rand,
-            claimed_evaluation: claim,
-        },
+        BeforeFinalLayerProof { proof: layer_proofs },
+        GkrClaim { evaluation_point, claimed_evaluation },
     ))
 }
 
@@ -299,21 +239,18 @@ fn sum_check_prove_num_rounds_degree_3<
     C: RandomCoin<Hasher = H, BaseField = E::BaseField>,
     H: ElementHasher<BaseField = E::BaseField>,
 >(
-    num_rounds: usize,
     claim: (E, E),
-    p0: &mut MultiLinearPoly<E>,
-    p1: &mut MultiLinearPoly<E>,
-    q0: &mut MultiLinearPoly<E>,
-    q1: &mut MultiLinearPoly<E>,
+    p: MultiLinearPoly<E>,
+    q: MultiLinearPoly<E>,
     eq: &mut MultiLinearPoly<E>,
     transcript: &mut C,
-) -> Result<((SumCheckProof<E>, E), E), GkrProverError> {
+) -> Result<SumCheckProof<E>, GkrProverError> {
     // generate challenge to batch two sumchecks
     transcript.reseed(H::hash_elements(&[claim.0, claim.1]));
     let r_batch = transcript.draw().map_err(|_| GkrProverError::FailedToGenerateChallenge)?;
-    let claim_ = claim.0 + claim.1 * r_batch;
+    let claim = claim.0 + claim.1 * r_batch;
 
-    let proof = sumcheck_prove_plain(num_rounds, claim_, r_batch, p0, p1, q0, q1, eq, transcript)?;
+    let proof = sumcheck_prove_plain(claim, r_batch, p, q, eq, transcript)?;
 
-    Ok((proof, r_batch))
+    Ok(proof)
 }

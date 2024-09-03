@@ -41,7 +41,7 @@ impl ToElements<BaseElement> for PublicInputs {
 }
 
 pub struct LamportAggregateAir {
-    context: AirContext<BaseElement>,
+    context: AirContext<BaseElement, PublicInputs>,
     pub_keys: Vec<[BaseElement; 2]>,
     messages: Vec<[BaseElement; 2]>,
 }
@@ -49,7 +49,6 @@ pub struct LamportAggregateAir {
 impl Air for LamportAggregateAir {
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
-    type LogUpGkrEvaluator = PlainLogUpGkrEval<Self::BaseField>;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -90,13 +89,13 @@ impl Air for LamportAggregateAir {
         ];
         assert_eq!(TRACE_WIDTH, trace_info.width());
         LamportAggregateAir {
-            context: AirContext::new(trace_info, degrees, 22, options),
+            context: AirContext::new(trace_info, pub_inputs.clone(), degrees, 22, options),
             pub_keys: pub_inputs.pub_keys,
             messages: pub_inputs.messages,
         }
     }
 
-    fn context(&self) -> &AirContext<Self::BaseField> {
+    fn context(&self) -> &AirContext<Self::BaseField, Self::PublicInputs> {
         &self.context
     }
 

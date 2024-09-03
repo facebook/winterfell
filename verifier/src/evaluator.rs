@@ -89,6 +89,8 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
     // 3 ----- evaluate Lagrange kernel constraints ------------------------------------
 
     if let Some(lagrange_kernel_column_frame) = lagrange_kernel_frame {
+        let logup_gkr_evaluator = air.get_logup_gkr_evaluator();
+
         let lagrange_coefficients = composition_coefficients
             .lagrange
             .expect("expected Lagrange kernel composition coefficients to be present");
@@ -100,12 +102,10 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
 
         // Lagrange kernel constraints
 
-        let lagrange_constraints = air
-            .get_lagrange_kernel_constraints(
-                lagrange_coefficients,
-                &gkr_data.lagrange_kernel_eval_point,
-            )
-            .expect("expected Lagrange kernel constraints to be present");
+        let lagrange_constraints = logup_gkr_evaluator.get_lagrange_kernel_constraints(
+            lagrange_coefficients,
+            &gkr_data.lagrange_kernel_eval_point,
+        );
 
         result += lagrange_constraints.transition.evaluate_and_combine::<E>(
             lagrange_kernel_column_frame,
@@ -116,32 +116,23 @@ pub fn evaluate_constraints<A: Air, E: FieldElement<BaseField = A::BaseField>>(
 
         // s-column constraints
 
-        let s_col_idx = air.trace_info().aux_segment_width() - 2;
-        let s_cur = aux_trace_frame
-            .as_ref()
-            .expect("expected aux rand elements to be present")
-            .current()[s_col_idx];
-        let s_nxt = aux_trace_frame
-            .as_ref()
-            .expect("expected aux rand elements to be present")
-            .next()[s_col_idx];
+        let s_col_idx = air.trace_info().s_column_idx().expect("s-column should be present");
+
+        let aux_trace_frame =
+            aux_trace_frame.as_ref().expect("expected aux rand elements to be present");
+
+        let s_cur = aux_trace_frame.current()[s_col_idx];
+        let s_nxt = aux_trace_frame.next()[s_col_idx];
         let l_cur = lagrange_kernel_column_frame.inner()[0];
 
-        let batched_claim = gkr_data.compute_batched_claim();
-        let mean = batched_claim
-            .mul_base(E::BaseField::ONE / E::BaseField::from(air.trace_length() as u32));
-
-        let query = air.get_logup_gkr_evaluator::<E>().build_query(main_trace_frame, &[]);
-        let batched_claim_at_query = gkr_data.compute_batched_query_::<E>(&query);
-        let rhs = s_cur - mean + batched_claim_at_query * l_cur;
-        let lhs = s_nxt;
-
-        let divisor = x.exp((air.trace_length() as u32).into()) - E::ONE;
-        result += composition_coefficients
+        let s_column_cc = composition_coefficients
             .s_col
-            .expect("expected constraint composition coefficient for s-column to be present")
-            * (rhs - lhs)
-            / divisor;
+            .expect("expected constraint composition coefficient for s-column to be present");
+
+        let s_column_constraint =
+            logup_gkr_evaluator.get_s_column_constraints(gkr_data, s_column_cc);
+
+        result += s_column_constraint.evaluate(air, main_trace_frame, s_cur, s_nxt, l_cur, x);
     }
 
     result

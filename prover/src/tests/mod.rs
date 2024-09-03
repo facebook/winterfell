@@ -34,7 +34,7 @@ pub fn build_fib_trace(length: usize) -> TraceTable<BaseElement> {
 // ================================================================================================
 
 pub struct MockAir {
-    context: AirContext<BaseElement>,
+    context: AirContext<BaseElement, ()>,
     assertions: Vec<Assertion<BaseElement>>,
     periodic_columns: Vec<Vec<BaseElement>>,
 }
@@ -75,7 +75,6 @@ impl MockAir {
 impl Air for MockAir {
     type BaseField = BaseElement;
     type PublicInputs = ();
-    type LogUpGkrEvaluator = ();
 
     fn new(trace_info: TraceInfo, _pub_inputs: (), _options: ProofOptions) -> Self {
         let context = build_context(trace_info, 8, 1);
@@ -86,7 +85,7 @@ impl Air for MockAir {
         }
     }
 
-    fn context(&self) -> &AirContext<Self::BaseField> {
+    fn context(&self) -> &AirContext<Self::BaseField, Self::PublicInputs> {
         &self.context
     }
 
@@ -114,8 +113,8 @@ fn build_context<B: StarkField>(
     trace_info: TraceInfo,
     blowup_factor: usize,
     num_assertions: usize,
-) -> AirContext<B> {
+) -> AirContext<B, ()> {
     let options = ProofOptions::new(32, blowup_factor, 0, FieldExtension::None, 4, 31);
     let t_degrees = vec![TransitionConstraintDegree::new(2)];
-    AirContext::new(trace_info, t_degrees, num_assertions, options)
+    AirContext::new(trace_info, (), t_degrees, num_assertions, options)
 }

@@ -13,6 +13,9 @@ use math::FieldElement;
 #[macro_use]
 extern crate alloc;
 
+#[cfg(feature = "concurrent")]
+pub use rayon::prelude::*;
+
 mod prover;
 pub use prover::*;
 
@@ -121,9 +124,12 @@ where
 
 /// A proof for the input circuit layer i.e., the final layer in the GKR protocol.
 #[derive(Debug, Clone)]
-pub struct FinalLayerProof<E: FieldElement> {
-    pub before_merge_proof: Vec<RoundProof<E>>,
-    pub after_merge_proof: SumCheckProof<E>,
+pub struct FinalLayerProof<E: FieldElement>(SumCheckProof<E>);
+
+impl<E: FieldElement> FinalLayerProof<E> {
+    pub fn new(proof: SumCheckProof<E>) -> Self {
+        Self(proof)
+    }
 }
 
 impl<E> Serializable for FinalLayerProof<E>
@@ -131,9 +137,7 @@ where
     E: FieldElement,
 {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        let Self { before_merge_proof, after_merge_proof } = self;
-        before_merge_proof.write_into(target);
-        after_merge_proof.write_into(target);
+        self.0.write_into(target);
     }
 }
 
@@ -142,10 +146,7 @@ where
     E: FieldElement,
 {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        Ok(Self {
-            before_merge_proof: Deserializable::read_from(source)?,
-            after_merge_proof: Deserializable::read_from(source)?,
-        })
+        Ok(Self(Deserializable::read_from(source)?))
     }
 }
 
@@ -170,7 +171,7 @@ pub struct GkrCircuitProof<E: FieldElement> {
 
 impl<E: FieldElement> GkrCircuitProof<E> {
     pub fn get_final_opening_claim(&self) -> FinalOpeningClaim<E> {
-        self.final_layer_proof.after_merge_proof.openings_claim.clone()
+        self.final_layer_proof.0.openings_claim.clone()
     }
 }
 
@@ -181,7 +182,7 @@ where
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.circuit_outputs.write_into(target);
         self.before_final_layer_proofs.write_into(target);
-        self.final_layer_proof.write_into(target);
+        self.final_layer_proof.0.write_into(target);
     }
 }
 
@@ -259,36 +260,22 @@ where
 ///
 /// This is the result of batching the `p_k` and `q_k` of section 3.2 in
 /// https://eprint.iacr.org/2023/1284.pdf.
+#[inline(always)]
 fn comb_func<E: FieldElement>(p0: E, p1: E, q0: E, q1: E, eq: E, r_batch: E) -> E {
     (p0 * q1 + p1 * q0 + r_batch * q0 * q1) * eq
 }
 
 /// The non-linear composition polynomial of the LogUp-GKR protocol specific to the input layer.
 pub fn evaluate_composition_poly<E: FieldElement>(
+    eq_at_mu: &[E],
     numerators: &[E],
     denominators: &[E],
     eq_eval: E,
     r_sum_check: E,
-    tensored_merge_randomness: &[E],
 ) -> E {
-    let numerators = MultiLinearPoly::from_evaluations(numerators.to_vec());
-    let denominators = MultiLinearPoly::from_evaluations(denominators.to_vec());
-
-    let (left_numerators, right_numerators) = numerators.project_least_significant_variable();
-    let (left_denominators, right_denominators) = denominators.project_least_significant_variable();
-
-    let eval_left_numerators =
-        left_numerators.evaluate_with_lagrange_kernel(tensored_merge_randomness);
-    let eval_right_numerators =
-        right_numerators.evaluate_with_lagrange_kernel(tensored_merge_randomness);
-
-    let eval_left_denominators =
-        left_denominators.evaluate_with_lagrange_kernel(tensored_merge_randomness);
-    let eval_right_denominators =
-        right_denominators.evaluate_with_lagrange_kernel(tensored_merge_randomness);
-
-    eq_eval
-        * ((eval_left_numerators * eval_right_denominators
-            + eval_right_numerators * eval_left_denominators)
-            + eval_left_denominators * eval_right_denominators * r_sum_check)
+    numerators
+        .chunks(2)
+        .zip(denominators.chunks(2).zip(eq_at_mu.iter()))
+        .map(|(p, (q, eq_w))| *eq_w * comb_func(p[0], p[1], q[0], q[1], eq_eval, r_sum_check))
+        .fold(E::ZERO, |acc, x| acc + x)
 }
