@@ -109,8 +109,7 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
         log_up_randomness: &[E],
     ) -> CircuitLayer<E> {
         let num_fractions = evaluator.get_num_fractions();
-        let periodic_values =
-            evaluator.build_periodic_values::<E::BaseField, E>();
+        let periodic_values = evaluator.build_periodic_values::<E::BaseField, E>();
 
         let mut input_layer_wires =
             Vec::with_capacity(main_trace.main_segment().num_rows() * num_fractions);
@@ -122,8 +121,8 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
         for i in 0..main_trace.main_segment().num_rows() {
             let wires_from_trace_row = {
                 main_trace.read_main_frame(i, &mut main_frame);
-                let periodic_values_row = periodic_values.get_periodic_values(i);
-                let query = evaluator.build_query(&main_frame, &periodic_values_row);
+                let periodic_values_row = periodic_values.get_periodic_values_at(i);
+                evaluator.build_query(&main_frame, &periodic_values_row, &mut query);
 
                 evaluator.build_query(&main_frame, &[], &mut query);
 

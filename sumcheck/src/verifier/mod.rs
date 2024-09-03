@@ -5,13 +5,13 @@
 
 use alloc::vec::Vec;
 
-use air::LogUpGkrEvaluator;
+use air::{LogUpGkrEvaluator, PeriodicTable};
 use crypto::{ElementHasher, RandomCoin};
 use math::FieldElement;
 
 use crate::{
     comb_func, evaluate_composition_poly, EqFunction, FinalLayerProof, FinalOpeningClaim,
-    RoundProof, SumCheckProof, SumCheckRoundClaim,
+    MultiLinearPoly, RoundProof, SumCheckProof, SumCheckRoundClaim,
 };
 
 /// Verifies sum-check proofs, as part of the GKR proof, for all GKR layers except for the last one
@@ -86,12 +86,14 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
 
     let mut numerators = vec![E::ZERO; evaluator.get_num_fractions()];
     let mut denominators = vec![E::ZERO; evaluator.get_num_fractions()];
-    evaluator.evaluate_query(
-        &proof.0.openings_claim.openings,
-        &log_up_randomness,
-        &mut numerators,
-        &mut denominators,
-    );
+
+    let periodic_columns = evaluator.build_periodic_values::<E, E>();
+    let periodic_columns_evaluations =
+        evaluate_periodic_columns_at(periodic_columns, &proof.0.openings_claim.eval_point);
+
+    let mut query = proof.0.openings_claim.openings.clone();
+    query.extend_from_slice(&periodic_columns_evaluations);
+    evaluator.evaluate_query(&query, &log_up_randomness, &mut numerators, &mut denominators);
 
     let mu = evaluator.get_num_fractions().trailing_zeros() - 1;
     let (evaluation_point_mu, evaluation_point_nu) = gkr_eval_point.split_at(mu as usize);
@@ -146,4 +148,24 @@ pub enum SumCheckVerifierError {
     FailedToGenerateChallenge,
     #[error("wrong opening point for the oracles")]
     WrongOpeningPoint,
+}
+
+// HELPER
+// =================================================================================================
+
+/// Evaluates periodic columns as multi-linear extensions.
+fn evaluate_periodic_columns_at<E: FieldElement>(
+    periodic_columns: PeriodicTable<E>,
+    eval_point: &[E],
+) -> Vec<E> {
+    let mut evaluations = vec![];
+    for col in periodic_columns.table() {
+        let ml = MultiLinearPoly::from_evaluations(col.to_vec());
+        let num_variables = ml.num_variables();
+        let point = &eval_point[..num_variables];
+
+        let evaluation = ml.evaluate(point);
+        evaluations.push(evaluation)
+    }
+    evaluations
 }

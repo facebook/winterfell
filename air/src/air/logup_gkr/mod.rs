@@ -145,6 +145,27 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
     ) -> SColumnConstraint<E> {
         SColumnConstraint::new(gkr_data, composition_coefficient)
     }
+
+    /// Returns the periodic values used in the LogUp-GKR statement, either as base field element
+    /// during circuit evaluation or as extension field element during the run of sum-check for
+    /// the input layer.
+    fn build_periodic_values<F, E>(&self) -> PeriodicTable<F>
+    where
+        F: FieldElement<BaseField = Self::BaseField>,
+        E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
+    {
+        let mut table = Vec::new();
+
+        let oracles = self.get_oracles();
+
+        for oracle in oracles {
+            if let LogUpGkrOracle::PeriodicValue(values) = oracle {
+                let values = embed_in_extension(values.to_vec());
+                table.push(values)
+            }
+        }
+        PeriodicTable { table }
+    }
 }
 
 #[derive(Clone, Default)]
@@ -228,4 +249,70 @@ pub enum LogUpGkrOracle<B: StarkField> {
     /// A virtual periodic column defined by its values in a given cycle. Note that the cycle length
     /// must be a power of 2.
     PeriodicValue(Vec<B>),
+}
+
+// PERIODIC COLUMNS FOR LOGUP
+// =================================================================================================
+
+#[derive(Clone, Debug, Default, PartialEq, PartialOrd, Eq, Ord)]
+pub struct PeriodicTable<E: FieldElement> {
+    pub table: Vec<Vec<E>>,
+}
+
+impl<E> PeriodicTable<E>
+where
+    E: FieldElement,
+{
+    pub fn new<B>(table: Vec<Vec<B>>) -> Self
+    where
+        E: FieldElement + ExtensionOf<B>,
+        B: StarkField,
+    {
+        let mut result = vec![];
+        for col in table.iter() {
+            let mut res = vec![];
+            for v in col {
+                res.push(E::from(*v))
+            }
+            result.push(res)
+        }
+
+        Self { table: result }
+    }
+
+    pub fn num_columns(&self) -> usize {
+        self.table.len()
+    }
+
+    pub fn table(&self) -> &[Vec<E>] {
+        &self.table
+    }
+
+    pub fn get_periodic_values_at(&self, row: usize) -> Vec<E> {
+        self.table.iter().map(|col| col[row % col.len()]).collect()
+    }
+
+    pub fn bind_least_significant_variable(&mut self, round_challenge: E) {
+        for col in self.table.iter_mut() {
+            if col.len() > 1 {
+                let num_evals = col.len() >> 1;
+                for i in 0..num_evals {
+                    col[i] = col[i << 1] + round_challenge * (col[(i << 1) + 1] - col[i << 1]);
+                }
+                col.truncate(num_evals)
+            }
+        }
+    }
+}
+
+// HELPER
+// =================================================================================================
+
+fn embed_in_extension<E: FieldElement>(values: Vec<E::BaseField>) -> Vec<E> {
+    let mut res = vec![];
+    for v in values {
+        res.push(E::from(v))
+    }
+
+    res
 }

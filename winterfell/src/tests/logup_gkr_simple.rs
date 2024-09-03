@@ -1,8 +1,3 @@
-// Copyright (c) Facebook, Inc. and its affiliates.
-//
-// This source code is licensed under the MIT license found in the
-// LICENSE file in the root directory of this source tree.
-
 use std::{marker::PhantomData, vec, vec::Vec};
 
 use air::{
@@ -12,7 +7,7 @@ use air::{
 use crypto::MerkleTree;
 use math::StarkField;
 
-use super::*;
+use super::super::*;
 use crate::{
     crypto::{hashers::Blake3_256, DefaultRandomCoin},
     math::{fields::f64::BaseElement, ExtensionOf, FieldElement},
@@ -22,7 +17,7 @@ use crate::{
 
 #[test]
 fn test_logup_gkr() {
-    let aux_trace_width = 1;
+    let aux_trace_width = 2;
     let trace = LogUpGkrSimple::new(2_usize.pow(7), aux_trace_width);
     let prover = LogUpGkrSimpleProver::new(aux_trace_width);
 
@@ -115,7 +110,6 @@ struct LogUpGkrSimpleAir {
 impl Air for LogUpGkrSimpleAir {
     type BaseField = BaseElement;
     type PublicInputs = ();
-    type LogUpGkrEvaluator = PlainLogUpGkrEval<Self::BaseField>;
 
     fn new(trace_info: TraceInfo, _pub_inputs: Self::PublicInputs, options: ProofOptions) -> Self {
         Self {
@@ -270,7 +264,7 @@ impl LogUpGkrSimpleProver {
     fn new(aux_trace_width: usize) -> Self {
         Self {
             aux_trace_width,
-            options: ProofOptions::new(1, 8, 0, FieldExtension::Quadratic, 2, 1),
+            options: ProofOptions::new(1, 8, 0, FieldExtension::None, 2, 1),
         }
     }
 }

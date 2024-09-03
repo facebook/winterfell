@@ -10,6 +10,7 @@ use air::{
     LogUpGkrEvaluator, LogUpGkrOracle, ProofOptions, TraceInfo,
 };
 use crypto::MerkleTree;
+use math::StarkField;
 
 use super::super::*;
 use crate::{
@@ -80,7 +81,6 @@ impl LogUpGkrPeriodic {
             periodic[8 * i] = BaseElement::ONE;
         }
 
-
         Self {
             main_trace: ColMatrix::new(vec![table, multiplicity, values_0, values_1, values_2]),
             info: TraceInfo::new_multi_segment(5, aux_segment_width, 0, trace_len, vec![], true),
@@ -114,18 +114,18 @@ impl Trace for LogUpGkrPeriodic {
 // =================================================================================================
 
 struct LogUpGkrPeriodicAir {
-    context: AirContext<BaseElement>,
+    context: AirContext<BaseElement, ()>,
 }
 
 impl Air for LogUpGkrPeriodicAir {
     type BaseField = BaseElement;
     type PublicInputs = ();
-    type LogUpGkrEvaluator = PeriodicLogUpGkrEval<Self::BaseField>;
 
     fn new(trace_info: TraceInfo, _pub_inputs: Self::PublicInputs, options: ProofOptions) -> Self {
         Self {
             context: AirContext::with_logup_gkr(
                 trace_info,
+                (),
                 vec![TransitionConstraintDegree::new(1)],
                 vec![],
                 1,
@@ -135,7 +135,7 @@ impl Air for LogUpGkrPeriodicAir {
         }
     }
 
-    fn context(&self) -> &AirContext<Self::BaseField> {
+    fn context(&self) -> &AirContext<Self::BaseField, ()> {
         &self.context
     }
 
@@ -177,16 +177,43 @@ impl Air for LogUpGkrPeriodicAir {
         vec![]
     }
 
-    fn get_logup_gkr_evaluator<E: FieldElement<BaseField = Self::BaseField>>(
+    fn get_logup_gkr_evaluator(
         &self,
-    ) -> Self::LogUpGkrEvaluator {
-        PeriodicLogUpGkrEval::default()
+    ) -> impl LogUpGkrEvaluator<BaseField = Self::BaseField, PublicInputs = Self::PublicInputs>
+    {
+        PeriodicLogUpGkrEval::new()
     }
 }
 
 #[derive(Clone, Default)]
-pub struct PeriodicLogUpGkrEval<B: FieldElement> {
+pub struct PeriodicLogUpGkrEval<B: StarkField> {
+    oracles: Vec<LogUpGkrOracle<B>>,
     _field: PhantomData<B>,
+}
+
+impl<B: StarkField> PeriodicLogUpGkrEval<B> {
+    pub fn new() -> Self {
+        let committed_0 = LogUpGkrOracle::CurrentRow(0);
+        let committed_1 = LogUpGkrOracle::CurrentRow(1);
+        let committed_2 = LogUpGkrOracle::CurrentRow(2);
+        let committed_3 = LogUpGkrOracle::CurrentRow(3);
+        let committed_4 = LogUpGkrOracle::CurrentRow(4);
+
+        let periodic = LogUpGkrOracle::PeriodicValue(vec![
+            B::ONE,
+            B::ZERO,
+            B::ZERO,
+            B::ZERO,
+            B::ZERO,
+            B::ZERO,
+            B::ZERO,
+            B::ZERO,
+        ]);
+        let oracles =
+            vec![committed_0, committed_1, committed_2, committed_3, committed_4, periodic];
+
+        Self { oracles, _field: PhantomData }
+    }
 }
 
 impl LogUpGkrEvaluator for PeriodicLogUpGkrEval<BaseElement> {
@@ -194,25 +221,8 @@ impl LogUpGkrEvaluator for PeriodicLogUpGkrEval<BaseElement> {
 
     type PublicInputs = ();
 
-    fn get_oracles(&self) -> Vec<LogUpGkrOracle<Self::BaseField>> {
-        let committed_0 = LogUpGkrOracle::CurrentRow(0);
-        let committed_1 = LogUpGkrOracle::CurrentRow(1);
-        let committed_2 = LogUpGkrOracle::CurrentRow(2);
-        let committed_3 = LogUpGkrOracle::CurrentRow(3);
-        let committed_4 = LogUpGkrOracle::CurrentRow(4);
-        let periodic = LogUpGkrOracle::PeriodicValue(vec![
-            Self::BaseField::ONE,
-            Self::BaseField::ZERO,
-            Self::BaseField::ZERO,
-            Self::BaseField::ZERO,
-            Self::BaseField::ZERO,
-            Self::BaseField::ZERO,
-            Self::BaseField::ZERO,
-            Self::BaseField::ZERO,
-        ]);
-        //let committed_5 = LogUpGkrOracle::CurrentRow(5);
-        //vec![committed_0, committed_1, committed_2, committed_3, committed_4, committed_5]
-        vec![committed_0, committed_1, committed_2, committed_3, committed_4, periodic]
+    fn get_oracles(&self) -> &[LogUpGkrOracle<Self::BaseField>] {
+        &self.oracles
     }
 
     fn get_num_rand_values(&self) -> usize {
@@ -227,13 +237,14 @@ impl LogUpGkrEvaluator for PeriodicLogUpGkrEval<BaseElement> {
         3
     }
 
-    fn build_query<E>(&self, frame: &EvaluationFrame<E>, periodic_values: &[E]) -> Vec<E>
+    fn build_query<E>(&self, frame: &EvaluationFrame<E>, periodic_values: &[E], query: &mut [E])
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
-        let mut cur = frame.current().to_vec();
-        cur.extend_from_slice(&periodic_values);
-        cur
+        query
+            .iter_mut()
+            .zip(frame.current().iter().chain(periodic_values.iter()))
+            .for_each(|(q, f)| *q = *f)
     }
 
     fn evaluate_query<F, E>(
@@ -328,11 +339,7 @@ impl Prover for LogUpGkrPeriodicProver {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
     }
 
-    fn build_aux_trace<E>(
-        &self,
-        main_trace: &Self::Trace,
-        _aux_rand_elements: &AuxRandElements<E>,
-    ) -> ColMatrix<E>
+    fn build_aux_trace<E>(&self, main_trace: &Self::Trace, _aux_rand_elements: &[E]) -> ColMatrix<E>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
