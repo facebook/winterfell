@@ -9,7 +9,15 @@ use core::marker::PhantomData;
 use crypto::{ElementHasher, RandomCoin};
 use math::{ExtensionOf, FieldElement, StarkField, ToElements};
 
-use super::{EvaluationFrame, GkrData, LagrangeKernelRandElements};
+use super::{EvaluationFrame, GkrData, LagrangeConstraintsCompositionCoefficients};
+mod s_column;
+use s_column::SColumnConstraint;
+
+mod lagrange;
+pub use lagrange::{
+    LagrangeKernelBoundaryConstraint, LagrangeKernelConstraints, LagrangeKernelEvaluationFrame,
+    LagrangeKernelRandElements, LagrangeKernelTransitionConstraints,
+};
 
 /// A trait containing the necessary information in order to run the LogUp-GKR protocol of [1].
 ///
@@ -115,6 +123,27 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
             openings,
             self.get_oracles().to_vec(),
         )
+    }
+
+    /// Returns a new [`LagrangeKernelConstraints`].
+    fn get_lagrange_kernel_constraints<E: FieldElement<BaseField = Self::BaseField>>(
+        &self,
+        lagrange_composition_coefficients: LagrangeConstraintsCompositionCoefficients<E>,
+        lagrange_kernel_rand_elements: &LagrangeKernelRandElements<E>,
+    ) -> LagrangeKernelConstraints<E> {
+        LagrangeKernelConstraints::new(
+            lagrange_composition_coefficients,
+            lagrange_kernel_rand_elements,
+        )
+    }
+
+    /// Returns a new [`SColumnConstraints`].
+    fn get_s_column_constraints<E: FieldElement<BaseField = Self::BaseField>>(
+        &self,
+        gkr_data: GkrData<E>,
+        composition_coefficient: E,
+    ) -> SColumnConstraint<E> {
+        SColumnConstraint::new(gkr_data, composition_coefficient)
     }
 }
 

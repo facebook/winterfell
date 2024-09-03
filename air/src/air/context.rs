@@ -250,13 +250,9 @@ impl<B: StarkField, P> AirContext<B, P> {
         self.aux_transition_constraint_degrees.len()
     }
 
-    /// Returns the index of the auxiliary column which implements the Lagrange kernel, if any
-    pub fn lagrange_kernel_aux_column_idx(&self) -> Option<usize> {
-        if self.logup_gkr_enabled() {
-            Some(self.trace_info().aux_segment_width() - 1)
-        } else {
-            None
-        }
+    /// Returns the index of the auxiliary column which implements the Lagrange kernel, if any.
+    pub fn lagrange_kernel_column_idx(&self) -> Option<usize> {
+        self.trace_info.lagrange_kernel_column_idx()
     }
 
     /// Returns true if LogUp-GKR is enabled.

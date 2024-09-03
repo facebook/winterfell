@@ -5,7 +5,7 @@
 
 use math::FieldElement;
 
-use crate::{LagrangeKernelEvaluationFrame, LagrangeKernelRandElements};
+use super::{LagrangeKernelEvaluationFrame, LagrangeKernelRandElements};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct LagrangeKernelBoundaryConstraint<E>

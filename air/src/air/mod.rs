@@ -6,7 +6,6 @@
 use alloc::{collections::BTreeMap, vec::Vec};
 
 use crypto::{RandomCoin, RandomCoinError};
-use logup_gkr::PhantomLogUpGkrEval;
 use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElements};
 
 use crate::ProofOptions;
@@ -29,14 +28,13 @@ pub use boundary::{BoundaryConstraint, BoundaryConstraintGroup, BoundaryConstrai
 mod transition;
 pub use transition::{EvaluationFrame, TransitionConstraintDegree, TransitionConstraints};
 
-mod lagrange;
-pub use lagrange::{
-    LagrangeKernelBoundaryConstraint, LagrangeKernelConstraints, LagrangeKernelEvaluationFrame,
-    LagrangeKernelRandElements, LagrangeKernelTransitionConstraints,
-};
-
 mod logup_gkr;
-pub use logup_gkr::{LogUpGkrEvaluator, LogUpGkrOracle};
+use logup_gkr::PhantomLogUpGkrEval;
+pub use logup_gkr::{
+    LagrangeKernelBoundaryConstraint, LagrangeKernelConstraints, LagrangeKernelEvaluationFrame,
+    LagrangeKernelRandElements, LagrangeKernelTransitionConstraints, LogUpGkrEvaluator,
+    LogUpGkrOracle,
+};
 
 mod coefficients;
 pub use coefficients::{
@@ -331,25 +329,6 @@ pub trait Air: Send + Sync {
         Ok(rand_elements)
     }
 
-    /// Returns a new [`LagrangeKernelConstraints`] if a Lagrange kernel auxiliary column is present
-    /// in the trace, or `None` otherwise.
-    fn get_lagrange_kernel_constraints<E: FieldElement<BaseField = Self::BaseField>>(
-        &self,
-        lagrange_composition_coefficients: LagrangeConstraintsCompositionCoefficients<E>,
-        lagrange_kernel_rand_elements: &LagrangeKernelRandElements<E>,
-    ) -> Option<LagrangeKernelConstraints<E>> {
-        if self.context().logup_gkr_enabled() {
-            let col_idx = self.context().trace_info().aux_segment_width() - 1;
-            Some(LagrangeKernelConstraints::new(
-                lagrange_composition_coefficients,
-                lagrange_kernel_rand_elements,
-                col_idx,
-            ))
-        } else {
-            None
-        }
-    }
-
     /// Returns values for all periodic columns used in the computation.
     ///
     /// These values will be used to compute column values at specific states of the computation
@@ -600,7 +579,7 @@ pub trait Air: Send + Sync {
             None
         };
 
-        let s_col = if self.context().logup_gkr_enabled() {
+        let s_col_cc = if self.context().logup_gkr_enabled() {
             Some(public_coin.draw()?)
         } else {
             None
@@ -610,7 +589,7 @@ pub trait Air: Send + Sync {
             trace: t_coefficients,
             constraints: c_coefficients,
             lagrange: lagrange_cc,
-            s_col,
+            s_col: s_col_cc,
         })
     }
 }
