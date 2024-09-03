@@ -254,6 +254,13 @@ pub enum LogUpGkrOracle<B: StarkField> {
 // PERIODIC COLUMNS FOR LOGUP
 // =================================================================================================
 
+/// Stores the periodic columns used in a LogUp-GKR statement.
+///
+/// Each stored periodic column is interpreted as a multi-linear extension polynomial of the column
+/// with the given periodic values. Due to the periodic nature of the values, storing, binding of
+/// an argument and evaluating the said multi-linear extension can be all done linearly in the size
+/// of the smallest cycle defining the periodic values. Hence we only store the values of this
+/// smallest cycle. The cycle is assumed throughout to be a power of 2.
 #[derive(Clone, Debug, Default, PartialEq, PartialOrd, Eq, Ord)]
 pub struct PeriodicTable<E: FieldElement> {
     pub table: Vec<Vec<E>>,
