@@ -116,12 +116,13 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
         let mut main_frame = EvaluationFrame::new(main_trace.main_segment().num_cols());
 
         let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
+        let mut periodic_values_row = vec![E::BaseField::ZERO; periodic_values.num_columns()];
         let mut numerators = vec![E::ZERO; num_fractions];
         let mut denominators = vec![E::ZERO; num_fractions];
         for i in 0..main_trace.main_segment().num_rows() {
             let wires_from_trace_row = {
                 main_trace.read_main_frame(i, &mut main_frame);
-                let periodic_values_row = periodic_values.get_periodic_values_at(i);
+                periodic_values.get_periodic_values_at(i, &mut periodic_values_row);
                 evaluator.build_query(&main_frame, &periodic_values_row, &mut query);
 
                 evaluator.build_query(&main_frame, &[], &mut query);

@@ -270,17 +270,10 @@ impl<E> PeriodicTable<E>
 where
     E: FieldElement,
 {
-    pub fn new<B>(table: Vec<Vec<B>>) -> Self
-    where
-        E: FieldElement + ExtensionOf<B>,
-        B: StarkField,
-    {
+    pub fn new(table: Vec<Vec<E::BaseField>>) -> Self {
         let mut result = vec![];
         for col in table.iter() {
-            let mut res = vec![];
-            for v in col {
-                res.push(E::from(*v))
-            }
+            let res = embed_in_extension(col.to_vec());
             result.push(res)
         }
 
@@ -295,8 +288,11 @@ where
         &self.table
     }
 
-    pub fn get_periodic_values_at(&self, row: usize) -> Vec<E> {
-        self.table.iter().map(|col| col[row % col.len()]).collect()
+    pub fn get_periodic_values_at(&self, row: usize, values: &mut [E]) {
+        self.table
+            .iter()
+            .zip(values.iter_mut())
+            .for_each(|(col, value)| *value = col[row % col.len()])
     }
 
     pub fn bind_least_significant_variable(&mut self, round_challenge: E) {
