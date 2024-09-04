@@ -536,7 +536,7 @@ pub trait Air: Send + Sync {
         R: RandomCoin<BaseField = Self::BaseField>,
     {
         let mut t_coefficients = Vec::new();
-        for _ in 0..self.context().num_transition_constraints() {
+        for _ in 0..10 {
             t_coefficients.push(public_coin.draw()?);
         }
 

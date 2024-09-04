@@ -11,15 +11,15 @@ use winterfell::{
 };
 
 pub mod fibonacci;
-#[cfg(feature = "std")]
-pub mod lamport;
-#[cfg(feature = "std")]
-pub mod merkle;
-pub mod rescue;
-#[cfg(feature = "std")]
-pub mod rescue_raps;
+//#[cfg(feature = "std")]
+//pub mod lamport;
+//#[cfg(feature = "std")]
+//pub mod merkle;
+//pub mod rescue;
+//#[cfg(feature = "std")]
+//pub mod rescue_raps;
 pub mod utils;
-pub mod vdf;
+//pub mod vdf;
 
 #[cfg(test)]
 mod tests;

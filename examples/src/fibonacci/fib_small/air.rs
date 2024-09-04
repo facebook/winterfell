@@ -30,7 +30,7 @@ impl Air for FibSmall {
         let degrees = vec![TransitionConstraintDegree::new(1), TransitionConstraintDegree::new(1)];
         assert_eq!(TRACE_WIDTH, trace_info.width());
         FibSmall {
-            context: AirContext::new(trace_info, degrees, 3, options),
+            context: AirContext::new(trace_info, degrees, 2, 0, 3, options),
             result: pub_inputs,
         }
     }

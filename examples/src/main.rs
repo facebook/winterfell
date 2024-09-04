@@ -5,9 +5,10 @@
 
 use std::time::Instant;
 
-use examples::{fibonacci, rescue, vdf, ExampleOptions, ExampleType};
-#[cfg(feature = "std")]
-use examples::{lamport, merkle, rescue_raps};
+//use examples::{fibonacci, rescue, vdf, ExampleOptions, ExampleType};
+//#[cfg(feature = "std")]
+//use examples::{lamport, merkle, rescue_raps};
+use examples::{ fibonacci, ExampleOptions, ExampleType};
 use structopt::StructOpt;
 use tracing::info_span;
 #[cfg(feature = "tracing-forest")]
@@ -65,23 +66,26 @@ fn main() {
         ExampleType::FibSmall { sequence_length } => {
             fibonacci::fib_small::get_example(&options, sequence_length)
         },
-        ExampleType::Vdf { num_steps } => vdf::regular::get_example(&options, num_steps),
-        ExampleType::VdfExempt { num_steps } => vdf::exempt::get_example(&options, num_steps),
-        ExampleType::Rescue { chain_length } => rescue::get_example(&options, chain_length),
-        #[cfg(feature = "std")]
-        ExampleType::RescueRaps { chain_length } => {
-            rescue_raps::get_example(&options, chain_length)
-        },
-        #[cfg(feature = "std")]
-        ExampleType::Merkle { tree_depth } => merkle::get_example(&options, tree_depth),
-        #[cfg(feature = "std")]
-        ExampleType::LamportA { num_signatures } => {
-            lamport::aggregate::get_example(&options, num_signatures)
-        },
-        #[cfg(feature = "std")]
-        ExampleType::LamportT { num_signers } => {
-            lamport::threshold::get_example(&options, num_signers)
-        },
+
+        _ => todo!()
+        
+        //ExampleType::Vdf { num_steps } => vdf::regular::get_example(&options, num_steps),
+        //ExampleType::VdfExempt { num_steps } => vdf::exempt::get_example(&options, num_steps),
+        //ExampleType::Rescue { chain_length } => rescue::get_example(&options, chain_length),
+        //#[cfg(feature = "std")]
+        //ExampleType::RescueRaps { chain_length } => {
+            //rescue_raps::get_example(&options, chain_length)
+        //},
+        //#[cfg(feature = "std")]
+        //ExampleType::Merkle { tree_depth } => merkle::get_example(&options, tree_depth),
+        //#[cfg(feature = "std")]
+        //ExampleType::LamportA { num_signatures } => {
+            //lamport::aggregate::get_example(&options, num_signatures)
+        //},
+        //#[cfg(feature = "std")]
+        //ExampleType::LamportT { num_signers } => {
+            //lamport::threshold::get_example(&options, num_signers)
+        //},
     }
     .expect("The example failed to initialize.");
 

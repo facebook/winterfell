@@ -270,7 +270,7 @@ pub fn build_context<B: StarkField>(
     let options = ProofOptions::new(32, 8, 0, FieldExtension::None, 4, 31);
     let t_degrees = vec![TransitionConstraintDegree::new(2)];
     let trace_info = TraceInfo::new(trace_width, trace_length);
-    AirContext::new(trace_info, t_degrees, num_assertions, options)
+    AirContext::new(trace_info, t_degrees, 1, 0, num_assertions, options)
 }
 
 pub fn build_prng() -> DefaultRandomCoin<Blake3_256<BaseElement>> {

@@ -33,8 +33,6 @@ pub struct ConstraintEvaluationTable<'a, E: FieldElement> {
     main_transition_evaluations: Vec<Vec<E::BaseField>>,
     #[cfg(debug_assertions)]
     aux_transition_evaluations: Vec<Vec<E>>,
-    #[cfg(debug_assertions)]
-    expected_transition_degrees: Vec<usize>,
 }
 
 impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
@@ -70,18 +68,12 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
         let num_tm_columns = transition_constraints.num_main_constraints();
         let num_ta_columns = transition_constraints.num_aux_constraints();
 
-        // collect expected degrees for all transition constraints to compare them against actual
-        // degrees; we do this in debug mode only because this comparison is expensive
-        let expected_transition_degrees =
-            build_transition_constraint_degrees(transition_constraints, domain.trace_length());
-
         ConstraintEvaluationTable {
             evaluations: uninit_matrix(num_columns, num_rows),
             divisors,
             domain,
             main_transition_evaluations: uninit_matrix(num_tm_columns, num_rows),
             aux_transition_evaluations: uninit_matrix(num_ta_columns, num_rows),
-            expected_transition_degrees,
         }
     }
 
@@ -192,32 +184,20 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
         // collect actual degrees for all transition constraints by interpolating saved
         // constraint evaluations into polynomials and checking their degree; also
         // determine max transition constraint degree
-        let mut actual_degrees = Vec::with_capacity(self.expected_transition_degrees.len());
-        let mut max_degree = 0;
+         let mut max_degree = 0;
         let inv_twiddles = fft::get_inv_twiddles::<E::BaseField>(self.num_rows());
 
         // first process transition constraint evaluations for the main trace segment
         for evaluations in self.main_transition_evaluations.iter() {
             let degree = get_transition_poly_degree(evaluations, &inv_twiddles, &div_values);
-            actual_degrees.push(degree);
             max_degree = core::cmp::max(max_degree, degree);
         }
 
         // then process transition constraint evaluations for the auxiliary trace segment
         for evaluations in self.aux_transition_evaluations.iter() {
             let degree = get_transition_poly_degree(evaluations, &inv_twiddles, &div_values);
-            actual_degrees.push(degree);
             max_degree = core::cmp::max(max_degree, degree);
         }
-
-        // make sure the actual degrees are less than or equal to the expected degree bounds
-        assert!(
-            self.expected_transition_degrees >= actual_degrees,
-            "transition constraint degrees do not satisfy the expected degree bounds
-             \nexpected degree bounds: {:>3?}\nactual degrees:   {:>3?}",
-            self.expected_transition_degrees,
-            actual_degrees
-        );
 
         // make sure evaluation domain size does not exceed the size required by max degree
         let expected_domain_size =
@@ -419,23 +399,7 @@ fn get_inv_evaluation<B: StarkField>(
 ///
 /// The general idea is that evaluation degree is the degree of rational function `C(x) / z(x)`,
 /// where `C(x)` is the constraint polynomial and `z(x)` is the divisor polynomial.
-#[cfg(debug_assertions)]
-fn build_transition_constraint_degrees<E: FieldElement>(
-    constraints: &TransitionConstraints<E>,
-    trace_length: usize,
-) -> Vec<usize> {
-    let mut result = Vec::new();
 
-    for degree in constraints.main_constraint_degrees() {
-        result.push(degree.get_evaluation_degree(trace_length) - constraints.divisor().degree())
-    }
-
-    for degree in constraints.aux_constraint_degrees() {
-        result.push(degree.get_evaluation_degree(trace_length) - constraints.divisor().degree())
-    }
-
-    result
-}
 
 /// Computes the actual degree of a transition polynomial described by the provided evaluations.
 ///

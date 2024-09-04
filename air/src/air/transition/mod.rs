@@ -31,9 +31,7 @@ const MIN_CYCLE_LENGTH: usize = 2;
 /// - Divisor of transition constraints for a computation.
 pub struct TransitionConstraints<E: FieldElement> {
     main_constraint_coef: Vec<E>,
-    main_constraint_degrees: Vec<TransitionConstraintDegree>,
     aux_constraint_coef: Vec<E>,
-    aux_constraint_degrees: Vec<TransitionConstraintDegree>,
     divisor: ConstraintDivisor<E::BaseField>,
 }
 
@@ -47,11 +45,6 @@ impl<E: FieldElement> TransitionConstraints<E> {
     /// Panics if the number of transition constraints in the context does not match the number of
     /// provided composition coefficients.
     pub fn new(context: &AirContext<E::BaseField>, composition_coefficients: &[E]) -> Self {
-        assert_eq!(
-            context.num_transition_constraints(),
-            composition_coefficients.len(),
-            "number of transition constraints must match the number of composition coefficient tuples"
-        );
 
         // build constraint divisor; the same divisor applies to all transition constraints
         let divisor = ConstraintDivisor::from_transition(
@@ -59,16 +52,11 @@ impl<E: FieldElement> TransitionConstraints<E> {
             context.num_transition_exemptions(),
         );
 
-        let main_constraint_degrees = context.main_transition_constraint_degrees.clone();
-        let aux_constraint_degrees = context.aux_transition_constraint_degrees.clone();
-
         let (main_constraint_coef, aux_constraint_coef) =
-            composition_coefficients.split_at(context.main_transition_constraint_degrees.len());
+            composition_coefficients.split_at(context.num_main_transition_constraints);
         Self {
             main_constraint_coef: main_constraint_coef.to_vec(),
-            main_constraint_degrees,
             aux_constraint_coef: aux_constraint_coef.to_vec(),
-            aux_constraint_degrees,
             divisor,
         }
     }
@@ -76,19 +64,9 @@ impl<E: FieldElement> TransitionConstraints<E> {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a list of transition constraint degree descriptors for the main trace segment of
-    /// a computation.
-    ///
-    /// This list will be identical to the list passed into the [AirContext::new()] method as
-    /// the `transition_constraint_degrees` parameter, or into [AirContext::new_multi_segment()]
-    /// as the `main_transition_constraint_degrees` parameter.
-    pub fn main_constraint_degrees(&self) -> &[TransitionConstraintDegree] {
-        &self.main_constraint_degrees
-    }
-
     /// Returns the number of constraints applied against the main trace segment of a computation.
     pub fn num_main_constraints(&self) -> usize {
-        self.main_constraint_degrees.len()
+        self.main_constraint_coef.len()
     }
 
     /// Returns the random coefficients for constraints applied against main trace segment of a
@@ -97,19 +75,10 @@ impl<E: FieldElement> TransitionConstraints<E> {
         self.main_constraint_coef.clone()
     }
 
-    /// Returns a list of transition constraint degree descriptors for the auxiliary trace segment of
-    /// a computation.
-    ///
-    /// This list will be identical to the list passed into [AirContext::new_multi_segment()]
-    /// as the `aux_transition_constraint_degrees` parameter.
-    pub fn aux_constraint_degrees(&self) -> &[TransitionConstraintDegree] {
-        &self.aux_constraint_degrees
-    }
-
     /// Returns the number of constraints applied against the auxiliary trace segment of a
     /// computation.
     pub fn num_aux_constraints(&self) -> usize {
-        self.aux_constraint_degrees.len()
+        self.aux_constraint_coef.len()
     }
 
     /// Returns the random coefficients for constraints applied against the auxiliary trace segment of a

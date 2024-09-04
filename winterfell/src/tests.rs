@@ -138,6 +138,8 @@ impl Air for LagrangeKernelComplexAir {
                 vec![TransitionConstraintDegree::new(1)],
                 1,
                 1,
+                1,
+                1,
                 Some(1),
                 options,
             ),

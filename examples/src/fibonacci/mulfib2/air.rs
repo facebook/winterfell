@@ -32,7 +32,7 @@ impl Air for MulFib2Air {
         let degrees = vec![TransitionConstraintDegree::new(2), TransitionConstraintDegree::new(2)];
         assert_eq!(TRACE_WIDTH, trace_info.width());
         MulFib2Air {
-            context: AirContext::new(trace_info, degrees, 3, options),
+            context: AirContext::new(trace_info, degrees, 2, 0, 3, options),
             result: pub_inputs,
         }
     }

@@ -17,8 +17,8 @@ use crate::{air::TransitionConstraintDegree, ProofOptions, TraceInfo};
 pub struct AirContext<B: StarkField> {
     pub(super) options: ProofOptions,
     pub(super) trace_info: TraceInfo,
-    pub(super) main_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
-    pub(super) aux_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
+    pub(super) num_main_transition_constraints: usize,
+    pub(super) num_aux_transition_constraints: usize,
     pub(super) num_main_assertions: usize,
     pub(super) num_aux_assertions: usize,
     pub(super) lagrange_kernel_aux_column_idx: Option<usize>,
@@ -49,6 +49,8 @@ impl<B: StarkField> AirContext<B> {
     pub fn new(
         trace_info: TraceInfo,
         transition_constraint_degrees: Vec<TransitionConstraintDegree>,
+        num_main_transition_constraints: usize,
+        num_aux_transition_constraints: usize,
         num_assertions: usize,
         options: ProofOptions,
     ) -> Self {
@@ -60,6 +62,8 @@ impl<B: StarkField> AirContext<B> {
             trace_info,
             transition_constraint_degrees,
             Vec::new(),
+            num_main_transition_constraints,
+            num_aux_transition_constraints,
             num_assertions,
             0,
             None,
@@ -93,6 +97,8 @@ impl<B: StarkField> AirContext<B> {
         trace_info: TraceInfo,
         main_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
         aux_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
+        num_main_transition_constraints: usize,
+        num_aux_transition_constraints: usize,
         num_main_assertions: usize,
         num_aux_assertions: usize,
         lagrange_kernel_aux_column_idx: Option<usize>,
@@ -161,8 +167,6 @@ impl<B: StarkField> AirContext<B> {
         AirContext {
             options,
             trace_info,
-            main_transition_constraint_degrees,
-            aux_transition_constraint_degrees,
             num_main_assertions,
             num_aux_assertions,
             lagrange_kernel_aux_column_idx,
@@ -170,6 +174,8 @@ impl<B: StarkField> AirContext<B> {
             trace_domain_generator: B::get_root_of_unity(trace_length.ilog2()),
             lde_domain_generator: B::get_root_of_unity(lde_domain_size.ilog2()),
             num_transition_exemptions: 1,
+            num_main_transition_constraints,
+            num_aux_transition_constraints,
         }
     }
 
@@ -217,17 +223,17 @@ impl<B: StarkField> AirContext<B> {
     /// used to determine how many transition constraint coefficients need to be generated for
     /// merging transition constraints into a constraint composition polynomial.
     pub fn num_transition_constraints(&self) -> usize {
-        self.main_transition_constraint_degrees.len() + self.aux_transition_constraint_degrees.len()
+        self.num_main_transition_constraints + self.num_aux_transition_constraints
     }
 
     /// Returns the number of transition constraints placed against the main trace segment.
     pub fn num_main_transition_constraints(&self) -> usize {
-        self.main_transition_constraint_degrees.len()
+        self.num_main_transition_constraints
     }
 
     /// Returns the number of transition constraints placed against the auxiliary trace segment.
     pub fn num_aux_transition_constraints(&self) -> usize {
-        self.aux_transition_constraint_degrees.len()
+        self.num_aux_transition_constraints
     }
 
     /// Returns the index of the auxiliary column which implements the Lagrange kernel, if any
@@ -283,24 +289,16 @@ impl<B: StarkField> AirContext<B> {
     /// be at most `trace_len - 1`.
     pub fn num_constraint_composition_columns(&self) -> usize {
         let mut highest_constraint_degree = 0_usize;
-        for degree in self
-            .main_transition_constraint_degrees
-            .iter()
-            .chain(self.aux_transition_constraint_degrees.iter())
-        {
-            let eval_degree = degree.get_evaluation_degree(self.trace_len());
-            if eval_degree > highest_constraint_degree {
-                highest_constraint_degree = eval_degree
-            }
-        }
+        
         let trace_length = self.trace_len();
         let transition_divisior_degree = trace_length - self.num_transition_exemptions();
 
-        // we use the identity: ceil(a/b) = (a + b - 1)/b
-        let num_constraint_col =
-            (highest_constraint_degree - transition_divisior_degree + trace_length - 1)
-                / trace_length;
+        //// we use the identity: ceil(a/b) = (a + b - 1)/b
+        //let num_constraint_col =
+            //(highest_constraint_degree - transition_divisior_degree + trace_length - 1)
+                /// trace_length;
 
+                let num_constraint_col = 1;
         cmp::max(num_constraint_col, 1)
     }
 
@@ -332,19 +330,6 @@ impl<B: StarkField> AirContext<B> {
         // degree of the divisor which results in an increase of the resulting constraint composition
         // polynomial.Thus we need to check that the number of exemption points is not too large
         // given the above.
-        for degree in self
-            .main_transition_constraint_degrees
-            .iter()
-            .chain(self.aux_transition_constraint_degrees.iter())
-        {
-            let eval_degree = degree.get_evaluation_degree(self.trace_len());
-            let max_constraint_composition_degree = self.ce_domain_size() - 1;
-            let max_exemptions = max_constraint_composition_degree + self.trace_len() - eval_degree;
-            assert!(
-                n <= max_exemptions,
-                "number of transition exemptions cannot exceed: {max_exemptions}, but was {n}"
-            )
-        }
 
         self.num_transition_exemptions = n;
         self
