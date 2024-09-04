@@ -331,6 +331,7 @@ fn sumcheck_round<E: FieldElement>(
                 let eq_at_zero = eq_ml.evaluations()[2 * i];
                 let eq_at_one = eq_ml.evaluations()[2 * i + 1];
 
+                // add evaluation of periodic columns
                 periodic_table.get_periodic_values_at(2 * i, &mut evals_zero[num_mls..]);
                 periodic_table.get_periodic_values_at(2 * i + 1, &mut evals_one[num_mls..]);
 
@@ -421,20 +422,9 @@ fn sumcheck_round<E: FieldElement>(
                 let eq_at_zero = eq_ml.evaluations()[2 * i];
                 let eq_at_one = eq_ml.evaluations()[2 * i + 1];
 
-                let periodic_at_zero = periodic_table.get_periodic_values_at(2 * i);
-                let periodic_at_one = periodic_table.get_periodic_values_at(2 * i + 1);
-
                 // add evaluation of periodic columns
-                evals_zero
-                    .iter_mut()
-                    .skip(num_mls)
-                    .enumerate()
-                    .for_each(|(i, ev)| *ev = periodic_at_zero[i]);
-                evals_one
-                    .iter_mut()
-                    .skip(num_mls)
-                    .enumerate()
-                    .for_each(|(i, ev)| *ev = periodic_at_one[i]);
+                periodic_table.get_periodic_values_at(2 * i, &mut evals_zero[num_mls..]);
+                periodic_table.get_periodic_values_at(2 * i + 1, &mut evals_one[num_mls..]);
 
                 // compute the evaluation at 1
                 evaluator.evaluate_query(
