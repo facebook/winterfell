@@ -483,7 +483,7 @@ pub trait Air: Send + Sync {
     ///
     /// `ce_blowup_factor` is guaranteed to be smaller than or equal to the `lde_blowup_factor`.
     fn ce_blowup_factor(&self) -> usize {
-        self.context().ce_blowup_factor
+        self.context().max_degree
     }
 
     /// Returns size of the constraint evaluation domain.
@@ -536,7 +536,7 @@ pub trait Air: Send + Sync {
         R: RandomCoin<BaseField = Self::BaseField>,
     {
         let mut t_coefficients = Vec::new();
-        for _ in 0..10 {
+        for _ in 0..self.context().num_transition_constraints() {
             t_coefficients.push(public_coin.draw()?);
         }
 
@@ -584,7 +584,7 @@ pub trait Air: Send + Sync {
         }
 
         let mut c_coefficients = Vec::new();
-        for _ in 0..self.context().num_constraint_composition_columns() {
+        for _ in 0..self.ce_blowup_factor() {
             c_coefficients.push(public_coin.draw()?);
         }
 

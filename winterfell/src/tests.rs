@@ -132,17 +132,7 @@ impl Air for LagrangeKernelComplexAir {
 
     fn new(trace_info: TraceInfo, _pub_inputs: Self::PublicInputs, options: ProofOptions) -> Self {
         Self {
-            context: AirContext::new_multi_segment(
-                trace_info,
-                vec![TransitionConstraintDegree::new(1)],
-                vec![TransitionConstraintDegree::new(1)],
-                1,
-                1,
-                1,
-                1,
-                Some(1),
-                options,
-            ),
+            context: AirContext::new_multi_segment(trace_info, 2, 1, 1, 1, 1, Some(1), options),
         }
     }
 

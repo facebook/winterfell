@@ -8,10 +8,7 @@ use alloc::{collections::BTreeMap, vec::Vec};
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin};
 use math::{fields::f64::BaseElement, get_power_series, polynom, FieldElement, StarkField};
 
-use super::{
-    Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
-};
+use super::{Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo};
 use crate::FieldExtension;
 
 // PERIODIC COLUMNS
@@ -268,9 +265,8 @@ pub fn build_context<B: StarkField>(
     num_assertions: usize,
 ) -> AirContext<B> {
     let options = ProofOptions::new(32, 8, 0, FieldExtension::None, 4, 31);
-    let t_degrees = vec![TransitionConstraintDegree::new(2)];
     let trace_info = TraceInfo::new(trace_width, trace_length);
-    AirContext::new(trace_info, t_degrees, 1, 0, num_assertions, options)
+    AirContext::new(trace_info, 1, 1, num_assertions, options)
 }
 
 pub fn build_prng() -> DefaultRandomCoin<Blake3_256<BaseElement>> {

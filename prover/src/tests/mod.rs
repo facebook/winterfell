@@ -5,10 +5,7 @@
 
 use alloc::vec::Vec;
 
-use air::{
-    Air, AirContext, Assertion, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
-};
+use air::{Air, AirContext, Assertion, EvaluationFrame, FieldExtension, ProofOptions, TraceInfo};
 use math::{fields::f128::BaseElement, FieldElement, StarkField};
 
 use crate::TraceTable;
@@ -117,6 +114,5 @@ fn build_context<B: StarkField>(
     num_assertions: usize,
 ) -> AirContext<B> {
     let options = ProofOptions::new(32, blowup_factor, 0, FieldExtension::None, 4, 31);
-    let t_degrees = vec![TransitionConstraintDegree::new(2)];
-    AirContext::new(trace_info, t_degrees, 1, 0, num_assertions, options)
+    AirContext::new(trace_info, 1, 1, num_assertions, options)
 }

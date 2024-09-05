@@ -184,7 +184,7 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
         // collect actual degrees for all transition constraints by interpolating saved
         // constraint evaluations into polynomials and checking their degree; also
         // determine max transition constraint degree
-         let mut max_degree = 0;
+        let mut max_degree = 0;
         let inv_twiddles = fft::get_inv_twiddles::<E::BaseField>(self.num_rows());
 
         // first process transition constraint evaluations for the main trace segment
@@ -389,17 +389,6 @@ fn get_inv_evaluation<B: StarkField>(
 
 // DEBUG HELPERS
 // ================================================================================================
-
-/// Returns evaluation degrees of all transition constraints.
-///
-/// An evaluation degree is defined as degree of transition constraints in the context of a given
-/// execution trace accounting for constraint divisor degree. For most constraints, this degree is
-/// computed as `([trace_length - 1] * [constraint degree]) - [divisor degree]`. However, for
-/// constraints which rely on periodic columns this computation is slightly more complex.
-///
-/// The general idea is that evaluation degree is the degree of rational function `C(x) / z(x)`,
-/// where `C(x)` is the constraint polynomial and `z(x)` is the divisor polynomial.
-
 
 /// Computes the actual degree of a transition polynomial described by the provided evaluations.
 ///

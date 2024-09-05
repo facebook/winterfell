@@ -6,7 +6,6 @@
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement},
     Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
 };
 
 use super::TRACE_WIDTH;
@@ -29,10 +28,9 @@ impl Air for MulFib2Air {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     fn new(trace_info: TraceInfo, pub_inputs: Self::BaseField, options: ProofOptions) -> Self {
-        let degrees = vec![TransitionConstraintDegree::new(2), TransitionConstraintDegree::new(2)];
         assert_eq!(TRACE_WIDTH, trace_info.width());
         MulFib2Air {
-            context: AirContext::new(trace_info, degrees, 2, 0, 3, options),
+            context: AirContext::new(trace_info, 2, 2, 3, options),
             result: pub_inputs,
         }
     }

@@ -3,10 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use winterfell::{
-    math::ToElements, Air, AirContext, Assertion, EvaluationFrame, TraceInfo,
-    TransitionConstraintDegree,
-};
+use winterfell::{math::ToElements, Air, AirContext, Assertion, EvaluationFrame, TraceInfo};
 
 use super::{rescue, BaseElement, FieldElement, ProofOptions, CYCLE_LENGTH, TRACE_WIDTH};
 use crate::utils::{are_equal, is_zero, not, EvaluationResult};
@@ -65,15 +62,9 @@ impl Air for RescueAir {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     fn new(trace_info: TraceInfo, pub_inputs: PublicInputs, options: ProofOptions) -> Self {
-        let degrees = vec![
-            TransitionConstraintDegree::with_cycles(3, vec![CYCLE_LENGTH]),
-            TransitionConstraintDegree::with_cycles(3, vec![CYCLE_LENGTH]),
-            TransitionConstraintDegree::with_cycles(3, vec![CYCLE_LENGTH]),
-            TransitionConstraintDegree::with_cycles(3, vec![CYCLE_LENGTH]),
-        ];
         assert_eq!(TRACE_WIDTH, trace_info.width());
         RescueAir {
-            context: AirContext::new(trace_info, degrees, 4, options),
+            context: AirContext::new(trace_info, 4, 4, 4, options),
             seed: pub_inputs.seed,
             result: pub_inputs.result,
         }

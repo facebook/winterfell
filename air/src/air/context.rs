@@ -3,12 +3,11 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use alloc::vec::Vec;
 use core::cmp;
 
 use math::StarkField;
 
-use crate::{air::TransitionConstraintDegree, ProofOptions, TraceInfo};
+use crate::{ProofOptions, TraceInfo};
 
 // AIR CONTEXT
 // ================================================================================================
@@ -22,7 +21,7 @@ pub struct AirContext<B: StarkField> {
     pub(super) num_main_assertions: usize,
     pub(super) num_aux_assertions: usize,
     pub(super) lagrange_kernel_aux_column_idx: Option<usize>,
-    pub(super) ce_blowup_factor: usize,
+    pub(super) max_degree: usize,
     pub(super) trace_domain_generator: B,
     pub(super) lde_domain_generator: B,
     pub(super) num_transition_exemptions: usize,
@@ -34,23 +33,17 @@ impl<B: StarkField> AirContext<B> {
     /// Returns a new instance of [AirContext] instantiated for computations which require a single
     /// execution trace segment.
     ///
-    /// The list of transition constraint degrees defines the total number of transition
-    /// constraints and their expected degrees. Constraint evaluations computed by
-    /// [Air::evaluate_transition()](crate::Air::evaluate_transition) function are expected to be
-    /// in the order defined by this list.
-    ///
     /// # Panics
     /// Panics if
-    /// * `transition_constraint_degrees` is an empty vector.
+    /// * `num_main_transition_constraints` is zero.
     /// * `num_assertions` is zero.
     /// * Blowup factor specified by the provided `options` is too small to accommodate degrees
     ///   of the specified transition constraints.
     /// * `trace_info` describes a multi-segment execution trace.
     pub fn new(
         trace_info: TraceInfo,
-        transition_constraint_degrees: Vec<TransitionConstraintDegree>,
+        max_degree: usize,
         num_main_transition_constraints: usize,
-        num_aux_transition_constraints: usize,
         num_assertions: usize,
         options: ProofOptions,
     ) -> Self {
@@ -60,10 +53,9 @@ impl<B: StarkField> AirContext<B> {
         );
         Self::new_multi_segment(
             trace_info,
-            transition_constraint_degrees,
-            Vec::new(),
+            max_degree,
             num_main_transition_constraints,
-            num_aux_transition_constraints,
+            0,
             num_assertions,
             0,
             None,
@@ -74,29 +66,20 @@ impl<B: StarkField> AirContext<B> {
     /// Returns a new instance of [AirContext] instantiated for computations which require multiple
     /// execution trace segments.
     ///
-    /// The lists of transition constraint degrees defines the total number of transition
-    /// constraints and their expected degrees. Constraint evaluations computed by
-    /// [Air::evaluate_transition()](crate::Air::evaluate_transition) function are expected to be
-    /// in the order defined by `main_transition_constraint_degrees` list. Constraint evaluations
-    /// computed by [Air::evaluate_aux_transition()](crate::Air::evaluate_aux_transition) function
-    /// are expected to be in the order defined by `aux_transition_constraint_degrees` list.
-    ///
     /// # Panics
     /// Panics if
-    /// * `main_transition_constraint_degrees` is an empty vector.
     /// * `num_main_assertions` is zero.
     /// * `trace_info.is_multi_segment() == true` but:
-    ///   - `aux_transition_constraint_degrees` is an empty vector.
+    ///   - `num_aux_transition_constraints` is zero.
     ///   - `num_aux_assertions` is zero.
     /// * `trace_info.is_multi_segment() == false` but:
-    ///   - `aux_transition_constraint_degrees` is a non-empty vector.
+    ///   - `num_aux_transition_constraints` is non-zero.
     ///   - `num_aux_assertions` is greater than zero.
-    /// * Blowup factor specified by the provided `options` is too small to accommodate degrees
-    ///   of the specified transition constraints.
+    /// * Blowup factor specified by the provided `options` is too small to accommodate max degree
+    ///   of the transition constraints.
     pub fn new_multi_segment(
         trace_info: TraceInfo,
-        main_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
-        aux_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
+        max_degree: usize,
         num_main_transition_constraints: usize,
         num_aux_transition_constraints: usize,
         num_main_assertions: usize,
@@ -105,14 +88,14 @@ impl<B: StarkField> AirContext<B> {
         options: ProofOptions,
     ) -> Self {
         assert!(
-            !main_transition_constraint_degrees.is_empty(),
+            num_main_transition_constraints > 0,
             "at least one transition constraint degree must be specified"
         );
         assert!(num_main_assertions > 0, "at least one assertion must be specified");
 
         if trace_info.is_multi_segment() {
             assert!(
-                !aux_transition_constraint_degrees.is_empty(),
+                num_aux_transition_constraints > 0,
                 "at least one transition constraint degree must be specified for the auxiliary trace segment"
                 );
             assert!(
@@ -121,7 +104,7 @@ impl<B: StarkField> AirContext<B> {
             );
         } else {
             assert!(
-                aux_transition_constraint_degrees.is_empty(),
+                num_aux_transition_constraints == 0,
                 "auxiliary transition constraint degrees specified for a single-segment trace"
             );
             assert!(
@@ -139,25 +122,10 @@ impl<B: StarkField> AirContext<B> {
             );
         }
 
-        // determine minimum blowup factor needed to evaluate transition constraints by taking
-        // the blowup factor of the highest degree constraint
-        let mut ce_blowup_factor = 0;
-        for degree in main_transition_constraint_degrees.iter() {
-            if degree.min_blowup_factor() > ce_blowup_factor {
-                ce_blowup_factor = degree.min_blowup_factor();
-            }
-        }
-
-        for degree in aux_transition_constraint_degrees.iter() {
-            if degree.min_blowup_factor() > ce_blowup_factor {
-                ce_blowup_factor = degree.min_blowup_factor();
-            }
-        }
-
         assert!(
-            options.blowup_factor() >= ce_blowup_factor,
+            options.blowup_factor() >= max_degree,
             "blowup factor too small; expected at least {}, but was {}",
-            ce_blowup_factor,
+            max_degree,
             options.blowup_factor()
         );
 
@@ -170,7 +138,7 @@ impl<B: StarkField> AirContext<B> {
             num_main_assertions,
             num_aux_assertions,
             lagrange_kernel_aux_column_idx,
-            ce_blowup_factor,
+            max_degree,
             trace_domain_generator: B::get_root_of_unity(trace_length.ilog2()),
             lde_domain_generator: B::get_root_of_unity(lde_domain_size.ilog2()),
             num_transition_exemptions: 1,
@@ -205,7 +173,7 @@ impl<B: StarkField> AirContext<B> {
     ///
     /// This is guaranteed to be a power of two, and is equal to `trace_length * ce_blowup_factor`.
     pub fn ce_domain_size(&self) -> usize {
-        self.trace_info.length() * self.ce_blowup_factor
+        self.trace_info.length() * self.num_constraint_composition_columns()
     }
 
     /// Returns the size of the low-degree extension domain.
@@ -288,18 +256,7 @@ impl<B: StarkField> AirContext<B> {
     /// Hence, no matter what the degree of the divisor is for each, the degree of the fraction will
     /// be at most `trace_len - 1`.
     pub fn num_constraint_composition_columns(&self) -> usize {
-        let mut highest_constraint_degree = 0_usize;
-        
-        let trace_length = self.trace_len();
-        let transition_divisior_degree = trace_length - self.num_transition_exemptions();
-
-        //// we use the identity: ceil(a/b) = (a + b - 1)/b
-        //let num_constraint_col =
-            //(highest_constraint_degree - transition_divisior_degree + trace_length - 1)
-                /// trace_length;
-
-                let num_constraint_col = 1;
-        cmp::max(num_constraint_col, 1)
+        cmp::max(self.max_degree, 1)
     }
 
     // DATA MUTATORS

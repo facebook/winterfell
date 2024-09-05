@@ -8,7 +8,7 @@ use std::time::Duration;
 use air::{
     Air, AirContext, Assertion, AuxRandElements, ConstraintCompositionCoefficients,
     EvaluationFrame, FieldExtension, GkrRandElements, LagrangeKernelRandElements, ProofOptions,
-    TraceInfo, TransitionConstraintDegree,
+    TraceInfo,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, MerkleTree, RandomCoin};
@@ -106,15 +106,7 @@ impl Air for LagrangeKernelAir {
 
     fn new(trace_info: TraceInfo, _pub_inputs: Self::PublicInputs, options: ProofOptions) -> Self {
         Self {
-            context: AirContext::new_multi_segment(
-                trace_info,
-                vec![TransitionConstraintDegree::new(1)],
-                vec![TransitionConstraintDegree::new(1)],
-                1,
-                1,
-                Some(0),
-                options,
-            ),
+            context: AirContext::new_multi_segment(trace_info, 1, 1, 1, 1, 1, Some(0), options),
         }
     }
 

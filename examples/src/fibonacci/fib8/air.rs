@@ -3,10 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use winterfell::{
-    Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
-};
+use winterfell::{Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo};
 
 use super::{BaseElement, FieldElement, TRACE_WIDTH};
 use crate::utils::are_equal;
@@ -28,10 +25,9 @@ impl Air for Fib8Air {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     fn new(trace_info: TraceInfo, pub_inputs: Self::BaseField, options: ProofOptions) -> Self {
-        let degrees = vec![TransitionConstraintDegree::new(1), TransitionConstraintDegree::new(1)];
         assert_eq!(TRACE_WIDTH, trace_info.width());
         Fib8Air {
-            context: AirContext::new(trace_info, degrees, 2, 0, 3, options),
+            context: AirContext::new(trace_info, 2, 2, 3, options),
             result: pub_inputs,
         }
     }

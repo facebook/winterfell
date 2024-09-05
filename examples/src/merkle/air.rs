@@ -5,7 +5,6 @@
 
 use winterfell::{
     math::ToElements, Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
 };
 
 use super::{rescue, BaseElement, FieldElement, HASH_CYCLE_LEN, HASH_STATE_WIDTH, TRACE_WIDTH};
@@ -38,18 +37,9 @@ impl Air for MerkleAir {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     fn new(trace_info: TraceInfo, pub_inputs: PublicInputs, options: ProofOptions) -> Self {
-        let degrees = vec![
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN]),
-            TransitionConstraintDegree::new(2),
-        ];
         assert_eq!(TRACE_WIDTH, trace_info.width());
         MerkleAir {
-            context: AirContext::new(trace_info, degrees, 4, options),
+            context: AirContext::new(trace_info, 8, 7, 4, options),
             tree_root: pub_inputs.tree_root,
         }
     }

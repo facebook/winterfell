@@ -195,10 +195,13 @@
 //!
 //!         // Our computation requires a single transition constraint. The constraint itself
 //!         // is defined in the evaluate_transition() method below, but here we need to specify
-//!         // the expected degree of the constraint. If the expected and actual degrees of the
-//!         // constraints don't match, an error will be thrown in the debug mode, but in release
-//!         // mode, an invalid proof will be generated which will not be accepted by any verifier.
-//!         let degrees = vec![TransitionConstraintDegree::new(3)];
+//!         // the number of transition constraints.
+//!         let num_transition_constraints = 1;
+//!
+//!         // We also need to specify the maximum degree over the transition constraints.
+//!         // If the expected and actual max degrees of the constraints don't match, an invalid
+//!         // proof will be generated which will not be accepted by any verifier.
+//!         let max_degree = 2;
 //!
 //!         // We also need to specify the exact number of assertions we will place against the
 //!         // execution trace. This number must be the same as the number of items in a vector
@@ -206,7 +209,7 @@
 //!         let num_assertions = 2;
 //!
 //!         WorkAir {
-//!             context: AirContext::new(trace_info, degrees, num_assertions, options),
+//!             context: AirContext::new(trace_info, max_degree, num_transition_constraints, num_assertions, options),
 //!             start: pub_inputs.start,
 //!             result: pub_inputs.result,
 //!         }
@@ -294,9 +297,8 @@
 //! #
 //! #     fn new(trace_info: TraceInfo, pub_inputs: PublicInputs, options: ProofOptions) -> Self {
 //! #         assert_eq!(1, trace_info.width());
-//! #         let degrees = vec![TransitionConstraintDegree::new(3)];
 //! #         WorkAir {
-//! #             context: AirContext::new(trace_info, degrees, 2, options),
+//! #             context: AirContext::new(trace_info, 2, 1, 2, options),
 //! #             start: pub_inputs.start,
 //! #             result: pub_inputs.result,
 //! #         }
@@ -444,9 +446,8 @@
 //! #
 //! #     fn new(trace_info: TraceInfo, pub_inputs: PublicInputs, options: ProofOptions) -> Self {
 //! #         assert_eq!(1, trace_info.width());
-//! #         let degrees = vec![TransitionConstraintDegree::new(3)];
 //! #         WorkAir {
-//! #             context: AirContext::new(trace_info, degrees, 2, options),
+//! #             context: AirContext::new(trace_info, 2, 1, 2, options),
 //! #             start: pub_inputs.start,
 //! #             result: pub_inputs.result,
 //! #         }

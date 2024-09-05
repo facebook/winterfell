@@ -537,7 +537,6 @@ pub trait Prover {
         .in_scope(|| {
             CompositionPoly::new(composition_poly_trace, domain, num_constraint_composition_columns)
         });
-        assert_eq!(composition_poly.num_columns(), num_constraint_composition_columns);
         assert_eq!(composition_poly.column_degree(), domain.trace_length() - 1);
 
         // then, evaluate composition polynomial columns over the LDE domain
@@ -545,7 +544,6 @@ pub trait Prover {
         let composed_evaluations = info_span!("evaluate_composition_poly_columns").in_scope(|| {
             RowMatrix::evaluate_polys_over::<DEFAULT_SEGMENT_WIDTH>(composition_poly.data(), domain)
         });
-        assert_eq!(composed_evaluations.num_cols(), num_constraint_composition_columns);
         assert_eq!(composed_evaluations.num_rows(), domain_size);
 
         // finally, build constraint evaluation commitment

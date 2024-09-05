@@ -6,7 +6,6 @@
 use core_utils::flatten_slice_elements;
 use winterfell::{
     math::ToElements, Air, AirContext, Assertion, AuxRandElements, EvaluationFrame, TraceInfo,
-    TransitionConstraintDegree,
 };
 
 use super::{
@@ -65,19 +64,13 @@ impl Air for RescueRapsAir {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     fn new(trace_info: TraceInfo, pub_inputs: PublicInputs, options: ProofOptions) -> Self {
-        let main_degrees =
-            vec![TransitionConstraintDegree::with_cycles(3, vec![CYCLE_LENGTH]); 2 * STATE_WIDTH];
-        let aux_degrees = vec![
-            TransitionConstraintDegree::with_cycles(1, vec![CYCLE_LENGTH]),
-            TransitionConstraintDegree::with_cycles(1, vec![CYCLE_LENGTH]),
-            TransitionConstraintDegree::new(2),
-        ];
         assert_eq!(TRACE_WIDTH + 3, trace_info.width());
         RescueRapsAir {
             context: AirContext::new_multi_segment(
                 trace_info,
-                main_degrees,
-                aux_degrees,
+                4,
+                2 * STATE_WIDTH,
+                3,
                 8,
                 2,
                 None,

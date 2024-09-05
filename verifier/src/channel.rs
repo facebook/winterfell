@@ -78,7 +78,7 @@ where
         if E::BaseField::get_modulus_le_bytes() != context.field_modulus_bytes() {
             return Err(VerifierError::InconsistentBaseField);
         }
-        let constraint_frame_width = air.context().num_constraint_composition_columns();
+        let constraint_frame_width = air.ce_blowup_factor();
 
         let num_trace_segments = air.trace_info().num_segments();
         let main_trace_width = air.trace_info().main_trace_width();
@@ -387,7 +387,7 @@ where
         air: &A,
         num_queries: usize,
     ) -> Result<Self, VerifierError> {
-        let constraint_frame_width = air.context().num_constraint_composition_columns();
+        let constraint_frame_width = air.ce_blowup_factor();
 
         let (query_proofs, evaluations) = queries
             .parse::<E, H, V>(air.lde_domain_size(), num_queries, constraint_frame_width)

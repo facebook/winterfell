@@ -45,7 +45,6 @@ impl<E: FieldElement> TransitionConstraints<E> {
     /// Panics if the number of transition constraints in the context does not match the number of
     /// provided composition coefficients.
     pub fn new(context: &AirContext<E::BaseField>, composition_coefficients: &[E]) -> Self {
-
         // build constraint divisor; the same divisor applies to all transition constraints
         let divisor = ConstraintDivisor::from_transition(
             context.trace_len(),

@@ -6,7 +6,6 @@
 use winterfell::{
     math::{fields::f128::BaseElement, FieldElement, StarkField, ToElements},
     Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
 };
 
 use super::{
@@ -58,48 +57,9 @@ impl Air for LamportThresholdAir {
     // --------------------------------------------------------------------------------------------
     #[rustfmt::skip]
     fn new(trace_info: TraceInfo, pub_inputs: PublicInputs, options: ProofOptions) -> Self {
-        // define degrees for all transition constraints
-        let degrees = vec![
-            // secret key 1 hashing
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
-            // secret key 2 hashing
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
-            // public key hashing
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
-            // merkle path verification
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
-            // merkle path index
-            TransitionConstraintDegree::with_cycles(2, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]), // index bit is binary
-            TransitionConstraintDegree::with_cycles(1, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN, SIG_CYCLE_LEN]), // index accumulator
-            // signature count
-            TransitionConstraintDegree::with_cycles(2, vec![SIG_CYCLE_LEN]), // sig flag is binary
-            TransitionConstraintDegree::with_cycles(1, vec![SIG_CYCLE_LEN]), // sig counter
-            TransitionConstraintDegree::with_cycles(2, vec![SIG_CYCLE_LEN]),
-            TransitionConstraintDegree::with_cycles(2, vec![SIG_CYCLE_LEN]),
-        ];
         assert_eq!(TRACE_WIDTH, trace_info.width());
         LamportThresholdAir {
-            context: AirContext::new(trace_info, degrees, 26, options),
+            context: AirContext::new(trace_info, 8, 30, 26, options),
             pub_key_root: pub_inputs.pub_key_root,
             num_pub_keys: pub_inputs.num_pub_keys,
             num_signatures: pub_inputs.num_signatures,
