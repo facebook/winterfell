@@ -37,7 +37,6 @@ math = { version = "0.9", path = "../math", package = "winter-math", default-fea
 maybe_async = { path = "../utils/maybe_async" , package = "winter-maybe-async" }
 tracing = { version = "0.1", default-features = false, features = ["attributes"]}
 utils = { version = "0.9", path = "../utils/core", package = "winter-utils", default-features = false }
-libc-print = "0.1.23"
 
 [dev-dependencies]
 criterion = "0.5"
