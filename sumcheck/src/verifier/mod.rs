@@ -87,7 +87,7 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
     let mut numerators = vec![E::ZERO; evaluator.get_num_fractions()];
     let mut denominators = vec![E::ZERO; evaluator.get_num_fractions()];
 
-    let periodic_columns = evaluator.build_periodic_values::<E, E>();
+    let periodic_columns = evaluator.build_periodic_values();
     let periodic_columns_evaluations =
         evaluate_periodic_columns_at(periodic_columns, &proof.0.openings_claim.eval_point);
 

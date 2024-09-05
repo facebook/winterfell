@@ -149,21 +149,22 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
     /// Returns the periodic values used in the LogUp-GKR statement, either as base field element
     /// during circuit evaluation or as extension field element during the run of sum-check for
     /// the input layer.
-    fn build_periodic_values<F, E>(&self) -> PeriodicTable<F>
+    fn build_periodic_values<E>(&self) -> PeriodicTable<E>
     where
-        F: FieldElement<BaseField = Self::BaseField>,
-        E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
+        E: FieldElement<BaseField = Self::BaseField>,
     {
-        let mut table = Vec::new();
+        let table = self
+            .get_oracles()
+            .iter()
+            .filter_map(|oracle| {
+                if let LogUpGkrOracle::PeriodicValue(values) = oracle {
+                    Some(values.iter().map(|x| E::from(*x)).collect())
+                } else {
+                    None
+                }
+            })
+            .collect();
 
-        let oracles = self.get_oracles();
-
-        for oracle in oracles {
-            if let LogUpGkrOracle::PeriodicValue(values) = oracle {
-                let values = embed_in_extension(values.to_vec());
-                table.push(values)
-            }
-        }
         PeriodicTable { table }
     }
 }
@@ -271,13 +272,9 @@ where
     E: FieldElement,
 {
     pub fn new(table: Vec<Vec<E::BaseField>>) -> Self {
-        let mut result = vec![];
-        for col in table.iter() {
-            let res = embed_in_extension(col.to_vec());
-            result.push(res)
-        }
+        let table = table.iter().map(|col| col.iter().map(|x| E::from(*x)).collect()).collect();
 
-        Self { table: result }
+        Self { table }
     }
 
     pub fn num_columns(&self) -> usize {
@@ -288,7 +285,7 @@ where
         &self.table
     }
 
-    pub fn get_periodic_values_at(&self, row: usize, values: &mut [E]) {
+    pub fn fill_periodic_values_at(&self, row: usize, values: &mut [E]) {
         self.table
             .iter()
             .zip(values.iter_mut())
@@ -306,16 +303,4 @@ where
             }
         }
     }
-}
-
-// HELPER
-// =================================================================================================
-
-fn embed_in_extension<E: FieldElement>(values: Vec<E::BaseField>) -> Vec<E> {
-    let mut res = vec![];
-    for v in values {
-        res.push(E::from(v))
-    }
-
-    res
 }

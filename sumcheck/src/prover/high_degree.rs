@@ -160,7 +160,7 @@ pub fn sum_check_prove_higher_degree<
     r_sum_check: E,
     log_up_randomness: Vec<E>,
     mut mls: Vec<MultiLinearPoly<E>>,
-    periodic_table: &mut PeriodicTable<E>,
+    mut periodic_table: PeriodicTable<E>,
     coin: &mut impl RandomCoin<Hasher = H, BaseField = E::BaseField>,
 ) -> Result<SumCheckProof<E>, SumCheckProverError> {
     let num_rounds = mls[0].num_variables();
@@ -182,7 +182,7 @@ pub fn sum_check_prove_higher_degree<
         evaluator,
         &eq_nu,
         &mls,
-        periodic_table,
+        &mut periodic_table,
         &log_up_randomness,
         r_sum_check,
     );
@@ -216,7 +216,7 @@ pub fn sum_check_prove_higher_degree<
             evaluator,
             &eq_nu,
             &mls,
-            periodic_table,
+            &mut periodic_table,
             &log_up_randomness,
             r_sum_check,
         );
@@ -332,8 +332,8 @@ fn sumcheck_round<E: FieldElement>(
                 let eq_at_one = eq_ml.evaluations()[2 * i + 1];
 
                 // add evaluation of periodic columns
-                periodic_table.get_periodic_values_at(2 * i, &mut evals_zero[num_mls..]);
-                periodic_table.get_periodic_values_at(2 * i + 1, &mut evals_one[num_mls..]);
+                periodic_table.fill_periodic_values_at(2 * i, &mut evals_zero[num_mls..]);
+                periodic_table.fill_periodic_values_at(2 * i + 1, &mut evals_one[num_mls..]);
 
                 // compute the evaluation at 1
                 evaluator.evaluate_query(
@@ -423,8 +423,8 @@ fn sumcheck_round<E: FieldElement>(
                 let eq_at_one = eq_ml.evaluations()[2 * i + 1];
 
                 // add evaluation of periodic columns
-                periodic_table.get_periodic_values_at(2 * i, &mut evals_zero[num_mls..]);
-                periodic_table.get_periodic_values_at(2 * i + 1, &mut evals_one[num_mls..]);
+                periodic_table.fill_periodic_values_at(2 * i, &mut evals_zero[num_mls..]);
+                periodic_table.fill_periodic_values_at(2 * i + 1, &mut evals_one[num_mls..]);
 
                 // compute the evaluation at 1
                 evaluator.evaluate_query(

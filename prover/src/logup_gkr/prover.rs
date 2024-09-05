@@ -75,7 +75,7 @@ pub fn prove_gkr<E: FieldElement>(
     let (before_final_layer_proofs, gkr_claim) = prove_intermediate_layers(circuit, public_coin)?;
 
     // build the MLEs of the relevant main trace columns
-    let (main_trace_mls, mut periodic_table) =
+    let (main_trace_mls, periodic_table) =
         build_mls_from_main_trace_segment(evaluator.get_oracles(), main_trace.main_segment())?;
 
     // run the GKR prover for the input layer
@@ -83,7 +83,7 @@ pub fn prove_gkr<E: FieldElement>(
         evaluator,
         logup_randomness,
         main_trace_mls,
-        &mut periodic_table,
+        periodic_table,
         gkr_claim,
         public_coin,
     )?;
@@ -104,7 +104,7 @@ fn prove_input_layer<
     evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
     log_up_randomness: Vec<E>,
     multi_linear_ext_polys: Vec<MultiLinearPoly<E>>,
-    periodic_table: &mut PeriodicTable<E>,
+    periodic_table: PeriodicTable<E>,
     claim: GkrClaim<E>,
     transcript: &mut C,
 ) -> Result<FinalLayerProof<E>, GkrProverError> {

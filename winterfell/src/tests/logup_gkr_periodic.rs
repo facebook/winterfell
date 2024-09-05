@@ -53,8 +53,7 @@ impl LogUpGkrPeriodic {
 
         let table: Vec<BaseElement> =
             (0..trace_len).map(|idx| BaseElement::from(idx as u32)).collect();
-        let mut multiplicity: Vec<BaseElement> =
-            (0..trace_len).map(|_idx| BaseElement::ZERO).collect();
+        let mut multiplicity = vec![BaseElement::ZERO; trace_len];
         multiplicity.iter_mut().step_by(8).for_each(|m| *m = BaseElement::from(3_u32));
 
         let mut values_0: Vec<BaseElement> = (0..trace_len).map(|_idx| BaseElement::ZERO).collect();
@@ -73,12 +72,6 @@ impl LogUpGkrPeriodic {
 
         for i in 0..trace_len / 8 {
             values_2[8 * i] = BaseElement::from(8 * i as u32);
-        }
-
-        let mut periodic: Vec<BaseElement> = (0..trace_len).map(|_idx| BaseElement::ZERO).collect();
-
-        for i in 0..trace_len / 8 {
-            periodic[8 * i] = BaseElement::ONE;
         }
 
         Self {

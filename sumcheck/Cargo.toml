@@ -43,6 +43,7 @@ utils = { version = "0.9", path = "../utils/core", package = "winter-utils", def
 rayon = { version = "1.8", optional = true }
 smallvec = { version = "1.13", default-features = false }
 thiserror = { version = "1.0", git = "https://github.com/bitwalker/thiserror", branch = "no-std", default-features = false }
+
 [dev-dependencies]
 criterion = "0.5"
 rand-utils = { version = "0.9", path = "../utils/rand", package = "winter-rand-utils" }

@@ -44,7 +44,6 @@ fn sum_check_high_degree(c: &mut Criterion) {
                 )| {
                     let mls = vec![ml0, ml1, ml2, ml3, ml4];
                     let mut transcript = transcript;
-                    let mut periodic_table = periodic_table;
 
                     sum_check_prove_higher_degree(
                         &evaluator,
@@ -53,7 +52,7 @@ fn sum_check_high_degree(c: &mut Criterion) {
                         r_batch,
                         logup_randomness,
                         mls,
-                        &mut periodic_table,
+                        periodic_table,
                         &mut transcript,
                     )
                 },
