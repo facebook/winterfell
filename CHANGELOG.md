@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.1 (2024-09-06) - `utils/core` crate only
+## 0.9.2 (2024-09-06) - `utils/core` crate only
 - Fixed `read_slice` impl for ReadAdapter` (#309).
 
 ## 0.9.1 (2024-06-24) - `utils/core` crate only
