@@ -21,10 +21,11 @@ pub const RATE_WIDTH: usize = 4;
 /// Two elements (32-bytes) are returned as digest.
 const DIGEST_SIZE: usize = 2;
 
-/// The number of rounds is set to 7 to provide 128-bit security level with 40% security margin;
-/// computed using algorithm 7 from <https://eprint.iacr.org/2020/1143.pdf>
-/// security margin here differs from Rescue Prime specification which suggests 50% security
-/// margin (and would require 8 rounds) primarily to make AIR a bit simpler.
+/// The number of rounds is set to 7 to provide 128-bit security level with 40% security margin.
+///
+/// Computed using algorithm 7 from <https://eprint.iacr.org/2020/1143.pdf>, the security margin
+/// here differs from Rescue Prime specification which suggests 50% security margin (and would
+/// require 8 rounds) primarily to make AIR a bit simpler.
 pub const NUM_ROUNDS: usize = 7;
 
 /// Minimum cycle length required to describe Rescue permutation.

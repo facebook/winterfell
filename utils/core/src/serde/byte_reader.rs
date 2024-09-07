@@ -504,7 +504,9 @@ impl<'a> ByteReader for ReadAdapter<'a> {
         // this will return an error if we hit EOF first
         self.buffer_at_least(len)?;
 
-        Ok(&self.buffer()[0..len])
+        let slice = &self.buf[self.pos..(self.pos + len)];
+        self.pos += len;
+        Ok(slice)
     }
 
     #[inline]
@@ -739,5 +741,37 @@ mod tests {
         let mut adapter = ReadAdapter::new(&mut cursor);
 
         assert_eq!(adapter.read_usize(), Ok(VALUE));
+    }
+
+    #[test]
+    fn read_adapter_for_file() {
+        use std::fs::File;
+
+        use crate::ByteWriter;
+
+        let path = std::env::temp_dir().join("read_adapter_for_file.bin");
+
+        // Encode some data to a buffer, then write that buffer to a file
+        {
+            let mut buf = Vec::<u8>::with_capacity(256);
+            buf.write_bytes(b"MAGIC\0");
+            buf.write_bool(true);
+            buf.write_u32(0xbeef);
+            buf.write_usize(0xfeed);
+            buf.write_u16(0x5);
+
+            std::fs::write(&path, &buf).unwrap();
+        }
+
+        // Open the file, and try to decode the encoded items
+        let mut file = File::open(&path).unwrap();
+        let mut reader = ReadAdapter::new(&mut file);
+        assert_eq!(reader.peek_u8().unwrap(), b'M');
+        assert_eq!(reader.read_slice(6).unwrap(), b"MAGIC\0");
+        assert!(reader.read_bool().unwrap());
+        assert_eq!(reader.read_u32().unwrap(), 0xbeef);
+        assert_eq!(reader.read_usize().unwrap(), 0xfeed);
+        assert_eq!(reader.read_u16().unwrap(), 0x5);
+        assert!(!reader.has_more_bytes(), "expected there to be no more data in the input");
     }
 }
