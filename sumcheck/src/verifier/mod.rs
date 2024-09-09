@@ -91,9 +91,13 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
     let periodic_columns_evaluations =
         evaluate_periodic_columns_at(periodic_columns, &proof.0.openings_claim.eval_point);
 
-    let mut query = proof.0.openings_claim.openings.clone();
-    query.extend_from_slice(&periodic_columns_evaluations);
-    evaluator.evaluate_query(&query, &log_up_randomness, &mut numerators, &mut denominators);
+    evaluator.evaluate_query(
+        &proof.0.openings_claim.openings,
+        &periodic_columns_evaluations,
+        &log_up_randomness,
+        &mut numerators,
+        &mut denominators,
+    );
 
     let mu = evaluator.get_num_fractions().trailing_zeros() - 1;
     let (evaluation_point_mu, evaluation_point_nu) = gkr_eval_point.split_at(mu as usize);

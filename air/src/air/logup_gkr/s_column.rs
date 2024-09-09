@@ -45,7 +45,7 @@ impl<E: FieldElement> SColumnConstraint<E> {
             .mul_base(E::BaseField::ONE / E::BaseField::from(air.trace_length() as u32));
 
         let mut query = vec![E::ZERO; air.get_logup_gkr_evaluator().get_oracles().len()];
-        air.get_logup_gkr_evaluator().build_query(main_trace_frame, &[], &mut query);
+        air.get_logup_gkr_evaluator().build_query(main_trace_frame, &mut query);
         let batched_claim_at_query = self.gkr_data.compute_batched_query::<E>(&query);
         let rhs = s_cur - mean + batched_claim_at_query * l_cur;
         let lhs = s_nxt;

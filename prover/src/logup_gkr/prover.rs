@@ -75,8 +75,10 @@ pub fn prove_gkr<E: FieldElement>(
     let (before_final_layer_proofs, gkr_claim) = prove_intermediate_layers(circuit, public_coin)?;
 
     // build the MLEs of the relevant main trace columns
-    let (main_trace_mls, periodic_table) =
+    let main_trace_mls =
         build_mls_from_main_trace_segment(evaluator.get_oracles(), main_trace.main_segment())?;
+    // build the periodic table representing periodic columns as multi-linear extensions
+    let periodic_table = evaluator.build_periodic_values();
 
     // run the GKR prover for the input layer
     let final_layer_proof = prove_input_layer(
@@ -132,11 +134,10 @@ fn prove_input_layer<
 /// Builds the multi-linear extension polynomials needed to run the final sum-check of GKR for
 /// LogUp-GKR.
 fn build_mls_from_main_trace_segment<E: FieldElement>(
-    oracles: &[LogUpGkrOracle<E::BaseField>],
+    oracles: &[LogUpGkrOracle],
     main_trace: &ColMatrix<<E as FieldElement>::BaseField>,
-) -> Result<(Vec<MultiLinearPoly<E>>, PeriodicTable<E>), GkrProverError> {
+) -> Result<Vec<MultiLinearPoly<E>>, GkrProverError> {
     let mut mls = vec![];
-    let mut periodic_values = vec![];
 
     for oracle in oracles {
         match oracle {
@@ -156,10 +157,9 @@ fn build_mls_from_main_trace_segment<E: FieldElement>(
                 let ml = MultiLinearPoly::from_evaluations(values);
                 mls.push(ml)
             },
-            LogUpGkrOracle::PeriodicValue(values) => periodic_values.push(values.to_vec()),
         };
     }
-    Ok((mls, PeriodicTable::new(periodic_values)))
+    Ok(mls)
 }
 
 /// Proves all GKR layers except for input layer.

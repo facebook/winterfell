@@ -35,7 +35,13 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
 
     /// Gets a list of all oracles involved in LogUp-GKR; this is intended to be used in construction of
     /// MLEs.
-    fn get_oracles(&self) -> &[LogUpGkrOracle<Self::BaseField>];
+    fn get_oracles(&self) -> &[LogUpGkrOracle];
+
+    /// A vector of virtual periodic columns defined by their values in some given cycle.
+    /// Note that the cycle lengths must be powers of 2.
+    fn get_periodic_column_values(&self) -> Vec<Vec<Self::BaseField>> {
+        vec![]
+    }
 
     /// Returns the number of random values needed to evaluate a query.
     fn get_num_rand_values(&self) -> usize;
@@ -56,7 +62,7 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
     /// information returned from `get_oracles()`. However, this implementation is likely to be
     /// expensive compared to the hand-written implementation. However, we could provide a test
     /// which verifies that `get_oracles()` and `build_query()` methods are consistent.
-    fn build_query<E>(&self, frame: &EvaluationFrame<E>, periodic_values: &[E], query: &mut [E])
+    fn build_query<E>(&self, frame: &EvaluationFrame<E>, query: &mut [E])
     where
         E: FieldElement<BaseField = Self::BaseField>;
 
@@ -70,6 +76,7 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
     fn evaluate_query<F, E>(
         &self,
         query: &[F],
+        periodic_values: &[F],
         logup_randomness: &[E],
         numerators: &mut [E],
         denominators: &mut [E],
@@ -154,15 +161,9 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
         E: FieldElement<BaseField = Self::BaseField>,
     {
         let table = self
-            .get_oracles()
+            .get_periodic_column_values()
             .iter()
-            .filter_map(|oracle| {
-                if let LogUpGkrOracle::PeriodicValue(values) = oracle {
-                    Some(values.iter().map(|x| E::from(*x)).collect())
-                } else {
-                    None
-                }
-            })
+            .map(|values| values.iter().map(|x| E::from(*x)).collect())
             .collect();
 
         PeriodicTable { table }
@@ -197,7 +198,7 @@ where
 
     type PublicInputs = P;
 
-    fn get_oracles(&self) -> &[LogUpGkrOracle<Self::BaseField>] {
+    fn get_oracles(&self) -> &[LogUpGkrOracle] {
         panic!("LogUpGkrEvaluator method called but LogUp-GKR is not implemented")
     }
 
@@ -213,7 +214,7 @@ where
         panic!("LogUpGkrEvaluator method called but LogUp-GKR is not implemented")
     }
 
-    fn build_query<E>(&self, _frame: &EvaluationFrame<E>, _periodic_values: &[E], _query: &mut [E])
+    fn build_query<E>(&self, _frame: &EvaluationFrame<E>, _query: &mut [E])
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
@@ -223,6 +224,7 @@ where
     fn evaluate_query<F, E>(
         &self,
         _query: &[F],
+        _periodic_values: &[F],
         _rand_values: &[E],
         _numerator: &mut [E],
         _denominator: &mut [E],
@@ -242,14 +244,11 @@ where
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
-pub enum LogUpGkrOracle<B: StarkField> {
+pub enum LogUpGkrOracle {
     /// A column with a given index in the main trace segment.
     CurrentRow(usize),
     /// A column with a given index in the main trace segment but shifted upwards.
     NextRow(usize),
-    /// A virtual periodic column defined by its values in a given cycle. Note that the cycle length
-    /// must be a power of 2.
-    PeriodicValue(Vec<B>),
 }
 
 // PERIODIC COLUMNS FOR LOGUP

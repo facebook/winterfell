@@ -182,7 +182,7 @@ impl Air for LogUpGkrSimpleAir {
 
 #[derive(Clone, Default)]
 pub struct PlainLogUpGkrEval<B: FieldElement + StarkField> {
-    oracles: Vec<LogUpGkrOracle<B>>,
+    oracles: Vec<LogUpGkrOracle>,
     _field: PhantomData<B>,
 }
 
@@ -203,7 +203,7 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
 
     type PublicInputs = ();
 
-    fn get_oracles(&self) -> &[LogUpGkrOracle<Self::BaseField>] {
+    fn get_oracles(&self) -> &[LogUpGkrOracle] {
         &self.oracles
     }
 
@@ -219,7 +219,7 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
         3
     }
 
-    fn build_query<E>(&self, frame: &EvaluationFrame<E>, _periodic_values: &[E], query: &mut [E])
+    fn build_query<E>(&self, frame: &EvaluationFrame<E>, query: &mut [E])
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
@@ -229,6 +229,7 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
     fn evaluate_query<F, E>(
         &self,
         query: &[F],
+        _periodic_values: &[F],
         rand_values: &[E],
         numerator: &mut [E],
         denominator: &mut [E],

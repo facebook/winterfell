@@ -303,18 +303,23 @@ fn sumcheck_round<E: FieldElement>(
     r_sum_check: E,
 ) -> CompressedUnivariatePolyEvals<E> {
     let num_mls = mls.len();
-    let num_oracles = num_mls + periodic_table.num_columns();
+    let num_periodic = periodic_table.num_columns();
     let num_vars = mls[0].num_variables();
     let num_rounds = num_vars - 1;
 
     #[cfg(not(feature = "concurrent"))]
     let evaluations = {
-        let mut evals_one = vec![E::ZERO; num_oracles];
-        let mut evals_zero = vec![E::ZERO; num_oracles];
-        let mut evals_x = vec![E::ZERO; num_oracles];
+        let mut evals_one = vec![E::ZERO; num_mls];
+        let mut evals_zero = vec![E::ZERO; num_mls];
+        let mut evals_x = vec![E::ZERO; num_mls];
+
+        let mut evals_periodic_one = vec![E::ZERO; num_periodic];
+        let mut evals_periodic_zero = vec![E::ZERO; num_periodic];
+        let mut evals_periodic_x = vec![E::ZERO; num_periodic];
         let mut eq_x = E::ZERO;
 
-        let mut deltas = vec![E::ZERO; num_oracles];
+        let mut deltas = vec![E::ZERO; num_mls];
+        let mut deltas_periodic = vec![E::ZERO; num_periodic];
         let mut eq_delta = E::ZERO;
 
         let mut numerators = vec![E::ZERO; evaluator.get_num_fractions()];
@@ -332,12 +337,13 @@ fn sumcheck_round<E: FieldElement>(
                 let eq_at_one = eq_ml.evaluations()[2 * i + 1];
 
                 // add evaluation of periodic columns
-                periodic_table.fill_periodic_values_at(2 * i, &mut evals_zero[num_mls..]);
-                periodic_table.fill_periodic_values_at(2 * i + 1, &mut evals_one[num_mls..]);
+                periodic_table.fill_periodic_values_at(2 * i, &mut evals_periodic_zero);
+                periodic_table.fill_periodic_values_at(2 * i + 1, &mut evals_periodic_one);
 
                 // compute the evaluation at 1
                 evaluator.evaluate_query(
                     &evals_one,
+                    &evals_periodic_one,
                     log_up_randomness,
                     &mut numerators,
                     &mut denominators,
@@ -351,9 +357,13 @@ fn sumcheck_round<E: FieldElement>(
                 );
 
                 // compute the evaluations at 2, ..., d_max points
-                for i in 0..num_oracles {
+                for i in 0..num_mls {
                     deltas[i] = evals_one[i] - evals_zero[i];
                     evals_x[i] = evals_one[i];
+                }
+                for i in 0..num_periodic {
+                    deltas_periodic[i] = evals_periodic_one[i] - evals_periodic_zero[i];
+                    evals_periodic_x[i] = evals_periodic_one[i];
                 }
                 eq_delta = eq_at_one - eq_at_zero;
                 eq_x = eq_at_one;
@@ -362,10 +372,16 @@ fn sumcheck_round<E: FieldElement>(
                     evals_x.iter_mut().zip(deltas.iter()).for_each(|(evx, delta)| {
                         *evx += *delta;
                     });
+                    evals_periodic_x.iter_mut().zip(deltas_periodic.iter()).for_each(
+                        |(evx, delta)| {
+                            *evx += *delta;
+                        },
+                    );
                     eq_x += eq_delta;
 
                     evaluator.evaluate_query(
                         &evals_x,
+                        &evals_periodic_x,
                         log_up_randomness,
                         &mut numerators,
                         &mut denominators,
@@ -395,23 +411,31 @@ fn sumcheck_round<E: FieldElement>(
         .fold(
             || {
                 (
-                    vec![E::ZERO; num_oracles],
-                    vec![E::ZERO; num_oracles],
-                    vec![E::ZERO; num_oracles],
+                    vec![E::ZERO; num_mls],
+                    vec![E::ZERO; num_mls],
+                    vec![E::ZERO; num_mls],
+                    vec![E::ZERO; num_periodic],
+                    vec![E::ZERO; num_periodic],
+                    vec![E::ZERO; num_periodic],
                     vec![E::ZERO; evaluator.max_degree()],
                     vec![E::ZERO; evaluator.get_num_fractions()],
                     vec![E::ZERO; evaluator.get_num_fractions()],
-                    vec![E::ZERO; num_oracles],
+                    vec![E::ZERO; num_mls],
+                    vec![E::ZERO; num_periodic],
                 )
             },
             |(
                 mut evals_zero,
                 mut evals_one,
                 mut evals_x,
+                mut evals_periodic_zero,
+                mut evals_periodic_one,
+                mut evals_periodic_x,
                 mut poly_evals,
                 mut numerators,
                 mut denominators,
                 mut deltas,
+                mut deltas_periodic,
             ),
              i| {
                 for (j, ml) in mls.iter().enumerate() {
@@ -423,12 +447,13 @@ fn sumcheck_round<E: FieldElement>(
                 let eq_at_one = eq_ml.evaluations()[2 * i + 1];
 
                 // add evaluation of periodic columns
-                periodic_table.fill_periodic_values_at(2 * i, &mut evals_zero[num_mls..]);
-                periodic_table.fill_periodic_values_at(2 * i + 1, &mut evals_one[num_mls..]);
+                periodic_table.fill_periodic_values_at(2 * i, &mut evals_periodic_zero);
+                periodic_table.fill_periodic_values_at(2 * i + 1, &mut evals_periodic_one);
 
                 // compute the evaluation at 1
                 evaluator.evaluate_query(
                     &evals_one,
+                    &evals_periodic_one,
                     log_up_randomness,
                     &mut numerators,
                     &mut denominators,
@@ -442,9 +467,13 @@ fn sumcheck_round<E: FieldElement>(
                 );
 
                 // compute the evaluations at 2, ..., d_max points
-                for i in 0..num_oracles {
+                for i in 0..num_mls {
                     deltas[i] = evals_one[i] - evals_zero[i];
                     evals_x[i] = evals_one[i];
+                }
+                for i in 0..num_periodic {
+                    deltas_periodic[i] = evals_periodic_one[i] - evals_periodic_zero[i];
+                    evals_periodic_x[i] = evals_periodic_one[i];
                 }
                 let eq_delta = eq_at_one - eq_at_zero;
                 let mut eq_x = eq_at_one;
@@ -453,10 +482,16 @@ fn sumcheck_round<E: FieldElement>(
                     evals_x.iter_mut().zip(deltas.iter()).for_each(|(evx, delta)| {
                         *evx += *delta;
                     });
+                    evals_periodic_x.iter_mut().zip(deltas_periodic.iter()).for_each(
+                        |(evx, delta)| {
+                            *evx += *delta;
+                        },
+                    );
                     eq_x += eq_delta;
 
                     evaluator.evaluate_query(
                         &evals_x,
+                        &evals_periodic_x,
                         log_up_randomness,
                         &mut numerators,
                         &mut denominators,
@@ -470,7 +505,19 @@ fn sumcheck_round<E: FieldElement>(
                     );
                 }
 
-                (evals_zero, evals_one, evals_x, poly_evals, numerators, denominators, deltas)
+                (
+                    evals_zero,
+                    evals_one,
+                    evals_x,
+                    evals_periodic_zero,
+                    evals_periodic_one,
+                    evals_periodic_x,
+                    poly_evals,
+                    numerators,
+                    denominators,
+                    deltas,
+                    deltas_periodic,
+                )
             },
         )
         .map(|(_, _, _, poly_evals, ..)| poly_evals)

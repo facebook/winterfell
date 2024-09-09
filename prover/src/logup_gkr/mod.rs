@@ -123,10 +123,11 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
             let wires_from_trace_row = {
                 main_trace.read_main_frame(i, &mut main_frame);
                 periodic_values.fill_periodic_values_at(i, &mut periodic_values_row);
-                evaluator.build_query(&main_frame, &periodic_values_row, &mut query);
+                evaluator.build_query(&main_frame, &mut query);
 
                 evaluator.evaluate_query(
                     &query,
+                    &periodic_values_row,
                     log_up_randomness,
                     &mut numerators,
                     &mut denominators,
@@ -382,7 +383,7 @@ pub fn build_s_column<E: FieldElement>(
     for (i, item) in lagrange_kernel_col.iter().enumerate().take(main_segment.num_rows() - 1) {
         main_trace.read_main_frame(i, &mut main_frame);
 
-        evaluator.build_query(&main_frame, &[], &mut query);
+        evaluator.build_query(&main_frame, &mut query);
         let cur_value = last_value - mean + gkr_data.compute_batched_query(&query) * *item;
 
         result.push(cur_value);

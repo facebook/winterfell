@@ -180,7 +180,7 @@ impl Air for LogUpGkrPeriodicAir {
 
 #[derive(Clone, Default)]
 pub struct PeriodicLogUpGkrEval<B: StarkField> {
-    oracles: Vec<LogUpGkrOracle<B>>,
+    oracles: Vec<LogUpGkrOracle>,
     _field: PhantomData<B>,
 }
 
@@ -192,18 +192,7 @@ impl<B: StarkField> PeriodicLogUpGkrEval<B> {
         let committed_3 = LogUpGkrOracle::CurrentRow(3);
         let committed_4 = LogUpGkrOracle::CurrentRow(4);
 
-        let periodic = LogUpGkrOracle::PeriodicValue(vec![
-            B::ONE,
-            B::ZERO,
-            B::ZERO,
-            B::ZERO,
-            B::ZERO,
-            B::ZERO,
-            B::ZERO,
-            B::ZERO,
-        ]);
-        let oracles =
-            vec![committed_0, committed_1, committed_2, committed_3, committed_4, periodic];
+        let oracles = vec![committed_0, committed_1, committed_2, committed_3, committed_4];
 
         Self { oracles, _field: PhantomData }
     }
@@ -214,8 +203,21 @@ impl LogUpGkrEvaluator for PeriodicLogUpGkrEval<BaseElement> {
 
     type PublicInputs = ();
 
-    fn get_oracles(&self) -> &[LogUpGkrOracle<Self::BaseField>] {
+    fn get_oracles(&self) -> &[LogUpGkrOracle] {
         &self.oracles
+    }
+
+    fn get_periodic_column_values(&self) -> Vec<Vec<Self::BaseField>> {
+        vec![vec![
+            Self::BaseField::ONE,
+            Self::BaseField::ZERO,
+            Self::BaseField::ZERO,
+            Self::BaseField::ZERO,
+            Self::BaseField::ZERO,
+            Self::BaseField::ZERO,
+            Self::BaseField::ZERO,
+            Self::BaseField::ZERO,
+        ]]
     }
 
     fn get_num_rand_values(&self) -> usize {
@@ -230,19 +232,17 @@ impl LogUpGkrEvaluator for PeriodicLogUpGkrEval<BaseElement> {
         3
     }
 
-    fn build_query<E>(&self, frame: &EvaluationFrame<E>, periodic_values: &[E], query: &mut [E])
+    fn build_query<E>(&self, frame: &EvaluationFrame<E>, query: &mut [E])
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
-        query
-            .iter_mut()
-            .zip(frame.current().iter().chain(periodic_values.iter()))
-            .for_each(|(q, f)| *q = *f)
+        query.iter_mut().zip(frame.current().iter()).for_each(|(q, f)| *q = *f)
     }
 
     fn evaluate_query<F, E>(
         &self,
         query: &[F],
+        periodic_values: &[F],
         rand_values: &[E],
         numerator: &mut [E],
         denominator: &mut [E],
@@ -252,11 +252,11 @@ impl LogUpGkrEvaluator for PeriodicLogUpGkrEval<BaseElement> {
     {
         assert_eq!(numerator.len(), 4);
         assert_eq!(denominator.len(), 4);
-        assert_eq!(query.len(), 6);
+        assert_eq!(query.len(), 5);
         numerator[0] = E::from(query[1]);
-        numerator[1] = E::from(query[5]);
-        numerator[2] = E::from(query[5]);
-        numerator[3] = E::from(query[5]);
+        numerator[1] = E::from(periodic_values[0]);
+        numerator[2] = E::from(periodic_values[0]);
+        numerator[3] = E::from(periodic_values[0]);
 
         denominator[0] = rand_values[0] - E::from(query[0]);
         denominator[1] = -(rand_values[0] - E::from(query[2]));
