@@ -298,7 +298,7 @@ fn sumcheck_round<E: FieldElement>(
     evaluator: &impl LogUpGkrEvaluator<BaseField = <E as FieldElement>::BaseField>,
     eq_ml: &MultiLinearPoly<E>,
     mls: &[MultiLinearPoly<E>],
-    periodic_table: &mut PeriodicTable<E>,
+    periodic_table: &PeriodicTable<E>,
     log_up_randomness: &[E],
     r_sum_check: E,
 ) -> CompressedUnivariatePolyEvals<E> {
