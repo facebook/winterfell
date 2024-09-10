@@ -138,7 +138,7 @@ where
                 let s_cur = aux_frame.current()[s_col_idx];
                 let s_nxt = aux_frame.next()[s_col_idx];
 
-                evaluator.build_query(&main_frame, &[], &mut query);
+                evaluator.build_query(&main_frame, &mut query);
                 let batched_query = self.gkr_data.compute_batched_query(&query);
 
                 let rhs = s_cur - mean + batched_query * l_cur;

@@ -5,7 +5,7 @@
 
 use std::{marker::PhantomData, time::Duration};
 
-use air::{EvaluationFrame, LogUpGkrEvaluator, LogUpGkrOracle};
+use air::{EvaluationFrame, LogUpGkrEvaluator, LogUpGkrOracle, PeriodicTable};
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use crypto::{hashers::Blake3_192, DefaultRandomCoin, RandomCoin};
 use math::{fields::f64::BaseElement, ExtensionOf, FieldElement, StarkField};
@@ -37,7 +37,7 @@ fn sum_check_high_degree(c: &mut Criterion) {
                     )
                 },
                 |(
-                    (claim, r_batch, rand_pt, (ml0, ml1, ml2, ml3, ml4)),
+                    (claim, r_batch, rand_pt, (ml0, ml1, ml2, ml3, ml4), periodic_table),
                     evaluator,
                     logup_randomness,
                     transcript,
@@ -52,6 +52,7 @@ fn sum_check_high_degree(c: &mut Criterion) {
                         r_batch,
                         logup_randomness,
                         mls,
+                        periodic_table,
                         &mut transcript,
                     )
                 },
@@ -76,6 +77,7 @@ fn setup_sum_check<E: FieldElement>(
         MultiLinearPoly<E>,
         MultiLinearPoly<E>,
     ),
+    PeriodicTable<E>,
 ) {
     let n = 1 << log_size;
     let table = MultiLinearPoly::from_evaluations(rand_vector(n));
@@ -83,6 +85,7 @@ fn setup_sum_check<E: FieldElement>(
     let values_0 = MultiLinearPoly::from_evaluations(rand_vector(n));
     let values_1 = MultiLinearPoly::from_evaluations(rand_vector(n));
     let values_2 = MultiLinearPoly::from_evaluations(rand_vector(n));
+    let periodic_table = PeriodicTable::default();
 
     // this will not generate the correct claim with overwhelming probability but should be fine
     // for benchmarking
@@ -90,12 +93,18 @@ fn setup_sum_check<E: FieldElement>(
     let r_batch: E = rand_value();
     let claim: E = rand_value();
 
-    (claim, r_batch, rand_pt, (table, multiplicity, values_0, values_1, values_2))
+    (
+        claim,
+        r_batch,
+        rand_pt,
+        (table, multiplicity, values_0, values_1, values_2),
+        periodic_table,
+    )
 }
 
 #[derive(Clone, Default)]
 pub struct PlainLogUpGkrEval<B: FieldElement + StarkField> {
-    oracles: Vec<LogUpGkrOracle<B>>,
+    oracles: Vec<LogUpGkrOracle>,
     _field: PhantomData<B>,
 }
 
@@ -116,7 +125,7 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
 
     type PublicInputs = ();
 
-    fn get_oracles(&self) -> &[LogUpGkrOracle<Self::BaseField>] {
+    fn get_oracles(&self) -> &[LogUpGkrOracle] {
         &self.oracles
     }
 
@@ -132,7 +141,7 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
         3
     }
 
-    fn build_query<E>(&self, frame: &EvaluationFrame<E>, _periodic_values: &[E], query: &mut [E])
+    fn build_query<E>(&self, frame: &EvaluationFrame<E>, query: &mut [E])
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
@@ -142,6 +151,7 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
     fn evaluate_query<F, E>(
         &self,
         query: &[F],
+        _periodic_values: &[F],
         rand_values: &[E],
         numerator: &mut [E],
         denominator: &mut [E],

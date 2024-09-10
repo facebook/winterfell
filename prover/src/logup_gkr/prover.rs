@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 
-use air::{LogUpGkrEvaluator, LogUpGkrOracle};
+use air::{LogUpGkrEvaluator, LogUpGkrOracle, PeriodicTable};
 use crypto::{ElementHasher, RandomCoin};
 use math::FieldElement;
 use sumcheck::{
@@ -77,9 +77,18 @@ pub fn prove_gkr<E: FieldElement>(
     // build the MLEs of the relevant main trace columns
     let main_trace_mls =
         build_mls_from_main_trace_segment(evaluator.get_oracles(), main_trace.main_segment())?;
+    // build the periodic table representing periodic columns as multi-linear extensions
+    let periodic_table = evaluator.build_periodic_values();
 
-    let final_layer_proof =
-        prove_input_layer(evaluator, logup_randomness, main_trace_mls, gkr_claim, public_coin)?;
+    // run the GKR prover for the input layer
+    let final_layer_proof = prove_input_layer(
+        evaluator,
+        logup_randomness,
+        main_trace_mls,
+        periodic_table,
+        gkr_claim,
+        public_coin,
+    )?;
 
     Ok(GkrCircuitProof {
         circuit_outputs: CircuitOutput { numerators, denominators },
@@ -97,6 +106,7 @@ fn prove_input_layer<
     evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
     log_up_randomness: Vec<E>,
     multi_linear_ext_polys: Vec<MultiLinearPoly<E>>,
+    periodic_table: PeriodicTable<E>,
     claim: GkrClaim<E>,
     transcript: &mut C,
 ) -> Result<FinalLayerProof<E>, GkrProverError> {
@@ -114,6 +124,7 @@ fn prove_input_layer<
         r_batch,
         log_up_randomness,
         multi_linear_ext_polys,
+        periodic_table,
         transcript,
     )?;
 
@@ -123,7 +134,7 @@ fn prove_input_layer<
 /// Builds the multi-linear extension polynomials needed to run the final sum-check of GKR for
 /// LogUp-GKR.
 fn build_mls_from_main_trace_segment<E: FieldElement>(
-    oracles: &[LogUpGkrOracle<E::BaseField>],
+    oracles: &[LogUpGkrOracle],
     main_trace: &ColMatrix<<E as FieldElement>::BaseField>,
 ) -> Result<Vec<MultiLinearPoly<E>>, GkrProverError> {
     let mut mls = vec![];
@@ -146,7 +157,6 @@ fn build_mls_from_main_trace_segment<E: FieldElement>(
                 let ml = MultiLinearPoly::from_evaluations(values);
                 mls.push(ml)
             },
-            LogUpGkrOracle::PeriodicValue(_) => unimplemented!(),
         };
     }
     Ok(mls)
