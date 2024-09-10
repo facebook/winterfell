@@ -182,7 +182,7 @@ pub fn sum_check_prove_higher_degree<
         evaluator,
         &eq_nu,
         &mls,
-        &mut periodic_table,
+        &periodic_table,
         &log_up_randomness,
         r_sum_check,
     );
@@ -216,7 +216,7 @@ pub fn sum_check_prove_higher_degree<
             evaluator,
             &eq_nu,
             &mls,
-            &mut periodic_table,
+            &periodic_table,
             &log_up_randomness,
             r_sum_check,
         );
