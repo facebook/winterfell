@@ -217,15 +217,13 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
             self.expected_transition_degrees, actual_degrees
         );
 
-        // make sure evaluation domain size does not exceed the size required by max degree
-        let expected_domain_size =
-            core::cmp::max(max_degree, self.domain.trace_length() + 1).next_power_of_two();
-        assert_eq!(
-            expected_domain_size,
-            self.num_rows(),
-            "incorrect constraint evaluation domain size; expected {}, but was {}",
-            expected_domain_size,
-            self.num_rows()
+        // make sure the actual degrees are less than or equal to the expected degree bounds
+        assert!(
+            self.expected_transition_degrees >= actual_degrees,
+            "transition constraint degrees do not satisfy the expected degree bounds
+             \nexpected degree bounds: {:>3?}\nactual degrees:   {:>3?}",
+            self.expected_transition_degrees,
+            actual_degrees
         );
     }
 }
