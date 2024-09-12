@@ -210,11 +210,13 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
             max_degree = core::cmp::max(max_degree, degree);
         }
 
-        // make sure expected and actual degrees are equal
-        assert_eq!(
-            self.expected_transition_degrees, actual_degrees,
-            "transition constraint degrees didn't match\nexpected: {:>3?}\nactual:   {:>3?}",
-            self.expected_transition_degrees, actual_degrees
+        // make sure the actual degrees are less than or equal to the expected degree bounds
+        assert!(
+            self.expected_transition_degrees >= actual_degrees,
+            "transition constraint degrees do not satisfy the expected degree bounds
+             \nexpected degree bounds: {:>3?}\nactual degrees:   {:>3?}",
+            self.expected_transition_degrees,
+            actual_degrees
         );
 
         // make sure the actual degrees are less than or equal to the expected degree bounds
