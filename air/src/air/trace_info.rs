@@ -175,6 +175,9 @@ impl TraceInfo {
     }
 
     /// Returns true if an execution trace contains an auxiliary trace segment.
+    ///
+    /// This includes either the case when the auxiliary trace segment is user defined or the case
+    /// when the segment is created as part of LogUp-GKR.
     pub fn is_multi_segment(&self) -> bool {
         self.aux_segment_width > 0 || self.logup_gkr
     }
@@ -187,6 +190,9 @@ impl TraceInfo {
     }
 
     /// Returns the number of columns in the auxiliary segment of an execution trace.
+    ///
+    /// This includes both the columns that are user defined as well as the two columns defined
+    /// as part of LogUp-GKR when the latter is enabled.
     pub fn aux_segment_width(&self) -> usize {
         self.aux_segment_width + 2 * self.logup_gkr as usize
     }

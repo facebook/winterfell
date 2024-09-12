@@ -118,7 +118,7 @@ impl Air for LogUpGkrSimpleAir {
 
     fn new(trace_info: TraceInfo, _pub_inputs: Self::PublicInputs, options: ProofOptions) -> Self {
         Self {
-            context: AirContext::with_logup_gkr(
+            context: AirContext::new_multi_segment(
                 trace_info,
                 _pub_inputs,
                 vec![TransitionConstraintDegree::new(1)],

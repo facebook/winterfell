@@ -116,7 +116,7 @@ impl Air for LogUpGkrPeriodicAir {
 
     fn new(trace_info: TraceInfo, _pub_inputs: Self::PublicInputs, options: ProofOptions) -> Self {
         Self {
-            context: AirContext::with_logup_gkr(
+            context: AirContext::new_multi_segment(
                 trace_info,
                 (),
                 vec![TransitionConstraintDegree::new(1)],
