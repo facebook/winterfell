@@ -20,16 +20,16 @@ use winter_prover::{
     DefaultConstraintEvaluator, DefaultTraceLde, Prover, StarkDomain, Trace, TracePolyTable,
 };
 
-const TRACE_LENS: [usize; 3] = [2_usize.pow(16), 2_usize.pow(18), 2_usize.pow(20)];
+const TRACE_LENS: [usize; 2] = [2_usize.pow(20), 2_usize.pow(21)];
 const AUX_TRACE_WIDTH: usize = 2;
 
 fn prove_with_lagrange_kernel(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Lagrange kernel column");
+    let mut group = c.benchmark_group("prove with Lagrange kernel column");
     group.sample_size(10);
     group.measurement_time(Duration::from_secs(20));
 
     for &trace_len in TRACE_LENS.iter() {
-        group.bench_function(BenchmarkId::new("prover", trace_len), |b| {
+        group.bench_function(BenchmarkId::new("", trace_len), |b| {
             let trace = LogUpGkrSimple::new(trace_len, AUX_TRACE_WIDTH);
             let prover = LogUpGkrSimpleProver::new(AUX_TRACE_WIDTH);
 
