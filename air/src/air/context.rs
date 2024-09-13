@@ -26,7 +26,6 @@ pub struct AirContext<B: StarkField, P> {
     pub(super) trace_domain_generator: B,
     pub(super) lde_domain_generator: B,
     pub(super) num_transition_exemptions: usize,
-    pub(super) logup_gkr: bool,
 }
 
 impl<B: StarkField, P> AirContext<B, P> {
@@ -106,15 +105,17 @@ impl<B: StarkField, P> AirContext<B, P> {
         );
         assert!(num_main_assertions > 0, "at least one assertion must be specified");
 
-        if trace_info.is_multi_segment() && !trace_info.logup_gkr_enabled() {
-            assert!(
-             !aux_transition_constraint_degrees.is_empty(),
-            "at least one transition constraint degree must be specified for the auxiliary trace segment"
-            );
-            assert!(
-                num_aux_assertions > 0,
-                "at least one assertion must be specified against the auxiliary trace segment"
-            );
+        if trace_info.is_multi_segment() {
+            if !trace_info.logup_gkr_enabled() {
+                assert!(
+                    !aux_transition_constraint_degrees.is_empty(),
+                    "at least one transition constraint degree must be specified for the auxiliary trace segment"
+                );
+                assert!(
+                    num_aux_assertions > 0,
+                    "at least one assertion must be specified against the auxiliary trace segment"
+                );
+            }
         } else {
             assert!(
                 aux_transition_constraint_degrees.is_empty(),
@@ -163,30 +164,7 @@ impl<B: StarkField, P> AirContext<B, P> {
             trace_domain_generator: B::get_root_of_unity(trace_length.ilog2()),
             lde_domain_generator: B::get_root_of_unity(lde_domain_size.ilog2()),
             num_transition_exemptions: 1,
-            logup_gkr: false,
         }
-    }
-
-    pub fn with_logup_gkr(
-        trace_info: TraceInfo,
-        pub_inputs: P,
-        main_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
-        aux_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
-        num_main_assertions: usize,
-        num_aux_assertions: usize,
-        options: ProofOptions,
-    ) -> Self {
-        let mut air_context = Self::new_multi_segment(
-            trace_info,
-            pub_inputs,
-            main_transition_constraint_degrees,
-            aux_transition_constraint_degrees,
-            num_main_assertions,
-            num_aux_assertions,
-            options,
-        );
-        air_context.logup_gkr = true;
-        air_context
     }
 
     // PUBLIC ACCESSORS
@@ -257,7 +235,7 @@ impl<B: StarkField, P> AirContext<B, P> {
 
     /// Returns true if LogUp-GKR is enabled.
     pub fn logup_gkr_enabled(&self) -> bool {
-        self.logup_gkr
+        self.trace_info.logup_gkr_enabled()
     }
 
     /// Returns the total number of assertions defined for a computation, excluding the Lagrange
