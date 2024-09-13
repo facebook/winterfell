@@ -82,7 +82,7 @@ where
         let mean = c / E::from(E::BaseField::from(trace.trace_info().length() as u32));
 
         #[cfg(feature = "concurrent")]
-        let _ = combined_evaluations_acc
+        combined_evaluations_acc
             .par_iter_mut()
             .enumerate()
             .fold(
