@@ -56,7 +56,7 @@ pub struct AuxTraceWithMetadata<E: FieldElement> {
 /// implementation supports concurrent trace generation and should be sufficient in most
 /// situations. However, if functionality provided by [TraceTable] is not sufficient, uses can
 /// provide custom implementations of the [Trace] trait which better suit their needs.
-pub trait Trace: Sized {
+pub trait Trace: Sized + Sync {
     /// Base field for this execution trace.
     ///
     /// All cells of this execution trace contain values which are elements in this field.
