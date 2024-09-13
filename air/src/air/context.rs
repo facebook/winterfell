@@ -106,14 +106,25 @@ impl<B: StarkField, P> AirContext<B, P> {
         );
         assert!(num_main_assertions > 0, "at least one assertion must be specified");
 
-        if trace_info.is_multi_segment() && !trace_info.logup_gkr_enabled() {
+        if trace_info.is_multi_segment() {
+            if !trace_info.logup_gkr_enabled() {
+                assert!(
+                    !aux_transition_constraint_degrees.is_empty(),
+                    "at least one transition constraint degree must be specified for the auxiliary trace segment"
+                );
+                assert!(
+                    num_aux_assertions > 0,
+                    "at least one assertion must be specified against the auxiliary trace segment"
+                );
+            }
+        } else {
             assert!(
-             !aux_transition_constraint_degrees.is_empty(),
-            "at least one transition constraint degree must be specified for the auxiliary trace segment"
+                aux_transition_constraint_degrees.is_empty(),
+                "auxiliary transition constraint degrees specified for a single-segment trace"
             );
             assert!(
-                num_aux_assertions > 0,
-                "at least one assertion must be specified against the auxiliary trace segment"
+                num_aux_assertions == 0,
+                "auxiliary assertions specified for a single-segment trace"
             );
         }
 
