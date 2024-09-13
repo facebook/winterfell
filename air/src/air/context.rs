@@ -26,7 +26,6 @@ pub struct AirContext<B: StarkField, P> {
     pub(super) trace_domain_generator: B,
     pub(super) lde_domain_generator: B,
     pub(super) num_transition_exemptions: usize,
-    pub(super) logup_gkr: bool,
 }
 
 impl<B: StarkField, P> AirContext<B, P> {
@@ -152,7 +151,6 @@ impl<B: StarkField, P> AirContext<B, P> {
 
         let trace_length = trace_info.length();
         let lde_domain_size = trace_length * options.blowup_factor();
-        let logup_gkr = trace_info.logup_gkr_enabled();
 
         AirContext {
             options,
@@ -166,7 +164,6 @@ impl<B: StarkField, P> AirContext<B, P> {
             trace_domain_generator: B::get_root_of_unity(trace_length.ilog2()),
             lde_domain_generator: B::get_root_of_unity(lde_domain_size.ilog2()),
             num_transition_exemptions: 1,
-            logup_gkr,
         }
     }
 
@@ -238,7 +235,7 @@ impl<B: StarkField, P> AirContext<B, P> {
 
     /// Returns true if LogUp-GKR is enabled.
     pub fn logup_gkr_enabled(&self) -> bool {
-        self.logup_gkr
+        self.trace_info.logup_gkr_enabled()
     }
 
     /// Returns the total number of assertions defined for a computation, excluding the Lagrange
