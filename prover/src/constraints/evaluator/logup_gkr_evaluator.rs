@@ -3,13 +3,11 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use alloc::vec::Vec;
-
 use air::{
     Air, AuxRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
     LagrangeKernelEvaluationFrame, LogUpGkrEvaluator, TransitionConstraints,
 };
-use math::{batch_inversion, FieldElement};
+use math::FieldElement;
 use tracing::instrument;
 use utils::iter_mut;
 #[cfg(feature = "concurrent")]
@@ -21,6 +19,7 @@ use super::{
     BoundaryConstraints, CompositionPolyTrace, ConstraintEvaluationTable, ConstraintEvaluator,
     PeriodicValueTable, StarkDomain, TraceLde,
 };
+use crate::constraints::evaluator::logup_gkr::compute_s_col_divisor;
 
 // CONSTANTS
 // ================================================================================================
@@ -45,7 +44,7 @@ pub struct LogUpGkrConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A
     boundary_constraints: BoundaryConstraints<E>,
     transition_constraints: TransitionConstraints<E>,
     periodic_values: PeriodicValueTable<E::BaseField>,
-    pub logup_gkr_constraints_evaluator: LogUpGkrConstraintsEvaluator<'a, E, A>,
+    pub logup_gkr_constraints_evaluator: LogUpGkrConstraintsEvaluator<E>,
     aux_rand_elements: AuxRandElements<E>,
 }
 
@@ -98,8 +97,12 @@ where
         #[cfg(not(debug_assertions))]
         let mut evaluation_table = ConstraintEvaluationTable::<E>::new(domain, divisors, true);
         #[cfg(debug_assertions)]
-        let mut evaluation_table =
-            ConstraintEvaluationTable::<E>::new(domain, divisors, &self.transition_constraints, true);
+        let mut evaluation_table = ConstraintEvaluationTable::<E>::new(
+            domain,
+            divisors,
+            &self.transition_constraints,
+            true,
+        );
 
         // when `concurrent` feature is enabled, break the evaluation table into multiple fragments
         // to evaluate them into multiple threads; unless the constraint evaluation domain is small,
@@ -447,23 +450,4 @@ where
     fn num_aux_transition_constraints(&self) -> usize {
         self.transition_constraints.num_aux_constraints()
     }
-}
-
-/// Computes the evaluations of the s-column divisor.
-///
-/// The divisor for the s-column is $X^n - 1$ where $n$ is the trace length. This means that
-/// we need only compute `ce_blowup` many values and thus only that many exponentiations.
-fn compute_s_col_divisor<E: FieldElement>(
-    domain: &StarkDomain<E::BaseField>,
-    trace_length: usize,
-) -> Vec<E::BaseField> {
-    let degree = trace_length as u32;
-    let mut result = Vec::with_capacity(domain.trace_to_ce_blowup());
-
-    for row in 0..domain.trace_to_ce_blowup() {
-        let x = domain.get_ce_x_at(row).exp(degree.into()) - E::BaseField::ONE;
-
-        result.push(x);
-    }
-    batch_inversion(&result)
 }

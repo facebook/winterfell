@@ -6,19 +6,18 @@
 use alloc::vec::Vec;
 
 use air::{
-    Air, EvaluationFrame, GkrData, LagrangeConstraintsCompositionCoefficients,
-    LagrangeKernelConstraints, LagrangeKernelEvaluationFrame, LogUpGkrEvaluator,
+    Air, GkrData, LagrangeConstraintsCompositionCoefficients,
+    LagrangeKernelConstraints, LogUpGkrEvaluator,
 };
 use math::{batch_inversion, FieldElement};
 #[cfg(feature = "concurrent")]
 pub use utils::rayon::prelude::*;
 
-use crate::{StarkDomain, TraceLde};
+use crate::StarkDomain;
 
 /// Contains a specific strategy for evaluating the Lagrange kernel and s-column boundary and
 /// transition constraints.
-pub struct LogUpGkrConstraintsEvaluator<'a, E: FieldElement, A: Air<BaseField = E::BaseField>> {
-    air: &'a A,
+pub struct LogUpGkrConstraintsEvaluator<E: FieldElement> {
     pub(crate) lagrange_kernel_constraints: LagrangeKernelConstraints<E>,
     pub(crate) gkr_data: GkrData<E>,
     pub(crate) s_col_composition_coefficient: E,
@@ -27,14 +26,14 @@ pub struct LogUpGkrConstraintsEvaluator<'a, E: FieldElement, A: Air<BaseField = 
     pub(crate) mean: E,
 }
 
-impl<'a, E, A> LogUpGkrConstraintsEvaluator<'a, E, A>
+impl<E> LogUpGkrConstraintsEvaluator<E>
 where
     E: FieldElement,
-    A: Air<BaseField = E::BaseField>,
+    
 {
     /// Constructs a new [`LogUpGkrConstraintsEvaluator`].
-    pub fn new(
-        air: &'a A,
+    pub fn new<A: Air<BaseField = E::BaseField>>(
+        air: &A,
         gkr_data: GkrData<E>,
         lagrange_composition_coefficients: LagrangeConstraintsCompositionCoefficients<E>,
         s_col_composition_coefficient: E,
@@ -54,215 +53,11 @@ where
                     lagrange_composition_coefficients,
                     gkr_data.lagrange_kernel_rand_elements(),
                 ),
-            air,
             gkr_data,
             s_col_composition_coefficient,
             s_col_idx,
             l_col_idx,
             mean,
-        }
-    }
-
-    /// Evaluates the transition and boundary constraints. Specifically, the constraint evaluations
-    /// are divided by their corresponding divisors, and the resulting terms are linearly combined
-    /// using the constraint composition coefficients.
-    ///
-    /// Writes the evaluations in `combined_evaluations_acc` at the corresponding (constraint
-    /// evaluation) domain index.
-    pub fn evaluate_constraints<T>(
-        &self,
-        trace: &T,
-        domain: &StarkDomain<E::BaseField>,
-        combined_evaluations_acc: &mut [E],
-    ) where
-        T: TraceLde<E>,
-    {
-        let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
-        let trans_constraints_divisors = LagrangeKernelTransitionConstraintsDivisor::new(
-            self.lagrange_kernel_constraints.transition.num_constraints(),
-            domain,
-        );
-        let boundary_divisors_inv = self.compute_boundary_divisors_inv(domain);
-
-        let evaluator = self.air.get_logup_gkr_evaluator();
-        let s_col_constraint_divisor = compute_s_col_divisor::<E>(domain, self.air.trace_length());
-        let s_col_idx = trace.trace_info().s_column_idx().expect("S-column should be present");
-        let l_col_idx = trace
-            .trace_info()
-            .lagrange_kernel_column_idx()
-            .expect("Lagrange kernel should be present");
-
-        let c = self.gkr_data.compute_batched_claim();
-        let mean = c / E::from(E::BaseField::from(trace.trace_info().length() as u32));
-
-        #[cfg(feature = "concurrent")]
-        combined_evaluations_acc
-            .par_iter_mut()
-            .enumerate()
-            .fold(
-                || {
-                    (
-                        LagrangeKernelEvaluationFrame::new_empty(trace.trace_info().length().ilog2() as usize + 1),
-                        EvaluationFrame::new(trace.trace_info().main_segment_width()),
-                        EvaluationFrame::new(trace.trace_info().aux_segment_width()),
-                        vec![E::BaseField::ZERO; evaluator.get_oracles().len()],
-                    )
-                },
-                |(mut lagrange_frame, mut main_frame, mut aux_frame, mut query), (step, acc)| {
-                    // compute Lagrange kernel frame
-                    trace.read_lagrange_kernel_frame_into(
-                        step << lde_shift,
-                        l_col_idx,
-                        &mut lagrange_frame,
-                    );
-
-                    // Compute the combined transition and boundary constraints evaluations for this row
-                    let lagrange_combined_evaluations = {
-                        let mut combined_evaluations = E::ZERO;
-
-                        // combine transition constraints
-                        for trans_constraint_idx in
-                            0..self.lagrange_kernel_constraints.transition.num_constraints()
-                        {
-                            let numerator =
-                                self.lagrange_kernel_constraints.transition.evaluate_ith_numerator(
-                                    &lagrange_frame,
-                                    &self.gkr_data.lagrange_kernel_eval_point,
-                                    trans_constraint_idx,
-                                );
-                            let inv_divisor = trans_constraints_divisors
-                                .get_inverse_divisor_eval(trans_constraint_idx, step);
-
-                            combined_evaluations += numerator * inv_divisor;
-                        }
-
-                        // combine boundary constraints
-                        {
-                            let boundary_numerator = self
-                                .lagrange_kernel_constraints
-                                .boundary
-                                .evaluate_numerator_at(&lagrange_frame);
-
-                            combined_evaluations +=
-                                boundary_numerator * boundary_divisors_inv[step];
-                        }
-
-                        combined_evaluations
-                    };
-
-                    // compute and combine the transition constraints for the s-column.
-                    // The s-column implements the cohomological sum-check argument of [1] and
-                    // the constraint we enfore is exactly Eq (4) in Lemma 1 in [1].
-                    //
-                    // [1]: https://eprint.iacr.org/2021/930
-                    let s_col_combined_evaluation = {
-                        trace.read_main_trace_frame_into(step << lde_shift, &mut main_frame);
-                        trace.read_aux_trace_frame_into(step << lde_shift, &mut aux_frame);
-
-                        let l_cur = aux_frame.current()[l_col_idx];
-                        let s_cur = aux_frame.current()[s_col_idx];
-                        let s_nxt = aux_frame.next()[s_col_idx];
-
-                        evaluator.build_query(&main_frame, &mut query);
-                        let batched_query = self.gkr_data.compute_batched_query(&query);
-
-                        let rhs = s_cur - mean + batched_query * l_cur;
-                        let lhs = s_nxt;
-
-                        let divisor_at_step =
-                            s_col_constraint_divisor[step % (domain.trace_to_ce_blowup())];
-
-                        (rhs - lhs) * self.s_col_composition_coefficient.mul_base(divisor_at_step)
-                    };
-
-                    let combined_evaluation =
-                        lagrange_combined_evaluations + s_col_combined_evaluation;
-
-                    *acc += combined_evaluation;
-
-                    (lagrange_frame, main_frame, aux_frame, query)
-                },
-            )
-            .map(|(..)| {})
-            .reduce(|| {}, |_, _| {});
-
-        #[cfg(not(feature = "concurrent"))]
-        {
-            let frame_length = trace.trace_info().length().ilog2() as usize + 1;
-            let mut lagrange_frame = LagrangeKernelEvaluationFrame::new_empty(frame_length);
-            let mut main_frame = EvaluationFrame::new(trace.trace_info().main_segment_width());
-            let mut aux_frame = EvaluationFrame::new(trace.trace_info().aux_segment_width());
-            let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
-
-            for step in 0..domain.ce_domain_size() {
-                // compute Lagrange kernel frame
-                trace.read_lagrange_kernel_frame_into(
-                    step << lde_shift,
-                    l_col_idx,
-                    &mut lagrange_frame,
-                );
-
-                // Compute the combined transition and boundary constraints evaluations for this row
-                let lagrange_combined_evaluations = {
-                    let mut combined_evaluations = E::ZERO;
-
-                    // combine transition constraints
-                    for trans_constraint_idx in
-                        0..self.lagrange_kernel_constraints.transition.num_constraints()
-                    {
-                        let numerator =
-                            self.lagrange_kernel_constraints.transition.evaluate_ith_numerator(
-                                &lagrange_frame,
-                                &self.gkr_data.lagrange_kernel_eval_point,
-                                trans_constraint_idx,
-                            );
-                        let inv_divisor = trans_constraints_divisors
-                            .get_inverse_divisor_eval(trans_constraint_idx, step);
-
-                        combined_evaluations += numerator * inv_divisor;
-                    }
-
-                    // combine boundary constraints
-                    {
-                        let boundary_numerator = self
-                            .lagrange_kernel_constraints
-                            .boundary
-                            .evaluate_numerator_at(&lagrange_frame);
-
-                        combined_evaluations += boundary_numerator * boundary_divisors_inv[step];
-                    }
-
-                    combined_evaluations
-                };
-
-                // compute and combine the transition constraints for the s-column.
-                // The s-column implements the cohomological sum-check argument of [1] and
-                // the constraint we enfore is exactly Eq (4) in Lemma 1 in [1].
-                //
-                // [1]: https://eprint.iacr.org/2021/930
-                let s_col_combined_evaluation = {
-                    trace.read_main_trace_frame_into(step << lde_shift, &mut main_frame);
-                    trace.read_aux_trace_frame_into(step << lde_shift, &mut aux_frame);
-
-                    let l_cur = aux_frame.current()[l_col_idx];
-                    let s_cur = aux_frame.current()[s_col_idx];
-                    let s_nxt = aux_frame.next()[s_col_idx];
-
-                    evaluator.build_query(&main_frame, &mut query);
-                    let batched_query = self.gkr_data.compute_batched_query(&query);
-
-                    let rhs = s_cur - mean + batched_query * l_cur;
-                    let lhs = s_nxt;
-
-                    let divisor_at_step =
-                        s_col_constraint_divisor[step % (domain.trace_to_ce_blowup())];
-
-                    (rhs - lhs) * self.s_col_composition_coefficient.mul_base(divisor_at_step)
-                };
-
-                combined_evaluations_acc[step] +=
-                    lagrange_combined_evaluations + s_col_combined_evaluation;
-            }
         }
     }
 
@@ -460,7 +255,7 @@ impl<E: FieldElement> TransitionDivisorEvaluator<E> {
 ///
 /// The divisor for the s-column is $X^n - 1$ where $n$ is the trace length. This means that
 /// we need only compute `ce_blowup` many values and thus only that many exponentiations.
-fn compute_s_col_divisor<E: FieldElement>(
+pub(crate) fn compute_s_col_divisor<E: FieldElement>(
     domain: &StarkDomain<E::BaseField>,
     trace_length: usize,
 ) -> Vec<E::BaseField> {
