@@ -113,95 +113,37 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
         let num_fractions = evaluator.get_num_fractions();
         let periodic_values = evaluator.build_periodic_values();
 
-        #[cfg(feature = "concurrent")]
-        let input_layer_wires = {
-            let mut input_layer_wires = unsafe {
-                utils::uninit_vector(main_trace.main_segment().num_rows() * num_fractions)
+        let mut input_layer_wires =
+            Vec::with_capacity(main_trace.main_segment().num_rows() * num_fractions);
+        let mut main_frame = EvaluationFrame::new(main_trace.main_segment().num_cols());
+
+        let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
+        let mut periodic_values_row = vec![E::BaseField::ZERO; periodic_values.num_columns()];
+        let mut numerators = vec![E::ZERO; num_fractions];
+        let mut denominators = vec![E::ZERO; num_fractions];
+        for i in 0..main_trace.main_segment().num_rows() {
+            let wires_from_trace_row = {
+                main_trace.read_main_frame(i, &mut main_frame);
+                periodic_values.fill_periodic_values_at(i, &mut periodic_values_row);
+                evaluator.build_query(&main_frame, &mut query);
+
+                evaluator.evaluate_query(
+                    &query,
+                    &periodic_values_row,
+                    log_up_randomness,
+                    &mut numerators,
+                    &mut denominators,
+                );
+                let input_gates_values: Vec<CircuitWire<E>> = numerators
+                    .iter()
+                    .zip(denominators.iter())
+                    .map(|(numerator, denominator)| CircuitWire::new(*numerator, *denominator))
+                    .collect();
+                input_gates_values
             };
-            input_layer_wires
-                .par_chunks_mut(num_fractions)
-                .enumerate()
-                .fold(
-                    || {
-                        (
-                            EvaluationFrame::new(main_trace.main_segment().num_cols()),
-                            vec![E::BaseField::ZERO; evaluator.get_oracles().len()],
-                            vec![E::BaseField::ZERO; periodic_values.num_columns()],
-                            vec![E::ZERO; num_fractions],
-                            vec![E::ZERO; num_fractions],
-                        )
-                    },
-                    |(
-                        mut main_frame,
-                        mut query,
-                        mut periodic_values_row,
-                        mut numerators,
-                        mut denominators,
-                    ),
-                     (i, acc)| {
-                        main_trace.read_main_frame(i, &mut main_frame);
-                        periodic_values.fill_periodic_values_at(i, &mut periodic_values_row);
-                        evaluator.build_query(&main_frame, &mut query);
 
-                        evaluator.evaluate_query(
-                            &query,
-                            &periodic_values_row,
-                            log_up_randomness,
-                            &mut numerators,
-                            &mut denominators,
-                        );
-
-                        acc.iter_mut().zip(numerators.iter().zip(denominators.iter())).for_each(
-                            |(a, (numerator, denominator))| {
-                                *a = CircuitWire::new(*numerator, *denominator)
-                            },
-                        );
-
-                        (main_frame, query, periodic_values_row, numerators, denominators)
-                    },
-                )
-                .map(|(..)| {})
-                .reduce(|| {}, |_, _| {});
-            input_layer_wires
-        };
-
-        #[cfg(not(feature = "concurrent"))]
-        let input_layer_wires = {
-            let mut input_layer_wires =
-                Vec::with_capacity(main_trace.main_segment().num_rows() * num_fractions);
-
-            let mut main_frame = EvaluationFrame::new(main_trace.main_segment().num_cols());
-
-            let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
-            let mut periodic_values_row = vec![E::BaseField::ZERO; periodic_values.num_columns()];
-            let mut numerators = vec![E::ZERO; num_fractions];
-            let mut denominators = vec![E::ZERO; num_fractions];
-
-            for i in 0..main_trace.main_segment().num_rows() {
-                let wires_from_trace_row = {
-                    main_trace.read_main_frame(i, &mut main_frame);
-                    periodic_values.fill_periodic_values_at(i, &mut periodic_values_row);
-                    evaluator.build_query(&main_frame, &mut query);
-
-                    evaluator.evaluate_query(
-                        &query,
-                        &periodic_values_row,
-                        log_up_randomness,
-                        &mut numerators,
-                        &mut denominators,
-                    );
-                    let input_gates_values: Vec<CircuitWire<E>> = numerators
-                        .iter()
-                        .zip(denominators.iter())
-                        .map(|(numerator, denominator)| CircuitWire::new(*numerator, *denominator))
-                        .collect();
-                    input_gates_values
-                };
-
-                input_layer_wires.extend(wires_from_trace_row);
-            }
-            input_layer_wires
-        };
+            input_layer_wires.extend(wires_from_trace_row);
+        }
 
         CircuitLayer::new(input_layer_wires)
     }
