@@ -139,7 +139,7 @@ where
     ) -> Self {
         assert!(
             !air.context().logup_gkr_enabled(),
-            "evaluating LogUp-GKR constraints is not supported in DefaultConstraintEvaluator"
+            "evaluating LogUp-GKR constraints is not supported in `DefaultConstraintEvaluator`"
         );
 
         // build transition constraint groups; these will be used to compose transition constraint

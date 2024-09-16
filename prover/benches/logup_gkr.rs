@@ -20,7 +20,7 @@ use winter_prover::{
     DefaultTraceLde, LogUpGkrConstraintEvaluator, Prover, StarkDomain, Trace, TracePolyTable,
 };
 
-const TRACE_LENS: [usize; 2] = [2_usize.pow(18), 2_usize.pow(19)];
+const TRACE_LENS: [usize; 2] = [2_usize.pow(18), 2_usize.pow(20)];
 const AUX_TRACE_WIDTH: usize = 2;
 
 /// Simple end-to-end benchmark for LogUp-GKR.

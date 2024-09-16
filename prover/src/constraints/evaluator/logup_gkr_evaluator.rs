@@ -44,7 +44,7 @@ pub struct LogUpGkrConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A
     boundary_constraints: BoundaryConstraints<E>,
     transition_constraints: TransitionConstraints<E>,
     periodic_values: PeriodicValueTable<E::BaseField>,
-    pub logup_gkr_constraints_evaluator: LogUpGkrConstraintsEvaluator<E>,
+    logup_gkr_constraints_evaluator: LogUpGkrConstraintsEvaluator<E>,
     aux_rand_elements: AuxRandElements<E>,
 }
 
@@ -79,7 +79,7 @@ where
         let mut divisors = vec![self.transition_constraints.divisor().clone()];
         divisors.append(&mut self.boundary_constraints.get_divisors());
 
-        let trans_constraints_divisors = LagrangeKernelTransitionConstraintsDivisor::<E>::new(
+        let lagrange_constraints_divisors = LagrangeKernelTransitionConstraintsDivisor::<E>::new(
             self.logup_gkr_constraints_evaluator
                 .lagrange_kernel_constraints
                 .transition
@@ -127,7 +127,7 @@ where
                 trace,
                 domain,
                 fragment,
-                &trans_constraints_divisors,
+                &lagrange_constraints_divisors,
                 &boundary_divisors_inv,
                 &s_col_constraint_divisor,
             );
@@ -156,6 +156,11 @@ where
         aux_rand_elements: AuxRandElements<E>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self {
+        assert!(
+            air.context().logup_gkr_enabled(),
+            "`LogUpGkrConstraintEvaluator` can only be used when LogUp-GKR is enabled"
+        );
+
         // build transition constraint groups; these will be used to compose transition constraint
         // evaluations
         let transition_constraints =
@@ -170,8 +175,6 @@ where
             Some(&aux_rand_elements),
             &composition_coefficients.boundary,
         );
-
-        assert!(air.context().logup_gkr_enabled());
 
         let logup_gkr_constraints_evaluator = LogUpGkrConstraintsEvaluator::new(
             air,
@@ -229,9 +232,6 @@ where
         // LDE domain
         let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
 
-        let s_eval_col_idx = evaluations.len() - 2;
-        let l_eval_col_idx = evaluations.len() - 1;
-
         for i in 0..fragment.num_rows() {
             let step = i + fragment.offset();
 
@@ -255,30 +255,35 @@ where
             #[cfg(debug_assertions)]
             fragment.update_transition_evaluations(i, &tm_evaluations, &ta_evaluations);
 
-            evaluations[s_eval_col_idx] = self.evaluate_s_column_transition(
-                &evaluator,
-                &main_frame,
-                &aux_frame,
-                &mut query,
-                s_col_constraint_divisor[step % (domain.trace_to_ce_blowup())],
-            );
-            evaluations[l_eval_col_idx] = self.evaluate_lagrange_transition(
-                &lagrange_frame,
-                step,
-                trans_constraints_divisors,
-                boundary_divisors_inv,
-            );
+            // evaluate Lagrange kernel constraints and assign them to the last column
+            *evaluations.last_mut().expect("should contain at least one entry") = self
+                .evaluate_s_column_transition(
+                    &evaluator,
+                    &main_frame,
+                    &aux_frame,
+                    &mut query,
+                    s_col_constraint_divisor[step % (domain.trace_to_ce_blowup())],
+                );
+            // evaluate s-column constraints and add them to the last column
+            *evaluations.last_mut().expect("should contain at least one entry") += self
+                .evaluate_lagrange_transition(
+                    &lagrange_frame,
+                    step,
+                    trans_constraints_divisors,
+                    boundary_divisors_inv,
+                );
 
             // evaluate boundary constraints; the results go into remaining slots of the
             // evaluations buffer
             let main_state = main_frame.current();
             let aux_state = aux_frame.current();
+            let limit = evaluations.len() - 1;
             self.boundary_constraints.evaluate_all(
                 main_state,
                 aux_state,
                 domain,
                 step,
-                &mut evaluations[1..],
+                &mut evaluations[1..limit],
             );
 
             // record the result in the evaluation table
@@ -356,6 +361,7 @@ where
         evaluation
     }
 
+    /// Computes the transition and boundary constraints for the Lagrange kernel.
     fn evaluate_lagrange_transition(
         &self,
         lagrange_frame: &LagrangeKernelEvaluationFrame<E>,
@@ -406,6 +412,12 @@ where
         lagrange_combined_evaluations
     }
 
+    /// Computes the transition constraints for the s-column.
+    ///
+    /// The s-column implements the cohomological sum-check argument of [1] and
+    /// the constraint we enfore is exactly Eq (4) in Lemma 1 in [1].
+    ///
+    /// [1]: https://eprint.iacr.org/2021/930
     fn evaluate_s_column_transition(
         &self,
         evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
