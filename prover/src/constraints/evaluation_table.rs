@@ -163,17 +163,20 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
     /// Divides constraint evaluation columns by their respective divisor (in evaluation form) and
     /// combines the results into a single column.
     pub fn combine(self) -> Vec<E> {
-        // allocate memory for the combined polynomial
-        let mut combined_poly = unsafe { uninit_vector(self.num_rows()) };
-
         // when LogUp-GKR is enabled, the last column contains the constraint evaluations of
         // the Lagrange kernel column and the s-column. These evaluations were already divided by
         // their respective divisors, and hence we just have to add them to `combined_poly`.
-        if self.evaluations.len() != self.divisors.len() {
+        let mut combined_poly = if self.evaluations.len() != self.divisors.len() {
+            // allocate memory for the combined polynomial
+            let mut combined_poly = unsafe { uninit_vector(self.num_rows()) };
+
             iter_mut!(combined_poly)
                 .enumerate()
                 .for_each(|(i, row)| *row = self.evaluations[self.divisors.len()][i]);
-        }
+            combined_poly
+        } else {
+            vec![E::ZERO; self.num_rows()]
+        };
 
         // iterate over all columns of the constraint evaluation table, divide each column
         // by the evaluations of its corresponding divisor, and add all resulting evaluations

@@ -370,46 +370,43 @@ where
         boundary_divisors_inv: &[E],
     ) -> E {
         // Compute the combined transition and boundary constraints evaluations for this row
-        let lagrange_combined_evaluations = {
-            let mut combined_evaluations = E::ZERO;
 
-            // combine transition constraints
-            for trans_constraint_idx in 0..self
+        let mut combined_evaluations = E::ZERO;
+
+        // combine transition constraints
+        for trans_constraint_idx in 0..self
+            .logup_gkr_constraints_evaluator
+            .lagrange_kernel_constraints
+            .transition
+            .num_constraints()
+        {
+            let numerator = self
                 .logup_gkr_constraints_evaluator
                 .lagrange_kernel_constraints
                 .transition
-                .num_constraints()
-            {
-                let numerator = self
-                    .logup_gkr_constraints_evaluator
-                    .lagrange_kernel_constraints
-                    .transition
-                    .evaluate_ith_numerator(
-                        &lagrange_frame,
-                        &self.logup_gkr_constraints_evaluator.gkr_data.lagrange_kernel_eval_point,
-                        trans_constraint_idx,
-                    );
-                let inv_divisor =
-                    trans_constraints_divisors.get_inverse_divisor_eval(trans_constraint_idx, step);
+                .evaluate_ith_numerator(
+                    lagrange_frame,
+                    &self.logup_gkr_constraints_evaluator.gkr_data.lagrange_kernel_eval_point,
+                    trans_constraint_idx,
+                );
+            let inv_divisor =
+                trans_constraints_divisors.get_inverse_divisor_eval(trans_constraint_idx, step);
 
-                combined_evaluations += numerator * inv_divisor;
-            }
+            combined_evaluations += numerator * inv_divisor;
+        }
 
-            // combine boundary constraints
-            {
-                let boundary_numerator = self
-                    .logup_gkr_constraints_evaluator
-                    .lagrange_kernel_constraints
-                    .boundary
-                    .evaluate_numerator_at(&lagrange_frame);
+        // combine boundary constraints
+        {
+            let boundary_numerator = self
+                .logup_gkr_constraints_evaluator
+                .lagrange_kernel_constraints
+                .boundary
+                .evaluate_numerator_at(lagrange_frame);
 
-                combined_evaluations += boundary_numerator * boundary_divisors_inv[step];
-            }
+            combined_evaluations += boundary_numerator * boundary_divisors_inv[step];
+        }
 
-            combined_evaluations
-        };
-
-        lagrange_combined_evaluations
+        combined_evaluations
     }
 
     /// Computes the transition constraints for the s-column.
@@ -434,19 +431,18 @@ where
         let s_cur = aux_frame.current()[s_col_idx];
         let s_nxt = aux_frame.next()[s_col_idx];
 
-        evaluator.build_query(&main_frame, query);
+        evaluator.build_query(main_frame, query);
         let batched_query =
-            self.logup_gkr_constraints_evaluator.gkr_data.compute_batched_query(&query);
+            self.logup_gkr_constraints_evaluator.gkr_data.compute_batched_query(query);
 
         let rhs = s_cur - mean + batched_query * l_cur;
         let lhs = s_nxt;
 
-        let s_col_combined_evaluation = (rhs - lhs)
+        (rhs - lhs)
             * self
                 .logup_gkr_constraints_evaluator
                 .s_col_composition_coefficient
-                .mul_base(divisor_at_step);
-        s_col_combined_evaluation
+                .mul_base(divisor_at_step)
     }
 
     // ACCESSORS

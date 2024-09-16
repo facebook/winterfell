@@ -13,9 +13,8 @@ use utils::iter_mut;
 use utils::{iterators::*, rayon};
 
 use super::{
-    super::EvaluationTableFragment, BoundaryConstraints,
-    CompositionPolyTrace, ConstraintEvaluationTable, ConstraintEvaluator, PeriodicValueTable,
-    StarkDomain, TraceLde,
+    super::EvaluationTableFragment, BoundaryConstraints, CompositionPolyTrace,
+    ConstraintEvaluationTable, ConstraintEvaluator, PeriodicValueTable, StarkDomain, TraceLde,
 };
 
 // CONSTANTS

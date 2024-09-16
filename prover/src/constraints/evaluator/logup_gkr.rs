@@ -6,8 +6,8 @@
 use alloc::vec::Vec;
 
 use air::{
-    Air, GkrData, LagrangeConstraintsCompositionCoefficients,
-    LagrangeKernelConstraints, LogUpGkrEvaluator,
+    Air, GkrData, LagrangeConstraintsCompositionCoefficients, LagrangeKernelConstraints,
+    LogUpGkrEvaluator,
 };
 use math::{batch_inversion, FieldElement};
 #[cfg(feature = "concurrent")]
@@ -29,7 +29,6 @@ pub struct LogUpGkrConstraintsEvaluator<E: FieldElement> {
 impl<E> LogUpGkrConstraintsEvaluator<E>
 where
     E: FieldElement,
-    
 {
     /// Constructs a new [`LogUpGkrConstraintsEvaluator`].
     pub fn new<A: Air<BaseField = E::BaseField>>(

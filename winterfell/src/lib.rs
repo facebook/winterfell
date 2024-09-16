@@ -594,10 +594,11 @@ pub use air::{AuxRandElements, LogUpGkrEvaluator};
 pub use prover::{
     crypto, iterators, math, matrix, Air, AirContext, Assertion, AuxTraceWithMetadata,
     BoundaryConstraint, BoundaryConstraintGroup, CompositionPolyTrace,
-    ConstraintCompositionCoefficients, ConstraintDivisor, ConstraintEvaluator, LogUpGkrConstraintEvaluator,
+    ConstraintCompositionCoefficients, ConstraintDivisor, ConstraintEvaluator,
     DeepCompositionCoefficients, DefaultConstraintEvaluator, DefaultTraceLde, EvaluationFrame,
-    FieldExtension, Proof, ProofOptions, Prover, ProverError, StarkDomain, Trace, TraceInfo,
-    TraceLde, TracePolyTable, TraceTable, TraceTableFragment, TransitionConstraintDegree,
+    FieldExtension, LogUpGkrConstraintEvaluator, Proof, ProofOptions, Prover, ProverError,
+    StarkDomain, Trace, TraceInfo, TraceLde, TracePolyTable, TraceTable, TraceTableFragment,
+    TransitionConstraintDegree,
 };
 pub use verifier::{verify, AcceptableOptions, ByteWriter, VerifierError};
 
