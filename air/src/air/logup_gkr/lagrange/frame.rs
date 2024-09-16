@@ -29,10 +29,14 @@ impl<E: FieldElement> LagrangeKernelEvaluationFrame<E> {
         Self { frame }
     }
 
+    pub fn inner_mut(&mut self) -> &mut [E] {
+        &mut self.frame
+    }
+
     /// Constructs an empty Lagrange kernel evaluation frame from the raw column polynomial
     /// evaluations. The frame can subsequently be filled using [`Self::frame_mut`].
-    pub fn new_empty() -> Self {
-        Self { frame: Vec::new() }
+    pub fn new_empty(size: usize) -> Self {
+        Self { frame: vec![E::ZERO; size] }
     }
 
     /// Constructs the frame from the Lagrange kernel column trace polynomial coefficients for an

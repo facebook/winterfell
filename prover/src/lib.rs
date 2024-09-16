@@ -74,7 +74,7 @@ use matrix::{ColMatrix, RowMatrix};
 mod constraints;
 pub use constraints::{
     CompositionPoly, CompositionPolyTrace, ConstraintCommitment, ConstraintEvaluator,
-    DefaultConstraintEvaluator,
+    DefaultConstraintEvaluator, LogUpGkrConstraintEvaluator
 };
 
 mod composer;

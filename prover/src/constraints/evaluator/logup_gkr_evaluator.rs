@@ -3,19 +3,23 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use alloc::vec::Vec;
+
 use air::{
-    Air, AuxRandElements, ConstraintCompositionCoefficients, EvaluationFrame, TransitionConstraints,
+    Air, AuxRandElements, ConstraintCompositionCoefficients, EvaluationFrame,
+    LagrangeKernelEvaluationFrame, LogUpGkrEvaluator, TransitionConstraints,
 };
-use math::FieldElement;
+use math::{batch_inversion, FieldElement};
 use tracing::instrument;
 use utils::iter_mut;
 #[cfg(feature = "concurrent")]
 use utils::{iterators::*, rayon};
 
 use super::{
-    super::EvaluationTableFragment, logup_gkr::LogUpGkrConstraintsEvaluator, BoundaryConstraints,
-    CompositionPolyTrace, ConstraintEvaluationTable, ConstraintEvaluator, PeriodicValueTable,
-    StarkDomain, TraceLde,
+    super::EvaluationTableFragment,
+    logup_gkr::{LagrangeKernelTransitionConstraintsDivisor, LogUpGkrConstraintsEvaluator},
+    BoundaryConstraints, CompositionPolyTrace, ConstraintEvaluationTable, ConstraintEvaluator,
+    PeriodicValueTable, StarkDomain, TraceLde,
 };
 
 // CONSTANTS
@@ -36,16 +40,16 @@ const MIN_CONCURRENT_DOMAIN_SIZE: usize = 8192;
 /// When `concurrent` feature is enabled, the extended execution trace is split into sets of
 /// sequential evaluation frames (called fragments), and frames in each fragment are evaluated
 /// in separate threads.
-pub struct DefaultConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> {
+pub struct LogUpGkrConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A::BaseField>> {
     air: &'a A,
     boundary_constraints: BoundaryConstraints<E>,
     transition_constraints: TransitionConstraints<E>,
-    logup_gkr_constraints_evaluator: Option<LogUpGkrConstraintsEvaluator<'a, E, A>>,
-    aux_rand_elements: Option<AuxRandElements<E>>,
     periodic_values: PeriodicValueTable<E::BaseField>,
+    pub logup_gkr_constraints_evaluator: LogUpGkrConstraintsEvaluator<'a, E, A>,
+    aux_rand_elements: AuxRandElements<E>,
 }
 
-impl<'a, A, E> ConstraintEvaluator<E> for DefaultConstraintEvaluator<'a, A, E>
+impl<'a, A, E> ConstraintEvaluator<E> for LogUpGkrConstraintEvaluator<'a, A, E>
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseField>,
@@ -76,14 +80,26 @@ where
         let mut divisors = vec![self.transition_constraints.divisor().clone()];
         divisors.append(&mut self.boundary_constraints.get_divisors());
 
+        let trans_constraints_divisors = LagrangeKernelTransitionConstraintsDivisor::<E>::new(
+            self.logup_gkr_constraints_evaluator
+                .lagrange_kernel_constraints
+                .transition
+                .num_constraints(),
+            domain,
+        );
+        let s_col_constraint_divisor = compute_s_col_divisor::<E>(domain, self.air.trace_length());
+
+        let boundary_divisors_inv =
+            self.logup_gkr_constraints_evaluator.compute_boundary_divisors_inv(domain);
+
         // allocate space for constraint evaluations; when we are in debug mode, we also allocate
         // memory to hold all transition constraint evaluations (before they are merged into a
         // single value) so that we can check their degrees later
         #[cfg(not(debug_assertions))]
-        let mut evaluation_table = ConstraintEvaluationTable::<E>::new(domain, divisors, false);
+        let mut evaluation_table = ConstraintEvaluationTable::<E>::new(domain, divisors, true);
         #[cfg(debug_assertions)]
         let mut evaluation_table =
-            ConstraintEvaluationTable::<E>::new(domain, divisors, &self.transition_constraints, false);
+            ConstraintEvaluationTable::<E>::new(domain, divisors, &self.transition_constraints, true);
 
         // when `concurrent` feature is enabled, break the evaluation table into multiple fragments
         // to evaluate them into multiple threads; unless the constraint evaluation domain is small,
@@ -104,11 +120,14 @@ where
         // for the main segment.
         let mut fragments = evaluation_table.fragments(num_fragments);
         iter_mut!(fragments).for_each(|fragment| {
-            if self.air.trace_info().is_multi_segment() {
-                self.evaluate_fragment_full(trace, domain, fragment);
-            } else {
-                self.evaluate_fragment_main(trace, domain, fragment);
-            }
+            self.evaluate_fragment_full(
+                trace,
+                domain,
+                fragment,
+                &trans_constraints_divisors,
+                &boundary_divisors_inv,
+                &s_col_constraint_divisor,
+            );
         });
 
         // when in debug mode, make sure expected transition constraint degrees align with
@@ -116,20 +135,11 @@ where
         #[cfg(debug_assertions)]
         evaluation_table.validate_transition_degrees();
 
-        // combine all constraint evaluations into a single column, including the evaluations of the
-        // LogUp-GKR constraints (if present)
-        let combined_evaluations = {
-            let mut constraints_evaluations = evaluation_table.combine();
-            self.evaluate_logup_gkr_constraints(trace, domain, &mut constraints_evaluations);
-
-            constraints_evaluations
-        };
-
-        CompositionPolyTrace::new(combined_evaluations)
+        CompositionPolyTrace::new(evaluation_table.combine())
     }
 }
 
-impl<'a, A, E> DefaultConstraintEvaluator<'a, A, E>
+impl<'a, A, E> LogUpGkrConstraintEvaluator<'a, A, E>
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseField>,
@@ -140,7 +150,7 @@ where
     /// over extended execution trace.
     pub fn new(
         air: &'a A,
-        aux_rand_elements: Option<AuxRandElements<E>>,
+        aux_rand_elements: AuxRandElements<E>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self {
         // build transition constraint groups; these will be used to compose transition constraint
@@ -154,31 +164,27 @@ where
         // constraint evaluations.
         let boundary_constraints = BoundaryConstraints::new(
             air,
-            aux_rand_elements.as_ref(),
+            Some(&aux_rand_elements),
             &composition_coefficients.boundary,
         );
 
-        let logup_gkr_constraints_evaluator = if air.context().logup_gkr_enabled() {
-            let aux_rand_elements =
-                aux_rand_elements.as_ref().expect("expected aux rand elements to be present");
+        assert!(air.context().logup_gkr_enabled());
 
-            Some(LogUpGkrConstraintsEvaluator::new(
-                air,
-                aux_rand_elements
-                    .gkr_data()
-                    .expect("expected LogUp-GKR randomness to be present"),
-                composition_coefficients
-                    .lagrange
-                    .expect("expected Lagrange kernel composition coefficients to be present"),
-                composition_coefficients
-                    .s_col
-                    .expect("expected s-column composition coefficient to be present"),
-            ))
-        } else {
-            None
-        };
+        let logup_gkr_constraints_evaluator = LogUpGkrConstraintsEvaluator::new(
+            air,
+            aux_rand_elements
+                .gkr_data()
+                .expect("expected LogUp-GKR randomness to be present"),
+            composition_coefficients
+                .lagrange
+                .expect("expected Lagrange kernel composition coefficients to be present"),
+            composition_coefficients
+                .s_col
+                .expect("expected s-column composition coefficient to be present"),
+        );
+        air.trace_info();
 
-        DefaultConstraintEvaluator {
+        Self {
             air,
             boundary_constraints,
             transition_constraints,
@@ -188,58 +194,8 @@ where
         }
     }
 
-    // EVALUATION HELPERS
+    // EVALUATION HELPER
     // --------------------------------------------------------------------------------------------
-
-    /// Evaluates constraints for a single fragment of the evaluation table.
-    ///
-    /// This evaluates constraints only over the main segment of the execution trace.
-    fn evaluate_fragment_main<T: TraceLde<E>>(
-        &self,
-        trace: &T,
-        domain: &StarkDomain<A::BaseField>,
-        fragment: &mut EvaluationTableFragment<E>,
-    ) {
-        // initialize buffers to hold trace values and evaluation results at each step;
-        let mut main_frame = EvaluationFrame::new(trace.trace_info().main_segment_width());
-        let mut evaluations = vec![E::ZERO; fragment.num_columns()];
-        let mut t_evaluations = vec![E::BaseField::ZERO; self.num_main_transition_constraints()];
-
-        // this will be used to convert steps in constraint evaluation domain to steps in
-        // LDE domain
-        let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
-
-        for i in 0..fragment.num_rows() {
-            let step = i + fragment.offset();
-
-            // update evaluation frame buffer with data from the execution trace; this will
-            // read current and next rows from the trace into the buffer; data in the trace
-            // table is extended over the LDE domain, so, we need to convert step in constraint
-            // evaluation domain, into a step in LDE domain, in case these domains are different
-            trace.read_main_trace_frame_into(step << lde_shift, &mut main_frame);
-
-            // evaluate transition constraints and save the merged result the first slot of the
-            // evaluations buffer
-            evaluations[0] = self.evaluate_main_transition(&main_frame, step, &mut t_evaluations);
-
-            // when in debug mode, save transition constraint evaluations
-            #[cfg(debug_assertions)]
-            fragment.update_transition_evaluations(i, &t_evaluations, &[]);
-
-            // evaluate boundary constraints; the results go into remaining slots of the
-            // evaluations buffer
-            let main_state = main_frame.current();
-            self.boundary_constraints.evaluate_main(
-                main_state,
-                domain,
-                step,
-                &mut evaluations[1..],
-            );
-
-            // record the result in the evaluation table
-            fragment.update_row(i, &evaluations);
-        }
-    }
 
     /// Evaluates constraints for a single fragment of the evaluation table.
     ///
@@ -250,6 +206,9 @@ where
         trace: &T,
         domain: &StarkDomain<A::BaseField>,
         fragment: &mut EvaluationTableFragment<E>,
+        trans_constraints_divisors: &LagrangeKernelTransitionConstraintsDivisor<E>,
+        boundary_divisors_inv: &[E],
+        s_col_constraint_divisor: &[E::BaseField],
     ) {
         // initialize buffers to hold trace values and evaluation results at each step
         let mut main_frame = EvaluationFrame::new(trace.trace_info().main_segment_width());
@@ -257,29 +216,55 @@ where
         let mut tm_evaluations = vec![E::BaseField::ZERO; self.num_main_transition_constraints()];
         let mut ta_evaluations = vec![E::ZERO; self.num_aux_transition_constraints()];
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
+        let frame_length = trace.trace_info().length().ilog2() as usize + 1;
+        let mut lagrange_frame = LagrangeKernelEvaluationFrame::new_empty(frame_length);
+
+        let evaluator = self.air.get_logup_gkr_evaluator();
+        let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
 
         // this will be used to convert steps in constraint evaluation domain to steps in
         // LDE domain
         let lde_shift = domain.ce_to_lde_blowup().trailing_zeros();
+
+        let s_eval_col_idx = evaluations.len() - 2;
+        let l_eval_col_idx = evaluations.len() - 1;
 
         for i in 0..fragment.num_rows() {
             let step = i + fragment.offset();
 
             // read both the main and the auxiliary evaluation frames from the trace
             trace.read_main_trace_frame_into(step << lde_shift, &mut main_frame);
+            trace.read_lagrange_kernel_frame_into(
+                step << lde_shift,
+                self.logup_gkr_constraints_evaluator.l_col_idx,
+                &mut lagrange_frame,
+            );
             trace.read_aux_trace_frame_into(step << lde_shift, &mut aux_frame);
 
             // evaluate transition constraints and save the merged result the first slot of the
             // evaluations buffer; we evaluate and compose constraints in the same function, we
             // can just add up the results of evaluating main and auxiliary constraints.
             evaluations[0] = self.evaluate_main_transition(&main_frame, step, &mut tm_evaluations);
-
             evaluations[0] +=
                 self.evaluate_aux_transition(&main_frame, &aux_frame, step, &mut ta_evaluations);
 
             // when in debug mode, save transition constraint evaluations
             #[cfg(debug_assertions)]
             fragment.update_transition_evaluations(i, &tm_evaluations, &ta_evaluations);
+
+            evaluations[s_eval_col_idx] = self.evaluate_s_column_transition(
+                &evaluator,
+                &main_frame,
+                &aux_frame,
+                &mut query,
+                s_col_constraint_divisor[step % (domain.trace_to_ce_blowup())],
+            );
+            evaluations[l_eval_col_idx] = self.evaluate_lagrange_transition(
+                &lagrange_frame,
+                step,
+                trans_constraints_divisors,
+                boundary_divisors_inv,
+            );
 
             // evaluate boundary constraints; the results go into remaining slots of the
             // evaluations buffer
@@ -298,30 +283,7 @@ where
         }
     }
 
-    /// If present, evaluates the LogUp-GKR constraints over the constraint evaluation domain.
-    /// The evaluation of each constraint (both boundary and transition) is divided by its divisor,
-    /// multiplied by its composition coefficient, the result of which is added to
-    /// `combined_evaluations_accumulator`.
-    ///
-    /// Specifically, `combined_evaluations_accumulator` is a buffer whose length is the size of the
-    /// constraint evaluation domain, where each index contains combined evaluations of other
-    /// constraints in the system.
-    fn evaluate_logup_gkr_constraints<T: TraceLde<E>>(
-        &self,
-        trace: &T,
-        domain: &StarkDomain<A::BaseField>,
-        combined_evaluations_accumulator: &mut [E],
-    ) {
-        if let Some(ref logup_gkr_constraints_evaluator) = self.logup_gkr_constraints_evaluator {
-            logup_gkr_constraints_evaluator.evaluate_constraints(
-                trace,
-                domain,
-                combined_evaluations_accumulator,
-            )
-        }
-    }
-
-    // TRANSITION CONSTRAINT EVALUATORS
+    // TRANSITION CONSTRAINT EVALUATOR
     // --------------------------------------------------------------------------------------------
 
     /// Evaluates transition constraints of the main execution trace at the specified step of the
@@ -377,18 +339,99 @@ where
             main_frame,
             aux_frame,
             periodic_values,
-            self.aux_rand_elements
-                .as_ref()
-                .expect("expected aux rand elements to be present"),
+            &self.aux_rand_elements,
             evaluations,
         );
 
         // merge transition constraint evaluations into a single value and return it;
         // we can do this here because all transition constraints have the same divisor.
-        evaluations
+        let evaluation = evaluations
             .iter()
             .zip(self.transition_constraints.aux_constraint_coef().iter())
-            .fold(E::ZERO, |acc, (&const_eval, &coef)| acc + coef * const_eval)
+            .fold(E::ZERO, |acc, (&const_eval, &coef)| acc + coef * const_eval);
+
+        evaluation
+    }
+
+    fn evaluate_lagrange_transition(
+        &self,
+        lagrange_frame: &LagrangeKernelEvaluationFrame<E>,
+        step: usize,
+        trans_constraints_divisors: &LagrangeKernelTransitionConstraintsDivisor<E>,
+        boundary_divisors_inv: &[E],
+    ) -> E {
+        // Compute the combined transition and boundary constraints evaluations for this row
+        let lagrange_combined_evaluations = {
+            let mut combined_evaluations = E::ZERO;
+
+            // combine transition constraints
+            for trans_constraint_idx in 0..self
+                .logup_gkr_constraints_evaluator
+                .lagrange_kernel_constraints
+                .transition
+                .num_constraints()
+            {
+                let numerator = self
+                    .logup_gkr_constraints_evaluator
+                    .lagrange_kernel_constraints
+                    .transition
+                    .evaluate_ith_numerator(
+                        &lagrange_frame,
+                        &self.logup_gkr_constraints_evaluator.gkr_data.lagrange_kernel_eval_point,
+                        trans_constraint_idx,
+                    );
+                let inv_divisor =
+                    trans_constraints_divisors.get_inverse_divisor_eval(trans_constraint_idx, step);
+
+                combined_evaluations += numerator * inv_divisor;
+            }
+
+            // combine boundary constraints
+            {
+                let boundary_numerator = self
+                    .logup_gkr_constraints_evaluator
+                    .lagrange_kernel_constraints
+                    .boundary
+                    .evaluate_numerator_at(&lagrange_frame);
+
+                combined_evaluations += boundary_numerator * boundary_divisors_inv[step];
+            }
+
+            combined_evaluations
+        };
+
+        lagrange_combined_evaluations
+    }
+
+    fn evaluate_s_column_transition(
+        &self,
+        evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
+        main_frame: &EvaluationFrame<E::BaseField>,
+        aux_frame: &EvaluationFrame<E>,
+        query: &mut [E::BaseField],
+        divisor_at_step: E::BaseField,
+    ) -> E {
+        let l_col_idx = self.logup_gkr_constraints_evaluator.l_col_idx;
+        let s_col_idx = self.logup_gkr_constraints_evaluator.s_col_idx;
+        let mean = self.logup_gkr_constraints_evaluator.mean;
+
+        let l_cur = aux_frame.current()[l_col_idx];
+        let s_cur = aux_frame.current()[s_col_idx];
+        let s_nxt = aux_frame.next()[s_col_idx];
+
+        evaluator.build_query(&main_frame, query);
+        let batched_query =
+            self.logup_gkr_constraints_evaluator.gkr_data.compute_batched_query(&query);
+
+        let rhs = s_cur - mean + batched_query * l_cur;
+        let lhs = s_nxt;
+
+        let s_col_combined_evaluation = (rhs - lhs)
+            * self
+                .logup_gkr_constraints_evaluator
+                .s_col_composition_coefficient
+                .mul_base(divisor_at_step);
+        s_col_combined_evaluation
     }
 
     // ACCESSORS
@@ -404,4 +447,23 @@ where
     fn num_aux_transition_constraints(&self) -> usize {
         self.transition_constraints.num_aux_constraints()
     }
+}
+
+/// Computes the evaluations of the s-column divisor.
+///
+/// The divisor for the s-column is $X^n - 1$ where $n$ is the trace length. This means that
+/// we need only compute `ce_blowup` many values and thus only that many exponentiations.
+fn compute_s_col_divisor<E: FieldElement>(
+    domain: &StarkDomain<E::BaseField>,
+    trace_length: usize,
+) -> Vec<E::BaseField> {
+    let degree = trace_length as u32;
+    let mut result = Vec::with_capacity(domain.trace_to_ce_blowup());
+
+    for row in 0..domain.trace_to_ce_blowup() {
+        let x = domain.get_ce_x_at(row).exp(degree.into()) - E::BaseField::ONE;
+
+        result.push(x);
+    }
+    batch_inversion(&result)
 }

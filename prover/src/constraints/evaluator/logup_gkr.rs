@@ -19,9 +19,12 @@ use crate::{StarkDomain, TraceLde};
 /// transition constraints.
 pub struct LogUpGkrConstraintsEvaluator<'a, E: FieldElement, A: Air<BaseField = E::BaseField>> {
     air: &'a A,
-    lagrange_kernel_constraints: LagrangeKernelConstraints<E>,
-    gkr_data: GkrData<E>,
-    s_col_composition_coefficient: E,
+    pub(crate) lagrange_kernel_constraints: LagrangeKernelConstraints<E>,
+    pub(crate) gkr_data: GkrData<E>,
+    pub(crate) s_col_composition_coefficient: E,
+    pub(crate) s_col_idx: usize,
+    pub(crate) l_col_idx: usize,
+    pub(crate) mean: E,
 }
 
 impl<'a, E, A> LogUpGkrConstraintsEvaluator<'a, E, A>
@@ -36,6 +39,14 @@ where
         lagrange_composition_coefficients: LagrangeConstraintsCompositionCoefficients<E>,
         s_col_composition_coefficient: E,
     ) -> Self {
+        let trace_info = air.trace_info();
+        let s_col_idx = trace_info.s_column_idx().expect("S-column should be present");
+        let l_col_idx = trace_info
+            .lagrange_kernel_column_idx()
+            .expect("Lagrange kernel should be present");
+
+        let c = gkr_data.compute_batched_claim();
+        let mean = c / E::from(E::BaseField::from(trace_info.length() as u32));
         Self {
             lagrange_kernel_constraints: air
                 .get_logup_gkr_evaluator()
@@ -46,6 +57,9 @@ where
             air,
             gkr_data,
             s_col_composition_coefficient,
+            s_col_idx,
+            l_col_idx,
+            mean,
         }
     }
 
@@ -88,7 +102,7 @@ where
             .fold(
                 || {
                     (
-                        LagrangeKernelEvaluationFrame::new_empty(),
+                        LagrangeKernelEvaluationFrame::new_empty(trace.trace_info().length().ilog2() as usize + 1),
                         EvaluationFrame::new(trace.trace_info().main_segment_width()),
                         EvaluationFrame::new(trace.trace_info().aux_segment_width()),
                         vec![E::BaseField::ZERO; evaluator.get_oracles().len()],
@@ -174,7 +188,8 @@ where
 
         #[cfg(not(feature = "concurrent"))]
         {
-            let mut lagrange_frame = LagrangeKernelEvaluationFrame::new_empty();
+            let frame_length = trace.trace_info().length().ilog2() as usize + 1;
+            let mut lagrange_frame = LagrangeKernelEvaluationFrame::new_empty(frame_length);
             let mut main_frame = EvaluationFrame::new(trace.trace_info().main_segment_width());
             let mut aux_frame = EvaluationFrame::new(trace.trace_info().aux_segment_width());
             let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
@@ -258,7 +273,10 @@ where
     /// That is, returns a vector of the form `[1 / div_0, ..., 1 / div_n]`, where `div_i` is the
     /// divisor for the Lagrange kernel boundary constraint at the i'th row of the constraint
     /// evaluation domain.
-    fn compute_boundary_divisors_inv(&self, domain: &StarkDomain<E::BaseField>) -> Vec<E> {
+    pub(crate) fn compute_boundary_divisors_inv(
+        &self,
+        domain: &StarkDomain<E::BaseField>,
+    ) -> Vec<E> {
         let mut boundary_denominator_evals = Vec::with_capacity(domain.ce_domain_size());
         for step in 0..domain.ce_domain_size() {
             let domain_point = domain.get_ce_x_at(step);
@@ -288,7 +306,7 @@ where
 /// ...
 /// Therefore, we only compute the non-repeating section of the buffer in each iteration, and index
 /// into it accordingly.
-struct LagrangeKernelTransitionConstraintsDivisor<E: FieldElement> {
+pub(crate) struct LagrangeKernelTransitionConstraintsDivisor<E: FieldElement> {
     divisor_evals_inv: Vec<E>,
 
     // Precompute the indices into `divisors_evals_inv` of the slices that correspond to each
