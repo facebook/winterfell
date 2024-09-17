@@ -66,8 +66,14 @@ fn bind_least_significant_variable_serial<E: FieldElement>(
     let num_evals = evaluations.len() >> 1;
 
     for i in 0..num_evals {
-        evaluations[i] = evaluations[i << 1]
-            + round_challenge * (evaluations[(i << 1) + 1] - evaluations[i << 1]);
+        // SAFETY: This loops over [0, evaluations.len()/2). The largest value for `i` is
+        // `(evaluations.len() / 2) - 1`. Hence, the largest value for `(i<<1)` is
+        // `evaluations.len() - 2`, and largest value for `(i<<1) + 1` is `evaluations.len() - 1`.
+        let evaluations_2i = unsafe { *evaluations.get_unchecked(i << 1) };
+        let evaluations_2i_plus_1 = unsafe { *evaluations.get_unchecked((i << 1) + 1) };
+
+        evaluations[i] =
+            evaluations_2i + round_challenge * (evaluations_2i_plus_1 - evaluations_2i);
     }
     evaluations.truncate(num_evals);
 }

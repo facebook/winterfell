@@ -75,10 +75,16 @@ impl<E: FieldElement> MultiLinearPoly<E> {
         #[cfg(not(feature = "concurrent"))]
         {
             for i in 0..num_evals {
-                self.evaluations[i] = self.evaluations[i << 1]
-                    + round_challenge * (self.evaluations[(i << 1) + 1] - self.evaluations[i << 1]);
+                // SAFETY: This loops over [0, evaluations.len()/2). The largest value for `i` is
+                // `(evaluations.len() / 2) - 1`. Hence, the largest value for `(i<<1)` is
+                // `evaluations.len() - 2`, and largest value for `(i<<1) + 1` is `evaluations.len() - 1`.
+                let evaluations_2i = unsafe { *self.evaluations.get_unchecked(i << 1) };
+                let evaluations_2i_plus_1 = unsafe { *self.evaluations.get_unchecked((i << 1) + 1) };
+
+                self.evaluations[i] =
+                    evaluations_2i + round_challenge * (evaluations_2i_plus_1 - evaluations_2i);
             }
-            self.evaluations.truncate(num_evals)
+            self.evaluations.truncate(num_evals);
         }
 
         #[cfg(feature = "concurrent")]
