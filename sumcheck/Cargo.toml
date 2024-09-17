@@ -23,12 +23,10 @@ harness = false
 [[bench]]
 name = "eq_function"
 harness = false
-required-features = ["concurrent"]
 
 [[bench]]
 name = "bind_variable"
 harness = false
-required-features = ["concurrent"]
 
 [features]
 concurrent = ["utils/concurrent", "dep:rayon", "std"]
