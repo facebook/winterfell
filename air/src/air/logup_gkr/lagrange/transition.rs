@@ -43,6 +43,11 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
         }
     }
 
+    /// Returns the constraint composition coefficients for the Lagrange kernel transition constraints.
+    pub fn lagrange_constraint_coefficients(&self) -> &[E] {
+        &self.lagrange_constraint_coefficients
+    }
+
     /// Evaluates the numerator of the `constraint_idx`th transition constraint.
     pub fn evaluate_ith_numerator<F>(
         &self,
@@ -59,9 +64,7 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
         let r = lagrange_kernel_rand_elements;
         let k = constraint_idx + 1;
 
-        let eval = (r[v - k] * c[0]) - ((E::ONE - r[v - k]) * c[v - k + 1]);
-
-        self.lagrange_constraint_coefficients[constraint_idx].mul_base(eval)
+        (r[v - k] * c[0]) - ((E::ONE - r[v - k]) * c[v - k + 1])
     }
 
     /// Evaluates the divisor of the `constraint_idx`th transition constraint.

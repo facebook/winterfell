@@ -78,13 +78,9 @@ where
         let mut divisors = vec![self.transition_constraints.divisor().clone()];
         divisors.append(&mut self.boundary_constraints.get_divisors());
 
-        let logup_gkr_constraints_divisors = LogUpGkrConstraintsDivisors::<E>::new(
-            self.logup_gkr_constraints_evaluator
-                .lagrange_kernel_constraints
-                .transition
-                .num_constraints(),
-            domain,
-        );
+        // build the divisors related to LogUp-GKR
+        let logup_gkr_constraints_divisors =
+            LogUpGkrConstraintsDivisors::<E>::new(&self.logup_gkr_constraints_evaluator, domain);
 
         // allocate space for constraint evaluations; when we are in debug mode, we also allocate
         // memory to hold all transition constraint evaluations (before they are merged into a
@@ -208,8 +204,7 @@ where
         let mut tm_evaluations = vec![E::BaseField::ZERO; self.num_main_transition_constraints()];
         let mut ta_evaluations = vec![E::ZERO; self.num_aux_transition_constraints()];
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
-        let mut lagrange_frame =
-            LagrangeKernelEvaluationFrame::new_empty(trace.trace_info().length());
+        let mut lagrange_frame = LagrangeKernelEvaluationFrame::new(trace.trace_info().length());
 
         let evaluator = self.air.get_logup_gkr_evaluator();
         let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
@@ -248,7 +243,7 @@ where
                     &main_frame,
                     &aux_frame,
                     &mut query,
-                    logup_gkr_divisors.get_s_col_transition_divisor_inv(step),
+                    logup_gkr_divisors.get_s_col_transition_multiplier(step),
                 );
             // evaluate s-column constraints and add them to the last column
             *evaluations.last_mut().expect("should contain at least one entry") +=
@@ -347,7 +342,7 @@ where
         &self,
         lagrange_frame: &LagrangeKernelEvaluationFrame<E>,
         step: usize,
-        trans_constraints_divisors: &LogUpGkrConstraintsDivisors<E>,
+        constraints_divisors: &LogUpGkrConstraintsDivisors<E>,
     ) -> E {
         // Compute the combined transition and boundary constraints evaluations for this row
 
@@ -369,10 +364,10 @@ where
                     &self.logup_gkr_constraints_evaluator.gkr_data.lagrange_kernel_eval_point,
                     trans_constraint_idx,
                 );
-            let inv_divisor = trans_constraints_divisors
-                .get_lagrange_transition_divisor_inv(trans_constraint_idx, step);
+            let multiplier =
+                constraints_divisors.get_lagrange_transition_multiplier(trans_constraint_idx, step);
 
-            combined_evaluations += numerator.mul_base(inv_divisor);
+            combined_evaluations += numerator * multiplier;
         }
 
         // combine boundary constraints
@@ -384,7 +379,7 @@ where
                 .evaluate_numerator_at(lagrange_frame);
 
             combined_evaluations += boundary_numerator
-                .mul_base(trans_constraints_divisors.get_lagrange_boundary_divisor_inv(step));
+                .mul_base(constraints_divisors.get_lagrange_boundary_divisor_inv(step));
         }
 
         combined_evaluations
@@ -402,7 +397,7 @@ where
         main_frame: &EvaluationFrame<E::BaseField>,
         aux_frame: &EvaluationFrame<E>,
         query: &mut [E::BaseField],
-        divisor_at_step: E::BaseField,
+        multiplier: E,
     ) -> E {
         let l_col_idx = self.logup_gkr_constraints_evaluator.l_col_idx;
         let s_col_idx = self.logup_gkr_constraints_evaluator.s_col_idx;
@@ -419,11 +414,7 @@ where
         let rhs = s_cur - mean + batched_query * l_cur;
         let lhs = s_nxt;
 
-        (rhs - lhs)
-            * self
-                .logup_gkr_constraints_evaluator
-                .s_col_composition_coefficient
-                .mul_base(divisor_at_step)
+        (rhs - lhs) * multiplier
     }
 
     // ACCESSORS

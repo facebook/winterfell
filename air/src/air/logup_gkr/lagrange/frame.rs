@@ -26,13 +26,13 @@ impl<E: FieldElement> LagrangeKernelEvaluationFrame<E> {
     // --------------------------------------------------------------------------------------------
 
     /// Constructs a Lagrange kernel evaluation frame from the raw column polynomial evaluations.
-    pub fn new(frame: Vec<E>) -> Self {
+    pub fn with_values(frame: Vec<E>) -> Self {
         Self { frame }
     }
 
     /// Constructs an empty Lagrange kernel evaluation frame from the raw column polynomial
     /// evaluations. The frame can subsequently be filled using [`Self::frame_mut`].
-    pub fn new_empty(trace_len: usize) -> Self {
+    pub fn new(trace_len: usize) -> Self {
         let frame_length = trace_len.ilog2() as usize + 1;
         Self { frame: vec![E::ZERO; frame_length] }
     }

@@ -131,7 +131,7 @@ impl OodFrame {
         let lagrange_kernel_frame = if lagrange_kernel_frame_size > 0 {
             let lagrange_kernel_trace = reader.read_many(lagrange_kernel_frame_size)?;
 
-            Some(LagrangeKernelEvaluationFrame::new(lagrange_kernel_trace))
+            Some(LagrangeKernelEvaluationFrame::with_values(lagrange_kernel_trace))
         } else {
             None
         };

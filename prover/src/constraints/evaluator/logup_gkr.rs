@@ -75,12 +75,18 @@ where
 /// ...
 /// Therefore, we only compute the non-repeating section of the buffer in each iteration, and index
 /// into it accordingly.
+///
+/// Note that instead of storing `1 / div` for Lagrange and s-column transition constraints, we
+/// store instead `c / div` where `c` is the constraint composition coefficient associated to
+/// divisor `div`. This reduces the number of multiplications during the computation of
+/// evaluations of the constraint composition polynomial. We call `c / div` constraint evaluation
+/// multipliers or just constraint multipliers.
 pub(crate) struct LogUpGkrConstraintsDivisors<E: FieldElement> {
-    lagrange_transition_divisors_inv: Vec<E::BaseField>,
+    lagrange_transition_multipliers: Vec<E>,
 
     lagrange_boundary_divisors_inv: Vec<E::BaseField>,
 
-    s_col_transition_divisors_inv: Vec<E::BaseField>,
+    s_col_transition_multipliers: Vec<E>,
 
     // Precompute the indices into `divisors_evals_inv` of the slices that correspond to each
     // transition constraint.
@@ -95,10 +101,17 @@ pub(crate) struct LogUpGkrConstraintsDivisors<E: FieldElement> {
 
 impl<E: FieldElement> LogUpGkrConstraintsDivisors<E> {
     pub fn new(
-        num_lagrange_transition_constraints: usize,
+        logup_gkr_constraints: &LogUpGkrConstraintsEvaluator<E>,
         domain: &StarkDomain<E::BaseField>,
     ) -> Self {
-        let lagrange_transition_divisors_inv = {
+        let num_lagrange_transition_constraints =
+            logup_gkr_constraints.lagrange_kernel_constraints.transition.num_constraints();
+        let lagrange_cc = logup_gkr_constraints
+            .lagrange_kernel_constraints
+            .transition
+            .lagrange_constraint_coefficients();
+        let lagrange_cc_inv = batch_inversion(lagrange_cc);
+        let lagrange_transition_multipliers = {
             let divisor_evaluator = TransitionDivisorEvaluator::<E>::new(
                 num_lagrange_transition_constraints,
                 domain.offset(),
@@ -107,10 +120,9 @@ impl<E: FieldElement> LogUpGkrConstraintsDivisors<E> {
             // The number of divisor evaluations is
             // `ce_domain_size + ce_domain_size/2 + ce_domain_size/4 + ... + ce_domain_size/(log(ce_domain_size)-1)`,
             // which is slightly smaller than `ce_domain_size * 2`
-            let mut divisor_evals: Vec<E::BaseField> =
-                Vec::with_capacity(domain.ce_domain_size() * 2);
+            let mut divisor_evals: Vec<E> = Vec::with_capacity(domain.ce_domain_size() * 2);
 
-            for trans_constraint_idx in 0..num_lagrange_transition_constraints {
+            for (trans_constraint_idx, cc_inv) in lagrange_cc_inv.iter().enumerate() {
                 let num_non_repeating_denoms =
                     domain.ce_domain_size() / 2_usize.pow(trans_constraint_idx as u32);
 
@@ -118,7 +130,7 @@ impl<E: FieldElement> LogUpGkrConstraintsDivisors<E> {
                     let divisor_eval =
                         divisor_evaluator.evaluate_ith_divisor(trans_constraint_idx, domain, step);
 
-                    divisor_evals.push(divisor_eval);
+                    divisor_evals.push(cc_inv.mul_base(divisor_eval));
                 }
             }
 
@@ -141,8 +153,8 @@ impl<E: FieldElement> LogUpGkrConstraintsDivisors<E> {
         };
 
         // compute the divisors for the s-column transition constraint
-        let s_col_transition_divisors_inv =
-            compute_s_col_divisor::<E>(domain, domain.trace_length());
+        let s_col_transition_multipliers =
+            compute_s_col_multipliers(domain, logup_gkr_constraints.s_col_composition_coefficient);
 
         let slice_indices_precomputes = {
             let num_indices = num_lagrange_transition_constraints + 1;
@@ -162,51 +174,49 @@ impl<E: FieldElement> LogUpGkrConstraintsDivisors<E> {
         };
 
         Self {
-            lagrange_transition_divisors_inv,
+            lagrange_transition_multipliers,
             lagrange_boundary_divisors_inv,
             slice_indices_precomputes,
-            s_col_transition_divisors_inv,
+            s_col_transition_multipliers,
         }
     }
 
-    /// Returns the evaluation `1 / divisor`, where `divisor` is the divisor for the given
+    /// Returns the evaluation `c / divisor`, where `divisor` is the divisor for the given
     /// Lagrange kernel transition constraint, at the given row of the constraint evaluation domain
-    pub fn get_lagrange_transition_divisor_inv(
+    /// and `c` is the corresponding constraint composition coefficient.
+    pub fn get_lagrange_transition_multiplier(
         &self,
         trans_constraint_idx: usize,
         row_idx: usize,
-    ) -> E::BaseField {
-        let inv_divisors_slice_for_constraint =
-            self.get_lagrange_transition_constraint_slice(trans_constraint_idx);
+    ) -> E {
+        let multipliers_slice = self.get_lagrange_transition_constraint_slice(trans_constraint_idx);
 
-        inv_divisors_slice_for_constraint[row_idx % inv_divisors_slice_for_constraint.len()]
+        multipliers_slice[row_idx % multipliers_slice.len()]
     }
 
-    /// Returns the evaluation `1 / divisor`, where `divisor` runs over all Lagrange kernel
+    /// Returns the evaluation `c / divisor`, where `divisor` runs over all Lagrange kernel
     /// boundary constraint divisors at the given row of the constraint evaluation domain.
     pub fn get_lagrange_boundary_divisor_inv(&self, row_idx: usize) -> E::BaseField {
         self.lagrange_boundary_divisors_inv[row_idx % self.lagrange_boundary_divisors_inv.len()]
     }
 
     /// Returns the evaluation `1 / divisor`, where `divisor` is the divisor for the s-column
-    /// transition constraint, at the given row of the constraint evaluation domain
-    pub fn get_s_col_transition_divisor_inv(&self, row_idx: usize) -> E::BaseField {
-        self.s_col_transition_divisors_inv[row_idx % (self.s_col_transition_divisors_inv.len())]
+    /// transition constraint, at the given row of the constraint evaluation domain and `c` is
+    /// the corresponding constraint composition coefficient.
+    pub fn get_s_col_transition_multiplier(&self, row_idx: usize) -> E {
+        self.s_col_transition_multipliers[row_idx % (self.s_col_transition_multipliers.len())]
     }
 
     // HELPERS
     // ---------------------------------------------------------------------------------------------
 
-    /// Returns a slice containing all the inverse divisor evaluations for the given Lagrange
+    /// Returns a slice containing all the multipliers evaluations' for the given Lagrange
     /// transition constraint.
-    fn get_lagrange_transition_constraint_slice(
-        &self,
-        trans_constraint_idx: usize,
-    ) -> &[E::BaseField] {
+    fn get_lagrange_transition_constraint_slice(&self, trans_constraint_idx: usize) -> &[E] {
         let start = self.slice_indices_precomputes[trans_constraint_idx];
         let end = self.slice_indices_precomputes[trans_constraint_idx + 1];
 
-        &self.lagrange_transition_divisors_inv[start..end]
+        &self.lagrange_transition_multipliers[start..end]
     }
 }
 
@@ -270,21 +280,22 @@ impl<E: FieldElement> TransitionDivisorEvaluator<E> {
     }
 }
 
-/// Computes the evaluations of the s-column divisor.
+/// Computes the evaluations of the s-column multipliers.
 ///
 /// The divisor for the s-column is $X^n - 1$ where $n$ is the trace length. This means that
 /// we need only compute `ce_blowup` many values and thus only that many exponentiations.
-pub(crate) fn compute_s_col_divisor<E: FieldElement>(
+pub(crate) fn compute_s_col_multipliers<E: FieldElement>(
     domain: &StarkDomain<E::BaseField>,
-    trace_length: usize,
-) -> Vec<E::BaseField> {
-    let degree = trace_length as u32;
+    composition_coef: E,
+) -> Vec<E> {
+    let degree = domain.trace_length() as u32;
     let mut result = Vec::with_capacity(domain.trace_to_ce_blowup());
 
+    let cc_inv = composition_coef.inv();
     for row in 0..domain.trace_to_ce_blowup() {
-        let x = domain.get_ce_x_at(row).exp(degree.into()) - E::BaseField::ONE;
+        let divisor = domain.get_ce_x_at(row).exp(degree.into()) - E::BaseField::ONE;
 
-        result.push(x);
+        result.push(cc_inv.mul_base(divisor));
     }
     batch_inversion(&result)
 }
