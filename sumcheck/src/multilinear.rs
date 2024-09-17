@@ -70,6 +70,7 @@ impl<E: FieldElement> MultiLinearPoly<E> {
     /// Computes $f(r_0, y_1, ..., y_{{\nu} - 1})$ using the linear interpolation formula
     /// $(1 - r_0) * f(0, y_1, ..., y_{{\nu} - 1}) + r_0 * f(1, y_1, ..., y_{{\nu} - 1})$ and assigns
     /// the resulting multi-linear, defined over a domain of half the size, to `self`.
+    #[inline(always)]
     pub fn bind_least_significant_variable(&mut self, round_challenge: E) {
         let num_evals = self.evaluations.len() >> 1;
         #[cfg(not(feature = "concurrent"))]
