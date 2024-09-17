@@ -378,8 +378,8 @@ where
                 .boundary
                 .evaluate_numerator_at(lagrange_frame);
 
-            combined_evaluations += boundary_numerator
-                .mul_base(constraints_divisors.get_lagrange_boundary_divisor_inv(step));
+            combined_evaluations +=
+                boundary_numerator * constraints_divisors.get_lagrange_boundary_multiplier(step);
         }
 
         combined_evaluations
