@@ -23,6 +23,16 @@ use winter_prover::{
 const TRACE_LENS: [usize; 2] = [2_usize.pow(20), 2_usize.pow(21)];
 const AUX_TRACE_WIDTH: usize = 2;
 
+/// Simple end-to-end benchmark for LogUp-GKR.
+///
+/// The main trace contains `5` columns and the LogUp relation is a simple one where we have:
+///
+/// 1. a table of values from `0` to `trace_len - 1`.
+/// 2. a multiplicity column containing the number of look ups for each value in the table.
+/// 3. three columns with values contained in the table above.
+///
+/// Given the above, the benchmark then gives an idea about the minimal overhead due to enabling
+/// LogUp-GKR. The overhead could be bigger depending on the complexity of the LogUp relation.
 fn prove_with_lagrange_kernel(c: &mut Criterion) {
     let mut group = c.benchmark_group("prove with Lagrange kernel column");
     group.sample_size(10);
@@ -30,7 +40,7 @@ fn prove_with_lagrange_kernel(c: &mut Criterion) {
 
     for &trace_len in TRACE_LENS.iter() {
         group.bench_function(BenchmarkId::new("", trace_len), |b| {
-            let trace = LogUpGkrSimple::new(trace_len, AUX_TRACE_WIDTH);
+            let trace = LogUpGkrSimpleTrace::new(trace_len, AUX_TRACE_WIDTH);
             let prover = LogUpGkrSimpleProver::new(AUX_TRACE_WIDTH);
 
             b.iter_batched(
@@ -49,40 +59,47 @@ criterion_main!(lagrange_kernel_group);
 // =================================================================================================
 
 #[derive(Clone, Debug)]
-struct LogUpGkrSimple {
+struct LogUpGkrSimpleTrace {
     // dummy main trace
     main_trace: ColMatrix<BaseElement>,
     info: TraceInfo,
 }
 
-impl LogUpGkrSimple {
+impl LogUpGkrSimpleTrace {
     fn new(trace_len: usize, aux_segment_width: usize) -> Self {
         assert!(trace_len < u32::MAX.try_into().unwrap());
 
+        // we create a column for the table we are looking values into. These are just the integers
+        // from 0 to `trace_len`.
         let table: Vec<BaseElement> =
             (0..trace_len).map(|idx| BaseElement::from(idx as u32)).collect();
-        let mut multiplicity: Vec<BaseElement> =
-            (0..trace_len).map(|_idx| BaseElement::ZERO).collect();
-        multiplicity[0] = BaseElement::new(3 * trace_len as u64 - 3 * 4);
-        multiplicity[1] = BaseElement::new(3 * 4);
+
+        // we create three columns that contains values contained in `table`. For simplicity, we
+        // look up only the values `0` or `1`, we look up the value `1` four times and the value `0`
+        // `trace_len - 4` times.
 
         let mut values_0: Vec<BaseElement> = (0..trace_len).map(|_idx| BaseElement::ZERO).collect();
-
         for i in 0..4 {
             values_0[i + 4] = BaseElement::ONE;
         }
 
         let mut values_1: Vec<BaseElement> = (0..trace_len).map(|_idx| BaseElement::ZERO).collect();
-
         for i in 0..4 {
             values_1[i + 4] = BaseElement::ONE;
         }
 
         let mut values_2: Vec<BaseElement> = (0..trace_len).map(|_idx| BaseElement::ZERO).collect();
-
         for i in 0..4 {
             values_2[i + 4] = BaseElement::ONE;
         }
+
+        // we create the multiplicity column
+        let mut multiplicity: Vec<BaseElement> =
+            (0..trace_len).map(|_idx| BaseElement::ZERO).collect();
+        // we look up the value `1` four times in three columns
+        multiplicity[1] = BaseElement::new(3 * 4);
+        // we look up the value `0`  `trace_len - 4` in three columns
+        multiplicity[0] = BaseElement::new(3 * trace_len as u64 - 3 * 4);
 
         Self {
             main_trace: ColMatrix::new(vec![table, multiplicity, values_0, values_1, values_2]),
@@ -95,7 +112,7 @@ impl LogUpGkrSimple {
     }
 }
 
-impl Trace for LogUpGkrSimple {
+impl Trace for LogUpGkrSimpleTrace {
     type BaseField = BaseElement;
 
     fn info(&self) -> &TraceInfo {
@@ -286,7 +303,7 @@ impl LogUpGkrSimpleProver {
 impl Prover for LogUpGkrSimpleProver {
     type BaseField = BaseElement;
     type Air = LogUpGkrSimpleAir;
-    type Trace = LogUpGkrSimple;
+    type Trace = LogUpGkrSimpleTrace;
     type HashFn = Blake3_256<BaseElement>;
     type VC = MerkleTree<Blake3_256<BaseElement>>;
     type RandomCoin = DefaultRandomCoin<Self::HashFn>;
