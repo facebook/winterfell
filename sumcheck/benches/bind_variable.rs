@@ -16,8 +16,7 @@ const POLY_SIZE: [usize; 2] = [1 << 18, 1 << 20];
 
 fn bind_variable(c: &mut Criterion) {
     let mut group = c.benchmark_group("bind variable ");
-    group.sample_size(10);
-    group.measurement_time(Duration::from_secs(10));
+    group.measurement_time(Duration::from_secs(15));
 
     for &poly_size in POLY_SIZE.iter() {
         group.bench_function(BenchmarkId::new("", poly_size), |b| {
