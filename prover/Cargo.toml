@@ -16,6 +16,10 @@ rust-version = "1.78"
 bench = false
 
 [[bench]]
+name = "logup_gkr"
+harness = false
+
+[[bench]]
 name = "row_matrix"
 harness = false
 
