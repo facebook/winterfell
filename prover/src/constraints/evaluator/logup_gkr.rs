@@ -10,8 +10,6 @@ use air::{
     LogUpGkrEvaluator,
 };
 use math::{batch_inversion, FieldElement};
-#[cfg(feature = "concurrent")]
-pub use utils::rayon::prelude::*;
 
 use crate::StarkDomain;
 
@@ -59,38 +57,15 @@ where
             mean,
         }
     }
-
-    // HELPERS
-    // ---------------------------------------------------------------------------------------------
-
-    /// Computes the inverse boundary divisor at every point of the constraint evaluation domain.
-    /// That is, returns a vector of the form `[1 / div_0, ..., 1 / div_n]`, where `div_i` is the
-    /// divisor for the Lagrange kernel boundary constraint at the i'th row of the constraint
-    /// evaluation domain.
-    pub(crate) fn compute_boundary_divisors_inv(
-        &self,
-        domain: &StarkDomain<E::BaseField>,
-    ) -> Vec<E> {
-        let mut boundary_denominator_evals = Vec::with_capacity(domain.ce_domain_size());
-        for step in 0..domain.ce_domain_size() {
-            let domain_point = domain.get_ce_x_at(step);
-            let boundary_denominator = self
-                .lagrange_kernel_constraints
-                .boundary
-                .evaluate_denominator_at(domain_point.into());
-            boundary_denominator_evals.push(boundary_denominator);
-        }
-
-        batch_inversion(&boundary_denominator_evals)
-    }
 }
 
-/// Holds all the transition constraint inverse divisor evaluations over the constraint evaluation
-/// domain.
+/// Holds all the transition and boundary constraint inverse divisor evaluations over
+/// the constraint evaluation domain for both the Lagrange kernel as well the s-column.
 ///
-/// [`LagrangeKernelTransitionConstraintsDivisor`] takes advantage of some structure in the
-/// divisors' evaluations. Recall that the divisor for the i'th transition constraint is `x^(2^i) -
-/// 1`. When substituting `x` for each value of the constraint evaluation domain, for constraints
+/// [`LogUpGkrConstraintsDivisors`] takes advantage of some structure in the divisors'
+/// evaluations for transition constraints.
+/// Recall that the divisor for the i'th transition constraint is `x^(2^i) - 1`.
+/// When substituting `x` for each value of the constraint evaluation domain, for constraints
 /// `i>0`, the divisor evaluations "wrap-around" such that some values repeat. For example,
 ///
 /// i=0: no repetitions
@@ -100,8 +75,12 @@ where
 /// ...
 /// Therefore, we only compute the non-repeating section of the buffer in each iteration, and index
 /// into it accordingly.
-pub(crate) struct LagrangeKernelTransitionConstraintsDivisor<E: FieldElement> {
-    divisor_evals_inv: Vec<E>,
+pub(crate) struct LogUpGkrConstraintsDivisors<E: FieldElement> {
+    lagrange_transition_divisors_inv: Vec<E::BaseField>,
+
+    lagrange_boundary_divisors_inv: Vec<E::BaseField>,
+
+    s_col_transition_divisors_inv: Vec<E::BaseField>,
 
     // Precompute the indices into `divisors_evals_inv` of the slices that correspond to each
     // transition constraint.
@@ -114,12 +93,12 @@ pub(crate) struct LagrangeKernelTransitionConstraintsDivisor<E: FieldElement> {
     slice_indices_precomputes: Vec<usize>,
 }
 
-impl<E: FieldElement> LagrangeKernelTransitionConstraintsDivisor<E> {
+impl<E: FieldElement> LogUpGkrConstraintsDivisors<E> {
     pub fn new(
         num_lagrange_transition_constraints: usize,
         domain: &StarkDomain<E::BaseField>,
     ) -> Self {
-        let divisor_evals_inv = {
+        let lagrange_transition_divisors_inv = {
             let divisor_evaluator = TransitionDivisorEvaluator::<E>::new(
                 num_lagrange_transition_constraints,
                 domain.offset(),
@@ -128,7 +107,8 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraintsDivisor<E> {
             // The number of divisor evaluations is
             // `ce_domain_size + ce_domain_size/2 + ce_domain_size/4 + ... + ce_domain_size/(log(ce_domain_size)-1)`,
             // which is slightly smaller than `ce_domain_size * 2`
-            let mut divisor_evals: Vec<E> = Vec::with_capacity(domain.ce_domain_size() * 2);
+            let mut divisor_evals: Vec<E::BaseField> =
+                Vec::with_capacity(domain.ce_domain_size() * 2);
 
             for trans_constraint_idx in 0..num_lagrange_transition_constraints {
                 let num_non_repeating_denoms =
@@ -138,12 +118,31 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraintsDivisor<E> {
                     let divisor_eval =
                         divisor_evaluator.evaluate_ith_divisor(trans_constraint_idx, domain, step);
 
-                    divisor_evals.push(divisor_eval.into());
+                    divisor_evals.push(divisor_eval);
                 }
             }
 
             batch_inversion(&divisor_evals)
         };
+
+        // computes the inverse boundary divisor at every point of the constraint evaluation domain.
+        // That is, returns a vector of the form `[1 / div_0, ..., 1 / div_n]`, where `div_i` is the
+        // divisor for the Lagrange kernel boundary constraint against the first row at the i'th row
+        // of the constraint evaluation domain.
+        let lagrange_boundary_divisors_inv = {
+            let mut boundary_denominator_evals = Vec::with_capacity(domain.ce_domain_size());
+            for step in 0..domain.ce_domain_size() {
+                let domain_point = domain.get_ce_x_at(step);
+                let boundary_denominator = domain_point - E::BaseField::ONE;
+                boundary_denominator_evals.push(boundary_denominator);
+            }
+
+            batch_inversion(&boundary_denominator_evals)
+        };
+
+        // compute the divisors for the s-column transition constraint
+        let s_col_transition_divisors_inv =
+            compute_s_col_divisor::<E>(domain, domain.trace_length());
 
         let slice_indices_precomputes = {
             let num_indices = num_lagrange_transition_constraints + 1;
@@ -163,30 +162,51 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraintsDivisor<E> {
         };
 
         Self {
-            divisor_evals_inv,
+            lagrange_transition_divisors_inv,
+            lagrange_boundary_divisors_inv,
             slice_indices_precomputes,
+            s_col_transition_divisors_inv,
         }
     }
 
     /// Returns the evaluation `1 / divisor`, where `divisor` is the divisor for the given
-    /// transition constraint, at the given row of the constraint evaluation domain
-    pub fn get_inverse_divisor_eval(&self, trans_constraint_idx: usize, row_idx: usize) -> E {
+    /// Lagrange kernel transition constraint, at the given row of the constraint evaluation domain
+    pub fn get_lagrange_transition_divisor_inv(
+        &self,
+        trans_constraint_idx: usize,
+        row_idx: usize,
+    ) -> E::BaseField {
         let inv_divisors_slice_for_constraint =
-            self.get_transition_constraint_slice(trans_constraint_idx);
+            self.get_lagrange_transition_constraint_slice(trans_constraint_idx);
 
         inv_divisors_slice_for_constraint[row_idx % inv_divisors_slice_for_constraint.len()]
+    }
+
+    /// Returns the evaluation `1 / divisor`, where `divisor` runs over all Lagrange kernel
+    /// boundary constraint divisors at the given row of the constraint evaluation domain.
+    pub fn get_lagrange_boundary_divisor_inv(&self, row_idx: usize) -> E::BaseField {
+        self.lagrange_boundary_divisors_inv[row_idx % self.lagrange_boundary_divisors_inv.len()]
+    }
+
+    /// Returns the evaluation `1 / divisor`, where `divisor` is the divisor for the s-column
+    /// transition constraint, at the given row of the constraint evaluation domain
+    pub fn get_s_col_transition_divisor_inv(&self, row_idx: usize) -> E::BaseField {
+        self.s_col_transition_divisors_inv[row_idx % (self.s_col_transition_divisors_inv.len())]
     }
 
     // HELPERS
     // ---------------------------------------------------------------------------------------------
 
-    /// Returns a slice containing all the inverse divisor evaluations for the given transition
-    /// constraint.
-    fn get_transition_constraint_slice(&self, trans_constraint_idx: usize) -> &[E] {
+    /// Returns a slice containing all the inverse divisor evaluations for the given Lagrange
+    /// transition constraint.
+    fn get_lagrange_transition_constraint_slice(
+        &self,
+        trans_constraint_idx: usize,
+    ) -> &[E::BaseField] {
         let start = self.slice_indices_precomputes[trans_constraint_idx];
         let end = self.slice_indices_precomputes[trans_constraint_idx + 1];
 
-        &self.divisor_evals_inv[start..end]
+        &self.lagrange_transition_divisors_inv[start..end]
     }
 }
 

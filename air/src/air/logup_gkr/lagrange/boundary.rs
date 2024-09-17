@@ -48,7 +48,7 @@ where
     /// `frame` is the evaluation frame of the Lagrange kernel column `c`, starting at `c(x)` for
     /// some `x`
     pub fn evaluate_numerator_at(&self, frame: &LagrangeKernelEvaluationFrame<E>) -> E {
-        let trace_value = frame.inner()[0];
+        let trace_value = frame[0];
         let constraint_evaluation = trace_value - self.assertion_value;
 
         constraint_evaluation * self.composition_coefficient

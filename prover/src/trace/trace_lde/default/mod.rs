@@ -195,8 +195,6 @@ where
         lagrange_kernel_aux_column_idx: usize,
         frame: &mut LagrangeKernelEvaluationFrame<E>,
     ) {
-        let frame = frame.frame_mut();
-
         let aux_segment =
             self.aux_segment_lde.as_ref().expect("expected aux segment to be present");
 

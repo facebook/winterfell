@@ -4,8 +4,6 @@ use core::ops::Add;
 use air::{EvaluationFrame, GkrData, LogUpGkrEvaluator};
 use math::FieldElement;
 use sumcheck::{EqFunction, MultiLinearPoly, SumCheckProverError};
-#[cfg(feature = "concurrent")]
-pub use utils::rayon::prelude::*;
 use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 use crate::Trace;

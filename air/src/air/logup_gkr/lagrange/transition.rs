@@ -54,8 +54,8 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
         F: FieldElement<BaseField = E::BaseField>,
         E: ExtensionOf<F>,
     {
-        let c = lagrange_kernel_column_frame.inner();
-        let v = c.len() - 1;
+        let c = lagrange_kernel_column_frame;
+        let v = c.num_rows() - 1;
         let r = lagrange_kernel_rand_elements;
         let k = constraint_idx + 1;
 
@@ -124,8 +124,8 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
         let log2_trace_len = lagrange_kernel_column_frame.num_rows() - 1;
         let mut transition_evals = vec![E::ZERO; log2_trace_len];
 
-        let c = lagrange_kernel_column_frame.inner();
-        let v = c.len() - 1;
+        let c = lagrange_kernel_column_frame;
+        let v = c.num_rows() - 1;
         let r = lagrange_kernel_rand_elements;
 
         for k in 1..v + 1 {
