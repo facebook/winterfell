@@ -448,7 +448,7 @@ fn sumcheck_round<E: FieldElement>(
         let mut denominators = vec![E::ZERO; evaluator.get_num_fractions()];
         (0..1 << num_rounds)
             .map(|i| {
-                let mut poly_evals = vec![E::ZERO; evaluator.max_degree()];
+                let mut poly_evals = vec![E::ZERO; evaluator.max_degree() - 1];
 
                 for (j, ml) in mls.iter().enumerate() {
                     evals_zero[j] = ml.evaluations()[2 * i];
@@ -518,7 +518,7 @@ fn sumcheck_round<E: FieldElement>(
 
                 poly_evals
             })
-            .fold(vec![E::ZERO; evaluator.max_degree()], |mut acc, poly_eval| {
+            .fold(vec![E::ZERO; evaluator.max_degree() - 1], |mut acc, poly_eval| {
                 acc.iter_mut().zip(poly_eval.iter()).for_each(|(a, b)| {
                     *a += *b;
                 });
@@ -538,6 +538,7 @@ fn sumcheck_round<E: FieldElement>(
                     vec![E::ZERO; num_periodic],
                     vec![E::ZERO; num_periodic],
                     vec![E::ZERO; num_periodic],
+                    vec![E::ZERO; evaluator.max_degree() - 1],
                     vec![E::ZERO; evaluator.get_num_fractions()],
                     vec![E::ZERO; evaluator.get_num_fractions()],
                     vec![E::ZERO; num_mls],
@@ -642,7 +643,7 @@ fn sumcheck_round<E: FieldElement>(
         )
         .map(|(.., poly_evals)| poly_evals)
         .reduce(
-            || vec![E::ZERO; evaluator.max_degree()],
+            || vec![E::ZERO; evaluator.max_degree() - 1],
             |mut acc, poly_eval| {
                 acc.iter_mut().zip(poly_eval.iter()).for_each(|(a, b)| {
                     *a += *b;
