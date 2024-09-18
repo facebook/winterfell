@@ -1,10 +1,10 @@
 use alloc::vec::Vec;
-use tracing::instrument;
 use core::ops::Add;
 
 use air::{EvaluationFrame, GkrData, LogUpGkrEvaluator};
 use math::FieldElement;
 use sumcheck::{EqFunction, MultiLinearPoly, SumCheckProverError};
+use tracing::instrument;
 use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 use crate::Trace;
