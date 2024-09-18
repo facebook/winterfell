@@ -57,7 +57,10 @@ pub struct EvaluatedCircuit<E: FieldElement> {
 impl<E: FieldElement> EvaluatedCircuit<E> {
     /// Creates a new [`EvaluatedCircuit`] by evaluating the circuit where the input layer is
     /// defined from the main trace columns.
-    #[instrument(skip_all)]
+    #[instrument(
+        skip_all,
+        name = "evaluate_logup_gkr_circuit"
+    )]
     pub fn new(
         main_trace_columns: &impl Trace<BaseField = E::BaseField>,
         evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
