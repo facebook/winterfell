@@ -1,4 +1,5 @@
 use alloc::vec::Vec;
+use tracing::instrument;
 use core::ops::Add;
 
 use air::{EvaluationFrame, GkrData, LogUpGkrEvaluator};
@@ -56,6 +57,7 @@ pub struct EvaluatedCircuit<E: FieldElement> {
 impl<E: FieldElement> EvaluatedCircuit<E> {
     /// Creates a new [`EvaluatedCircuit`] by evaluating the circuit where the input layer is
     /// defined from the main trace columns.
+    #[instrument(skip_all)]
     pub fn new(
         main_trace_columns: &impl Trace<BaseField = E::BaseField>,
         evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
