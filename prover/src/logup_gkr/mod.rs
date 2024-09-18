@@ -4,6 +4,7 @@ use core::ops::Add;
 use air::{EvaluationFrame, GkrData, LogUpGkrEvaluator};
 use math::FieldElement;
 use sumcheck::{EqFunction, MultiLinearPoly, SumCheckProverError};
+use tracing::instrument;
 use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 use crate::Trace;
@@ -56,6 +57,7 @@ pub struct EvaluatedCircuit<E: FieldElement> {
 impl<E: FieldElement> EvaluatedCircuit<E> {
     /// Creates a new [`EvaluatedCircuit`] by evaluating the circuit where the input layer is
     /// defined from the main trace columns.
+    #[instrument(skip_all, name = "evaluate_logup_gkr_circuit")]
     pub fn new(
         main_trace_columns: &impl Trace<BaseField = E::BaseField>,
         evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,

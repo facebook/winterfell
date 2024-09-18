@@ -7,6 +7,7 @@ use sumcheck::{
     sum_check_prove_higher_degree, sumcheck_prove_plain, BeforeFinalLayerProof, CircuitOutput,
     EqFunction, FinalLayerProof, GkrCircuitProof, MultiLinearPoly, SumCheckProof,
 };
+use tracing::instrument;
 
 use super::{reduce_layer_claim, CircuitLayerPolys, EvaluatedCircuit, GkrClaim, GkrProverError};
 use crate::{matrix::ColMatrix, Trace};
@@ -53,6 +54,7 @@ use crate::{matrix::ColMatrix, Trace};
 /// As part of the final sum-check protocol, the openings {f_j(ρ)} are provided as part of a
 /// [`FinalOpeningClaim`]. This latter claim will be proven by the STARK prover later on using the
 /// auxiliary trace.
+#[instrument(skip_all)]
 pub fn prove_gkr<E: FieldElement>(
     main_trace: &impl Trace<BaseField = E::BaseField>,
     evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
@@ -98,6 +100,7 @@ pub fn prove_gkr<E: FieldElement>(
 }
 
 /// Proves the final GKR layer which corresponds to the input circuit layer.
+#[instrument(skip_all)]
 fn prove_input_layer<
     E: FieldElement,
     C: RandomCoin<Hasher = H, BaseField = E::BaseField>,
@@ -133,6 +136,7 @@ fn prove_input_layer<
 
 /// Builds the multi-linear extension polynomials needed to run the final sum-check of GKR for
 /// LogUp-GKR.
+#[instrument(skip_all)]
 fn build_mls_from_main_trace_segment<E: FieldElement>(
     oracles: &[LogUpGkrOracle],
     main_trace: &ColMatrix<<E as FieldElement>::BaseField>,
@@ -163,6 +167,7 @@ fn build_mls_from_main_trace_segment<E: FieldElement>(
 }
 
 /// Proves all GKR layers except for input layer.
+#[instrument(skip_all)]
 fn prove_intermediate_layers<
     E: FieldElement,
     C: RandomCoin<Hasher = H, BaseField = E::BaseField>,
