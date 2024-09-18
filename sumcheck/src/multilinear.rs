@@ -70,23 +70,37 @@ impl<E: FieldElement> MultiLinearPoly<E> {
     /// Computes $f(r_0, y_1, ..., y_{{\nu} - 1})$ using the linear interpolation formula
     /// $(1 - r_0) * f(0, y_1, ..., y_{{\nu} - 1}) + r_0 * f(1, y_1, ..., y_{{\nu} - 1})$ and assigns
     /// the resulting multi-linear, defined over a domain of half the size, to `self`.
+    #[inline(always)]
     pub fn bind_least_significant_variable(&mut self, round_challenge: E) {
         let num_evals = self.evaluations.len() >> 1;
         #[cfg(not(feature = "concurrent"))]
         {
             for i in 0..num_evals {
-                self.evaluations[i] = self.evaluations[i << 1]
-                    + round_challenge * (self.evaluations[(i << 1) + 1] - self.evaluations[i << 1]);
+                // SAFETY: This loops over [0, evaluations.len()/2). The largest value for `i` is
+                // `(evaluations.len() / 2) - 1`. Hence, the largest value for `(i<<1)` is
+                // `evaluations.len() - 2`, and largest value for `(i<<1) + 1` is `evaluations.len() - 1`.
+                let evaluations_2i = unsafe { *self.evaluations.get_unchecked(i << 1) };
+                let evaluations_2i_plus_1 =
+                    unsafe { *self.evaluations.get_unchecked((i << 1) + 1) };
+
+                self.evaluations[i] =
+                    evaluations_2i + round_challenge * (evaluations_2i_plus_1 - evaluations_2i);
             }
-            self.evaluations.truncate(num_evals)
+            self.evaluations.truncate(num_evals);
         }
 
         #[cfg(feature = "concurrent")]
         {
             let mut result = unsafe { utils::uninit_vector(num_evals) };
             result.par_iter_mut().enumerate().for_each(|(i, ev)| {
-                *ev = self.evaluations[i << 1]
-                    + round_challenge * (self.evaluations[(i << 1) + 1] - self.evaluations[i << 1])
+                // SAFETY: This loops over [0, evaluations.len()/2). The largest value for `i` is
+                // `(evaluations.len() / 2) - 1`. Hence, the largest value for `(i<<1)` is
+                // `evaluations.len() - 2`, and largest value for `(i<<1) + 1` is `evaluations.len() - 1`.
+                let evaluations_2i = unsafe { *self.evaluations.get_unchecked(i << 1) };
+                let evaluations_2i_plus_1 =
+                    unsafe { *self.evaluations.get_unchecked((i << 1) + 1) };
+
+                *ev = evaluations_2i + round_challenge * (evaluations_2i_plus_1 - evaluations_2i);
             });
             self.evaluations = result
         }
