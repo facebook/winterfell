@@ -42,7 +42,102 @@ use crate::{comb_func, FinalOpeningClaim, MultiLinearPoly, RoundProof, SumCheckP
 ///
 /// Note that the degree of the non-linear composition polynomial is 3.
 ///
+///
+/// We now discuss a further optimization due to [2]. Suppose that we have a sum-check statment of
+/// the following form:
+///
+/// $$v_0=\sum_{x}Eq\left(\left(\alpha_0,\cdots,\alpha_{\nu - 1}\right);\left( x_0, \cdots, x_{\nu - 1}\right)\right)
+///         C\left( x_0, \cdots, x_{\nu - 1}   \right)$$
+///
+/// Then during round $i + 1$ of sum-check, the prover needs to send the following polynomial
+///
+/// $$v_{i+1}(X)=\sum_{x}Eq\left(\left(\alpha_0,\cdots,\alpha_{i - 1},\alpha_i, \alpha_{i+1},\cdots\alpha_{\nu - 1} \right);
+/// \left( r_0, \cdots, r_{i-1}, X, x_{i+1}, \cdots x_{\nu - 1}   \right) \right)
+/// C\left(  r_0, \cdots, r_{i-1}, X, x_{i+1}, \cdots x_{\nu - 1}   \right)$$
+///
+/// We can write $v_{i+1}(X)$ as:
+///
+/// $$v_{i+1}(X)=Eq\left(\left(\alpha_0,\cdots,\alpha_{i - 1} \right);\left(r_0,\cdots,r_{i-1}\right)\right)
+/// \cdot Eq\left(\alpha_i ;X\right)\sum_{x}Eq\left(\left(\alpha_{i+1},\cdots\alpha_{\nu - 1}\right);\left( x_{i+1}, \cdots x_{\nu - 1}\right) \right)
+/// C\left(  r_0, \cdots, r_{i-1}, X, x_{i+1}, \cdots x_{\nu - 1}   \right)$$
+///
+/// This means that $v_{i+1}(X)$ is the product of:
+///
+/// 1. A constant polynomial: $Eq\left( \left(\alpha_0, \cdots, \alpha_{i - 1} \right);\left( r_0, \cdots, r_{i-1} \right) \right)$
+/// 2. A linear polynomial: $Eq\left( \alpha_i ; X \right)$
+/// 3. A high degree polynomial: $\sum_{x}
+///    Eq\left( \left( \alpha_{i+1}, \cdots \alpha_{\nu - 1} \right);\left( x_{i+1}, \cdots x_{\nu - 1}   \right) \right)
+///    C\left(  r_0, \cdots, r_{i-1}, X, x_{i+1}, \cdots x_{\nu - 1}   \right)$
+///
+/// The advantage of the above decomposition is that the prover when computing $v_{i+1}(X)$ needs to sum over
+///
+/// $$
+/// Eq\left( \left( \alpha_{i+1}, \cdots \alpha_{\nu - 1} \right);\left( x_{i+1}, \cdots x_{\nu - 1}   \right) \right)
+/// C\left(  r_0, \cdots, r_{i-1}, X, x_{i+1}, \cdots x_{\nu - 1}   \right)
+/// $$
+///
+/// instead of
+///
+/// $$
+/// Eq\left( \left(\alpha_0, \cdots, \alpha_{i - 1}, \alpha_i, \alpha_{i+1}, \cdots \alpha_{\nu - 1} \right);
+/// \left( r_0, \cdots, r_{i-1}, X, x_{i+1}, \cdots x_{\nu - 1}   \right) \right)
+/// C\left(  r_0, \cdots, r_{i-1}, X, x_{i+1}, \cdots x_{\nu - 1}   \right)
+/// $$
+///
+/// which has the advantage of being of degree $1$ less and hence requires less work on the part of the prover.
+///
+/// Thus, the prover computes the following polynomial
+///
+/// $$v_{i+1}^{'}(X) =  \sum_{x} Eq\left( \left( \alpha_{i+1}, \cdots \alpha_{\nu - 1} \right);
+/// \left( x_{i+1}, \cdots x_{\nu - 1}   \right) \right)
+/// C\left(  r_0, \cdots, r_{i-1}, X, x_{i+1}, \cdots x_{\nu - 1}   \right)$$
+///
+/// and then scales it in order to get
+///
+/// $$
+/// v_{i+1}(X) = v_{i+1}^{'}(X) Eq\left( \left(\alpha_0, \cdots, \alpha_{i - 1} \right);
+/// \left( r_0, \cdots, r_{i-1} \right) \right) \cdot  Eq\left( \alpha_i ; X \right)
+/// $$
+///
+/// As the prover computes $v_{i+1}^{'}(X)$ in evaluation form and hence also $v_{i+1}(X)$, this
+/// means that due to the degrees being off by $1$, the prover uses we can use the linear factor
+/// in order to obtain an extra evaluation point in order to be able to interpolate $v_{i+1}(X)$.
+/// More precisely, we can get a root of $$v_{i+1}(X) = 0$$ by solving $$Eq\left( \alpha_i ; X \right) = 0$$
+/// The latter equation has as solution $$\mathsf{r} = \frac{1 - \alpha}{1 - 2\cdot\alpha}$$
+/// which is, except with negligible probability, an evaluation point not in the original
+/// evaluation set and hence the prover is able to interpolate $v_{i+1}(X)$ and send it to
+/// the verifier.
+///
+/// Note that in order to avoid having to compute $\{Eq\left( \left( \alpha_{i+1}, \cdots \alpha_{\nu - 1} \right);
+/// \left( x_{i+1}, \cdots x_{\nu - 1}   \right) \right)\}$ from $\{Eq\left( \left( \alpha_{i}, \cdots \alpha_{\nu - 1} \right);
+/// \left( x_{i}, \cdots x_{\nu - 1}   \right) \right)\}$, or vice versa, we can write
+///
+/// $$v_{i+1}^{'}(X) =  \sum_{x} Eq\left( \left( \alpha_{i+1}, \cdots \alpha_{\nu - 1} \right);
+/// \left( x_{i+1}, \cdots x_{\nu - 1}   \right) \right)
+/// C\left(  r_0, \cdots, r_{i-1}, X, x_{i+1}, \cdots x_{\nu - 1}   \right)$$
+///
+/// as
+///
+/// $$v_{i+1}^{'}(X) = \frac{1}{Eq\left( \left( \alpha_{0}, \cdots, \alpha_{i} \right);
+/// \left(0, \cdots, 0\right) \right)}  \sum_{x}
+/// Eq\left( \left( \alpha_{0}, \cdots, \alpha_{i}, \alpha_{i+1}, \cdots \alpha_{\nu - 1} \right);
+/// \left(0, \cdots, 0, x_{i+1}, \cdots x_{\nu - 1}   \right) \right)
+/// C\left(  r_0, \cdots, r_{i-1}, X, x_{i+1}, \cdots x_{\nu - 1}   \right)$$
+///
+/// Thus, $\{Eq\left( \left( \alpha_{0}, \cdots, \alpha_{i}, \alpha_{i+1}, \cdots \alpha_{\nu - 1} \right);
+/// \left(0, \cdots, 0, x_{i+1}, \cdots x_{\nu - 1}   \right) \right)\}$ can be read from
+/// $\{Eq\left( \left( \alpha_{0}, \cdots, \alpha_{\nu - 1} \right);\left(x_{0}, \cdots x_{\nu - 1}   \right) \right)\}$
+/// directly, at the cost of the relation between  $v_{i+1}^{'}(X)$ and $v_{i+1}(X)$ becoming
+///
+/// $$
+/// v_{i+1}(X) = v_{i+1}^{'}(X) \frac{Eq\left( \left(\alpha_0, \cdots, \alpha_{i - 1} \right);
+/// \left( r_0, \cdots, r_{i-1} \right) \right)}{Eq\left( \left( \alpha_{0}, \cdots, \alpha_{i} \right);
+/// \left(0, \cdots, 0\right) \right)} \cdot  Eq\left( \alpha_i ; X \right)
+/// $$
+///
+///
 /// [1]: https://eprint.iacr.org/2023/1284
+/// [2]: https://eprint.iacr.org/2024/108
 #[allow(clippy::too_many_arguments)]
 pub fn sumcheck_prove_plain<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>>(
     mut claim: E,
@@ -63,8 +158,7 @@ pub fn sumcheck_prove_plain<E: FieldElement, H: ElementHasher<BaseField = E::Bas
 
     let num_rounds = p0.num_variables();
 
-    let nu = gkr_point.len();
-    let mut scaling_down_factors = compute_scaling_down_factors(gkr_point);
+    let scaling_down_factors = compute_scaling_down_factors(gkr_point);
     let mut scaling_up_factor = E::ONE;
 
     for l in 0..num_rounds {
@@ -131,9 +225,8 @@ pub fn sumcheck_prove_plain<E: FieldElement, H: ElementHasher<BaseField = E::Bas
             )
             .reduce(|| (E::ZERO, E::ZERO), |(a0, b0), (a1, b1)| (a0 + a1, b0 + b1));
 
-        let round_index = nu - p0.num_variables();
-        let alpha = gkr_point[round_index];
-        let scaling_down_factor = scaling_down_factors.remove(0);
+        let alpha = gkr_point[l];
+        let scaling_down_factor = scaling_down_factors[l];
 
         let compressed_round_poly = to_coefficients(
             &mut [round_poly_eval_at_0, round_poly_eval_at_2],

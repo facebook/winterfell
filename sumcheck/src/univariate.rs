@@ -126,21 +126,27 @@ impl<E: FieldElement> CompressedUnivariatePolyEvals<E> {
     }
 }
 
+/// Given the evaluations of a polynomial over the set $0, 1, \cdots, d - 1$ and a `root` not in
+/// the interpolation set, computes its coefficients.
 pub fn interpolate_equidistant_points<E: FieldElement>(
     ys: &[E],
-    t0: E,
+    root: E,
 ) -> CompressedUnivariatePoly<E> {
-
-    let quotient: Vec<E> = (0..ys.len()).map(|i| E::from(i as u32) - t0).collect();
+    // we factor out the term `(x - r)` where `r` is the root
+    let quotient: Vec<E> = (0..ys.len()).map(|i| E::from(i as u32) - root).collect();
     let quotient_inv = batch_inversion(&quotient);
     let mut ys: Vec<E> = ys.iter().zip(quotient_inv.iter()).map(|(&y, &q)| y * q).collect();
 
+    // the zeroth coefficient can be recovered immediately
     let c0 = ys.remove(0);
+
+    // build the interpolation set
     let n_minus_1 = ys.len();
     let points = (1..=n_minus_1 as u32).map(E::BaseField::from).collect::<Vec<_>>();
 
     // construct their inverses. These will be needed for computing the evaluations
-    // of the q polynomial as well as for doing the interpolation on q
+    // of the q polynomial as well as for doing the interpolation on q where q is
+    // defined as $p(x) = c0 + x * q(x) where q(x) = c1 + ... + c_{n-1} * x^{n - 2}$
     let points_inv = batch_inversion(&points);
 
     // compute the evaluations of q
@@ -160,7 +166,10 @@ pub fn interpolate_equidistant_points<E: FieldElement>(
     coefficients.push(c0);
     coefficients.extend_from_slice(&q_coefs[..]);
 
-    let mut p_coefficients = polynom::mul(&coefficients, &[-t0, E::ONE]);
+    // multiply back the factor `(x - r)`
+    let mut p_coefficients = polynom::mul(&coefficients, &[-root, E::ONE]);
+
+    // remove the linear factor as it can be recovered from the `claim` and the other factors
     p_coefficients.remove(1);
 
     CompressedUnivariatePoly(p_coefficients.into())
