@@ -205,6 +205,7 @@ pub trait Prover {
     /// Builds and returns the auxiliary trace.
     #[allow(unused_variables)]
     #[maybe_async]
+    #[instrument(skip_all)]
     fn build_aux_trace<E>(&self, main_trace: &Self::Trace, aux_rand_elements: &[E]) -> ColMatrix<E>
     where
         E: FieldElement<BaseField = Self::BaseField>,
@@ -616,6 +617,7 @@ pub trait Prover {
 ///
 /// [1]: https://eprint.iacr.org/2023/1284
 #[maybe_async]
+#[instrument(skip_all)]
 fn build_logup_gkr_columns<E, A, T>(
     air: &A,
     main_trace: &T,
