@@ -195,20 +195,17 @@ where
         lagrange_kernel_aux_column_idx: usize,
         frame: &mut LagrangeKernelEvaluationFrame<E>,
     ) {
-        let frame = frame.frame_mut();
-        frame.truncate(0);
-
         let aux_segment =
             self.aux_segment_lde.as_ref().expect("expected aux segment to be present");
 
-        frame.push(aux_segment.get(lagrange_kernel_aux_column_idx, lde_step));
+        frame[0] = aux_segment.get(lagrange_kernel_aux_column_idx, lde_step);
 
         let frame_length = self.trace_info.length().ilog2() as usize + 1;
         for i in 0..frame_length - 1 {
             let shift = self.blowup() * (1 << i);
             let next_lde_step = (lde_step + shift) % self.trace_len();
 
-            frame.push(aux_segment.get(lagrange_kernel_aux_column_idx, next_lde_step));
+            frame[i + 1] = aux_segment.get(lagrange_kernel_aux_column_idx, next_lde_step);
         }
     }
 

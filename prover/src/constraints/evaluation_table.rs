@@ -46,8 +46,9 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
     pub fn new(
         domain: &'a StarkDomain<E::BaseField>,
         divisors: Vec<ConstraintDivisor<E::BaseField>>,
+        logup_gkr_enabled: bool,
     ) -> Self {
-        let num_columns = divisors.len();
+        let num_columns = divisors.len() + logup_gkr_enabled as usize;
         let num_rows = domain.ce_domain_size();
         ConstraintEvaluationTable {
             evaluations: uninit_matrix(num_columns, num_rows),
@@ -64,8 +65,9 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
         domain: &'a StarkDomain<E::BaseField>,
         divisors: Vec<ConstraintDivisor<E::BaseField>>,
         transition_constraints: &TransitionConstraints<E>,
+        logup_gkr_enabled: bool,
     ) -> Self {
-        let num_columns = divisors.len();
+        let num_columns = divisors.len() + logup_gkr_enabled as usize;
         let num_rows = domain.ce_domain_size();
         let num_tm_columns = transition_constraints.num_main_constraints();
         let num_ta_columns = transition_constraints.num_aux_constraints();
@@ -161,13 +163,28 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
     /// Divides constraint evaluation columns by their respective divisor (in evaluation form) and
     /// combines the results into a single column.
     pub fn combine(self) -> Vec<E> {
-        // allocate memory for the combined polynomial
-        let mut combined_poly = vec![E::ZERO; self.num_rows()];
+        // when LogUp-GKR is enabled, the last column contains the constraint evaluations of
+        // the Lagrange kernel column and the s-column. These evaluations were already divided by
+        // their respective divisors, and hence we just have to add them to `combined_poly`.
+        let mut combined_poly = if self.evaluations.len() != self.divisors.len() {
+            // allocate memory for the combined polynomial
+            let mut combined_poly = unsafe { uninit_vector(self.num_rows()) };
+
+            iter_mut!(combined_poly)
+                .enumerate()
+                .for_each(|(i, row)| *row = self.evaluations[self.divisors.len()][i]);
+            combined_poly
+        } else {
+            vec![E::ZERO; self.num_rows()]
+        };
 
         // iterate over all columns of the constraint evaluation table, divide each column
         // by the evaluations of its corresponding divisor, and add all resulting evaluations
-        // together into a single vector
-        for (column, divisor) in self.evaluations.into_iter().zip(self.divisors.iter()) {
+        // together into a single vector. When LogUp-GKR is enabled, we skip the last two columns
+        // of the evaluation table as these were already handled above.
+        for (column, divisor) in
+            self.evaluations.into_iter().take(self.divisors.len()).zip(self.divisors.iter())
+        {
             // divide the column by the divisor and accumulate the result into combined_poly
             acc_column(column, divisor, self.domain, &mut combined_poly);
         }

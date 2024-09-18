@@ -17,10 +17,10 @@ use winter_prover::{
     crypto::{hashers::Blake3_256, DefaultRandomCoin},
     math::{fields::f64::BaseElement, ExtensionOf, FieldElement},
     matrix::ColMatrix,
-    DefaultConstraintEvaluator, DefaultTraceLde, Prover, StarkDomain, Trace, TracePolyTable,
+    DefaultTraceLde, LogUpGkrConstraintEvaluator, Prover, StarkDomain, Trace, TracePolyTable,
 };
 
-const TRACE_LENS: [usize; 2] = [2_usize.pow(20), 2_usize.pow(21)];
+const TRACE_LENS: [usize; 2] = [2_usize.pow(18), 2_usize.pow(20)];
 const AUX_TRACE_WIDTH: usize = 2;
 
 /// Simple end-to-end benchmark for LogUp-GKR.
@@ -310,7 +310,7 @@ impl Prover for LogUpGkrSimpleProver {
     type TraceLde<E: FieldElement<BaseField = BaseElement>> =
         DefaultTraceLde<E, Self::HashFn, Self::VC>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = BaseElement>> =
-        DefaultConstraintEvaluator<'a, LogUpGkrSimpleAir, E>;
+        LogUpGkrConstraintEvaluator<'a, LogUpGkrSimpleAir, E>;
 
     fn get_pub_inputs(&self, _trace: &Self::Trace) -> <<Self as Prover>::Air as Air>::PublicInputs {
     }
@@ -340,7 +340,7 @@ impl Prover for LogUpGkrSimpleProver {
     where
         E: math::FieldElement<BaseField = Self::BaseField>,
     {
-        DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
+        LogUpGkrConstraintEvaluator::new(air, aux_rand_elements.unwrap(), composition_coefficients)
     }
 
     fn build_aux_trace<E>(&self, main_trace: &Self::Trace, _aux_rand_elements: &[E]) -> ColMatrix<E>

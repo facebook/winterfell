@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::vec::Vec;
+use core::ops::{Index, IndexMut};
 
 use math::{polynom, FieldElement, StarkField};
 
@@ -25,14 +26,15 @@ impl<E: FieldElement> LagrangeKernelEvaluationFrame<E> {
     // --------------------------------------------------------------------------------------------
 
     /// Constructs a Lagrange kernel evaluation frame from the raw column polynomial evaluations.
-    pub fn new(frame: Vec<E>) -> Self {
+    pub fn with_values(frame: Vec<E>) -> Self {
         Self { frame }
     }
 
     /// Constructs an empty Lagrange kernel evaluation frame from the raw column polynomial
     /// evaluations. The frame can subsequently be filled using [`Self::frame_mut`].
-    pub fn new_empty() -> Self {
-        Self { frame: Vec::new() }
+    pub fn new(trace_len: usize) -> Self {
+        let frame_length = trace_len.ilog2() as usize + 1;
+        Self { frame: vec![E::ZERO; frame_length] }
     }
 
     /// Constructs the frame from the Lagrange kernel column trace polynomial coefficients for an
@@ -61,14 +63,6 @@ impl<E: FieldElement> LagrangeKernelEvaluationFrame<E> {
         Self { frame }
     }
 
-    // MUTATORS
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns a mutable reference to the inner frame.
-    pub fn frame_mut(&mut self) -> &mut Vec<E> {
-        &mut self.frame
-    }
-
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
@@ -82,5 +76,19 @@ impl<E: FieldElement> LagrangeKernelEvaluationFrame<E> {
     /// This is equal to `log(trace_length) + 1`.
     pub fn num_rows(&self) -> usize {
         self.frame.len()
+    }
+}
+
+impl<E: FieldElement> Index<usize> for LagrangeKernelEvaluationFrame<E> {
+    type Output = E;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.frame[index]
+    }
+}
+
+impl<E: FieldElement> IndexMut<usize> for LagrangeKernelEvaluationFrame<E> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.frame[index]
     }
 }

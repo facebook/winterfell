@@ -596,8 +596,9 @@ pub use prover::{
     BoundaryConstraint, BoundaryConstraintGroup, CompositionPolyTrace,
     ConstraintCompositionCoefficients, ConstraintDivisor, ConstraintEvaluator,
     DeepCompositionCoefficients, DefaultConstraintEvaluator, DefaultTraceLde, EvaluationFrame,
-    FieldExtension, Proof, ProofOptions, Prover, ProverError, StarkDomain, Trace, TraceInfo,
-    TraceLde, TracePolyTable, TraceTable, TraceTableFragment, TransitionConstraintDegree,
+    FieldExtension, LogUpGkrConstraintEvaluator, Proof, ProofOptions, Prover, ProverError,
+    StarkDomain, Trace, TraceInfo, TraceLde, TracePolyTable, TraceTable, TraceTableFragment,
+    TransitionConstraintDegree,
 };
 pub use verifier::{verify, AcceptableOptions, ByteWriter, VerifierError};
 

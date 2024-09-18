@@ -16,6 +16,9 @@ use boundary::BoundaryConstraints;
 
 mod logup_gkr;
 
+mod logup_gkr_evaluator;
+pub use logup_gkr_evaluator::LogUpGkrConstraintEvaluator;
+
 mod periodic_table;
 use periodic_table::PeriodicValueTable;
 
