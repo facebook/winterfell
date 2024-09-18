@@ -205,13 +205,14 @@ fn prove_intermediate_layers<
     // reduced in terms of the input layer separately in `prove_final_circuit_layer`.
     for inner_layer in circuit.layers().into_iter().skip(1).rev().skip(1) {
         // construct the Lagrange kernel evaluated at the previous GKR round randomness
-        let mut eq_mle = EqFunction::ml_at(evaluation_point.into());
+        let mut eq_mle = EqFunction::ml_at(evaluation_point.clone().into());
 
         let (numerators, denominators) = inner_layer.into_numerators_denominators();
 
         // run the sumcheck protocol
         let proof = sum_check_prove_num_rounds_degree_3(
             claimed_evaluation,
+            &evaluation_point,
             numerators,
             denominators,
             &mut eq_mle,
@@ -260,6 +261,7 @@ fn sum_check_prove_num_rounds_degree_3<
     H: ElementHasher<BaseField = E::BaseField>,
 >(
     claim: (E, E),
+    evaluation_point: &[E],
     p: MultiLinearPoly<E>,
     q: MultiLinearPoly<E>,
     eq: &mut MultiLinearPoly<E>,
@@ -270,7 +272,7 @@ fn sum_check_prove_num_rounds_degree_3<
     let r_batch = transcript.draw().map_err(|_| GkrProverError::FailedToGenerateChallenge)?;
     let claim = claim.0 + claim.1 * r_batch;
 
-    let proof = sumcheck_prove_plain(claim, r_batch, p, q, eq, transcript)?;
+    let proof = sumcheck_prove_plain(claim, evaluation_point, r_batch, p, q, eq, transcript)?;
 
     Ok(proof)
 }

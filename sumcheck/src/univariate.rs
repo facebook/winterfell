@@ -126,6 +126,46 @@ impl<E: FieldElement> CompressedUnivariatePolyEvals<E> {
     }
 }
 
+pub fn interpolate_equidistant_points<E: FieldElement>(
+    ys: &[E],
+    t0: E,
+) -> CompressedUnivariatePoly<E> {
+
+    let quotient: Vec<E> = (0..ys.len()).map(|i| E::from(i as u32) - t0).collect();
+    let quotient_inv = batch_inversion(&quotient);
+    let mut ys: Vec<E> = ys.iter().zip(quotient_inv.iter()).map(|(&y, &q)| y * q).collect();
+
+    let c0 = ys.remove(0);
+    let n_minus_1 = ys.len();
+    let points = (1..=n_minus_1 as u32).map(E::BaseField::from).collect::<Vec<_>>();
+
+    // construct their inverses. These will be needed for computing the evaluations
+    // of the q polynomial as well as for doing the interpolation on q
+    let points_inv = batch_inversion(&points);
+
+    // compute the evaluations of q
+    let q_evals: Vec<E> = ys
+        .iter()
+        .enumerate()
+        .map(|(i, evals)| (*evals - c0).mul_base(points_inv[i]))
+        .collect();
+
+    // interpolate q
+    let q_coefs = multiply_by_inverse_vandermonde(&q_evals, &points_inv);
+
+    // append c0 to the coefficients of q to get the coefficients of p. The linear term
+    // coefficient is removed as this can be recovered from the other coefficients using
+    // the reduced claim.
+    let mut coefficients = SmallVec::<[E; MAX_POLY_SIZE]>::with_capacity(ys.len() + 1);
+    coefficients.push(c0);
+    coefficients.extend_from_slice(&q_coefs[..]);
+
+    let mut p_coefficients = polynom::mul(&coefficients, &[-t0, E::ONE]);
+    p_coefficients.remove(1);
+
+    CompressedUnivariatePoly(p_coefficients.into())
+}
+
 // HELPER FUNCTIONS
 // ================================================================================================
 

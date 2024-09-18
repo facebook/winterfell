@@ -27,7 +27,7 @@ fn sum_check_plain(c: &mut Criterion) {
                         DefaultRandomCoin::<Blake3_192<BaseElement>>::new(&[BaseElement::ZERO; 4]);
                     (setup_sum_check::<BaseElement>(log_poly_size), transcript)
                 },
-                |((claim, r_batch, p, q, eq), transcript)| {
+                |((claim, evaluation_point, r_batch, p, q, eq), transcript)| {
                     let mut eq = eq;
                     let mut transcript = transcript;
                     sumcheck_prove_plain(claim, r_batch, p, q, &mut eq, &mut transcript)
@@ -42,7 +42,7 @@ fn sum_check_plain(c: &mut Criterion) {
 #[allow(clippy::type_complexity)]
 fn setup_sum_check<E: FieldElement>(
     log_size: usize,
-) -> (E, E, MultiLinearPoly<E>, MultiLinearPoly<E>, MultiLinearPoly<E>) {
+) -> (E, Vec<E>, E, MultiLinearPoly<E>, MultiLinearPoly<E>, MultiLinearPoly<E>) {
     let n = 1 << (log_size + 1);
     let p: Vec<E> = rand_vector(n);
     let q: Vec<E> = rand_vector(n);
@@ -52,12 +52,13 @@ fn setup_sum_check<E: FieldElement>(
     let rand_pt = rand_vector(log_size);
     let r_batch: E = rand_value();
     let claim: E = rand_value();
+    let evaluation_point = rand_vector(log_size);
 
     let p = MultiLinearPoly::from_evaluations(p);
     let q = MultiLinearPoly::from_evaluations(q);
     let eq = MultiLinearPoly::from_evaluations(EqFunction::new(rand_pt.into()).evaluations());
 
-    (claim, r_batch, p, q, eq)
+    (claim, evaluation_point, r_batch, p, q, eq)
 }
 
 criterion_group!(group, sum_check_plain);

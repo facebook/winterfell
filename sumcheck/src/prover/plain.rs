@@ -7,13 +7,9 @@ use crypto::{ElementHasher, RandomCoin};
 use math::FieldElement;
 #[cfg(feature = "concurrent")]
 pub use rayon::prelude::*;
-use smallvec::smallvec;
 
-use super::SumCheckProverError;
-use crate::{
-    comb_func, CompressedUnivariatePolyEvals, FinalOpeningClaim, MultiLinearPoly, RoundProof,
-    SumCheckProof,
-};
+use super::{compute_scaling_down_factors, to_coefficients, SumCheckProverError};
+use crate::{comb_func, FinalOpeningClaim, MultiLinearPoly, RoundProof, SumCheckProof};
 
 /// Sum-check prover for non-linear multivariate polynomial of the simple LogUp-GKR.
 ///
@@ -50,6 +46,7 @@ use crate::{
 #[allow(clippy::too_many_arguments)]
 pub fn sumcheck_prove_plain<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>>(
     mut claim: E,
+    gkr_point: &[E],
     r_batch: E,
     p: MultiLinearPoly<E>,
     q: MultiLinearPoly<E>,
@@ -64,124 +61,87 @@ pub fn sumcheck_prove_plain<E: FieldElement, H: ElementHasher<BaseField = E::Bas
     let (mut p0, mut p1) = p.project_least_significant_variable();
     let (mut q0, mut q1) = q.project_least_significant_variable();
 
-    for _ in 0..p0.num_variables() {
+    let num_rounds = p0.num_variables();
+
+    let nu = gkr_point.len();
+    let mut scaling_down_factors = compute_scaling_down_factors(gkr_point);
+    let mut scaling_up_factor = E::ONE;
+
+    for l in 0..num_rounds {
         let len = p0.num_evaluations() / 2;
 
         #[cfg(not(feature = "concurrent"))]
-        let (round_poly_eval_at_1, round_poly_eval_at_2, round_poly_eval_at_3) = (0..len).fold(
-            (E::ZERO, E::ZERO, E::ZERO),
-            |(acc_point_1, acc_point_2, acc_point_3), i| {
-                let round_poly_eval_at_1 = comb_func(
-                    p0[2 * i + 1],
-                    p1[2 * i + 1],
-                    q0[2 * i + 1],
-                    q1[2 * i + 1],
-                    eq[2 * i + 1],
-                    r_batch,
-                );
+        let (round_poly_eval_at_0, round_poly_eval_at_2) =
+            (0..len).fold((E::ZERO, E::ZERO), |(acc_point_0, acc_point_2), i| {
+                let j = i << (l + 1);
+                let round_poly_eval_at_0 =
+                    comb_func(p0[2 * i], p1[2 * i], q0[2 * i], q1[2 * i], eq[j], r_batch);
 
                 let p0_delta = p0[2 * i + 1] - p0[2 * i];
                 let p1_delta = p1[2 * i + 1] - p1[2 * i];
                 let q0_delta = q0[2 * i + 1] - q0[2 * i];
                 let q1_delta = q1[2 * i + 1] - q1[2 * i];
-                let eq_delta = eq[2 * i + 1] - eq[2 * i];
 
-                let mut p0_eval_at_x = p0[2 * i + 1] + p0_delta;
-                let mut p1_eval_at_x = p1[2 * i + 1] + p1_delta;
-                let mut q0_eval_at_x = q0[2 * i + 1] + q0_delta;
-                let mut q1_eval_at_x = q1[2 * i + 1] + q1_delta;
-                let mut eq_evx = eq[2 * i + 1] + eq_delta;
+                let p0_eval_at_x = p0[2 * i + 1] + p0_delta;
+                let p1_eval_at_x = p1[2 * i + 1] + p1_delta;
+                let q0_eval_at_x = q0[2 * i + 1] + q0_delta;
+                let q1_eval_at_x = q1[2 * i + 1] + q1_delta;
                 let round_poly_eval_at_2 = comb_func(
                     p0_eval_at_x,
                     p1_eval_at_x,
                     q0_eval_at_x,
                     q1_eval_at_x,
-                    eq_evx,
+                    eq[j],
                     r_batch,
                 );
 
-                p0_eval_at_x += p0_delta;
-                p1_eval_at_x += p1_delta;
-                q0_eval_at_x += q0_delta;
-                q1_eval_at_x += q1_delta;
-                eq_evx += eq_delta;
-                let round_poly_eval_at_3 = comb_func(
-                    p0_eval_at_x,
-                    p1_eval_at_x,
-                    q0_eval_at_x,
-                    q1_eval_at_x,
-                    eq_evx,
-                    r_batch,
-                );
-
-                (
-                    round_poly_eval_at_1 + acc_point_1,
-                    round_poly_eval_at_2 + acc_point_2,
-                    round_poly_eval_at_3 + acc_point_3,
-                )
-            },
-        );
+                (round_poly_eval_at_0 + acc_point_0, round_poly_eval_at_2 + acc_point_2)
+            });
 
         #[cfg(feature = "concurrent")]
-        let (round_poly_eval_at_1, round_poly_eval_at_2, round_poly_eval_at_3) = (0..len)
+        let (round_poly_eval_at_0, round_poly_eval_at_2) = (0..len)
             .into_par_iter()
             .fold(
-                || (E::ZERO, E::ZERO, E::ZERO),
-                |(a, b, c), i| {
-                    let round_poly_eval_at_1 = comb_func(
-                        p0[2 * i + 1],
-                        p1[2 * i + 1],
-                        q0[2 * i + 1],
-                        q1[2 * i + 1],
-                        eq[2 * i + 1],
-                        r_batch,
-                    );
+                || (E::ZERO, E::ZERO),
+                |(a, b), i| {
+                    let j = i << (l + 1);
+                    let round_poly_eval_at_0 =
+                        comb_func(p0[2 * i], p1[2 * i], q0[2 * i], q1[2 * i], eq[j], r_batch);
 
                     let p0_delta = p0[2 * i + 1] - p0[2 * i];
                     let p1_delta = p1[2 * i + 1] - p1[2 * i];
                     let q0_delta = q0[2 * i + 1] - q0[2 * i];
                     let q1_delta = q1[2 * i + 1] - q1[2 * i];
-                    let eq_delta = eq[2 * i + 1] - eq[2 * i];
 
-                    let mut p0_eval_at_x = p0[2 * i + 1] + p0_delta;
-                    let mut p1_eval_at_x = p1[2 * i + 1] + p1_delta;
-                    let mut q0_eval_at_x = q0[2 * i + 1] + q0_delta;
-                    let mut q1_eval_at_x = q1[2 * i + 1] + q1_delta;
-                    let mut eq_evx = eq[2 * i + 1] + eq_delta;
+                    let p0_eval_at_x = p0[2 * i + 1] + p0_delta;
+                    let p1_eval_at_x = p1[2 * i + 1] + p1_delta;
+                    let q0_eval_at_x = q0[2 * i + 1] + q0_delta;
+                    let q1_eval_at_x = q1[2 * i + 1] + q1_delta;
                     let round_poly_eval_at_2 = comb_func(
                         p0_eval_at_x,
                         p1_eval_at_x,
                         q0_eval_at_x,
                         q1_eval_at_x,
-                        eq_evx,
+                        eq[j],
                         r_batch,
                     );
 
-                    p0_eval_at_x += p0_delta;
-                    p1_eval_at_x += p1_delta;
-                    q0_eval_at_x += q0_delta;
-                    q1_eval_at_x += q1_delta;
-                    eq_evx += eq_delta;
-                    let round_poly_eval_at_3 = comb_func(
-                        p0_eval_at_x,
-                        p1_eval_at_x,
-                        q0_eval_at_x,
-                        q1_eval_at_x,
-                        eq_evx,
-                        r_batch,
-                    );
-
-                    (round_poly_eval_at_1 + a, round_poly_eval_at_2 + b, round_poly_eval_at_3 + c)
+                    (round_poly_eval_at_0 + a, round_poly_eval_at_2 + b)
                 },
             )
-            .reduce(
-                || (E::ZERO, E::ZERO, E::ZERO),
-                |(a0, b0, c0), (a1, b1, c1)| (a0 + a1, b0 + b1, c0 + c1),
-            );
+            .reduce(|| (E::ZERO, E::ZERO), |(a0, b0), (a1, b1)| (a0 + a1, b0 + b1));
 
-        let evals = smallvec![round_poly_eval_at_1, round_poly_eval_at_2, round_poly_eval_at_3];
-        let compressed_round_poly_evals = CompressedUnivariatePolyEvals(evals);
-        let compressed_round_poly = compressed_round_poly_evals.to_poly(claim);
+        let round_index = nu - p0.num_variables();
+        let alpha = gkr_point[round_index];
+        let scaling_down_factor = scaling_down_factors.remove(0);
+
+        let compressed_round_poly = to_coefficients(
+            &mut [round_poly_eval_at_0, round_poly_eval_at_2],
+            claim,
+            alpha,
+            scaling_down_factor,
+            scaling_up_factor,
+        );
 
         // reseed with the s_i polynomial
         transcript.reseed(H::hash_elements(&compressed_round_poly.0));
@@ -197,7 +157,10 @@ pub fn sumcheck_prove_plain<E: FieldElement, H: ElementHasher<BaseField = E::Bas
         p1.bind_least_significant_variable(round_challenge);
         q0.bind_least_significant_variable(round_challenge);
         q1.bind_least_significant_variable(round_challenge);
-        eq.bind_least_significant_variable(round_challenge);
+
+        // update the scaling up factor
+        scaling_up_factor *=
+            round_challenge * alpha + (E::ONE - round_challenge) * (E::ONE - alpha);
 
         // compute the new reduced round claim
         claim = compressed_round_poly.evaluate_using_claim(&claim, &round_challenge);
