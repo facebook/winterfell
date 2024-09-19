@@ -5,12 +5,14 @@ use air::{EvaluationFrame, GkrData, LogUpGkrEvaluator};
 use math::FieldElement;
 use sumcheck::{EqFunction, MultiLinearPoly, SumCheckProverError};
 use tracing::instrument;
-use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+use utils::{chunks, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 use crate::Trace;
 
 mod prover;
 pub use prover::prove_gkr;
+#[cfg(feature = "concurrent")]
+pub use rayon::prelude::*;
 
 // EVALUATED CIRCUIT
 // ================================================================================================
@@ -113,46 +115,105 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
         let num_fractions = evaluator.get_num_fractions();
         let periodic_values = evaluator.build_periodic_values();
 
-        let mut input_layer_wires =
-            Vec::with_capacity(main_trace.main_segment().num_rows() * num_fractions);
-        let mut main_frame = EvaluationFrame::new(main_trace.main_segment().num_cols());
-
-        let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
-        let mut periodic_values_row = vec![E::BaseField::ZERO; periodic_values.num_columns()];
-        let mut numerators = vec![E::ZERO; num_fractions];
-        let mut denominators = vec![E::ZERO; num_fractions];
-        for i in 0..main_trace.main_segment().num_rows() {
-            let wires_from_trace_row = {
-                main_trace.read_main_frame(i, &mut main_frame);
-                periodic_values.fill_periodic_values_at(i, &mut periodic_values_row);
-                evaluator.build_query(&main_frame, &mut query);
-
-                evaluator.evaluate_query(
-                    &query,
-                    &periodic_values_row,
-                    log_up_randomness,
-                    &mut numerators,
-                    &mut denominators,
-                );
-                let input_gates_values: Vec<CircuitWire<E>> = numerators
-                    .iter()
-                    .zip(denominators.iter())
-                    .map(|(numerator, denominator)| CircuitWire::new(*numerator, *denominator))
-                    .collect();
-                input_gates_values
+        #[cfg(feature = "concurrent")]
+        let input_layer_wires = {
+            let mut input_layer_wires = unsafe {
+                utils::uninit_vector(main_trace.main_segment().num_rows() * num_fractions)
             };
+            let num_cols = main_trace.main_segment().num_cols();
+            let num_oracles = evaluator.get_oracles().len();
+            let num_periodic_cols = periodic_values.num_columns();
+            input_layer_wires
+                .par_chunks_mut(num_fractions)
+                .enumerate()
+                .fold(
+                    || {
+                        (
+                            EvaluationFrame::new(num_cols),
+                            vec![E::BaseField::ZERO; num_oracles],
+                            vec![E::BaseField::ZERO; num_periodic_cols],
+                            vec![E::ZERO; num_fractions],
+                            vec![E::ZERO; num_fractions],
+                        )
+                    },
+                    |(
+                        mut main_frame,
+                        mut query,
+                        mut periodic_values_row,
+                        mut numerators,
+                        mut denominators,
+                    ),
+                     (i, acc)| {
+                        main_trace.read_main_frame(i, &mut main_frame);
+                        periodic_values.fill_periodic_values_at(i, &mut periodic_values_row);
+                        evaluator.build_query(&main_frame, &mut query);
 
-            input_layer_wires.extend(wires_from_trace_row);
-        }
+                        evaluator.evaluate_query(
+                            &query,
+                            &periodic_values_row,
+                            log_up_randomness,
+                            &mut numerators,
+                            &mut denominators,
+                        );
+
+                        acc.iter_mut().zip(numerators.iter().zip(denominators.iter())).for_each(
+                            |(a, (numerator, denominator))| {
+                                *a = CircuitWire::new(*numerator, *denominator)
+                            },
+                        );
+
+                        (main_frame, query, periodic_values_row, numerators, denominators)
+                    },
+                )
+                .map(|(..)| {})
+                .reduce(|| {}, |_, _| {});
+            input_layer_wires
+        };
+
+        #[cfg(not(feature = "concurrent"))]
+        let input_layer_wires = {
+            let mut input_layer_wires =
+                Vec::with_capacity(main_trace.main_segment().num_rows() * num_fractions);
+
+            let mut main_frame = EvaluationFrame::new(main_trace.main_segment().num_cols());
+
+            let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
+            let mut periodic_values_row = vec![E::BaseField::ZERO; periodic_values.num_columns()];
+            let mut numerators = vec![E::ZERO; num_fractions];
+            let mut denominators = vec![E::ZERO; num_fractions];
+
+            for i in 0..main_trace.main_segment().num_rows() {
+                let wires_from_trace_row = {
+                    main_trace.read_main_frame(i, &mut main_frame);
+                    periodic_values.fill_periodic_values_at(i, &mut periodic_values_row);
+                    evaluator.build_query(&main_frame, &mut query);
+
+                    evaluator.evaluate_query(
+                        &query,
+                        &periodic_values_row,
+                        log_up_randomness,
+                        &mut numerators,
+                        &mut denominators,
+                    );
+                    let input_gates_values: Vec<CircuitWire<E>> = numerators
+                        .iter()
+                        .zip(denominators.iter())
+                        .map(|(numerator, denominator)| CircuitWire::new(*numerator, *denominator))
+                        .collect();
+                    input_gates_values
+                };
+
+                input_layer_wires.extend(wires_from_trace_row);
+            }
+            input_layer_wires
+        };
 
         CircuitLayer::new(input_layer_wires)
     }
 
     /// Computes the subsequent layer of the circuit from a given layer.
     fn compute_next_layer(prev_layer: &CircuitLayer<E>) -> CircuitLayer<E> {
-        let next_layer_wires = prev_layer
-            .wires()
-            .chunks_exact(2)
+        let next_layer_wires = chunks!(prev_layer.wires(), 2)
             .map(|input_wires| {
                 let left_input_wire = input_wires[0];
                 let right_input_wire = input_wires[1];
