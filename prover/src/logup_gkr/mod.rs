@@ -6,8 +6,8 @@ use math::FieldElement;
 use sumcheck::{EqFunction, MultiLinearPoly, SumCheckProverError};
 use tracing::instrument;
 use utils::{
-    batch_iter_mut, chunks, ByteReader, ByteWriter, Deserializable, DeserializationError,
-    Serializable,
+    batch_iter_mut, chunks, uninit_vector, ByteReader, ByteWriter, Deserializable,
+    DeserializationError, Serializable,
 };
 
 use crate::Trace;
@@ -111,7 +111,7 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
     /// Generates the input layer of the circuit from the main trace columns and some randomness
     /// provided by the verifier.
     fn generate_input_layer(
-        main_trace: &impl Trace<BaseField = E::BaseField>,
+        trace: &impl Trace<BaseField = E::BaseField>,
         evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
         log_up_randomness: &[E],
     ) -> CircuitLayer<E> {
@@ -119,8 +119,8 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
         let periodic_values = evaluator.build_periodic_values();
 
         let mut input_layer_wires =
-            unsafe { utils::uninit_vector(main_trace.main_segment().num_rows() * num_fractions) };
-        let num_cols = main_trace.main_segment().num_cols();
+            unsafe { uninit_vector(trace.main_segment().num_rows() * num_fractions) };
+        let num_cols = trace.main_segment().num_cols();
         let num_oracles = evaluator.get_oracles().len();
         let num_periodic_cols = periodic_values.num_columns();
 
@@ -129,19 +129,20 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
             1024,
             |batch: &mut [CircuitWire<E>], batch_offset: usize| {
                 let mut main_frame = EvaluationFrame::new(num_cols);
-
                 let mut query = vec![E::BaseField::ZERO; num_oracles];
                 let mut periodic_values_row = vec![E::BaseField::ZERO; num_periodic_cols];
                 let mut numerators = vec![E::ZERO; num_fractions];
                 let mut denominators = vec![E::ZERO; num_fractions];
-                let num_rows_to_process = batch.len() / numerators.len();
-                let row_offset = batch_offset / numerators.len();
-                for i in (0..main_trace.main_segment().num_rows())
-                    .skip(row_offset)
-                    .take(num_rows_to_process)
+
+                let row_offset = batch_offset / num_fractions;
+                let batch_size = batch.len();
+                let num_rows_per_batch = batch_size / num_fractions;
+
+                for i in
+                    (0..trace.main_segment().num_rows()).skip(row_offset).take(num_rows_per_batch)
                 {
                     let wires_from_trace_row = {
-                        main_trace.read_main_frame(i, &mut main_frame);
+                        trace.read_main_frame(i, &mut main_frame);
                         periodic_values.fill_periodic_values_at(i, &mut periodic_values_row);
                         evaluator.build_query(&main_frame, &mut query);
 
@@ -152,7 +153,7 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
                             &mut numerators,
                             &mut denominators,
                         );
-                        if 0 <= 1 {};
+
                         let input_gates_values: Vec<CircuitWire<E>> = numerators
                             .iter()
                             .zip(denominators.iter())
@@ -163,18 +164,9 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
                         input_gates_values
                     };
 
-                    for (j, value) in wires_from_trace_row.iter().enumerate() {
-                        // SAFETY:
-                        // We have that `(i - row_offset) * num_fractions <= (num_rows - 1) * num_fractions`
-                        // by virtue of `i - row_offset <= num_rows - 1`.
-                        // Since `j <= num_fractions - 1`, we get that
-                        // `(i - row_offset) * num_fractions + j <= num_rows * num_fractions - 1`.
-                        unsafe {
-                            let batch_entry =
-                                batch.get_unchecked_mut((i - row_offset) * num_fractions + j);
-                            *batch_entry = *value;
-                        }
-                    }
+                    batch[(i - row_offset) * num_fractions
+                        ..(i - row_offset) * num_fractions + num_fractions]
+                        .copy_from_slice(&wires_from_trace_row);
                 }
             }
         );
