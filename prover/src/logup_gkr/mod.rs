@@ -141,32 +141,26 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
                 for i in
                     (0..trace.main_segment().num_rows()).skip(row_offset).take(num_rows_per_batch)
                 {
-                    let wires_from_trace_row = {
-                        trace.read_main_frame(i, &mut main_frame);
-                        periodic_values.fill_periodic_values_at(i, &mut periodic_values_row);
-                        evaluator.build_query(&main_frame, &mut query);
+                    trace.read_main_frame(i, &mut main_frame);
+                    periodic_values.fill_periodic_values_at(i, &mut periodic_values_row);
+                    evaluator.build_query(&main_frame, &mut query);
 
-                        evaluator.evaluate_query(
-                            &query,
-                            &periodic_values_row,
-                            log_up_randomness,
-                            &mut numerators,
-                            &mut denominators,
-                        );
+                    evaluator.evaluate_query(
+                        &query,
+                        &periodic_values_row,
+                        log_up_randomness,
+                        &mut numerators,
+                        &mut denominators,
+                    );
 
-                        let input_gates_values: Vec<CircuitWire<E>> = numerators
-                            .iter()
-                            .zip(denominators.iter())
-                            .map(|(numerator, denominator)| {
-                                CircuitWire::new(*numerator, *denominator)
-                            })
-                            .collect();
-                        input_gates_values
-                    };
-
-                    batch[(i - row_offset) * num_fractions
-                        ..(i - row_offset) * num_fractions + num_fractions]
-                        .copy_from_slice(&wires_from_trace_row);
+                    let n = (i - row_offset) * num_fractions;
+                    for ((wire, numerator), denominator) in batch[n..n + num_fractions]
+                        .iter_mut()
+                        .zip(numerators.iter())
+                        .zip(denominators.iter())
+                    {
+                        *wire = CircuitWire::new(*numerator, *denominator);
+                    }
                 }
             }
         );
