@@ -23,7 +23,7 @@ mod verifier;
 pub use verifier::*;
 
 mod univariate;
-pub use univariate::{CompressedUnivariatePoly, CompressedUnivariatePolyEvals};
+pub use univariate::CompressedUnivariatePoly;
 
 mod multilinear;
 pub use multilinear::{inner_product, EqFunction, MultiLinearPoly};

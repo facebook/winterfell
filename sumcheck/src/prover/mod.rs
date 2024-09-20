@@ -15,7 +15,7 @@ pub use plain::sumcheck_prove_plain;
 mod error;
 pub use error::SumCheckProverError;
 
-use crate::{univariate::interpolate_equidistant_points, CompressedUnivariatePoly};
+use crate::CompressedUnivariatePoly;
 
 /// Takes the evaluation of the polynomial $v_{i+1}^{'}(X)$ defined by
 ///
@@ -23,7 +23,7 @@ use crate::{univariate::interpolate_equidistant_points, CompressedUnivariatePoly
 /// \left( x_{i+1}, \cdots x_{\nu - 1}   \right) \right)
 /// C\left(  r_0, \cdots, r_{i-1}, X, x_{i+1}, \cdots x_{\nu - 1}   \right)$$
 ///
-/// and computes the interpolation of the $v_{i+1}(X)$ defined by
+/// and computes the interpolation of the $v_{i+1}(X)$ polynomial defined by
 ///
 /// $$
 /// v_{i+1}(X) = v_{i+1}^{'}(X) \frac{Eq\left( \left(\alpha_0, \cdots, \alpha_{i - 1} \right);
@@ -52,7 +52,7 @@ fn to_coefficients<E: FieldElement>(
 
     let root = (E::ONE - alpha) / (E::ONE - alpha.double());
 
-    interpolate_equidistant_points(&round_poly_evaluations, root)
+    CompressedUnivariatePoly::interpolate_equidistant_points(&round_poly_evaluations, root)
 }
 
 /// Computes

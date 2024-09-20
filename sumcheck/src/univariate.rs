@@ -48,6 +48,52 @@ impl<E: FieldElement> CompressedUnivariatePoly<E> {
         // evaluate
         polynom::eval(&complete_coefficients, *challenge)
     }
+
+    /// Given the evaluations of a polynomial over the set $0, 1, \cdots, d - 1$ and a `root` not in
+    /// the interpolation set, computes its coefficients.
+    pub fn interpolate_equidistant_points(ys: &[E], root: E) -> CompressedUnivariatePoly<E> {
+        // we factor out the term `(x - r)` where `r` is the root
+        let quotient: Vec<E> = (0..ys.len()).map(|i| E::from(i as u32) - root).collect();
+        let quotient_inv = batch_inversion(&quotient);
+        let mut ys: Vec<E> = ys.iter().zip(quotient_inv.iter()).map(|(&y, &q)| y * q).collect();
+
+        // the zeroth coefficient can be recovered immediately
+        let c0 = ys.remove(0);
+
+        // build the interpolation set
+        let n_minus_1 = ys.len();
+        let points = (1..=n_minus_1 as u32).map(E::BaseField::from).collect::<Vec<_>>();
+
+        // construct their inverses. These will be needed for computing the evaluations
+        // of the q polynomial as well as for doing the interpolation on q where q is
+        // defined as $p(x) = c0 + x * q(x) where q(x) = c1 + ... + c_{n-1} * x^{n - 2}$
+        let points_inv = batch_inversion(&points);
+
+        // compute the evaluations of q
+        let q_evals: Vec<E> = ys
+            .iter()
+            .enumerate()
+            .map(|(i, evals)| (*evals - c0).mul_base(points_inv[i]))
+            .collect();
+
+        // interpolate q
+        let q_coefs = multiply_by_inverse_vandermonde(&q_evals, &points_inv);
+
+        // append c0 to the coefficients of q to get the coefficients of p. The linear term
+        // coefficient is removed as this can be recovered from the other coefficients using
+        // the reduced claim.
+        let mut coefficients = SmallVec::<[E; MAX_POLY_SIZE]>::with_capacity(ys.len() + 1);
+        coefficients.push(c0);
+        coefficients.extend_from_slice(&q_coefs[..]);
+
+        // multiply back the factor `(x - r)`
+        let mut p_coefficients = polynom::mul(&coefficients, &[-root, E::ONE]);
+
+        // remove the linear factor as it can be recovered from the `claim` and the other factors
+        p_coefficients.remove(1);
+
+        CompressedUnivariatePoly(p_coefficients.into())
+    }
 }
 
 impl<E: FieldElement> Serializable for CompressedUnivariatePoly<E> {
@@ -65,114 +111,6 @@ where
         let vector: Vec<E> = Vec::<E>::read_from(source)?;
         Ok(Self(vector.into()))
     }
-}
-
-/// The evaluations of a univariate polynomial of degree n at 0, 1, ..., n with the evaluation at 0
-/// omitted.
-///
-/// This compressed representation is useful during the sum-check protocol as the full uncompressed
-/// representation can be recovered from the compressed one and the current sum-check round claim.
-#[derive(Clone, Debug)]
-pub struct CompressedUnivariatePolyEvals<E>(pub(crate) SmallVec<[E; MAX_POLY_SIZE]>);
-
-impl<E: FieldElement> CompressedUnivariatePolyEvals<E> {
-    /// Gives the coefficient representation of a polynomial represented in evaluation form.
-    ///
-    /// Since the evaluation at 0 is omitted, we need to use the round claim to recover
-    /// the evaluation at 0 using the identity $p(0) + p(1) = claim$.
-    /// Now, we have that for any polynomial $p(x) = c0 + c1 * x + ... + c_{n-1} * x^{n - 1}$:
-    ///
-    /// 1. $p(0) = c0$.
-    /// 2. $p(x) = c0 + x * q(x) where q(x) = c1 + ... + c_{n-1} * x^{n - 2}$.
-    ///
-    /// This means that we can compute the evaluations of q at 1, ..., n - 1 using the evaluations
-    /// of p and thus reduce by 1 the size of the interpolation problem.
-    /// Once the coefficient of q are recovered, the c0 coefficient is appended to these and this
-    /// is precisely the coefficient representation of the original polynomial q.
-    /// Note that the coefficient of the linear term is removed as this coefficient can be recovered
-    /// from the remaining coefficients, again, using the round claim using the relation
-    /// $2 * c0 + c1 + ... c_{n - 1} = claim$.
-    pub fn to_poly(&self, round_claim: E) -> CompressedUnivariatePoly<E> {
-        // construct the vector of interpolation points 1, ..., n
-        let n_minus_1 = self.0.len();
-        let points = (1..=n_minus_1 as u32).map(E::BaseField::from).collect::<Vec<_>>();
-
-        // construct their inverses. These will be needed for computing the evaluations
-        // of the q polynomial as well as for doing the interpolation on q
-        let points_inv = batch_inversion(&points);
-
-        // compute the zeroth coefficient
-        let c0 = round_claim - self.0[0];
-
-        // compute the evaluations of q
-        let q_evals: Vec<E> = self
-            .0
-            .iter()
-            .enumerate()
-            .map(|(i, evals)| (*evals - c0).mul_base(points_inv[i]))
-            .collect();
-
-        // interpolate q
-        let q_coefs = multiply_by_inverse_vandermonde(&q_evals, &points_inv);
-
-        // append c0 to the coefficients of q to get the coefficients of p. The linear term
-        // coefficient is removed as this can be recovered from the other coefficients using
-        // the reduced claim.
-        let mut coefficients = SmallVec::with_capacity(self.0.len() + 1);
-        coefficients.push(c0);
-        coefficients.extend_from_slice(&q_coefs[1..]);
-
-        CompressedUnivariatePoly(coefficients)
-    }
-}
-
-/// Given the evaluations of a polynomial over the set $0, 1, \cdots, d - 1$ and a `root` not in
-/// the interpolation set, computes its coefficients.
-pub fn interpolate_equidistant_points<E: FieldElement>(
-    ys: &[E],
-    root: E,
-) -> CompressedUnivariatePoly<E> {
-    // we factor out the term `(x - r)` where `r` is the root
-    let quotient: Vec<E> = (0..ys.len()).map(|i| E::from(i as u32) - root).collect();
-    let quotient_inv = batch_inversion(&quotient);
-    let mut ys: Vec<E> = ys.iter().zip(quotient_inv.iter()).map(|(&y, &q)| y * q).collect();
-
-    // the zeroth coefficient can be recovered immediately
-    let c0 = ys.remove(0);
-
-    // build the interpolation set
-    let n_minus_1 = ys.len();
-    let points = (1..=n_minus_1 as u32).map(E::BaseField::from).collect::<Vec<_>>();
-
-    // construct their inverses. These will be needed for computing the evaluations
-    // of the q polynomial as well as for doing the interpolation on q where q is
-    // defined as $p(x) = c0 + x * q(x) where q(x) = c1 + ... + c_{n-1} * x^{n - 2}$
-    let points_inv = batch_inversion(&points);
-
-    // compute the evaluations of q
-    let q_evals: Vec<E> = ys
-        .iter()
-        .enumerate()
-        .map(|(i, evals)| (*evals - c0).mul_base(points_inv[i]))
-        .collect();
-
-    // interpolate q
-    let q_coefs = multiply_by_inverse_vandermonde(&q_evals, &points_inv);
-
-    // append c0 to the coefficients of q to get the coefficients of p. The linear term
-    // coefficient is removed as this can be recovered from the other coefficients using
-    // the reduced claim.
-    let mut coefficients = SmallVec::<[E; MAX_POLY_SIZE]>::with_capacity(ys.len() + 1);
-    coefficients.push(c0);
-    coefficients.extend_from_slice(&q_coefs[..]);
-
-    // multiply back the factor `(x - r)`
-    let mut p_coefficients = polynom::mul(&coefficients, &[-root, E::ONE]);
-
-    // remove the linear factor as it can be recovered from the `claim` and the other factors
-    p_coefficients.remove(1);
-
-    CompressedUnivariatePoly(p_coefficients.into())
 }
 
 // HELPER FUNCTIONS
@@ -308,22 +246,18 @@ fn test_poly_partial() {
     use math::fields::f64::BaseElement;
 
     let degree = 1000;
-    let mut points: Vec<BaseElement> = vec![BaseElement::ZERO; degree];
-    points
-        .iter_mut()
-        .enumerate()
-        .for_each(|(i, node)| *node = BaseElement::from(i as u32));
 
+    // compute the claim
     let p: Vec<BaseElement> = rand_utils::rand_vector(degree);
-    let evals = polynom::eval_many(&p, &points);
-
-    let mut partial_evals = evals.clone();
-    partial_evals.remove(0);
-
-    let partial_poly = CompressedUnivariatePolyEvals(partial_evals.into());
+    let evals = polynom::eval_many(&p, &[BaseElement::ZERO, BaseElement::ONE]);
     let claim = evals[0] + evals[1];
-    let poly_coeff = partial_poly.to_poly(claim);
 
+    // build compressed polynomial
+    let mut poly_coeff = p.clone();
+    poly_coeff.remove(1);
+    let poly_coeff = CompressedUnivariatePoly(poly_coeff.into());
+
+    // generate random challenge
     let r = rand_utils::rand_vector(1);
 
     assert_eq!(polynom::eval(&p, r[0]), poly_coeff.evaluate_using_claim(&claim, &r[0]))
