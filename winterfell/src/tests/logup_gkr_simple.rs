@@ -193,7 +193,23 @@ impl<B: FieldElement + StarkField> PlainLogUpGkrEval<B> {
         let committed_2 = LogUpGkrOracle::CurrentRow(2);
         let committed_3 = LogUpGkrOracle::CurrentRow(3);
         let committed_4 = LogUpGkrOracle::CurrentRow(4);
-        let oracles = vec![committed_0, committed_1, committed_2, committed_3, committed_4];
+        let committed_0_next_row = LogUpGkrOracle::NextRow(0);
+        let committed_1_next_row = LogUpGkrOracle::NextRow(1);
+        let committed_2_next_row = LogUpGkrOracle::NextRow(2);
+        let committed_3_next_row = LogUpGkrOracle::NextRow(3);
+        let committed_4_next_row = LogUpGkrOracle::NextRow(4);
+        let oracles = vec![
+            committed_0,
+            committed_1,
+            committed_2,
+            committed_3,
+            committed_4,
+            committed_0_next_row,
+            committed_1_next_row,
+            committed_2_next_row,
+            committed_3_next_row,
+            committed_4_next_row,
+        ];
         Self { oracles, _field: PhantomData }
     }
 }
@@ -223,7 +239,17 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
-        query.iter_mut().zip(frame.current().iter()).for_each(|(q, f)| *q = *f)
+        query[0] = frame.current()[0];
+        query[1] = frame.current()[1];
+        query[2] = frame.current()[2];
+        query[3] = frame.current()[3];
+        query[4] = frame.current()[4];
+
+        query[5] = frame.next()[0];
+        query[6] = frame.next()[1];
+        query[7] = frame.next()[2];
+        query[8] = frame.next()[3];
+        query[9] = frame.next()[4];
     }
 
     fn evaluate_query<F, E>(
@@ -239,7 +265,7 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
     {
         assert_eq!(numerator.len(), 4);
         assert_eq!(denominator.len(), 4);
-        assert_eq!(query.len(), 5);
+        assert_eq!(query.len(), 10);
         numerator[0] = E::from(query[1]);
         numerator[1] = E::ONE;
         numerator[2] = E::ONE;
