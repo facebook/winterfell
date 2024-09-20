@@ -3,14 +3,14 @@ use alloc::vec::Vec;
 use air::{LogUpGkrEvaluator, LogUpGkrOracle, PeriodicTable};
 use crypto::{ElementHasher, RandomCoin};
 use math::FieldElement;
-#[cfg(feature = "concurrent")]
-pub use utils::rayon::{current_num_threads as rayon_num_threads, prelude::*};
 use sumcheck::{
     sum_check_prove_higher_degree, sumcheck_prove_plain, BeforeFinalLayerProof, CircuitOutput,
     EqFunction, FinalLayerProof, GkrCircuitProof, MultiLinearPoly, SumCheckProof,
 };
 use tracing::instrument;
 use utils::iter;
+#[cfg(feature = "concurrent")]
+pub use utils::rayon::prelude::*;
 
 use super::{reduce_layer_claim, CircuitLayerPolys, EvaluatedCircuit, GkrClaim, GkrProverError};
 use crate::{matrix::ColMatrix, Trace};

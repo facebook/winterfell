@@ -384,68 +384,38 @@ where
 ///
 /// [1]: https://eprint.iacr.org/2023/1284
 pub fn build_s_column<E: FieldElement>(
-    main_trace: &impl Trace<BaseField = E::BaseField>,
+    trace: &impl Trace<BaseField = E::BaseField>,
     gkr_data: &GkrData<E>,
     evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
     lagrange_kernel_col: &[E],
 ) -> Vec<E> {
     let c = gkr_data.compute_batched_claim();
-    let main_segment = main_trace.main_segment();
-    let mean = c / E::from(E::BaseField::from(main_segment.num_rows() as u32));
+    let num_oracles = evaluator.get_oracles().len();
 
-    let mut result = unsafe { uninit_vector(main_segment.num_rows()) };
+    let main_segment = trace.main_segment();
+    let num_cols = main_segment.num_cols();
+    let num_rows = main_segment.num_rows();
+    let mean = c / E::from(E::BaseField::from(num_rows as u32));
 
-    #[cfg(feature = "concurrent")]
-    {
-        let mut values = unsafe { uninit_vector(main_segment.num_rows()) };
-        lagrange_kernel_col
-            .into_par_iter()
-            .zip(values.par_iter_mut())
-            .enumerate()
-            .fold(
-                || {
-                    (
-                        vec![E::BaseField::ZERO; evaluator.get_oracles().len()],
-                        EvaluationFrame::new(main_trace.main_segment().num_cols()),
-                        E::ZERO,
-                    )
-                },
-                |(mut query, mut main_frame, _value), (i, (item, res))| {
-                    main_trace.read_main_frame(i, &mut main_frame);
+    let mut deltas = unsafe { uninit_vector(main_segment.num_rows()) };
+    batch_iter_mut!(&mut deltas, 1024, |batch: &mut [E], batch_offset: usize| {
+        let mut query = vec![E::BaseField::ZERO; num_oracles];
+        let mut main_frame = EvaluationFrame::<E::BaseField>::new(num_cols);
 
-                    evaluator.build_query(&main_frame, &mut query);
-
-                    let value = -mean + gkr_data.compute_batched_query(&query) * *item;
-                    *res = value;
-
-                    (query, main_frame, value)
-                },
-            )
-            .map(|(..)| {})
-            .reduce(|| {}, |_, _| {});
-
-        result[0] = E::ZERO;
-        for i in 1..result.len() {
-            result[i] = result[i - 1] + values[i - 1]
-        }
-    }
-
-    #[cfg(not(feature = "concurrent"))]
-    {
-        let mut last_value = E::ZERO;
-        result.push(last_value);
-
-        let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
-        let mut main_frame = EvaluationFrame::<E>::new(main_trace.main_segment().num_cols());
-        for (i, item) in lagrange_kernel_col.iter().enumerate().take(main_segment.num_rows() - 1) {
-            main_trace.read_main_frame(i, &mut main_frame);
+        for (i, v) in batch.iter_mut().enumerate() {
+            trace.read_main_frame(i + batch_offset, &mut main_frame);
 
             evaluator.build_query(&main_frame, &mut query);
-            let cur_value = last_value - mean + gkr_data.compute_batched_query(&query) * *item;
-
-            result.push(cur_value);
-            last_value = cur_value;
+            *v = gkr_data.compute_batched_query(&query) * lagrange_kernel_col[i + batch_offset]
+                - mean;
         }
+    });
+
+    let mut result = unsafe { uninit_vector(num_rows) };
+    result[0] = E::ZERO;
+
+    for i in 1..result.len() {
+        result[i] = result[i - 1] + deltas[i - 1]
     }
 
     result
