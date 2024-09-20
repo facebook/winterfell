@@ -100,8 +100,8 @@ use crate::{comb_func, FinalOpeningClaim, MultiLinearPoly, RoundProof, SumCheckP
 /// $$
 ///
 /// As the prover computes $v_{i+1}^{'}(X)$ in evaluation form and hence also $v_{i+1}(X)$, this
-/// means that due to the degrees being off by $1$, the prover uses we can use the linear factor
-/// in order to obtain an extra evaluation point in order to be able to interpolate $v_{i+1}(X)$.
+/// means that due to the degrees being off by $1$, the prover uses the linear factor in order to
+/// obtain an additional evaluation point in order to be able to interpolate $v_{i+1}(X)$.
 /// More precisely, we can get a root of $$v_{i+1}(X) = 0$$ by solving $$Eq\left( \alpha_i ; X \right) = 0$$
 /// The latter equation has as solution $$\mathsf{r} = \frac{1 - \alpha}{1 - 2\cdot\alpha}$$
 /// which is, except with negligible probability, an evaluation point not in the original
@@ -161,25 +161,25 @@ pub fn sumcheck_prove_plain<E: FieldElement, H: ElementHasher<BaseField = E::Bas
     let scaling_down_factors = compute_scaling_down_factors(gkr_point);
     let mut scaling_up_factor = E::ONE;
 
-    for l in 0..num_rounds {
+    for i in 0..num_rounds {
         let len = p0.num_evaluations() / 2;
 
         #[cfg(not(feature = "concurrent"))]
         let (round_poly_eval_at_0, round_poly_eval_at_2) =
-            (0..len).fold((E::ZERO, E::ZERO), |(acc_point_0, acc_point_2), i| {
-                let j = i << (l + 1);
+            (0..len).fold((E::ZERO, E::ZERO), |(acc_point_0, acc_point_2), k| {
+                let j = k << (i + 1);
                 let round_poly_eval_at_0 =
-                    comb_func(p0[2 * i], p1[2 * i], q0[2 * i], q1[2 * i], eq[j], r_batch);
+                    comb_func(p0[2 * k], p1[2 * k], q0[2 * k], q1[2 * k], eq[j], r_batch);
 
-                let p0_delta = p0[2 * i + 1] - p0[2 * i];
-                let p1_delta = p1[2 * i + 1] - p1[2 * i];
-                let q0_delta = q0[2 * i + 1] - q0[2 * i];
-                let q1_delta = q1[2 * i + 1] - q1[2 * i];
+                let p0_delta = p0[2 * k + 1] - p0[2 * k];
+                let p1_delta = p1[2 * k + 1] - p1[2 * k];
+                let q0_delta = q0[2 * k + 1] - q0[2 * k];
+                let q1_delta = q1[2 * k + 1] - q1[2 * k];
 
-                let p0_eval_at_x = p0[2 * i + 1] + p0_delta;
-                let p1_eval_at_x = p1[2 * i + 1] + p1_delta;
-                let q0_eval_at_x = q0[2 * i + 1] + q0_delta;
-                let q1_eval_at_x = q1[2 * i + 1] + q1_delta;
+                let p0_eval_at_x = p0[2 * k + 1] + p0_delta;
+                let p1_eval_at_x = p1[2 * k + 1] + p1_delta;
+                let q0_eval_at_x = q0[2 * k + 1] + q0_delta;
+                let q1_eval_at_x = q1[2 * k + 1] + q1_delta;
                 let round_poly_eval_at_2 = comb_func(
                     p0_eval_at_x,
                     p1_eval_at_x,
@@ -197,20 +197,20 @@ pub fn sumcheck_prove_plain<E: FieldElement, H: ElementHasher<BaseField = E::Bas
             .into_par_iter()
             .fold(
                 || (E::ZERO, E::ZERO),
-                |(a, b), i| {
-                    let j = i << (l + 1);
+                |(a, b), k| {
+                    let j = k << (i + 1);
                     let round_poly_eval_at_0 =
-                        comb_func(p0[2 * i], p1[2 * i], q0[2 * i], q1[2 * i], eq[j], r_batch);
+                        comb_func(p0[2 * k], p1[2 * k], q0[2 * k], q1[2 * k], eq[j], r_batch);
 
-                    let p0_delta = p0[2 * i + 1] - p0[2 * i];
-                    let p1_delta = p1[2 * i + 1] - p1[2 * i];
-                    let q0_delta = q0[2 * i + 1] - q0[2 * i];
-                    let q1_delta = q1[2 * i + 1] - q1[2 * i];
+                    let p0_delta = p0[2 * k + 1] - p0[2 * k];
+                    let p1_delta = p1[2 * k + 1] - p1[2 * k];
+                    let q0_delta = q0[2 * k + 1] - q0[2 * k];
+                    let q1_delta = q1[2 * k + 1] - q1[2 * k];
 
-                    let p0_eval_at_x = p0[2 * i + 1] + p0_delta;
-                    let p1_eval_at_x = p1[2 * i + 1] + p1_delta;
-                    let q0_eval_at_x = q0[2 * i + 1] + q0_delta;
-                    let q1_eval_at_x = q1[2 * i + 1] + q1_delta;
+                    let p0_eval_at_x = p0[2 * k + 1] + p0_delta;
+                    let p1_eval_at_x = p1[2 * k + 1] + p1_delta;
+                    let q0_eval_at_x = q0[2 * k + 1] + q0_delta;
+                    let q1_eval_at_x = q1[2 * k + 1] + q1_delta;
                     let round_poly_eval_at_2 = comb_func(
                         p0_eval_at_x,
                         p1_eval_at_x,
@@ -225,14 +225,12 @@ pub fn sumcheck_prove_plain<E: FieldElement, H: ElementHasher<BaseField = E::Bas
             )
             .reduce(|| (E::ZERO, E::ZERO), |(a0, b0), (a1, b1)| (a0 + a1, b0 + b1));
 
-        let alpha = gkr_point[l];
-        let scaling_down_factor = scaling_down_factors[l];
-
+        let alpha_i = gkr_point[i];
         let compressed_round_poly = to_coefficients(
             &mut [round_poly_eval_at_0, round_poly_eval_at_2],
             claim,
-            alpha,
-            scaling_down_factor,
+            alpha_i,
+            scaling_down_factors[i],
             scaling_up_factor,
         );
 
@@ -253,7 +251,7 @@ pub fn sumcheck_prove_plain<E: FieldElement, H: ElementHasher<BaseField = E::Bas
 
         // update the scaling up factor
         scaling_up_factor *=
-            round_challenge * alpha + (E::ONE - round_challenge) * (E::ONE - alpha);
+            round_challenge * alpha_i + (E::ONE - round_challenge) * (E::ONE - alpha_i);
 
         // compute the new reduced round claim
         claim = compressed_round_poly.evaluate_using_claim(&claim, &round_challenge);

@@ -206,8 +206,8 @@ use crate::{
 /// $$
 ///
 /// As the prover computes $v_{i+1}^{'}(X)$ in evaluation form and hence also $v_{i+1}(X)$, this
-/// means that due to the degrees being off by $1$, the prover uses we can use the linear factor
-/// in order to obtain an extra evaluation point in order to be able to interpolate $v_{i+1}(X)$.
+/// means that due to the degrees being off by $1$, the prover uses the linear factor in order to
+/// obtain an additional evaluation point in order to be able to interpolate $v_{i+1}(X)$.
 /// More precisely, we can get a root of $$v_{i+1}(X) = 0$$ by solving $$Eq\left( \alpha_i ; X \right) = 0$$
 /// The latter equation has as solution $$\mathsf{r} = \frac{1 - \alpha}{1 - 2\cdot\alpha}$$
 /// which is, except with negligible probability, an evaluation point not in the original
@@ -287,13 +287,13 @@ pub fn sum_check_prove_higher_degree<
     let mut scaling_up_factor = E::ONE;
     // this will hold `Eq((\alpha_{0}, \cdots, \alpha_{i}); (0, \cdots, 0))` for all `i`
     let scaling_down_factors = compute_scaling_down_factors(evaluation_point_nu);
-    // this `\alpha_i`
-    let mut alpha = evaluation_point_nu[0];
+    // this is `\alpha_i` above
+    let mut alpha_i = evaluation_point_nu[0];
     let scaling_down_factor = scaling_down_factors[0];
     let round_poly_coefs = to_coefficients(
         &mut round_poly_evals,
         current_round_claim.claim,
-        alpha,
+        alpha_i,
         scaling_down_factor,
         scaling_up_factor,
     );
@@ -308,9 +308,9 @@ pub fn sum_check_prove_higher_degree<
             coin.draw().map_err(|_| SumCheckProverError::FailedToGenerateChallenge)?;
 
         // update `scaling_up_factor`
-        alpha = evaluation_point_nu[evaluation_point_nu.len() - mls[0].num_variables()];
+        alpha_i = evaluation_point_nu[evaluation_point_nu.len() - mls[0].num_variables()];
         scaling_up_factor *=
-            round_challenge * alpha + (E::ONE - round_challenge) * (E::ONE - alpha);
+            round_challenge * alpha_i + (E::ONE - round_challenge) * (E::ONE - alpha_i);
 
         // compute the new reduced round claim
         let new_round_claim =
@@ -339,13 +339,12 @@ pub fn sum_check_prove_higher_degree<
         // update the claim
         current_round_claim = new_round_claim;
 
-        let alpha = evaluation_point_nu[i];
-        let scaling_down_factor = scaling_down_factors[i];
+        let alpha_i = evaluation_point_nu[i];
         let round_poly_coefs = to_coefficients(
             &mut round_poly_evals,
             current_round_claim.claim,
-            alpha,
-            scaling_down_factor,
+            alpha_i,
+            scaling_down_factors[i],
             scaling_up_factor,
         );
 
@@ -480,7 +479,7 @@ fn sumcheck_round<E: FieldElement>(
                     r_sum_check,
                 );
 
-                // compute the evaluations at 2, ..., d_max points
+                // compute the evaluations at `2, ..., d_max - 1` points
                 for i in 0..num_mls {
                     deltas[i] = evals_one[i] - evals_zero[i];
                     evals_x[i] = evals_one[i];
@@ -590,7 +589,7 @@ fn sumcheck_round<E: FieldElement>(
                     r_sum_check,
                 );
 
-                // compute the evaluations at 2, ..., d_max points
+                // compute the evaluations at `2, ..., d_max - 1` points
                 for i in 0..num_mls {
                     deltas[i] = evals_one[i] - evals_zero[i];
                     evals_x[i] = evals_one[i];
