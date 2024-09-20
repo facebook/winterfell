@@ -15,7 +15,10 @@ use crate::Trace;
 mod prover;
 pub use prover::prove_gkr;
 #[cfg(feature = "concurrent")]
-pub use utils::rayon::{current_num_threads as rayon_num_threads, prelude::*};
+pub use utils::{
+    rayon::{current_num_threads as rayon_num_threads, prelude::*},
+    {chunks, chunks_mut, iter, iter_mut},
+};
 
 // EVALUATED CIRCUIT
 // ================================================================================================
@@ -383,6 +386,21 @@ where
 /// The following function's purpose is two build the column in point 2 given the one in point 1.
 ///
 /// [1]: https://eprint.iacr.org/2023/1284
+
+/// Builds the auxiliary trace column for the univariate sum-check argument.
+///
+/// Following Section 5.2 in [1] and using the inner product representation of multi-linear queries,
+/// we need two univariate oracles, or equivalently two columns in the auxiliary trace, namely:
+///
+/// 1. The Lagrange oracle, denoted by $c(X)$ in [1], and refered to throughout the codebase by
+///    the Lagrange kernel column.
+/// 2. The oracle witnessing the univariate sum-check relation defined by the aforementioned inner
+///    product i.e., equation (12) in [1]. This oracle is refered to throughout the codebase as
+///    the s-column.
+///
+/// The following function's purpose is two build the column in point 2 given the one in point 1.
+///
+/// [1]: https://eprint.iacr.org/2023/1284
 pub fn build_s_column<E: FieldElement>(
     trace: &impl Trace<BaseField = E::BaseField>,
     gkr_data: &GkrData<E>,
@@ -398,7 +416,8 @@ pub fn build_s_column<E: FieldElement>(
     let mean = c / E::from(E::BaseField::from(num_rows as u32));
 
     let mut deltas = unsafe { uninit_vector(main_segment.num_rows()) };
-    batch_iter_mut!(&mut deltas, 1024, |batch: &mut [E], batch_offset: usize| {
+    deltas[0] = E::ZERO;
+    batch_iter_mut!(&mut deltas[1..], 1024, |batch: &mut [E], batch_offset: usize| {
         let mut query = vec![E::BaseField::ZERO; num_oracles];
         let mut main_frame = EvaluationFrame::<E::BaseField>::new(num_cols);
 
@@ -411,14 +430,9 @@ pub fn build_s_column<E: FieldElement>(
         }
     });
 
-    let mut result = unsafe { uninit_vector(num_rows) };
-    result[0] = E::ZERO;
-
-    for i in 1..result.len() {
-        result[i] = result[i - 1] + deltas[i - 1]
-    }
-
-    result
+    // note that `deltas` starts with `0`
+    prefix_sum(&mut deltas);
+    deltas
 }
 
 /// Builds the Lagrange kernel column at a given point.
@@ -432,4 +446,67 @@ pub enum GkrProverError {
     FailedToProveSumCheck(#[from] SumCheckProverError),
     #[error("failed to generate the random challenge")]
     FailedToGenerateChallenge,
+}
+
+// HELPER
+// =================================================================================================
+
+/// Computes the cumulative sum, also called prefix sum, of a vector of field elements.
+///
+/// Depending on whether `concurrent` feature is enabled, the function either uses a naive serial
+/// implementation or an implementation which makes use of parallelism.
+fn prefix_sum<E: FieldElement>(vector: &mut [E]) {
+    #[cfg(feature = "concurrent")]
+    prefix_sum_parallel(vector, 1024);
+
+    #[cfg(not(feature = "concurrent"))]
+    prefix_sum_truncate_left(vector, E::ZERO);
+}
+
+/// Computes the cumulative sum, also called prefix sum, of a vector of field elements using
+/// parallelism, in place.
+///
+/// The function divides the vector into non-overlapping segments and then computes an array of sums
+/// for each segment. The function then applies the naive serial implementation to each segment and
+/// uses the pre-computed sums in each segment in order to coordinate the results in the different
+/// segments.
+///
+/// The input vector is of the form `0 || values` where `values` are the values the cumulative sum
+/// vector will be computed for, in place.
+#[cfg(feature = "concurrent")]
+fn prefix_sum_parallel<E: FieldElement>(vector: &mut [E], batch_size: usize) {
+    use utils::{chunks, chunks_mut, iter, iter_mut};
+
+    let num_partitions = (vector.len() + batch_size - 1) / batch_size;
+    let mut sum_per_partition = vec![E::ZERO; num_partitions];
+
+    chunks!(vector, batch_size)
+        .zip(iter_mut!(sum_per_partition))
+        .for_each(|(chunk, entry)| *entry = chunk.iter().fold(E::ZERO, |acc, term| acc + *term));
+
+    prefix_sum_truncate_right(&mut sum_per_partition);
+
+    chunks_mut!(vector, batch_size)
+        .zip(iter!(sum_per_partition))
+        .for_each(|(chunk, sum_so_far)| prefix_sum_truncate_left(chunk, *sum_so_far));
+}
+
+/// Computes the cumulative sum of a vector but omits the final cumulative sum.
+#[cfg(feature = "concurrent")]
+fn prefix_sum_truncate_right<E: FieldElement>(values: &mut [E]) {
+    let mut sum = E::ZERO;
+    values.iter_mut().for_each(|v| {
+        let tmp = *v;
+        *v = sum;
+        sum += tmp;
+    });
+}
+
+/// Computes the cumulative sum of a vector but omits the initial cumulative sum, namely zero.
+fn prefix_sum_truncate_left<E: FieldElement>(values: &mut [E], sum: E) {
+    let mut sum = sum;
+    values.iter_mut().for_each(|v| {
+        sum += *v;
+        *v = sum;
+    });
 }
