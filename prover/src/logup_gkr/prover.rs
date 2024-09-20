@@ -8,9 +8,9 @@ use sumcheck::{
     EqFunction, FinalLayerProof, GkrCircuitProof, MultiLinearPoly, SumCheckProof,
 };
 use tracing::instrument;
-use utils::iter;
 #[cfg(feature = "concurrent")]
-pub use utils::rayon::prelude::*;
+use utils::rayon::prelude::*;
+use utils::{iter, iter_mut, uninit_vector};
 
 use super::{reduce_layer_claim, CircuitLayerPolys, EvaluatedCircuit, GkrClaim, GkrProverError};
 use crate::{matrix::ColMatrix, Trace};
@@ -144,7 +144,7 @@ fn build_mls_from_main_trace_segment<E: FieldElement>(
     oracles: &[LogUpGkrOracle],
     main_trace: &ColMatrix<<E as FieldElement>::BaseField>,
 ) -> Result<Vec<MultiLinearPoly<E>>, GkrProverError> {
-    let mut mls = vec![];
+    let mut mls = Vec::with_capacity(oracles.len());
 
     for oracle in oracles {
         match oracle {
@@ -156,8 +156,12 @@ fn build_mls_from_main_trace_segment<E: FieldElement>(
             },
             LogUpGkrOracle::NextRow(index) => {
                 let col = main_trace.get_column(*index);
-                let mut values: Vec<E> = col.iter().map(|value| E::from(*value)).collect();
-                values.rotate_left(1);
+
+                let mut values: Vec<E> = unsafe { uninit_vector(col.len()) };
+                values[col.len() - 1] = E::from(col[0]);
+                iter_mut!(&mut values[..col.len() - 1])
+                    .enumerate()
+                    .for_each(|(i, value)| *value = E::from(col[i + 1]));
                 let ml = MultiLinearPoly::from_evaluations(values);
                 mls.push(ml)
             },
