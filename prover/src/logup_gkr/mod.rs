@@ -386,21 +386,6 @@ where
 /// The following function's purpose is two build the column in point 2 given the one in point 1.
 ///
 /// [1]: https://eprint.iacr.org/2023/1284
-
-/// Builds the auxiliary trace column for the univariate sum-check argument.
-///
-/// Following Section 5.2 in [1] and using the inner product representation of multi-linear queries,
-/// we need two univariate oracles, or equivalently two columns in the auxiliary trace, namely:
-///
-/// 1. The Lagrange oracle, denoted by $c(X)$ in [1], and refered to throughout the codebase by
-///    the Lagrange kernel column.
-/// 2. The oracle witnessing the univariate sum-check relation defined by the aforementioned inner
-///    product i.e., equation (12) in [1]. This oracle is refered to throughout the codebase as
-///    the s-column.
-///
-/// The following function's purpose is two build the column in point 2 given the one in point 1.
-///
-/// [1]: https://eprint.iacr.org/2023/1284
 pub fn build_s_column<E: FieldElement>(
     trace: &impl Trace<BaseField = E::BaseField>,
     gkr_data: &GkrData<E>,
@@ -430,7 +415,8 @@ pub fn build_s_column<E: FieldElement>(
         }
     });
 
-    // note that `deltas` starts with `0`
+    // note that `deltas[0]` is set `0` and thus `deltas` satisfies the conditions for invoking
+    // the function
     prefix_sum(&mut deltas);
     deltas
 }
