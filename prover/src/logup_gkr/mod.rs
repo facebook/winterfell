@@ -401,7 +401,7 @@ pub fn build_s_column<E: FieldElement>(
     let mean = c / E::from(E::BaseField::from(num_rows as u32));
 
     let mut deltas = unsafe { uninit_vector(main_segment.num_rows()) };
-    deltas[0] = E::ZERO;
+    
     batch_iter_mut!(&mut deltas[1..], 1024, |batch: &mut [E], batch_offset: usize| {
         let mut query = vec![E::BaseField::ZERO; num_oracles];
         let mut main_frame = EvaluationFrame::<E::BaseField>::new(num_cols);
@@ -417,8 +417,10 @@ pub fn build_s_column<E: FieldElement>(
 
     // note that `deltas[0]` is set `0` and thus `deltas` satisfies the conditions for invoking
     // the function
-    prefix_sum(&mut deltas);
-    deltas
+    let mut cumulative_sum = deltas;
+    cumulative_sum[0] = E::ZERO;
+    prefix_sum(&mut cumulative_sum);
+    cumulative_sum
 }
 
 /// Builds the Lagrange kernel column at a given point.
