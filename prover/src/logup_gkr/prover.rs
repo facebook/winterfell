@@ -154,9 +154,6 @@ fn build_mls_from_main_trace_segment<E: FieldElement>(
             LogUpGkrOracle::NextRow(index) => {
                 let col = main_trace.get_column(*index);
                 let mut values: Vec<E> = col.iter().map(|value| E::from(*value)).collect();
-                if let Some(value) = values.last_mut() {
-                    *value = E::ZERO
-                }
                 values.rotate_left(1);
                 let ml = MultiLinearPoly::from_evaluations(values);
                 mls.push(ml)
