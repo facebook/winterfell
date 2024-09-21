@@ -201,7 +201,7 @@ impl Air for WorkAir {
         result: &mut [E],
     ) {
         // First, we'll read the current state, and use it to compute the expected next state
-        let current_state = &frame.current()[0];
+        let current_state = frame.current()[0];
         let next_state = current_state.exp(3u32.into()) + E::from(42u32);
 
         // Then, we'll subtract the expected next state from the actual next state; this will
