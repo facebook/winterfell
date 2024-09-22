@@ -146,11 +146,11 @@ fn build_mls_from_main_trace_segment<E: FieldElement>(
 ) -> Result<Vec<MultiLinearPoly<E>>, GkrProverError> {
     let mut mls = Vec::with_capacity(oracles.len());
 
-    for oracle in oracles {
+    iter!(oracles).for_each(|oracle| {
         match oracle {
             LogUpGkrOracle::CurrentRow(index) => {
                 let col = main_trace.get_column(*index);
-                let values: Vec<E> = iter!(col).map(|value| E::from(*value)).collect();
+                let values: Vec<E> = col.iter().map(|value| E::from(*value)).collect();
                 let ml = MultiLinearPoly::from_evaluations(values);
                 mls.push(ml)
             },
@@ -159,14 +159,36 @@ fn build_mls_from_main_trace_segment<E: FieldElement>(
 
                 let mut values: Vec<E> = unsafe { uninit_vector(col.len()) };
                 values[col.len() - 1] = E::from(col[0]);
-                iter_mut!(&mut values[..col.len() - 1])
+                (&mut values[..col.len() - 1])
+                    .iter_mut()
                     .enumerate()
                     .for_each(|(i, value)| *value = E::from(col[i + 1]));
                 let ml = MultiLinearPoly::from_evaluations(values);
                 mls.push(ml)
             },
         };
-    }
+    });
+    //for oracle in oracles {
+        //match oracle {
+            //LogUpGkrOracle::CurrentRow(index) => {
+                //let col = main_trace.get_column(*index);
+                //let values: Vec<E> = iter!(col).map(|value| E::from(*value)).collect();
+                //let ml = MultiLinearPoly::from_evaluations(values);
+                //mls.push(ml)
+            //},
+            //LogUpGkrOracle::NextRow(index) => {
+                //let col = main_trace.get_column(*index);
+
+                //let mut values: Vec<E> = unsafe { uninit_vector(col.len()) };
+                //values[col.len() - 1] = E::from(col[0]);
+                //iter_mut!(&mut values[..col.len() - 1])
+                    //.enumerate()
+                    //.for_each(|(i, value)| *value = E::from(col[i + 1]));
+                //let ml = MultiLinearPoly::from_evaluations(values);
+                //mls.push(ml)
+            //},
+        //};
+    //}
     Ok(mls)
 }
 

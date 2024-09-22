@@ -16,7 +16,7 @@ rust-version = "1.78"
 bench = false
 
 [[bench]]
-name = "logup_gkr"
+name = "build_mle"
 harness = false
 
 [[bench]]
@@ -28,7 +28,11 @@ name = "row_matrix"
 harness = false
 
 [[bench]]
-name = "lagrange_kernel"
+name = "logup_gkr"
+harness = false
+
+[[bench]]
+name = "row_matrix"
 harness = false
 
 [features]
