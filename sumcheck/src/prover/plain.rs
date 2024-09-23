@@ -10,6 +10,7 @@ use math::FieldElement;
 #[cfg(feature = "concurrent")]
 pub use rayon::prelude::*;
 use smallvec::smallvec;
+use utils::{iter, iter_mut};
 
 use super::SumCheckProverError;
 use crate::{
@@ -247,10 +248,13 @@ pub fn sumcheck_prove_plain_batched<E: FieldElement, H: ElementHasher<BaseField 
         let mut all_round_poly_eval_at_3 = E::ZERO;
         let len = p0_s[0].num_evaluations() / 2;
 
-        for (circuit_id, (p0, (p1, (q0, q1)))) in p0_s
-            .iter_mut()
-            .zip(p1_s.iter_mut().zip(q0_s.iter_mut().zip(q1_s.iter_mut())))
-            .enumerate()
+        for (p0, (p1, (q0, (q1, batching_randomness)))) in p0_s.iter_mut().zip(
+            p1_s.iter_mut()
+                .zip(q0_s.iter_mut().zip(q1_s.iter_mut().zip(tensored_batching_randomness.iter()))),
+        )
+        //for  (p0, (p1, (q0, (q1, batching_randomness))))  in
+        //iter_mut!(p0_s)
+        //.zip(iter_mut!(p1_s).zip(iter_mut!(q0_s).zip(iter_mut!(q1_s).zip(iter!(tensored_batching_randomness)))))
         {
             let (round_poly_eval_at_1, round_poly_eval_at_2, round_poly_eval_at_3) = (0..len).fold(
                 (E::ZERO, E::ZERO, E::ZERO),
@@ -306,12 +310,9 @@ pub fn sumcheck_prove_plain_batched<E: FieldElement, H: ElementHasher<BaseField 
                 },
             );
 
-            all_round_poly_eval_at_1 +=
-                round_poly_eval_at_1 * tensored_batching_randomness[circuit_id];
-            all_round_poly_eval_at_2 +=
-                round_poly_eval_at_2 * tensored_batching_randomness[circuit_id];
-            all_round_poly_eval_at_3 +=
-                round_poly_eval_at_3 * tensored_batching_randomness[circuit_id];
+            all_round_poly_eval_at_1 += round_poly_eval_at_1 * *batching_randomness;
+            all_round_poly_eval_at_2 += round_poly_eval_at_2 * *batching_randomness;
+            all_round_poly_eval_at_3 += round_poly_eval_at_3 * *batching_randomness;
         }
 
         let evals =
