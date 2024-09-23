@@ -11,7 +11,7 @@ use math::FieldElement;
 pub use rayon::prelude::*;
 use smallvec::smallvec;
 
-use super::SumCheckProverError;
+use super::{CircuitLayer, CircuitLayerPolys, SumCheckProverError};
 use crate::{
     comb_func, CompressedUnivariatePolyEvals, FinalOpeningClaim, MultiLinearPoly, RoundProof,
     SumCheckProof,
@@ -224,10 +224,11 @@ pub fn sumcheck_prove_plain<E: FieldElement, H: ElementHasher<BaseField = E::Bas
 pub fn sumcheck_prove_plain_batched<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>>(
     claims: &[E],
     r_batch: E,
-    mut p0_s: Vec<MultiLinearPoly<E>>,
-    mut p1_s: Vec<MultiLinearPoly<E>>,
-    mut q0_s: Vec<MultiLinearPoly<E>>,
-    mut q1_s: Vec<MultiLinearPoly<E>>,
+    mut inner_layers: Vec<CircuitLayerPolys<E>>,
+    //mut p0_s: Vec<MultiLinearPoly<E>>,
+    //mut p1_s: Vec<MultiLinearPoly<E>>,
+    //mut q0_s: Vec<MultiLinearPoly<E>>,
+    //mut q1_s: Vec<MultiLinearPoly<E>>,
     eq: &mut MultiLinearPoly<E>,
     tensored_batching_randomness: &[E],
     transcript: &mut impl RandomCoin<Hasher = H, BaseField = E::BaseField>,
@@ -240,44 +241,44 @@ pub fn sumcheck_prove_plain_batched<E: FieldElement, H: ElementHasher<BaseField 
     for (circuit_id, claim) in claims.iter().enumerate() {
         all_claim += *claim * tensored_batching_randomness[circuit_id];
     }
-    let num_rounds = p0_s[0].num_variables();
+    let num_rounds = inner_layers[0].numerators.num_variables() - 1;
     for _ in 0..num_rounds {
         let mut all_round_poly_eval_at_1 = E::ZERO;
         let mut all_round_poly_eval_at_2 = E::ZERO;
         let mut all_round_poly_eval_at_3 = E::ZERO;
-        let len = p0_s[0].num_evaluations() / 2;
+        let len = inner_layers[0].numerators.num_evaluations() / 4;
 
-        for (p0, (p1, (q0, (q1, batching_randomness)))) in p0_s.iter_mut().zip(
-            p1_s.iter_mut()
-                .zip(q0_s.iter_mut().zip(q1_s.iter_mut().zip(tensored_batching_randomness.iter()))),
-        )
+        for (inner_layer, batching_randomness) in
+            inner_layers.iter_mut().zip(tensored_batching_randomness)
         //for  (p0, (p1, (q0, (q1, batching_randomness))))  in
         //iter_mut!(p0_s)
         //.zip(iter_mut!(p1_s).zip(iter_mut!(q0_s).zip(iter_mut!(q1_s).zip(iter!(tensored_batching_randomness)))))
         {
-             #[cfg(not(feature = "concurrent"))]
+            #[cfg(not(feature = "concurrent"))]
             let (round_poly_eval_at_1, round_poly_eval_at_2, round_poly_eval_at_3) = (0..len).fold(
                 (E::ZERO, E::ZERO, E::ZERO),
                 |(acc_point_1, acc_point_2, acc_point_3), i| {
-                    let round_poly_eval_at_1 = comb_func(
-                        p0[i + len],
-                        p1[i + len],
-                        q0[i + len],
-                        q1[i + len],
-                        eq[i + len],
-                        r_batch,
-                    );
+                    let p0_i_0 = inner_layer.numerators[2 * i];
+                    let p0_i_1 = inner_layer.numerators[2 * i + 1];
+                    let p1_i_0 = inner_layer.numerators[2 * (i + len)];
+                    let p1_i_1 = inner_layer.numerators[2 * (i + len) + 1];
+                    let q0_i_0 = inner_layer.denominators[2 * i];
+                    let q0_i_1 = inner_layer.denominators[2 * i + 1];
+                    let q1_i_0 = inner_layer.denominators[2 * (i + len)];
+                    let q1_i_1 = inner_layer.denominators[2 * (i + len) + 1];
+                    let round_poly_eval_at_1 =
+                        comb_func(p1_i_0, p1_i_1, q1_i_0, q1_i_1, eq[i + len], r_batch);
 
-                    let p0_delta = p0[i + len] - p0[i];
-                    let p1_delta = p1[i + len] - p1[i];
-                    let q0_delta = q0[i + len] - q0[i];
-                    let q1_delta = q1[i + len] - q1[i];
+                    let p0_delta = p1_i_0 - p0_i_0;
+                    let p1_delta = p1_i_1 - p0_i_1;
+                    let q0_delta = q1_i_0 - q0_i_0;
+                    let q1_delta = q1_i_1 - q0_i_1;
                     let eq_delta = eq[i + len] - eq[i];
 
-                    let mut p0_eval_at_x = p0[i + len] + p0_delta;
-                    let mut p1_eval_at_x = p1[i + len] + p1_delta;
-                    let mut q0_eval_at_x = q0[i + len] + q0_delta;
-                    let mut q1_eval_at_x = q1[i + len] + q1_delta;
+                    let mut p0_eval_at_x = p1_i_0 + p0_delta;
+                    let mut p1_eval_at_x = p1_i_1 + p1_delta;
+                    let mut q0_eval_at_x = q1_i_0 + q0_delta;
+                    let mut q1_eval_at_x = q1_i_1 + q1_delta;
                     let mut eq_evx = eq[i + len] + eq_delta;
                     let round_poly_eval_at_2 = comb_func(
                         p0_eval_at_x,
@@ -311,30 +312,32 @@ pub fn sumcheck_prove_plain_batched<E: FieldElement, H: ElementHasher<BaseField 
             );
 
             #[cfg(feature = "concurrent")]
-        let (round_poly_eval_at_1, round_poly_eval_at_2, round_poly_eval_at_3) = (0..len)
-            .into_par_iter()
-            .fold(
-                || (E::ZERO, E::ZERO, E::ZERO),
-                |(a, b, c), i| {
-                     let round_poly_eval_at_1 = comb_func(
-                        p0[i + len],
-                        p1[i + len],
-                        q0[i + len],
-                        q1[i + len],
-                        eq[i + len],
-                        r_batch,
-                    );
+            let (round_poly_eval_at_1, round_poly_eval_at_2, round_poly_eval_at_3) = (0..len)
+                .into_par_iter()
+                .fold(
+                    || (E::ZERO, E::ZERO, E::ZERO),
+                    |(a, b, c), i| {
+                        let p0_i_0 = inner_layer.numerators[2 * i];
+                    let p0_i_1 = inner_layer.numerators[2 * i + 1];
+                    let p1_i_0 = inner_layer.numerators[2 * (i + len)];
+                    let p1_i_1 = inner_layer.numerators[2 * (i + len) + 1];
+                    let q0_i_0 = inner_layer.denominators[2 * i];
+                    let q0_i_1 = inner_layer.denominators[2 * i + 1];
+                    let q1_i_0 = inner_layer.denominators[2 * (i + len)];
+                    let q1_i_1 = inner_layer.denominators[2 * (i + len) + 1];
+                    let round_poly_eval_at_1 =
+                        comb_func(p1_i_0, p1_i_1, q1_i_0, q1_i_1, eq[i + len], r_batch);
 
-                    let p0_delta = p0[i + len] - p0[i];
-                    let p1_delta = p1[i + len] - p1[i];
-                    let q0_delta = q0[i + len] - q0[i];
-                    let q1_delta = q1[i + len] - q1[i];
+                    let p0_delta = p1_i_0 - p0_i_0;
+                    let p1_delta = p1_i_1 - p0_i_1;
+                    let q0_delta = q1_i_0 - q0_i_0;
+                    let q1_delta = q1_i_1 - q0_i_1;
                     let eq_delta = eq[i + len] - eq[i];
 
-                    let mut p0_eval_at_x = p0[i + len] + p0_delta;
-                    let mut p1_eval_at_x = p1[i + len] + p1_delta;
-                    let mut q0_eval_at_x = q0[i + len] + q0_delta;
-                    let mut q1_eval_at_x = q1[i + len] + q1_delta;
+                    let mut p0_eval_at_x = p1_i_0 + p0_delta;
+                    let mut p1_eval_at_x = p1_i_1 + p1_delta;
+                    let mut q0_eval_at_x = q1_i_0 + q0_delta;
+                    let mut q1_eval_at_x = q1_i_1 + q1_delta;
                     let mut eq_evx = eq[i + len] + eq_delta;
                     let round_poly_eval_at_2 = comb_func(
                         p0_eval_at_x,
@@ -359,13 +362,17 @@ pub fn sumcheck_prove_plain_batched<E: FieldElement, H: ElementHasher<BaseField 
                         r_batch,
                     );
 
-                    (round_poly_eval_at_1 + a, round_poly_eval_at_2 + b, round_poly_eval_at_3 + c)
-                },
-            )
-            .reduce(
-                || (E::ZERO, E::ZERO, E::ZERO),
-                |(a0, b0, c0), (a1, b1, c1)| (a0 + a1, b0 + b1, c0 + c1),
-            );
+                        (
+                            round_poly_eval_at_1 + a,
+                            round_poly_eval_at_2 + b,
+                            round_poly_eval_at_3 + c,
+                        )
+                    },
+                )
+                .reduce(
+                    || (E::ZERO, E::ZERO, E::ZERO),
+                    |(a0, b0, c0), (a1, b1, c1)| (a0 + a1, b0 + b1, c0 + c1),
+                );
 
             all_round_poly_eval_at_1 += round_poly_eval_at_1 * *batching_randomness;
             all_round_poly_eval_at_2 += round_poly_eval_at_2 * *batching_randomness;
@@ -386,14 +393,10 @@ pub fn sumcheck_prove_plain_batched<E: FieldElement, H: ElementHasher<BaseField 
         let round_challenge =
             transcript.draw().map_err(|_| SumCheckProverError::FailedToGenerateChallenge)?;
 
-        for (p0, (p1, (q0, q1))) in
-            p0_s.iter_mut().zip(p1_s.iter_mut().zip(q0_s.iter_mut().zip(q1_s.iter_mut())))
-        {
+        for inner_layer in inner_layers.iter_mut() {
             // fold each multi-linear using the round challenge
-            p0.bind_least_significant_variable(round_challenge);
-            p1.bind_least_significant_variable(round_challenge);
-            q0.bind_least_significant_variable(round_challenge);
-            q1.bind_least_significant_variable(round_challenge);
+            inner_layer.numerators.bind_least_significant_variable(round_challenge);
+            inner_layer.denominators.bind_least_significant_variable(round_challenge);
         }
         eq.bind_least_significant_variable(round_challenge);
 
@@ -405,11 +408,11 @@ pub fn sumcheck_prove_plain_batched<E: FieldElement, H: ElementHasher<BaseField 
     }
 
     let mut openings = vec![];
-    for (p0, (p1, (q0, q1))) in
-        p0_s.iter_mut().zip(p1_s.iter_mut().zip(q0_s.iter_mut().zip(q1_s.iter_mut())))
-    {
-        assert_eq!(p0.evaluations().len(), 1);
-        openings.push(vec![p0[0], p1[0], q0[0], q1[0]])
+    for inner_layer in inner_layers.iter_mut() {
+        //assert_eq!(p0.evaluations().len(), 1);
+        let p = inner_layer.numerators.evaluations();
+        let q = inner_layer.denominators.evaluations();
+        openings.push(vec![p[0], p[1], q[0], q[1]])
     }
 
     Ok(SumCheckProof {
