@@ -56,7 +56,7 @@ pub use utils::rayon::{current_num_threads as rayon_num_threads, prelude::*};
 /// This means that layer ν will be the output layer and will consist of four values
 /// (p_0[ν - 1], p_1[ν - 1], p_0[ν - 1], p_1[ν - 1]) ∈ 𝔽^ν.
 pub struct EvaluatedCircuit<E: FieldElement> {
-    layer_polys: Vec<CircuitLayerPolys<E>>,
+    layer_polys: Vec<Vec<CircuitLayerPolys<E>>>,
 }
 
 impl<E: FieldElement> EvaluatedCircuit<E> {
@@ -72,10 +72,10 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
 
         let mut current_layer =
             Self::generate_input_layer(main_trace_columns, evaluator, log_up_randomness);
-        while current_layer.num_wires() > 1 {
+        while current_layer[0].num_wires() > 1 {
             let next_layer = Self::compute_next_layer(&current_layer);
 
-            layer_polys.push(CircuitLayerPolys::from_circuit_layer(current_layer));
+            layer_polys.push(CircuitLayerPolys::from_circuit_layer(&current_layer));
 
             current_layer = next_layer;
         }
@@ -88,21 +88,25 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
     /// Note that the return type is a slice of [`CircuitLayerPolys`] as opposed to
     /// [`CircuitLayer`], since the evaluated layers are stored in a representation which can be
     /// proved using GKR.
-    pub fn layers(self) -> Vec<CircuitLayerPolys<E>> {
+    pub fn layers(self) -> Vec<Vec<CircuitLayerPolys<E>>> {
         self.layer_polys
     }
 
     /// Returns the numerator/denominator polynomials representing the output layer of the circuit.
-    pub fn output_layer(&self) -> &CircuitLayerPolys<E> {
+    pub fn output_layers(&self) -> &Vec<CircuitLayerPolys<E>> {
         self.layer_polys.last().expect("circuit has at least one layer")
     }
 
     /// Evaluates the output layer at `query`, where the numerators of the output layer are treated
     /// as evaluations of a multilinear polynomial, and similarly for the denominators.
-    pub fn evaluate_output_layer(&self, query: E) -> (E, E) {
-        let CircuitLayerPolys { numerators, denominators } = self.output_layer();
+    pub fn evaluate_output_layer(&self, query: E) -> Vec<(E, E)> {
+        let mut res = vec![];
+        for output_layer in self.output_layers().iter() {
+            let CircuitLayerPolys { numerators, denominators } = output_layer;
 
-        (numerators.evaluate(&[query]), denominators.evaluate(&[query]))
+            res.push((numerators.evaluate(&[query]), denominators.evaluate(&[query])))
+        }
+        res
     }
 
     // HELPERS
@@ -111,76 +115,66 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
     /// Generates the input layer of the circuit from the main trace columns and some randomness
     /// provided by the verifier.
     fn generate_input_layer(
-        trace: &impl Trace<BaseField = E::BaseField>,
+        main_trace: &impl Trace<BaseField = E::BaseField>,
         evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
         log_up_randomness: &[E],
-    ) -> CircuitLayer<E> {
+    ) -> Vec<CircuitLayer<E>> {
         let num_fractions = evaluator.get_num_fractions();
         let periodic_values = evaluator.build_periodic_values(trace.main_segment().num_rows());
 
-        let mut input_layer_wires =
-            unsafe { uninit_vector(trace.main_segment().num_rows() * num_fractions) };
-        let num_cols = trace.main_segment().num_cols();
-        let num_oracles = evaluator.get_oracles().len();
-        let num_periodic_cols = periodic_values.num_columns();
+        let mut input_layer_wires: Vec<Vec<_>> =
+          //  Vec::with_capacity(main_trace.main_segment().num_rows() * num_fractions);
+            vec![vec![]; num_fractions];
+        let mut main_frame = EvaluationFrame::new(main_trace.main_segment().num_cols());
 
-        batch_iter_mut!(
-            &mut input_layer_wires,
-            1024,
-            |batch: &mut [CircuitWire<E>], batch_offset: usize| {
-                let mut main_frame = EvaluationFrame::new(num_cols);
-                let mut query = vec![E::BaseField::ZERO; num_oracles];
-                let mut periodic_values_row = vec![E::BaseField::ZERO; num_periodic_cols];
-                let mut numerators = vec![E::ZERO; num_fractions];
-                let mut denominators = vec![E::ZERO; num_fractions];
+        let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
+        let mut periodic_values_row = vec![E::BaseField::ZERO; periodic_values.num_columns()];
+        let mut numerators = vec![E::ZERO; num_fractions];
+        let mut denominators = vec![E::ZERO; num_fractions];
+        for i in 0..main_trace.main_segment().num_rows() {
+            main_trace.read_main_frame(i, &mut main_frame);
+            periodic_values.fill_periodic_values_at(i, &mut periodic_values_row);
+            evaluator.build_query(&main_frame, &mut query);
 
-                let row_offset = batch_offset / num_fractions;
-                let batch_size = batch.len();
-                let num_rows_per_batch = batch_size / num_fractions;
+            evaluator.evaluate_query(
+                &query,
+                &periodic_values_row,
+                log_up_randomness,
+                &mut numerators,
+                &mut denominators,
+            );
+            numerators
+                .iter()
+                .zip(denominators.iter())
+                .zip(input_layer_wires.iter_mut())
+                .for_each(|((numerator, denominator), circuit_input_layer)| {
+                    circuit_input_layer.push(CircuitWire::new(*numerator, *denominator))
+                });
+        }
 
-                for i in
-                    (0..trace.main_segment().num_rows()).skip(row_offset).take(num_rows_per_batch)
-                {
-                    trace.read_main_frame(i, &mut main_frame);
-                    periodic_values.fill_periodic_values_at(i, &mut periodic_values_row);
-                    evaluator.build_query(&main_frame, &mut query);
-
-                    evaluator.evaluate_query(
-                        &query,
-                        &periodic_values_row,
-                        log_up_randomness,
-                        &mut numerators,
-                        &mut denominators,
-                    );
-
-                    let n = (i - row_offset) * num_fractions;
-                    for ((wire, numerator), denominator) in batch[n..n + num_fractions]
-                        .iter_mut()
-                        .zip(numerators.iter())
-                        .zip(denominators.iter())
-                    {
-                        *wire = CircuitWire::new(*numerator, *denominator);
-                    }
-                }
-            }
-        );
-
-        CircuitLayer::new(input_layer_wires)
+        input_layer_wires
+            .iter()
+            .map(|input_layer| CircuitLayer::new(input_layer.to_vec()))
+            .collect()
     }
 
     /// Computes the subsequent layer of the circuit from a given layer.
-    fn compute_next_layer(prev_layer: &CircuitLayer<E>) -> CircuitLayer<E> {
-        let next_layer_wires = chunks!(prev_layer.wires(), 2)
-            .map(|input_wires| {
-                let left_input_wire = input_wires[0];
-                let right_input_wire = input_wires[1];
+    fn compute_next_layer(prev_layers: &[CircuitLayer<E>]) -> Vec<CircuitLayer<E>> {
+        let mut next_layers = vec![];
+        for prev_layer in prev_layers.iter() {
+            let next_layer_wires = chunks!(prev_layer.wires(), 2)
+                .map(|input_wires| {
+                    let left_input_wire = input_wires[0];
+                    let right_input_wire = input_wires[1];
 
-                // output wire
-                left_input_wire + right_input_wire
-            })
-            .collect();
+                    // output wire
+                    left_input_wire + right_input_wire
+                })
+                .collect();
 
-        CircuitLayer::new(next_layer_wires)
+            next_layers.push(CircuitLayer::new(next_layer_wires))
+        }
+        next_layers
     }
 }
 
@@ -199,8 +193,12 @@ impl<E> CircuitLayerPolys<E>
 where
     E: FieldElement,
 {
-    pub fn from_circuit_layer(layer: CircuitLayer<E>) -> Self {
-        Self::from_wires(layer.wires)
+    pub fn from_circuit_layer(layers: &[CircuitLayer<E>]) -> Vec<Self> {
+        let mut result = vec![];
+        for layer in layers {
+            result.push(Self::from_wires(layer.wires.clone()))
+        }
+        result
     }
 
     pub fn from_wires(wires: Vec<CircuitWire<E>>) -> Self {
@@ -326,7 +324,7 @@ where
 #[derive(Debug)]
 pub struct GkrClaim<E: FieldElement> {
     pub evaluation_point: Vec<E>,
-    pub claimed_evaluation: (E, E),
+    pub claimed_evaluation: Vec<(E, E)>,
 }
 
 /// We receive our 4 multilinear polynomials which were evaluated at a random point:

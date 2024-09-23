@@ -27,6 +27,7 @@ math = { version = "0.9", path = "../math", package = "winter-math", default-fea
 sumcheck = { version = "0.1", path = "../sumcheck", package = "winter-sumcheck", default-features = false }
 thiserror = { version = "1.0", git = "https://github.com/bitwalker/thiserror", branch = "no-std", default-features = false }
 utils = { version = "0.9", path = "../utils/core", package = "winter-utils", default-features = false }
+libc-print = "0.1.23"
 
 # Allow math in docs
 [package.metadata.docs.rs]

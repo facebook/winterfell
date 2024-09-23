@@ -7,14 +7,14 @@ use alloc::vec::Vec;
 
 use air::{LogUpGkrEvaluator, PeriodicTable};
 use crypto::{ElementHasher, RandomCoin};
+use libc_print::libc_println;
 use math::FieldElement;
 #[cfg(feature = "concurrent")]
 pub use rayon::prelude::*;
 
 use super::SumCheckProverError;
 use crate::{
-    evaluate_composition_poly, CompressedUnivariatePolyEvals, EqFunction, FinalOpeningClaim,
-    MultiLinearPoly, RoundProof, SumCheckProof, SumCheckRoundClaim,
+    evaluate_composition_poly, evaluate_composition_poly_2, CompressedUnivariatePolyEvals, EqFunction, FinalOpeningClaim, MultiLinearPoly, RoundProof, SumCheckProof, SumCheckRoundClaim
 };
 
 /// A sum-check prover for the input layer which can accommodate non-linear expressions in
@@ -161,28 +161,23 @@ pub fn sum_check_prove_higher_degree<
     log_up_randomness: Vec<E>,
     mut mls: Vec<MultiLinearPoly<E>>,
     mut periodic_table: PeriodicTable<E>,
+    tensored_circuits_batching: &[E],
     coin: &mut impl RandomCoin<Hasher = H, BaseField = E::BaseField>,
 ) -> Result<SumCheckProof<E>, SumCheckProverError> {
-    let num_rounds = mls[0].num_variables();
+    let num_rounds = mls[0].num_variables() - 1;
 
     let mut round_proofs = vec![];
 
-    // split the evaluation point into two points of dimension mu and nu, respectively
-    let mu = evaluator.get_num_fractions().trailing_zeros() - 1;
-    let (evaluation_point_nu, evaluation_point_mu) =
-        evaluation_point.split_at(evaluation_point.len() - mu as usize);
-
-    let eq_mu = EqFunction::ml_at(evaluation_point_mu.into()).evaluations().to_vec();
-    let mut eq_nu = EqFunction::ml_at(evaluation_point_nu.into());
+    let mut eq_mle = EqFunction::ml_at(evaluation_point.into());
 
     // setup first round claim
     let mut current_round_claim = SumCheckRoundClaim { eval_point: vec![], claim };
 
     // run the first round of the protocol
     let round_poly_evals = sumcheck_round(
-        &eq_mu,
+        &tensored_circuits_batching,
         evaluator,
-        &eq_nu,
+        &eq_mle,
         &mls,
         &periodic_table,
         &log_up_randomness,
@@ -206,7 +201,7 @@ pub fn sum_check_prove_higher_degree<
         // fold each multi-linear using the round challenge
         mls.iter_mut()
             .for_each(|ml| ml.bind_least_significant_variable(round_challenge));
-        eq_nu.bind_least_significant_variable(round_challenge);
+        eq_mle.bind_least_significant_variable(round_challenge);
 
         // fold each periodic multi-linear using the round challenge
         periodic_table.bind_least_significant_variable(round_challenge);
@@ -214,9 +209,9 @@ pub fn sum_check_prove_higher_degree<
         // run the i-th round of the protocol using the folded multi-linears for the new reduced
         // claim. This basically computes the s_i polynomial.
         let round_poly_evals = sumcheck_round(
-            &eq_mu,
+            &tensored_circuits_batching,
             evaluator,
-            &eq_nu,
+            &eq_mle,
             &mls,
             &periodic_table,
             &log_up_randomness,
@@ -245,10 +240,11 @@ pub fn sum_check_prove_higher_degree<
     let SumCheckRoundClaim { eval_point, claim: _claim } =
         reduce_claim(&round_proofs[num_rounds - 1], current_round_claim, round_challenge);
 
-    let openings = mls.iter_mut().map(|ml| ml.evaluations()[0]).collect();
+    let openings :Vec<E> = mls.into_iter().flat_map(|ml| [ml.evaluations()[0], ml.evaluations()[1]]).collect();
 
+    libc_println!("openings prover {:?}", openings);
     Ok(SumCheckProof {
-        openings_claim: FinalOpeningClaim { eval_point, openings },
+        openings_claim: FinalOpeningClaim { eval_point, openings: vec![openings] },
         round_proofs,
     })
 }
@@ -306,75 +302,114 @@ fn sumcheck_round<E: FieldElement>(
     let num_mls = mls.len();
     let num_periodic = periodic_table.num_columns();
     let num_vars = mls[0].num_variables();
-    let num_rounds = num_vars - 1;
+    let num_rounds = num_vars - 1 - 1;
 
     #[cfg(not(feature = "concurrent"))]
     let evaluations = {
-        let mut evals_one = vec![E::ZERO; num_mls];
-        let mut evals_zero = vec![E::ZERO; num_mls];
-        let mut evals_x = vec![E::ZERO; num_mls];
+        let mut evals_one_zero = vec![E::ZERO; num_mls];
+        let mut evals_one_one = vec![E::ZERO; num_mls];
+        let mut evals_zero_zero = vec![E::ZERO; num_mls];
+        let mut evals_zero_one = vec![E::ZERO; num_mls];
 
-        let mut evals_periodic_one = vec![E::ZERO; num_periodic];
-        let mut evals_periodic_zero = vec![E::ZERO; num_periodic];
-        let mut evals_periodic_x = vec![E::ZERO; num_periodic];
+        let mut evals_x_zero = vec![E::ZERO; num_mls];
+        let mut evals_x_one = vec![E::ZERO; num_mls];
+
+        let mut evals_periodic_zero_zero = vec![E::ZERO; num_periodic];
+        let mut evals_periodic_zero_one = vec![E::ZERO; num_periodic];
+        let mut evals_periodic_one_zero = vec![E::ZERO; num_periodic];
+        let mut evals_periodic_one_one = vec![E::ZERO; num_periodic];
+        
+        let mut evals_periodic_x_zero = vec![E::ZERO; num_periodic];
+        let mut evals_periodic_x_one = vec![E::ZERO; num_periodic];
+
         let mut eq_x = E::ZERO;
 
-        let mut deltas = vec![E::ZERO; num_mls];
-        let mut deltas_periodic = vec![E::ZERO; num_periodic];
+        let mut deltas_zero = vec![E::ZERO; num_mls];
+        let mut deltas_one = vec![E::ZERO; num_mls];
+        let mut deltas_periodic_zero = vec![E::ZERO; num_periodic];
+        let mut deltas_periodic_one = vec![E::ZERO; num_periodic];
         let mut eq_delta = E::ZERO;
 
-        let mut numerators = vec![E::ZERO; evaluator.get_num_fractions()];
-        let mut denominators = vec![E::ZERO; evaluator.get_num_fractions()];
+        let mut numerators_zero = vec![E::ZERO; evaluator.get_num_fractions()];
+        let mut denominators_zero = vec![E::ZERO; evaluator.get_num_fractions()];
+        let mut numerators_one = vec![E::ZERO; evaluator.get_num_fractions()];
+        let mut denominators_one = vec![E::ZERO; evaluator.get_num_fractions()];
         (0..1 << num_rounds)
             .map(|i| {
                 let mut total_evals = vec![E::ZERO; evaluator.max_degree()];
 
                 for (j, ml) in mls.iter().enumerate() {
-                    evals_zero[j] = ml.evaluations()[i];
-                    evals_one[j] = ml.evaluations()[i + (1 << num_rounds)];
+                    evals_zero_zero[j] = ml.evaluations()[2 * i];
+                    evals_zero_one[j] = ml.evaluations()[2 * i + 1];
+                    evals_one_zero[j] = ml.evaluations()[2 * (i + num_rounds)];
+                    evals_one_one[j] = ml.evaluations()[2 * (i + num_rounds) + 1];
                 }
 
                 let eq_at_zero = eq_ml.evaluations()[i];
-                let eq_at_one = eq_ml.evaluations()[i + (1 << num_rounds)];
+                let eq_at_one = eq_ml.evaluations()[i + ( num_rounds)];
 
                 // add evaluation of periodic columns
-                periodic_table.fill_periodic_values_at(i, &mut evals_periodic_zero);
-                periodic_table
-                    .fill_periodic_values_at(i + (1 << num_rounds), &mut evals_periodic_one);
+                periodic_table.fill_periodic_values_at(2 * i, &mut evals_periodic_zero_zero);
+                periodic_table.fill_periodic_values_at(2 * i + 1, &mut evals_periodic_zero_one);
+                periodic_table.fill_periodic_values_at(2 * (i + num_rounds), &mut evals_periodic_one_zero);
+                periodic_table.fill_periodic_values_at(2 * (i + num_rounds) + 1, &mut evals_periodic_one_one);
+            
 
                 // compute the evaluation at 1
                 evaluator.evaluate_query(
-                    &evals_one,
-                    &evals_periodic_one,
+                    &evals_one_zero,
+                    &evals_periodic_one_zero,
                     log_up_randomness,
-                    &mut numerators,
-                    &mut denominators,
+                    &mut numerators_zero,
+                    &mut denominators_zero,
                 );
-                total_evals[0] = evaluate_composition_poly(
+                evaluator.evaluate_query(
+                    &evals_one_one,
+                    &evals_periodic_one_one,
+                    log_up_randomness,
+                    &mut numerators_one,
+                    &mut denominators_one,
+                );
+                total_evals[0] = evaluate_composition_poly_2(
                     eq_mu,
-                    &numerators,
-                    &denominators,
+                    &numerators_zero,
+                    &numerators_one,
+                    &denominators_zero,
+                    &denominators_one,
                     eq_at_one,
                     r_sum_check,
                 );
 
                 // compute the evaluations at 2, ..., d_max points
                 for i in 0..num_mls {
-                    deltas[i] = evals_one[i] - evals_zero[i];
-                    evals_x[i] = evals_one[i];
+                    deltas_zero[i] = evals_one_zero[i] - evals_zero_zero[i];
+                    evals_x_zero[i] = evals_one_zero[i];
+                    deltas_one[i] = evals_one_one[i] - evals_zero_one[i];
+                    evals_x_one[i] = evals_one_one[i];
                 }
                 for i in 0..num_periodic {
-                    deltas_periodic[i] = evals_periodic_one[i] - evals_periodic_zero[i];
-                    evals_periodic_x[i] = evals_periodic_one[i];
+                    deltas_periodic_zero[i] =
+                        evals_periodic_zero_one[i] - evals_periodic_zero_zero[i];
+                    evals_periodic_x_zero[i] = evals_periodic_zero_one[i];
+                    deltas_periodic_one[i] = evals_periodic_one_one[i] - evals_periodic_one_zero[i];
+                    evals_periodic_x_one[i] = evals_periodic_one_one[i];
                 }
                 eq_delta = eq_at_one - eq_at_zero;
                 eq_x = eq_at_one;
 
                 for e in total_evals.iter_mut().skip(1) {
-                    evals_x.iter_mut().zip(deltas.iter()).for_each(|(evx, delta)| {
+                    evals_x_zero.iter_mut().zip(deltas_zero.iter()).for_each(|(evx, delta)| {
                         *evx += *delta;
                     });
-                    evals_periodic_x.iter_mut().zip(deltas_periodic.iter()).for_each(
+                    evals_periodic_x_zero.iter_mut().zip(deltas_periodic_zero.iter()).for_each(
+                        |(evx, delta)| {
+                            *evx += *delta;
+                        },
+                    );
+                    evals_x_one.iter_mut().zip(deltas_one.iter()).for_each(|(evx, delta)| {
+                        *evx += *delta;
+                    });
+                    evals_periodic_x_one.iter_mut().zip(deltas_periodic_one.iter()).for_each(
                         |(evx, delta)| {
                             *evx += *delta;
                         },
@@ -382,16 +417,25 @@ fn sumcheck_round<E: FieldElement>(
                     eq_x += eq_delta;
 
                     evaluator.evaluate_query(
-                        &evals_x,
-                        &evals_periodic_x,
+                        &evals_x_zero,
+                        &evals_periodic_x_zero,
                         log_up_randomness,
-                        &mut numerators,
-                        &mut denominators,
+                        &mut numerators_zero,
+                        &mut denominators_zero,
                     );
-                    *e = evaluate_composition_poly(
+                    evaluator.evaluate_query(
+                        &evals_x_one,
+                        &evals_periodic_x_one,
+                        log_up_randomness,
+                        &mut numerators_one,
+                        &mut denominators_one,
+                    );
+                    *e = evaluate_composition_poly_2(
                         eq_mu,
-                        &numerators,
-                        &denominators,
+                        &numerators_zero,
+                        &numerators_one,
+                        &denominators_zero,
+                        &denominators_one,
                         eq_x,
                         r_sum_check,
                     );

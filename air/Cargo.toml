@@ -25,6 +25,7 @@ fri = { version = "0.9", path = "../fri", package = "winter-fri", default-featur
 libm = "0.2.8"
 math = { version = "0.9", path = "../math", package = "winter-math", default-features = false }
 utils = { version = "0.9", path = "../utils/core", package = "winter-utils", default-features = false }
+libc-print = "0.1.23"
 
 [dev-dependencies]
 rand-utils = { version = "0.9", path = "../utils/rand", package = "winter-rand-utils" }

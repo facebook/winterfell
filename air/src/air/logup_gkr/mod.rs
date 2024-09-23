@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::vec::Vec;
+use libc_print::libc_println;
 use core::marker::PhantomData;
 
 use crypto::{ElementHasher, RandomCoin};
@@ -109,7 +110,7 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
     /// [1]: https://eprint.iacr.org/2023/1284
     fn generate_univariate_iop_for_multi_linear_opening_data<E, H>(
         &self,
-        openings: Vec<E>,
+        openings: Vec<Vec<E>>,
         eval_point: Vec<E>,
         public_coin: &mut impl RandomCoin<Hasher = H, BaseField = E::BaseField>,
     ) -> GkrData<E>
@@ -117,17 +118,26 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
         E: FieldElement<BaseField = Self::BaseField>,
         H: ElementHasher<BaseField = E::BaseField>,
     {
+        let openings: Vec<E> =
+            openings[0].clone().chunks(2).flat_map(|ops| [ops[0], ops[1]]).collect();
         public_coin.reseed(H::hash_elements(&openings));
+
+        let folding_randomness: E = public_coin.draw().expect("failed to generate randomness");
+        let batched_openings: Vec<E> =
+            openings.chunks(2).map(|p| p[0] + folding_randomness * (p[1] - p[0])).collect();
 
         let mut batching_randomness = Vec::with_capacity(openings.len() - 1);
         for _ in 0..openings.len() - 1 {
             batching_randomness.push(public_coin.draw().expect("failed to generate randomness"))
         }
+        let mut eval_point = eval_point;
+        eval_point.push(folding_randomness);
+        libc_println!("folding ranomnes {:?}", folding_randomness);
 
         GkrData::new(
             LagrangeKernelRandElements::new(eval_point),
             batching_randomness,
-            openings,
+            batched_openings,
             self.get_oracles().to_vec(),
         )
     }

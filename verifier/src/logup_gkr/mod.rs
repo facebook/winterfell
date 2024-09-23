@@ -2,10 +2,10 @@ use alloc::vec::Vec;
 
 use air::{Air, LogUpGkrEvaluator};
 use crypto::{ElementHasher, RandomCoin};
+use libc_print::libc_println;
 use math::FieldElement;
 use sumcheck::{
-    verify_sum_check_input_layer, verify_sum_check_intermediate_layers, CircuitOutput,
-    FinalOpeningClaim, GkrCircuitProof, SumCheckVerifierError,
+    verify_sum_check_input_layer, verify_sum_check_intermediate_layers, CircuitOutput, EqFunction, FinalOpeningClaim, GkrCircuitProof, SumCheckVerifierError
 };
 
 /// Verifies the validity of a GKR proof for a LogUp-GKR relation.
@@ -34,32 +34,73 @@ pub fn verify_gkr<
     } = proof;
 
     let CircuitOutput { numerators, denominators } = circuit_outputs;
-    let p0 = numerators.evaluations()[0];
-    let p1 = numerators.evaluations()[1];
-    let q0 = denominators.evaluations()[0];
-    let q1 = denominators.evaluations()[1];
-
-    // make sure that both denominators are not equal to E::ZERO
-    if q0 == E::ZERO || q1 == E::ZERO {
-        return Err(VerifierError::ZeroOutputDenominator);
-    }
-
-    // check that the output matches the expected `claim`
     let claim = evaluator.compute_claim(pub_inputs, &logup_randomness);
-    if (p0 * q1 + p1 * q0) / (q0 * q1) != claim {
+    let mut num_acc = E::ZERO;
+    let mut den_acc = E::ONE;
+    for (circuit_id, (nums, dens)) in
+        numerators.into_iter().zip(denominators.into_iter()).enumerate()
+    {
+        let mut evaluations = nums.evaluations().to_vec();
+        evaluations.extend_from_slice(&dens.evaluations());
+        transcript.reseed(H::hash_elements(&evaluations));
+
+        let p0 = nums.evaluations()[0];
+        let p1 = nums.evaluations()[1];
+        let q0 = dens.evaluations()[0];
+        let q1 = dens.evaluations()[1];
+
+        // make sure that both denominators are not equal to E::ZERO
+        if q0 == E::ZERO || q1 == E::ZERO {
+            libc_println!("p0 is zero");
+            return Err(VerifierError::ZeroOutputDenominator);
+        }
+
+        let cur_num = (p0 * q1 + p1 * q0);
+        let cur_den = q0 * q1;
+
+        let new_num = num_acc * cur_den + den_acc * cur_num;
+        let new_den = den_acc * cur_den;
+        num_acc = new_num;
+        den_acc = new_den;
+    }
+    if num_acc != claim || den_acc == E::ZERO {
         return Err(VerifierError::MismatchingCircuitOutput);
     }
 
+
     // generate the random challenge to reduce two claims into a single claim
-    let mut evaluations = numerators.evaluations().to_vec();
-    evaluations.extend_from_slice(denominators.evaluations());
-    transcript.reseed(H::hash_elements(&evaluations));
     let r = transcript.draw().map_err(|_| VerifierError::FailedToGenerateChallenge)?;
 
     // reduce the claim
-    let p_r = p0 + r * (p1 - p0);
-    let q_r = q0 + r * (q1 - q0);
-    let mut reduced_claim = (p_r, q_r);
+     let mut reduced_claims = vec![];
+    for (circuit_id, (nums, dens)) in
+        numerators.into_iter().zip(denominators.into_iter()).enumerate()
+    {
+        let p0 = nums.evaluations()[0];
+        let p1 = nums.evaluations()[1];
+        let q0 = dens.evaluations()[0];
+        let q1 = dens.evaluations()[1];
+        // reduce the claim
+        let p_r = p0 + r * (p1 - p0);
+        let q_r = q0 + r * (q1 - q0);
+        let reduced_claim = (p_r, q_r);
+        reduced_claims.push(reduced_claim)
+    }
+
+     let num_circuits = reduced_claims.len();
+    let log_num_circuits = num_circuits.ilog2();
+    assert_eq!(1 << log_num_circuits, num_circuits);
+
+    let mut circuit_batching_randomness: Vec<E> = vec![];
+
+    for _ in 0..log_num_circuits {
+        let batching_r = transcript.draw().map_err(|_| VerifierError::FailedToGenerateChallenge)?;
+        circuit_batching_randomness.push(batching_r);
+    }
+
+    let tensored_circuit_batching_randomness =
+        EqFunction::new(circuit_batching_randomness.into()).evaluations();
+        
 
     // verify all GKR layers but for the last one
     let num_layers = before_final_layer_proofs.proof.len();
@@ -68,19 +109,26 @@ pub fn verify_gkr<
         let FinalOpeningClaim { eval_point, openings } = verify_sum_check_intermediate_layers(
             &before_final_layer_proofs.proof[i],
             &evaluation_point,
-            reduced_claim,
+            &reduced_claims,
+            &tensored_circuit_batching_randomness,
             transcript,
         )?;
 
         // generate the random challenge to reduce two claims into a single claim
-        transcript.reseed(H::hash_elements(&openings));
+        for tmp in openings.iter() {
+            transcript.reseed(H::hash_elements(&tmp));
+        }
         let r_layer = transcript.draw().map_err(|_| VerifierError::FailedToGenerateChallenge)?;
 
-        let p0 = openings[0];
-        let p1 = openings[1];
-        let q0 = openings[2];
-        let q1 = openings[3];
-        reduced_claim = (p0 + r_layer * (p1 - p0), q0 + r_layer * (q1 - q0));
+        for (j, ops) in openings.iter().enumerate() {
+            let p0 = ops[0];
+            let p1 = ops[1];
+            let q0 = ops[2];
+            let q1 = ops[3];
+
+            let reduced_claim = (p0 + r_layer * (p1 - p0), q0 + r_layer * (q1 - q0));
+            reduced_claims[j] = reduced_claim;
+        }
 
         // collect the randomness used for the current layer
         let mut ext = eval_point.clone();
@@ -95,7 +143,8 @@ pub fn verify_gkr<
         final_layer_proof,
         logup_randomness,
         &evaluation_point,
-        reduced_claim,
+        reduced_claims,
+        &tensored_circuit_batching_randomness,
         transcript,
     )
     .map_err(VerifierError::FailedToVerifySumCheck)

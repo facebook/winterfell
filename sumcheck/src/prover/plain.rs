@@ -3,6 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use alloc::vec::Vec;
 use crypto::{ElementHasher, RandomCoin};
 use math::FieldElement;
 #[cfg(feature = "concurrent")]
@@ -14,6 +15,8 @@ use crate::{
     comb_func, CompressedUnivariatePolyEvals, FinalOpeningClaim, MultiLinearPoly, RoundProof,
     SumCheckProof,
 };
+
+/*
 
 /// Sum-check prover for non-linear multivariate polynomial of the simple LogUp-GKR.
 ///
@@ -209,6 +212,150 @@ pub fn sumcheck_prove_plain<E: FieldElement, H: ElementHasher<BaseField = E::Bas
         openings_claim: FinalOpeningClaim {
             eval_point: challenges,
             openings: vec![p0[0], p1[0], q0[0], q1[0]],
+        },
+        round_proofs,
+    })
+}
+*/
+
+
+
+
+
+pub fn sumcheck_prove_plain_batched<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>>(
+    claims: &[E],
+    r_batch: E,
+    mut p0_s: Vec<MultiLinearPoly<E>>,
+    mut p1_s: Vec<MultiLinearPoly<E>>,
+    mut q0_s: Vec<MultiLinearPoly<E>>,
+    mut q1_s: Vec<MultiLinearPoly<E>>,
+    eq: &mut MultiLinearPoly<E>,
+    tensored_batching_randomness: &[E],
+    transcript: &mut impl RandomCoin<Hasher = H, BaseField = E::BaseField>,
+) -> Result<SumCheckProof<E>, SumCheckProverError> {
+    let mut round_proofs = vec![];
+
+    let mut challenges = vec![];
+
+    let mut all_claim = E::ZERO;
+    for (circuit_id, claim) in claims.iter().enumerate() {
+        all_claim += *claim * tensored_batching_randomness[circuit_id];
+    }
+    let num_rounds = p0_s[0].num_variables();
+    for l in 0..num_rounds {
+        let mut all_round_poly_eval_at_1 = E::ZERO;
+        let mut all_round_poly_eval_at_2 = E::ZERO;
+        let mut all_round_poly_eval_at_3 = E::ZERO;
+        let len = p0_s[0].num_evaluations() / 2;
+
+        for (circuit_id, (p0, (p1, (q0, q1)))) in p0_s
+            .iter_mut()
+            .zip(p1_s.iter_mut().zip(q0_s.iter_mut().zip(q1_s.iter_mut())))
+            .enumerate()
+        {
+            let (round_poly_eval_at_1, round_poly_eval_at_2, round_poly_eval_at_3) = (0..len).fold(
+                (E::ZERO, E::ZERO, E::ZERO),
+                |(acc_point_1, acc_point_2, acc_point_3), i| {
+                    let cur_len = len;
+                    let round_poly_eval_at_1 = comb_func(
+                        p0[i + cur_len],
+                        p1[i + cur_len],
+                        q0[i + cur_len],
+                        q1[i + cur_len],
+                        eq[i + cur_len],
+                        r_batch,
+                    );
+
+                    let p0_delta = p0[i + cur_len] - p0[i];
+                    let p1_delta = p1[i + cur_len] - p1[i];
+                    let q0_delta = q0[i + cur_len] - q0[i];
+                    let q1_delta = q1[i + cur_len] - q1[i];
+                    let eq_delta = eq[i + cur_len] - eq[i];
+
+                    let mut p0_eval_at_x = p0[i + cur_len] + p0_delta;
+                    let mut p1_eval_at_x = p1[i + cur_len] + p1_delta;
+                    let mut q0_eval_at_x = q0[i + cur_len] + q0_delta;
+                    let mut q1_eval_at_x = q1[i + cur_len] + q1_delta;
+                    let mut eq_evx = eq[i + cur_len] + eq_delta;
+                    let round_poly_eval_at_2 = comb_func(
+                        p0_eval_at_x,
+                        p1_eval_at_x,
+                        q0_eval_at_x,
+                        q1_eval_at_x,
+                        eq_evx,
+                        r_batch,
+                    );
+
+                    p0_eval_at_x += p0_delta;
+                    p1_eval_at_x += p1_delta;
+                    q0_eval_at_x += q0_delta;
+                    q1_eval_at_x += q1_delta;
+                    eq_evx += eq_delta;
+                    let round_poly_eval_at_3 = comb_func(
+                        p0_eval_at_x,
+                        p1_eval_at_x,
+                        q0_eval_at_x,
+                        q1_eval_at_x,
+                        eq_evx,
+                        r_batch,
+                    );
+
+                    (
+                        round_poly_eval_at_1 + acc_point_1,
+                        round_poly_eval_at_2 + acc_point_2,
+                        round_poly_eval_at_3 + acc_point_3,
+                    )
+                },
+            );
+
+            all_round_poly_eval_at_1 +=
+                round_poly_eval_at_1 * tensored_batching_randomness[circuit_id];
+            all_round_poly_eval_at_2 +=
+                round_poly_eval_at_2 * tensored_batching_randomness[circuit_id];
+            all_round_poly_eval_at_3 +=
+                round_poly_eval_at_3 * tensored_batching_randomness[circuit_id];
+        }
+
+        let evals =
+            smallvec![all_round_poly_eval_at_1, all_round_poly_eval_at_2, all_round_poly_eval_at_3];
+        let compressed_round_poly_evals = CompressedUnivariatePolyEvals(evals);
+        let compressed_round_poly = compressed_round_poly_evals.to_poly(all_claim);
+
+        // reseed with the s_i polynomial
+        transcript.reseed(H::hash_elements(&compressed_round_poly.0));
+        let round_proof = RoundProof {
+            round_poly_coefs: compressed_round_poly.clone(),
+        };
+
+        let round_challenge =
+            transcript.draw().map_err(|_| SumCheckProverError::FailedToGenerateChallenge)?;
+
+        for (p0, (p1, (q0, q1))) in p0_s.iter_mut().zip(p1_s.iter_mut().zip(q0_s.iter_mut().zip(q1_s.iter_mut()))) {
+            // fold each multi-linear using the round challenge
+            p0.bind_least_significant_variable(round_challenge);
+            p1.bind_least_significant_variable(round_challenge);
+            q0.bind_least_significant_variable(round_challenge);
+            q1.bind_least_significant_variable(round_challenge);
+            
+        }eq.bind_least_significant_variable(round_challenge);
+
+        // compute the new reduced round claim
+        all_claim = compressed_round_poly.evaluate_using_claim(&all_claim, &round_challenge);
+
+        round_proofs.push(round_proof);
+        challenges.push(round_challenge);
+    }
+
+    let mut openings = vec![];
+     for (p0, (p1, (q0, q1))) in p0_s.iter_mut().zip(p1_s.iter_mut().zip(q0_s.iter_mut().zip(q1_s.iter_mut()))) {
+            openings.push(vec![p0[0], p1[0], q0[0], q1[0]])
+        }
+
+
+    Ok(SumCheckProof {
+        openings_claim: FinalOpeningClaim {
+            eval_point: challenges,
+            openings,
         },
         round_proofs,
     })

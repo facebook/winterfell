@@ -7,7 +7,8 @@ mod high_degree;
 pub use high_degree::sum_check_prove_higher_degree;
 
 mod plain;
-pub use plain::sumcheck_prove_plain;
+//pub use plain::sumcheck_prove_plain;
+pub use plain::sumcheck_prove_plain_batched;
 
 mod error;
 pub use error::SumCheckProverError;
