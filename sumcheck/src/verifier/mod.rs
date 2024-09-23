@@ -11,7 +11,8 @@ use libc_print::libc_println;
 use math::FieldElement;
 
 use crate::{
-    comb_func, evaluate_composition_poly, evaluate_composition_poly_2, EqFunction, FinalLayerProof, FinalOpeningClaim, MultiLinearPoly, RoundProof, SumCheckProof, SumCheckRoundClaim
+    comb_func, evaluate_composition_poly, EqFunction, FinalLayerProof, FinalOpeningClaim,
+    MultiLinearPoly, RoundProof, SumCheckProof, SumCheckRoundClaim,
 };
 
 /// Verifies sum-check proofs, as part of the GKR proof, for all GKR layers except for the last one
@@ -60,9 +61,11 @@ pub fn verify_sum_check_intermediate_layers<
         eval_batched_circuits += comb_func(p0, p1, q0, q1, eq, r_batch)
             * tensored_circuit_batching_randomness[circuit_idx]
     }
-    libc_println!("we are here !!!!");
+    //libc_println!("eval_batched_circuits {:?}", eval_batched_circuits);
+    //libc_println!("final_round_claim.claim {:?}", final_round_claim.claim);
+    //libc_println!("we are here !!!!");
     if eval_batched_circuits != final_round_claim.claim {
-        //libc_println!("we are here !!!!");
+        libc_println!("we are here !!!!");
         return Err(SumCheckVerifierError::FinalEvaluationCheckFailed);
     }
 
@@ -102,6 +105,7 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
     for (circuit_id, claim) in batched_claims.iter().enumerate() {
         full_claim += *claim * tensored_circuit_batching_randomness[circuit_id]
     }
+    //libc_println!("initial claim high degree verifier {:?}", full_claim);
 
     // verify the sum-check proof
     let SumCheckRoundClaim { eval_point, claim } =
@@ -113,7 +117,6 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
         libc_println!("eval_point {:?}", eval_point);
         return Err(SumCheckVerifierError::WrongOpeningPoint);
     }
-    libc_println!("HERE!");
 
     let mut numerators_zero = vec![E::ZERO; evaluator.get_num_fractions()];
     let mut numerators_one = vec![E::ZERO; evaluator.get_num_fractions()];
@@ -131,7 +134,7 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
     let periodic_columns_evaluations =
         evaluate_periodic_columns_at(periodic_columns, &proof.0.openings_claim.eval_point);
 
-        libc_println!("openings verifier {:?}", proof.0.openings_claim.openings[0]);
+    //libc_println!("openings verifier {:?}", proof.0.openings_claim.openings[0]);
     let mut at_zero = vec![];
     let mut at_one = vec![];
     for ml in proof.0.openings_claim.openings[0].chunks(2) {
@@ -157,7 +160,8 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
     let eq_nu = EqFunction::new(gkr_eval_point.into());
 
     let eq_nu_eval = eq_nu.evaluate(&proof.0.openings_claim.eval_point);
-    let expected_evaluation = evaluate_composition_poly_2(
+    //libc_println!("eq_nu_eval verifier {:?}", eq_nu_eval);
+    let expected_evaluation = evaluate_composition_poly(
         &tensored_circuit_batching_randomness,
         &numerators_zero,
         &denominators_zero,
@@ -166,9 +170,13 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
         eq_nu_eval,
         r_batch,
     );
-    libc_println!("expected_eval verifier {:?}", expected_evaluation);
-    libc_println!("actual evaluation verifier {:?}", claim);
-    if expected_evaluation == claim {
+    //libc_println!("numerators zero {:?}", numerators_zero);
+    //libc_println!("numerators one {:?}", numerators_one);
+    //libc_println!("denominators zero {:?}",denominators_zero);
+    //libc_println!("denominators one {:?}", denominators_one );
+    //libc_println!("expected_eval verifier {:?}", expected_evaluation);
+    //libc_println!("actual evaluation verifier {:?}", claim);
+    if expected_evaluation != claim {
         libc_println!("HERE!!");
         Err(SumCheckVerifierError::FinalEvaluationCheckFailed)
     } else {
@@ -237,7 +245,7 @@ fn evaluate_periodic_columns_at<E: FieldElement>(
     eval_point: &[E],
 ) -> (Vec<E>, Vec<E>) {
     let mut eval_point_zero = vec![E::ZERO];
-    let mut eval_point_one = vec![E::ZERO];
+    let mut eval_point_one = vec![E::ONE];
     eval_point_zero.extend_from_slice(&eval_point);
     eval_point_one.extend_from_slice(&eval_point);
 
@@ -251,7 +259,7 @@ fn evaluate_periodic_columns_at<E: FieldElement>(
 
         let evaluation_zero = ml.evaluate(point_zero);
         evaluations_zero.push(evaluation_zero);
-        let evaluation_one= ml.evaluate(point_one);
+        let evaluation_one = ml.evaluate(point_one);
         evaluations_one.push(evaluation_one)
     }
     (evaluations_zero, evaluations_one)

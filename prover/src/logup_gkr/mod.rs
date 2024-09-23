@@ -1,14 +1,14 @@
 use alloc::vec::Vec;
-use core::ops::Add;
+use core::{
+    fmt::{self, Formatter},
+    ops::Add,
+};
 
 use air::{EvaluationFrame, GkrData, LogUpGkrEvaluator};
 use math::FieldElement;
 use sumcheck::{EqFunction, MultiLinearPoly, SumCheckProverError};
 use tracing::instrument;
-use utils::{
-    batch_iter_mut, chunks, uninit_vector, ByteReader, ByteWriter, Deserializable,
-    DeserializationError, Serializable,
-};
+use utils::{chunks, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 use crate::Trace;
 
@@ -123,8 +123,7 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
         let periodic_values = evaluator.build_periodic_values(trace.main_segment().num_rows());
 
         let mut input_layer_wires: Vec<Vec<_>> =
-          //  Vec::with_capacity(main_trace.main_segment().num_rows() * num_fractions);
-            vec![vec![]; num_fractions];
+            vec![Vec::with_capacity(main_trace.main_segment().num_rows()); num_fractions];
         let mut main_frame = EvaluationFrame::new(main_trace.main_segment().num_cols());
 
         let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
@@ -160,7 +159,7 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
 
     /// Computes the subsequent layer of the circuit from a given layer.
     fn compute_next_layer(prev_layers: &[CircuitLayer<E>]) -> Vec<CircuitLayer<E>> {
-        let mut next_layers = vec![];
+        let mut next_layers = Vec::with_capacity(prev_layers.len() / 2);
         for prev_layer in prev_layers.iter() {
             let next_layer_wires = chunks!(prev_layer.wires(), 2)
                 .map(|input_wires| {
@@ -215,10 +214,6 @@ where
             denominators: MultiLinearPoly::from_evaluations(denominators),
         }
     }
-
-    fn into_numerators_denominators(self) -> (MultiLinearPoly<E>, MultiLinearPoly<E>) {
-        (self.numerators, self.denominators)
-    }
 }
 
 impl<E> Serializable for CircuitLayerPolys<E>
@@ -255,6 +250,7 @@ where
 ///
 /// Note that a [`Layer`] needs to be first converted to a [`LayerPolys`] before the evaluation of
 /// the layer can be proved using GKR.
+#[derive(Debug)]
 pub struct CircuitLayer<E: FieldElement> {
     wires: Vec<CircuitWire<E>>,
 }
@@ -288,7 +284,7 @@ impl<E: FieldElement> CircuitLayer<E> {
 ///
 /// Hence, addition is defined in the natural way fractions are added together: `a/b + c/d = (ad +
 /// bc) / bd`.
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct CircuitWire<E: FieldElement> {
     numerator: E,
     denominator: E,
@@ -320,51 +316,17 @@ where
     }
 }
 
+impl<E: FieldElement> fmt::Debug for CircuitWire<E> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{} / {}", self.numerator, self.denominator)
+    }
+}
+
 /// Represents a claim to be proven by a subsequent call to the sum-check protocol.
 #[derive(Debug)]
 pub struct GkrClaim<E: FieldElement> {
     pub evaluation_point: Vec<E>,
-    pub claimed_evaluation: Vec<(E, E)>,
-}
-
-/// We receive our 4 multilinear polynomials which were evaluated at a random point:
-/// `left_numerators` (or `p0`), `right_numerators` (or `p1`), `left_denominators` (or `q0`), and
-/// `right_denominators` (or `q1`). We'll call the 4 evaluations at a random point `p0(r)`, `p1(r)`,
-/// `q0(r)`, and `q1(r)`, respectively, where `r` is the random point. Note that `r` is a shorthand
-/// for a tuple of random values `(r_0, ... r_{l-1})`, where `2^{l + 1}` is the number of wires in
-/// the layer.
-///
-/// It is important to recall how `p0` and `p1` were constructed (and analogously for `q0` and
-/// `q1`). They are the `numerators` layer polynomial (or `p`) evaluations `p(0, r)` and `p(1, r)`,
-/// obtained from [`MultiLinearPoly::project_least_significant_variable`]. Hence, `[p0, p1]` form
-/// the evaluations of polynomial `p'(x_0) = p(x_0, r)`. Then, the round claim for `numerators`,
-/// defined as `p(r_layer, r)`, is simply `p'(r_layer)`.
-fn reduce_layer_claim<E>(
-    left_numerators_opening: E,
-    right_numerators_opening: E,
-    left_denominators_opening: E,
-    right_denominators_opening: E,
-    r_layer: E,
-) -> (E, E)
-where
-    E: FieldElement,
-{
-    // This is the `numerators` layer polynomial `f(x_0) = numerators(x_0, rx_0, ..., rx_{l-1})`,
-    // where `rx_0, ..., rx_{l-1}` are the random variables that were sampled during the sumcheck
-    // round for this layer.
-    let numerators_univariate =
-        MultiLinearPoly::from_evaluations(vec![left_numerators_opening, right_numerators_opening]);
-
-    // This is analogous to `numerators_univariate`, but for the `denominators` layer polynomial
-    let denominators_univariate = MultiLinearPoly::from_evaluations(vec![
-        left_denominators_opening,
-        right_denominators_opening,
-    ]);
-
-    (
-        numerators_univariate.evaluate(&[r_layer]),
-        denominators_univariate.evaluate(&[r_layer]),
-    )
+    pub claimed_evaluations_per_circuit: Vec<(E, E)>,
 }
 
 /// Builds the auxiliary trace column for the univariate sum-check argument.

@@ -2,7 +2,6 @@ use alloc::vec::Vec;
 
 use air::{Air, LogUpGkrEvaluator};
 use crypto::{ElementHasher, RandomCoin};
-use libc_print::libc_println;
 use math::FieldElement;
 use sumcheck::{
     verify_sum_check_input_layer, verify_sum_check_intermediate_layers, CircuitOutput, EqFunction, FinalOpeningClaim, GkrCircuitProof, SumCheckVerifierError
@@ -37,7 +36,7 @@ pub fn verify_gkr<
     let claim = evaluator.compute_claim(pub_inputs, &logup_randomness);
     let mut num_acc = E::ZERO;
     let mut den_acc = E::ONE;
-    for (circuit_id, (nums, dens)) in
+    for (_circuit_id, (nums, dens)) in
         numerators.into_iter().zip(denominators.into_iter()).enumerate()
     {
         let mut evaluations = nums.evaluations().to_vec();
@@ -51,11 +50,10 @@ pub fn verify_gkr<
 
         // make sure that both denominators are not equal to E::ZERO
         if q0 == E::ZERO || q1 == E::ZERO {
-            libc_println!("p0 is zero");
             return Err(VerifierError::ZeroOutputDenominator);
         }
 
-        let cur_num = (p0 * q1 + p1 * q0);
+        let cur_num = p0 * q1 + p1 * q0;
         let cur_den = q0 * q1;
 
         let new_num = num_acc * cur_den + den_acc * cur_num;
@@ -73,7 +71,7 @@ pub fn verify_gkr<
 
     // reduce the claim
      let mut reduced_claims = vec![];
-    for (circuit_id, (nums, dens)) in
+    for (_circuit_id, (nums, dens)) in
         numerators.into_iter().zip(denominators.into_iter()).enumerate()
     {
         let p0 = nums.evaluations()[0];
@@ -100,7 +98,6 @@ pub fn verify_gkr<
 
     let tensored_circuit_batching_randomness =
         EqFunction::new(circuit_batching_randomness.into()).evaluations();
-        
 
     // verify all GKR layers but for the last one
     let num_layers = before_final_layer_proofs.proof.len();

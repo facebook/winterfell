@@ -268,20 +268,6 @@ fn comb_func<E: FieldElement>(p0: E, p1: E, q0: E, q1: E, eq: E, r_batch: E) -> 
 /// The non-linear composition polynomial of the LogUp-GKR protocol specific to the input layer.
 pub fn evaluate_composition_poly<E: FieldElement>(
     eq_at_mu: &[E],
-    numerators: &[E],
-    denominators: &[E],
-    eq_eval: E,
-    r_sum_check: E,
-) -> E {
-    numerators
-        .chunks(2)
-        .zip(denominators.chunks(2).zip(eq_at_mu.iter()))
-        .map(|(p, (q, eq_w))| *eq_w * comb_func(p[0], p[1], q[0], q[1], eq_eval, r_sum_check))
-        .fold(E::ZERO, |acc, x| acc + x)
-}
-/// The non-linear composition polynomial of the LogUp-GKR protocol specific to the input layer.
-pub fn evaluate_composition_poly_2<E: FieldElement>(
-    eq_at_mu: &[E],
     numerators_zero: &[E],
     denominators_zero: &[E],
     numerators_one: &[E],
@@ -294,8 +280,10 @@ pub fn evaluate_composition_poly_2<E: FieldElement>(
         .zip(
             numerators_one
                 .iter()
-                .zip(denominators_zero.iter().zip(denominators_one.iter().zip(eq_at_mu.iter())))
+                .zip(denominators_zero.iter().zip(denominators_one.iter().zip(eq_at_mu.iter()))),
         )
-        .map(|(p0, (p1, (q0, (q1, eq_w))))| {*eq_w * comb_func(*p0, *p1, *q0, *q1, eq_eval, r_sum_check)})
+        .map(|(p0, (p1, (q0, (q1, eq_w))))| {
+            *eq_w * comb_func(*p0, *p1, *q0, *q1, eq_eval, r_sum_check)
+        })
         .fold(E::ZERO, |acc, x| acc + x)
 }

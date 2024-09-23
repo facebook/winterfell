@@ -4,9 +4,8 @@ use air::{LogUpGkrEvaluator, LogUpGkrOracle, PeriodicTable};
 use crypto::{ElementHasher, RandomCoin};
 use math::FieldElement;
 use sumcheck::{
-    sum_check_prove_higher_degree, sumcheck_prove_plain_batched,
-    BeforeFinalLayerProof, CircuitOutput, EqFunction, FinalLayerProof, GkrCircuitProof,
-    MultiLinearPoly, SumCheckProof,
+    sum_check_prove_higher_degree, sumcheck_prove_plain_batched, BeforeFinalLayerProof,
+    CircuitOutput, EqFunction, FinalLayerProof, GkrCircuitProof, MultiLinearPoly, SumCheckProof,
 };
 use tracing::instrument;
 
@@ -69,14 +68,14 @@ pub fn prove_gkr<E: FieldElement>(
     }
 
     // evaluate the GKR fractional sum circuit
-    let circuit = EvaluatedCircuit::new(main_trace, evaluator, &logup_randomness)?;
+    let circuits = EvaluatedCircuit::new(main_trace, evaluator, &logup_randomness)?;
 
     // include the circuit output as part of the final proof
-    let output_layers = circuit.output_layers().clone();
+    let output_layers = circuits.output_layers().clone();
 
     // run the GKR prover for all layers except the input layer
     let (before_final_layer_proofs, gkr_claim, tensored_circuit_batching_randomness) =
-        prove_intermediate_layers(circuit, public_coin)?;
+        prove_intermediate_layers(circuits, public_coin)?;
 
     // build the MLEs of the relevant main trace columns
     let main_trace_mls =
@@ -131,7 +130,7 @@ fn prove_input_layer<
     // parse the [GkrClaim] resulting from the previous GKR layer
     let GkrClaim {
         evaluation_point,
-        claimed_evaluation: claimed_evaluations,
+        claimed_evaluations_per_circuit: claimed_evaluations,
     } = claim;
     for claimed_evaluation in claimed_evaluations.iter() {
         transcript.reseed(H::hash_elements(&[claimed_evaluation.0, claimed_evaluation.1]));
@@ -201,6 +200,7 @@ fn prove_intermediate_layers<
     // layer to the verifier. The verifier then replies with a challenge `r` in order to evaluate
     // `p` and `q` at `r` as multi-linears.
     let output_layers = circuit.output_layers();
+    // TODO: optimize calls to hash function
     for output_layer in output_layers.into_iter() {
         let mut evaluations = output_layer.numerators.evaluations().to_vec();
         evaluations.extend_from_slice(output_layer.denominators.evaluations());
@@ -214,7 +214,7 @@ fn prove_intermediate_layers<
     let log_num_circuits = num_circuits.ilog2();
     assert_eq!(1 << log_num_circuits, num_circuits);
 
-    let mut circuit_batching_randomness: Vec<E> = vec![];
+    let mut circuit_batching_randomness: Vec<E> = Vec::with_capacity(log_num_circuits as usize);
     for _ in 0..log_num_circuits {
         let batching_r =
             transcript.draw().map_err(|_| GkrProverError::FailedToGenerateChallenge)?;
@@ -223,6 +223,7 @@ fn prove_intermediate_layers<
 
     let tensored_circuit_batching_randomness =
         EqFunction::new(circuit_batching_randomness.into()).evaluations();
+
 
     let mut layer_proofs: Vec<SumCheckProof<E>> = Vec::new();
     let mut evaluation_point = vec![r];
@@ -253,12 +254,12 @@ fn prove_intermediate_layers<
         }
         let r_layer = transcript.draw().map_err(|_| GkrProverError::FailedToGenerateChallenge)?;
 
-        // reduce the claim
-        for (j, ops) in proof.openings_claim.openings.iter().enumerate() {
-            let p0 = ops[0];
-            let p1 = ops[1];
-            let q0 = ops[2];
-            let q1 = ops[3];
+        // reduce the claims
+        for (j, claimed_opening) in proof.openings_claim.openings.iter().enumerate() {
+            let p0 = claimed_opening[0];
+            let p1 = claimed_opening[1];
+            let q0 = claimed_opening[2];
+            let q1 = claimed_opening[3];
 
             let reduced_claim = (p0 + r_layer * (p1 - p0), q0 + r_layer * (q1 - q0));
             claimed_evaluations[j] = reduced_claim;
@@ -276,7 +277,7 @@ fn prove_intermediate_layers<
         BeforeFinalLayerProof { proof: layer_proofs },
         GkrClaim {
             evaluation_point,
-            claimed_evaluation: claimed_evaluations,
+            claimed_evaluations_per_circuit: claimed_evaluations,
         },
         tensored_circuit_batching_randomness,
     ))
@@ -296,6 +297,7 @@ fn sum_check_prove_num_rounds_degree_3<
     transcript: &mut C,
 ) -> Result<SumCheckProof<E>, GkrProverError> {
     // generate challenge to batch two sumchecks
+    // TODO: optimize hash
     for claim in claims {
         transcript.reseed(H::hash_elements(&[claim.0, claim.1]));
     }
@@ -311,8 +313,8 @@ fn sum_check_prove_num_rounds_degree_3<
     let mut numerators_accross_circuits_1 = vec![];
     let mut denominators_accross_circuits_1 = vec![];
 
-    for tu in inner_layers {
-        let CircuitLayerPolys { numerators, denominators } = tu;
+    for inner_layer in inner_layers {
+        let CircuitLayerPolys { numerators, denominators } = inner_layer;
         let (p0, p1) = numerators.project_least_significant_variable();
         let (q0, q1) = denominators.project_least_significant_variable();
         numerators_accross_circuits_0.push(p0);

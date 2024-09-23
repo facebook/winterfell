@@ -7,14 +7,14 @@ use alloc::vec::Vec;
 
 use air::{LogUpGkrEvaluator, PeriodicTable};
 use crypto::{ElementHasher, RandomCoin};
-use libc_print::libc_println;
 use math::FieldElement;
 #[cfg(feature = "concurrent")]
 pub use rayon::prelude::*;
 
 use super::SumCheckProverError;
 use crate::{
-    evaluate_composition_poly, evaluate_composition_poly_2, CompressedUnivariatePolyEvals, EqFunction, FinalOpeningClaim, MultiLinearPoly, RoundProof, SumCheckProof, SumCheckRoundClaim
+    evaluate_composition_poly, CompressedUnivariatePolyEvals, EqFunction, FinalOpeningClaim,
+    MultiLinearPoly, RoundProof, SumCheckProof, SumCheckRoundClaim,
 };
 
 /// A sum-check prover for the input layer which can accommodate non-linear expressions in
@@ -168,8 +168,7 @@ pub fn sum_check_prove_higher_degree<
 
     let mut round_proofs = vec![];
 
-    let mut eq_mle = EqFunction::ml_at(evaluation_point.into());
-
+    let mut eq_mle = EqFunction::ml_at(evaluation_point.clone().into());
     // setup first round claim
     let mut current_round_claim = SumCheckRoundClaim { eval_point: vec![], claim };
 
@@ -188,7 +187,7 @@ pub fn sum_check_prove_higher_degree<
     // reseed with the s_0 polynomial
     coin.reseed(H::hash_elements(&round_poly_coefs.0));
     round_proofs.push(RoundProof { round_poly_coefs });
-
+    //libc_println!("current_round_claim {:?}", current_round_claim);
     for i in 1..num_rounds {
         // generate random challenge r_i for the i-th round
         let round_challenge =
@@ -237,12 +236,17 @@ pub fn sum_check_prove_higher_degree<
     mls.iter_mut()
         .for_each(|ml| ml.bind_least_significant_variable(round_challenge));
 
+    // fold each periodic multi-linear using the round challenge
+    periodic_table.bind_least_significant_variable(round_challenge);
+
     let SumCheckRoundClaim { eval_point, claim: _claim } =
         reduce_claim(&round_proofs[num_rounds - 1], current_round_claim, round_challenge);
 
-    let openings :Vec<E> = mls.into_iter().flat_map(|ml| [ml.evaluations()[0], ml.evaluations()[1]]).collect();
+    let openings: Vec<E> = mls
+        .into_iter()
+        .flat_map(|ml| [ml.evaluations()[0], ml.evaluations()[1]])
+        .collect();
 
-    libc_println!("openings prover {:?}", openings);
     Ok(SumCheckProof {
         openings_claim: FinalOpeningClaim { eval_point, openings: vec![openings] },
         round_proofs,
@@ -318,7 +322,7 @@ fn sumcheck_round<E: FieldElement>(
         let mut evals_periodic_zero_one = vec![E::ZERO; num_periodic];
         let mut evals_periodic_one_zero = vec![E::ZERO; num_periodic];
         let mut evals_periodic_one_one = vec![E::ZERO; num_periodic];
-        
+
         let mut evals_periodic_x_zero = vec![E::ZERO; num_periodic];
         let mut evals_periodic_x_one = vec![E::ZERO; num_periodic];
 
@@ -337,23 +341,26 @@ fn sumcheck_round<E: FieldElement>(
         (0..1 << num_rounds)
             .map(|i| {
                 let mut total_evals = vec![E::ZERO; evaluator.max_degree()];
-
                 for (j, ml) in mls.iter().enumerate() {
                     evals_zero_zero[j] = ml.evaluations()[2 * i];
                     evals_zero_one[j] = ml.evaluations()[2 * i + 1];
-                    evals_one_zero[j] = ml.evaluations()[2 * (i + num_rounds)];
-                    evals_one_one[j] = ml.evaluations()[2 * (i + num_rounds) + 1];
+                    evals_one_zero[j] = ml.evaluations()[2 * i + 2 * (1 << num_rounds)];
+                    evals_one_one[j] = ml.evaluations()[2 * i + 2 * (1 << num_rounds) + 1];
                 }
-
                 let eq_at_zero = eq_ml.evaluations()[i];
-                let eq_at_one = eq_ml.evaluations()[i + ( num_rounds)];
+                let eq_at_one = eq_ml.evaluations()[i + (1 << num_rounds)];
 
                 // add evaluation of periodic columns
                 periodic_table.fill_periodic_values_at(2 * i, &mut evals_periodic_zero_zero);
                 periodic_table.fill_periodic_values_at(2 * i + 1, &mut evals_periodic_zero_one);
-                periodic_table.fill_periodic_values_at(2 * (i + num_rounds), &mut evals_periodic_one_zero);
-                periodic_table.fill_periodic_values_at(2 * (i + num_rounds) + 1, &mut evals_periodic_one_one);
-            
+                periodic_table.fill_periodic_values_at(
+                    2 * i + 2 * (1 << num_rounds),
+                    &mut evals_periodic_one_zero,
+                );
+                periodic_table.fill_periodic_values_at(
+                    2 * i + 2 * (1 << num_rounds) + 1,
+                    &mut evals_periodic_one_one,
+                );
 
                 // compute the evaluation at 1
                 evaluator.evaluate_query(
@@ -370,11 +377,11 @@ fn sumcheck_round<E: FieldElement>(
                     &mut numerators_one,
                     &mut denominators_one,
                 );
-                total_evals[0] = evaluate_composition_poly_2(
+                total_evals[0] = evaluate_composition_poly(
                     eq_mu,
                     &numerators_zero,
-                    &numerators_one,
                     &denominators_zero,
+                    &numerators_one,
                     &denominators_one,
                     eq_at_one,
                     r_sum_check,
@@ -430,11 +437,11 @@ fn sumcheck_round<E: FieldElement>(
                         &mut numerators_one,
                         &mut denominators_one,
                     );
-                    *e = evaluate_composition_poly_2(
+                    *e = evaluate_composition_poly(
                         eq_mu,
                         &numerators_zero,
-                        &numerators_one,
                         &denominators_zero,
+                        &numerators_one,
                         &denominators_one,
                         eq_x,
                         r_sum_check,

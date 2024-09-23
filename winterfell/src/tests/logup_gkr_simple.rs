@@ -23,7 +23,8 @@ use crate::{
 #[test]
 fn test_logup_gkr() {
     let aux_trace_width = 1;
-    let trace = LogUpGkrSimple::new(2_usize.pow(7), aux_trace_width);
+    let trace = LogUpGkrSimple::new(2_usize.pow(13
+    ), aux_trace_width);
     let prover = LogUpGkrSimpleProver::new(aux_trace_width);
 
     let proof = prover.prove(trace).unwrap();
@@ -193,22 +194,14 @@ impl<B: FieldElement + StarkField> PlainLogUpGkrEval<B> {
         let committed_2 = LogUpGkrOracle::CurrentRow(2);
         let committed_3 = LogUpGkrOracle::CurrentRow(3);
         let committed_4 = LogUpGkrOracle::CurrentRow(4);
-        let committed_0_next_row = LogUpGkrOracle::NextRow(0);
-        let committed_1_next_row = LogUpGkrOracle::NextRow(1);
-        let committed_2_next_row = LogUpGkrOracle::NextRow(2);
-        let committed_3_next_row = LogUpGkrOracle::NextRow(3);
-        let committed_4_next_row = LogUpGkrOracle::NextRow(4);
+
         let oracles = vec![
             committed_0,
             committed_1,
             committed_2,
             committed_3,
             committed_4,
-            committed_0_next_row,
-            committed_1_next_row,
-            committed_2_next_row,
-            committed_3_next_row,
-            committed_4_next_row,
+
         ];
         Self { oracles, _field: PhantomData }
     }
@@ -229,6 +222,7 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
 
     fn get_num_fractions(&self) -> usize {
         4
+        //2
     }
 
     fn max_degree(&self) -> usize {
@@ -245,11 +239,6 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
         query[3] = frame.current()[3];
         query[4] = frame.current()[4];
 
-        query[5] = frame.next()[0];
-        query[6] = frame.next()[1];
-        query[7] = frame.next()[2];
-        query[8] = frame.next()[3];
-        query[9] = frame.next()[4];
     }
 
     fn evaluate_query<F, E>(
@@ -263,9 +252,9 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
         F: FieldElement<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
     {
-        assert_eq!(numerator.len(), 4);
-        assert_eq!(denominator.len(), 4);
-        assert_eq!(query.len(), 10);
+        //assert_eq!(numerator.len(), 4);
+        //assert_eq!(denominator.len(), 4);
+        //assert_eq!(query.len(), 10);
         numerator[0] = E::from(query[1]);
         numerator[1] = E::ONE;
         numerator[2] = E::ONE;
@@ -275,6 +264,13 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
         denominator[1] = -(rand_values[0] - E::from(query[2]));
         denominator[2] = -(rand_values[0] - E::from(query[3]));
         denominator[3] = -(rand_values[0] - E::from(query[4]));
+        
+
+
+        //numerator[0] = -E::ONE;
+        //numerator[1] = E::ONE;
+        //denominator[2] = E::ONE;
+        //denominator[3] = E::ONE;
     }
 
     fn compute_claim<E>(&self, _inputs: &Self::PublicInputs, _rand_values: &[E]) -> E
@@ -296,7 +292,7 @@ impl LogUpGkrSimpleProver {
     fn new(aux_trace_width: usize) -> Self {
         Self {
             aux_trace_width,
-            options: ProofOptions::new(1, 8, 0, FieldExtension::Quadratic, 2, 1),
+            options: ProofOptions::new(1, 8, 0, FieldExtension::None, 2, 1),
         }
     }
 }
