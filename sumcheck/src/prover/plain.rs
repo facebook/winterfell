@@ -72,25 +72,25 @@ pub fn sumcheck_prove_plain<E: FieldElement, H: ElementHasher<BaseField = E::Bas
             (E::ZERO, E::ZERO, E::ZERO),
             |(acc_point_1, acc_point_2, acc_point_3), i| {
                 let round_poly_eval_at_1 = comb_func(
-                    p0[2 * i + 1],
-                    p1[2 * i + 1],
-                    q0[2 * i + 1],
-                    q1[2 * i + 1],
-                    eq[2 * i + 1],
+                    p0[len + i],
+                    p1[len + i],
+                    q0[len + i],
+                    q1[len + i],
+                    eq[len + i],
                     r_batch,
                 );
 
-                let p0_delta = p0[2 * i + 1] - p0[2 * i];
-                let p1_delta = p1[2 * i + 1] - p1[2 * i];
-                let q0_delta = q0[2 * i + 1] - q0[2 * i];
-                let q1_delta = q1[2 * i + 1] - q1[2 * i];
-                let eq_delta = eq[2 * i + 1] - eq[2 * i];
+                let p0_delta = p0[len + i] - p0[i];
+                let p1_delta = p1[len + i] - p1[i];
+                let q0_delta = q0[len + i] - q0[i];
+                let q1_delta = q1[len + i] - q1[i];
+                let eq_delta = eq[len + i] - eq[i];
 
-                let mut p0_eval_at_x = p0[2 * i + 1] + p0_delta;
-                let mut p1_eval_at_x = p1[2 * i + 1] + p1_delta;
-                let mut q0_eval_at_x = q0[2 * i + 1] + q0_delta;
-                let mut q1_eval_at_x = q1[2 * i + 1] + q1_delta;
-                let mut eq_evx = eq[2 * i + 1] + eq_delta;
+                let mut p0_eval_at_x = p0[len + i] + p0_delta;
+                let mut p1_eval_at_x = p1[len + i] + p1_delta;
+                let mut q0_eval_at_x = q0[len + i] + q0_delta;
+                let mut q1_eval_at_x = q1[len + i] + q1_delta;
+                let mut eq_evx = eq[len + i] + eq_delta;
                 let round_poly_eval_at_2 = comb_func(
                     p0_eval_at_x,
                     p1_eval_at_x,
@@ -129,25 +129,25 @@ pub fn sumcheck_prove_plain<E: FieldElement, H: ElementHasher<BaseField = E::Bas
                 || (E::ZERO, E::ZERO, E::ZERO),
                 |(a, b, c), i| {
                     let round_poly_eval_at_1 = comb_func(
-                        p0[2 * i + 1],
-                        p1[2 * i + 1],
-                        q0[2 * i + 1],
-                        q1[2 * i + 1],
-                        eq[2 * i + 1],
+                        p0[i + (1 << num_rounds)],
+                        p1[i + (1 << num_rounds)],
+                        q0[i + (1 << num_rounds)],
+                        q1[i + (1 << num_rounds)],
+                        eq[i + (1 << num_rounds)],
                         r_batch,
                     );
 
-                    let p0_delta = p0[2 * i + 1] - p0[2 * i];
-                    let p1_delta = p1[2 * i + 1] - p1[2 * i];
-                    let q0_delta = q0[2 * i + 1] - q0[2 * i];
-                    let q1_delta = q1[2 * i + 1] - q1[2 * i];
-                    let eq_delta = eq[2 * i + 1] - eq[2 * i];
+                    let p0_delta = p0[i + (1 << num_rounds)] - p0[i];
+                    let p1_delta = p1[i + (1 << num_rounds)] - p1[i];
+                    let q0_delta = q0[i + (1 << num_rounds)] - q0[i];
+                    let q1_delta = q1[i + (1 << num_rounds)] - q1[i];
+                    let eq_delta = eq[i + (1 << num_rounds)] - eq[i];
 
-                    let mut p0_eval_at_x = p0[2 * i + 1] + p0_delta;
-                    let mut p1_eval_at_x = p1[2 * i + 1] + p1_delta;
-                    let mut q0_eval_at_x = q0[2 * i + 1] + q0_delta;
-                    let mut q1_eval_at_x = q1[2 * i + 1] + q1_delta;
-                    let mut eq_evx = eq[2 * i + 1] + eq_delta;
+                    let mut p0_eval_at_x = p0[i + (1 << num_rounds)] + p0_delta;
+                    let mut p1_eval_at_x = p1[i + (1 << num_rounds)] + p1_delta;
+                    let mut q0_eval_at_x = q0[i + (1 << num_rounds)] + q0_delta;
+                    let mut q1_eval_at_x = q1[i + (1 << num_rounds)] + q1_delta;
+                    let mut eq_evx = eq[i + (1 << num_rounds)] + eq_delta;
                     let round_poly_eval_at_2 = comb_func(
                         p0_eval_at_x,
                         p1_eval_at_x,

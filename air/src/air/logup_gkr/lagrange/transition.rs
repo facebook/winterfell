@@ -62,6 +62,9 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
         let c = lagrange_kernel_column_frame;
         let v = c.num_rows() - 1;
         let r = lagrange_kernel_rand_elements;
+        // TODO: avoid reverse()
+        let mut r = r.to_vec();
+        r.reverse();
         let k = constraint_idx + 1;
 
         (r[v - k] * c[0]) - ((E::ONE - r[v - k]) * c[v - k + 1])
@@ -129,7 +132,10 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
 
         let c = lagrange_kernel_column_frame;
         let v = c.num_rows() - 1;
-        let r = lagrange_kernel_rand_elements;
+        let  r = lagrange_kernel_rand_elements;
+        // TODO: avoid reverse()
+        let mut r = r.to_vec();
+        r.reverse();
 
         for k in 1..v + 1 {
             transition_evals[k - 1] = (r[v - k] * c[0]) - ((E::ONE - r[v - k]) * c[v - k + 1]);

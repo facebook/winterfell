@@ -79,9 +79,9 @@ impl<E: FieldElement> MultiLinearPoly<E> {
                 // SAFETY: This loops over [0, evaluations.len()/2). The largest value for `i` is
                 // `(evaluations.len() / 2) - 1`. Hence, the largest value for `(i<<1)` is
                 // `evaluations.len() - 2`, and largest value for `(i<<1) + 1` is `evaluations.len() - 1`.
-                let evaluations_2i = unsafe { *self.evaluations.get_unchecked(i << 1) };
+                let evaluations_2i = unsafe { *self.evaluations.get_unchecked(i) };
                 let evaluations_2i_plus_1 =
-                    unsafe { *self.evaluations.get_unchecked((i << 1) + 1) };
+                    unsafe { *self.evaluations.get_unchecked(num_evals + i) };
 
                 self.evaluations[i] =
                     evaluations_2i + round_challenge * (evaluations_2i_plus_1 - evaluations_2i);
@@ -96,9 +96,9 @@ impl<E: FieldElement> MultiLinearPoly<E> {
                 // SAFETY: This loops over [0, evaluations.len()/2). The largest value for `i` is
                 // `(evaluations.len() / 2) - 1`. Hence, the largest value for `(i<<1)` is
                 // `evaluations.len() - 2`, and largest value for `(i<<1) + 1` is `evaluations.len() - 1`.
-                let evaluations_2i = unsafe { *self.evaluations.get_unchecked(i << 1) };
+                let evaluations_2i = unsafe { *self.evaluations.get_unchecked(i) };
                 let evaluations_2i_plus_1 =
-                    unsafe { *self.evaluations.get_unchecked((i << 1) + 1) };
+                    unsafe { *self.evaluations.get_unchecked(num_evals + i) };
 
                 *ev = evaluations_2i + round_challenge * (evaluations_2i_plus_1 - evaluations_2i);
             });
@@ -107,7 +107,7 @@ impl<E: FieldElement> MultiLinearPoly<E> {
     }
 
     /// Given the multilinear polynomial $f(y_0, y_1, ..., y_{{\nu} - 1})$, returns two polynomials:
-    /// $f(0, y_1, ..., y_{{\nu} - 1})$ and $f(1, y_1, ..., y_{{\nu} - 1})$.
+    /// $f(y_0, y_1, ..., y_{{\nu} - 2}, 0)$ and $f(y_0, y_1, ..., y_{{\nu} - 2}, 1)$.
     pub fn project_least_significant_variable(mut self) -> (Self, Self) {
         let odds: Vec<E> = self
             .evaluations
@@ -284,7 +284,7 @@ fn compute_lagrange_basis_evals_at<E: FieldElement>(query: &[E]) -> Vec<E> {
     evals[0] = E::ONE;
     #[cfg(not(feature = "concurrent"))]
     let evals = {
-        for r_i in query.iter() {
+        for r_i in query.iter().rev() {
             let (left_evals, right_evals) = evals.split_at_mut(size);
             left_evals.iter_mut().zip(right_evals.iter_mut()).for_each(|(left, right)| {
                 let factor = *left;
@@ -299,7 +299,7 @@ fn compute_lagrange_basis_evals_at<E: FieldElement>(query: &[E]) -> Vec<E> {
 
     #[cfg(feature = "concurrent")]
     let evals = {
-        for r_i in query.iter() {
+        for r_i in query.iter().rev() {
             let (left_evals, right_evals) = evals.split_at_mut(size);
             left_evals
                 .par_iter_mut()
@@ -380,14 +380,14 @@ fn test_eq_function() {
     let r1 = rand_value();
     let eq_function = EqFunction::new(smallvec![r0, r1]);
 
-    let expected = vec![(one - r0) * (one - r1), r0 * (one - r1), (one - r0) * r1, r0 * r1];
+    let expected = vec![(one - r0) * (one - r1), (one - r0) * r1, r0 * (one - r1), r0 * r1];
 
     assert_eq!(expected, eq_function.evaluations());
 
     // Lagrange kernel evaluation is correct
     let q0 = rand_value();
     let q1 = rand_value();
-    let tensored_query = vec![(one - q0) * (one - q1), q0 * (one - q1), (one - q0) * q1, q0 * q1];
+    let tensored_query = vec![(one - q0) * (one - q1), (one - q0) * q1, q0 * (one - q1), q0 * q1];
 
     let expected = inner_product(&tensored_query, &eq_function.evaluations());
 

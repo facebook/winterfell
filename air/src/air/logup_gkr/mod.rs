@@ -296,7 +296,7 @@ where
             if col.len() > 1 {
                 let num_evals = col.len() >> 1;
                 for i in 0..num_evals {
-                    col[i] = col[i << 1] + round_challenge * (col[(i << 1) + 1] - col[i << 1]);
+                    col[i] = col[i] + round_challenge * (col[i + num_evals] - col[i]);
                 }
                 col.truncate(num_evals)
             }

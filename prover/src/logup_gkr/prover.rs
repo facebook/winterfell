@@ -231,8 +231,8 @@ fn prove_intermediate_layers<
         };
 
         // collect the randomness used for the current layer
-        let mut ext = vec![r_layer];
-        ext.extend_from_slice(&proof.openings_claim.eval_point);
+        let mut ext = proof.openings_claim.eval_point.clone();
+        ext.push(r_layer);
         evaluation_point = ext;
 
         layer_proofs.push(proof);

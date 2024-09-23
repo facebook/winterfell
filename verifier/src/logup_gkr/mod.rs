@@ -83,9 +83,8 @@ pub fn verify_gkr<
         reduced_claim = (p0 + r_layer * (p1 - p0), q0 + r_layer * (q1 - q0));
 
         // collect the randomness used for the current layer
-        let rand_sumcheck = eval_point;
-        let mut ext = vec![r_layer];
-        ext.extend_from_slice(&rand_sumcheck);
+        let mut ext = eval_point.clone();
+        ext.push(r_layer);
         evaluation_point = ext;
     }
 

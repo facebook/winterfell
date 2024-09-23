@@ -244,6 +244,9 @@ pub trait Trace: Sized + Sync {
             let v = trace_length.ilog2() as usize;
             let gkr_data = aux_rand_elements.gkr_data().expect("should not be None");
             let r = gkr_data.lagrange_kernel_rand_elements();
+            // TODO: avoid reverse()
+            let mut r = r.to_vec();
+            r.reverse();
 
             // Loop over every Lagrange kernel constraint
             for constraint_idx in 1..v + 1 {

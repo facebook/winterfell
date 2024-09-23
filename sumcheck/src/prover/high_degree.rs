@@ -169,7 +169,9 @@ pub fn sum_check_prove_higher_degree<
 
     // split the evaluation point into two points of dimension mu and nu, respectively
     let mu = evaluator.get_num_fractions().trailing_zeros() - 1;
-    let (evaluation_point_mu, evaluation_point_nu) = evaluation_point.split_at(mu as usize);
+    let (evaluation_point_nu, evaluation_point_mu) =
+        evaluation_point.split_at(evaluation_point.len() - mu as usize);
+
     let eq_mu = EqFunction::ml_at(evaluation_point_mu.into()).evaluations().to_vec();
     let mut eq_nu = EqFunction::ml_at(evaluation_point_nu.into());
 
@@ -329,16 +331,17 @@ fn sumcheck_round<E: FieldElement>(
                 let mut total_evals = vec![E::ZERO; evaluator.max_degree()];
 
                 for (j, ml) in mls.iter().enumerate() {
-                    evals_zero[j] = ml.evaluations()[2 * i];
-                    evals_one[j] = ml.evaluations()[2 * i + 1];
+                    evals_zero[j] = ml.evaluations()[i];
+                    evals_one[j] = ml.evaluations()[i + (1 << num_rounds)];
                 }
 
-                let eq_at_zero = eq_ml.evaluations()[2 * i];
-                let eq_at_one = eq_ml.evaluations()[2 * i + 1];
+                let eq_at_zero = eq_ml.evaluations()[i];
+                let eq_at_one = eq_ml.evaluations()[i + (1 << num_rounds)];
 
                 // add evaluation of periodic columns
-                periodic_table.fill_periodic_values_at(2 * i, &mut evals_periodic_zero);
-                periodic_table.fill_periodic_values_at(2 * i + 1, &mut evals_periodic_one);
+                periodic_table.fill_periodic_values_at(i, &mut evals_periodic_zero);
+                periodic_table
+                    .fill_periodic_values_at(i + (1 << num_rounds), &mut evals_periodic_one);
 
                 // compute the evaluation at 1
                 evaluator.evaluate_query(
@@ -439,16 +442,16 @@ fn sumcheck_round<E: FieldElement>(
             ),
              i| {
                 for (j, ml) in mls.iter().enumerate() {
-                    evals_zero[j] = ml.evaluations()[2 * i];
-                    evals_one[j] = ml.evaluations()[2 * i + 1];
+                    evals_zero[j] = ml.evaluations()[i];
+                    evals_one[j] = ml.evaluations()[i + (1 << num_rounds)];
                 }
 
-                let eq_at_zero = eq_ml.evaluations()[2 * i];
-                let eq_at_one = eq_ml.evaluations()[2 * i + 1];
+                let eq_at_zero = eq_ml.evaluations()[i];
+                let eq_at_one = eq_ml.evaluations()[i + (1 << num_rounds)];
 
                 // add evaluation of periodic columns
-                periodic_table.fill_periodic_values_at(2 * i, &mut evals_periodic_zero);
-                periodic_table.fill_periodic_values_at(2 * i + 1, &mut evals_periodic_one);
+                periodic_table.fill_periodic_values_at(i, &mut evals_periodic_zero);
+                periodic_table.fill_periodic_values_at(i + (1 << num_rounds), &mut evals_periodic_one);
 
                 // compute the evaluation at 1
                 evaluator.evaluate_query(

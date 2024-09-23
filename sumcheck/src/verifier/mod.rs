@@ -100,8 +100,8 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
     );
 
     let mu = evaluator.get_num_fractions().trailing_zeros() - 1;
-    let (evaluation_point_mu, evaluation_point_nu) = gkr_eval_point.split_at(mu as usize);
-
+    let (evaluation_point_nu, evaluation_point_mu) =
+        gkr_eval_point.split_at(gkr_eval_point.len() - mu as usize);
     let eq_mu = EqFunction::new(evaluation_point_mu.into()).evaluations();
     let eq_nu = EqFunction::new(evaluation_point_nu.into());
 
