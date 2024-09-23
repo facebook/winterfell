@@ -28,9 +28,12 @@ pub fn verify_sum_check_intermediate_layers<
     transcript: &mut impl RandomCoin<Hasher = H, BaseField = E::BaseField>,
 ) -> Result<FinalOpeningClaim<E>, SumCheckVerifierError> {
     // generate challenge to batch sum-checks
+    let mut concatenated_claims = Vec::with_capacity(claims.len() * 2);
     for claim in claims {
-        transcript.reseed(H::hash_elements(&[claim.0, claim.1]));
+        concatenated_claims.extend_from_slice(&[claim.0, claim.1]);
     }
+    transcript.reseed(H::hash_elements(&concatenated_claims));
+
     let r_batch: E = transcript
         .draw()
         .map_err(|_| SumCheckVerifierError::FailedToGenerateChallenge)?;

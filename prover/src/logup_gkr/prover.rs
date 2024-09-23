@@ -200,12 +200,14 @@ fn prove_intermediate_layers<
     // layer to the verifier. The verifier then replies with a challenge `r` in order to evaluate
     // `p` and `q` at `r` as multi-linears.
     let output_layers = circuit.output_layers();
-    // TODO: optimize calls to hash function
+
+    let mut total_evaluations =
+        Vec::with_capacity(output_layers[0].numerators.evaluations().len() * 2);
     for output_layer in output_layers.into_iter() {
-        let mut evaluations = output_layer.numerators.evaluations().to_vec();
-        evaluations.extend_from_slice(output_layer.denominators.evaluations());
-        transcript.reseed(H::hash_elements(&evaluations));
+        total_evaluations.extend_from_slice(&output_layer.numerators.evaluations());
+        total_evaluations.extend_from_slice(output_layer.denominators.evaluations());
     }
+    transcript.reseed(H::hash_elements(&total_evaluations));
 
     // generate the challenge and reduce [p0, p1, q0, q1] to [pr, qr]
     let r = transcript.draw().map_err(|_| GkrProverError::FailedToGenerateChallenge)?;
@@ -223,7 +225,6 @@ fn prove_intermediate_layers<
 
     let tensored_circuit_batching_randomness =
         EqFunction::new(circuit_batching_randomness.into()).evaluations();
-
 
     let mut layer_proofs: Vec<SumCheckProof<E>> = Vec::new();
     let mut evaluation_point = vec![r];
@@ -297,10 +298,12 @@ fn sum_check_prove_num_rounds_degree_3<
     transcript: &mut C,
 ) -> Result<SumCheckProof<E>, GkrProverError> {
     // generate challenge to batch two sumchecks
-    // TODO: optimize hash
+    let mut concatenated_claims = Vec::with_capacity(claims.len() * 2);
     for claim in claims {
-        transcript.reseed(H::hash_elements(&[claim.0, claim.1]));
+        concatenated_claims.extend_from_slice(&[claim.0, claim.1]);
     }
+    transcript.reseed(H::hash_elements(&concatenated_claims));
+
     let r_batch = transcript.draw().map_err(|_| GkrProverError::FailedToGenerateChallenge)?;
     let mut batched_claims = vec![];
     for claim in claims {

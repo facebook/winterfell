@@ -4,7 +4,8 @@ use air::{Air, LogUpGkrEvaluator};
 use crypto::{ElementHasher, RandomCoin};
 use math::FieldElement;
 use sumcheck::{
-    verify_sum_check_input_layer, verify_sum_check_intermediate_layers, CircuitOutput, EqFunction, FinalOpeningClaim, GkrCircuitProof, SumCheckVerifierError
+    verify_sum_check_input_layer, verify_sum_check_intermediate_layers, CircuitOutput, EqFunction,
+    FinalOpeningClaim, GkrCircuitProof, SumCheckVerifierError,
 };
 
 /// Verifies the validity of a GKR proof for a LogUp-GKR relation.
@@ -34,14 +35,14 @@ pub fn verify_gkr<
 
     let CircuitOutput { numerators, denominators } = circuit_outputs;
     let claim = evaluator.compute_claim(pub_inputs, &logup_randomness);
+    let mut total_evaluations = Vec::with_capacity(numerators.len() * 4);
     let mut num_acc = E::ZERO;
     let mut den_acc = E::ONE;
     for (_circuit_id, (nums, dens)) in
         numerators.into_iter().zip(denominators.into_iter()).enumerate()
     {
-        let mut evaluations = nums.evaluations().to_vec();
-        evaluations.extend_from_slice(&dens.evaluations());
-        transcript.reseed(H::hash_elements(&evaluations));
+        total_evaluations.extend_from_slice(nums.evaluations());
+        total_evaluations.extend_from_slice(dens.evaluations());
 
         let p0 = nums.evaluations()[0];
         let p1 = nums.evaluations()[1];
@@ -65,12 +66,12 @@ pub fn verify_gkr<
         return Err(VerifierError::MismatchingCircuitOutput);
     }
 
-
+    transcript.reseed(H::hash_elements(&total_evaluations));
     // generate the random challenge to reduce two claims into a single claim
     let r = transcript.draw().map_err(|_| VerifierError::FailedToGenerateChallenge)?;
 
     // reduce the claim
-     let mut reduced_claims = vec![];
+    let mut reduced_claims = vec![];
     for (_circuit_id, (nums, dens)) in
         numerators.into_iter().zip(denominators.into_iter()).enumerate()
     {
@@ -85,7 +86,7 @@ pub fn verify_gkr<
         reduced_claims.push(reduced_claim)
     }
 
-     let num_circuits = reduced_claims.len();
+    let num_circuits = reduced_claims.len();
     let log_num_circuits = num_circuits.ilog2();
     assert_eq!(1 << log_num_circuits, num_circuits);
 

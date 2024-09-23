@@ -10,7 +10,6 @@ use math::FieldElement;
 #[cfg(feature = "concurrent")]
 pub use rayon::prelude::*;
 use smallvec::smallvec;
-use utils::{iter, iter_mut};
 
 use super::SumCheckProverError;
 use crate::{
@@ -256,6 +255,7 @@ pub fn sumcheck_prove_plain_batched<E: FieldElement, H: ElementHasher<BaseField 
         //iter_mut!(p0_s)
         //.zip(iter_mut!(p1_s).zip(iter_mut!(q0_s).zip(iter_mut!(q1_s).zip(iter!(tensored_batching_randomness)))))
         {
+             #[cfg(not(feature = "concurrent"))]
             let (round_poly_eval_at_1, round_poly_eval_at_2, round_poly_eval_at_3) = (0..len).fold(
                 (E::ZERO, E::ZERO, E::ZERO),
                 |(acc_point_1, acc_point_2, acc_point_3), i| {
@@ -308,6 +308,63 @@ pub fn sumcheck_prove_plain_batched<E: FieldElement, H: ElementHasher<BaseField 
                         round_poly_eval_at_3 + acc_point_3,
                     )
                 },
+            );
+
+            #[cfg(feature = "concurrent")]
+        let (round_poly_eval_at_1, round_poly_eval_at_2, round_poly_eval_at_3) = (0..len)
+            .into_par_iter()
+            .fold(
+                || (E::ZERO, E::ZERO, E::ZERO),
+                |(a, b, c), i| {
+                     let round_poly_eval_at_1 = comb_func(
+                        p0[i + len],
+                        p1[i + len],
+                        q0[i + len],
+                        q1[i + len],
+                        eq[i + len],
+                        r_batch,
+                    );
+
+                    let p0_delta = p0[i + len] - p0[i];
+                    let p1_delta = p1[i + len] - p1[i];
+                    let q0_delta = q0[i + len] - q0[i];
+                    let q1_delta = q1[i + len] - q1[i];
+                    let eq_delta = eq[i + len] - eq[i];
+
+                    let mut p0_eval_at_x = p0[i + len] + p0_delta;
+                    let mut p1_eval_at_x = p1[i + len] + p1_delta;
+                    let mut q0_eval_at_x = q0[i + len] + q0_delta;
+                    let mut q1_eval_at_x = q1[i + len] + q1_delta;
+                    let mut eq_evx = eq[i + len] + eq_delta;
+                    let round_poly_eval_at_2 = comb_func(
+                        p0_eval_at_x,
+                        p1_eval_at_x,
+                        q0_eval_at_x,
+                        q1_eval_at_x,
+                        eq_evx,
+                        r_batch,
+                    );
+
+                    p0_eval_at_x += p0_delta;
+                    p1_eval_at_x += p1_delta;
+                    q0_eval_at_x += q0_delta;
+                    q1_eval_at_x += q1_delta;
+                    eq_evx += eq_delta;
+                    let round_poly_eval_at_3 = comb_func(
+                        p0_eval_at_x,
+                        p1_eval_at_x,
+                        q0_eval_at_x,
+                        q1_eval_at_x,
+                        eq_evx,
+                        r_batch,
+                    );
+
+                    (round_poly_eval_at_1 + a, round_poly_eval_at_2 + b, round_poly_eval_at_3 + c)
+                },
+            )
+            .reduce(
+                || (E::ZERO, E::ZERO, E::ZERO),
+                |(a0, b0, c0), (a1, b1, c1)| (a0 + a1, b0 + b1, c0 + c1),
             );
 
             all_round_poly_eval_at_1 += round_poly_eval_at_1 * *batching_randomness;
