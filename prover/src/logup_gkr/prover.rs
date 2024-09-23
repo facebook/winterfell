@@ -308,10 +308,10 @@ fn sum_check_prove_num_rounds_degree_3<
         batched_claims.push(claim)
     }
 
-    let mut numerators_accross_circuits_0 = vec![];
-    let mut denominators_accross_circuits_0 = vec![];
-    let mut numerators_accross_circuits_1 = vec![];
-    let mut denominators_accross_circuits_1 = vec![];
+    let mut numerators_accross_circuits_0 = Vec::with_capacity(inner_layers.len());
+    let mut denominators_accross_circuits_0 = Vec::with_capacity(inner_layers.len());
+    let mut numerators_accross_circuits_1 = Vec::with_capacity(inner_layers.len());
+    let mut denominators_accross_circuits_1 = Vec::with_capacity(inner_layers.len());
 
     for inner_layer in inner_layers {
         let CircuitLayerPolys { numerators, denominators } = inner_layer;
