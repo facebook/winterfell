@@ -7,7 +7,6 @@ use alloc::vec::Vec;
 
 use air::{LogUpGkrEvaluator, PeriodicTable};
 use crypto::{ElementHasher, RandomCoin};
-use libc_print::libc_println;
 use math::FieldElement;
 
 use crate::{
@@ -64,11 +63,8 @@ pub fn verify_sum_check_intermediate_layers<
         eval_batched_circuits += comb_func(p0, p1, q0, q1, eq, r_batch)
             * tensored_circuit_batching_randomness[circuit_idx]
     }
-    //libc_println!("eval_batched_circuits {:?}", eval_batched_circuits);
-    //libc_println!("final_round_claim.claim {:?}", final_round_claim.claim);
-    //libc_println!("we are here !!!!");
+
     if eval_batched_circuits != final_round_claim.claim {
-        libc_println!("we are here !!!!");
         return Err(SumCheckVerifierError::FinalEvaluationCheckFailed);
     }
 
@@ -89,9 +85,12 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
     tensored_circuit_batching_randomness: &[E],
     transcript: &mut impl RandomCoin<Hasher = H, BaseField = E::BaseField>,
 ) -> Result<FinalOpeningClaim<E>, SumCheckVerifierError> {
+    let mut all_claims_concatenated = Vec::with_capacity(claim.len());
     for claimed_evaluation in claim.iter() {
-        transcript.reseed(H::hash_elements(&[claimed_evaluation.0, claimed_evaluation.1]));
+        all_claims_concatenated.extend_from_slice(&[claimed_evaluation.0, claimed_evaluation.1]);
     }
+
+        transcript.reseed(H::hash_elements(&all_claims_concatenated));
     // generate challenge to batch sum-checks
 
     let r_batch: E = transcript
@@ -108,7 +107,6 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
     for (circuit_id, claim) in batched_claims.iter().enumerate() {
         full_claim += *claim * tensored_circuit_batching_randomness[circuit_id]
     }
-    //libc_println!("initial claim high degree verifier {:?}", full_claim);
 
     // verify the sum-check proof
     let SumCheckRoundClaim { eval_point, claim } =
@@ -116,8 +114,6 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
 
     // execute the final evaluation check
     if proof.0.openings_claim.eval_point != eval_point {
-        libc_println!("proof.0.openings_claim.eval_point {:?}", proof.0.openings_claim.eval_point);
-        libc_println!("eval_point {:?}", eval_point);
         return Err(SumCheckVerifierError::WrongOpeningPoint);
     }
 
@@ -137,9 +133,8 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
     let periodic_columns_evaluations =
         evaluate_periodic_columns_at(periodic_columns, &proof.0.openings_claim.eval_point);
 
-    //libc_println!("openings verifier {:?}", proof.0.openings_claim.openings[0]);
-    let mut at_zero = vec![];
-    let mut at_one = vec![];
+    let mut at_zero = Vec::with_capacity(proof.0.openings_claim.openings[0].len());
+    let mut at_one = Vec::with_capacity(proof.0.openings_claim.openings[0].len());
     for ml in proof.0.openings_claim.openings[0].chunks(2) {
         at_zero.push(ml[0]);
         at_one.push(ml[1]);
@@ -163,7 +158,7 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
     let eq_nu = EqFunction::new(gkr_eval_point.into());
 
     let eq_nu_eval = eq_nu.evaluate(&proof.0.openings_claim.eval_point);
-    //libc_println!("eq_nu_eval verifier {:?}", eq_nu_eval);
+
     let expected_evaluation = evaluate_composition_poly(
         &tensored_circuit_batching_randomness,
         &numerators_zero,
@@ -173,14 +168,8 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
         eq_nu_eval,
         r_batch,
     );
-    //libc_println!("numerators zero {:?}", numerators_zero);
-    //libc_println!("numerators one {:?}", numerators_one);
-    //libc_println!("denominators zero {:?}",denominators_zero);
-    //libc_println!("denominators one {:?}", denominators_one );
-    //libc_println!("expected_eval verifier {:?}", expected_evaluation);
-    //libc_println!("actual evaluation verifier {:?}", claim);
+
     if expected_evaluation != claim {
-        libc_println!("HERE!!");
         Err(SumCheckVerifierError::FinalEvaluationCheckFailed)
     } else {
         Ok(proof.0.openings_claim.clone())

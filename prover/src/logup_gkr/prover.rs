@@ -4,8 +4,9 @@ use air::{LogUpGkrEvaluator, LogUpGkrOracle, PeriodicTable};
 use crypto::{ElementHasher, RandomCoin};
 use math::FieldElement;
 use sumcheck::{
-    sum_check_prove_higher_degree, sumcheck_prove_plain_batched, BeforeFinalLayerProof,
-    CircuitOutput, EqFunction, FinalLayerProof, GkrCircuitProof, MultiLinearPoly, SumCheckProof,
+    sum_check_prove_higher_degree, sumcheck_prove_plain_batched,
+    sumcheck_prove_plain_batched_serial, BeforeFinalLayerProof, CircuitOutput, EqFunction,
+    FinalLayerProof, GkrCircuitProof, MultiLinearPoly, SumCheckProof,
 };
 use tracing::instrument;
 
@@ -132,9 +133,13 @@ fn prove_input_layer<
         evaluation_point,
         claimed_evaluations_per_circuit: claimed_evaluations,
     } = claim;
+
+    let mut all_claims_concatenated = Vec::with_capacity(claimed_evaluations.len());
     for claimed_evaluation in claimed_evaluations.iter() {
-        transcript.reseed(H::hash_elements(&[claimed_evaluation.0, claimed_evaluation.1]));
+        all_claims_concatenated.extend_from_slice(&[claimed_evaluation.0, claimed_evaluation.1]);
     }
+    transcript.reseed(H::hash_elements(&all_claims_concatenated));
+
     let r_batch = transcript.draw().map_err(|_| GkrProverError::FailedToGenerateChallenge)?;
     let mut full_claim = E::ZERO;
     for (circuit_idx, claimed_evaluation) in claimed_evaluations.iter().enumerate() {
@@ -310,15 +315,25 @@ fn sum_check_prove_num_rounds_degree_3<
         let claim = claim.0 + claim.1 * r_batch;
         batched_claims.push(claim)
     }
-
-    let proof = sumcheck_prove_plain_batched(
-        &batched_claims,
-        r_batch,
-        inner_layers,
-        eq,
-        tensored_batching_randomness,
-        transcript,
-    )?;
+    let proof = if inner_layers[0].numerators.num_evaluations() >= 512 {
+        sumcheck_prove_plain_batched(
+            &batched_claims,
+            r_batch,
+            inner_layers,
+            eq,
+            tensored_batching_randomness,
+            transcript,
+        )?
+    } else {
+        sumcheck_prove_plain_batched_serial(
+            &batched_claims,
+            r_batch,
+            inner_layers,
+            eq,
+            tensored_batching_randomness,
+            transcript,
+        )?
+    };
 
     Ok(proof)
 }

@@ -4,7 +4,7 @@ use air::{EvaluationFrame, GkrData, LogUpGkrEvaluator};
 use math::FieldElement;
 use sumcheck::{CircuitLayer, CircuitLayerPolys, CircuitWire, EqFunction, SumCheckProverError};
 use tracing::instrument;
-use utils::chunks;
+use utils::{chunks, uninit_vector};
 
 use crate::Trace;
 

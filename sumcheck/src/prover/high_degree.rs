@@ -187,7 +187,6 @@ pub fn sum_check_prove_higher_degree<
     // reseed with the s_0 polynomial
     coin.reseed(H::hash_elements(&round_poly_coefs.0));
     round_proofs.push(RoundProof { round_poly_coefs });
-    //libc_println!("current_round_claim {:?}", current_round_claim);
     for i in 1..num_rounds {
         // generate random challenge r_i for the i-th round
         let round_challenge =
