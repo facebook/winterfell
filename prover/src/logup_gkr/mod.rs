@@ -1,14 +1,10 @@
 use alloc::vec::Vec;
-use core::{
-    fmt::{self, Formatter},
-    ops::Add,
-};
 
 use air::{EvaluationFrame, GkrData, LogUpGkrEvaluator};
 use math::FieldElement;
-use sumcheck::{CircuitLayer, CircuitLayerPolys, CircuitWire, EqFunction, MultiLinearPoly, SumCheckProverError};
+use sumcheck::{CircuitLayer, CircuitLayerPolys, CircuitWire, EqFunction, SumCheckProverError};
 use tracing::instrument;
-use utils::{chunks, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+use utils::chunks;
 
 use crate::Trace;
 

@@ -311,29 +311,10 @@ fn sum_check_prove_num_rounds_degree_3<
         batched_claims.push(claim)
     }
 
-    //let mut numerators_accross_circuits_0 = Vec::with_capacity(inner_layers.len());
-    //let mut denominators_accross_circuits_0 = Vec::with_capacity(inner_layers.len());
-    //let mut numerators_accross_circuits_1 = Vec::with_capacity(inner_layers.len());
-    //let mut denominators_accross_circuits_1 = Vec::with_capacity(inner_layers.len());
-
-    //for inner_layer in inner_layers {
-        //let CircuitLayerPolys { numerators, denominators } = inner_layer;
-        //let (p0, p1) = numerators.project_least_significant_variable();
-        //let (q0, q1) = denominators.project_least_significant_variable();
-        //numerators_accross_circuits_0.push(p0);
-        //numerators_accross_circuits_1.push(p1);
-        //denominators_accross_circuits_0.push(q0);
-        //denominators_accross_circuits_1.push(q1)
-    //}
-
     let proof = sumcheck_prove_plain_batched(
         &batched_claims,
         r_batch,
         inner_layers,
-        //numerators_accross_circuits_0,
-        //numerators_accross_circuits_1,
-        //denominators_accross_circuits_0,
-        //denominators_accross_circuits_1,
         eq,
         tensored_batching_randomness,
         transcript,
