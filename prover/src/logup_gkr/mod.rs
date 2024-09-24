@@ -111,7 +111,7 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
     /// Generates the input layer of the circuit from the main trace columns and some randomness
     /// provided by the verifier.
     fn generate_input_layer(
-        main_trace: &impl Trace<BaseField = E::BaseField>,
+        trace: &impl Trace<BaseField = E::BaseField>,
         evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
         log_up_randomness: &[E],
     ) -> Vec<CircuitLayer<E>> {
@@ -119,15 +119,15 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
         let periodic_values = evaluator.build_periodic_values(trace.main_segment().num_rows());
 
         let mut input_layer_wires: Vec<Vec<_>> =
-              vec![unsafe{uninit_vector(main_trace.main_segment().num_rows())}; num_fractions];
-        let mut main_frame = EvaluationFrame::new(main_trace.main_segment().num_cols());
+              vec![unsafe{uninit_vector(trace.main_segment().num_rows())}; num_fractions];
+        let mut main_frame = EvaluationFrame::new(trace.main_segment().num_cols());
 
         let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
         let mut periodic_values_row = vec![E::BaseField::ZERO; periodic_values.num_columns()];
         let mut numerators = vec![E::ZERO; num_fractions];
         let mut denominators = vec![E::ZERO; num_fractions];
-        for i in 0..main_trace.main_segment().num_rows() {
-            main_trace.read_main_frame(i, &mut main_frame);
+        for i in 0..trace.main_segment().num_rows() {
+            trace.read_main_frame(i, &mut main_frame);
             periodic_values.fill_periodic_values_at(i, &mut periodic_values_row);
             evaluator.build_query(&main_frame, &mut query);
 
