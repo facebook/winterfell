@@ -239,11 +239,11 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
     }
 
     fn get_num_fractions(&self) -> usize {
-        16
+        4
     }
 
     fn max_degree(&self) -> usize {
-        10
+        3
     }
 
     fn build_query<E>(&self, frame: &EvaluationFrame<E>, query: &mut [E])
@@ -264,42 +264,20 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
         F: FieldElement<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
     {
-        assert_eq!(numerator.len(), 16);
-        assert_eq!(denominator.len(), 16);
+        assert_eq!(numerator.len(), 4);
+        assert_eq!(denominator.len(), 4);
         assert_eq!(query.len(), 5);
         numerator[0] = E::from(query[1]);
         numerator[1] = E::ONE;
         numerator[2] = E::ONE;
         numerator[3] = E::ONE;
-        numerator[4] = E::from(query[1]);
-        numerator[5] = E::ONE;
-        numerator[6] = E::ONE;
-        numerator[7] = E::ONE;
-        numerator[8] = E::from(query[1]);
-        numerator[9] = E::ONE;
-        numerator[10] = E::ONE;
-        numerator[11] = E::ONE;
-        numerator[12] = E::from(query[1]);
-        numerator[13] = E::ONE;
-        numerator[14] = E::ONE;
-        numerator[15] = E::ONE;
+
 
         denominator[0] = rand_values[0] - E::from(query[0]);
         denominator[1] = -(rand_values[0] - E::from(query[2]));
         denominator[2] = -(rand_values[0] - E::from(query[3]));
         denominator[3] = -(rand_values[0] - E::from(query[4]));
-        denominator[4] = rand_values[0] - E::from(query[0]);
-        denominator[5] = -(rand_values[0] - E::from(query[2]));
-        denominator[6] = -(rand_values[0] - E::from(query[3]));
-        denominator[7] = -(rand_values[0] - E::from(query[4]));
-        denominator[8] = rand_values[0] - E::from(query[0]);
-        denominator[9] = -(rand_values[0] - E::from(query[2]));
-        denominator[10] = -(rand_values[0] - E::from(query[3]));
-        denominator[11] = -(rand_values[0] - E::from(query[4]));
-        denominator[12] = rand_values[0] - E::from(query[0]);
-        denominator[13] = -(rand_values[0] - E::from(query[2]));
-        denominator[14] = -(rand_values[0] - E::from(query[3]));
-        denominator[15] = -(rand_values[0] - E::from(query[4]));
+
     
     }
 

@@ -13,4 +13,4 @@ mod error;
 pub use error::SumCheckProverError;
 
 #[cfg(feature = "concurrent")]
-const MINIMAL_MLE_SIZE: usize = 1 << 4;
+const MINIMAL_MLE_SIZE: usize = 1 << 6;
