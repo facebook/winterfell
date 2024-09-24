@@ -119,7 +119,7 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
         let periodic_values = evaluator.build_periodic_values(trace.main_segment().num_rows());
 
         let mut input_layer_wires: Vec<Vec<_>> =
-            vec![Vec::with_capacity(main_trace.main_segment().num_rows()); num_fractions];
+              vec![unsafe{uninit_vector(main_trace.main_segment().num_rows())}; num_fractions];
         let mut main_frame = EvaluationFrame::new(main_trace.main_segment().num_cols());
 
         let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
@@ -143,7 +143,7 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
                 .zip(denominators.iter())
                 .zip(input_layer_wires.iter_mut())
                 .for_each(|((numerator, denominator), circuit_input_layer)| {
-                    circuit_input_layer.push(CircuitWire::new(*numerator, *denominator))
+                    circuit_input_layer[i] = CircuitWire::new(*numerator, *denominator)
                 });
         }
 
