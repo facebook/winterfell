@@ -20,6 +20,9 @@ pub use utils::{
     {chunks_mut, iter, iter_mut},
 };
 
+#[cfg(feature = "concurrent")]
+const MINIMAL_MLE_SIZE: usize = 1 << 4;
+
 // EVALUATED CIRCUIT
 // ================================================================================================
 

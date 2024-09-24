@@ -3,15 +3,19 @@ use alloc::vec::Vec;
 use air::{LogUpGkrEvaluator, LogUpGkrOracle, PeriodicTable};
 use crypto::{ElementHasher, RandomCoin};
 use math::FieldElement;
+#[cfg(feature = "concurrent")]
+use sumcheck::sumcheck_prove_plain_parallel;
 use sumcheck::{
-    sum_check_prove_higher_degree, sumcheck_prove_plain, BeforeFinalLayerProof, CircuitOutput,
-    EqFunction, FinalLayerProof, GkrCircuitProof, MultiLinearPoly, SumCheckProof,
+    sum_check_prove_higher_degree, sumcheck_prove_plain_serial, BeforeFinalLayerProof,
+    CircuitOutput, EqFunction, FinalLayerProof, GkrCircuitProof, MultiLinearPoly, SumCheckProof,
 };
 use tracing::instrument;
 use utils::iter;
 #[cfg(feature = "concurrent")]
 pub use utils::rayon::prelude::*;
 
+#[cfg(feature = "concurrent")]
+use super::MINIMAL_MLE_SIZE;
 use super::{reduce_layer_claim, CircuitLayerPolys, EvaluatedCircuit, GkrClaim, GkrProverError};
 use crate::{matrix::ColMatrix, Trace};
 
@@ -265,7 +269,15 @@ fn sum_check_prove_num_rounds_degree_3<
     let r_batch = transcript.draw().map_err(|_| GkrProverError::FailedToGenerateChallenge)?;
     let claim = claim.0 + claim.1 * r_batch;
 
-    let proof = sumcheck_prove_plain(claim, r_batch, p, q, eq, transcript)?;
+    #[cfg(feature = "concurrent")]
+    let proof = if p.num_evaluations() >= MINIMAL_MLE_SIZE {
+        sumcheck_prove_plain_parallel(claim, r_batch, p, q, eq, transcript)?
+    } else {
+        sumcheck_prove_plain_serial(claim, r_batch, p, q, eq, transcript)?
+    };
+
+    #[cfg(not(feature = "concurrent"))]
+    let proof = sumcheck_prove_plain_serial(claim, r_batch, p, q, eq, transcript)?;
 
     Ok(proof)
 }
