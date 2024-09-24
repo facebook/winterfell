@@ -417,11 +417,11 @@ fn sumcheck_round<E: FieldElement>(
                     vec![E::ZERO; num_periodic],
                     vec![E::ZERO; num_periodic],
                     vec![E::ZERO; num_periodic],
-                    vec![E::ZERO; evaluator.max_degree()],
                     vec![E::ZERO; evaluator.get_num_fractions()],
                     vec![E::ZERO; evaluator.get_num_fractions()],
                     vec![E::ZERO; num_mls],
                     vec![E::ZERO; num_periodic],
+                    vec![E::ZERO; evaluator.max_degree()],
                 )
             },
             |(
@@ -431,11 +431,11 @@ fn sumcheck_round<E: FieldElement>(
                 mut evals_periodic_zero,
                 mut evals_periodic_one,
                 mut evals_periodic_x,
-                mut poly_evals,
                 mut numerators,
                 mut denominators,
                 mut deltas,
                 mut deltas_periodic,
+                mut poly_evals,
             ),
              i| {
                 for (j, ml) in mls.iter().enumerate() {
@@ -458,7 +458,7 @@ fn sumcheck_round<E: FieldElement>(
                     &mut numerators,
                     &mut denominators,
                 );
-                poly_evals[0] = evaluate_composition_poly(
+                poly_evals[0] += evaluate_composition_poly(
                     eq_mu,
                     &numerators,
                     &denominators,
@@ -496,7 +496,7 @@ fn sumcheck_round<E: FieldElement>(
                         &mut numerators,
                         &mut denominators,
                     );
-                    *e = evaluate_composition_poly(
+                    *e += evaluate_composition_poly(
                         eq_mu,
                         &numerators,
                         &denominators,
@@ -512,15 +512,15 @@ fn sumcheck_round<E: FieldElement>(
                     evals_periodic_zero,
                     evals_periodic_one,
                     evals_periodic_x,
-                    poly_evals,
                     numerators,
                     denominators,
                     deltas,
                     deltas_periodic,
+                    poly_evals,
                 )
             },
         )
-        .map(|(_, _, _, poly_evals, ..)| poly_evals)
+        .map(|(.., poly_evals)| poly_evals)
         .reduce(
             || vec![E::ZERO; evaluator.max_degree()],
             |mut acc, poly_eval| {
