@@ -6,9 +6,8 @@
 use std::{marker::PhantomData, time::Duration, vec::Vec};
 
 use air::{
-    Air, AirContext, Assertion, AuxRandElements,
-    EvaluationFrame, LogUpGkrEvaluator, LogUpGkrOracle, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
+    Air, AirContext, Assertion, AuxRandElements, EvaluationFrame, LogUpGkrEvaluator,
+    LogUpGkrOracle, ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use crypto::RandomCoin;

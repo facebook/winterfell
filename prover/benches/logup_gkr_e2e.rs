@@ -270,13 +270,10 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
         numerator[2] = E::ONE;
         numerator[3] = E::ONE;
 
-
         denominator[0] = rand_values[0] - E::from(query[0]);
         denominator[1] = -(rand_values[0] - E::from(query[2]));
         denominator[2] = -(rand_values[0] - E::from(query[3]));
         denominator[3] = -(rand_values[0] - E::from(query[4]));
-
-    
     }
 
     fn compute_claim<E>(&self, _inputs: &Self::PublicInputs, _rand_values: &[E]) -> E
