@@ -89,10 +89,9 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
     for claimed_evaluation in claim.iter() {
         all_claims_concatenated.extend_from_slice(&[claimed_evaluation.0, claimed_evaluation.1]);
     }
+    transcript.reseed(H::hash_elements(&all_claims_concatenated));
 
-        transcript.reseed(H::hash_elements(&all_claims_concatenated));
     // generate challenge to batch sum-checks
-
     let r_batch: E = transcript
         .draw()
         .map_err(|_| SumCheckVerifierError::FailedToGenerateChallenge)?;
@@ -121,7 +120,6 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
     let mut numerators_one = vec![E::ZERO; evaluator.get_num_fractions()];
     let mut denominators_zero = vec![E::ZERO; evaluator.get_num_fractions()];
     let mut denominators_one = vec![E::ZERO; evaluator.get_num_fractions()];
-
 
     let trace_len = 1 << eval_point.len();
     let periodic_columns = evaluator.build_periodic_values(trace_len);
@@ -213,36 +211,22 @@ pub enum SumCheckVerifierError {
 // =================================================================================================
 
 /// Evaluates periodic columns as multi-linear extensions.
-fn evaluate_periodic_columns_at_old<E: FieldElement>(
-    periodic_columns: PeriodicTable<E>,
-    eval_point: &[E],
-) -> Vec<E> {
-    let mut evaluations = Vec::with_capacity(periodic_columns.num_columns());
-    for col in periodic_columns.table() {
-        let ml = MultiLinearPoly::from_evaluations(col.to_vec());
-        let num_variables = ml.num_variables();
-
-        let evaluation = ml.evaluate(&eval_point[&eval_point.len() - num_variables..]);
-        evaluations.push(evaluation)
-    }
-    evaluations
-}
 fn evaluate_periodic_columns_at<E: FieldElement>(
     periodic_columns: PeriodicTable<E>,
     eval_point: &[E],
 ) -> (Vec<E>, Vec<E>) {
-    let mut eval_point_zero = vec![E::ZERO];
-    let mut eval_point_one = vec![E::ONE];
-    eval_point_zero.extend_from_slice(&eval_point);
-    eval_point_one.extend_from_slice(&eval_point);
+    let mut eval_point_zero = eval_point.to_vec();
+    let mut eval_point_one = eval_point.to_vec();
+    eval_point_zero.push(E::ZERO);
+    eval_point_one.push(E::ONE);
 
     let mut evaluations_zero = vec![];
     let mut evaluations_one = vec![];
     for col in periodic_columns.table() {
         let ml = MultiLinearPoly::from_evaluations(col.to_vec());
         let num_variables = ml.num_variables();
-        let point_zero = &eval_point_zero[..num_variables];
-        let point_one = &eval_point_one[..num_variables];
+        let point_zero = &eval_point_zero[&eval_point_zero.len() - num_variables..];
+        let point_one = &eval_point_one[&eval_point_one.len() - num_variables..];
 
         let evaluation_zero = ml.evaluate(point_zero);
         evaluations_zero.push(evaluation_zero);

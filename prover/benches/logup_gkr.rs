@@ -6,24 +6,22 @@
 use std::{marker::PhantomData, time::Duration, vec::Vec};
 
 use air::{
-    Air, AirContext, Assertion, AuxRandElements, ConstraintCompositionCoefficients,
-    EvaluationFrame, FieldExtension, LogUpGkrEvaluator, LogUpGkrOracle, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
+    Air, AirContext, Assertion, AuxRandElements, EvaluationFrame, LogUpGkrEvaluator,
+    LogUpGkrOracle, ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
-use crypto::MerkleTree;
+use crypto::RandomCoin;
 use math::StarkField;
 use winter_prover::{
     crypto::{hashers::Blake3_256, DefaultRandomCoin},
     math::{fields::f64::BaseElement, ExtensionOf, FieldElement},
     matrix::ColMatrix,
-    DefaultTraceLde, LogUpGkrConstraintEvaluator, Prover, StarkDomain, Trace, TracePolyTable,
+    prove_gkr, Trace,
 };
 
-const TRACE_LENS: [usize; 2] = [2_usize.pow(18), 2_usize.pow(20)];
-const AUX_TRACE_WIDTH: usize = 2;
+const TRACE_LENS: [usize; 4] = [2_usize.pow(18), 2_usize.pow(19), 2_usize.pow(20), 2_usize.pow(21)];
 
-/// Simple end-to-end benchmark for LogUp-GKR.
+/// Simple benchmark for the GKR part of STARK with LogUp-GKR.
 ///
 /// The main trace contains `5` columns and the LogUp relation is a simple one where we have:
 ///
@@ -33,27 +31,31 @@ const AUX_TRACE_WIDTH: usize = 2;
 ///
 /// Given the above, the benchmark then gives an idea about the minimal overhead due to enabling
 /// LogUp-GKR. The overhead could be bigger depending on the complexity of the LogUp relation.
-fn prove_with_lagrange_kernel(c: &mut Criterion) {
-    let mut group = c.benchmark_group("prove with Lagrange kernel column");
+fn prove_with_logup_gkr(c: &mut Criterion) {
+    let mut group = c.benchmark_group("prove LogUp-GKR");
     group.sample_size(10);
     group.measurement_time(Duration::from_secs(20));
 
     for &trace_len in TRACE_LENS.iter() {
         group.bench_function(BenchmarkId::new("", trace_len), |b| {
-            let trace = LogUpGkrSimpleTrace::new(trace_len, AUX_TRACE_WIDTH);
-            let prover = LogUpGkrSimpleProver::new(AUX_TRACE_WIDTH);
+            let main_trace = LogUpGkrSimpleTrace::new(trace_len);
+            let evaluator = PlainLogUpGkrEval::new();
 
             b.iter_batched(
-                || trace.clone(),
-                |trace| prover.prove(trace).unwrap(),
+                || (main_trace.clone(), evaluator.clone()),
+                |(main_trace, evaluator)| {
+                    let mut public_coin =
+                        DefaultRandomCoin::<Blake3_256<BaseElement>>::new(&[BaseElement::ZERO; 4]);
+                    prove_gkr::<BaseElement>(&main_trace, &evaluator, &mut public_coin)
+                },
                 BatchSize::SmallInput,
             )
         });
     }
 }
 
-criterion_group!(lagrange_kernel_group, prove_with_lagrange_kernel);
-criterion_main!(lagrange_kernel_group);
+criterion_group!(logup_gkr_group, prove_with_logup_gkr);
+criterion_main!(logup_gkr_group);
 
 // LogUpGkrSimple
 // =================================================================================================
@@ -66,7 +68,7 @@ struct LogUpGkrSimpleTrace {
 }
 
 impl LogUpGkrSimpleTrace {
-    fn new(trace_len: usize, aux_segment_width: usize) -> Self {
+    fn new(trace_len: usize) -> Self {
         assert!(trace_len < u32::MAX.try_into().unwrap());
 
         // we create a column for the table we are looking values into. These are just the integers
@@ -103,7 +105,7 @@ impl LogUpGkrSimpleTrace {
 
         Self {
             main_trace: ColMatrix::new(vec![table, multiplicity, values_0, values_1, values_2]),
-            info: TraceInfo::new_multi_segment(5, aux_segment_width, 0, trace_len, vec![], true),
+            info: TraceInfo::new_multi_segment(5, 0, 0, trace_len, vec![], true),
         }
     }
 
@@ -237,11 +239,11 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
     }
 
     fn get_num_fractions(&self) -> usize {
-        16
+        4
     }
 
     fn max_degree(&self) -> usize {
-        10
+        3
     }
 
     fn build_query<E>(&self, frame: &EvaluationFrame<E>, query: &mut [E])
@@ -262,42 +264,18 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
         F: FieldElement<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
     {
-        assert_eq!(numerator.len(), 16);
-        assert_eq!(denominator.len(), 16);
+        assert_eq!(numerator.len(), 4);
+        assert_eq!(denominator.len(), 4);
         assert_eq!(query.len(), 5);
         numerator[0] = E::from(query[1]);
         numerator[1] = E::ONE;
         numerator[2] = E::ONE;
         numerator[3] = E::ONE;
-        numerator[4] = E::from(query[1]);
-        numerator[5] = E::ONE;
-        numerator[6] = E::ONE;
-        numerator[7] = E::ONE;
-        numerator[8] = E::from(query[1]);
-        numerator[9] = E::ONE;
-        numerator[10] = E::ONE;
-        numerator[11] = E::ONE;
-        numerator[12] = E::from(query[1]);
-        numerator[13] = E::ONE;
-        numerator[14] = E::ONE;
-        numerator[15] = E::ONE;
 
         denominator[0] = rand_values[0] - E::from(query[0]);
         denominator[1] = -(rand_values[0] - E::from(query[2]));
         denominator[2] = -(rand_values[0] - E::from(query[3]));
         denominator[3] = -(rand_values[0] - E::from(query[4]));
-        denominator[4] = rand_values[0] - E::from(query[0]);
-        denominator[5] = -(rand_values[0] - E::from(query[2]));
-        denominator[6] = -(rand_values[0] - E::from(query[3]));
-        denominator[7] = -(rand_values[0] - E::from(query[4]));
-        denominator[8] = rand_values[0] - E::from(query[0]);
-        denominator[9] = -(rand_values[0] - E::from(query[2]));
-        denominator[10] = -(rand_values[0] - E::from(query[3]));
-        denominator[11] = -(rand_values[0] - E::from(query[4]));
-        denominator[12] = rand_values[0] - E::from(query[0]);
-        denominator[13] = -(rand_values[0] - E::from(query[2]));
-        denominator[14] = -(rand_values[0] - E::from(query[3]));
-        denominator[15] = -(rand_values[0] - E::from(query[4]));
     }
 
     fn compute_claim<E>(&self, _inputs: &Self::PublicInputs, _rand_values: &[E]) -> E
@@ -305,88 +283,5 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
         E: FieldElement<BaseField = Self::BaseField>,
     {
         E::ZERO
-    }
-}
-// Prover
-// ================================================================================================
-
-struct LogUpGkrSimpleProver {
-    aux_trace_width: usize,
-    options: ProofOptions,
-}
-
-impl LogUpGkrSimpleProver {
-    fn new(aux_trace_width: usize) -> Self {
-        Self {
-            aux_trace_width,
-            options: ProofOptions::new(1, 8, 0, FieldExtension::Quadratic, 2, 1),
-        }
-    }
-}
-
-impl Prover for LogUpGkrSimpleProver {
-    type BaseField = BaseElement;
-    type Air = LogUpGkrSimpleAir;
-    type Trace = LogUpGkrSimpleTrace;
-    type HashFn = Blake3_256<BaseElement>;
-    type VC = MerkleTree<Blake3_256<BaseElement>>;
-    type RandomCoin = DefaultRandomCoin<Self::HashFn>;
-    type TraceLde<E: FieldElement<BaseField = BaseElement>> =
-        DefaultTraceLde<E, Self::HashFn, Self::VC>;
-    type ConstraintEvaluator<'a, E: FieldElement<BaseField = BaseElement>> =
-        LogUpGkrConstraintEvaluator<'a, LogUpGkrSimpleAir, E>;
-
-    fn get_pub_inputs(&self, _trace: &Self::Trace) -> <<Self as Prover>::Air as Air>::PublicInputs {
-    }
-
-    fn options(&self) -> &ProofOptions {
-        &self.options
-    }
-
-    fn new_trace_lde<E>(
-        &self,
-        trace_info: &TraceInfo,
-        main_trace: &ColMatrix<Self::BaseField>,
-        domain: &StarkDomain<Self::BaseField>,
-    ) -> (Self::TraceLde<E>, TracePolyTable<E>)
-    where
-        E: math::FieldElement<BaseField = Self::BaseField>,
-    {
-        DefaultTraceLde::new(trace_info, main_trace, domain)
-    }
-
-    fn new_evaluator<'a, E>(
-        &self,
-        air: &'a Self::Air,
-        aux_rand_elements: Option<AuxRandElements<E>>,
-        composition_coefficients: ConstraintCompositionCoefficients<E>,
-    ) -> Self::ConstraintEvaluator<'a, E>
-    where
-        E: math::FieldElement<BaseField = Self::BaseField>,
-    {
-        LogUpGkrConstraintEvaluator::new(air, aux_rand_elements.unwrap(), composition_coefficients)
-    }
-
-    fn build_aux_trace<E>(&self, main_trace: &Self::Trace, _aux_rand_elements: &[E]) -> ColMatrix<E>
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        let main_trace = main_trace.main_segment();
-
-        let mut columns = Vec::new();
-
-        let rand_summed = E::from(777_u32);
-        for _ in 0..self.aux_trace_width {
-            // building a dummy auxiliary column
-            let column = main_trace
-                .get_column(0)
-                .iter()
-                .map(|row_val| rand_summed.mul_base(*row_val))
-                .collect();
-
-            columns.push(column);
-        }
-
-        ColMatrix::new(columns)
     }
 }

@@ -11,7 +11,7 @@ use crate::Trace;
 mod prover;
 pub use prover::prove_gkr;
 #[cfg(feature = "concurrent")]
-pub use utils::rayon::{current_num_threads as rayon_num_threads, prelude::*};
+pub use utils::rayon::prelude::*;
 
 // EVALUATED CIRCUIT
 // ================================================================================================
@@ -191,7 +191,7 @@ pub struct GkrClaim<E: FieldElement> {
 ///    product i.e., equation (12) in [1]. This oracle is refered to throughout the codebase as
 ///    the s-column.
 ///
-/// The following function's purpose is two build the column in point 2 given the one in point 1.
+/// The following function's purpose is to build the column in point 2 given the one in point 1.
 ///
 /// [1]: https://eprint.iacr.org/2023/1284
 pub fn build_s_column<E: FieldElement>(

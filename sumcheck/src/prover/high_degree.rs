@@ -395,9 +395,9 @@ fn sumcheck_round<E: FieldElement>(
                 }
                 for i in 0..num_periodic {
                     deltas_periodic_zero[i] =
-                        evals_periodic_zero_one[i] - evals_periodic_zero_zero[i];
-                    evals_periodic_x_zero[i] = evals_periodic_zero_one[i];
-                    deltas_periodic_one[i] = evals_periodic_one_one[i] - evals_periodic_one_zero[i];
+                        evals_periodic_one_zero[i] - evals_periodic_zero_zero[i];
+                    evals_periodic_x_zero[i] = evals_periodic_one_zero[i];
+                    deltas_periodic_one[i] = evals_periodic_one_one[i] - evals_periodic_zero_one[i];
                     evals_periodic_x_one[i] = evals_periodic_one_one[i];
                 }
                 eq_delta = eq_at_one - eq_at_zero;
@@ -566,9 +566,9 @@ fn sumcheck_round<E: FieldElement>(
                 }
                 for i in 0..num_periodic {
                     deltas_periodic_zero[i] =
-                        evals_periodic_zero_one[i] - evals_periodic_zero_zero[i];
-                    evals_periodic_x_zero[i] = evals_periodic_zero_one[i];
-                    deltas_periodic_one[i] = evals_periodic_one_one[i] - evals_periodic_one_zero[i];
+                        evals_periodic_one_zero[i] - evals_periodic_zero_zero[i];
+                    evals_periodic_x_zero[i] = evals_periodic_one_zero[i];
+                    deltas_periodic_one[i] = evals_periodic_one_one[i] - evals_periodic_zero_one[i];
                     evals_periodic_x_one[i] = evals_periodic_one_one[i];
                 }
                 let eq_delta = eq_at_one - eq_at_zero;
@@ -631,7 +631,6 @@ fn sumcheck_round<E: FieldElement>(
                     evals_periodic_one_one,
                     evals_periodic_x_zero,
                     evals_periodic_x_one,
-                    
                     deltas_zero,
                     deltas_one,
                     deltas_periodic_zero,
