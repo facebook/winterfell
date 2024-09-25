@@ -5,7 +5,7 @@
 
 use std::time::Instant;
 
-use examples::{fibonacci, rescue, vdf, ExampleOptions, ExampleType};
+use examples::{fibonacci, logup_gkr, rescue, vdf, ExampleOptions, ExampleType};
 #[cfg(feature = "std")]
 use examples::{lamport, merkle, rescue_raps};
 use structopt::StructOpt;
@@ -82,6 +82,7 @@ fn main() {
         ExampleType::LamportT { num_signers } => {
             lamport::threshold::get_example(&options, num_signers)
         },
+        ExampleType::LogUpGkr { trace_length } => logup_gkr::get_example(&options, trace_length),
     }
     .expect("The example failed to initialize.");
 

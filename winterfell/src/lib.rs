@@ -590,7 +590,7 @@
 #[cfg(test)]
 extern crate std;
 
-pub use air::{AuxRandElements, LogUpGkrEvaluator};
+pub use air::{AuxRandElements, LogUpGkrEvaluator, LogUpGkrOracle};
 pub use prover::{
     crypto, iterators, math, matrix, Air, AirContext, Assertion, AuxTraceWithMetadata,
     BoundaryConstraint, BoundaryConstraintGroup, CompositionPolyTrace,

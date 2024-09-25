@@ -9,7 +9,7 @@ use winterfell::{
     math::fields::f128::BaseElement,
     FieldExtension, Proof, ProofOptions, VerifierError,
 };
-
+pub mod logup_gkr;
 pub mod fibonacci;
 #[cfg(feature = "std")]
 pub mod lamport;
@@ -197,6 +197,12 @@ pub enum ExampleType {
         /// Number of signers; must be one less than a power of two
         #[structopt(short = "n", default_value = "3")]
         num_signers: usize,
+    },
+    /// LogUp-GKR
+    LogUpGkr {
+        /// Length of the trace; must be a power of two
+        #[structopt(short = "n", default_value = "65536")]
+        trace_length: usize,
     },
 }
 
