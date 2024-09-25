@@ -122,15 +122,10 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
     let mut denominators_zero = vec![E::ZERO; evaluator.get_num_fractions()];
     let mut denominators_one = vec![E::ZERO; evaluator.get_num_fractions()];
 
-    let mu = evaluator.get_num_fractions().trailing_zeros() - 1;
-    let (evaluation_point_nu, evaluation_point_mu) =
-        gkr_eval_point.split_at(gkr_eval_point.len() - mu as usize);
-    let eq_mu = EqFunction::new(evaluation_point_mu.into()).evaluations();
-    let eq_nu = EqFunction::new(evaluation_point_nu.into());
 
-    let trace_len = 1 << evaluation_point_nu.len();
+    let trace_len = 1 << eval_point.len();
     let periodic_columns = evaluator.build_periodic_values(trace_len);
-    let periodic_columns_evaluations =
+    let (periodic_columns_evaluations_zero, periodic_columns_evaluations_one) =
         evaluate_periodic_columns_at(periodic_columns, &proof.0.openings_claim.eval_point);
 
     let mut at_zero = Vec::with_capacity(proof.0.openings_claim.openings[0].len());

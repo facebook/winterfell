@@ -49,6 +49,9 @@ use crate::{
 /// Note that the degree of the non-linear composition polynomial is 3.
 ///
 /// [1]: https://eprint.iacr.org/2023/1284
+
+
+/*
 #[allow(clippy::too_many_arguments)]
 pub fn sumcheck_prove_plain<E: FieldElement, H: ElementHasher<BaseField = E::BaseField>>(
     mut claim: E,
@@ -217,7 +220,7 @@ pub fn sumcheck_prove_plain<E: FieldElement, H: ElementHasher<BaseField = E::Bas
 }
 
 
-
+*/
 
 
 
