@@ -171,83 +171,53 @@ pub fn sumcheck_prove_plain_batched<E: FieldElement, H: ElementHasher<BaseField 
         let len = inner_layers[0].numerators.num_evaluations() / 4;
 
         #[cfg(feature = "concurrent")]
-        let (all_round_poly_eval_at_1, all_round_poly_eval_at_2, all_round_poly_eval_at_3) =
-            inner_layers
-                .par_iter()
-                .zip(tensored_batching_randomness.par_iter())
-                .fold(
-                    || (E::ZERO, E::ZERO, E::ZERO),
-                    |(_acc_eval_1, _acc_eval_2, _acc_eval_3),
-                     (inner_layer, batching_randomness)| {
-                        let (round_poly_eval_at_1, round_poly_eval_at_2, round_poly_eval_at_3) =
-                            (0..len).fold((E::ZERO, E::ZERO, E::ZERO), |(a, b, c), k| {
-                                let p0_i_0 = inner_layer.numerators[2 * k];
-                                let p0_i_1 = inner_layer.numerators[2 * k + 1];
-                                let p1_i_0 = inner_layer.numerators[2 * (k + len)];
-                                let p1_i_1 = inner_layer.numerators[2 * (k + len) + 1];
-                                let q0_i_0 = inner_layer.denominators[2 * k];
-                                let q0_i_1 = inner_layer.denominators[2 * k + 1];
-                                let q1_i_0 = inner_layer.denominators[2 * (k + len)];
-                                let q1_i_1 = inner_layer.denominators[2 * (k + len) + 1];
-                                let round_poly_eval_at_1 =
-                                    comb_func(p1_i_0, p1_i_1, q1_i_0, q1_i_1, eq[k], r_batch);
+        let (all_round_poly_eval_at_0, all_round_poly_eval_at_2) = inner_layers
+            .par_iter()
+            .zip(tensored_batching_randomness.par_iter())
+            .fold(
+                || (E::ZERO, E::ZERO),
+                |(_acc_eval_0, _acc_eval_2), (inner_layer, batching_randomness)| {
+                    let (round_poly_eval_at_0, round_poly_eval_at_2) =
+                        (0..len).fold((E::ZERO, E::ZERO), |(a, b), k| {
+                            let p0_i_0 = inner_layer.numerators[2 * k];
+                            let p0_i_1 = inner_layer.numerators[2 * k + 1];
+                            let p1_i_0 = inner_layer.numerators[2 * (k + len)];
+                            let p1_i_1 = inner_layer.numerators[2 * (k + len) + 1];
+                            let q0_i_0 = inner_layer.denominators[2 * k];
+                            let q0_i_1 = inner_layer.denominators[2 * k + 1];
+                            let q1_i_0 = inner_layer.denominators[2 * (k + len)];
+                            let q1_i_1 = inner_layer.denominators[2 * (k + len) + 1];
+                            let round_poly_eval_at_0 =
+                                comb_func(p0_i_0, p0_i_1, q0_i_0, q0_i_1, eq[k], r_batch);
 
-                                let p0_delta = p1_i_0 - p0_i_0;
-                                let p1_delta = p1_i_1 - p0_i_1;
-                                let q0_delta = q1_i_0 - q0_i_0;
-                                let q1_delta = q1_i_1 - q0_i_1;
-                                let eq_delta = eq[k + len] - eq[k];
+                            let p0_delta = p1_i_0 - p0_i_0;
+                            let p1_delta = p1_i_1 - p0_i_1;
+                            let q0_delta = q1_i_0 - q0_i_0;
+                            let q1_delta = q1_i_1 - q0_i_1;
 
-                                let mut p0_eval_at_x = p1_i_0 + p0_delta;
-                                let mut p1_eval_at_x = p1_i_1 + p1_delta;
-                                let mut q0_eval_at_x = q1_i_0 + q0_delta;
-                                let mut q1_eval_at_x = q1_i_1 + q1_delta;
-                                let mut eq_evx = eq[k + len] + eq_delta;
-                                let round_poly_eval_at_2 = comb_func(
-                                    p0_eval_at_x,
-                                    p1_eval_at_x,
-                                    q0_eval_at_x,
-                                    q1_eval_at_x,
-                                    eq[k],
-                                    r_batch,
-                                );
+                            let p0_eval_at_2 = p1_i_0 + p0_delta;
+                            let p1_eval_at_2 = p1_i_1 + p1_delta;
+                            let q0_eval_at_2 = q1_i_0 + q0_delta;
+                            let q1_eval_at_2 = q1_i_1 + q1_delta;
+                            let round_poly_eval_at_2 = comb_func(
+                                p0_eval_at_2,
+                                p1_eval_at_2,
+                                q0_eval_at_2,
+                                q1_eval_at_2,
+                                eq[k],
+                                r_batch,
+                            );
 
-                                p0_eval_at_x += p0_delta;
-                                p1_eval_at_x += p1_delta;
-                                q0_eval_at_x += q0_delta;
-                                q1_eval_at_x += q1_delta;
-                                eq_evx += eq_delta;
-                                let round_poly_eval_at_3 = comb_func(
-                                    p0_eval_at_x,
-                                    p1_eval_at_x,
-                                    q0_eval_at_x,
-                                    q1_eval_at_x,
-                                    eq[k],
-                                    r_batch,
-                                );
+                            (round_poly_eval_at_0 + a, round_poly_eval_at_2 + b)
+                        });
 
-                                (
-                                    round_poly_eval_at_1 + a,
-                                    round_poly_eval_at_2 + b,
-                                    round_poly_eval_at_3 + c,
-                                )
-                            });
+                    let tmp_round_poly_eval_at_1 = round_poly_eval_at_0 * *batching_randomness;
+                    let tmp_round_poly_eval_at_2 = round_poly_eval_at_2 * *batching_randomness;
 
-                        let tmp_round_poly_eval_at_1 = round_poly_eval_at_1 * *batching_randomness;
-                        let tmp_round_poly_eval_at_2 = round_poly_eval_at_2 * *batching_randomness;
-                        let tmp_round_poly_eval_at_3 = round_poly_eval_at_3 * *batching_randomness;
-
-                        (
-                            tmp_round_poly_eval_at_1,
-                            tmp_round_poly_eval_at_2,
-                            tmp_round_poly_eval_at_3,
-                        )
-                    },
-                )
-                .reduce(
-                    || (E::ZERO, E::ZERO, E::ZERO),
-                    |(a0, b0, c0), (a1, b1, c1)| (a0 + a1, b0 + b1, c0 + c1),
-                );
+                    (tmp_round_poly_eval_at_1, tmp_round_poly_eval_at_2)
+                },
+            )
+            .reduce(|| (E::ZERO, E::ZERO), |(a0, b0), (a1, b1)| (a0 + a1, b0 + b1));
 
         #[cfg(not(feature = "concurrent"))]
         let (all_round_poly_eval_at_0, all_round_poly_eval_at_2) =
@@ -299,7 +269,7 @@ pub fn sumcheck_prove_plain_batched<E: FieldElement, H: ElementHasher<BaseField 
             &mut [all_round_poly_eval_at_0, all_round_poly_eval_at_2],
             batched_claim_across_circuits,
             alpha_i,
-            scaling_down_factors[i /4],
+            scaling_down_factors[i / 4],
             scaling_up_factor,
         );
 

@@ -663,7 +663,7 @@ fn sumcheck_round<E: FieldElement>(
                     &mut numerators_one,
                     &mut denominators_one,
                 );
-                total_evals[0] = evaluate_composition_poly(
+                poly_evals[0] = evaluate_composition_poly(
                     tensored_circuits_batching,
                     &numerators_zero,
                     &denominators_zero,
