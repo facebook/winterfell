@@ -15,8 +15,6 @@ extern crate alloc;
 
 #[cfg(feature = "concurrent")]
 pub use rayon::prelude::*;
-#[cfg(feature = "concurrent")]
-pub use prover::LOG_MIN_MLE_SIZE;
 
 mod prover;
 pub use prover::*;

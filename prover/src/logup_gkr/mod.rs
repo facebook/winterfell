@@ -20,11 +20,6 @@ pub use utils::{
     {chunks_mut, iter, iter_mut},
 };
 
-#[cfg(feature = "concurrent")]
-use sumcheck::LOG_MIN_MLE_SIZE;
-#[cfg(feature = "concurrent")]
-const MINIMAL_MLE_SIZE: usize = 1 << (LOG_MIN_MLE_SIZE + 2);
-
 // EVALUATED CIRCUIT
 // ================================================================================================
 
