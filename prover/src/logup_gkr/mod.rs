@@ -18,7 +18,9 @@ pub use prover::prove_gkr;
 pub use utils::rayon::{current_num_threads as rayon_num_threads, prelude::*};
 
 #[cfg(feature = "concurrent")]
-const MINIMAL_MLE_SIZE: usize = 1 << 4;
+use sumcheck::LOG_MIN_MLE_SIZE;
+#[cfg(feature = "concurrent")]
+const MINIMAL_MLE_SIZE: usize = 1 << (LOG_MIN_MLE_SIZE + 2);
 
 // EVALUATED CIRCUIT
 // ================================================================================================

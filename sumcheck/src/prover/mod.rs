@@ -13,3 +13,6 @@ pub use plain::sumcheck_prove_plain_serial;
 
 mod error;
 pub use error::SumCheckProverError;
+
+//#[cfg(feature = "concurrent")]
+pub const LOG_MIN_MLE_SIZE: usize = 2;
