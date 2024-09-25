@@ -16,10 +16,6 @@ rust-version = "1.78"
 bench = false
 
 [[bench]]
-name = "build_mle"
-harness = false
-
-[[bench]]
 name = "logup_gkr_e2e"
 harness = false
 
