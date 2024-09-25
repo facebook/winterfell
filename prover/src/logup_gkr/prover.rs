@@ -315,7 +315,7 @@ fn sum_check_prove_num_rounds_degree_3<
         let claim = claim.0 + claim.1 * r_batch;
         batched_claims.push(claim)
     }
-    let proof = if inner_layers[0].numerators.num_evaluations() >= 512 {
+    let proof = if inner_layers[0].numerators.num_evaluations() >= 64 {
         sumcheck_prove_plain_batched(
             &batched_claims,
             r_batch,
