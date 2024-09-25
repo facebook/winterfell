@@ -251,12 +251,13 @@ fn prove_intermediate_layers<
     // reduced in terms of the input layer separately in `prove_final_circuit_layer`.
     for inner_layer in circuit.layers().into_iter().skip(1).rev().skip(1) {
         // construct the Lagrange kernel evaluated at the previous GKR round randomness
-        let mut eq_mle = EqFunction::ml_at(evaluation_point.into());
+        let mut eq_mle = EqFunction::ml_at(evaluation_point.clone().into());
 
         // run the sumcheck protocol
         let proof = sum_check_prove_num_rounds_degree_3(
             inner_layer,
             &claimed_evaluations,
+            &evaluation_point,
             &mut eq_mle,
             &tensored_circuit_batching_randomness,
             transcript,
@@ -306,6 +307,7 @@ fn sum_check_prove_num_rounds_degree_3<
 >(
     inner_layers: Vec<CircuitLayerPolys<E>>,
     claims: &[(E, E)],
+    evaluation_point: &[E],
     eq: &mut MultiLinearPoly<E>,
     tensored_batching_randomness: &[E],
     transcript: &mut C,
@@ -325,6 +327,7 @@ fn sum_check_prove_num_rounds_degree_3<
     }
     let proof = if inner_layers[0].numerators.num_evaluations() >= 64 {
         sumcheck_prove_plain_batched(
+            evaluation_point,
             &batched_claims,
             r_batch,
             inner_layers,
@@ -334,6 +337,7 @@ fn sum_check_prove_num_rounds_degree_3<
         )?
     } else {
         sumcheck_prove_plain_batched_serial(
+            evaluation_point,
             &batched_claims,
             r_batch,
             inner_layers,
