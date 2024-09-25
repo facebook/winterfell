@@ -385,6 +385,10 @@ impl Serializable for BaseElement {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_bytes(&self.0.to_le_bytes());
     }
+
+    fn get_size_hint(&self) -> usize {
+        self.0.get_size_hint()
+    }
 }
 
 impl Deserializable for BaseElement {
