@@ -11,7 +11,10 @@ use crate::Trace;
 mod prover;
 pub use prover::prove_gkr;
 #[cfg(feature = "concurrent")]
-pub use utils::rayon::prelude::*;
+pub use utils::{
+    rayon::{current_num_threads as rayon_num_threads, prelude::*},
+    {chunks_mut, iter, iter_mut, batch_iter_mut},
+};
 
 // EVALUATED CIRCUIT
 // ================================================================================================
@@ -119,7 +122,7 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
         let periodic_values = evaluator.build_periodic_values(trace.main_segment().num_rows());
 
         let mut input_layer_wires: Vec<Vec<_>> =
-              vec![unsafe{uninit_vector(trace.main_segment().num_rows())}; num_fractions];
+            vec![unsafe { uninit_vector(trace.main_segment().num_rows()) }; num_fractions];
         let mut main_frame = EvaluationFrame::new(trace.main_segment().num_cols());
 
         let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
@@ -195,31 +198,65 @@ pub struct GkrClaim<E: FieldElement> {
 ///
 /// [1]: https://eprint.iacr.org/2023/1284
 pub fn build_s_column<E: FieldElement>(
-    main_trace: &impl Trace<BaseField = E::BaseField>,
+    trace: &impl Trace<BaseField = E::BaseField>,
     gkr_data: &GkrData<E>,
     evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
     lagrange_kernel_col: &[E],
 ) -> Vec<E> {
     let c = gkr_data.compute_batched_claim();
-    let main_segment = main_trace.main_segment();
-    let mean = c / E::from(E::BaseField::from(main_segment.num_rows() as u32));
+    let num_oracles = evaluator.get_oracles().len();
 
-    let mut result = Vec::with_capacity(main_segment.num_rows());
-    let mut last_value = E::ZERO;
-    result.push(last_value);
+    let main_segment = trace.main_segment();
+    let num_cols = main_segment.num_cols();
+    let num_rows = main_segment.num_rows();
+    let mean = c / E::from(E::BaseField::from(num_rows as u32));
 
-    let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
-    let mut main_frame = EvaluationFrame::new(main_trace.main_segment().num_cols());
+    #[cfg(not(feature = "concurrent"))]
+    let result = {
+        let mut result = Vec::with_capacity(num_rows);
+        let mut last_value = E::ZERO;
+        result.push(last_value);
 
-    for (i, item) in lagrange_kernel_col.iter().enumerate().take(main_segment.num_rows() - 1) {
-        main_trace.read_main_frame(i, &mut main_frame);
+        let mut query = vec![E::BaseField::ZERO; num_oracles];
+        let mut main_frame = EvaluationFrame::new(num_cols);
 
-        evaluator.build_query(&main_frame, &mut query);
-        let cur_value = last_value - mean + gkr_data.compute_batched_query(&query) * *item;
+        for (i, item) in lagrange_kernel_col.iter().enumerate().take(num_rows - 1) {
+            trace.read_main_frame(i, &mut main_frame);
 
-        result.push(cur_value);
-        last_value = cur_value;
-    }
+            evaluator.build_query(&main_frame, &mut query);
+            let cur_value = last_value - mean + gkr_data.compute_batched_query(&query) * *item;
+
+            result.push(cur_value);
+            last_value = cur_value;
+        }
+
+        result
+    };
+
+    #[cfg(feature = "concurrent")]
+    let result = {
+        let mut deltas = unsafe { uninit_vector(num_rows) };
+        deltas[0] = E::ZERO;
+        let batch_size = num_rows / rayon_num_threads().next_power_of_two();
+        batch_iter_mut!(&mut deltas[1..], batch_size, |batch: &mut [E], batch_offset: usize| {
+            let mut query = vec![E::BaseField::ZERO; num_oracles];
+            let mut main_frame = EvaluationFrame::<E::BaseField>::new(num_cols);
+
+            for (i, v) in batch.iter_mut().enumerate() {
+                trace.read_main_frame(i + batch_offset, &mut main_frame);
+
+                evaluator.build_query(&main_frame, &mut query);
+                *v = gkr_data.compute_batched_query(&query) * lagrange_kernel_col[i + batch_offset]
+                    - mean;
+            }
+        });
+
+        // note that `deltas[0]` is set `0` and thus `deltas` satisfies the conditions for invoking
+        // the function
+        let mut cumulative_sum = deltas;
+        prefix_sum_parallel(&mut cumulative_sum, batch_size);
+        cumulative_sum
+    };
 
     result
 }
@@ -235,4 +272,54 @@ pub enum GkrProverError {
     FailedToProveSumCheck(#[from] SumCheckProverError),
     #[error("failed to generate the random challenge")]
     FailedToGenerateChallenge,
+}
+
+// HELPER
+// =================================================================================================
+
+/// Computes the cumulative sum, also called prefix sum, of a vector of field elements using
+/// parallelism, in place.
+///
+/// The function divides the vector into non-overlapping segments and then computes an array of sums
+/// for each segment. The function then applies the naive serial implementation to each segment and
+/// uses the pre-computed sums in each segment in order to coordinate the results in the different
+/// segments.
+///
+/// The input vector is of the form `0 || values` where `values` are the values the cumulative sum
+/// vector will be computed for, in place.
+#[cfg(feature = "concurrent")]
+fn prefix_sum_parallel<E: FieldElement>(vector: &mut [E], batch_size: usize) {
+    let num_partitions = (vector.len() + batch_size - 1) / batch_size;
+    let mut sum_per_partition = vec![E::ZERO; num_partitions];
+
+    chunks!(vector, batch_size)
+        .zip(iter_mut!(sum_per_partition))
+        .for_each(|(chunk, entry)| *entry = chunk.iter().fold(E::ZERO, |acc, term| acc + *term));
+
+    prefix_sum_truncate_right(&mut sum_per_partition);
+
+    chunks_mut!(vector, batch_size)
+        .zip(iter!(sum_per_partition))
+        .for_each(|(chunk, sum_so_far)| prefix_sum_truncate_left(chunk, *sum_so_far));
+}
+
+/// Computes the cumulative sum of a vector but omits the final cumulative sum.
+#[cfg(feature = "concurrent")]
+fn prefix_sum_truncate_right<E: FieldElement>(values: &mut [E]) {
+    let mut sum = E::ZERO;
+    values.iter_mut().for_each(|v| {
+        let tmp = *v;
+        *v = sum;
+        sum += tmp;
+    });
+}
+
+/// Computes the cumulative sum of a vector but omits the initial cumulative sum, namely zero.
+#[cfg(feature = "concurrent")]
+fn prefix_sum_truncate_left<E: FieldElement>(values: &mut [E], sum: E) {
+    let mut sum = sum;
+    values.iter_mut().for_each(|v| {
+        sum += *v;
+        *v = sum;
+    });
 }
