@@ -133,3 +133,21 @@ macro_rules! chunks {
         result
     }};
 }
+
+/// Returns either a regular or a parallel mutable iterator over at most `chunk_size` elements
+/// depending on whether `concurrent` feature is enabled.
+///
+/// When `concurrent` feature is enabled, creates a parallel iterator; otherwise, creates a
+/// regular iterator.
+#[macro_export]
+macro_rules! chunks_mut {
+    ($e: expr, $chunk_size: expr) => {{
+        #[cfg(feature = "concurrent")]
+        let result = $e.par_chunks_mut($chunk_size);
+
+        #[cfg(not(feature = "concurrent"))]
+        let result = $e.chunks_mut($chunk_size);
+
+        result
+    }};
+}
