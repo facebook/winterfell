@@ -51,10 +51,18 @@ impl<T: Serializable> Serializable for &T {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         (*self).write_into(target)
     }
+
+    fn get_size_hint(&self) -> usize {
+        (*self).get_size_hint()
+    }
 }
 
 impl Serializable for () {
     fn write_into<W: ByteWriter>(&self, _target: &mut W) {}
+
+    fn get_size_hint(&self) -> usize {
+        0
+    }
 }
 
 impl<T1> Serializable for (T1,)
@@ -63,6 +71,10 @@ where
 {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.0.write_into(target);
+    }
+
+    fn get_size_hint(&self) -> usize {
+        self.0.get_size_hint()
     }
 }
 
@@ -74,6 +86,10 @@ where
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.0.write_into(target);
         self.1.write_into(target);
+    }
+
+    fn get_size_hint(&self) -> usize {
+        self.0.get_size_hint() + self.1.get_size_hint()
     }
 }
 
@@ -87,6 +103,10 @@ where
         self.0.write_into(target);
         self.1.write_into(target);
         self.2.write_into(target);
+    }
+
+    fn get_size_hint(&self) -> usize {
+        self.0.get_size_hint() + self.1.get_size_hint() + self.2.get_size_hint()
     }
 }
 
@@ -102,6 +122,13 @@ where
         self.1.write_into(target);
         self.2.write_into(target);
         self.3.write_into(target);
+    }
+
+    fn get_size_hint(&self) -> usize {
+        self.0.get_size_hint()
+            + self.1.get_size_hint()
+            + self.2.get_size_hint()
+            + self.3.get_size_hint()
     }
 }
 
@@ -119,6 +146,14 @@ where
         self.2.write_into(target);
         self.3.write_into(target);
         self.4.write_into(target);
+    }
+
+    fn get_size_hint(&self) -> usize {
+        self.0.get_size_hint()
+            + self.1.get_size_hint()
+            + self.2.get_size_hint()
+            + self.3.get_size_hint()
+            + self.4.get_size_hint()
     }
 }
 
@@ -139,11 +174,24 @@ where
         self.4.write_into(target);
         self.5.write_into(target);
     }
+
+    fn get_size_hint(&self) -> usize {
+        self.0.get_size_hint()
+            + self.1.get_size_hint()
+            + self.2.get_size_hint()
+            + self.3.get_size_hint()
+            + self.4.get_size_hint()
+            + self.5.get_size_hint()
+    }
 }
 
 impl Serializable for u8 {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_u8(*self);
+    }
+
+    fn get_size_hint(&self) -> usize {
+        core::mem::size_of::<u8>()
     }
 }
 
@@ -151,11 +199,19 @@ impl Serializable for u16 {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_u16(*self);
     }
+
+    fn get_size_hint(&self) -> usize {
+        core::mem::size_of::<u16>()
+    }
 }
 
 impl Serializable for u32 {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_u32(*self);
+    }
+
+    fn get_size_hint(&self) -> usize {
+        core::mem::size_of::<u32>()
     }
 }
 
@@ -163,17 +219,29 @@ impl Serializable for u64 {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_u64(*self);
     }
+
+    fn get_size_hint(&self) -> usize {
+        core::mem::size_of::<u64>()
+    }
 }
 
 impl Serializable for u128 {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_u128(*self);
     }
+
+    fn get_size_hint(&self) -> usize {
+        core::mem::size_of::<u128>()
+    }
 }
 
 impl Serializable for usize {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_usize(*self)
+    }
+
+    fn get_size_hint(&self) -> usize {
+        byte_writer::usize_encoded_len(*self)
     }
 }
 
@@ -187,11 +255,23 @@ impl<T: Serializable> Serializable for Option<T> {
             None => target.write_bool(false),
         }
     }
+
+    fn get_size_hint(&self) -> usize {
+        core::mem::size_of::<bool>() + self.as_ref().map(|value| value.get_size_hint()).unwrap_or(0)
+    }
 }
 
 impl<T: Serializable, const C: usize> Serializable for [T; C] {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_many(self)
+    }
+
+    fn get_size_hint(&self) -> usize {
+        let mut size = 0;
+        for item in self {
+            size += item.get_size_hint();
+        }
+        size
     }
 }
 
@@ -202,12 +282,28 @@ impl<T: Serializable> Serializable for [T] {
             element.write_into(target);
         }
     }
+
+    fn get_size_hint(&self) -> usize {
+        let mut size = self.len().get_size_hint();
+        for element in self {
+            size += element.get_size_hint();
+        }
+        size
+    }
 }
 
 impl<T: Serializable> Serializable for Vec<T> {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_usize(self.len());
         target.write_many(self);
+    }
+
+    fn get_size_hint(&self) -> usize {
+        let mut size = self.len().get_size_hint();
+        for item in self {
+            size += item.get_size_hint();
+        }
+        size
     }
 }
 
@@ -216,12 +312,28 @@ impl<K: Serializable, V: Serializable> Serializable for BTreeMap<K, V> {
         target.write_usize(self.len());
         target.write_many(self);
     }
+
+    fn get_size_hint(&self) -> usize {
+        let mut size = self.len().get_size_hint();
+        for item in self {
+            size += item.get_size_hint();
+        }
+        size
+    }
 }
 
 impl<T: Serializable> Serializable for BTreeSet<T> {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_usize(self.len());
         target.write_many(self);
+    }
+
+    fn get_size_hint(&self) -> usize {
+        let mut size = self.len().get_size_hint();
+        for item in self {
+            size += item.get_size_hint();
+        }
+        size
     }
 }
 
@@ -230,12 +342,20 @@ impl Serializable for str {
         target.write_usize(self.len());
         target.write_many(self.as_bytes());
     }
+
+    fn get_size_hint(&self) -> usize {
+        self.len().get_size_hint() + self.as_bytes().len()
+    }
 }
 
 impl Serializable for String {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_usize(self.len());
         target.write_many(self.as_bytes());
+    }
+
+    fn get_size_hint(&self) -> usize {
+        self.len().get_size_hint() + self.as_bytes().len()
     }
 }
 
