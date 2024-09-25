@@ -241,7 +241,7 @@ impl Serializable for usize {
     }
 
     fn get_size_hint(&self) -> usize {
-        byte_writer::usize_encoded_len(*self)
+        byte_writer::usize_encoded_len(*self as u64)
     }
 }
 

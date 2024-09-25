@@ -75,9 +75,9 @@ pub trait ByteWriter: Sized {
     /// # Panics
     /// Panics if the value could not be written into `self`.
     fn write_usize(&mut self, value: usize) {
-        let length = usize_encoded_len(value);
         // convert the value into a u64 so that we always get 8 bytes from to_le_bytes() call
         let value = value as u64;
+        let length = usize_encoded_len(value);
 
         // 9-byte special case
         if length == 9 {
@@ -142,8 +142,8 @@ impl ByteWriter for alloc::vec::Vec<u8> {
 // ================================================================================================
 
 /// Returns the length of the usize value in vint64 encoding.
-pub(super) fn usize_encoded_len(value: usize) -> usize {
-    let zeros = (value as u64).leading_zeros() as usize;
+pub(super) fn usize_encoded_len(value: u64) -> usize {
+    let zeros = value.leading_zeros() as usize;
     let len = zeros.saturating_sub(1) / 7;
     9 - core::cmp::min(len, 8)
 }
