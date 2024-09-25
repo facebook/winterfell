@@ -81,7 +81,7 @@ pub fn prove_gkr<E: FieldElement>(
 
     // build the MLEs of the relevant main trace columns
     let main_trace_mls =
-        build_mls_from_main_trace_segment(evaluator.get_oracles(), main_trace.main_segment())?;
+        build_mle_from_main_trace_segment(evaluator.get_oracles(), main_trace.main_segment())?;
     // build the periodic table representing periodic columns as multi-linear extensions
     let periodic_table = evaluator.build_periodic_values();
 
@@ -140,17 +140,17 @@ fn prove_input_layer<
 /// Builds the multi-linear extension polynomials needed to run the final sum-check of GKR for
 /// LogUp-GKR.
 #[instrument(skip_all)]
-fn build_mls_from_main_trace_segment<E: FieldElement>(
+fn build_mle_from_main_trace_segment<E: FieldElement>(
     oracles: &[LogUpGkrOracle],
     main_trace: &ColMatrix<<E as FieldElement>::BaseField>,
 ) -> Result<Vec<MultiLinearPoly<E>>, GkrProverError> {
     let mut mls = Vec::with_capacity(oracles.len());
 
-    iter!(oracles).for_each(|oracle| {
+    for oracle in oracles {
         match oracle {
             LogUpGkrOracle::CurrentRow(index) => {
                 let col = main_trace.get_column(*index);
-                let values: Vec<E> = col.iter().map(|value| E::from(*value)).collect();
+                let values: Vec<E> = iter!(col).map(|value| E::from(*value)).collect();
                 let ml = MultiLinearPoly::from_evaluations(values);
                 mls.push(ml)
             },
@@ -159,36 +159,15 @@ fn build_mls_from_main_trace_segment<E: FieldElement>(
 
                 let mut values: Vec<E> = unsafe { uninit_vector(col.len()) };
                 values[col.len() - 1] = E::from(col[0]);
-                (&mut values[..col.len() - 1])
-                    .iter_mut()
+                iter_mut!(&mut values[..col.len() - 1])
                     .enumerate()
                     .for_each(|(i, value)| *value = E::from(col[i + 1]));
                 let ml = MultiLinearPoly::from_evaluations(values);
                 mls.push(ml)
             },
         };
-    });
-    //for oracle in oracles {
-        //match oracle {
-            //LogUpGkrOracle::CurrentRow(index) => {
-                //let col = main_trace.get_column(*index);
-                //let values: Vec<E> = iter!(col).map(|value| E::from(*value)).collect();
-                //let ml = MultiLinearPoly::from_evaluations(values);
-                //mls.push(ml)
-            //},
-            //LogUpGkrOracle::NextRow(index) => {
-                //let col = main_trace.get_column(*index);
+    }
 
-                //let mut values: Vec<E> = unsafe { uninit_vector(col.len()) };
-                //values[col.len() - 1] = E::from(col[0]);
-                //iter_mut!(&mut values[..col.len() - 1])
-                    //.enumerate()
-                    //.for_each(|(i, value)| *value = E::from(col[i + 1]));
-                //let ml = MultiLinearPoly::from_evaluations(values);
-                //mls.push(ml)
-            //},
-        //};
-    //}
     Ok(mls)
 }
 

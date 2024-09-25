@@ -24,10 +24,6 @@ name = "logup_gkr_e2e"
 harness = false
 
 [[bench]]
-name = "row_matrix"
-harness = false
-
-[[bench]]
 name = "logup_gkr"
 harness = false
 
