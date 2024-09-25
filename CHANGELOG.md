@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.3 (2024-09-25) - `utils/core` crate only
+## 0.9.3 (2024-09-25) - `utils/core` and `math` crates only
 - Implemented `get_size_hint()` for default impls (#332).
 
 ## 0.9.2 (2024-09-06) - `utils/core` crate only
