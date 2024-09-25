@@ -87,7 +87,14 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
     let mut numerators = vec![E::ZERO; evaluator.get_num_fractions()];
     let mut denominators = vec![E::ZERO; evaluator.get_num_fractions()];
 
-    let periodic_columns = evaluator.build_periodic_values();
+    let mu = evaluator.get_num_fractions().trailing_zeros() - 1;
+    let (evaluation_point_nu, evaluation_point_mu) =
+        gkr_eval_point.split_at(gkr_eval_point.len() - mu as usize);
+    let eq_mu = EqFunction::new(evaluation_point_mu.into()).evaluations();
+    let eq_nu = EqFunction::new(evaluation_point_nu.into());
+
+    let trace_len = 1 << evaluation_point_nu.len();
+    let periodic_columns = evaluator.build_periodic_values(trace_len);
     let periodic_columns_evaluations =
         evaluate_periodic_columns_at(periodic_columns, &proof.0.openings_claim.eval_point);
 
@@ -98,12 +105,6 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
         &mut numerators,
         &mut denominators,
     );
-
-    let mu = evaluator.get_num_fractions().trailing_zeros() - 1;
-    let (evaluation_point_nu, evaluation_point_mu) =
-        gkr_eval_point.split_at(gkr_eval_point.len() - mu as usize);
-    let eq_mu = EqFunction::new(evaluation_point_mu.into()).evaluations();
-    let eq_nu = EqFunction::new(evaluation_point_nu.into());
 
     let eq_nu_eval = eq_nu.evaluate(&proof.0.openings_claim.eval_point);
     let expected_evaluation =
@@ -162,13 +163,12 @@ fn evaluate_periodic_columns_at<E: FieldElement>(
     periodic_columns: PeriodicTable<E>,
     eval_point: &[E],
 ) -> Vec<E> {
-    let mut evaluations = vec![];
+    let mut evaluations = Vec::with_capacity(periodic_columns.num_columns());
     for col in periodic_columns.table() {
         let ml = MultiLinearPoly::from_evaluations(col.to_vec());
         let num_variables = ml.num_variables();
-        let point = &eval_point[..num_variables];
 
-        let evaluation = ml.evaluate(point);
+        let evaluation = ml.evaluate(&eval_point[&eval_point.len() - num_variables..]);
         evaluations.push(evaluation)
     }
     evaluations

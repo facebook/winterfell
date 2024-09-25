@@ -116,7 +116,7 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
         log_up_randomness: &[E],
     ) -> CircuitLayer<E> {
         let num_fractions = evaluator.get_num_fractions();
-        let periodic_values = evaluator.build_periodic_values();
+        let periodic_values = evaluator.build_periodic_values(trace.main_segment().num_rows());
 
         let mut input_layer_wires =
             unsafe { uninit_vector(trace.main_segment().num_rows() * num_fractions) };

@@ -80,7 +80,7 @@ pub fn prove_gkr<E: FieldElement>(
     let main_trace_mls =
         build_mls_from_main_trace_segment(evaluator.get_oracles(), main_trace.main_segment())?;
     // build the periodic table representing periodic columns as multi-linear extensions
-    let periodic_table = evaluator.build_periodic_values();
+    let periodic_table = evaluator.build_periodic_values(main_trace.main_segment().num_rows());
 
     // run the GKR prover for the input layer
     let final_layer_proof = prove_input_layer(

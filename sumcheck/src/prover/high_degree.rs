@@ -241,7 +241,6 @@ pub fn sum_check_prove_higher_degree<
     // fold each multi-linear using the last random round challenge
     mls.iter_mut()
         .for_each(|ml| ml.bind_least_significant_variable(round_challenge));
-    eq_nu.bind_least_significant_variable(round_challenge);
 
     let SumCheckRoundClaim { eval_point, claim: _claim } =
         reduce_claim(&round_proofs[num_rounds - 1], current_round_claim, round_challenge);
@@ -420,11 +419,11 @@ fn sumcheck_round<E: FieldElement>(
                     vec![E::ZERO; num_periodic],
                     vec![E::ZERO; num_periodic],
                     vec![E::ZERO; num_periodic],
-                    vec![E::ZERO; evaluator.max_degree()],
                     vec![E::ZERO; evaluator.get_num_fractions()],
                     vec![E::ZERO; evaluator.get_num_fractions()],
                     vec![E::ZERO; num_mls],
                     vec![E::ZERO; num_periodic],
+                    vec![E::ZERO; evaluator.max_degree()],
                 )
             },
             |(
@@ -434,11 +433,11 @@ fn sumcheck_round<E: FieldElement>(
                 mut evals_periodic_zero,
                 mut evals_periodic_one,
                 mut evals_periodic_x,
-                mut poly_evals,
                 mut numerators,
                 mut denominators,
                 mut deltas,
                 mut deltas_periodic,
+                mut poly_evals,
             ),
              i| {
                 for (j, ml) in mls.iter().enumerate() {
@@ -451,7 +450,8 @@ fn sumcheck_round<E: FieldElement>(
 
                 // add evaluation of periodic columns
                 periodic_table.fill_periodic_values_at(i, &mut evals_periodic_zero);
-                periodic_table.fill_periodic_values_at(i + (1 << num_rounds), &mut evals_periodic_one);
+                periodic_table
+                    .fill_periodic_values_at(i + (1 << num_rounds), &mut evals_periodic_one);
 
                 // compute the evaluation at 1
                 evaluator.evaluate_query(
@@ -461,7 +461,7 @@ fn sumcheck_round<E: FieldElement>(
                     &mut numerators,
                     &mut denominators,
                 );
-                poly_evals[0] = evaluate_composition_poly(
+                poly_evals[0] += evaluate_composition_poly(
                     eq_mu,
                     &numerators,
                     &denominators,
@@ -499,7 +499,7 @@ fn sumcheck_round<E: FieldElement>(
                         &mut numerators,
                         &mut denominators,
                     );
-                    *e = evaluate_composition_poly(
+                    *e += evaluate_composition_poly(
                         eq_mu,
                         &numerators,
                         &denominators,
@@ -515,15 +515,15 @@ fn sumcheck_round<E: FieldElement>(
                     evals_periodic_zero,
                     evals_periodic_one,
                     evals_periodic_x,
-                    poly_evals,
                     numerators,
                     denominators,
                     deltas,
                     deltas_periodic,
+                    poly_evals,
                 )
             },
         )
-        .map(|(_, _, _, poly_evals, ..)| poly_evals)
+        .map(|(.., poly_evals)| poly_evals)
         .reduce(
             || vec![E::ZERO; evaluator.max_degree()],
             |mut acc, poly_eval| {

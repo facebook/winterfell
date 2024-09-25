@@ -23,7 +23,7 @@ use crate::{
 #[test]
 fn test_logup_gkr_periodic() {
     let aux_trace_width = 1;
-    let trace = LogUpGkrPeriodic::new(2_usize.pow(12), aux_trace_width);
+    let trace = LogUpGkrPeriodic::new(2_usize.pow(13), aux_trace_width);
     let prover = LogUpGkrPeriodicProver::new(aux_trace_width);
 
     let proof = prover.prove(trace).unwrap();

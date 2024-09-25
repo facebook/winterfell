@@ -156,7 +156,7 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
     /// Returns the periodic values used in the LogUp-GKR statement, either as base field element
     /// during circuit evaluation or as extension field element during the run of sum-check for
     /// the input layer.
-    fn build_periodic_values<E>(&self) -> PeriodicTable<E>
+    fn build_periodic_values<E>(&self, num_rows: usize) -> PeriodicTable<E>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
@@ -166,7 +166,7 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
             .map(|values| values.iter().map(|x| E::from(*x)).collect())
             .collect();
 
-        PeriodicTable { table }
+        PeriodicTable { table, num_rows }
     }
 }
 
@@ -264,16 +264,17 @@ pub enum LogUpGkrOracle {
 #[derive(Clone, Debug, Default, PartialEq, PartialOrd, Eq, Ord)]
 pub struct PeriodicTable<E: FieldElement> {
     pub table: Vec<Vec<E>>,
+    pub num_rows: usize,
 }
 
 impl<E> PeriodicTable<E>
 where
     E: FieldElement,
 {
-    pub fn new(table: Vec<Vec<E::BaseField>>) -> Self {
+    pub fn new(table: Vec<Vec<E::BaseField>>, num_rows: usize) -> Self {
         let table = table.iter().map(|col| col.iter().map(|x| E::from(*x)).collect()).collect();
 
-        Self { table }
+        Self { table, num_rows }
     }
 
     pub fn num_columns(&self) -> usize {
@@ -294,12 +295,15 @@ where
     pub fn bind_least_significant_variable(&mut self, round_challenge: E) {
         for col in self.table.iter_mut() {
             if col.len() > 1 {
-                let num_evals = col.len() >> 1;
-                for i in 0..num_evals {
-                    col[i] = col[i] + round_challenge * (col[i + num_evals] - col[i]);
+                if self.num_rows <= col.len() {
+                    let num_evals = col.len() >> 1;
+                    for i in 0..num_evals {
+                        col[i] = col[i]  + round_challenge * (col[i + num_evals] - col[i]);
+                    }
+                    col.truncate(num_evals)
                 }
-                col.truncate(num_evals)
             }
         }
+        self.num_rows = self.num_rows / 2;
     }
 }
