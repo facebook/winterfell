@@ -307,8 +307,7 @@ impl<B: StarkField, P> AirContext<B, P> {
 
         // we use the identity: ceil(a/b) = (a + b - 1)/b
         let num_constraint_col =
-            (highest_constraint_degree - transition_divisior_degree + trace_length - 1)
-                / trace_length;
+            (highest_constraint_degree - transition_divisior_degree).div_ceil(trace_length);
 
         cmp::max(num_constraint_col, 1)
     }
