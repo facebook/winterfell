@@ -12,7 +12,6 @@ use rand_utils::{rand_value, rand_vector};
 #[cfg(feature = "concurrent")]
 pub use rayon::prelude::*;
 use winter_sumcheck::{sumcheck_prove_plain, EqFunction, MultiLinearPoly};
-
 const LOG_POLY_SIZE: [usize; 2] = [18, 20];
 
 fn sum_check_plain(c: &mut Criterion) {
@@ -31,7 +30,6 @@ fn sum_check_plain(c: &mut Criterion) {
                 |((claim, r_batch, p, q, eq), transcript)| {
                     let mut eq = eq;
                     let mut transcript = transcript;
-
                     sumcheck_prove_plain(claim, r_batch, p, q, &mut eq, &mut transcript)
                 },
                 BatchSize::SmallInput,

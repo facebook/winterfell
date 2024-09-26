@@ -88,7 +88,7 @@ pub use trace::{
 };
 
 mod logup_gkr;
-use logup_gkr::{build_lagrange_column, build_s_column, prove_gkr};
+pub use logup_gkr::{build_lagrange_column, build_s_column, prove_gkr};
 
 mod channel;
 use channel::ProverChannel;

@@ -20,6 +20,10 @@ name = "logup_gkr"
 harness = false
 
 [[bench]]
+name = "logup_gkr_e2e"
+harness = false
+
+[[bench]]
 name = "row_matrix"
 harness = false
 
@@ -29,7 +33,7 @@ harness = false
 
 [features]
 async = ["maybe_async/async"]
-concurrent = ["crypto/concurrent", "math/concurrent", "fri/concurrent", "utils/concurrent", "std"]
+concurrent = ["crypto/concurrent", "math/concurrent", "fri/concurrent", "utils/concurrent", "sumcheck/concurrent", "std"]
 default = ["std"]
 std = ["air/std", "crypto/std", "fri/std", "math/std", "utils/std"]
 
