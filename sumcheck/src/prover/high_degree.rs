@@ -537,12 +537,11 @@ fn sumcheck_round<E: FieldElement>(
                     vec![E::ZERO; num_periodic],
                     vec![E::ZERO; num_periodic],
                     vec![E::ZERO; num_periodic],
-                    vec![E::ZERO; evaluator.max_degree() - 1],
                     vec![E::ZERO; evaluator.get_num_fractions()],
                     vec![E::ZERO; evaluator.get_num_fractions()],
                     vec![E::ZERO; num_mls],
                     vec![E::ZERO; num_periodic],
-                    vec![E::ZERO; evaluator.max_degree()],
+                    vec![E::ZERO; evaluator.max_degree() - 1],
                 )
             },
             |(

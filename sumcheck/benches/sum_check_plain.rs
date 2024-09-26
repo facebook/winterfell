@@ -30,7 +30,15 @@ fn sum_check_plain(c: &mut Criterion) {
                 |((claim, evaluation_point, r_batch, p, q, eq), transcript)| {
                     let mut eq = eq;
                     let mut transcript = transcript;
-                    sumcheck_prove_plain(claim, r_batch, p, q, &mut eq, &mut transcript)
+                    sumcheck_prove_plain(
+                        claim,
+                        &evaluation_point,
+                        r_batch,
+                        p,
+                        q,
+                        &mut eq,
+                        &mut transcript,
+                    )
                 },
                 BatchSize::SmallInput,
             )
