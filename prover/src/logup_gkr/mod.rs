@@ -113,6 +113,7 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
 
     /// Generates the input layer of the circuit from the main trace columns and some randomness
     /// provided by the verifier.
+    #[allow(dead_code)]
     fn generate_input_layer_old(
         trace: &impl Trace<BaseField = E::BaseField>,
         evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
