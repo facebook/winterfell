@@ -65,6 +65,7 @@ pub fn verify_sum_check_intermediate_layers<
     }
 
     if eval_batched_circuits != final_round_claim.claim {
+        assert_eq!(1,0);
         return Err(SumCheckVerifierError::FinalEvaluationCheckFailed);
     }
 

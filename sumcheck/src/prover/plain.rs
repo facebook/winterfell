@@ -6,6 +6,7 @@
 use alloc::vec::Vec;
 
 use crypto::{ElementHasher, RandomCoin};
+use libc_print::libc_println;
 use math::FieldElement;
 #[cfg(feature = "concurrent")]
 pub use rayon::prelude::*;
@@ -166,8 +167,10 @@ pub fn sumcheck_prove_plain_batched<E: FieldElement, H: ElementHasher<BaseField 
     let mut scaling_up_factor = E::ONE;
 
     let num_sum_check_rounds = inner_layers[0].numerators.num_variables() - 1;
-
+libc_println!("gkr_point {:?}", gkr_point);
+libc_println!("num_variables for mle {:?}", inner_layers[0].numerators.num_variables() - 1);
     for i in 0..num_sum_check_rounds {
+        libc_println!("current i is {i}");
         let len = inner_layers[0].numerators.num_evaluations() / 4;
 
         #[cfg(feature = "concurrent")]
@@ -264,12 +267,12 @@ pub fn sumcheck_prove_plain_batched<E: FieldElement, H: ElementHasher<BaseField 
                     )
                 },
             );
-        let alpha_i = gkr_point[i / 4];
+        let alpha_i = gkr_point[gkr_point.len()+1 - i];
         let compressed_round_poly = to_coefficients(
             &mut [all_round_poly_eval_at_0, all_round_poly_eval_at_2],
             batched_claim_across_circuits,
             alpha_i,
-            scaling_down_factors[i / 4],
+            scaling_down_factors[i],
             scaling_up_factor,
         );
 
