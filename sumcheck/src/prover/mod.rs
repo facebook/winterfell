@@ -4,17 +4,16 @@
 // LICENSE file in the root directory of this source tree.
 
 mod high_degree;
-use core::{fmt::Formatter, ops::Add};
-use crate::CompressedUnivariatePoly;
-
 use alloc::{fmt, vec::Vec};
+use core::{fmt::Formatter, ops::Add};
+
 pub use high_degree::sum_check_prove_higher_degree;
 
+use crate::CompressedUnivariatePoly;
+
 mod plain;
-use math::batch_inversion;
-use math::FieldElement;
-pub use plain::sumcheck_prove_plain_batched_serial;
-pub use plain::sumcheck_prove_plain_batched;
+use math::{batch_inversion, FieldElement};
+pub use plain::{sumcheck_prove_plain_batched, sumcheck_prove_plain_batched_serial};
 
 mod error;
 pub use error::SumCheckProverError;
@@ -32,7 +31,6 @@ pub struct CircuitLayerPolys<E: FieldElement> {
     pub numerators: MultiLinearPoly<E>,
     pub denominators: MultiLinearPoly<E>,
 }
-
 
 impl<E> Serializable for CircuitLayerPolys<E>
 where
@@ -57,10 +55,8 @@ where
     }
 }
 
-
 // CIRCUIT LAYER POLYS
 // ===============================================================================================
-
 
 impl<E> CircuitLayerPolys<E>
 where
@@ -87,6 +83,10 @@ where
             numerators: MultiLinearPoly::from_evaluations(numerators),
             denominators: MultiLinearPoly::from_evaluations(denominators),
         }
+    }
+
+    pub fn from_mle(numerators: MultiLinearPoly<E>, denominators: MultiLinearPoly<E>) -> Self {
+        Self { numerators, denominators }
     }
 }
 

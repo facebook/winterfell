@@ -302,16 +302,14 @@ where
 
     pub fn bind_least_significant_variable(&mut self, round_challenge: E) {
         for col in self.table.iter_mut() {
-            if col.len() > 1 {
-                if self.num_rows <= col.len() {
-                    let num_evals = col.len() >> 1;
-                    for i in 0..num_evals {
-                        col[i] = col[i]  + round_challenge * (col[i + num_evals] - col[i]);
-                    }
-                    col.truncate(num_evals)
+            if col.len() > 1 && self.num_rows <= col.len() {
+                let num_evals = col.len() >> 1;
+                for i in 0..num_evals {
+                    col[i] = col[i] + round_challenge * (col[i + num_evals] - col[i]);
                 }
+                col.truncate(num_evals)
             }
         }
-        self.num_rows = self.num_rows / 2;
+        self.num_rows /= 2;
     }
 }

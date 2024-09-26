@@ -13,7 +13,7 @@ pub use prover::prove_gkr;
 #[cfg(feature = "concurrent")]
 pub use utils::{
     rayon::{current_num_threads as rayon_num_threads, prelude::*},
-    {chunks_mut, iter, iter_mut, batch_iter_mut},
+    {batch_iter_mut, chunks_mut, iter, iter_mut},
 };
 
 // EVALUATED CIRCUIT

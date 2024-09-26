@@ -44,6 +44,8 @@ fn sum_check_high_degree(c: &mut Criterion) {
                 )| {
                     let mls = vec![ml0, ml1, ml2, ml3, ml4];
                     let mut transcript = transcript;
+                    let tensored_batching_randmoness =
+                        rand_vector(evaluator.get_num_fractions().ilog2() as usize);
 
                     sum_check_prove_higher_degree(
                         &evaluator,
@@ -53,6 +55,7 @@ fn sum_check_high_degree(c: &mut Criterion) {
                         logup_randomness,
                         mls,
                         periodic_table,
+                        &tensored_batching_randmoness,
                         &mut transcript,
                     )
                 },

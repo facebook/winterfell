@@ -38,9 +38,7 @@ pub fn verify_gkr<
     let mut total_evaluations = Vec::with_capacity(numerators.len() * 4);
     let mut num_acc = E::ZERO;
     let mut den_acc = E::ONE;
-    for (_circuit_id, (nums, dens)) in
-        numerators.into_iter().zip(denominators.into_iter()).enumerate()
-    {
+    for (nums, dens) in numerators.iter().zip(denominators.iter()) {
         total_evaluations.extend_from_slice(nums.evaluations());
         total_evaluations.extend_from_slice(dens.evaluations());
 
@@ -72,9 +70,7 @@ pub fn verify_gkr<
 
     // reduce the claim
     let mut reduced_claims = vec![];
-    for (_circuit_id, (nums, dens)) in
-        numerators.into_iter().zip(denominators.into_iter()).enumerate()
-    {
+    for (nums, dens) in numerators.iter().zip(denominators.iter()) {
         let p0 = nums.evaluations()[0];
         let p1 = nums.evaluations()[1];
         let q0 = dens.evaluations()[0];
@@ -113,19 +109,21 @@ pub fn verify_gkr<
         )?;
 
         // generate the random challenge to reduce two claims into a single claim
-        for tmp in openings.iter() {
-            transcript.reseed(H::hash_elements(&tmp));
+        let mut total_openings = Vec::with_capacity(openings.len() * 4);
+        for opening_circuit_i in openings.iter() {
+            total_openings.extend_from_slice(&opening_circuit_i);
         }
+        transcript.reseed(H::hash_elements(&total_openings));
         let r_layer = transcript.draw().map_err(|_| VerifierError::FailedToGenerateChallenge)?;
 
-        for (j, ops) in openings.iter().enumerate() {
+        for (circuit_id, ops) in openings.iter().enumerate() {
             let p0 = ops[0];
             let p1 = ops[1];
             let q0 = ops[2];
             let q1 = ops[3];
 
             let reduced_claim = (p0 + r_layer * (p1 - p0), q0 + r_layer * (q1 - q0));
-            reduced_claims[j] = reduced_claim;
+            reduced_claims[circuit_id] = reduced_claim;
         }
 
         // collect the randomness used for the current layer

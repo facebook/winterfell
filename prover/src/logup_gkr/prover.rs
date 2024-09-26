@@ -201,6 +201,7 @@ fn build_mle_from_main_trace_segment<E: FieldElement>(
 
 /// Proves all GKR layers except for input layer.
 #[instrument(skip_all)]
+#[allow(clippy::type_complexity)]
 fn prove_intermediate_layers<
     E: FieldElement,
     C: RandomCoin<Hasher = H, BaseField = E::BaseField>,
@@ -216,8 +217,8 @@ fn prove_intermediate_layers<
 
     let mut total_evaluations =
         Vec::with_capacity(output_layers[0].numerators.evaluations().len() * 2);
-    for output_layer in output_layers.into_iter() {
-        total_evaluations.extend_from_slice(&output_layer.numerators.evaluations());
+    for output_layer in output_layers.iter() {
+        total_evaluations.extend_from_slice(output_layer.numerators.evaluations());
         total_evaluations.extend_from_slice(output_layer.denominators.evaluations());
     }
     transcript.reseed(H::hash_elements(&total_evaluations));
@@ -263,10 +264,12 @@ fn prove_intermediate_layers<
             transcript,
         )?;
 
-        // sample a random challenge to reduce claims
-        for tmp in proof.openings_claim.openings.iter() {
-            transcript.reseed(H::hash_elements(tmp));
+        // generate the random challenge to reduce two claims into a single claim
+        let mut total_openings = Vec::with_capacity(proof.openings_claim.openings.len() * 4);
+        for opening_circuit_i in proof.openings_claim.openings.iter() {
+            total_openings.extend_from_slice(&opening_circuit_i);
         }
+        transcript.reseed(H::hash_elements(&total_openings));
         let r_layer = transcript.draw().map_err(|_| GkrProverError::FailedToGenerateChallenge)?;
 
         // reduce the claims
@@ -327,8 +330,8 @@ fn sum_check_prove_num_rounds_degree_3<
     }
     let proof = if inner_layers[0].numerators.num_evaluations() >= 64 {
         sumcheck_prove_plain_batched(
-            evaluation_point,
             &batched_claims,
+            evaluation_point,
             r_batch,
             inner_layers,
             eq,
@@ -337,8 +340,8 @@ fn sum_check_prove_num_rounds_degree_3<
         )?
     } else {
         sumcheck_prove_plain_batched_serial(
-            evaluation_point,
             &batched_claims,
+            evaluation_point,
             r_batch,
             inner_layers,
             eq,

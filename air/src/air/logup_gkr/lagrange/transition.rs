@@ -132,7 +132,7 @@ impl<E: FieldElement> LagrangeKernelTransitionConstraints<E> {
 
         let c = lagrange_kernel_column_frame;
         let v = c.num_rows() - 1;
-        let  r = lagrange_kernel_rand_elements;
+        let r = lagrange_kernel_rand_elements;
         // TODO: avoid reverse()
         let mut r = r.to_vec();
         r.reverse();

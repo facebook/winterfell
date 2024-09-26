@@ -23,8 +23,7 @@ use crate::{
 #[test]
 fn test_logup_gkr() {
     let aux_trace_width = 1;
-    let trace = LogUpGkrSimple::new(2_usize.pow(13
-    ), aux_trace_width);
+    let trace = LogUpGkrSimple::new(2_usize.pow(13), aux_trace_width);
     let prover = LogUpGkrSimpleProver::new(aux_trace_width);
 
     let proof = prover.prove(trace).unwrap();
@@ -195,14 +194,7 @@ impl<B: FieldElement + StarkField> PlainLogUpGkrEval<B> {
         let committed_3 = LogUpGkrOracle::CurrentRow(3);
         let committed_4 = LogUpGkrOracle::CurrentRow(4);
 
-        let oracles = vec![
-            committed_0,
-            committed_1,
-            committed_2,
-            committed_3,
-            committed_4,
-
-        ];
+        let oracles = vec![committed_0, committed_1, committed_2, committed_3, committed_4];
         Self { oracles, _field: PhantomData }
     }
 }
@@ -238,7 +230,6 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
         query[2] = frame.current()[2];
         query[3] = frame.current()[3];
         query[4] = frame.current()[4];
-
     }
 
     fn evaluate_query<F, E>(
@@ -264,8 +255,6 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
         denominator[1] = -(rand_values[0] - E::from(query[2]));
         denominator[2] = -(rand_values[0] - E::from(query[3]));
         denominator[3] = -(rand_values[0] - E::from(query[4]));
-        
-
 
         //numerator[0] = -E::ONE;
         //numerator[1] = E::ONE;

@@ -269,8 +269,7 @@ pub fn sum_check_prove_higher_degree<
 
     // run the first round of the protocol
     let mut round_poly_evals = sumcheck_round(
-        0,
-        &tensored_circuits_batching,
+        tensored_circuits_batching,
         evaluator,
         &eq_mle,
         &mls,
@@ -321,8 +320,7 @@ pub fn sum_check_prove_higher_degree<
         // run the i-th round of the protocol using the folded multi-linears for the new reduced
         // claim. This basically computes the s_i polynomial.
         let mut round_poly_evals = sumcheck_round(
-            i,
-            &tensored_circuits_batching,
+            tensored_circuits_batching,
             evaluator,
             &eq_mle,
             &mls,
@@ -417,7 +415,6 @@ pub fn sum_check_prove_higher_degree<
 /// the current evaluation at $x$ in $\{2, ... , d_max\}$.
 #[allow(clippy::too_many_arguments)]
 fn sumcheck_round<E: FieldElement>(
-    sum_check_round: usize,
     tensored_circuits_batching: &[E],
     evaluator: &impl LogUpGkrEvaluator<BaseField = <E as FieldElement>::BaseField>,
     eq_ml: &MultiLinearPoly<E>,
@@ -506,7 +503,7 @@ fn sumcheck_round<E: FieldElement>(
                     r_sum_check,
                 );
 
-                // compute the evaluations at 2, ..., d_max points
+                // compute the evaluations at 2, ..., d_max - 1 points
                 for i in 0..num_mls {
                     deltas_zero[i] = evals_one_zero[i] - evals_zero_zero[i];
                     evals_x_zero[i] = evals_one_zero[i];
@@ -663,7 +660,7 @@ fn sumcheck_round<E: FieldElement>(
                     &mut numerators_one,
                     &mut denominators_one,
                 );
-                poly_evals[0] = evaluate_composition_poly(
+                poly_evals[0] += evaluate_composition_poly(
                     tensored_circuits_batching,
                     &numerators_zero,
                     &denominators_zero,
@@ -673,7 +670,7 @@ fn sumcheck_round<E: FieldElement>(
                     r_sum_check,
                 );
 
-                // compute the evaluations at 2, ..., d_max points
+                // compute the evaluations at 2, ..., d_max - 1 points
                 for i in 0..num_mls {
                     deltas_zero[i] = evals_one_zero[i] - evals_zero_zero[i];
                     evals_x_zero[i] = evals_one_zero[i];

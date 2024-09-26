@@ -55,17 +55,17 @@ pub fn verify_sum_check_intermediate_layers<
     let mut eval_batched_circuits = E::ZERO;
     let eq = EqFunction::new(gkr_eval_point.into()).evaluate(&openings_claim.eval_point.clone());
     for (circuit_idx, openings) in openings_claim.openings.iter().enumerate() {
-        let p0 = openings[0].clone();
-        let p1 = openings[1].clone();
-        let q0 = openings[2].clone();
-        let q1 = openings[3].clone();
+        let p0 = openings[0];
+        let p1 = openings[1];
+        let q0 = openings[2];
+        let q1 = openings[3];
 
         eval_batched_circuits += comb_func(p0, p1, q0, q1, eq, r_batch)
             * tensored_circuit_batching_randomness[circuit_idx]
     }
 
     if eval_batched_circuits != final_round_claim.claim {
-        assert_eq!(1,0);
+        assert_eq!(1, 0);
         return Err(SumCheckVerifierError::FinalEvaluationCheckFailed);
     }
 
@@ -154,7 +154,7 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
     let eq_nu_eval = eq_nu.evaluate(&proof.0.openings_claim.eval_point);
 
     let expected_evaluation = evaluate_composition_poly(
-        &tensored_circuit_batching_randomness,
+        tensored_circuit_batching_randomness,
         &numerators_zero,
         &denominators_zero,
         &numerators_one,
@@ -164,6 +164,7 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
     );
 
     if expected_evaluation != claim {
+        assert_eq!(1, 0);
         Err(SumCheckVerifierError::FinalEvaluationCheckFailed)
     } else {
         Ok(proof.0.openings_claim.clone())
@@ -226,8 +227,8 @@ fn evaluate_periodic_columns_at<E: FieldElement>(
     for col in periodic_columns.table() {
         let ml = MultiLinearPoly::from_evaluations(col.to_vec());
         let num_variables = ml.num_variables();
-        let point_zero = &eval_point_zero[&eval_point_zero.len() - num_variables..];
-        let point_one = &eval_point_one[&eval_point_one.len() - num_variables..];
+        let point_zero = &eval_point_zero[eval_point_zero.len() - num_variables..];
+        let point_one = &eval_point_one[eval_point_one.len() - num_variables..];
 
         let evaluation_zero = ml.evaluate(point_zero);
         evaluations_zero.push(evaluation_zero);
