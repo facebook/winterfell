@@ -478,7 +478,7 @@ pub enum GkrProverError {
 /// vector will be computed for, in place.
 #[cfg(feature = "concurrent")]
 fn prefix_sum_parallel<E: FieldElement>(vector: &mut [E], batch_size: usize) {
-    let num_partitions = (vector.len() + batch_size - 1) / batch_size;
+    let num_partitions = vector.len().div_ceil(batch_size);
     let mut sum_per_partition = vec![E::ZERO; num_partitions];
 
     chunks!(vector, batch_size)
