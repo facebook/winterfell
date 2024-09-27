@@ -305,7 +305,6 @@ impl<B: StarkField, P> AirContext<B, P> {
         let trace_length = self.trace_len();
         let transition_divisior_degree = trace_length - self.num_transition_exemptions();
 
-        // we use the identity: ceil(a/b) = (a + b - 1)/b
         let num_constraint_col =
             (highest_constraint_degree - transition_divisior_degree).div_ceil(trace_length);
 
