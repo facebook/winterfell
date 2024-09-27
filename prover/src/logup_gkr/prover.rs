@@ -8,6 +8,9 @@ use sumcheck::{
     EqFunction, FinalLayerProof, GkrCircuitProof, MultiLinearPoly, SumCheckProof,
 };
 use tracing::instrument;
+use utils::iter;
+#[cfg(feature = "concurrent")]
+pub use utils::rayon::prelude::*;
 
 use super::{reduce_layer_claim, CircuitLayerPolys, EvaluatedCircuit, GkrClaim, GkrProverError};
 use crate::{matrix::ColMatrix, Trace};
@@ -147,7 +150,7 @@ fn build_mls_from_main_trace_segment<E: FieldElement>(
         match oracle {
             LogUpGkrOracle::CurrentRow(index) => {
                 let col = main_trace.get_column(*index);
-                let values: Vec<E> = col.iter().map(|value| E::from(*value)).collect();
+                let values: Vec<E> = iter!(col).map(|value| E::from(*value)).collect();
                 let ml = MultiLinearPoly::from_evaluations(values);
                 mls.push(ml)
             },
