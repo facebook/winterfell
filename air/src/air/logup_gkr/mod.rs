@@ -4,6 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::vec::Vec;
+use libc_print::libc_println;
 use core::marker::PhantomData;
 
 use crypto::{ElementHasher, RandomCoin};
@@ -131,6 +132,7 @@ pub trait LogUpGkrEvaluator: Clone + Sync {
         }
         let mut eval_point = eval_point;
         eval_point.push(folding_randomness);
+        libc_println!("folding_randomness {:?}", folding_randomness);
 
         GkrData::new(
             LagrangeKernelRandElements::new(eval_point),
