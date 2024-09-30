@@ -62,10 +62,10 @@ impl<E> CircuitLayerPolys<E>
 where
     E: FieldElement,
 {
-    pub fn from_circuit_layer(layers: &[CircuitLayer<E>]) -> Vec<Self> {
+    pub fn from_circuit_layer(layers: &[Vec<CircuitWire<E>>]) -> Vec<Self> {
         let mut result = vec![];
         for layer in layers {
-            result.push(Self::from_wires(layer.wires.clone()))
+            result.push(Self::from_wires(layer.clone()))
         }
         result
     }

@@ -1,4 +1,5 @@
 use alloc::vec::Vec;
+use core::num;
 
 use air::{EvaluationFrame, GkrData, LogUpGkrEvaluator};
 use math::FieldElement;
@@ -69,9 +70,12 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
     ) -> Result<Self, GkrProverError> {
         let mut layer_polys = Vec::new();
 
-        let mut current_layer =
+        let current_layer =
             Self::generate_input_layer(main_trace_columns, evaluator, log_up_randomness);
-        while current_layer[0].num_wires() > 1 {
+
+        let mut current_layer =
+            Self::generate_second_layer(current_layer, evaluator.get_num_fractions());
+        while current_layer[0].len() > 1 {
             let next_layer = Self::compute_next_layer(&current_layer);
 
             layer_polys.push(CircuitLayerPolys::from_circuit_layer(&current_layer));
@@ -161,7 +165,7 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
         trace: &impl Trace<BaseField = E::BaseField>,
         evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
         log_up_randomness: &[E],
-    ) -> Vec<CircuitLayer<E>> {
+    ) -> Vec<CircuitWire<E>> {
         let num_fractions = evaluator.get_num_fractions();
         let periodic_values = evaluator.build_periodic_values(trace.main_segment().num_rows());
 
@@ -211,28 +215,14 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
                 }
             }
         );
-
-        let mut result: Vec<Vec<CircuitWire<E>>> =
-            vec![unsafe { uninit_vector(trace.main_segment().num_rows()) }; num_fractions];
-
-        input_layer_wires.chunks(num_fractions).enumerate().for_each(|(row, chunk)| {
-            chunk
-                .iter()
-                .zip(result.iter_mut())
-                .for_each(|(value, destination)| destination[row] = *value);
-        });
-
-        result
-            .iter()
-            .map(|input_layer| CircuitLayer::new(input_layer.to_vec()))
-            .collect()
+        input_layer_wires
     }
 
     /// Computes the subsequent layer of the circuit from a given layer.
-    fn compute_next_layer(prev_layers: &[CircuitLayer<E>]) -> Vec<CircuitLayer<E>> {
+    fn compute_next_layer(prev_layers: &[Vec<CircuitWire<E>>]) -> Vec<Vec<CircuitWire<E>>> {
         let mut next_layers = Vec::with_capacity(prev_layers.len() / 2);
         for prev_layer in prev_layers.iter() {
-            let next_layer_wires = chunks!(prev_layer.wires(), 2)
+            let next_layer_wires = chunks!(prev_layer, 2)
                 .map(|input_wires| {
                     let left_input_wire = input_wires[0];
                     let right_input_wire = input_wires[1];
@@ -242,9 +232,49 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
                 })
                 .collect();
 
-            next_layers.push(CircuitLayer::new(next_layer_wires))
+            next_layers.push((next_layer_wires))
         }
         next_layers
+    }
+
+    fn generate_second_layer(
+        current_layer: Vec<CircuitWire<E>>,
+        num_fractions: usize,
+    ) -> Vec<Vec<CircuitWire<E>>> {
+        let mut result: Vec<Vec<CircuitWire<E>>> =
+            vec![
+                unsafe { uninit_vector(current_layer.len() / (num_fractions * 2)) };
+                num_fractions
+            ];
+
+        result.par_iter_mut().enumerate().for_each(|(circuit_idx, circuit)| {
+            current_layer.chunks(2 * num_fractions).enumerate().for_each(
+                |(row, fractions_at_row)| {
+                    let left = fractions_at_row[circuit_idx];
+                    let right = fractions_at_row[circuit_idx + num_fractions];
+                    circuit[row] = left + right;
+                },
+            );
+        });
+        //input_layer_wires.chunks(num_fractions).enumerate().for_each(|(row, chunk)| {
+        //chunk
+        //.iter()
+        //.zip(result.iter_mut())
+        //.for_each(|(value, destination)| destination[row] = *value);
+        //});
+
+        //result
+        //.iter()
+        //.map(|input_layer| CircuitLayer::new(input_layer.to_vec()))
+        //.collect()
+
+        //current_layer.par_chunks(2 * num_fractions).for_each(|chunk|  {
+        //let (even, odd) = chunk.split_at(num_fractions);
+        //let res = even.iter().zip(odd.iter()).map(|(&e, &o)| e + o).collect();
+        //});
+
+        //todo!()
+        result
     }
 }
 
