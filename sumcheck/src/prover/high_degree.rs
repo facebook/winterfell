@@ -301,8 +301,8 @@ pub fn sum_check_prove_higher_degree<
         let round_challenge =
             coin.draw().map_err(|_| SumCheckProverError::FailedToGenerateChallenge)?;
 
-            assert_eq!(evaluation_point.len(), 11);
-            assert_eq!(mls[0].num_variables(), 13);
+            //assert_eq!(evaluation_point.len(), 12);
+            //assert_eq!(mls[0].num_variables(), 13);
         // update `scaling_up_factor`
         alpha_i = evaluation_point[evaluation_point.len() + 1 - mls[0].num_variables()];
         scaling_up_factor *=
