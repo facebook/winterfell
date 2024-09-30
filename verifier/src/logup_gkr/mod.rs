@@ -60,7 +60,7 @@ pub fn verify_gkr<
         num_acc = new_num;
         den_acc = new_den;
     }
-    if num_acc != claim || den_acc == E::ZERO {
+    if num_acc / den_acc != claim {
         return Err(VerifierError::MismatchingCircuitOutput);
     }
 
