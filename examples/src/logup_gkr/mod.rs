@@ -43,18 +43,26 @@ pub fn get_example(
     let (options, hash_fn) = options.to_proof_options(28, 8);
 
     match hash_fn {
-        HashFunction::Blake3_192 => {
-            Ok(Box::new(LogUpGkrSimple::<Blake3_192>::new(trace_length, AUX_TRACE_WIDTH, options)))
-        },
-        HashFunction::Blake3_256 => {
-            Ok(Box::new(LogUpGkrSimple::<Blake3_256>::new(trace_length, AUX_TRACE_WIDTH, options)))
-        },
-        HashFunction::Sha3_256 => {
-            Ok(Box::new(LogUpGkrSimple::<Sha3_256>::new(trace_length, AUX_TRACE_WIDTH, options)))
-        },
-        HashFunction::Rp64_256 => {
-            Ok(Box::new(LogUpGkrSimple::<Rp64_256>::new(trace_length, AUX_TRACE_WIDTH, options)))
-        },
+        HashFunction::Blake3_192 => Ok(Box::new(LogUpGkrSimple::<Blake3_192>::new(
+            trace_length,
+            AUX_TRACE_WIDTH,
+            options,
+        ))),
+        HashFunction::Blake3_256 => Ok(Box::new(LogUpGkrSimple::<Blake3_256>::new(
+            trace_length,
+            AUX_TRACE_WIDTH,
+            options,
+        ))),
+        HashFunction::Sha3_256 => Ok(Box::new(LogUpGkrSimple::<Sha3_256>::new(
+            trace_length,
+            AUX_TRACE_WIDTH,
+            options,
+        ))),
+        HashFunction::Rp64_256 => Ok(Box::new(LogUpGkrSimple::<Rp64_256>::new(
+            trace_length,
+            AUX_TRACE_WIDTH,
+            options,
+        ))),
         HashFunction::RpJive64_256 => Ok(Box::new(LogUpGkrSimple::<RpJive64_256>::new(
             trace_length,
             AUX_TRACE_WIDTH,

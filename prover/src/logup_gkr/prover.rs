@@ -250,7 +250,7 @@ fn prove_intermediate_layers<
     // loop over all inner layers in order to iteratively reduce a layer in terms of its successor
     // layer. Note that we don't include the input layer, since its predecessor layer will be
     // reduced in terms of the input layer separately in `prove_final_circuit_layer`.
-    for inner_layer in circuit.layers().into_iter().skip(0).rev().skip(1) {
+    for inner_layer in circuit.layers().into_iter().rev().skip(1) {
         // construct the Lagrange kernel evaluated at the previous GKR round randomness
         let mut eq_mle = EqFunction::ml_at(evaluation_point.clone().into());
 
@@ -267,7 +267,7 @@ fn prove_intermediate_layers<
         // generate the random challenge to reduce two claims into a single claim
         let mut total_openings = Vec::with_capacity(proof.openings_claim.openings.len() * 4);
         for opening_circuit_i in proof.openings_claim.openings.iter() {
-            total_openings.extend_from_slice(&opening_circuit_i);
+            total_openings.extend_from_slice(opening_circuit_i);
         }
         transcript.reseed(H::hash_elements(&total_openings));
         let r_layer = transcript.draw().map_err(|_| GkrProverError::FailedToGenerateChallenge)?;

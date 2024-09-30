@@ -116,7 +116,7 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
         1
     }
 
-     fn get_num_fractions(&self) -> usize {
+    fn get_num_fractions(&self) -> usize {
         16
     }
 

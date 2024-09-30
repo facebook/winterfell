@@ -1,5 +1,4 @@
 use alloc::vec::Vec;
-use core::num;
 
 use air::{EvaluationFrame, GkrData, LogUpGkrEvaluator};
 use math::FieldElement;
@@ -232,7 +231,7 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
                 })
                 .collect();
 
-            next_layers.push((next_layer_wires))
+            next_layers.push(next_layer_wires)
         }
         next_layers
     }
@@ -247,6 +246,7 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
                 num_fractions
             ];
 
+        #[cfg(feature = "concurrent")]
         result.par_iter_mut().enumerate().for_each(|(circuit_idx, circuit)| {
             current_layer.chunks(2 * num_fractions).enumerate().for_each(
                 |(row, fractions_at_row)| {
@@ -256,24 +256,18 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
                 },
             );
         });
-        //input_layer_wires.chunks(num_fractions).enumerate().for_each(|(row, chunk)| {
-        //chunk
-        //.iter()
-        //.zip(result.iter_mut())
-        //.for_each(|(value, destination)| destination[row] = *value);
-        //});
 
-        //result
-        //.iter()
-        //.map(|input_layer| CircuitLayer::new(input_layer.to_vec()))
-        //.collect()
+        #[cfg(not(feature = "concurrent"))]
+        result.iter_mut().enumerate().for_each(|(circuit_idx, circuit)| {
+            current_layer.chunks(2 * num_fractions).enumerate().for_each(
+                |(row, fractions_at_row)| {
+                    let left = fractions_at_row[circuit_idx];
+                    let right = fractions_at_row[circuit_idx + num_fractions];
+                    circuit[row] = left + right;
+                },
+            );
+        });
 
-        //current_layer.par_chunks(2 * num_fractions).for_each(|chunk|  {
-        //let (even, odd) = chunk.split_at(num_fractions);
-        //let res = even.iter().zip(odd.iter()).map(|(&e, &o)| e + o).collect();
-        //});
-
-        //todo!()
         result
     }
 }

@@ -9,10 +9,10 @@ use winterfell::{
     math::fields::f128::BaseElement,
     FieldExtension, Proof, ProofOptions, VerifierError,
 };
-pub mod logup_gkr;
 pub mod fibonacci;
 #[cfg(feature = "std")]
 pub mod lamport;
+pub mod logup_gkr;
 #[cfg(feature = "std")]
 pub mod merkle;
 pub mod rescue;

@@ -111,7 +111,7 @@ pub fn verify_gkr<
         // generate the random challenge to reduce two claims into a single claim
         let mut total_openings = Vec::with_capacity(openings.len() * 4);
         for opening_circuit_i in openings.iter() {
-            total_openings.extend_from_slice(&opening_circuit_i);
+            total_openings.extend_from_slice(opening_circuit_i);
         }
         transcript.reseed(H::hash_elements(&total_openings));
         let r_layer = transcript.draw().map_err(|_| VerifierError::FailedToGenerateChallenge)?;
