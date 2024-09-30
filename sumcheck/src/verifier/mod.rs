@@ -7,6 +7,7 @@ use alloc::vec::Vec;
 
 use air::{LogUpGkrEvaluator, PeriodicTable};
 use crypto::{ElementHasher, RandomCoin};
+use libc_print::libc_println;
 use math::FieldElement;
 
 use crate::{
@@ -162,6 +163,10 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
         eq_nu_eval,
         r_batch,
     );
+
+    
+    libc_println!("verifier: expected_evaluation {:?}", expected_evaluation);
+    libc_println!("verifier: claim {:?}", claim);
 
     if expected_evaluation != claim {
         assert_eq!(1, 0);
