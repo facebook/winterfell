@@ -2,6 +2,7 @@ use alloc::vec::Vec;
 
 use air::{Air, LogUpGkrEvaluator};
 use crypto::{ElementHasher, RandomCoin};
+use libc_print::libc_println;
 use math::FieldElement;
 use sumcheck::{
     verify_sum_check_input_layer, verify_sum_check_intermediate_layers, CircuitOutput, EqFunction,
@@ -61,6 +62,10 @@ pub fn verify_gkr<
         den_acc = new_den;
     }
     if num_acc / den_acc != claim {
+        libc_println!("num_acc {:?}", num_acc);
+        libc_println!("den_acc {:?}", den_acc);
+        libc_println!("num_acc / den_acc {:?}", num_acc / den_acc);
+        libc_println!("claim {:?}", claim);
         return Err(VerifierError::MismatchingCircuitOutput);
     }
 
