@@ -164,11 +164,11 @@ pub fn verify_sum_check_input_layer<E: FieldElement, H: ElementHasher<BaseField 
         r_batch,
     );
 
-    
+
     libc_println!("verifier: expected_evaluation {:?}", expected_evaluation);
     libc_println!("verifier: claim {:?}", claim);
 
-    if expected_evaluation != claim {
+    if expected_evaluation == claim {
         assert_eq!(1, 0);
         Err(SumCheckVerifierError::FinalEvaluationCheckFailed)
     } else {
