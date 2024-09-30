@@ -117,7 +117,7 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
     }
 
      fn get_num_fractions(&self) -> usize {
-        32
+        16
     }
 
     fn max_degree(&self) -> usize {
@@ -142,8 +142,8 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
         F: FieldElement<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
     {
-        assert_eq!(numerator.len(), 32);
-        assert_eq!(denominator.len(), 32);
+        assert_eq!(numerator.len(), self.get_num_fractions());
+        assert_eq!(denominator.len(), self.get_num_fractions());
         assert_eq!(query.len(), 5);
         numerator[0] = E::from(query[1]);
         numerator[1] = E::ONE;
@@ -161,22 +161,22 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
         numerator[13] = E::ONE;
         numerator[14] = E::ONE;
         numerator[15] = E::ONE;
-        numerator[16] = E::from(query[1]);
-        numerator[17] = E::ONE;
-        numerator[18] = E::ONE;
-        numerator[19] = E::ONE;
-        numerator[20] = E::from(query[1]);
-        numerator[21] = E::ONE;
-        numerator[22] = E::ONE;
-        numerator[23] = E::ONE;
-        numerator[24] = E::from(query[1]);
-        numerator[25] = E::ONE;
-        numerator[26] = E::ONE;
-        numerator[27] = E::ONE;
-        numerator[28] = E::from(query[1]);
-        numerator[29] = E::ONE;
-        numerator[30] = E::ONE;
-        numerator[31] = E::ONE;
+        //numerator[16] = E::from(query[1]);
+        //numerator[17] = E::ONE;
+        //numerator[18] = E::ONE;
+        //numerator[19] = E::ONE;
+        //numerator[20] = E::from(query[1]);
+        //numerator[21] = E::ONE;
+        //numerator[22] = E::ONE;
+        //numerator[23] = E::ONE;
+        //numerator[24] = E::from(query[1]);
+        //numerator[25] = E::ONE;
+        //numerator[26] = E::ONE;
+        //numerator[27] = E::ONE;
+        //numerator[28] = E::from(query[1]);
+        //numerator[29] = E::ONE;
+        //numerator[30] = E::ONE;
+        //numerator[31] = E::ONE;
 
         denominator[0] = rand_values[0] - E::from(query[0]);
         denominator[1] = -(rand_values[0] - E::from(query[2]));
@@ -194,22 +194,22 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
         denominator[13] = -(rand_values[0] - E::from(query[2]));
         denominator[14] = -(rand_values[0] - E::from(query[3]));
         denominator[15] = -(rand_values[0] - E::from(query[4]));
-        denominator[16] = rand_values[0] - E::from(query[0]);
-        denominator[17] = -(rand_values[0] - E::from(query[2]));
-        denominator[18] = -(rand_values[0] - E::from(query[3]));
-        denominator[19] = -(rand_values[0] - E::from(query[4]));
-        denominator[20] = rand_values[0] - E::from(query[0]);
-        denominator[21] = -(rand_values[0] - E::from(query[2]));
-        denominator[22] = -(rand_values[0] - E::from(query[3]));
-        denominator[23] = -(rand_values[0] - E::from(query[4]));
-        denominator[24] = rand_values[0] - E::from(query[0]);
-        denominator[25] = -(rand_values[0] - E::from(query[2]));
-        denominator[26] = -(rand_values[0] - E::from(query[3]));
-        denominator[27] = -(rand_values[0] - E::from(query[4]));
-        denominator[28] = rand_values[0] - E::from(query[0]);
-        denominator[29] = -(rand_values[0] - E::from(query[2]));
-        denominator[30] = -(rand_values[0] - E::from(query[3]));
-        denominator[31] = -(rand_values[0] - E::from(query[4]));
+        //denominator[16] = rand_values[0] - E::from(query[0]);
+        //denominator[17] = -(rand_values[0] - E::from(query[2]));
+        //denominator[18] = -(rand_values[0] - E::from(query[3]));
+        //denominator[19] = -(rand_values[0] - E::from(query[4]));
+        //denominator[20] = rand_values[0] - E::from(query[0]);
+        //denominator[21] = -(rand_values[0] - E::from(query[2]));
+        //denominator[22] = -(rand_values[0] - E::from(query[3]));
+        //denominator[23] = -(rand_values[0] - E::from(query[4]));
+        //denominator[24] = rand_values[0] - E::from(query[0]);
+        //denominator[25] = -(rand_values[0] - E::from(query[2]));
+        //denominator[26] = -(rand_values[0] - E::from(query[3]));
+        //denominator[27] = -(rand_values[0] - E::from(query[4]));
+        //denominator[28] = rand_values[0] - E::from(query[0]);
+        //denominator[29] = -(rand_values[0] - E::from(query[2]));
+        //denominator[30] = -(rand_values[0] - E::from(query[3]));
+        //denominator[31] = -(rand_values[0] - E::from(query[4]));
     }
 
     fn compute_claim<E>(&self, _inputs: &Self::PublicInputs, _rand_values: &[E]) -> E
