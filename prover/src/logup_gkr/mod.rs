@@ -2,9 +2,9 @@ use alloc::vec::Vec;
 
 use air::{EvaluationFrame, GkrData, LogUpGkrEvaluator};
 use math::FieldElement;
-use sumcheck::{CircuitLayer, CircuitLayerPolys, CircuitWire, EqFunction, SumCheckProverError};
+use sumcheck::{CircuitLayerPolys, CircuitWire, EqFunction, SumCheckProverError};
 use tracing::instrument;
-use utils::{batch_iter_mut, chunks, uninit_vector};
+use utils::{batch_iter_mut, uninit_vector};
 
 use crate::Trace;
 
@@ -13,7 +13,7 @@ pub use prover::prove_gkr;
 #[cfg(feature = "concurrent")]
 pub use utils::{
     rayon::{current_num_threads as rayon_num_threads, prelude::*},
-    {chunks_mut, iter, iter_mut},
+    {chunks, chunks_mut, iter, iter_mut},
 };
 
 // EVALUATED CIRCUIT
@@ -69,11 +69,11 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
     ) -> Result<Self, GkrProverError> {
         let mut layer_polys = Vec::new();
 
-        let current_layer =
+        let input_layer =
             Self::generate_input_layer(main_trace_columns, evaluator, log_up_randomness);
 
         let mut current_layer =
-            Self::generate_second_layer(current_layer, evaluator.get_num_fractions());
+            Self::generate_second_layer(input_layer, evaluator.get_num_fractions());
         while current_layer[0].len() > 1 {
             let next_layer = Self::compute_next_layer(&current_layer);
 
@@ -116,50 +116,6 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
 
     /// Generates the input layer of the circuit from the main trace columns and some randomness
     /// provided by the verifier.
-    #[allow(dead_code)]
-    fn generate_input_layer_old(
-        trace: &impl Trace<BaseField = E::BaseField>,
-        evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
-        log_up_randomness: &[E],
-    ) -> Vec<CircuitLayer<E>> {
-        let num_fractions = evaluator.get_num_fractions();
-        let periodic_values = evaluator.build_periodic_values(trace.main_segment().num_rows());
-
-        let mut input_layer_wires: Vec<Vec<_>> =
-            vec![unsafe { uninit_vector(trace.main_segment().num_rows()) }; num_fractions];
-        let mut main_frame = EvaluationFrame::new(trace.main_segment().num_cols());
-
-        let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
-        let mut periodic_values_row = vec![E::BaseField::ZERO; periodic_values.num_columns()];
-        let mut numerators = vec![E::ZERO; num_fractions];
-        let mut denominators = vec![E::ZERO; num_fractions];
-        for i in 0..trace.main_segment().num_rows() {
-            trace.read_main_frame(i, &mut main_frame);
-            periodic_values.fill_periodic_values_at(i, &mut periodic_values_row);
-            evaluator.build_query(&main_frame, &mut query);
-
-            evaluator.evaluate_query(
-                &query,
-                &periodic_values_row,
-                log_up_randomness,
-                &mut numerators,
-                &mut denominators,
-            );
-            numerators
-                .iter()
-                .zip(denominators.iter())
-                .zip(input_layer_wires.iter_mut())
-                .for_each(|((numerator, denominator), circuit_input_layer)| {
-                    circuit_input_layer[i] = CircuitWire::new(*numerator, *denominator)
-                });
-        }
-
-        input_layer_wires
-            .iter()
-            .map(|input_layer| CircuitLayer::new(input_layer.to_vec()))
-            .collect()
-    }
-
     fn generate_input_layer(
         trace: &impl Trace<BaseField = E::BaseField>,
         evaluator: &impl LogUpGkrEvaluator<BaseField = E::BaseField>,
@@ -219,20 +175,44 @@ impl<E: FieldElement> EvaluatedCircuit<E> {
 
     /// Computes the subsequent layer of the circuit from a given layer.
     fn compute_next_layer(prev_layers: &[Vec<CircuitWire<E>>]) -> Vec<Vec<CircuitWire<E>>> {
-        let mut next_layers = Vec::with_capacity(prev_layers.len() / 2);
-        for prev_layer in prev_layers.iter() {
-            let next_layer_wires = chunks!(prev_layer, 2)
-                .map(|input_wires| {
-                    let left_input_wire = input_wires[0];
-                    let right_input_wire = input_wires[1];
+        let mut next_layers: Vec<Vec<CircuitWire<E>>> =
+            vec![unsafe { uninit_vector(prev_layers[0].len() / 2) }; prev_layers.len()];
 
-                    // output wire
-                    left_input_wire + right_input_wire
-                })
-                .collect();
-
-            next_layers.push(next_layer_wires)
+        #[cfg(feature = "concurrent")]
+        if prev_layers[0].len() >= 16 {
+            next_layers.par_iter_mut().enumerate().for_each(|(circuit_idx, circuit)| {
+                prev_layers[circuit_idx].chunks(2).enumerate().for_each(
+                    |(row, fractions_at_row)| {
+                        let left = fractions_at_row[0];
+                        let right = fractions_at_row[1];
+                        circuit[row] = left + right;
+                    },
+                );
+            });
+        } else {
+            next_layers.iter_mut().enumerate().for_each(|(circuit_idx, circuit)| {
+                prev_layers[circuit_idx].chunks(2).enumerate().for_each(
+                    |(row, fractions_at_row)| {
+                        let left = fractions_at_row[0];
+                        let right = fractions_at_row[1];
+                        circuit[row] = left + right;
+                    },
+                );
+            });
         }
+
+        #[cfg(not(feature = "concurrent"))]
+        next_layers.iter_mut().enumerate().for_each(|(circuit_idx, circuit)| {
+            prev_layers[circuit_idx]
+                .chunks(2)
+                .enumerate()
+                .for_each(|(row, fractions_at_row)| {
+                    let left = fractions_at_row[0];
+                    let right = fractions_at_row[1];
+                    circuit[row] = left + right;
+                });
+        });
+
         next_layers
     }
 

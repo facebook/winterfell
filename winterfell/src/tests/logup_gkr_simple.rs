@@ -213,8 +213,7 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
     }
 
     fn get_num_fractions(&self) -> usize {
-        4
-        //2
+        5
     }
 
     fn max_degree(&self) -> usize {
@@ -243,23 +242,17 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
         F: FieldElement<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField> + ExtensionOf<F>,
     {
-        //assert_eq!(numerator.len(), 4);
-        //assert_eq!(denominator.len(), 4);
-        //assert_eq!(query.len(), 10);
         numerator[0] = E::from(query[1]);
         numerator[1] = E::ONE;
         numerator[2] = E::ONE;
         numerator[3] = E::ONE;
+        numerator[4] = E::ZERO;
 
         denominator[0] = rand_values[0] - E::from(query[0]);
         denominator[1] = -(rand_values[0] - E::from(query[2]));
         denominator[2] = -(rand_values[0] - E::from(query[3]));
         denominator[3] = -(rand_values[0] - E::from(query[4]));
-
-        //numerator[0] = -E::ONE;
-        //numerator[1] = E::ONE;
-        //denominator[2] = E::ONE;
-        //denominator[3] = E::ONE;
+        denominator[4] = -(rand_values[0] - E::from(query[4]));
     }
 
     fn compute_claim<E>(&self, _inputs: &Self::PublicInputs, _rand_values: &[E]) -> E

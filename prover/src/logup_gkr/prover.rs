@@ -227,8 +227,7 @@ fn prove_intermediate_layers<
     let r = transcript.draw().map_err(|_| GkrProverError::FailedToGenerateChallenge)?;
     let mut claimed_evaluations = circuit.evaluate_output_layer(r);
     let num_circuits = claimed_evaluations.len();
-    let log_num_circuits = num_circuits.ilog2();
-    assert_eq!(1 << log_num_circuits, num_circuits);
+    let log_num_circuits = num_circuits.next_power_of_two().ilog2();
 
     let mut circuit_batching_randomness: Vec<E> = Vec::with_capacity(log_num_circuits as usize);
     for _ in 0..log_num_circuits {

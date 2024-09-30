@@ -83,8 +83,7 @@ pub fn verify_gkr<
     }
 
     let num_circuits = reduced_claims.len();
-    let log_num_circuits = num_circuits.ilog2();
-    assert_eq!(1 << log_num_circuits, num_circuits);
+    let log_num_circuits = num_circuits.next_power_of_two().ilog2();
 
     let mut circuit_batching_randomness: Vec<E> = vec![];
 
