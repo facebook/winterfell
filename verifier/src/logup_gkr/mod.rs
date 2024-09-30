@@ -58,18 +58,10 @@ pub fn verify_gkr<
 
         let new_num = num_acc * cur_den + den_acc * cur_num;
         let new_den = den_acc * cur_den;
-        libc_println!("num_acc {:?}", num_acc);
-        libc_println!("den_acc {:?}", den_acc);
-        libc_println!("num_acc / den_acc {:?}", num_acc / den_acc);
-        libc_println!("claim {:?}", claim);
         num_acc = new_num;
         den_acc = new_den;
     }
     if num_acc / den_acc != claim {
-        libc_println!("num_acc {:?}", num_acc);
-        libc_println!("den_acc {:?}", den_acc);
-        libc_println!("num_acc / den_acc {:?}", num_acc / den_acc);
-        libc_println!("claim {:?}", claim);
         return Err(VerifierError::MismatchingCircuitOutput);
     }
 

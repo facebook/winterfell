@@ -55,8 +55,8 @@ impl LogUpGkrSimple {
             (0..trace_len).map(|idx| BaseElement::from(idx as u32)).collect();
         let mut multiplicity: Vec<BaseElement> =
             (0..trace_len).map(|_idx| BaseElement::ZERO).collect();
-        multiplicity[0] = BaseElement::new(3 * trace_len as u64 - 3 * 4);
-        multiplicity[1] = BaseElement::new(3 * 4);
+        multiplicity[1] = BaseElement::new(3 * trace_len as u64 - 3 * 4);
+        multiplicity[2] = BaseElement::new(3 * 4);
 
         let mut values_0: Vec<BaseElement> = (0..trace_len).map(|_idx| BaseElement::ZERO).collect();
 
@@ -189,7 +189,7 @@ pub struct PlainLogUpGkrEval<B: FieldElement + StarkField> {
 impl<B: FieldElement + StarkField> PlainLogUpGkrEval<B> {
     pub fn new() -> Self {
         let committed_0 = LogUpGkrOracle::CurrentRow(0);
-        let committed_1 = LogUpGkrOracle::CurrentRow(1);
+        let committed_1 = LogUpGkrOracle::NextRow(1);
         let committed_2 = LogUpGkrOracle::CurrentRow(2);
         let committed_3 = LogUpGkrOracle::CurrentRow(3);
         let committed_4 = LogUpGkrOracle::CurrentRow(4);
@@ -225,7 +225,7 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
         E: FieldElement<BaseField = Self::BaseField>,
     {
         query[0] = frame.current()[0];
-        query[1] = frame.current()[1];
+        query[1] = frame.next()[1];
         query[2] = frame.current()[2];
         query[3] = frame.current()[3];
         query[4] = frame.current()[4];

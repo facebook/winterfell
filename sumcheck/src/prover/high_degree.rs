@@ -362,6 +362,7 @@ pub fn sum_check_prove_higher_degree<
     let SumCheckRoundClaim { eval_point, claim: _claim } =
         reduce_claim(&round_proofs[num_rounds - 1], current_round_claim, round_challenge);
 
+    libc_println!("prover : mls{:?}", mls);
     let openings: Vec<E> = mls
         .into_iter()
         .flat_map(|ml| [ml.evaluations()[0], ml.evaluations()[1]])
