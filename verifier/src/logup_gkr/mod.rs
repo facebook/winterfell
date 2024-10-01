@@ -2,7 +2,6 @@ use alloc::vec::Vec;
 
 use air::{Air, LogUpGkrEvaluator};
 use crypto::{ElementHasher, RandomCoin};
-use libc_print::libc_println;
 use math::FieldElement;
 use sumcheck::{
     verify_sum_check_input_layer, verify_sum_check_intermediate_layers, CircuitOutput, EqFunction,

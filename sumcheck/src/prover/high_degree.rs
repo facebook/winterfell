@@ -7,7 +7,6 @@ use alloc::vec::Vec;
 
 use air::{LogUpGkrEvaluator, PeriodicTable};
 use crypto::{ElementHasher, RandomCoin};
-use libc_print::libc_println;
 use math::FieldElement;
 #[cfg(feature = "concurrent")]
 pub use rayon::prelude::*;
@@ -362,16 +361,11 @@ pub fn sum_check_prove_higher_degree<
     let SumCheckRoundClaim { eval_point, claim: _claim } =
         reduce_claim(&round_proofs[num_rounds - 1], current_round_claim, round_challenge);
 
-    libc_println!("prover : mls{:?}", mls);
     let openings: Vec<E> = mls
         .into_iter()
         .flat_map(|ml| [ml.evaluations()[0], ml.evaluations()[1]])
         .collect();
 
-    
-    //libc_println!("prover: expected_evaluation {:?}", expected_evaluation);
-    libc_println!("prover : claim {:?}", _claim);
-    
     Ok(SumCheckProof {
         openings_claim: FinalOpeningClaim { eval_point, openings: vec![openings] },
         round_proofs,
