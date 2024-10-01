@@ -139,16 +139,11 @@ where
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
     }
 
-    fn build_aux_trace<E>(
-        &self,
-        trace: &Self::Trace,
-        aux_rand_elements: &AuxRandElements<E>,
-    ) -> ColMatrix<E>
+    fn build_aux_trace<E>(&self, trace: &Self::Trace, aux_rand_elements: &[E]) -> ColMatrix<E>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
         let main_trace = trace.main_segment();
-        let rand_elements = aux_rand_elements.rand_elements();
 
         let mut current_row = unsafe { uninit_vector(main_trace.num_cols()) };
         let mut next_row = unsafe { uninit_vector(main_trace.num_cols()) };
@@ -157,10 +152,10 @@ where
 
         // Columns storing the copied values for the permutation argument are not necessary, but
         // help understanding the construction of RAPs and are kept for illustrative purposes.
-        aux_columns[0][0] =
-            rand_elements[0] * current_row[0].into() + rand_elements[1] * current_row[1].into();
-        aux_columns[1][0] =
-            rand_elements[0] * current_row[4].into() + rand_elements[1] * current_row[5].into();
+        aux_columns[0][0] = aux_rand_elements[0] * current_row[0].into()
+            + aux_rand_elements[1] * current_row[1].into();
+        aux_columns[1][0] = aux_rand_elements[0] * current_row[4].into()
+            + aux_rand_elements[1] * current_row[5].into();
 
         // Permutation argument column
         aux_columns[2][0] = E::ONE;
@@ -172,14 +167,16 @@ where
                 main_trace.read_row_into(index, &mut current_row);
                 main_trace.read_row_into(index + 1, &mut next_row);
 
-                aux_columns[0][index] = rand_elements[0] * (next_row[0] - current_row[0]).into()
-                    + rand_elements[1] * (next_row[1] - current_row[1]).into();
-                aux_columns[1][index] = rand_elements[0] * (next_row[4] - current_row[4]).into()
-                    + rand_elements[1] * (next_row[5] - current_row[5]).into();
+                aux_columns[0][index] = aux_rand_elements[0]
+                    * (next_row[0] - current_row[0]).into()
+                    + aux_rand_elements[1] * (next_row[1] - current_row[1]).into();
+                aux_columns[1][index] = aux_rand_elements[0]
+                    * (next_row[4] - current_row[4]).into()
+                    + aux_rand_elements[1] * (next_row[5] - current_row[5]).into();
             }
 
-            let num = aux_columns[0][index - 1] + rand_elements[2];
-            let denom = aux_columns[1][index - 1] + rand_elements[2];
+            let num = aux_columns[0][index - 1] + aux_rand_elements[2];
+            let denom = aux_columns[1][index - 1] + aux_rand_elements[2];
             aux_columns[2][index] = aux_columns[2][index - 1] * num * denom.inv();
         }
 

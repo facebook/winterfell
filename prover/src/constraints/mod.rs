@@ -6,7 +6,7 @@
 use super::{ColMatrix, ConstraintDivisor, RowMatrix, StarkDomain};
 
 mod evaluator;
-pub use evaluator::{ConstraintEvaluator, DefaultConstraintEvaluator};
+pub use evaluator::{ConstraintEvaluator, DefaultConstraintEvaluator, LogUpGkrConstraintEvaluator};
 
 mod composition_poly;
 pub use composition_poly::{CompositionPoly, CompositionPolyTrace};

@@ -5,7 +5,7 @@
 
 use math::FieldElement;
 
-use crate::{LagrangeKernelEvaluationFrame, LagrangeKernelRandElements};
+use super::{LagrangeKernelEvaluationFrame, LagrangeKernelRandElements};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct LagrangeKernelBoundaryConstraint<E>
@@ -31,27 +31,28 @@ where
         }
     }
 
+    /// Returns the constraint composition coefficient for this boundary constraint.
+    pub fn constraint_composition_coefficient(&self) -> E {
+        self.composition_coefficient
+    }
+
     /// Returns the evaluation of the boundary constraint at `x`, multiplied by the composition
     /// coefficient.
     ///
     /// `frame` is the evaluation frame of the Lagrange kernel column `c`, starting at `c(x)`
     pub fn evaluate_at(&self, x: E, frame: &LagrangeKernelEvaluationFrame<E>) -> E {
-        let numerator = self.evaluate_numerator_at(frame);
+        let numerator = self.evaluate_numerator_at(frame) * self.composition_coefficient;
         let denominator = self.evaluate_denominator_at(x);
 
         numerator / denominator
     }
 
-    /// Returns the evaluation of the boundary constraint numerator, multiplied by the composition
-    /// coefficient.
+    /// Returns the evaluation of the boundary constraint numerator.
     ///
     /// `frame` is the evaluation frame of the Lagrange kernel column `c`, starting at `c(x)` for
     /// some `x`
     pub fn evaluate_numerator_at(&self, frame: &LagrangeKernelEvaluationFrame<E>) -> E {
-        let trace_value = frame.inner()[0];
-        let constraint_evaluation = trace_value - self.assertion_value;
-
-        constraint_evaluation * self.composition_coefficient
+        frame[0] - self.assertion_value
     }
 
     /// Returns the evaluation of the boundary constraint denominator at point `x`.

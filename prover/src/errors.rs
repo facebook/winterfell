@@ -21,6 +21,8 @@ pub enum ProverError {
     /// This error occurs when the base field specified by the AIR does not support field extension
     /// of degree specified by proof options.
     UnsupportedFieldExtension(usize),
+    /// This error occurs when generation of the GKR proof for the LogUp relation fails.
+    FailedToGenerateGkrProof,
 }
 
 impl fmt::Display for ProverError {
@@ -35,6 +37,9 @@ impl fmt::Display for ProverError {
             }
             Self::UnsupportedFieldExtension(degree) => {
                 write!(f, "field extension of degree {degree} is not supported for the specified base field")
+            }
+            ProverError::FailedToGenerateGkrProof => {
+                write!(f, "Failed to generate the GKR proof for the LogUp relation")
             }
         }
     }

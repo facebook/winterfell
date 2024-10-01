@@ -41,6 +41,7 @@ const CYCLE_MASK: [BaseElement; CYCLE_LENGTH] = [
 // RESCUE AIR
 // ================================================================================================
 
+#[derive(Clone)]
 pub struct PublicInputs {
     pub result: [[BaseElement; 2]; 2],
 }
@@ -52,15 +53,13 @@ impl ToElements<BaseElement> for PublicInputs {
 }
 
 pub struct RescueRapsAir {
-    context: AirContext<BaseElement>,
+    context: AirContext<BaseElement, PublicInputs>,
     result: [[BaseElement; 2]; 2],
 }
 
 impl Air for RescueRapsAir {
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
-    type GkrProof = ();
-    type GkrVerifier = ();
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -76,18 +75,18 @@ impl Air for RescueRapsAir {
         RescueRapsAir {
             context: AirContext::new_multi_segment(
                 trace_info,
+                pub_inputs.clone(),
                 main_degrees,
                 aux_degrees,
                 8,
                 2,
-                None,
                 options,
             ),
             result: pub_inputs.result,
         }
     }
 
-    fn context(&self) -> &AirContext<Self::BaseField> {
+    fn context(&self) -> &AirContext<Self::BaseField, Self::PublicInputs> {
         &self.context
     }
 

@@ -58,8 +58,8 @@ impl<E: FieldElement> BoundaryConstraints<E> {
     ///   coefficients.
     /// * The specified assertions are not valid in the context of the computation (e.g., assertion
     ///   column index is out of bounds).
-    pub fn new(
-        context: &AirContext<E::BaseField>,
+    pub fn new<P>(
+        context: &AirContext<E::BaseField, P>,
         main_assertions: Vec<Assertion<E::BaseField>>,
         aux_assertions: Vec<Assertion<E>>,
         composition_coefficients: &[E],
@@ -88,7 +88,7 @@ impl<E: FieldElement> BoundaryConstraints<E> {
         );
 
         let trace_length = context.trace_info.length();
-        let main_trace_width = context.trace_info.main_trace_width();
+        let main_trace_width = context.trace_info.main_segment_width();
         let aux_trace_width = context.trace_info.aux_segment_width();
 
         // make sure the assertions are valid in the context of their respective trace segments;
@@ -151,9 +151,9 @@ impl<E: FieldElement> BoundaryConstraints<E> {
 
 /// Translates the provided assertions into boundary constraints, groups the constraints by their
 /// divisor, and sorts the resulting groups by the degree adjustment factor.
-fn group_constraints<F, E>(
+fn group_constraints<F, E, P>(
     assertions: Vec<Assertion<F>>,
-    context: &AirContext<F::BaseField>,
+    context: &AirContext<F::BaseField, P>,
     composition_coefficients: &[E],
     inv_g: F::BaseField,
     twiddle_map: &mut BTreeMap<usize, Vec<F::BaseField>>,

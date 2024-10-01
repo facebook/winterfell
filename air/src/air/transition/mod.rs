@@ -46,7 +46,7 @@ impl<E: FieldElement> TransitionConstraints<E> {
     /// # Panics
     /// Panics if the number of transition constraints in the context does not match the number of
     /// provided composition coefficients.
-    pub fn new(context: &AirContext<E::BaseField>, composition_coefficients: &[E]) -> Self {
+    pub fn new<P>(context: &AirContext<E::BaseField, P>, composition_coefficients: &[E]) -> Self {
         assert_eq!(
             context.num_transition_constraints(),
             composition_coefficients.len(),

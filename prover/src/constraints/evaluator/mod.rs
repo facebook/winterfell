@@ -14,7 +14,10 @@ pub use default::DefaultConstraintEvaluator;
 mod boundary;
 use boundary::BoundaryConstraints;
 
-mod lagrange;
+mod logup_gkr;
+
+mod logup_gkr_evaluator;
+pub use logup_gkr_evaluator::LogUpGkrConstraintEvaluator;
 
 mod periodic_table;
 use periodic_table::PeriodicValueTable;

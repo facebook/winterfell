@@ -3,8 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use air::{Air, AuxRandElements, EvaluationFrame, LagrangeKernelBoundaryConstraint, TraceInfo};
+use air::{
+    Air, AuxRandElements, EvaluationFrame, LagrangeKernelBoundaryConstraint, LogUpGkrEvaluator,
+    TraceInfo,
+};
 use math::{polynom, FieldElement, StarkField};
+use sumcheck::GkrCircuitProof;
 
 use super::ColMatrix;
 
@@ -22,7 +26,7 @@ mod tests;
 
 /// Defines an [`AuxTraceWithMetadata`] type where the type arguments use their equivalents in an
 /// [`Air`].
-type AirAuxTraceWithMetadata<A, E> = AuxTraceWithMetadata<E, <A as Air>::GkrProof>;
+type AirAuxTraceWithMetadata<E> = AuxTraceWithMetadata<E>;
 
 // AUX TRACE WITH METADATA
 // ================================================================================================
@@ -30,10 +34,10 @@ type AirAuxTraceWithMetadata<A, E> = AuxTraceWithMetadata<E, <A as Air>::GkrProo
 /// Holds the auxiliary trace, the random elements used when generating the auxiliary trace, and
 /// optionally, a GKR proof. See [`crate::Proof`] for more information about the auxiliary
 /// proof.
-pub struct AuxTraceWithMetadata<E: FieldElement, GkrProof> {
+pub struct AuxTraceWithMetadata<E: FieldElement> {
     pub aux_trace: ColMatrix<E>,
     pub aux_rand_elements: AuxRandElements<E>,
-    pub gkr_proof: Option<GkrProof>,
+    pub gkr_proof: Option<GkrCircuitProof<E>>,
 }
 
 // TRACE TRAIT
@@ -52,7 +56,7 @@ pub struct AuxTraceWithMetadata<E: FieldElement, GkrProof> {
 /// implementation supports concurrent trace generation and should be sufficient in most
 /// situations. However, if functionality provided by [TraceTable] is not sufficient, uses can
 /// provide custom implementations of the [Trace] trait which better suit their needs.
-pub trait Trace: Sized {
+pub trait Trace: Sized + Sync {
     /// Base field for this execution trace.
     ///
     /// All cells of this execution trace contain values which are elements in this field.
@@ -79,7 +83,7 @@ pub trait Trace: Sized {
 
     /// Returns the number of columns in the main segment of this trace.
     fn main_trace_width(&self) -> usize {
-        self.info().main_trace_width()
+        self.info().main_segment_width()
     }
 
     /// Returns the number of columns in the auxiliary trace segment.
@@ -90,21 +94,18 @@ pub trait Trace: Sized {
     /// Checks if this trace is valid against the specified AIR, and panics if not.
     ///
     /// NOTE: this is a very expensive operation and is intended for use only in debug mode.
-    fn validate<A, E>(
-        &self,
-        air: &A,
-        aux_trace_with_metadata: Option<&AirAuxTraceWithMetadata<A, E>>,
-    ) where
+    fn validate<A, E>(&self, air: &A, aux_trace_with_metadata: Option<&AirAuxTraceWithMetadata<E>>)
+    where
         A: Air<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField>,
     {
         // make sure the width align; if they don't something went terribly wrong
         assert_eq!(
             self.main_trace_width(),
-            air.trace_info().main_trace_width(),
+            air.trace_info().main_segment_width(),
             "inconsistent trace width: expected {}, but was {}",
             self.main_trace_width(),
-            air.trace_info().main_trace_width(),
+            air.trace_info().main_segment_width(),
         );
 
         // --- 1. make sure the assertions are valid ----------------------------------------------
@@ -141,7 +142,7 @@ pub trait Trace: Sized {
             }
 
             // then, check the Lagrange kernel assertion, if any
-            if let Some(lagrange_kernel_col_idx) = air.context().lagrange_kernel_aux_column_idx() {
+            if let Some(lagrange_kernel_col_idx) = air.context().lagrange_kernel_column_idx() {
                 let boundary_constraint_assertion_value =
                     LagrangeKernelBoundaryConstraint::assertion_value(
                         aux_rand_elements
@@ -224,19 +225,27 @@ pub trait Trace: Sized {
             x *= g;
         }
 
-        // evaluate transition constraints for Lagrange kernel column (if any) and make sure
-        // they all evaluate to zeros
-        if let Some(col_idx) = air.context().lagrange_kernel_aux_column_idx() {
+        // evaluate transition constraints for Lagrange kernel column and s-column, when LogUp-GKR
+        // is enabled, and make sure they all evaluate to zeros
+        if air.context().logup_gkr_enabled() {
             let aux_trace_with_metadata =
                 aux_trace_with_metadata.expect("expected aux trace to be present");
             let aux_trace = &aux_trace_with_metadata.aux_trace;
             let aux_rand_elements = &aux_trace_with_metadata.aux_rand_elements;
+            let l_col_idx = air
+                .context()
+                .trace_info()
+                .lagrange_kernel_column_idx()
+                .expect("should not be None");
+            let s_col_idx = air.context().trace_info().s_column_idx().expect("should not be None");
 
-            let c = aux_trace.get_column(col_idx);
-            let v = self.length().ilog2() as usize;
-            let r = aux_rand_elements.lagrange().expect("expected Lagrange column to be present");
+            let c = aux_trace.get_column(l_col_idx);
+            let trace_length = self.length();
+            let v = trace_length.ilog2() as usize;
+            let gkr_data = aux_rand_elements.gkr_data().expect("should not be None");
+            let r = gkr_data.lagrange_kernel_rand_elements();
 
-            // Loop over every constraint
+            // Loop over every Lagrange kernel constraint
             for constraint_idx in 1..v + 1 {
                 let domain_step = 2_usize.pow((v - constraint_idx + 1) as u32);
                 let domain_half_step = 2_usize.pow((v - constraint_idx) as u32);
@@ -255,6 +264,36 @@ pub trait Trace: Sized {
                         "Lagrange transition constraint {constraint_idx} did not evaluate to ZERO at step {x_current}"
                     );
                 }
+            }
+
+            // Validate the s-column constraint
+            let evaluator = air.get_logup_gkr_evaluator();
+            let mut aux_frame = EvaluationFrame::new(self.aux_trace_width());
+
+            let c = gkr_data.compute_batched_claim();
+            let mean = c / E::from(E::BaseField::from(trace_length as u32));
+
+            let mut query = vec![E::BaseField::ZERO; evaluator.get_oracles().len()];
+            for step in 0..self.length() {
+                self.read_main_frame(step, &mut main_frame);
+                read_aux_frame(aux_trace, step, &mut aux_frame);
+
+                let l_cur = aux_frame.current()[l_col_idx];
+                let s_cur = aux_frame.current()[s_col_idx];
+                let s_nxt = aux_frame.next()[s_col_idx];
+
+                evaluator.build_query(&main_frame, &mut query);
+                let batched_query = gkr_data.compute_batched_query(&query);
+
+                let rhs = s_cur - mean + batched_query * l_cur;
+                let lhs = s_nxt;
+
+                let evaluation = rhs - lhs;
+
+                assert!(
+                    evaluation == E::ZERO,
+                    "s-column transition constraint did not evaluate to ZERO at step {step}"
+                );
             }
         }
     }

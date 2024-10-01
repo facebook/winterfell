@@ -13,9 +13,8 @@ use utils::iter_mut;
 use utils::{iterators::*, rayon};
 
 use super::{
-    super::EvaluationTableFragment, lagrange::LagrangeKernelConstraintsBatchEvaluator,
-    BoundaryConstraints, CompositionPolyTrace, ConstraintEvaluationTable, ConstraintEvaluator,
-    PeriodicValueTable, StarkDomain, TraceLde,
+    super::EvaluationTableFragment, BoundaryConstraints, CompositionPolyTrace,
+    ConstraintEvaluationTable, ConstraintEvaluator, PeriodicValueTable, StarkDomain, TraceLde,
 };
 
 // CONSTANTS
@@ -40,7 +39,6 @@ pub struct DefaultConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A:
     air: &'a A,
     boundary_constraints: BoundaryConstraints<E>,
     transition_constraints: TransitionConstraints<E>,
-    lagrange_constraints_evaluator: Option<LagrangeKernelConstraintsBatchEvaluator<E>>,
     aux_rand_elements: Option<AuxRandElements<E>>,
     periodic_values: PeriodicValueTable<E::BaseField>,
 }
@@ -80,10 +78,14 @@ where
         // memory to hold all transition constraint evaluations (before they are merged into a
         // single value) so that we can check their degrees later
         #[cfg(not(debug_assertions))]
-        let mut evaluation_table = ConstraintEvaluationTable::<E>::new(domain, divisors);
+        let mut evaluation_table = ConstraintEvaluationTable::<E>::new(domain, divisors, false);
         #[cfg(debug_assertions)]
-        let mut evaluation_table =
-            ConstraintEvaluationTable::<E>::new(domain, divisors, &self.transition_constraints);
+        let mut evaluation_table = ConstraintEvaluationTable::<E>::new(
+            domain,
+            divisors,
+            &self.transition_constraints,
+            false,
+        );
 
         // when `concurrent` feature is enabled, break the evaluation table into multiple fragments
         // to evaluate them into multiple threads; unless the constraint evaluation domain is small,
@@ -116,16 +118,7 @@ where
         #[cfg(debug_assertions)]
         evaluation_table.validate_transition_degrees();
 
-        // combine all constraint evaluations into a single column, including the evaluations of the
-        // Lagrange kernel constraints (if present)
-        let combined_evaluations = {
-            let mut constraints_evaluations = evaluation_table.combine();
-            self.evaluate_lagrange_kernel_constraints(trace, domain, &mut constraints_evaluations);
-
-            constraints_evaluations
-        };
-
-        CompositionPolyTrace::new(combined_evaluations)
+        CompositionPolyTrace::new(evaluation_table.combine())
     }
 }
 
@@ -143,6 +136,11 @@ where
         aux_rand_elements: Option<AuxRandElements<E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self {
+        assert!(
+            !air.context().logup_gkr_enabled(),
+            "evaluating LogUp-GKR constraints is not supported in `DefaultConstraintEvaluator`"
+        );
+
         // build transition constraint groups; these will be used to compose transition constraint
         // evaluations
         let transition_constraints =
@@ -158,28 +156,10 @@ where
             &composition_coefficients.boundary,
         );
 
-        let lagrange_constraints_evaluator = if air.context().has_lagrange_kernel_aux_column() {
-            let aux_rand_elements =
-                aux_rand_elements.as_ref().expect("expected aux rand elements to be present");
-            let lagrange_rand_elements = aux_rand_elements
-                .lagrange()
-                .expect("expected lagrange rand elements to be present");
-            Some(LagrangeKernelConstraintsBatchEvaluator::new(
-                air,
-                lagrange_rand_elements.clone(),
-                composition_coefficients
-                    .lagrange
-                    .expect("expected Lagrange kernel composition coefficients to be present"),
-            ))
-        } else {
-            None
-        };
-
         DefaultConstraintEvaluator {
             air,
             boundary_constraints,
             transition_constraints,
-            lagrange_constraints_evaluator,
             aux_rand_elements,
             periodic_values,
         }
@@ -198,7 +178,7 @@ where
         fragment: &mut EvaluationTableFragment<E>,
     ) {
         // initialize buffers to hold trace values and evaluation results at each step;
-        let mut main_frame = EvaluationFrame::new(trace.trace_info().main_trace_width());
+        let mut main_frame = EvaluationFrame::new(trace.trace_info().main_segment_width());
         let mut evaluations = vec![E::ZERO; fragment.num_columns()];
         let mut t_evaluations = vec![E::BaseField::ZERO; self.num_main_transition_constraints()];
 
@@ -249,7 +229,7 @@ where
         fragment: &mut EvaluationTableFragment<E>,
     ) {
         // initialize buffers to hold trace values and evaluation results at each step
-        let mut main_frame = EvaluationFrame::new(trace.trace_info().main_trace_width());
+        let mut main_frame = EvaluationFrame::new(trace.trace_info().main_segment_width());
         let mut aux_frame = EvaluationFrame::new(trace.trace_info().aux_segment_width());
         let mut tm_evaluations = vec![E::BaseField::ZERO; self.num_main_transition_constraints()];
         let mut ta_evaluations = vec![E::ZERO; self.num_aux_transition_constraints()];
@@ -292,29 +272,6 @@ where
 
             // record the result in the evaluation table
             fragment.update_row(i, &evaluations);
-        }
-    }
-
-    /// If present, evaluates the Lagrange kernel constraints over the constraint evaluation domain.
-    /// The evaluation of each constraint (both boundary and transition) is divided by its divisor,
-    /// multiplied by its composition coefficient, the result of which is added to
-    /// `combined_evaluations_accumulator`.
-    ///
-    /// Specifically, `combined_evaluations_accumulator` is a buffer whose length is the size of the
-    /// constraint evaluation domain, where each index contains combined evaluations of other
-    /// constraints in the system.
-    fn evaluate_lagrange_kernel_constraints<T: TraceLde<E>>(
-        &self,
-        trace: &T,
-        domain: &StarkDomain<A::BaseField>,
-        combined_evaluations_accumulator: &mut [E],
-    ) {
-        if let Some(ref lagrange_constraints_evaluator) = self.lagrange_constraints_evaluator {
-            lagrange_constraints_evaluator.evaluate_constraints(
-                trace,
-                domain,
-                combined_evaluations_accumulator,
-            )
         }
     }
 

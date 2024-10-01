@@ -15,15 +15,13 @@ use crate::utils::are_equal;
 // ================================================================================================
 
 pub struct Fib8Air {
-    context: AirContext<BaseElement>,
+    context: AirContext<BaseElement, BaseElement>,
     result: BaseElement,
 }
 
 impl Air for Fib8Air {
     type BaseField = BaseElement;
     type PublicInputs = BaseElement;
-    type GkrProof = ();
-    type GkrVerifier = ();
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -31,12 +29,12 @@ impl Air for Fib8Air {
         let degrees = vec![TransitionConstraintDegree::new(1), TransitionConstraintDegree::new(1)];
         assert_eq!(TRACE_WIDTH, trace_info.width());
         Fib8Air {
-            context: AirContext::new(trace_info, degrees, 3, options),
+            context: AirContext::new(trace_info, pub_inputs, degrees, 3, options),
             result: pub_inputs,
         }
     }
 
-    fn context(&self) -> &AirContext<Self::BaseField> {
+    fn context(&self) -> &AirContext<Self::BaseField, Self::PublicInputs> {
         &self.context
     }
 

@@ -14,21 +14,21 @@ use crate::{air::TransitionConstraintDegree, ProofOptions, TraceInfo};
 // ================================================================================================
 /// STARK parameters and trace properties for a specific execution of a computation.
 #[derive(Clone, PartialEq, Eq)]
-pub struct AirContext<B: StarkField> {
+pub struct AirContext<B: StarkField, P> {
     pub(super) options: ProofOptions,
     pub(super) trace_info: TraceInfo,
+    pub(super) pub_inputs: P,
     pub(super) main_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
     pub(super) aux_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
     pub(super) num_main_assertions: usize,
     pub(super) num_aux_assertions: usize,
-    pub(super) lagrange_kernel_aux_column_idx: Option<usize>,
     pub(super) ce_blowup_factor: usize,
     pub(super) trace_domain_generator: B,
     pub(super) lde_domain_generator: B,
     pub(super) num_transition_exemptions: usize,
 }
 
-impl<B: StarkField> AirContext<B> {
+impl<B: StarkField, P> AirContext<B, P> {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
     /// Returns a new instance of [AirContext] instantiated for computations which require a single
@@ -48,6 +48,7 @@ impl<B: StarkField> AirContext<B> {
     /// * `trace_info` describes a multi-segment execution trace.
     pub fn new(
         trace_info: TraceInfo,
+        pub_inputs: P,
         transition_constraint_degrees: Vec<TransitionConstraintDegree>,
         num_assertions: usize,
         options: ProofOptions,
@@ -58,11 +59,11 @@ impl<B: StarkField> AirContext<B> {
         );
         Self::new_multi_segment(
             trace_info,
+            pub_inputs,
             transition_constraint_degrees,
             Vec::new(),
             num_assertions,
             0,
-            None,
             options,
         )
     }
@@ -91,11 +92,11 @@ impl<B: StarkField> AirContext<B> {
     ///   of the specified transition constraints.
     pub fn new_multi_segment(
         trace_info: TraceInfo,
+        pub_inputs: P,
         main_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
         aux_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
         num_main_assertions: usize,
         num_aux_assertions: usize,
-        lagrange_kernel_aux_column_idx: Option<usize>,
         options: ProofOptions,
     ) -> Self {
         assert!(
@@ -105,14 +106,16 @@ impl<B: StarkField> AirContext<B> {
         assert!(num_main_assertions > 0, "at least one assertion must be specified");
 
         if trace_info.is_multi_segment() {
-            assert!(
-                !aux_transition_constraint_degrees.is_empty(),
-                "at least one transition constraint degree must be specified for the auxiliary trace segment"
+            if !trace_info.logup_gkr_enabled() {
+                assert!(
+                    !aux_transition_constraint_degrees.is_empty(),
+                    "at least one transition constraint degree must be specified for the auxiliary trace segment"
                 );
-            assert!(
-                num_aux_assertions > 0,
-                "at least one assertion must be specified against the auxiliary trace segment"
-            );
+                assert!(
+                    num_aux_assertions > 0,
+                    "at least one assertion must be specified against the auxiliary trace segment"
+                );
+            }
         } else {
             assert!(
                 aux_transition_constraint_degrees.is_empty(),
@@ -121,15 +124,6 @@ impl<B: StarkField> AirContext<B> {
             assert!(
                 num_aux_assertions == 0,
                 "auxiliary assertions specified for a single-segment trace"
-            );
-        }
-
-        // validate Lagrange kernel aux column, if any
-        if let Some(lagrange_kernel_aux_column_idx) = lagrange_kernel_aux_column_idx {
-            assert!(
-            lagrange_kernel_aux_column_idx == trace_info.get_aux_segment_width() - 1,
-            "Lagrange kernel column should be the last column of the auxiliary trace: index={}, but aux trace width is {}",
-            lagrange_kernel_aux_column_idx, trace_info.get_aux_segment_width()
             );
         }
 
@@ -161,11 +155,11 @@ impl<B: StarkField> AirContext<B> {
         AirContext {
             options,
             trace_info,
+            pub_inputs,
             main_transition_constraint_degrees,
             aux_transition_constraint_degrees,
             num_main_assertions,
             num_aux_assertions,
-            lagrange_kernel_aux_column_idx,
             ce_blowup_factor,
             trace_domain_generator: B::get_root_of_unity(trace_length.ilog2()),
             lde_domain_generator: B::get_root_of_unity(lde_domain_size.ilog2()),
@@ -209,6 +203,10 @@ impl<B: StarkField> AirContext<B> {
         self.trace_info.length() * self.options.blowup_factor()
     }
 
+    pub fn public_inputs(&self) -> &P {
+        &self.pub_inputs
+    }
+
     /// Returns the number of transition constraints for a computation, excluding the Lagrange
     /// kernel transition constraints, which are managed separately.
     ///
@@ -230,14 +228,14 @@ impl<B: StarkField> AirContext<B> {
         self.aux_transition_constraint_degrees.len()
     }
 
-    /// Returns the index of the auxiliary column which implements the Lagrange kernel, if any
-    pub fn lagrange_kernel_aux_column_idx(&self) -> Option<usize> {
-        self.lagrange_kernel_aux_column_idx
+    /// Returns the index of the auxiliary column which implements the Lagrange kernel, if any.
+    pub fn lagrange_kernel_column_idx(&self) -> Option<usize> {
+        self.trace_info.lagrange_kernel_column_idx()
     }
 
-    /// Returns true if the auxiliary trace segment contains a Lagrange kernel column
-    pub fn has_lagrange_kernel_aux_column(&self) -> bool {
-        self.lagrange_kernel_aux_column_idx().is_some()
+    /// Returns true if LogUp-GKR is enabled.
+    pub fn logup_gkr_enabled(&self) -> bool {
+        self.trace_info.logup_gkr_enabled()
     }
 
     /// Returns the total number of assertions defined for a computation, excluding the Lagrange
@@ -307,10 +305,8 @@ impl<B: StarkField> AirContext<B> {
         let trace_length = self.trace_len();
         let transition_divisior_degree = trace_length - self.num_transition_exemptions();
 
-        // we use the identity: ceil(a/b) = (a + b - 1)/b
         let num_constraint_col =
-            (highest_constraint_degree - transition_divisior_degree + trace_length - 1)
-                / trace_length;
+            (highest_constraint_degree - transition_divisior_degree).div_ceil(trace_length);
 
         cmp::max(num_constraint_col, 1)
     }

@@ -131,7 +131,7 @@ impl OodFrame {
         let lagrange_kernel_frame = if lagrange_kernel_frame_size > 0 {
             let lagrange_kernel_trace = reader.read_many(lagrange_kernel_frame_size)?;
 
-            Some(LagrangeKernelEvaluationFrame::new(lagrange_kernel_trace))
+            Some(LagrangeKernelEvaluationFrame::with_values(lagrange_kernel_trace))
         } else {
             None
         };
@@ -229,6 +229,8 @@ impl Deserializable for OodFrame {
 // OOD FRAME TRACE STATES
 // ================================================================================================
 
+/// Stores trace evaluations at an OOD point.
+///
 /// Stores the trace evaluations at `z` and `gz`, where `z` is a random Field element in
 /// `current_row` and `next_row`, respectively. If the Air contains a Lagrange kernel auxiliary
 /// column, then that column interpolated polynomial will be evaluated at `z`, `gz`, `g^2 z`, ...
