@@ -6,7 +6,6 @@
 use alloc::vec::Vec;
 
 use crypto::{ElementHasher, RandomCoin};
-use libc_print::libc_println;
 use math::FieldElement;
 #[cfg(feature = "concurrent")]
 pub use rayon::prelude::*;
