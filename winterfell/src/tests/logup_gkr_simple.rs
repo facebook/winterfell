@@ -55,8 +55,10 @@ impl LogUpGkrSimple {
             (0..trace_len).map(|idx| BaseElement::from(idx as u32)).collect();
         let mut multiplicity: Vec<BaseElement> =
             (0..trace_len).map(|_idx| BaseElement::ZERO).collect();
-        multiplicity[1] = BaseElement::new(3 * trace_len as u64 - 3 * 4);
+        multiplicity[1] = BaseElement::new(3 * trace_len as u64 - 3 * 4 - 1);
         multiplicity[2] = BaseElement::new(3 * 4);
+
+        multiplicity[trace_len - 3] = BaseElement::ONE;
 
         let mut values_0: Vec<BaseElement> = (0..trace_len).map(|_idx| BaseElement::ZERO).collect();
 
@@ -75,6 +77,7 @@ impl LogUpGkrSimple {
         for i in 0..4 {
             values_2[i + 4] = BaseElement::ONE;
         }
+        values_1[trace_len - 3] = BaseElement::new(trace_len as u64 - 4);
 
         Self {
             main_trace: ColMatrix::new(vec![table, multiplicity, values_0, values_1, values_2]),
