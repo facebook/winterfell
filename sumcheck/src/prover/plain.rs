@@ -6,6 +6,7 @@
 use alloc::vec::Vec;
 
 use crypto::{ElementHasher, RandomCoin};
+use libc_print::libc_println;
 use math::FieldElement;
 #[cfg(feature = "concurrent")]
 pub use rayon::prelude::*;
@@ -294,6 +295,7 @@ pub fn sumcheck_prove_plain_batched<E: FieldElement, H: ElementHasher<BaseField 
             // fold each multi-linear using the round challenge
             inner_layer.numerators.bind_least_significant_variable(round_challenge);
             inner_layer.denominators.bind_least_significant_variable(round_challenge);
+            libc_println!("here!");
         });
 
         // update the scaling up factor
