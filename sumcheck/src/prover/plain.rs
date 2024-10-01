@@ -282,11 +282,20 @@ pub fn sumcheck_prove_plain_batched<E: FieldElement, H: ElementHasher<BaseField 
         let round_challenge =
             transcript.draw().map_err(|_| SumCheckProverError::FailedToGenerateChallenge)?;
 
+        #[cfg(not(feature = "concurrent"))]
         for inner_layer in inner_layers.iter_mut() {
             // fold each multi-linear using the round challenge
             inner_layer.numerators.bind_least_significant_variable(round_challenge);
             inner_layer.denominators.bind_least_significant_variable(round_challenge);
         }
+
+        #[cfg(feature = "concurrent")]
+        inner_layers.par_iter_mut().for_each(|inner_layer| {
+            // fold each multi-linear using the round challenge
+            inner_layer.numerators.bind_least_significant_variable(round_challenge);
+            inner_layer.denominators.bind_least_significant_variable(round_challenge);
+        });
+
         // update the scaling up factor
         scaling_up_factor *=
             round_challenge * alpha_i + (E::ONE - round_challenge) * (E::ONE - alpha_i);

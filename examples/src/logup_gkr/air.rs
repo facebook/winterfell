@@ -13,6 +13,8 @@ use winterfell::{
 
 use super::ProofOptions;
 
+pub const NUM_FRACTIONS: usize = 64;
+
 pub(crate) struct LogUpGkrSimpleAir {
     context: AirContext<BaseElement, ()>,
 }
@@ -117,7 +119,7 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
     }
 
     fn get_num_fractions(&self) -> usize {
-        16
+        NUM_FRACTIONS
     }
 
     fn max_degree(&self) -> usize {
@@ -145,71 +147,20 @@ impl LogUpGkrEvaluator for PlainLogUpGkrEval<BaseElement> {
         assert_eq!(numerator.len(), self.get_num_fractions());
         assert_eq!(denominator.len(), self.get_num_fractions());
         assert_eq!(query.len(), 5);
-        numerator[0] = E::from(query[1]);
-        numerator[1] = E::ONE;
-        numerator[2] = E::ONE;
-        numerator[3] = E::ONE;
-        numerator[4] = E::from(query[1]);
-        numerator[5] = E::ONE;
-        numerator[6] = E::ONE;
-        numerator[7] = E::ONE;
-        numerator[8] = E::from(query[1]);
-        numerator[9] = E::ONE;
-        numerator[10] = E::ONE;
-        numerator[11] = E::ONE;
-        numerator[12] = E::from(query[1]);
-        numerator[13] = E::ONE;
-        numerator[14] = E::ONE;
-        numerator[15] = E::ONE;
-        //numerator[16] = E::from(query[1]);
-        //numerator[17] = E::ONE;
-        //numerator[18] = E::ONE;
-        //numerator[19] = E::ONE;
-        //numerator[20] = E::from(query[1]);
-        //numerator[21] = E::ONE;
-        //numerator[22] = E::ONE;
-        //numerator[23] = E::ONE;
-        //numerator[24] = E::from(query[1]);
-        //numerator[25] = E::ONE;
-        //numerator[26] = E::ONE;
-        //numerator[27] = E::ONE;
-        //numerator[28] = E::from(query[1]);
-        //numerator[29] = E::ONE;
-        //numerator[30] = E::ONE;
-        //numerator[31] = E::ONE;
 
-        denominator[0] = rand_values[0] - E::from(query[0]);
-        denominator[1] = -(rand_values[0] - E::from(query[2]));
-        denominator[2] = -(rand_values[0] - E::from(query[3]));
-        denominator[3] = -(rand_values[0] - E::from(query[4]));
-        denominator[4] = rand_values[0] - E::from(query[0]);
-        denominator[5] = -(rand_values[0] - E::from(query[2]));
-        denominator[6] = -(rand_values[0] - E::from(query[3]));
-        denominator[7] = -(rand_values[0] - E::from(query[4]));
-        denominator[8] = rand_values[0] - E::from(query[0]);
-        denominator[9] = -(rand_values[0] - E::from(query[2]));
-        denominator[10] = -(rand_values[0] - E::from(query[3]));
-        denominator[11] = -(rand_values[0] - E::from(query[4]));
-        denominator[12] = rand_values[0] - E::from(query[0]);
-        denominator[13] = -(rand_values[0] - E::from(query[2]));
-        denominator[14] = -(rand_values[0] - E::from(query[3]));
-        denominator[15] = -(rand_values[0] - E::from(query[4]));
-        //denominator[16] = rand_values[0] - E::from(query[0]);
-        //denominator[17] = -(rand_values[0] - E::from(query[2]));
-        //denominator[18] = -(rand_values[0] - E::from(query[3]));
-        //denominator[19] = -(rand_values[0] - E::from(query[4]));
-        //denominator[20] = rand_values[0] - E::from(query[0]);
-        //denominator[21] = -(rand_values[0] - E::from(query[2]));
-        //denominator[22] = -(rand_values[0] - E::from(query[3]));
-        //denominator[23] = -(rand_values[0] - E::from(query[4]));
-        //denominator[24] = rand_values[0] - E::from(query[0]);
-        //denominator[25] = -(rand_values[0] - E::from(query[2]));
-        //denominator[26] = -(rand_values[0] - E::from(query[3]));
-        //denominator[27] = -(rand_values[0] - E::from(query[4]));
-        //denominator[28] = rand_values[0] - E::from(query[0]);
-        //denominator[29] = -(rand_values[0] - E::from(query[2]));
-        //denominator[30] = -(rand_values[0] - E::from(query[3]));
-        //denominator[31] = -(rand_values[0] - E::from(query[4]));
+        for i in (0..self.get_num_fractions()).step_by(4) {
+            numerator[i] = E::from(query[1]);
+            numerator[i + 1] = E::ONE;
+            numerator[i + 2] = E::ONE;
+            numerator[i + 3] = E::ONE;
+        }
+
+        for i in (0..self.get_num_fractions()).step_by(4) {
+            denominator[i] = rand_values[0] - E::from(query[0]);
+            denominator[i + 1] = -(rand_values[0] - E::from(query[2]));
+            denominator[i + 2] = -(rand_values[0] - E::from(query[3]));
+            denominator[i + 3] = -(rand_values[0] - E::from(query[4]));
+        }
     }
 
     fn compute_claim<E>(&self, _inputs: &Self::PublicInputs, _rand_values: &[E]) -> E

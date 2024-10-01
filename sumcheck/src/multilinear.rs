@@ -73,63 +73,19 @@ impl<E: FieldElement> MultiLinearPoly<E> {
     #[inline(always)]
     pub fn bind_least_significant_variable(&mut self, round_challenge: E) {
         let num_evals = self.evaluations.len() >> 1;
-        #[cfg(not(feature = "concurrent"))]
-        {
-            for i in 0..num_evals {
-                // SAFETY: This loops over [0, evaluations.len()/2). The largest value for `i` is
-                // `(evaluations.len() / 2) - 1`. Hence, the largest value for `(i<<1)` is
-                // `evaluations.len() - 2`, and largest value for `(i<<1) + 1` is `evaluations.len() - 1`.
-                let evaluations_2i = unsafe { *self.evaluations.get_unchecked(i) };
-                let evaluations_2i_plus_1 =
-                    unsafe { *self.evaluations.get_unchecked(num_evals + i) };
 
-                self.evaluations[i] =
-                    evaluations_2i + round_challenge * (evaluations_2i_plus_1 - evaluations_2i);
-            }
-            self.evaluations.truncate(num_evals);
+        for i in 0..num_evals {
+            // SAFETY: This loops over [0, evaluations.len()/2). The largest value for `i` is
+            // `(evaluations.len() / 2) - 1`. Hence, the largest value for `i` is
+            // `(evaluations.len() / 2) - 2`, and largest value for `i + evaluations.len()/2`
+            // is `evaluations.len() - 1`.
+            let evaluations_i = unsafe { *self.evaluations.get_unchecked(i) };
+            let evaluations_i_plus_num_evals = unsafe { *self.evaluations.get_unchecked(num_evals + i) };
+
+            self.evaluations[i] =
+                evaluations_i + round_challenge * (evaluations_i_plus_num_evals - evaluations_i);
         }
-
-        #[cfg(feature = "concurrent")]
-        {
-            let mut result = unsafe { utils::uninit_vector(num_evals) };
-            result.par_iter_mut().enumerate().for_each(|(i, ev)| {
-                // SAFETY: This loops over [0, evaluations.len()/2). The largest value for `i` is
-                // `(evaluations.len() / 2) - 1`. Hence, the largest value for `(i<<1)` is
-                // `evaluations.len() - 2`, and largest value for `(i<<1) + 1` is `evaluations.len() - 1`.
-                let evaluations_2i = unsafe { *self.evaluations.get_unchecked(i) };
-                let evaluations_2i_plus_1 =
-                    unsafe { *self.evaluations.get_unchecked(num_evals + i) };
-
-                *ev = evaluations_2i + round_challenge * (evaluations_2i_plus_1 - evaluations_2i);
-            });
-            self.evaluations = result
-        }
-    }
-
-    /// Given the multilinear polynomial $f(y_0, y_1, ..., y_{{\nu} - 1})$, returns two polynomials:
-    /// $f(y_0, y_1, ..., y_{{\nu} - 2}, 0)$ and $f(y_0, y_1, ..., y_{{\nu} - 2}, 1)$.
-    pub fn project_least_significant_variable(mut self) -> (Self, Self) {
-        let odds: Vec<E> = self
-            .evaluations
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, x)| if idx % 2 == 1 { Some(*x) } else { None })
-            .collect();
-
-        // Builds the evens multilinear from the current `self.evaluations` buffer, which saves an
-        // allocation.
-        let evens = {
-            let evens_size = self.num_evaluations() / 2;
-            for write_idx in 0..evens_size {
-                let read_idx = write_idx * 2;
-                self.evaluations[write_idx] = self.evaluations[read_idx];
-            }
-            self.evaluations.truncate(evens_size);
-
-            self.evaluations
-        };
-
-        (Self::from_evaluations(evens), Self::from_evaluations(odds))
+        self.evaluations.truncate(num_evals);
     }
 }
 
