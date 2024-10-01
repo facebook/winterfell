@@ -11,10 +11,10 @@ use math::FieldElement;
 #[cfg(feature = "concurrent")]
 pub use rayon::prelude::*;
 
-use super::SumCheckProverError;
+use super::{compute_scaling_down_factors, to_coefficients, SumCheckProverError};
 use crate::{
-    evaluate_composition_poly, CompressedUnivariatePolyEvals, EqFunction, FinalOpeningClaim,
-    MultiLinearPoly, RoundProof, SumCheckProof, SumCheckRoundClaim,
+    evaluate_composition_poly, EqFunction, FinalOpeningClaim, MultiLinearPoly, RoundProof,
+    SumCheckProof, SumCheckRoundClaim,
 };
 
 /// A sum-check prover for the input layer which can accommodate non-linear expressions in
@@ -148,7 +148,102 @@ use crate::{
 /// \right)
 /// $$
 ///
+///
+/// We now discuss a further optimization due to [2]. Suppose that we have a sum-check statment of
+/// the following form:
+///
+/// $$v_0=\sum_{x}Eq\left(\left(\alpha_0,\cdots,\alpha_{\nu - 1}\right);\left( x_0, \cdots, x_{\nu - 1}\right)\right)
+///         C\left( x_0, \cdots, x_{\nu - 1}   \right)$$
+///
+/// Then during round $i + 1$ of sum-check, the prover needs to send the following polynomial
+///
+/// $$v_{i+1}(X)=\sum_{x}Eq\left(\left(\alpha_0,\cdots,\alpha_{i - 1},\alpha_i, \alpha_{i+1},\cdots\alpha_{\nu - 1} \right);
+/// \left( r_0, \cdots, r_{i-1}, X, x_{i+1}, \cdots x_{\nu - 1}   \right) \right)
+/// C\left(  r_0, \cdots, r_{i-1}, X, x_{i+1}, \cdots x_{\nu - 1}   \right)$$
+///
+/// We can write $v_{i+1}(X)$ as:
+///
+/// $$v_{i+1}(X)=Eq\left(\left(\alpha_0,\cdots,\alpha_{i - 1} \right);\left(r_0,\cdots,r_{i-1}\right)\right)
+/// \cdot Eq\left(\alpha_i ;X\right)\sum_{x}Eq\left(\left(\alpha_{i+1},\cdots\alpha_{\nu - 1}\right);\left( x_{i+1}, \cdots x_{\nu - 1}\right) \right)
+/// C\left(  r_0, \cdots, r_{i-1}, X, x_{i+1}, \cdots x_{\nu - 1}   \right)$$
+///
+/// This means that $v_{i+1}(X)$ is the product of:
+///
+/// 1. A constant polynomial: $Eq\left( \left(\alpha_0, \cdots, \alpha_{i - 1} \right);\left( r_0, \cdots, r_{i-1} \right) \right)$
+/// 2. A linear polynomial: $Eq\left( \alpha_i ; X \right)$
+/// 3. A high degree polynomial: $\sum_{x}
+///    Eq\left( \left( \alpha_{i+1}, \cdots \alpha_{\nu - 1} \right);\left( x_{i+1}, \cdots x_{\nu - 1}   \right) \right)
+///    C\left(  r_0, \cdots, r_{i-1}, X, x_{i+1}, \cdots x_{\nu - 1}   \right)$
+///
+/// The advantage of the above decomposition is that the prover when computing $v_{i+1}(X)$ needs to sum over
+///
+/// $$
+/// Eq\left( \left( \alpha_{i+1}, \cdots \alpha_{\nu - 1} \right);\left( x_{i+1}, \cdots x_{\nu - 1}   \right) \right)
+/// C\left(  r_0, \cdots, r_{i-1}, X, x_{i+1}, \cdots x_{\nu - 1}   \right)
+/// $$
+///
+/// instead of
+///
+/// $$
+/// Eq\left( \left(\alpha_0, \cdots, \alpha_{i - 1}, \alpha_i, \alpha_{i+1}, \cdots \alpha_{\nu - 1} \right);
+/// \left( r_0, \cdots, r_{i-1}, X, x_{i+1}, \cdots x_{\nu - 1}   \right) \right)
+/// C\left(  r_0, \cdots, r_{i-1}, X, x_{i+1}, \cdots x_{\nu - 1}   \right)
+/// $$
+///
+/// which has the advantage of being of degree $1$ less and hence requires less work on the part of the prover.
+///
+/// Thus, the prover computes the following polynomial
+///
+/// $$v_{i+1}^{'}(X) =  \sum_{x} Eq\left( \left( \alpha_{i+1}, \cdots \alpha_{\nu - 1} \right);
+/// \left( x_{i+1}, \cdots x_{\nu - 1}   \right) \right)
+/// C\left(  r_0, \cdots, r_{i-1}, X, x_{i+1}, \cdots x_{\nu - 1}   \right)$$
+///
+/// and then scales it in order to get
+///
+/// $$
+/// v_{i+1}(X) = v_{i+1}^{'}(X) Eq\left( \left(\alpha_0, \cdots, \alpha_{i - 1} \right);
+/// \left( r_0, \cdots, r_{i-1} \right) \right) \cdot  Eq\left( \alpha_i ; X \right)
+/// $$
+///
+/// As the prover computes $v_{i+1}^{'}(X)$ in evaluation form and hence also $v_{i+1}(X)$, this
+/// means that due to the degrees being off by $1$, the prover uses the linear factor in order to
+/// obtain an additional evaluation point in order to be able to interpolate $v_{i+1}(X)$.
+/// More precisely, we can get a root of $$v_{i+1}(X) = 0$$ by solving $$Eq\left( \alpha_i ; X \right) = 0$$
+/// The latter equation has as solution $$\mathsf{r} = \frac{1 - \alpha}{1 - 2\cdot\alpha}$$
+/// which is, except with negligible probability, an evaluation point not in the original
+/// evaluation set and hence the prover is able to interpolate $v_{i+1}(X)$ and send it to
+/// the verifier.
+///
+/// Note that in order to avoid having to compute $\{Eq\left( \left( \alpha_{i+1}, \cdots \alpha_{\nu - 1} \right);
+/// \left( x_{i+1}, \cdots x_{\nu - 1}   \right) \right)\}$ from $\{Eq\left( \left( \alpha_{i}, \cdots \alpha_{\nu - 1} \right);
+/// \left( x_{i}, \cdots x_{\nu - 1}   \right) \right)\}$, or vice versa, we can write
+///
+/// $$v_{i+1}^{'}(X) =  \sum_{x} Eq\left( \left( \alpha_{i+1}, \cdots \alpha_{\nu - 1} \right);
+/// \left( x_{i+1}, \cdots x_{\nu - 1}   \right) \right)
+/// C\left(  r_0, \cdots, r_{i-1}, X, x_{i+1}, \cdots x_{\nu - 1}   \right)$$
+///
+/// as
+///
+/// $$v_{i+1}^{'}(X) = \frac{1}{Eq\left( \left( \alpha_{0}, \cdots, \alpha_{i} \right);
+/// \left(0, \cdots, 0\right) \right)}  \sum_{x}
+/// Eq\left( \left( \alpha_{0}, \cdots, \alpha_{i}, \alpha_{i+1}, \cdots \alpha_{\nu - 1} \right);
+/// \left(0, \cdots, 0, x_{i+1}, \cdots x_{\nu - 1}   \right) \right)
+/// C\left(  r_0, \cdots, r_{i-1}, X, x_{i+1}, \cdots x_{\nu - 1}   \right)$$
+///
+/// Thus, $\{Eq\left( \left( \alpha_{0}, \cdots, \alpha_{i}, \alpha_{i+1}, \cdots \alpha_{\nu - 1} \right);
+/// \left(0, \cdots, 0, x_{i+1}, \cdots x_{\nu - 1}   \right) \right)\}$ can be read from
+/// $\{Eq\left( \left( \alpha_{0}, \cdots, \alpha_{\nu - 1} \right);\left(x_{0}, \cdots x_{\nu - 1}   \right) \right)\}$
+/// directly, at the cost of the relation between  $v_{i+1}^{'}(X)$ and $v_{i+1}(X)$ becoming
+///
+/// $$
+/// v_{i+1}(X) = v_{i+1}^{'}(X) \frac{Eq\left( \left(\alpha_0, \cdots, \alpha_{i - 1} \right);
+/// \left( r_0, \cdots, r_{i-1} \right) \right)}{Eq\left( \left( \alpha_{0}, \cdots, \alpha_{i} \right);
+/// \left(0, \cdots, 0\right) \right)} \cdot  Eq\left( \alpha_i ; X \right)
+/// $$
+///
+///
 /// [1]: https://eprint.iacr.org/2023/1284
+/// [2]: https://eprint.iacr.org/2024/108
 #[allow(clippy::too_many_arguments)]
 pub fn sum_check_prove_higher_degree<
     E: FieldElement,
@@ -171,13 +266,14 @@ pub fn sum_check_prove_higher_degree<
     let mu = evaluator.get_num_fractions().trailing_zeros() - 1;
     let (evaluation_point_mu, evaluation_point_nu) = evaluation_point.split_at(mu as usize);
     let eq_mu = EqFunction::ml_at(evaluation_point_mu.into()).evaluations().to_vec();
-    let mut eq_nu = EqFunction::ml_at(evaluation_point_nu.into());
+    let eq_nu = EqFunction::ml_at(evaluation_point_nu.into());
 
     // setup first round claim
     let mut current_round_claim = SumCheckRoundClaim { eval_point: vec![], claim };
 
     // run the first round of the protocol
-    let round_poly_evals = sumcheck_round(
+    let mut round_poly_evals = sumcheck_round(
+        0,
         &eq_mu,
         evaluator,
         &eq_nu,
@@ -186,7 +282,21 @@ pub fn sum_check_prove_higher_degree<
         &log_up_randomness,
         r_sum_check,
     );
-    let round_poly_coefs = round_poly_evals.to_poly(current_round_claim.claim);
+
+    // this will hold `Eq((\alpha_0, \cdots, \alpha_{i - 1});(r_0, \cdots, r_{i-1}))`
+    let mut scaling_up_factor = E::ONE;
+    // this will hold `Eq((\alpha_{0}, \cdots, \alpha_{i}); (0, \cdots, 0))` for all `i`
+    let scaling_down_factors = compute_scaling_down_factors(evaluation_point_nu);
+    // this is `\alpha_i` above
+    let mut alpha_i = evaluation_point_nu[0];
+    let scaling_down_factor = scaling_down_factors[0];
+    let round_poly_coefs = to_coefficients(
+        &mut round_poly_evals,
+        current_round_claim.claim,
+        alpha_i,
+        scaling_down_factor,
+        scaling_up_factor,
+    );
 
     // reseed with the s_0 polynomial
     coin.reseed(H::hash_elements(&round_poly_coefs.0));
@@ -197,6 +307,11 @@ pub fn sum_check_prove_higher_degree<
         let round_challenge =
             coin.draw().map_err(|_| SumCheckProverError::FailedToGenerateChallenge)?;
 
+        // update `scaling_up_factor`
+        alpha_i = evaluation_point_nu[evaluation_point_nu.len() - mls[0].num_variables()];
+        scaling_up_factor *=
+            round_challenge * alpha_i + (E::ONE - round_challenge) * (E::ONE - alpha_i);
+
         // compute the new reduced round claim
         let new_round_claim =
             reduce_claim(&round_proofs[i - 1], current_round_claim, round_challenge);
@@ -204,14 +319,14 @@ pub fn sum_check_prove_higher_degree<
         // fold each multi-linear using the round challenge
         mls.iter_mut()
             .for_each(|ml| ml.bind_least_significant_variable(round_challenge));
-        eq_nu.bind_least_significant_variable(round_challenge);
 
         // fold each periodic multi-linear using the round challenge
         periodic_table.bind_least_significant_variable(round_challenge);
 
         // run the i-th round of the protocol using the folded multi-linears for the new reduced
         // claim. This basically computes the s_i polynomial.
-        let round_poly_evals = sumcheck_round(
+        let mut round_poly_evals = sumcheck_round(
+            i,
             &eq_mu,
             evaluator,
             &eq_nu,
@@ -224,7 +339,14 @@ pub fn sum_check_prove_higher_degree<
         // update the claim
         current_round_claim = new_round_claim;
 
-        let round_poly_coefs = round_poly_evals.to_poly(current_round_claim.claim);
+        let alpha_i = evaluation_point_nu[i];
+        let round_poly_coefs = to_coefficients(
+            &mut round_poly_evals,
+            current_round_claim.claim,
+            alpha_i,
+            scaling_down_factors[i],
+            scaling_up_factor,
+        );
 
         // reseed with the s_i polynomial
         coin.reseed(H::hash_elements(&round_poly_coefs.0));
@@ -239,7 +361,6 @@ pub fn sum_check_prove_higher_degree<
     // fold each multi-linear using the last random round challenge
     mls.iter_mut()
         .for_each(|ml| ml.bind_least_significant_variable(round_challenge));
-    eq_nu.bind_least_significant_variable(round_challenge);
 
     let SumCheckRoundClaim { eval_point, claim: _claim } =
         reduce_claim(&round_proofs[num_rounds - 1], current_round_claim, round_challenge);
@@ -293,7 +414,9 @@ pub fn sum_check_prove_higher_degree<
 /// the previous one using only additions. This is the purpose of `deltas`, to hold the increments
 /// added to each multi-linear to compute the evaluation at the next point, and `evals_x` to hold
 /// the current evaluation at $x$ in $\{2, ... , d_max\}$.
+#[allow(clippy::too_many_arguments)]
 fn sumcheck_round<E: FieldElement>(
+    sum_check_round: usize,
     eq_mu: &[E],
     evaluator: &impl LogUpGkrEvaluator<BaseField = <E as FieldElement>::BaseField>,
     eq_ml: &MultiLinearPoly<E>,
@@ -301,7 +424,7 @@ fn sumcheck_round<E: FieldElement>(
     periodic_table: &PeriodicTable<E>,
     log_up_randomness: &[E],
     r_sum_check: E,
-) -> CompressedUnivariatePolyEvals<E> {
+) -> Vec<E> {
     let num_mls = mls.len();
     let num_periodic = periodic_table.num_columns();
     let num_vars = mls[0].num_variables();
@@ -316,47 +439,47 @@ fn sumcheck_round<E: FieldElement>(
         let mut evals_periodic_one = vec![E::ZERO; num_periodic];
         let mut evals_periodic_zero = vec![E::ZERO; num_periodic];
         let mut evals_periodic_x = vec![E::ZERO; num_periodic];
-        let mut eq_x = E::ZERO;
 
         let mut deltas = vec![E::ZERO; num_mls];
         let mut deltas_periodic = vec![E::ZERO; num_periodic];
-        let mut eq_delta = E::ZERO;
 
         let mut numerators = vec![E::ZERO; evaluator.get_num_fractions()];
         let mut denominators = vec![E::ZERO; evaluator.get_num_fractions()];
         (0..1 << num_rounds)
             .map(|i| {
-                let mut total_evals = vec![E::ZERO; evaluator.max_degree()];
+                let mut poly_evals = vec![E::ZERO; evaluator.max_degree() - 1];
 
                 for (j, ml) in mls.iter().enumerate() {
                     evals_zero[j] = ml.evaluations()[2 * i];
                     evals_one[j] = ml.evaluations()[2 * i + 1];
                 }
 
-                let eq_at_zero = eq_ml.evaluations()[2 * i];
-                let eq_at_one = eq_ml.evaluations()[2 * i + 1];
-
                 // add evaluation of periodic columns
                 periodic_table.fill_periodic_values_at(2 * i, &mut evals_periodic_zero);
                 periodic_table.fill_periodic_values_at(2 * i + 1, &mut evals_periodic_one);
 
-                // compute the evaluation at 1
+                // `(0, \cdots, 0, x_{i+1}, \cdots x_{\nu - 1})`
+                let j = i << (sum_check_round + 1);
+                // `Eq((\alpha_{0}, \cdots, \alpha_{\nu - 1}); (0, \cdots, 0, x_{i+1}, \cdots x_{\nu - 1})) `
+                let eq_at_zero = eq_ml.evaluations()[j];
+
+                // compute the evaluation at 0
                 evaluator.evaluate_query(
-                    &evals_one,
-                    &evals_periodic_one,
+                    &evals_zero,
+                    &evals_periodic_zero,
                     log_up_randomness,
                     &mut numerators,
                     &mut denominators,
                 );
-                total_evals[0] = evaluate_composition_poly(
+                poly_evals[0] = evaluate_composition_poly(
                     eq_mu,
                     &numerators,
                     &denominators,
-                    eq_at_one,
+                    eq_at_zero,
                     r_sum_check,
                 );
 
-                // compute the evaluations at 2, ..., d_max points
+                // compute the evaluations at `2, ..., d_max - 1` points
                 for i in 0..num_mls {
                     deltas[i] = evals_one[i] - evals_zero[i];
                     evals_x[i] = evals_one[i];
@@ -365,10 +488,8 @@ fn sumcheck_round<E: FieldElement>(
                     deltas_periodic[i] = evals_periodic_one[i] - evals_periodic_zero[i];
                     evals_periodic_x[i] = evals_periodic_one[i];
                 }
-                eq_delta = eq_at_one - eq_at_zero;
-                eq_x = eq_at_one;
 
-                for e in total_evals.iter_mut().skip(1) {
+                for e in poly_evals.iter_mut().skip(1) {
                     evals_x.iter_mut().zip(deltas.iter()).for_each(|(evx, delta)| {
                         *evx += *delta;
                     });
@@ -377,7 +498,6 @@ fn sumcheck_round<E: FieldElement>(
                             *evx += *delta;
                         },
                     );
-                    eq_x += eq_delta;
 
                     evaluator.evaluate_query(
                         &evals_x,
@@ -390,14 +510,14 @@ fn sumcheck_round<E: FieldElement>(
                         eq_mu,
                         &numerators,
                         &denominators,
-                        eq_x,
+                        eq_at_zero,
                         r_sum_check,
                     );
                 }
 
-                total_evals
+                poly_evals
             })
-            .fold(vec![E::ZERO; evaluator.max_degree()], |mut acc, poly_eval| {
+            .fold(vec![E::ZERO; evaluator.max_degree() - 1], |mut acc, poly_eval| {
                 acc.iter_mut().zip(poly_eval.iter()).for_each(|(a, b)| {
                     *a += *b;
                 });
@@ -421,7 +541,7 @@ fn sumcheck_round<E: FieldElement>(
                     vec![E::ZERO; evaluator.get_num_fractions()],
                     vec![E::ZERO; num_mls],
                     vec![E::ZERO; num_periodic],
-                    vec![E::ZERO; evaluator.max_degree()],
+                    vec![E::ZERO; evaluator.max_degree() - 1],
                 )
             },
             |(
@@ -443,17 +563,19 @@ fn sumcheck_round<E: FieldElement>(
                     evals_one[j] = ml.evaluations()[2 * i + 1];
                 }
 
-                let eq_at_zero = eq_ml.evaluations()[2 * i];
-                let eq_at_one = eq_ml.evaluations()[2 * i + 1];
-
                 // add evaluation of periodic columns
                 periodic_table.fill_periodic_values_at(2 * i, &mut evals_periodic_zero);
                 periodic_table.fill_periodic_values_at(2 * i + 1, &mut evals_periodic_one);
 
-                // compute the evaluation at 1
+                // `(0, \cdots, 0, x_{i+1}, \cdots x_{\nu - 1})`
+                let j = i << (sum_check_round + 1);
+                // `Eq((\alpha_{0}, \cdots, \alpha_{\nu - 1}); (0, \cdots, 0, x_{i+1}, \cdots x_{\nu - 1})) `
+                let eq_at_zero = eq_ml.evaluations()[j];
+
+                // compute the evaluation at 0
                 evaluator.evaluate_query(
-                    &evals_one,
-                    &evals_periodic_one,
+                    &evals_zero,
+                    &evals_periodic_zero,
                     log_up_randomness,
                     &mut numerators,
                     &mut denominators,
@@ -462,11 +584,11 @@ fn sumcheck_round<E: FieldElement>(
                     eq_mu,
                     &numerators,
                     &denominators,
-                    eq_at_one,
+                    eq_at_zero,
                     r_sum_check,
                 );
 
-                // compute the evaluations at 2, ..., d_max points
+                // compute the evaluations at `2, ..., d_max - 1` points
                 for i in 0..num_mls {
                     deltas[i] = evals_one[i] - evals_zero[i];
                     evals_x[i] = evals_one[i];
@@ -475,8 +597,6 @@ fn sumcheck_round<E: FieldElement>(
                     deltas_periodic[i] = evals_periodic_one[i] - evals_periodic_zero[i];
                     evals_periodic_x[i] = evals_periodic_one[i];
                 }
-                let eq_delta = eq_at_one - eq_at_zero;
-                let mut eq_x = eq_at_one;
 
                 for e in poly_evals.iter_mut().skip(1) {
                     evals_x.iter_mut().zip(deltas.iter()).for_each(|(evx, delta)| {
@@ -487,7 +607,6 @@ fn sumcheck_round<E: FieldElement>(
                             *evx += *delta;
                         },
                     );
-                    eq_x += eq_delta;
 
                     evaluator.evaluate_query(
                         &evals_x,
@@ -500,7 +619,7 @@ fn sumcheck_round<E: FieldElement>(
                         eq_mu,
                         &numerators,
                         &denominators,
-                        eq_x,
+                        eq_at_zero,
                         r_sum_check,
                     );
                 }
@@ -522,7 +641,7 @@ fn sumcheck_round<E: FieldElement>(
         )
         .map(|(.., poly_evals)| poly_evals)
         .reduce(
-            || vec![E::ZERO; evaluator.max_degree()],
+            || vec![E::ZERO; evaluator.max_degree() - 1],
             |mut acc, poly_eval| {
                 acc.iter_mut().zip(poly_eval.iter()).for_each(|(a, b)| {
                     *a += *b;
@@ -531,7 +650,7 @@ fn sumcheck_round<E: FieldElement>(
             },
         );
 
-    CompressedUnivariatePolyEvals(evaluations.into())
+    evaluations
 }
 
 /// Reduces an old claim to a new claim using the round challenge.
