@@ -21,6 +21,8 @@ pub const RATE_WIDTH: usize = 4;
 /// Two elements (32-bytes) are returned as digest.
 const DIGEST_SIZE: usize = 2;
 
+/// Number of rounds of the hash protocol.
+///
 /// The number of rounds is set to 7 to provide 128-bit security level with 40% security margin;
 /// computed using algorithm 7 from <https://eprint.iacr.org/2020/1143.pdf>
 /// security margin here differs from Rescue Prime specification which suggests 50% security

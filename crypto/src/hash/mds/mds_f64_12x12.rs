@@ -25,7 +25,6 @@ use math::{
 /// Hamish Ivey-Law and Jacqueline Nabaglo of Polygon Zero and is based on Nabaglo's implementation
 /// in [Plonky2](https://github.com/mir-protocol/plonky2).
 /// The circulant matrix is identified by its first row: [7, 23, 8, 26, 13, 10, 9, 7, 6, 22, 21, 8].
-
 // MDS matrix in frequency domain.
 // More precisely, this is the output of the three 4-point (real) FFTs of the first column of
 // the MDS matrix i.e. just before the multiplication with the appropriate twiddle factors

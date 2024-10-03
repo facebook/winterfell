@@ -67,6 +67,8 @@ pub fn maybe_async(_attr: TokenStream, input: TokenStream) -> TokenStream {
     }
 }
 
+/// Conditionally add `async` keyword to functions.
+///
 /// Parses a trait or an `impl` block and conditionally adds the `async` keyword to methods that
 /// are annotated with `#[maybe_async]`, depending on the `async` feature flag being enabled.
 /// Additionally, if applied to a trait definition or impl block, it will add
@@ -185,9 +187,9 @@ pub fn maybe_async_trait(_attr: TokenStream, input: TokenStream) -> TokenStream 
     }
 
     // If input is neither a trait nor an impl block, emit a compile-time error
-    return quote! {
+    quote! {
         compile_error!("`maybe_async_trait` can only be applied to trait definitions and trait impl blocks");
-    }.into();
+    }.into()
 }
 
 /// Parses an expression and conditionally adds the `.await` keyword at the end of it depending on
