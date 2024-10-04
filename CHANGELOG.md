@@ -1,7 +1,9 @@
 # Changelog
 
-## 0.10.0 (2024-06-11) - `utils/maybe-async` crate only
+## 0.10.1 (2024-10-04) - `utils/maybe-async` crate only
 - Added `maybe-async-trait` procedural macro.
+
+## 0.10.0 (2024-06-11) - `utils/maybe-async` crate only
 - [BREAKING] Refactored `maybe-async` macro into simpler `maybe-async` and `maybe-await` macros.
 
 ## 0.9.1 (2024-06-24) - `utils/core` crate only
