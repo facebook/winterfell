@@ -243,7 +243,7 @@ pub struct EvaluationTableFragment<'a, E: FieldElement> {
     ta_evaluations: Vec<&'a mut [E]>,
 }
 
-impl<'a, E: FieldElement> EvaluationTableFragment<'a, E> {
+impl<E: FieldElement> EvaluationTableFragment<'_, E> {
     /// Returns the row at which the fragment starts.
     pub fn offset(&self) -> usize {
         self.offset

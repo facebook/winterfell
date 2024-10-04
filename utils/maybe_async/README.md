@@ -70,6 +70,58 @@ async fn world() -> String {
 }
 ```
 
+## maybe_async_trait
+
+The `maybe_async_trait` macro can be applied to traits, and it will conditionally add the `async` keyword to trait methods annotated with `#[maybe_async]`, depending on the async feature being enabled. It also applies `#[async_trait::async_trait(?Send)]` to the trait or impl block when the async feature is on.
+
+For example:
+
+```rust
+// Adding `maybe_async_trait` to a trait definition
+#[maybe_async_trait]
+trait ExampleTrait {
+    #[maybe_async]
+    fn hello_world(&self);
+
+    fn get_hello(&self) -> String;
+}
+
+// Adding `maybe_async_trait` to an implementation of the trait
+#[maybe_async_trait]
+impl ExampleTrait for MyStruct {
+    #[maybe_async]
+    fn hello_world(&self) {
+        // ...
+    }
+
+    fn get_hello(&self) -> String {
+        // ...
+    }
+}
+```
+
+When `async` is set, it gets transformed into:
+
+```rust
+#[async_trait::async_trait(?Send)]
+trait ExampleTrait {
+    async fn hello_world(&self);
+
+    fn get_hello(&self) -> String;
+}
+
+#[async_trait::async_trait(?Send)]
+impl ExampleTrait for MyStruct {
+    async fn hello_world(&self) {
+        // ...
+    }
+
+    fn get_hello(&self) -> String {
+        // ...
+    }
+}
+```
+
 ## License
 
 This project is [MIT licensed](../../LICENSE).

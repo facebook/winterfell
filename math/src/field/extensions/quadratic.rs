@@ -315,7 +315,7 @@ impl<B: ExtensibleField<2>> TryFrom<u128> for QuadExtension<B> {
     }
 }
 
-impl<'a, B: ExtensibleField<2>> TryFrom<&'a [u8]> for QuadExtension<B> {
+impl<B: ExtensibleField<2>> TryFrom<&'_ [u8]> for QuadExtension<B> {
     type Error = DeserializationError;
 
     /// Converts a slice of bytes into a field element; returns error if the value encoded in bytes

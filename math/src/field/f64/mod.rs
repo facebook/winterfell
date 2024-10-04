@@ -5,6 +5,7 @@
 
 //! An implementation of a 64-bit STARK-friendly prime field with modulus $2^{64} - 2^{32} + 1$
 //! using Montgomery representation.
+//!
 //! Our implementation follows <https://eprint.iacr.org/2022/274.pdf> and is constant-time.
 //!
 //! This field supports very fast modular arithmetic and has a number of other attractive
@@ -571,7 +572,7 @@ impl TryFrom<[u8; 8]> for BaseElement {
     }
 }
 
-impl<'a> TryFrom<&'a [u8]> for BaseElement {
+impl TryFrom<&'_ [u8]> for BaseElement {
     type Error = DeserializationError;
 
     /// Converts a slice of bytes into a field element; returns error if the value encoded in bytes

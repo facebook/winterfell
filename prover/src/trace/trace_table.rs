@@ -313,7 +313,7 @@ pub struct TraceTableFragment<'a, B: StarkField> {
     data: Vec<&'a mut [B]>,
 }
 
-impl<'a, B: StarkField> TraceTableFragment<'a, B> {
+impl<B: StarkField> TraceTableFragment<'_, B> {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
