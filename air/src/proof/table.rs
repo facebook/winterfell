@@ -138,10 +138,10 @@ impl<'a, E: FieldElement> Iterator for RowIterator<'a, E> {
     }
 }
 
-impl<'a, E: FieldElement> ExactSizeIterator for RowIterator<'a, E> {
+impl<E: FieldElement> ExactSizeIterator for RowIterator<'_, E> {
     fn len(&self) -> usize {
         self.table.num_rows()
     }
 }
 
-impl<'a, E: FieldElement> FusedIterator for RowIterator<'a, E> {}
+impl<E: FieldElement> FusedIterator for RowIterator<'_, E> {}

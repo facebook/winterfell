@@ -453,7 +453,7 @@ impl<'a> ReadAdapter<'a> {
 }
 
 #[cfg(feature = "std")]
-impl<'a> ByteReader for ReadAdapter<'a> {
+impl ByteReader for ReadAdapter<'_> {
     #[inline(always)]
     fn read_u8(&mut self) -> Result<u8, DeserializationError> {
         self.pop()
@@ -638,7 +638,7 @@ impl<'a> SliceReader<'a> {
     }
 }
 
-impl<'a> ByteReader for SliceReader<'a> {
+impl ByteReader for SliceReader<'_> {
     fn read_u8(&mut self) -> Result<u8, DeserializationError> {
         self.check_eor(1)?;
         let result = self.source[self.pos];

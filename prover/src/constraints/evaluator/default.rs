@@ -45,7 +45,7 @@ pub struct DefaultConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A:
     periodic_values: PeriodicValueTable<E::BaseField>,
 }
 
-impl<'a, A, E> ConstraintEvaluator<E> for DefaultConstraintEvaluator<'a, A, E>
+impl<A, E> ConstraintEvaluator<E> for DefaultConstraintEvaluator<'_, A, E>
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseField>,

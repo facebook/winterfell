@@ -333,15 +333,15 @@ impl<'a, E: FieldElement> Iterator for ColumnIter<'a, E> {
     }
 }
 
-impl<'a, E: FieldElement> ExactSizeIterator for ColumnIter<'a, E> {
+impl<E: FieldElement> ExactSizeIterator for ColumnIter<'_, E> {
     fn len(&self) -> usize {
         self.matrix.map(|matrix| matrix.num_cols()).unwrap_or_default()
     }
 }
 
-impl<'a, E: FieldElement> FusedIterator for ColumnIter<'a, E> {}
+impl<E: FieldElement> FusedIterator for ColumnIter<'_, E> {}
 
-impl<'a, E: FieldElement> Default for ColumnIter<'a, E> {
+impl<E: FieldElement> Default for ColumnIter<'_, E> {
     fn default() -> Self {
         Self::empty()
     }
@@ -382,10 +382,10 @@ impl<'a, E: FieldElement> Iterator for ColumnIterMut<'a, E> {
     }
 }
 
-impl<'a, E: FieldElement> ExactSizeIterator for ColumnIterMut<'a, E> {
+impl<E: FieldElement> ExactSizeIterator for ColumnIterMut<'_, E> {
     fn len(&self) -> usize {
         self.matrix.num_cols()
     }
 }
 
-impl<'a, E: FieldElement> FusedIterator for ColumnIterMut<'a, E> {}
+impl<E: FieldElement> FusedIterator for ColumnIterMut<'_, E> {}
