@@ -18,7 +18,7 @@ pub const MIN_CONCURRENT_LEAVES: usize = 1024;
 // PUBLIC FUNCTIONS
 // ================================================================================================
 
-/// Builds merkle nodes.
+/// Returns internal nodes of a Merkle tree constructed from the provided leaves.
 ///
 /// Builds all internal nodes of the Merkle using all available threads and stores the
 /// results in a single vector such that root of the tree is at position 1, nodes immediately

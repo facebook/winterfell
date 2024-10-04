@@ -126,11 +126,9 @@ pub fn maybe_async(_attr: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn maybe_async_trait(_attr: TokenStream, input: TokenStream) -> TokenStream {
     // Try parsing the input as a trait definition
-    if let Ok(trait_item) = syn::parse::<ItemTrait>(input.clone()) {
+    if let Ok(mut trait_item) = syn::parse::<ItemTrait>(input.clone()) {
         let output = if cfg!(feature = "async") {
-            let mut async_trait = trait_item;
-
-            for item in &mut async_trait.items {
+            for item in &mut trait_item.items {
                 if let TraitItem::Fn(method) = item {
                     // Remove the #[maybe_async] and make method async
                     method.attrs.retain(|attr| {
@@ -146,7 +144,7 @@ pub fn maybe_async_trait(_attr: TokenStream, input: TokenStream) -> TokenStream 
 
             quote! {
                 #[async_trait::async_trait(?Send)]
-                #async_trait
+                #trait_item
             }
         } else {
             quote! {

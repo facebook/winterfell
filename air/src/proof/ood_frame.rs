@@ -229,7 +229,7 @@ impl Deserializable for OodFrame {
 // OOD FRAME TRACE STATES
 // ================================================================================================
 
-/// Represents the state of a frame trace.
+/// Trace evaluation frame at the out-of-domain point.
 ///
 /// Stores the trace evaluations at `z` and `gz`, where `z` is a random Field element in
 /// `current_row` and `next_row`, respectively. If the Air contains a Lagrange kernel auxiliary
