@@ -320,7 +320,7 @@ impl<B: ExtensibleField<3>> TryFrom<u128> for CubeExtension<B> {
     }
 }
 
-impl< B: ExtensibleField<3>> TryFrom<&'_ [u8]> for CubeExtension<B> {
+impl<B: ExtensibleField<3>> TryFrom<&'_ [u8]> for CubeExtension<B> {
     type Error = DeserializationError;
 
     /// Converts a slice of bytes into a field element; returns error if the value encoded in bytes
