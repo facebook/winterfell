@@ -63,10 +63,11 @@ where
         trace_info: &TraceInfo,
         main_trace: &ColMatrix<E::BaseField>,
         domain: &StarkDomain<E::BaseField>,
+        num_partitions: usize,
     ) -> (Self, TracePolyTable<E>) {
         // extend the main execution trace and build a commitment to the extended trace
         let (main_segment_lde, main_segment_vector_com, main_segment_polys) =
-            build_trace_commitment::<E, E::BaseField, H, V>(main_trace, domain);
+            build_trace_commitment::<E, E::BaseField, H, V>(main_trace, domain, num_partitions);
 
         let trace_poly_table = TracePolyTable::new(main_segment_polys);
         let trace_lde = DefaultTraceLde {
@@ -122,7 +123,9 @@ where
 
     /// Takes auxiliary trace segment columns as input, interpolates them into polynomials in
     /// coefficient form, evaluates the polynomials over the LDE domain, and commits to the
-    /// polynomial evaluations.
+    /// polynomial evaluations. Depending on whether `num_partitions` is equal to `1` or is
+    /// greater than `1`, committing to the polynomial evaluations row-wise is done either
+    /// in one go in the former or in `num_partition` steps which are then combined in the latter.
     ///
     /// Returns a tuple containing the column polynomials in coefficient from and the commitment
     /// to the polynomial evaluations over the LDE domain.
@@ -136,10 +139,11 @@ where
         &mut self,
         aux_trace: &ColMatrix<E>,
         domain: &StarkDomain<E::BaseField>,
+        num_partitions: usize,
     ) -> (ColMatrix<E>, H::Digest) {
         // extend the auxiliary trace segment and build a commitment to the extended trace
         let (aux_segment_lde, aux_segment_oracles, aux_segment_polys) =
-            build_trace_commitment::<E, E, H, Self::VC>(aux_trace, domain);
+            build_trace_commitment::<E, E, H, Self::VC>(aux_trace, domain, num_partitions);
 
         // check errors
         assert!(
@@ -263,6 +267,7 @@ where
 fn build_trace_commitment<E, F, H, V>(
     trace: &ColMatrix<F>,
     domain: &StarkDomain<E::BaseField>,
+    num_partitions: usize,
 ) -> (RowMatrix<F>, V, ColMatrix<F>)
 where
     E: FieldElement,
@@ -292,7 +297,7 @@ where
     // build trace commitment
     let commitment_domain_size = trace_lde.num_rows();
     let trace_vector_com = info_span!("compute_execution_trace_commitment", commitment_domain_size)
-        .in_scope(|| trace_lde.commit_to_rows::<H, V>());
+        .in_scope(|| trace_lde.commit_to_rows::<H, V>(num_partitions));
     assert_eq!(trace_vector_com.domain_len(), commitment_domain_size);
 
     (trace_lde, trace_vector_com, trace_polys)

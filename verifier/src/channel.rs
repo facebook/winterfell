@@ -35,6 +35,7 @@ pub struct VerifierChannel<
     // constraint queries
     constraint_commitment: H::Digest,
     constraint_queries: Option<ConstraintQueries<E, H, V>>,
+    num_partitions: usize,
     // FRI proof
     fri_commitments: Option<Vec<H::Digest>>,
     fri_layer_proofs: Vec<V::MultiProof>,
@@ -121,6 +122,8 @@ where
             // constraint queries
             constraint_commitment,
             constraint_queries: Some(constraint_queries),
+            // num partitions used in commitment
+            num_partitions: air.options().num_partitions(),
             // FRI proof
             fri_commitments: Some(fri_commitments),
             fri_layer_proofs,
@@ -191,9 +194,23 @@ where
         let queries = self.trace_queries.take().expect("already read");
 
         // make sure the states included in the proof correspond to the trace commitment
+        let items: Vec<H::Digest> = if self.num_partitions == 1 {
+            queries.main_states.rows().map(|row| H::hash_elements(row)).collect()
+        } else {
+            let number_of_base_field_elements = queries.main_states.num_columns();
+            let num_elements_per_partition =
+                number_of_base_field_elements.div_ceil(self.num_partitions);
+            queries
+                .main_states
+                .rows()
+                .map(|row| {
+                    row.chunks(num_elements_per_partition)
+                        .map(|chunk| H::hash_elements(chunk))
+                        .fold(H::Digest::default(), |acc, cur| H::merge(&[acc, cur]))
+                })
+                .collect()
+        };
 
-        let items: Vec<H::Digest> =
-            queries.main_states.rows().map(|row| H::hash_elements(row)).collect();
         <V as VectorCommitment<H>>::verify_many(
             self.trace_commitments[0],
             positions,
@@ -203,8 +220,23 @@ where
         .map_err(|_| VerifierError::TraceQueryDoesNotMatchCommitment)?;
 
         if let Some(ref aux_states) = queries.aux_states {
-            let items: Vec<H::Digest> =
-                aux_states.rows().map(|row| H::hash_elements(row)).collect();
+            let items: Vec<H::Digest> = if self.num_partitions == 1 {
+                aux_states.rows().map(|row| H::hash_elements(row)).collect()
+            } else {
+                let number_of_base_field_elements = aux_states.num_columns() * E::EXTENSION_DEGREE;
+                let num_elements_per_partition =
+                    number_of_base_field_elements.div_ceil(self.num_partitions);
+
+                aux_states
+                    .rows()
+                    .map(|row| {
+                        row.chunks(num_elements_per_partition)
+                            .map(|chunk| H::hash_elements(chunk))
+                            .fold(H::Digest::default(), |acc, cur| H::merge(&[acc, cur]))
+                    })
+                    .collect()
+            };
+
             <V as VectorCommitment<H>>::verify_many(
                 self.trace_commitments[1],
                 positions,
@@ -225,8 +257,25 @@ where
         positions: &[usize],
     ) -> Result<Table<E>, VerifierError> {
         let queries = self.constraint_queries.take().expect("already read");
-        let items: Vec<H::Digest> =
-            queries.evaluations.rows().map(|row| H::hash_elements(row)).collect();
+
+        let items: Vec<H::Digest> = if self.num_partitions == 1 {
+            queries.evaluations.rows().map(|row| H::hash_elements(row)).collect()
+        } else {
+            let number_of_base_field_elements = queries.evaluations.num_columns();
+            let num_elements_per_partition =
+                number_of_base_field_elements.div_ceil(self.num_partitions);
+
+            queries
+                .evaluations
+                .rows()
+                .map(|row| {
+                    row.chunks(num_elements_per_partition)
+                        .map(|chunk| H::hash_elements(chunk))
+                        .fold(H::Digest::default(), |acc, cur| H::merge(&[acc, cur]))
+                })
+                .collect()
+        };
+
         <V as VectorCommitment<H>>::verify_many(
             self.constraint_commitment,
             positions,

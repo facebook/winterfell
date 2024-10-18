@@ -149,7 +149,7 @@ impl Proof {
         Self {
             context: Context::new::<DummyField>(
                 TraceInfo::new(1, 8),
-                ProofOptions::new(1, 2, 2, FieldExtension::None, 8, 1),
+                ProofOptions::new(1, 2, 2, FieldExtension::None, 8, 1, 1),
             ),
             num_unique_queries: 0,
             commitments: Commitments::default(),
@@ -427,6 +427,7 @@ mod prove_security_tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            1,
         );
         let security_1 =
             get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
@@ -444,6 +445,7 @@ mod prove_security_tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            1,
         );
         let security_2 =
             get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
@@ -470,6 +472,7 @@ mod prove_security_tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            1,
         );
         let security_1 =
             get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
@@ -487,6 +490,7 @@ mod prove_security_tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            1,
         );
         let security_2 =
             get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
@@ -513,6 +517,7 @@ mod prove_security_tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            1,
         );
         let security_1 =
             get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
@@ -530,6 +535,7 @@ mod prove_security_tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            1,
         );
         let security_2 =
             get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
@@ -556,6 +562,7 @@ mod prove_security_tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            1,
         );
         let security_1 =
             get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
@@ -569,6 +576,7 @@ mod prove_security_tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            1,
         );
         let security_2 =
             get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
@@ -595,6 +603,7 @@ mod prove_security_tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            1,
         );
         let security_1 =
             get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
@@ -608,6 +617,7 @@ mod prove_security_tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            1,
         );
         let security_2 =
             get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
@@ -634,6 +644,7 @@ mod prove_security_tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            1,
         );
         let security_1 =
             get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
@@ -647,6 +658,7 @@ mod prove_security_tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            1,
         );
         let security_2 =
             get_proven_security(&options, base_field_bits, trace_length, collision_resistance);

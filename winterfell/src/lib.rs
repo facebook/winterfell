@@ -371,8 +371,9 @@
 //!         trace_info: &TraceInfo,
 //!         main_trace: &ColMatrix<Self::BaseField>,
 //!         domain: &StarkDomain<Self::BaseField>,
+//!         num_partitions: usize,
 //!     ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
-//!         DefaultTraceLde::new(trace_info, main_trace, domain)
+//!         DefaultTraceLde::new(trace_info, main_trace, domain, num_partitions)
 //!     }
 //!
 //!     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
@@ -514,8 +515,9 @@
 //! #        trace_info: &TraceInfo,
 //! #        main_trace: &ColMatrix<Self::BaseField>,
 //! #        domain: &StarkDomain<Self::BaseField>,
+//! #        num_partitions: usize,
 //! #    ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
-//! #        DefaultTraceLde::new(trace_info, main_trace, domain)
+//! #        DefaultTraceLde::new(trace_info, main_trace, domain, num_partitions)
 //! #    }
 //! #
 //! #    fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
@@ -546,6 +548,7 @@
 //!     FieldExtension::None,
 //!     8,  // FRI folding factor
 //!     31, // FRI max remainder polynomial degree
+//!     1,  // Number of partitions when committing to the traces
 //! );
 //!
 //! // Instantiate the prover and generate the proof.

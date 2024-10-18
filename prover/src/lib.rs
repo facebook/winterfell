@@ -182,6 +182,7 @@ pub trait Prover {
         trace_info: &TraceInfo,
         main_trace: &ColMatrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
+        num_partitions: usize,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>;
@@ -308,8 +309,12 @@ pub trait Prover {
         assert_eq!(domain.trace_length(), trace_length);
 
         // commit to the main trace segment
-        let (mut trace_lde, mut trace_polys) =
-            maybe_await!(self.commit_to_main_trace_segment(&trace, &domain, &mut channel));
+        let (mut trace_lde, mut trace_polys) = maybe_await!(self.commit_to_main_trace_segment(
+            &trace,
+            &domain,
+            self.options().num_partitions(),
+            &mut channel
+        ));
 
         // build the auxiliary trace segment, and append the resulting segments to trace commitment
         // and trace polynomial table structs
@@ -341,7 +346,7 @@ pub trait Prover {
                 // extend the auxiliary trace segment and commit to the extended trace
                 let span = info_span!("commit_to_aux_trace_segment").entered();
                 let (aux_segment_polys, aux_segment_commitment) =
-                    trace_lde.set_aux_trace(&aux_trace, &domain);
+                    trace_lde.set_aux_trace(&aux_trace, &domain, self.options().num_partitions());
 
                 // commit to the LDE of the extended auxiliary trace segment by writing its
                 // commitment into the channel
@@ -390,7 +395,13 @@ pub trait Prover {
 
         // 3 ----- commit to constraint evaluations -----------------------------------------------
         let (constraint_commitment, composition_poly) = maybe_await!(self
-            .commit_to_constraint_evaluations(&air, composition_poly_trace, &domain, &mut channel));
+            .commit_to_constraint_evaluations(
+                &air,
+                composition_poly_trace,
+                &domain,
+                self.options().num_partitions(),
+                &mut channel
+            ));
 
         // 4 ----- build DEEP composition polynomial ----------------------------------------------
         let deep_composition_poly = {
@@ -522,6 +533,7 @@ pub trait Prover {
         composition_poly_trace: CompositionPolyTrace<E>,
         num_constraint_composition_columns: usize,
         domain: &StarkDomain<Self::BaseField>,
+        num_partitions: usize,
     ) -> (ConstraintCommitment<E, Self::HashFn, Self::VC>, CompositionPoly<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
@@ -554,7 +566,8 @@ pub trait Prover {
             log_domain_size = domain_size.ilog2()
         )
         .in_scope(|| {
-            let commitment = composed_evaluations.commit_to_rows::<Self::HashFn, Self::VC>();
+            let commitment =
+                composed_evaluations.commit_to_rows::<Self::HashFn, Self::VC>(num_partitions);
             ConstraintCommitment::new(composed_evaluations, commitment)
         });
 
@@ -568,14 +581,19 @@ pub trait Prover {
         &self,
         trace: &Self::Trace,
         domain: &StarkDomain<Self::BaseField>,
+        num_partitions: usize,
         channel: &mut ProverChannel<'_, Self::Air, E, Self::HashFn, Self::RandomCoin, Self::VC>,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
         // extend the main execution trace and commit to the extended trace
-        let (trace_lde, trace_polys) =
-            maybe_await!(self.new_trace_lde(trace.info(), trace.main_segment(), domain));
+        let (trace_lde, trace_polys) = maybe_await!(self.new_trace_lde(
+            trace.info(),
+            trace.main_segment(),
+            domain,
+            num_partitions
+        ));
 
         // get the commitment to the main trace segment LDE
         let main_trace_commitment = trace_lde.get_main_trace_commitment();
@@ -595,6 +613,7 @@ pub trait Prover {
         air: &Self::Air,
         composition_poly_trace: CompositionPolyTrace<E>,
         domain: &StarkDomain<Self::BaseField>,
+        num_partitions: usize,
         channel: &mut ProverChannel<'_, Self::Air, E, Self::HashFn, Self::RandomCoin, Self::VC>,
     ) -> (ConstraintCommitment<E, Self::HashFn, Self::VC>, CompositionPoly<E>)
     where
@@ -607,6 +626,7 @@ pub trait Prover {
                 composition_poly_trace,
                 air.context().num_constraint_composition_columns(),
                 domain,
+                num_partitions,
             ));
 
         // then, commit to the evaluations of constraints by writing the commitment string of

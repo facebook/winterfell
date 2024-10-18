@@ -74,6 +74,16 @@ pub enum FieldExtension {
 /// is the hash function used in the protocol. The soundness of a STARK proof is limited by the
 /// collision resistance of the hash function used by the protocol. For example, if a hash function
 /// with 128-bit collision resistance is used, soundness of a STARK proof cannot exceed 128 bits.
+///
+/// In addition to the above, the parameter `num_partitions` is used in order to specify the number
+/// of partitions each of the traces committed to during proof generation is split into.
+/// More precisely, and taking the main segment trace as an example, the prover will split the main
+/// segment trace into `num_partitions` parts. The prover will then proceed to hash each part row-wise
+/// resulting in `num_partitions` digests per row of the trace. The prover finally combines
+/// the `num_partitions` digest (per row) into one digest (per row) and at this point the vector
+/// commitment scheme can be called.
+/// In the case when `num_partitions` is equal to `1` the prover will just hash each row in one go
+/// producing one digest per row of the trace.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ProofOptions {
     num_queries: u8,
@@ -82,6 +92,7 @@ pub struct ProofOptions {
     field_extension: FieldExtension,
     fri_folding_factor: u8,
     fri_remainder_max_degree: u8,
+    num_partitions: u8,
 }
 
 // PROOF OPTIONS IMPLEMENTATION
@@ -108,6 +119,7 @@ impl ProofOptions {
     /// - `grinding_factor` is greater than 32.
     /// - `fri_folding_factor` is not 2, 4, 8, or 16.
     /// - `fri_remainder_max_degree` is greater than 255 or is not a power of two minus 1.
+    /// - `num_partitions` is zero or greater than 64.
     #[rustfmt::skip]
     pub const fn new(
         num_queries: usize,
@@ -116,6 +128,7 @@ impl ProofOptions {
         field_extension: FieldExtension,
         fri_folding_factor: usize,
         fri_remainder_max_degree: usize,
+        num_partitions: usize,
     ) -> ProofOptions {
         // TODO: return errors instead of panicking
         assert!(num_queries > 0, "number of queries must be greater than 0");
@@ -140,6 +153,9 @@ impl ProofOptions {
             "FRI polynomial remainder degree cannot be greater than 255"
         );
 
+        assert!(num_partitions > 0, "number of partitions must be greater than 0");
+        assert!(num_partitions <= 64, "number of partitions must be less than 64");
+
         ProofOptions {
             num_queries: num_queries as u8,
             blowup_factor: blowup_factor as u8,
@@ -147,6 +163,7 @@ impl ProofOptions {
             field_extension,
             fri_folding_factor: fri_folding_factor as u8,
             fri_remainder_max_degree: fri_remainder_max_degree as u8,
+            num_partitions: num_partitions as u8,
         }
     }
 
@@ -206,6 +223,12 @@ impl ProofOptions {
         let remainder_max_degree = self.fri_remainder_max_degree as usize;
         FriOptions::new(self.blowup_factor(), folding_factor, remainder_max_degree)
     }
+
+    /// Returns the number of partitions used when committing to the main and auxiliary traces as
+    /// well as the constraint evaluation trace.
+    pub fn num_partitions(&self) -> usize {
+        self.num_partitions as usize
+    }
 }
 
 impl<E: StarkField> ToElements<E> for ProofOptions {
@@ -233,6 +256,7 @@ impl Serializable for ProofOptions {
         target.write(self.field_extension);
         target.write_u8(self.fri_folding_factor);
         target.write_u8(self.fri_remainder_max_degree);
+        target.write_u8(self.num_partitions);
     }
 }
 
@@ -247,6 +271,7 @@ impl Deserializable for ProofOptions {
             source.read_u8()? as usize,
             source.read_u8()? as u32,
             FieldExtension::read_from(source)?,
+            source.read_u8()? as usize,
             source.read_u8()? as usize,
             source.read_u8()? as usize,
         ))
@@ -318,6 +343,7 @@ mod tests {
         let grinding_factor = 20;
         let blowup_factor = 8;
         let num_queries = 30;
+        let num_partitions = 1;
 
         let ext_fri = u32::from_le_bytes([
             fri_remainder_max_degree,
@@ -339,6 +365,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            num_partitions as usize,
         );
         assert_eq!(expected, options.to_elements());
     }

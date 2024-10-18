@@ -180,7 +180,7 @@ impl<E: FieldElement> RowMatrix<E> {
     /// * A vector commitment is computed for the resulting vector using the specified vector
     ///   commitment scheme.
     /// * The resulting vector commitment is returned as the commitment to the entire matrix.
-    pub fn commit_to_rows<H, V>(&self) -> V
+    pub fn commit_to_rows<H, V>(&self, num_partitions: usize) -> V
     where
         H: ElementHasher<BaseField = E::BaseField>,
         V: VectorCommitment<H>,
@@ -188,16 +188,36 @@ impl<E: FieldElement> RowMatrix<E> {
         // allocate vector to store row hashes
         let mut row_hashes = unsafe { uninit_vector::<H::Digest>(self.num_rows()) };
 
-        // iterate though matrix rows, hashing each row
-        batch_iter_mut!(
-            &mut row_hashes,
-            128, // min batch size
-            |batch: &mut [H::Digest], batch_offset: usize| {
-                for (i, row_hash) in batch.iter_mut().enumerate() {
-                    *row_hash = H::hash_elements(self.row(batch_offset + i));
+        if num_partitions == 1 {
+            // iterate though matrix rows, hashing each row
+            batch_iter_mut!(
+                &mut row_hashes,
+                128, // min batch size
+                |batch: &mut [H::Digest], batch_offset: usize| {
+                    for (i, row_hash) in batch.iter_mut().enumerate() {
+                        *row_hash = H::hash_elements(self.row(batch_offset + i));
+                    }
                 }
-            }
-        );
+            );
+        } else {
+            let number_of_base_field_elements = self.num_cols() * E::EXTENSION_DEGREE;
+            let num_elements_per_partition = number_of_base_field_elements.div_ceil(num_partitions);
+
+            // iterate though matrix rows, hashing each row
+            batch_iter_mut!(
+                &mut row_hashes,
+                128, // min batch size
+                |batch: &mut [H::Digest], batch_offset: usize| {
+                    for (i, row_hash) in batch.iter_mut().enumerate() {
+                        *row_hash = self
+                            .row(batch_offset + i)
+                            .chunks(num_elements_per_partition)
+                            .map(|chunk| H::hash_elements(chunk))
+                            .fold(H::Digest::default(), |acc, cur| H::merge(&[acc, cur]));
+                    }
+                }
+            );
+        }
 
         // build the vector commitment to the hashed rows
         V::new(row_hashes).expect("failed to construct trace vector commitment")
