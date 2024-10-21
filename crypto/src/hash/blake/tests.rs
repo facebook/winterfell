@@ -34,8 +34,8 @@ fn hash_elements_padding() {
 
 #[test]
 fn merge_vs_merge_many_256() {
-    let digest_0 = ByteDigest::read_from_bytes(&[1_u8; 32]).unwrap().into();
-    let digest_1 = ByteDigest::read_from_bytes(&[2_u8; 32]).unwrap().into();
+    let digest_0 = ByteDigest::read_from_bytes(&[1_u8; 32]).unwrap();
+    let digest_1 = ByteDigest::read_from_bytes(&[2_u8; 32]).unwrap();
 
     let r1 = Blake3_256::<BaseElement>::merge(&[digest_0, digest_1]);
     let r2 = Blake3_256::<BaseElement>::merge_many(&[digest_0, digest_1]);
@@ -45,8 +45,8 @@ fn merge_vs_merge_many_256() {
 
 #[test]
 fn merge_vs_merge_many_192() {
-    let digest_0 = ByteDigest::read_from_bytes(&[1_u8; 24]).unwrap().into();
-    let digest_1 = ByteDigest::read_from_bytes(&[2_u8; 24]).unwrap().into();
+    let digest_0 = ByteDigest::read_from_bytes(&[1_u8; 24]).unwrap();
+    let digest_1 = ByteDigest::read_from_bytes(&[2_u8; 24]).unwrap();
 
     let r1 = Blake3_192::<BaseElement>::merge(&[digest_0, digest_1]);
     let r2 = Blake3_192::<BaseElement>::merge_many(&[digest_0, digest_1]);
