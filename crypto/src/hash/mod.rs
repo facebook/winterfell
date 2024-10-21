@@ -42,6 +42,9 @@ pub trait Hasher {
     /// Merkle trees.
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest;
 
+    /// Returns a hash of many digests.
+    fn merge_many(values: &[Self::Digest]) -> Self::Digest;
+
     /// Returns hash(`seed` || `value`). This method is intended for use in PRNG and PoW contexts.
     fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest;
 }

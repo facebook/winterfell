@@ -5,8 +5,10 @@
 
 use math::{fields::f62::BaseElement, FieldElement};
 use rand_utils::rand_array;
+use utils::Deserializable;
 
 use super::{Blake3_256, ElementHasher, Hasher};
+use crate::hash::{Blake3_192, ByteDigest};
 
 #[test]
 fn hash_padding() {
@@ -28,4 +30,26 @@ fn hash_elements_padding() {
     let r1 = Blake3_256::hash_elements(&e1);
     let r2 = Blake3_256::hash_elements(&e2);
     assert_ne!(r1, r2);
+}
+
+#[test]
+fn merge_vs_merge_many_256() {
+    let digest_0 = ByteDigest::read_from_bytes(&[1_u8; 32]).unwrap().into();
+    let digest_1 = ByteDigest::read_from_bytes(&[2_u8; 32]).unwrap().into();
+
+    let r1 = Blake3_256::<BaseElement>::merge(&[digest_0, digest_1]);
+    let r2 = Blake3_256::<BaseElement>::merge_many(&[digest_0, digest_1]);
+
+    assert_eq!(r1, r2)
+}
+
+#[test]
+fn merge_vs_merge_many_192() {
+    let digest_0 = ByteDigest::read_from_bytes(&[1_u8; 24]).unwrap().into();
+    let digest_1 = ByteDigest::read_from_bytes(&[2_u8; 24]).unwrap().into();
+
+    let r1 = Blake3_192::<BaseElement>::merge(&[digest_0, digest_1]);
+    let r2 = Blake3_192::<BaseElement>::merge_many(&[digest_0, digest_1]);
+
+    assert_eq!(r1, r2)
 }

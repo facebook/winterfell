@@ -165,6 +165,46 @@ impl Hasher for Rp62_248 {
         ElementDigest::new(state[..DIGEST_SIZE].try_into().unwrap())
     }
 
+    fn merge_many(values: &[Self::Digest]) -> Self::Digest {
+        // initialize state to all zeros, except for the last element of the capacity part, which
+        // is set to the number of elements to be hashed. this is done so that adding zero elements
+        // at the end of the list always results in a different hash. The number of elements to be
+        // hashed is equal to the length of `values` times the number of elements in each
+        // `Self::Digest` i.e., `DIGEST_SIZE`.
+        let num_digests = values.len();
+        let mut state = [BaseElement::ZERO; STATE_WIDTH];
+        state[STATE_WIDTH - 1] = BaseElement::new((DIGEST_SIZE * num_digests) as u64);
+
+        // absorb elements into the state in batches of size `DIGEST_SIZE` until the rate portion
+        // of the state is filled up; then apply the Rescue permutation and start absorbing again;
+        // repeat until all elements have been absorbed
+        let mut i = 0;
+        for digest in values {
+            let elements = digest.as_elements();
+            for element in elements {
+                state[i] += *element;
+                i += 1;
+            }
+
+            if i % RATE_WIDTH == 0 {
+                apply_permutation(&mut state);
+                i = 0;
+            }
+        }
+
+        // if we absorbed some elements but didn't apply a permutation to them (would happen when
+        // the number of digests times `DIGEST_SIZE` is not a multiple of RATE_WIDTH), apply
+        // the Rescue permutation.
+        // we don't need to apply any extra padding because we injected total number of elements
+        // in the input list into the capacity portion of the state during initialization.
+        if i > 0 {
+            apply_permutation(&mut state);
+        }
+
+        // return the first 4 elements of the state as hash result
+        ElementDigest::new(state[..DIGEST_SIZE].try_into().unwrap())
+    }
+
     fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest {
         // initialize the state as follows:
         // - seed is copied into the first 4 elements of the state.
