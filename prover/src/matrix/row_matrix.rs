@@ -208,12 +208,13 @@ impl<E: FieldElement> RowMatrix<E> {
                 &mut row_hashes,
                 128, // min batch size
                 |batch: &mut [H::Digest], batch_offset: usize| {
+                    let mut buffer = vec![H::Digest::default(); num_partitions];
                     for (i, row_hash) in batch.iter_mut().enumerate() {
-                        *row_hash = self
-                            .row(batch_offset + i)
+                        self.row(batch_offset + i)
                             .chunks(num_elements_per_partition)
-                            .map(|chunk| H::hash_elements(chunk))
-                            .fold(H::Digest::default(), |acc, cur| H::merge(&[acc, cur]));
+                            .zip(buffer.iter_mut())
+                            .for_each(|(chunk, buf)| *buf = H::hash_elements(chunk));
+                        *row_hash = H::merge_many(&buffer);
                     }
                 }
             );

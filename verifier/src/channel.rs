@@ -200,13 +200,16 @@ where
             let number_of_base_field_elements = queries.main_states.num_columns();
             let num_elements_per_partition =
                 number_of_base_field_elements.div_ceil(self.num_partitions);
+            let mut buffer = vec![H::Digest::default(); self.num_partitions];
+
             queries
                 .main_states
                 .rows()
                 .map(|row| {
                     row.chunks(num_elements_per_partition)
-                        .map(|chunk| H::hash_elements(chunk))
-                        .fold(H::Digest::default(), |acc, cur| H::merge(&[acc, cur]))
+                        .zip(buffer.iter_mut())
+                        .for_each(|(chunk, buf)| *buf = H::hash_elements(chunk));
+                    H::merge_many(&buffer)
                 })
                 .collect()
         };
@@ -226,13 +229,15 @@ where
                 let number_of_base_field_elements = aux_states.num_columns() * E::EXTENSION_DEGREE;
                 let num_elements_per_partition =
                     number_of_base_field_elements.div_ceil(self.num_partitions);
+                let mut buffer = vec![H::Digest::default(); self.num_partitions];
 
                 aux_states
                     .rows()
                     .map(|row| {
                         row.chunks(num_elements_per_partition)
-                            .map(|chunk| H::hash_elements(chunk))
-                            .fold(H::Digest::default(), |acc, cur| H::merge(&[acc, cur]))
+                            .zip(buffer.iter_mut())
+                            .for_each(|(chunk, buf)| *buf = H::hash_elements(chunk));
+                        H::merge_many(&buffer)
                     })
                     .collect()
             };
@@ -261,17 +266,20 @@ where
         let items: Vec<H::Digest> = if self.num_partitions == 1 {
             queries.evaluations.rows().map(|row| H::hash_elements(row)).collect()
         } else {
-            let number_of_base_field_elements = queries.evaluations.num_columns();
+            let number_of_base_field_elements =
+                queries.evaluations.num_columns() * E::EXTENSION_DEGREE;
             let num_elements_per_partition =
                 number_of_base_field_elements.div_ceil(self.num_partitions);
+            let mut buffer = vec![H::Digest::default(); self.num_partitions];
 
             queries
                 .evaluations
                 .rows()
                 .map(|row| {
                     row.chunks(num_elements_per_partition)
-                        .map(|chunk| H::hash_elements(chunk))
-                        .fold(H::Digest::default(), |acc, cur| H::merge(&[acc, cur]))
+                        .zip(buffer.iter_mut())
+                        .for_each(|(chunk, buf)| *buf = H::hash_elements(chunk));
+                    H::merge_many(&buffer)
                 })
                 .collect()
         };
