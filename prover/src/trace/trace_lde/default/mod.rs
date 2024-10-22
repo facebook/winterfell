@@ -43,6 +43,7 @@ pub struct DefaultTraceLde<
     aux_segment_oracles: Option<V>,
     blowup: usize,
     trace_info: TraceInfo,
+    num_partitions: usize,
     _h: PhantomData<H>,
 }
 
@@ -77,6 +78,7 @@ where
             aux_segment_oracles: None,
             blowup: domain.trace_to_lde_blowup(),
             trace_info: trace_info.clone(),
+            num_partitions,
             _h: PhantomData,
         };
 
@@ -139,11 +141,10 @@ where
         &mut self,
         aux_trace: &ColMatrix<E>,
         domain: &StarkDomain<E::BaseField>,
-        num_partitions: usize,
     ) -> (ColMatrix<E>, H::Digest) {
         // extend the auxiliary trace segment and build a commitment to the extended trace
         let (aux_segment_lde, aux_segment_oracles, aux_segment_polys) =
-            build_trace_commitment::<E, E, H, Self::VC>(aux_trace, domain, num_partitions);
+            build_trace_commitment::<E, E, H, Self::VC>(aux_trace, domain, self.num_partitions);
 
         // check errors
         assert!(

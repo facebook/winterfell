@@ -194,25 +194,11 @@ where
         let queries = self.trace_queries.take().expect("already read");
 
         // make sure the states included in the proof correspond to the trace commitment
-        let items: Vec<H::Digest> = if self.num_partitions == 1 {
-            queries.main_states.rows().map(|row| H::hash_elements(row)).collect()
-        } else {
-            let number_of_base_field_elements = queries.main_states.num_columns();
-            let num_elements_per_partition =
-                number_of_base_field_elements.div_ceil(self.num_partitions);
-            let mut buffer = vec![H::Digest::default(); self.num_partitions];
-
-            queries
-                .main_states
-                .rows()
-                .map(|row| {
-                    row.chunks(num_elements_per_partition)
-                        .zip(buffer.iter_mut())
-                        .for_each(|(chunk, buf)| *buf = H::hash_elements(chunk));
-                    H::merge_many(&buffer)
-                })
-                .collect()
-        };
+        let items: Vec<H::Digest> = queries
+            .main_states
+            .rows()
+            .map(|row| hash_row::<H, E::BaseField>(row, self.num_partitions))
+            .collect();
 
         <V as VectorCommitment<H>>::verify_many(
             self.trace_commitments[0],
@@ -223,24 +209,10 @@ where
         .map_err(|_| VerifierError::TraceQueryDoesNotMatchCommitment)?;
 
         if let Some(ref aux_states) = queries.aux_states {
-            let items: Vec<H::Digest> = if self.num_partitions == 1 {
-                aux_states.rows().map(|row| H::hash_elements(row)).collect()
-            } else {
-                let number_of_base_field_elements = aux_states.num_columns() * E::EXTENSION_DEGREE;
-                let num_elements_per_partition =
-                    number_of_base_field_elements.div_ceil(self.num_partitions);
-                let mut buffer = vec![H::Digest::default(); self.num_partitions];
-
-                aux_states
-                    .rows()
-                    .map(|row| {
-                        row.chunks(num_elements_per_partition)
-                            .zip(buffer.iter_mut())
-                            .for_each(|(chunk, buf)| *buf = H::hash_elements(chunk));
-                        H::merge_many(&buffer)
-                    })
-                    .collect()
-            };
+            let items: Vec<H::Digest> = aux_states
+                .rows()
+                .map(|row| hash_row::<H, E>(row, self.num_partitions))
+                .collect();
 
             <V as VectorCommitment<H>>::verify_many(
                 self.trace_commitments[1],
@@ -263,26 +235,11 @@ where
     ) -> Result<Table<E>, VerifierError> {
         let queries = self.constraint_queries.take().expect("already read");
 
-        let items: Vec<H::Digest> = if self.num_partitions == 1 {
-            queries.evaluations.rows().map(|row| H::hash_elements(row)).collect()
-        } else {
-            let number_of_base_field_elements =
-                queries.evaluations.num_columns() * E::EXTENSION_DEGREE;
-            let num_elements_per_partition =
-                number_of_base_field_elements.div_ceil(self.num_partitions);
-            let mut buffer = vec![H::Digest::default(); self.num_partitions];
-
-            queries
-                .evaluations
-                .rows()
-                .map(|row| {
-                    row.chunks(num_elements_per_partition)
-                        .zip(buffer.iter_mut())
-                        .for_each(|(chunk, buf)| *buf = H::hash_elements(chunk));
-                    H::merge_many(&buffer)
-                })
-                .collect()
-        };
+        let items: Vec<H::Digest> = queries
+            .evaluations
+            .rows()
+            .map(|row| hash_row::<H, E>(row, self.num_partitions))
+            .collect();
 
         <V as VectorCommitment<H>>::verify_many(
             self.constraint_commitment,
@@ -459,5 +416,24 @@ where
             evaluations,
             _h: PhantomData,
         })
+    }
+}
+
+fn hash_row<H, E>(row: &[E], num_partitions: usize) -> H::Digest
+where
+    E: FieldElement,
+    H: ElementHasher<BaseField = E::BaseField>,
+{
+    if num_partitions == 1 {
+        H::hash_elements(row)
+    } else {
+        let number_of_base_field_elements = row.len();
+        let num_elements_per_partition = number_of_base_field_elements.div_ceil(num_partitions);
+        let mut buffer = vec![H::Digest::default(); num_partitions];
+
+        row.chunks(num_elements_per_partition)
+            .zip(buffer.iter_mut())
+            .for_each(|(chunk, buf)| *buf = H::hash_elements(chunk));
+        H::merge_many(&buffer)
     }
 }

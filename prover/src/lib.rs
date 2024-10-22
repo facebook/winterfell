@@ -309,12 +309,8 @@ pub trait Prover {
         assert_eq!(domain.trace_length(), trace_length);
 
         // commit to the main trace segment
-        let (mut trace_lde, mut trace_polys) = maybe_await!(self.commit_to_main_trace_segment(
-            &trace,
-            &domain,
-            self.options().num_partitions(),
-            &mut channel
-        ));
+        let (mut trace_lde, mut trace_polys) =
+            maybe_await!(self.commit_to_main_trace_segment(&trace, &domain, &mut channel));
 
         // build the auxiliary trace segment, and append the resulting segments to trace commitment
         // and trace polynomial table structs
@@ -346,7 +342,7 @@ pub trait Prover {
                 // extend the auxiliary trace segment and commit to the extended trace
                 let span = info_span!("commit_to_aux_trace_segment").entered();
                 let (aux_segment_polys, aux_segment_commitment) =
-                    trace_lde.set_aux_trace(&aux_trace, &domain, self.options().num_partitions());
+                    trace_lde.set_aux_trace(&aux_trace, &domain);
 
                 // commit to the LDE of the extended auxiliary trace segment by writing its
                 // commitment into the channel
@@ -581,7 +577,6 @@ pub trait Prover {
         &self,
         trace: &Self::Trace,
         domain: &StarkDomain<Self::BaseField>,
-        num_partitions: usize,
         channel: &mut ProverChannel<'_, Self::Air, E, Self::HashFn, Self::RandomCoin, Self::VC>,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>)
     where
@@ -592,7 +587,7 @@ pub trait Prover {
             trace.info(),
             trace.main_segment(),
             domain,
-            num_partitions
+            self.options().num_partitions()
         ));
 
         // get the commitment to the main trace segment LDE

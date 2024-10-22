@@ -119,9 +119,37 @@ impl ProofOptions {
     /// - `grinding_factor` is greater than 32.
     /// - `fri_folding_factor` is not 2, 4, 8, or 16.
     /// - `fri_remainder_max_degree` is greater than 255 or is not a power of two minus 1.
-    /// - `num_partitions` is zero or greater than 64.
-    #[rustfmt::skip]
     pub const fn new(
+        num_queries: usize,
+        blowup_factor: usize,
+        grinding_factor: u32,
+        field_extension: FieldExtension,
+        fri_folding_factor: usize,
+        fri_remainder_max_degree: usize,
+    ) -> ProofOptions {
+        Self::with_num_partitions(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor,
+            fri_remainder_max_degree,
+            1,
+        )
+    }
+
+    /// Returns a new instance of [ProofOptions] struct constructed from the specified parameters.
+    ///
+    /// # Panics
+    /// Panics if:
+    /// - `num_queries` is zero or greater than 255.
+    /// - `blowup_factor` is smaller than 2, greater than 128, or is not a power of two.
+    /// - `grinding_factor` is greater than 32.
+    /// - `fri_folding_factor` is not 2, 4, 8, or 16.
+    /// - `fri_remainder_max_degree` is greater than 255 or is not a power of two minus 1.
+    /// - `num_partitions` is zero or greater than 16.
+    #[rustfmt::skip]
+    pub const fn with_num_partitions(
         num_queries: usize,
         blowup_factor: usize,
         grinding_factor: u32,
@@ -154,7 +182,7 @@ impl ProofOptions {
         );
 
         assert!(num_partitions > 0, "number of partitions must be greater than 0");
-        assert!(num_partitions <= 64, "number of partitions must be less than 64");
+        assert!(num_partitions <= 16, "number of partitions must be less than 16");
 
         ProofOptions {
             num_queries: num_queries as u8,
@@ -266,7 +294,7 @@ impl Deserializable for ProofOptions {
     /// # Errors
     /// Returns an error of a valid proof options could not be read from the specified `source`.
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        Ok(ProofOptions::new(
+        Ok(ProofOptions::with_num_partitions(
             source.read_u8()? as usize,
             source.read_u8()? as usize,
             source.read_u8()? as u32,
@@ -343,7 +371,6 @@ mod tests {
         let grinding_factor = 20;
         let blowup_factor = 8;
         let num_queries = 30;
-        let num_partitions = 1;
 
         let ext_fri = u32::from_le_bytes([
             fri_remainder_max_degree,
@@ -365,7 +392,6 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
-            num_partitions as usize,
         );
         assert_eq!(expected, options.to_elements());
     }

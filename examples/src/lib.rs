@@ -99,7 +99,6 @@ impl ExampleOptions {
                 field_extension,
                 self.folding_factor,
                 31,
-                1,
             ),
             hash_fn,
         )

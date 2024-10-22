@@ -548,7 +548,6 @@
 //!     FieldExtension::None,
 //!     8,  // FRI folding factor
 //!     31, // FRI max remainder polynomial degree
-//!     1,  // Number of partitions when committing to the traces
 //! );
 //!
 //! // Instantiate the prover and generate the proof.
