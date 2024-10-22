@@ -4,9 +4,10 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::vec::Vec;
+use core::{cmp, ops::Div};
 
 use fri::FriOptions;
-use math::{StarkField, ToElements};
+use math::{FieldElement, StarkField, ToElements};
 use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 // CONSTANTS
@@ -93,6 +94,7 @@ pub struct ProofOptions {
     fri_folding_factor: u8,
     fri_remainder_max_degree: u8,
     num_partitions: u8,
+    min_partition_size: u8,
 }
 
 // PROOF OPTIONS IMPLEMENTATION
@@ -135,6 +137,7 @@ impl ProofOptions {
             fri_folding_factor,
             fri_remainder_max_degree,
             1,
+            1,
         )
     }
 
@@ -157,6 +160,7 @@ impl ProofOptions {
         fri_folding_factor: usize,
         fri_remainder_max_degree: usize,
         num_partitions: usize,
+        min_partition_size: usize,
     ) -> ProofOptions {
         // TODO: return errors instead of panicking
         assert!(num_queries > 0, "number of queries must be greater than 0");
@@ -192,6 +196,8 @@ impl ProofOptions {
             fri_folding_factor: fri_folding_factor as u8,
             fri_remainder_max_degree: fri_remainder_max_degree as u8,
             num_partitions: num_partitions as u8,
+            min_partition_size: min_partition_size as u8,
+            
         }
     }
 
@@ -252,10 +258,15 @@ impl ProofOptions {
         FriOptions::new(self.blowup_factor(), folding_factor, remainder_max_degree)
     }
 
-    /// Returns the number of partitions used when committing to the main and auxiliary traces as
+    /// Returns the size of each partition used when committing to the main and auxiliary traces as
     /// well as the constraint evaluation trace.
-    pub fn num_partitions(&self) -> usize {
-        self.num_partitions as usize
+    pub fn partition_size<E: FieldElement>(&self, num_columns: usize) -> usize {
+        let base_elements_per_partition = cmp::max(
+            (num_columns * E::EXTENSION_DEGREE).div_ceil(self.num_partitions as usize),
+            self.min_partition_size as usize,
+        );
+
+        base_elements_per_partition.div(E::EXTENSION_DEGREE)
     }
 }
 
@@ -285,6 +296,7 @@ impl Serializable for ProofOptions {
         target.write_u8(self.fri_folding_factor);
         target.write_u8(self.fri_remainder_max_degree);
         target.write_u8(self.num_partitions);
+        target.write_u8(self.min_partition_size);
     }
 }
 
@@ -299,6 +311,7 @@ impl Deserializable for ProofOptions {
             source.read_u8()? as usize,
             source.read_u8()? as u32,
             FieldExtension::read_from(source)?,
+            source.read_u8()? as usize,
             source.read_u8()? as usize,
             source.read_u8()? as usize,
             source.read_u8()? as usize,

@@ -180,7 +180,7 @@ impl<E: FieldElement> RowMatrix<E> {
     /// * A vector commitment is computed for the resulting vector using the specified vector
     ///   commitment scheme.
     /// * The resulting vector commitment is returned as the commitment to the entire matrix.
-    pub fn commit_to_rows<H, V>(&self, num_partitions: usize) -> V
+    pub fn commit_to_rows<H, V>(&self, partition_size: usize) -> V
     where
         H: ElementHasher<BaseField = E::BaseField>,
         V: VectorCommitment<H>,
@@ -188,7 +188,7 @@ impl<E: FieldElement> RowMatrix<E> {
         // allocate vector to store row hashes
         let mut row_hashes = unsafe { uninit_vector::<H::Digest>(self.num_rows()) };
 
-        if num_partitions == 1 {
+        if partition_size == self.num_cols() * E::EXTENSION_DEGREE {
             // iterate though matrix rows, hashing each row
             batch_iter_mut!(
                 &mut row_hashes,
@@ -200,18 +200,15 @@ impl<E: FieldElement> RowMatrix<E> {
                 }
             );
         } else {
-            let number_of_base_field_elements = self.num_cols() * E::EXTENSION_DEGREE;
-            let num_elements_per_partition = number_of_base_field_elements.div_ceil(num_partitions);
-
             // iterate though matrix rows, hashing each row
             batch_iter_mut!(
                 &mut row_hashes,
                 128, // min batch size
                 |batch: &mut [H::Digest], batch_offset: usize| {
-                    let mut buffer = vec![H::Digest::default(); num_partitions];
+                    let mut buffer = vec![H::Digest::default(); partition_size];
                     for (i, row_hash) in batch.iter_mut().enumerate() {
                         self.row(batch_offset + i)
-                            .chunks(num_elements_per_partition)
+                            .chunks(partition_size)
                             .zip(buffer.iter_mut())
                             .for_each(|(chunk, buf)| *buf = H::hash_elements(chunk));
                         *row_hash = H::merge_many(&buffer);

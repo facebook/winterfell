@@ -82,7 +82,7 @@ fn commit_trace_table() {
         trace.info(),
         trace.main_segment(),
         &domain,
-        1,
+        trace.info().main_trace_width(),
     );
 
     // build commitment, using a Merkle tree, to the trace rows

@@ -35,7 +35,9 @@ pub struct VerifierChannel<
     // constraint queries
     constraint_commitment: H::Digest,
     constraint_queries: Option<ConstraintQueries<E, H, V>>,
-    num_partitions: usize,
+    partition_size_main: usize,
+    partition_size_aux: usize,
+    partition_size_constraint: usize,
     // FRI proof
     fri_commitments: Option<Vec<H::Digest>>,
     fri_layer_proofs: Vec<V::MultiProof>,
@@ -123,7 +125,15 @@ where
             constraint_commitment,
             constraint_queries: Some(constraint_queries),
             // num partitions used in commitment
-            num_partitions: air.options().num_partitions(),
+            partition_size_main: air
+                .options()
+                .partition_size::<E::BaseField>(air.context().trace_info().main_trace_width()),
+            partition_size_aux: air
+                .options()
+                .partition_size::<E>(air.context().trace_info().aux_segment_width()),
+            partition_size_constraint: air
+                .options()
+                .partition_size::<E>(air.context().num_constraint_composition_columns()),
             // FRI proof
             fri_commitments: Some(fri_commitments),
             fri_layer_proofs,
@@ -197,7 +207,7 @@ where
         let items: Vec<H::Digest> = queries
             .main_states
             .rows()
-            .map(|row| hash_row::<H, E::BaseField>(row, self.num_partitions))
+            .map(|row| hash_row::<H, E::BaseField>(row, self.partition_size_main))
             .collect();
 
         <V as VectorCommitment<H>>::verify_many(
@@ -211,7 +221,7 @@ where
         if let Some(ref aux_states) = queries.aux_states {
             let items: Vec<H::Digest> = aux_states
                 .rows()
-                .map(|row| hash_row::<H, E>(row, self.num_partitions))
+                .map(|row| hash_row::<H, E>(row, self.partition_size_aux))
                 .collect();
 
             <V as VectorCommitment<H>>::verify_many(
@@ -238,7 +248,7 @@ where
         let items: Vec<H::Digest> = queries
             .evaluations
             .rows()
-            .map(|row| hash_row::<H, E>(row, self.num_partitions))
+            .map(|row| hash_row::<H, E>(row, self.partition_size_constraint))
             .collect();
 
         <V as VectorCommitment<H>>::verify_many(
@@ -419,19 +429,21 @@ where
     }
 }
 
-fn hash_row<H, E>(row: &[E], num_partitions: usize) -> H::Digest
+// HELPER
+// ================================================================================================
+
+/// Hashes a row of a trace in batches where each batch is of size at most `partition_size`.
+fn hash_row<H, E>(row: &[E], partition_size: usize) -> H::Digest
 where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
 {
-    if num_partitions == 1 {
+    if partition_size == row.len() * E::EXTENSION_DEGREE {
         H::hash_elements(row)
     } else {
-        let number_of_base_field_elements = row.len();
-        let num_elements_per_partition = number_of_base_field_elements.div_ceil(num_partitions);
-        let mut buffer = vec![H::Digest::default(); num_partitions];
+        let mut buffer = vec![H::Digest::default(); partition_size];
 
-        row.chunks(num_elements_per_partition)
+        row.chunks(partition_size)
             .zip(buffer.iter_mut())
             .for_each(|(chunk, buf)| *buf = H::hash_elements(chunk));
         H::merge_many(&buffer)

@@ -43,7 +43,6 @@ pub struct DefaultTraceLde<
     aux_segment_oracles: Option<V>,
     blowup: usize,
     trace_info: TraceInfo,
-    num_partitions: usize,
     _h: PhantomData<H>,
 }
 
@@ -64,11 +63,11 @@ where
         trace_info: &TraceInfo,
         main_trace: &ColMatrix<E::BaseField>,
         domain: &StarkDomain<E::BaseField>,
-        num_partitions: usize,
+        partition_size: usize,
     ) -> (Self, TracePolyTable<E>) {
         // extend the main execution trace and build a commitment to the extended trace
         let (main_segment_lde, main_segment_vector_com, main_segment_polys) =
-            build_trace_commitment::<E, E::BaseField, H, V>(main_trace, domain, num_partitions);
+            build_trace_commitment::<E, E::BaseField, H, V>(main_trace, domain, partition_size);
 
         let trace_poly_table = TracePolyTable::new(main_segment_polys);
         let trace_lde = DefaultTraceLde {
@@ -78,7 +77,6 @@ where
             aux_segment_oracles: None,
             blowup: domain.trace_to_lde_blowup(),
             trace_info: trace_info.clone(),
-            num_partitions,
             _h: PhantomData,
         };
 
@@ -141,10 +139,11 @@ where
         &mut self,
         aux_trace: &ColMatrix<E>,
         domain: &StarkDomain<E::BaseField>,
+        partition_size: usize,
     ) -> (ColMatrix<E>, H::Digest) {
         // extend the auxiliary trace segment and build a commitment to the extended trace
         let (aux_segment_lde, aux_segment_oracles, aux_segment_polys) =
-            build_trace_commitment::<E, E, H, Self::VC>(aux_trace, domain, self.num_partitions);
+            build_trace_commitment::<E, E, H, Self::VC>(aux_trace, domain, partition_size);
 
         // check errors
         assert!(
@@ -268,7 +267,7 @@ where
 fn build_trace_commitment<E, F, H, V>(
     trace: &ColMatrix<F>,
     domain: &StarkDomain<E::BaseField>,
-    num_partitions: usize,
+    partition_size: usize,
 ) -> (RowMatrix<F>, V, ColMatrix<F>)
 where
     E: FieldElement,
@@ -298,7 +297,7 @@ where
     // build trace commitment
     let commitment_domain_size = trace_lde.num_rows();
     let trace_vector_com = info_span!("compute_execution_trace_commitment", commitment_domain_size)
-        .in_scope(|| trace_lde.commit_to_rows::<H, V>(num_partitions));
+        .in_scope(|| trace_lde.commit_to_rows::<H, V>(partition_size));
     assert_eq!(trace_vector_com.domain_len(), commitment_domain_size);
 
     (trace_lde, trace_vector_com, trace_polys)

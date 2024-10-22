@@ -341,8 +341,11 @@ pub trait Prover {
             let aux_segment_polys = {
                 // extend the auxiliary trace segment and commit to the extended trace
                 let span = info_span!("commit_to_aux_trace_segment").entered();
-                let (aux_segment_polys, aux_segment_commitment) =
-                    trace_lde.set_aux_trace(&aux_trace, &domain);
+                let (aux_segment_polys, aux_segment_commitment) = trace_lde.set_aux_trace(
+                    &aux_trace,
+                    &domain,
+                    self.options().partition_size::<E>(trace.aux_trace_width()),
+                );
 
                 // commit to the LDE of the extended auxiliary trace segment by writing its
                 // commitment into the channel
@@ -391,13 +394,7 @@ pub trait Prover {
 
         // 3 ----- commit to constraint evaluations -----------------------------------------------
         let (constraint_commitment, composition_poly) = maybe_await!(self
-            .commit_to_constraint_evaluations(
-                &air,
-                composition_poly_trace,
-                &domain,
-                self.options().num_partitions(),
-                &mut channel
-            ));
+            .commit_to_constraint_evaluations(&air, composition_poly_trace, &domain, &mut channel));
 
         // 4 ----- build DEEP composition polynomial ----------------------------------------------
         let deep_composition_poly = {
@@ -529,7 +526,7 @@ pub trait Prover {
         composition_poly_trace: CompositionPolyTrace<E>,
         num_constraint_composition_columns: usize,
         domain: &StarkDomain<Self::BaseField>,
-        num_partitions: usize,
+        partition_size: usize,
     ) -> (ConstraintCommitment<E, Self::HashFn, Self::VC>, CompositionPoly<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
@@ -563,7 +560,7 @@ pub trait Prover {
         )
         .in_scope(|| {
             let commitment =
-                composed_evaluations.commit_to_rows::<Self::HashFn, Self::VC>(num_partitions);
+                composed_evaluations.commit_to_rows::<Self::HashFn, Self::VC>(partition_size);
             ConstraintCommitment::new(composed_evaluations, commitment)
         });
 
@@ -587,7 +584,7 @@ pub trait Prover {
             trace.info(),
             trace.main_segment(),
             domain,
-            self.options().num_partitions()
+            self.options().partition_size::<E::BaseField>(trace.main_trace_width()),
         ));
 
         // get the commitment to the main trace segment LDE
@@ -608,7 +605,6 @@ pub trait Prover {
         air: &Self::Air,
         composition_poly_trace: CompositionPolyTrace<E>,
         domain: &StarkDomain<Self::BaseField>,
-        num_partitions: usize,
         channel: &mut ProverChannel<'_, Self::Air, E, Self::HashFn, Self::RandomCoin, Self::VC>,
     ) -> (ConstraintCommitment<E, Self::HashFn, Self::VC>, CompositionPoly<E>)
     where
@@ -621,7 +617,8 @@ pub trait Prover {
                 composition_poly_trace,
                 air.context().num_constraint_composition_columns(),
                 domain,
-                num_partitions,
+                self.options()
+                    .partition_size::<E>(air.context().num_constraint_composition_columns()),
             ));
 
         // then, commit to the evaluations of constraints by writing the commitment string of
