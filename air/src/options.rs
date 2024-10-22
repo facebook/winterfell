@@ -174,16 +174,12 @@ impl ProofOptions {
         }
     }
 
-    /// Returns a new instance of [ProofOptions] struct constructed from the specified parameters.
+    /// Updates the provided [ProofOptions] instance with the specified partition parameters.
     ///
     /// # Panics
     /// Panics if:
-    /// - `num_queries` is zero or greater than 255.
-    /// - `blowup_factor` is smaller than 2, greater than 128, or is not a power of two.
-    /// - `grinding_factor` is greater than 32.
-    /// - `fri_folding_factor` is not 2, 4, 8, or 16.
-    /// - `fri_remainder_max_degree` is greater than 255 or is not a power of two minus 1.
     /// - `num_partitions` is zero or greater than 16.
+    /// - `min_partition_size` is zero or greater than 256.
     pub const fn with_partitions(
         mut self,
         num_partitions: usize,
