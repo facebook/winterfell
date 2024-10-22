@@ -33,5 +33,5 @@ fn build_options(use_extension_field: bool) -> ProofOptions {
     } else {
         FieldExtension::None
     };
-    ProofOptions::with_num_partitions(28, 8, 0, extension, 4, 31, 7)
+    ProofOptions::new(28, 8, 0, extension, 4, 31)
 }
