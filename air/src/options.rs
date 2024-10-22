@@ -77,12 +77,13 @@ pub enum FieldExtension {
 /// with 128-bit collision resistance is used, soundness of a STARK proof cannot exceed 128 bits.
 ///
 /// In addition to the above, the parameter `num_partitions` is used in order to specify the number
-/// of partitions each of the traces committed to during proof generation is split into.
+/// of partitions each of the traces committed to during proof generation is split into, and
+/// the parameter `min_partition_size` gives a lower bound on the size of each such partition.
 /// More precisely, and taking the main segment trace as an example, the prover will split the main
-/// segment trace into `num_partitions` parts. The prover will then proceed to hash each part row-wise
-/// resulting in `num_partitions` digests per row of the trace. The prover finally combines
-/// the `num_partitions` digest (per row) into one digest (per row) and at this point the vector
-/// commitment scheme can be called.
+/// segment trace into `num_partitions` parts each of size at least `min_partition_size`. The prover
+/// will then proceed to hash each part row-wise resulting in `num_partitions` digests per row of
+/// the trace. The prover finally combines the `num_partitions` digest (per row) into one digest
+/// (per row) and at this point the vector commitment scheme can be called.
 /// In the case when `num_partitions` is equal to `1` the prover will just hash each row in one go
 /// producing one digest per row of the trace.
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -129,16 +130,48 @@ impl ProofOptions {
         fri_folding_factor: usize,
         fri_remainder_max_degree: usize,
     ) -> ProofOptions {
-        Self::with_num_partitions(
-            num_queries,
-            blowup_factor,
-            grinding_factor,
+        // TODO: return errors instead of panicking
+        assert!(num_queries > 0, "number of queries must be greater than 0");
+        assert!(num_queries <= MAX_NUM_QUERIES, "number of queries cannot be greater than 255");
+
+        assert!(blowup_factor.is_power_of_two(), "blowup factor must be a power of 2");
+        assert!(blowup_factor >= MIN_BLOWUP_FACTOR, "blowup factor cannot be smaller than 2");
+        assert!(blowup_factor <= MAX_BLOWUP_FACTOR, "blowup factor cannot be greater than 128");
+
+        assert!(
+            grinding_factor <= MAX_GRINDING_FACTOR,
+            "grinding factor cannot be greater than 32"
+        );
+
+        assert!(fri_folding_factor.is_power_of_two(), "FRI folding factor must be a power of 2");
+        assert!(
+            fri_folding_factor >= FRI_MIN_FOLDING_FACTOR,
+            "FRI folding factor cannot be smaller than 2"
+        );
+        assert!(
+            fri_folding_factor <= FRI_MAX_FOLDING_FACTOR,
+            "FRI folding factor cannot be greater than 16"
+        );
+
+        assert!(
+            (fri_remainder_max_degree + 1).is_power_of_two(),
+            "FRI polynomial remainder degree must be one less than a power of two"
+        );
+        assert!(
+            fri_remainder_max_degree <= FRI_MAX_REMAINDER_DEGREE,
+            "FRI polynomial remainder degree cannot be greater than 255"
+        );
+
+        Self {
+            num_queries: num_queries as u8,
+            blowup_factor: blowup_factor as u8,
+            grinding_factor: grinding_factor as u8,
             field_extension,
-            fri_folding_factor,
-            fri_remainder_max_degree,
-            1,
-            1,
-        )
+            fri_folding_factor: fri_folding_factor as u8,
+            fri_remainder_max_degree: fri_remainder_max_degree as u8,
+            num_partitions: 1,
+            min_partition_size: 1,
+        }
     }
 
     /// Returns a new instance of [ProofOptions] struct constructed from the specified parameters.
@@ -151,54 +184,27 @@ impl ProofOptions {
     /// - `fri_folding_factor` is not 2, 4, 8, or 16.
     /// - `fri_remainder_max_degree` is greater than 255 or is not a power of two minus 1.
     /// - `num_partitions` is zero or greater than 16.
-    #[rustfmt::skip]
-    #[allow(clippy::too_many_arguments)]
-    pub const fn with_num_partitions(
-        num_queries: usize,
-        blowup_factor: usize,
-        grinding_factor: u32,
-        field_extension: FieldExtension,
-        fri_folding_factor: usize,
-        fri_remainder_max_degree: usize,
+    pub const fn with_partitions(
+        mut self,
         num_partitions: usize,
         min_partition_size: usize,
     ) -> ProofOptions {
-        // TODO: return errors instead of panicking
-        assert!(num_queries > 0, "number of queries must be greater than 0");
-        assert!(num_queries <= MAX_NUM_QUERIES, "number of queries cannot be greater than 255");
-
-        assert!(blowup_factor.is_power_of_two(), "blowup factor must be a power of 2");
-        assert!(blowup_factor >= MIN_BLOWUP_FACTOR, "blowup factor cannot be smaller than 2");
-        assert!(blowup_factor <= MAX_BLOWUP_FACTOR, "blowup factor cannot be greater than 128");
-
-        assert!(grinding_factor <= MAX_GRINDING_FACTOR, "grinding factor cannot be greater than 32");
-
-        assert!(fri_folding_factor.is_power_of_two(), "FRI folding factor must be a power of 2");
-        assert!(fri_folding_factor >= FRI_MIN_FOLDING_FACTOR, "FRI folding factor cannot be smaller than 2");
-        assert!(fri_folding_factor <= FRI_MAX_FOLDING_FACTOR, "FRI folding factor cannot be greater than 16");
+        assert!(num_partitions >= 1, "number of partitions must be greater than or eqaul to 1");
+        assert!(num_partitions <= 16, "number of partitions must be smaller than or equal to 16");
 
         assert!(
-            (fri_remainder_max_degree + 1).is_power_of_two(),
-            "FRI polynomial remainder degree must be one less than a power of two"
+            min_partition_size >= 1,
+            "smallest partition size must be greater than or equal to 1"
         );
         assert!(
-            fri_remainder_max_degree <= FRI_MAX_REMAINDER_DEGREE,
-            "FRI polynomial remainder degree cannot be greater than 255"
+            min_partition_size <= 256,
+            "smallest partition size must be smaller than or equal to 256"
         );
 
-        assert!(num_partitions > 0, "number of partitions must be greater than 0");
-        assert!(num_partitions <= 16, "number of partitions must be less than 16");
+        self.num_partitions = num_partitions as u8;
+        self.min_partition_size = min_partition_size as u8;
 
-        ProofOptions {
-            num_queries: num_queries as u8,
-            blowup_factor: blowup_factor as u8,
-            grinding_factor: grinding_factor as u8,
-            field_extension,
-            fri_folding_factor: fri_folding_factor as u8,
-            fri_remainder_max_degree: fri_remainder_max_degree as u8,
-            num_partitions: num_partitions as u8,
-            min_partition_size: min_partition_size as u8,
-        }
+        self
     }
 
     // PUBLIC ACCESSORS
@@ -306,16 +312,15 @@ impl Deserializable for ProofOptions {
     /// # Errors
     /// Returns an error of a valid proof options could not be read from the specified `source`.
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        Ok(ProofOptions::with_num_partitions(
+        let result = ProofOptions::new(
             source.read_u8()? as usize,
             source.read_u8()? as usize,
             source.read_u8()? as u32,
             FieldExtension::read_from(source)?,
             source.read_u8()? as usize,
             source.read_u8()? as usize,
-            source.read_u8()? as usize,
-            source.read_u8()? as usize,
-        ))
+        );
+        Ok(result.with_partitions(source.read_u8()? as usize, source.read_u8()? as usize))
     }
 }
 

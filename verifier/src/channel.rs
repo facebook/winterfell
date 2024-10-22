@@ -35,6 +35,7 @@ pub struct VerifierChannel<
     // constraint queries
     constraint_commitment: H::Digest,
     constraint_queries: Option<ConstraintQueries<E, H, V>>,
+    // partition sizes for the rows of main, auxiliary and constraint traces rows
     partition_size_main: usize,
     partition_size_aux: usize,
     partition_size_constraint: usize,
