@@ -152,6 +152,7 @@ impl ProofOptions {
     /// - `fri_remainder_max_degree` is greater than 255 or is not a power of two minus 1.
     /// - `num_partitions` is zero or greater than 16.
     #[rustfmt::skip]
+    #[allow(clippy::too_many_arguments)]
     pub const fn with_num_partitions(
         num_queries: usize,
         blowup_factor: usize,
@@ -197,7 +198,6 @@ impl ProofOptions {
             fri_remainder_max_degree: fri_remainder_max_degree as u8,
             num_partitions: num_partitions as u8,
             min_partition_size: min_partition_size as u8,
-            
         }
     }
 
