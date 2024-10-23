@@ -49,7 +49,6 @@ pub trait TraceLde<E: FieldElement>: Sync {
         &mut self,
         aux_trace: &ColMatrix<E>,
         domain: &StarkDomain<E::BaseField>,
-        partition_size: usize,
     ) -> (ColMatrix<E>, <Self::HashFn as Hasher>::Digest);
 
     /// Reads current and next rows from the main trace segment into the specified frame.

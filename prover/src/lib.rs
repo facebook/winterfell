@@ -48,7 +48,7 @@ pub use air::{
     EvaluationFrame, FieldExtension, LagrangeKernelRandElements, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
-use air::{AuxRandElements, GkrRandElements};
+use air::{AuxRandElements, GkrRandElements, PartitionOption};
 pub use crypto;
 use crypto::{ElementHasher, RandomCoin, VectorCommitment};
 use fri::FriProver;
@@ -182,7 +182,7 @@ pub trait Prover {
         trace_info: &TraceInfo,
         main_trace: &ColMatrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
-        partition_size: usize,
+        partition_option: PartitionOption,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>;
@@ -341,11 +341,8 @@ pub trait Prover {
             let aux_segment_polys = {
                 // extend the auxiliary trace segment and commit to the extended trace
                 let span = info_span!("commit_to_aux_trace_segment").entered();
-                let (aux_segment_polys, aux_segment_commitment) = trace_lde.set_aux_trace(
-                    &aux_trace,
-                    &domain,
-                    self.options().partition_size::<E>(trace.aux_trace_width()),
-                );
+                let (aux_segment_polys, aux_segment_commitment) =
+                    trace_lde.set_aux_trace(&aux_trace, &domain);
 
                 // commit to the LDE of the extended auxiliary trace segment by writing its
                 // commitment into the channel
@@ -584,7 +581,7 @@ pub trait Prover {
             trace.info(),
             trace.main_segment(),
             domain,
-            self.options().partition_size::<E::BaseField>(trace.main_trace_width()),
+            self.options().get_partition_option(),
         ));
 
         // get the commitment to the main trace segment LDE
@@ -618,6 +615,7 @@ pub trait Prover {
                 air.context().num_constraint_composition_columns(),
                 domain,
                 self.options()
+                    .get_partition_option()
                     .partition_size::<E>(air.context().num_constraint_composition_columns()),
             ));
 

@@ -234,12 +234,12 @@ impl Prover for LagrangeComplexProver {
         trace_info: &TraceInfo,
         main_trace: &ColMatrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
-        num_partitions: usize,
+        partition_option: PartitionOption,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>)
     where
         E: math::FieldElement<BaseField = Self::BaseField>,
     {
-        DefaultTraceLde::new(trace_info, main_trace, domain, num_partitions)
+        DefaultTraceLde::new(trace_info, main_trace, domain, partition_option)
     }
 
     fn new_evaluator<'a, E>(

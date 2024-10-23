@@ -260,15 +260,12 @@ impl ProofOptions {
         FriOptions::new(self.blowup_factor(), folding_factor, remainder_max_degree)
     }
 
-    /// Returns the size of each partition used when committing to the main and auxiliary traces as
-    /// well as the constraint evaluation trace.
-    pub fn partition_size<E: FieldElement>(&self, num_columns: usize) -> usize {
-        let base_elements_per_partition = cmp::max(
-            (num_columns * E::EXTENSION_DEGREE).div_ceil(self.num_partitions as usize),
-            self.min_partition_size as usize,
-        );
-
-        base_elements_per_partition.div(E::EXTENSION_DEGREE)
+    /// Returns the `[PartitionOption]` used in this instance of proof options.
+    pub fn get_partition_option(&self) -> PartitionOption {
+        PartitionOption {
+            num_partitions: self.num_partitions,
+            min_partition_size: self.min_partition_size,
+        }
     }
 }
 
@@ -339,9 +336,6 @@ impl FieldExtension {
     }
 }
 
-// SERIALIZATION
-// ================================================================================================
-
 impl Serializable for FieldExtension {
     /// Serializes `self` and writes the resulting bytes into the `target`.
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
@@ -365,6 +359,42 @@ impl Deserializable for FieldExtension {
                 "value {value} cannot be deserialized as FieldExtension enum"
             ))),
         }
+    }
+}
+
+// PARTITION OPTION IMPLEMENTATION
+// ================================================================================================
+
+/// Defines the parameters used when committing to the traces generated during the protocol.
+pub struct PartitionOption {
+    num_partitions: u8,
+    min_partition_size: u8,
+}
+
+impl PartitionOption {
+    /// Returns a new instance of `[PartitionOption]`.
+    pub fn new(num_partitions: usize, min_partition_size: usize) -> Self {
+        Self {
+            num_partitions: num_partitions as u8,
+            min_partition_size: min_partition_size as u8,
+        }
+    }
+
+    /// Returns the size of each partition used when committing to the main and auxiliary traces as
+    /// well as the constraint evaluation trace.
+    pub fn partition_size<E: FieldElement>(&self, num_columns: usize) -> usize {
+        let base_elements_per_partition = cmp::max(
+            (num_columns * E::EXTENSION_DEGREE).div_ceil(self.num_partitions as usize),
+            self.min_partition_size as usize,
+        );
+
+        base_elements_per_partition.div(E::EXTENSION_DEGREE)
+    }
+}
+
+impl Default for PartitionOption {
+    fn default() -> Self {
+        Self { num_partitions: 1, min_partition_size: 1 }
     }
 }
 

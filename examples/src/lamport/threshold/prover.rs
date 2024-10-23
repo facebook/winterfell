@@ -9,8 +9,8 @@ use std::collections::HashMap;
 use winterfell::iterators::*;
 use winterfell::{
     crypto::MerkleTree, matrix::ColMatrix, AuxRandElements, ConstraintCompositionCoefficients,
-    DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, TraceInfo, TracePolyTable,
-    TraceTable,
+    DefaultConstraintEvaluator, DefaultTraceLde, PartitionOption, StarkDomain, TraceInfo,
+    TracePolyTable, TraceTable,
 };
 
 use super::{
@@ -163,9 +163,9 @@ where
         trace_info: &TraceInfo,
         main_trace: &ColMatrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
-        num_partitions: usize,
+        partition_option: PartitionOption,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
-        DefaultTraceLde::new(trace_info, main_trace, domain, num_partitions)
+        DefaultTraceLde::new(trace_info, main_trace, domain, partition_option)
     }
 
     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(

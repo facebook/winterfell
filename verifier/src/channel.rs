@@ -128,12 +128,15 @@ where
             // num partitions used in commitment
             partition_size_main: air
                 .options()
+                .get_partition_option()
                 .partition_size::<E::BaseField>(air.context().trace_info().main_trace_width()),
             partition_size_aux: air
                 .options()
+                .get_partition_option()
                 .partition_size::<E>(air.context().trace_info().aux_segment_width()),
             partition_size_constraint: air
                 .options()
+                .get_partition_option()
                 .partition_size::<E>(air.context().num_constraint_composition_columns()),
             // FRI proof
             fri_commitments: Some(fri_commitments),

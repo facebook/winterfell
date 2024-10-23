@@ -6,7 +6,7 @@
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
-use air::{proof::Queries, LagrangeKernelEvaluationFrame, TraceInfo};
+use air::{proof::Queries, LagrangeKernelEvaluationFrame, PartitionOption, TraceInfo};
 use crypto::VectorCommitment;
 use tracing::info_span;
 
@@ -43,6 +43,7 @@ pub struct DefaultTraceLde<
     aux_segment_oracles: Option<V>,
     blowup: usize,
     trace_info: TraceInfo,
+    partition_option: PartitionOption,
     _h: PhantomData<H>,
 }
 
@@ -63,11 +64,15 @@ where
         trace_info: &TraceInfo,
         main_trace: &ColMatrix<E::BaseField>,
         domain: &StarkDomain<E::BaseField>,
-        partition_size: usize,
+        partition_option: PartitionOption,
     ) -> (Self, TracePolyTable<E>) {
         // extend the main execution trace and build a commitment to the extended trace
         let (main_segment_lde, main_segment_vector_com, main_segment_polys) =
-            build_trace_commitment::<E, E::BaseField, H, V>(main_trace, domain, partition_size);
+            build_trace_commitment::<E, E::BaseField, H, V>(
+                main_trace,
+                domain,
+                partition_option.partition_size::<E::BaseField>(main_trace.num_cols()),
+            );
 
         let trace_poly_table = TracePolyTable::new(main_segment_polys);
         let trace_lde = DefaultTraceLde {
@@ -77,6 +82,7 @@ where
             aux_segment_oracles: None,
             blowup: domain.trace_to_lde_blowup(),
             trace_info: trace_info.clone(),
+            partition_option,
             _h: PhantomData,
         };
 
@@ -139,11 +145,14 @@ where
         &mut self,
         aux_trace: &ColMatrix<E>,
         domain: &StarkDomain<E::BaseField>,
-        partition_size: usize,
     ) -> (ColMatrix<E>, H::Digest) {
         // extend the auxiliary trace segment and build a commitment to the extended trace
         let (aux_segment_lde, aux_segment_oracles, aux_segment_polys) =
-            build_trace_commitment::<E, E, H, Self::VC>(aux_trace, domain, partition_size);
+            build_trace_commitment::<E, E, H, Self::VC>(
+                aux_trace,
+                domain,
+                self.partition_option.partition_size::<E>(aux_trace.num_cols()),
+            );
 
         // check errors
         assert!(
