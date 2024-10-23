@@ -89,6 +89,7 @@ where
         let aux_trace_width = air.trace_info().aux_segment_width();
         let lde_domain_size = air.lde_domain_size();
         let fri_options = air.options().to_fri_options();
+        let partition_options = air.options().partition_options();
 
         // --- parse commitments ------------------------------------------------------------------
         let (trace_commitments, constraint_commitment, fri_commitments) = commitments
@@ -118,6 +119,14 @@ where
             .parse(main_trace_width, aux_trace_width, constraint_frame_width)
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
+        // --- compute the partition size for each trace ------------------------------------------
+        let partition_size_main = partition_options
+            .partition_size::<E::BaseField>(air.context().trace_info().main_trace_width());
+        let partition_size_aux =
+            partition_options.partition_size::<E>(air.context().trace_info().aux_segment_width());
+        let partition_size_constraint = partition_options
+            .partition_size::<E>(air.context().num_constraint_composition_columns());
+
         Ok(VerifierChannel {
             // trace queries
             trace_commitments,
@@ -126,18 +135,9 @@ where
             constraint_commitment,
             constraint_queries: Some(constraint_queries),
             // num partitions used in commitment
-            partition_size_main: air
-                .options()
-                .get_partition_option()
-                .partition_size::<E::BaseField>(air.context().trace_info().main_trace_width()),
-            partition_size_aux: air
-                .options()
-                .get_partition_option()
-                .partition_size::<E>(air.context().trace_info().aux_segment_width()),
-            partition_size_constraint: air
-                .options()
-                .get_partition_option()
-                .partition_size::<E>(air.context().num_constraint_composition_columns()),
+            partition_size_main,
+            partition_size_aux,
+            partition_size_constraint,
             // FRI proof
             fri_commitments: Some(fri_commitments),
             fri_layer_proofs,

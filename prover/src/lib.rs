@@ -48,7 +48,7 @@ pub use air::{
     EvaluationFrame, FieldExtension, LagrangeKernelRandElements, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
-use air::{AuxRandElements, GkrRandElements, PartitionOption};
+use air::{AuxRandElements, GkrRandElements, PartitionOptions};
 pub use crypto;
 use crypto::{ElementHasher, RandomCoin, VectorCommitment};
 use fri::FriProver;
@@ -182,7 +182,7 @@ pub trait Prover {
         trace_info: &TraceInfo,
         main_trace: &ColMatrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
-        partition_option: PartitionOption,
+        partition_option: PartitionOptions,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>;
@@ -523,7 +523,6 @@ pub trait Prover {
         composition_poly_trace: CompositionPolyTrace<E>,
         num_constraint_composition_columns: usize,
         domain: &StarkDomain<Self::BaseField>,
-        partition_size: usize,
     ) -> (ConstraintCommitment<E, Self::HashFn, Self::VC>, CompositionPoly<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
@@ -556,8 +555,11 @@ pub trait Prover {
             log_domain_size = domain_size.ilog2()
         )
         .in_scope(|| {
-            let commitment =
-                composed_evaluations.commit_to_rows::<Self::HashFn, Self::VC>(partition_size);
+            let commitment = composed_evaluations.commit_to_rows::<Self::HashFn, Self::VC>(
+                self.options()
+                    .partition_options()
+                    .partition_size::<E>(num_constraint_composition_columns),
+            );
             ConstraintCommitment::new(composed_evaluations, commitment)
         });
 
@@ -581,7 +583,7 @@ pub trait Prover {
             trace.info(),
             trace.main_segment(),
             domain,
-            self.options().get_partition_option(),
+            self.options().partition_options(),
         ));
 
         // get the commitment to the main trace segment LDE
@@ -614,9 +616,6 @@ pub trait Prover {
                 composition_poly_trace,
                 air.context().num_constraint_composition_columns(),
                 domain,
-                self.options()
-                    .get_partition_option()
-                    .partition_size::<E>(air.context().num_constraint_composition_columns()),
             ));
 
         // then, commit to the evaluations of constraints by writing the commitment string of

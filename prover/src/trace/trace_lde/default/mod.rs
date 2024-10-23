@@ -6,7 +6,7 @@
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
-use air::{proof::Queries, LagrangeKernelEvaluationFrame, PartitionOption, TraceInfo};
+use air::{proof::Queries, LagrangeKernelEvaluationFrame, PartitionOptions, TraceInfo};
 use crypto::VectorCommitment;
 use tracing::info_span;
 
@@ -43,7 +43,7 @@ pub struct DefaultTraceLde<
     aux_segment_oracles: Option<V>,
     blowup: usize,
     trace_info: TraceInfo,
-    partition_option: PartitionOption,
+    partition_option: PartitionOptions,
     _h: PhantomData<H>,
 }
 
@@ -64,7 +64,7 @@ where
         trace_info: &TraceInfo,
         main_trace: &ColMatrix<E::BaseField>,
         domain: &StarkDomain<E::BaseField>,
-        partition_option: PartitionOption,
+        partition_option: PartitionOptions,
     ) -> (Self, TracePolyTable<E>) {
         // extend the main execution trace and build a commitment to the extended trace
         let (main_segment_lde, main_segment_vector_com, main_segment_polys) =

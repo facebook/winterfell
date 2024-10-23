@@ -94,8 +94,7 @@ pub struct ProofOptions {
     field_extension: FieldExtension,
     fri_folding_factor: u8,
     fri_remainder_max_degree: u8,
-    num_partitions: u8,
-    min_partition_size: u8,
+    partition_options: PartitionOptions,
 }
 
 // PROOF OPTIONS IMPLEMENTATION
@@ -169,8 +168,7 @@ impl ProofOptions {
             field_extension,
             fri_folding_factor: fri_folding_factor as u8,
             fri_remainder_max_degree: fri_remainder_max_degree as u8,
-            num_partitions: 1,
-            min_partition_size: 1,
+            partition_options: PartitionOptions::new(1, 1),
         }
     }
 
@@ -185,20 +183,7 @@ impl ProofOptions {
         num_partitions: usize,
         min_partition_size: usize,
     ) -> ProofOptions {
-        assert!(num_partitions >= 1, "number of partitions must be greater than or eqaul to 1");
-        assert!(num_partitions <= 16, "number of partitions must be smaller than or equal to 16");
-
-        assert!(
-            min_partition_size >= 1,
-            "smallest partition size must be greater than or equal to 1"
-        );
-        assert!(
-            min_partition_size <= 256,
-            "smallest partition size must be smaller than or equal to 256"
-        );
-
-        self.num_partitions = num_partitions as u8;
-        self.min_partition_size = min_partition_size as u8;
+        self.partition_options = PartitionOptions::new(num_partitions, min_partition_size);
 
         self
     }
@@ -260,12 +245,9 @@ impl ProofOptions {
         FriOptions::new(self.blowup_factor(), folding_factor, remainder_max_degree)
     }
 
-    /// Returns the `[PartitionOption]` used in this instance of proof options.
-    pub fn get_partition_option(&self) -> PartitionOption {
-        PartitionOption {
-            num_partitions: self.num_partitions,
-            min_partition_size: self.min_partition_size,
-        }
+    /// Returns the `[PartitionOptions]` used in this instance of proof options.
+    pub fn partition_options(&self) -> PartitionOptions {
+        self.partition_options
     }
 }
 
@@ -294,8 +276,8 @@ impl Serializable for ProofOptions {
         target.write(self.field_extension);
         target.write_u8(self.fri_folding_factor);
         target.write_u8(self.fri_remainder_max_degree);
-        target.write_u8(self.num_partitions);
-        target.write_u8(self.min_partition_size);
+        target.write_u8(self.partition_options.num_partitions);
+        target.write_u8(self.partition_options.min_partition_size);
     }
 }
 
@@ -366,14 +348,27 @@ impl Deserializable for FieldExtension {
 // ================================================================================================
 
 /// Defines the parameters used when committing to the traces generated during the protocol.
-pub struct PartitionOption {
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct PartitionOptions {
     num_partitions: u8,
     min_partition_size: u8,
 }
 
-impl PartitionOption {
-    /// Returns a new instance of `[PartitionOption]`.
-    pub fn new(num_partitions: usize, min_partition_size: usize) -> Self {
+impl PartitionOptions {
+    /// Returns a new instance of `[PartitionOptions]`.
+    pub const fn new(num_partitions: usize, min_partition_size: usize) -> Self {
+        assert!(num_partitions >= 1, "number of partitions must be greater than or eqaul to 1");
+        assert!(num_partitions <= 16, "number of partitions must be smaller than or equal to 16");
+
+        assert!(
+            min_partition_size >= 1,
+            "smallest partition size must be greater than or equal to 1"
+        );
+        assert!(
+            min_partition_size <= 256,
+            "smallest partition size must be smaller than or equal to 256"
+        );
+
         Self {
             num_partitions: num_partitions as u8,
             min_partition_size: min_partition_size as u8,
@@ -392,7 +387,7 @@ impl PartitionOption {
     }
 }
 
-impl Default for PartitionOption {
+impl Default for PartitionOptions {
     fn default() -> Self {
         Self { num_partitions: 1, min_partition_size: 1 }
     }

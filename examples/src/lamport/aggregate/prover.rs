@@ -7,7 +7,7 @@
 use winterfell::iterators::*;
 use winterfell::{
     crypto::MerkleTree, matrix::ColMatrix, AuxRandElements, ConstraintCompositionCoefficients,
-    DefaultConstraintEvaluator, DefaultTraceLde, PartitionOption, StarkDomain, TraceInfo,
+    DefaultConstraintEvaluator, DefaultTraceLde, PartitionOptions, StarkDomain, TraceInfo,
     TracePolyTable, TraceTable,
 };
 
@@ -121,7 +121,7 @@ where
         trace_info: &TraceInfo,
         main_trace: &ColMatrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
-        partition_option: PartitionOption,
+        partition_option: PartitionOptions,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
         DefaultTraceLde::new(trace_info, main_trace, domain, partition_option)
     }
