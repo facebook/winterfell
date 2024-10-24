@@ -5,6 +5,7 @@
 
 use alloc::vec::Vec;
 
+use air::PartitionOptions;
 use crypto::{hashers::Blake3_256, ElementHasher, MerkleTree};
 use math::{
     fields::f128::BaseElement, get_power_series, get_power_series_with_offset, polynom,
@@ -25,12 +26,14 @@ fn extend_trace_table() {
     let air = MockAir::with_trace_length(trace_length);
     let trace = build_fib_trace(trace_length * 2);
     let domain = StarkDomain::new(&air);
+    let partition_option = PartitionOptions::default();
 
     // build the trace polynomials, extended trace, and commitment using the default TraceLde impl
     let (trace_lde, trace_polys) = DefaultTraceLde::<BaseElement, Blake3, MerkleTree<Blake3>>::new(
         trace.info(),
         trace.main_segment(),
         &domain,
+        partition_option,
     );
 
     // check the width and length of the extended trace
@@ -75,12 +78,14 @@ fn commit_trace_table() {
     let air = MockAir::with_trace_length(trace_length);
     let trace = build_fib_trace(trace_length * 2);
     let domain = StarkDomain::new(&air);
+    let partition_option = PartitionOptions::default();
 
     // build the trace polynomials, extended trace, and commitment using the default TraceLde impl
     let (trace_lde, _) = DefaultTraceLde::<BaseElement, Blake3, MerkleTree<Blake3>>::new(
         trace.info(),
         trace.main_segment(),
         &domain,
+        partition_option,
     );
 
     // build commitment, using a Merkle tree, to the trace rows

@@ -7,8 +7,8 @@ use std::time::Duration;
 
 use air::{
     Air, AirContext, Assertion, AuxRandElements, ConstraintCompositionCoefficients,
-    EvaluationFrame, FieldExtension, GkrRandElements, LagrangeKernelRandElements, ProofOptions,
-    TraceInfo, TransitionConstraintDegree,
+    EvaluationFrame, FieldExtension, GkrRandElements, LagrangeKernelRandElements, PartitionOptions,
+    ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, MerkleTree, RandomCoin};
@@ -202,11 +202,12 @@ impl Prover for LagrangeProver {
         trace_info: &TraceInfo,
         main_trace: &ColMatrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
+        partition_option: PartitionOptions,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>)
     where
         E: math::FieldElement<BaseField = Self::BaseField>,
     {
-        DefaultTraceLde::new(trace_info, main_trace, domain)
+        DefaultTraceLde::new(trace_info, main_trace, domain, partition_option)
     }
 
     fn new_evaluator<'a, E>(

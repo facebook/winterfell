@@ -195,6 +195,10 @@ impl Hasher for RpJive64_256 {
         Self::apply_jive_summation(&initial_state, &state)
     }
 
+    fn merge_many(values: &[Self::Digest]) -> Self::Digest {
+        Self::hash_elements(ElementDigest::digests_as_elements(values))
+    }
+
     // We do not rely on the sponge construction to build our compression function. Instead, we use
     // the Jive compression mode designed in https://eprint.iacr.org/2022/840.pdf.
     fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest {

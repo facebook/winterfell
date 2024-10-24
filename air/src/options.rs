@@ -4,9 +4,10 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::vec::Vec;
+use core::{cmp, ops::Div};
 
 use fri::FriOptions;
-use math::{StarkField, ToElements};
+use math::{FieldElement, StarkField, ToElements};
 use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 // CONSTANTS
@@ -74,6 +75,17 @@ pub enum FieldExtension {
 /// is the hash function used in the protocol. The soundness of a STARK proof is limited by the
 /// collision resistance of the hash function used by the protocol. For example, if a hash function
 /// with 128-bit collision resistance is used, soundness of a STARK proof cannot exceed 128 bits.
+///
+/// In addition to the above, the parameter `num_partitions` is used in order to specify the number
+/// of partitions each of the traces committed to during proof generation is split into, and
+/// the parameter `min_partition_size` gives a lower bound on the size of each such partition.
+/// More precisely, and taking the main segment trace as an example, the prover will split the main
+/// segment trace into `num_partitions` parts each of size at least `min_partition_size`. The prover
+/// will then proceed to hash each part row-wise resulting in `num_partitions` digests per row of
+/// the trace. The prover finally combines the `num_partitions` digest (per row) into one digest
+/// (per row) and at this point the vector commitment scheme can be called.
+/// In the case when `num_partitions` is equal to `1` the prover will just hash each row in one go
+/// producing one digest per row of the trace.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ProofOptions {
     num_queries: u8,
@@ -82,6 +94,7 @@ pub struct ProofOptions {
     field_extension: FieldExtension,
     fri_folding_factor: u8,
     fri_remainder_max_degree: u8,
+    partition_options: PartitionOptions,
 }
 
 // PROOF OPTIONS IMPLEMENTATION
@@ -108,7 +121,6 @@ impl ProofOptions {
     /// - `grinding_factor` is greater than 32.
     /// - `fri_folding_factor` is not 2, 4, 8, or 16.
     /// - `fri_remainder_max_degree` is greater than 255 or is not a power of two minus 1.
-    #[rustfmt::skip]
     pub const fn new(
         num_queries: usize,
         blowup_factor: usize,
@@ -125,11 +137,20 @@ impl ProofOptions {
         assert!(blowup_factor >= MIN_BLOWUP_FACTOR, "blowup factor cannot be smaller than 2");
         assert!(blowup_factor <= MAX_BLOWUP_FACTOR, "blowup factor cannot be greater than 128");
 
-        assert!(grinding_factor <= MAX_GRINDING_FACTOR, "grinding factor cannot be greater than 32");
+        assert!(
+            grinding_factor <= MAX_GRINDING_FACTOR,
+            "grinding factor cannot be greater than 32"
+        );
 
         assert!(fri_folding_factor.is_power_of_two(), "FRI folding factor must be a power of 2");
-        assert!(fri_folding_factor >= FRI_MIN_FOLDING_FACTOR, "FRI folding factor cannot be smaller than 2");
-        assert!(fri_folding_factor <= FRI_MAX_FOLDING_FACTOR, "FRI folding factor cannot be greater than 16");
+        assert!(
+            fri_folding_factor >= FRI_MIN_FOLDING_FACTOR,
+            "FRI folding factor cannot be smaller than 2"
+        );
+        assert!(
+            fri_folding_factor <= FRI_MAX_FOLDING_FACTOR,
+            "FRI folding factor cannot be greater than 16"
+        );
 
         assert!(
             (fri_remainder_max_degree + 1).is_power_of_two(),
@@ -140,14 +161,31 @@ impl ProofOptions {
             "FRI polynomial remainder degree cannot be greater than 255"
         );
 
-        ProofOptions {
+        Self {
             num_queries: num_queries as u8,
             blowup_factor: blowup_factor as u8,
             grinding_factor: grinding_factor as u8,
             field_extension,
             fri_folding_factor: fri_folding_factor as u8,
             fri_remainder_max_degree: fri_remainder_max_degree as u8,
+            partition_options: PartitionOptions::new(1, 1),
         }
+    }
+
+    /// Updates the provided [ProofOptions] instance with the specified partition parameters.
+    ///
+    /// # Panics
+    /// Panics if:
+    /// - `num_partitions` is zero or greater than 16.
+    /// - `min_partition_size` is zero or greater than 256.
+    pub const fn with_partitions(
+        mut self,
+        num_partitions: usize,
+        min_partition_size: usize,
+    ) -> ProofOptions {
+        self.partition_options = PartitionOptions::new(num_partitions, min_partition_size);
+
+        self
     }
 
     // PUBLIC ACCESSORS
@@ -206,6 +244,11 @@ impl ProofOptions {
         let remainder_max_degree = self.fri_remainder_max_degree as usize;
         FriOptions::new(self.blowup_factor(), folding_factor, remainder_max_degree)
     }
+
+    /// Returns the `[PartitionOptions]` used in this instance of proof options.
+    pub fn partition_options(&self) -> PartitionOptions {
+        self.partition_options
+    }
 }
 
 impl<E: StarkField> ToElements<E> for ProofOptions {
@@ -233,6 +276,8 @@ impl Serializable for ProofOptions {
         target.write(self.field_extension);
         target.write_u8(self.fri_folding_factor);
         target.write_u8(self.fri_remainder_max_degree);
+        target.write_u8(self.partition_options.num_partitions);
+        target.write_u8(self.partition_options.min_partition_size);
     }
 }
 
@@ -242,14 +287,15 @@ impl Deserializable for ProofOptions {
     /// # Errors
     /// Returns an error of a valid proof options could not be read from the specified `source`.
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        Ok(ProofOptions::new(
+        let result = ProofOptions::new(
             source.read_u8()? as usize,
             source.read_u8()? as usize,
             source.read_u8()? as u32,
             FieldExtension::read_from(source)?,
             source.read_u8()? as usize,
             source.read_u8()? as usize,
-        ))
+        );
+        Ok(result.with_partitions(source.read_u8()? as usize, source.read_u8()? as usize))
     }
 }
 
@@ -271,9 +317,6 @@ impl FieldExtension {
         }
     }
 }
-
-// SERIALIZATION
-// ================================================================================================
 
 impl Serializable for FieldExtension {
     /// Serializes `self` and writes the resulting bytes into the `target`.
@@ -298,6 +341,55 @@ impl Deserializable for FieldExtension {
                 "value {value} cannot be deserialized as FieldExtension enum"
             ))),
         }
+    }
+}
+
+// PARTITION OPTION IMPLEMENTATION
+// ================================================================================================
+
+/// Defines the parameters used when committing to the traces generated during the protocol.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct PartitionOptions {
+    num_partitions: u8,
+    min_partition_size: u8,
+}
+
+impl PartitionOptions {
+    /// Returns a new instance of `[PartitionOptions]`.
+    pub const fn new(num_partitions: usize, min_partition_size: usize) -> Self {
+        assert!(num_partitions >= 1, "number of partitions must be greater than or eqaul to 1");
+        assert!(num_partitions <= 16, "number of partitions must be smaller than or equal to 16");
+
+        assert!(
+            min_partition_size >= 1,
+            "smallest partition size must be greater than or equal to 1"
+        );
+        assert!(
+            min_partition_size <= 256,
+            "smallest partition size must be smaller than or equal to 256"
+        );
+
+        Self {
+            num_partitions: num_partitions as u8,
+            min_partition_size: min_partition_size as u8,
+        }
+    }
+
+    /// Returns the size of each partition used when committing to the main and auxiliary traces as
+    /// well as the constraint evaluation trace.
+    pub fn partition_size<E: FieldElement>(&self, num_columns: usize) -> usize {
+        let base_elements_per_partition = cmp::max(
+            (num_columns * E::EXTENSION_DEGREE).div_ceil(self.num_partitions as usize),
+            self.min_partition_size as usize,
+        );
+
+        base_elements_per_partition.div(E::EXTENSION_DEGREE)
+    }
+}
+
+impl Default for PartitionOptions {
+    fn default() -> Self {
+        Self { num_partitions: 1, min_partition_size: 1 }
     }
 }
 

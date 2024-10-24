@@ -266,7 +266,7 @@
 //!
 //! # use winterfell::{
 //! #   Air, AirContext, Assertion, AuxRandElements, ByteWriter, DefaultConstraintEvaluator,
-//! #   EvaluationFrame, TraceInfo, TransitionConstraintDegree,
+//! #   EvaluationFrame, PartitionOptions, TraceInfo, TransitionConstraintDegree,
 //! # };
 //! #
 //! # pub struct PublicInputs {
@@ -371,8 +371,9 @@
 //!         trace_info: &TraceInfo,
 //!         main_trace: &ColMatrix<Self::BaseField>,
 //!         domain: &StarkDomain<Self::BaseField>,
+//!         partition_option: PartitionOptions,
 //!     ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
-//!         DefaultTraceLde::new(trace_info, main_trace, domain)
+//!         DefaultTraceLde::new(trace_info, main_trace, domain, partition_option)
 //!     }
 //!
 //!     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
@@ -400,7 +401,7 @@
 //! #    matrix::ColMatrix,
 //! #    Air, AirContext, Assertion, AuxRandElements, ByteWriter, DefaultConstraintEvaluator,
 //! #    DefaultTraceLde, EvaluationFrame, TraceInfo,
-//! #    TransitionConstraintDegree, TraceTable, FieldExtension, Prover,
+//! #    TransitionConstraintDegree, TraceTable, FieldExtension, PartitionOptions, Prover,
 //! #    ProofOptions, StarkDomain, Proof, Trace, TracePolyTable,
 //! # };
 //! #
@@ -514,8 +515,9 @@
 //! #        trace_info: &TraceInfo,
 //! #        main_trace: &ColMatrix<Self::BaseField>,
 //! #        domain: &StarkDomain<Self::BaseField>,
+//! #        partition_option: PartitionOptions,
 //! #    ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
-//! #        DefaultTraceLde::new(trace_info, main_trace, domain)
+//! #        DefaultTraceLde::new(trace_info, main_trace, domain, partition_option)
 //! #    }
 //! #
 //! #    fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
@@ -594,7 +596,7 @@
 #[cfg(test)]
 extern crate std;
 
-pub use air::{AuxRandElements, GkrVerifier};
+pub use air::{AuxRandElements, GkrVerifier, PartitionOptions};
 pub use prover::{
     crypto, iterators, math, matrix, Air, AirContext, Assertion, AuxTraceWithMetadata,
     BoundaryConstraint, BoundaryConstraintGroup, CompositionPolyTrace,

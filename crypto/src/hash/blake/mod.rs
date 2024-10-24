@@ -34,6 +34,10 @@ impl<B: StarkField> Hasher for Blake3_256<B> {
         ByteDigest(blake3::hash(ByteDigest::digests_as_bytes(values)).into())
     }
 
+    fn merge_many(values: &[Self::Digest]) -> Self::Digest {
+        ByteDigest(blake3::hash(ByteDigest::digests_as_bytes(values)).into())
+    }
+
     fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest {
         let mut data = [0; 40];
         data[..32].copy_from_slice(&seed.0);
@@ -80,6 +84,11 @@ impl<B: StarkField> Hasher for Blake3_192<B> {
     }
 
     fn merge(values: &[Self::Digest; 2]) -> Self::Digest {
+        let result = blake3::hash(ByteDigest::digests_as_bytes(values));
+        ByteDigest(result.as_bytes()[..24].try_into().unwrap())
+    }
+
+    fn merge_many(values: &[Self::Digest]) -> Self::Digest {
         let result = blake3::hash(ByteDigest::digests_as_bytes(values));
         ByteDigest(result.as_bytes()[..24].try_into().unwrap())
     }

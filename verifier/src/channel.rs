@@ -35,6 +35,10 @@ pub struct VerifierChannel<
     // constraint queries
     constraint_commitment: H::Digest,
     constraint_queries: Option<ConstraintQueries<E, H, V>>,
+    // partition sizes for the rows of main, auxiliary and constraint traces rows
+    partition_size_main: usize,
+    partition_size_aux: usize,
+    partition_size_constraint: usize,
     // FRI proof
     fri_commitments: Option<Vec<H::Digest>>,
     fri_layer_proofs: Vec<V::MultiProof>,
@@ -85,6 +89,7 @@ where
         let aux_trace_width = air.trace_info().aux_segment_width();
         let lde_domain_size = air.lde_domain_size();
         let fri_options = air.options().to_fri_options();
+        let partition_options = air.options().partition_options();
 
         // --- parse commitments ------------------------------------------------------------------
         let (trace_commitments, constraint_commitment, fri_commitments) = commitments
@@ -114,6 +119,14 @@ where
             .parse(main_trace_width, aux_trace_width, constraint_frame_width)
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
+        // --- compute the partition size for each trace ------------------------------------------
+        let partition_size_main = partition_options
+            .partition_size::<E::BaseField>(air.context().trace_info().main_trace_width());
+        let partition_size_aux =
+            partition_options.partition_size::<E>(air.context().trace_info().aux_segment_width());
+        let partition_size_constraint = partition_options
+            .partition_size::<E>(air.context().num_constraint_composition_columns());
+
         Ok(VerifierChannel {
             // trace queries
             trace_commitments,
@@ -121,6 +134,10 @@ where
             // constraint queries
             constraint_commitment,
             constraint_queries: Some(constraint_queries),
+            // num partitions used in commitment
+            partition_size_main,
+            partition_size_aux,
+            partition_size_constraint,
             // FRI proof
             fri_commitments: Some(fri_commitments),
             fri_layer_proofs,
@@ -191,9 +208,12 @@ where
         let queries = self.trace_queries.take().expect("already read");
 
         // make sure the states included in the proof correspond to the trace commitment
+        let items: Vec<H::Digest> = queries
+            .main_states
+            .rows()
+            .map(|row| hash_row::<H, E::BaseField>(row, self.partition_size_main))
+            .collect();
 
-        let items: Vec<H::Digest> =
-            queries.main_states.rows().map(|row| H::hash_elements(row)).collect();
         <V as VectorCommitment<H>>::verify_many(
             self.trace_commitments[0],
             positions,
@@ -203,8 +223,11 @@ where
         .map_err(|_| VerifierError::TraceQueryDoesNotMatchCommitment)?;
 
         if let Some(ref aux_states) = queries.aux_states {
-            let items: Vec<H::Digest> =
-                aux_states.rows().map(|row| H::hash_elements(row)).collect();
+            let items: Vec<H::Digest> = aux_states
+                .rows()
+                .map(|row| hash_row::<H, E>(row, self.partition_size_aux))
+                .collect();
+
             <V as VectorCommitment<H>>::verify_many(
                 self.trace_commitments[1],
                 positions,
@@ -225,8 +248,13 @@ where
         positions: &[usize],
     ) -> Result<Table<E>, VerifierError> {
         let queries = self.constraint_queries.take().expect("already read");
-        let items: Vec<H::Digest> =
-            queries.evaluations.rows().map(|row| H::hash_elements(row)).collect();
+
+        let items: Vec<H::Digest> = queries
+            .evaluations
+            .rows()
+            .map(|row| hash_row::<H, E>(row, self.partition_size_constraint))
+            .collect();
+
         <V as VectorCommitment<H>>::verify_many(
             self.constraint_commitment,
             positions,
@@ -402,5 +430,26 @@ where
             evaluations,
             _h: PhantomData,
         })
+    }
+}
+
+// HELPER
+// ================================================================================================
+
+/// Hashes a row of a trace in batches where each batch is of size at most `partition_size`.
+fn hash_row<H, E>(row: &[E], partition_size: usize) -> H::Digest
+where
+    E: FieldElement,
+    H: ElementHasher<BaseField = E::BaseField>,
+{
+    if partition_size == row.len() * E::EXTENSION_DEGREE {
+        H::hash_elements(row)
+    } else {
+        let mut buffer = vec![H::Digest::default(); partition_size];
+
+        row.chunks(partition_size)
+            .zip(buffer.iter_mut())
+            .for_each(|(chunk, buf)| *buf = H::hash_elements(chunk));
+        H::merge_many(&buffer)
     }
 }

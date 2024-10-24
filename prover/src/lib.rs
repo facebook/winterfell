@@ -48,7 +48,7 @@ pub use air::{
     EvaluationFrame, FieldExtension, LagrangeKernelRandElements, ProofOptions, TraceInfo,
     TransitionConstraintDegree,
 };
-use air::{AuxRandElements, GkrRandElements};
+use air::{AuxRandElements, GkrRandElements, PartitionOptions};
 pub use crypto;
 use crypto::{ElementHasher, RandomCoin, VectorCommitment};
 use fri::FriProver;
@@ -182,6 +182,7 @@ pub trait Prover {
         trace_info: &TraceInfo,
         main_trace: &ColMatrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
+        partition_option: PartitionOptions,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>;
@@ -554,7 +555,11 @@ pub trait Prover {
             log_domain_size = domain_size.ilog2()
         )
         .in_scope(|| {
-            let commitment = composed_evaluations.commit_to_rows::<Self::HashFn, Self::VC>();
+            let commitment = composed_evaluations.commit_to_rows::<Self::HashFn, Self::VC>(
+                self.options()
+                    .partition_options()
+                    .partition_size::<E>(num_constraint_composition_columns),
+            );
             ConstraintCommitment::new(composed_evaluations, commitment)
         });
 
@@ -574,8 +579,12 @@ pub trait Prover {
         E: FieldElement<BaseField = Self::BaseField>,
     {
         // extend the main execution trace and commit to the extended trace
-        let (trace_lde, trace_polys) =
-            maybe_await!(self.new_trace_lde(trace.info(), trace.main_segment(), domain));
+        let (trace_lde, trace_polys) = maybe_await!(self.new_trace_lde(
+            trace.info(),
+            trace.main_segment(),
+            domain,
+            self.options().partition_options(),
+        ));
 
         // get the commitment to the main trace segment LDE
         let main_trace_commitment = trace_lde.get_main_trace_commitment();
