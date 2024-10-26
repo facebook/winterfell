@@ -84,6 +84,20 @@ fn hash_elements_vs_merge() {
 }
 
 #[test]
+fn merge_vs_merge_many() {
+    let elements: [BaseElement; 8] = rand_array();
+
+    let digests: [ElementDigest; 2] = [
+        ElementDigest::new(elements[..4].try_into().unwrap()),
+        ElementDigest::new(elements[4..].try_into().unwrap()),
+    ];
+
+    let m_result = Rp62_248::merge(&digests);
+    let h_result = Rp62_248::merge_many(&digests);
+    assert_eq!(m_result, h_result);
+}
+
+#[test]
 fn hash_elements_vs_merge_with_int() {
     let seed = ElementDigest::new(rand_array());
 

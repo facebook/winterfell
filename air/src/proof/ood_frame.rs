@@ -229,6 +229,8 @@ impl Deserializable for OodFrame {
 // OOD FRAME TRACE STATES
 // ================================================================================================
 
+/// Trace evaluation frame at the out-of-domain point.
+///
 /// Stores the trace evaluations at `z` and `gz`, where `z` is a random Field element in
 /// `current_row` and `next_row`, respectively.
 ///

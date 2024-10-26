@@ -5,7 +5,7 @@
 
 use core_utils::flatten_slice_elements;
 use winterfell::{
-    math::ToElements, Air, AirContext, Assertion, EvaluationFrame, TraceInfo,
+    math::ToElements, Air, AirContext, Assertion, AuxRandElements, EvaluationFrame, TraceInfo,
     TransitionConstraintDegree,
 };
 
@@ -162,7 +162,7 @@ impl Air for RescueRapsAir {
         main_frame: &EvaluationFrame<F>,
         aux_frame: &EvaluationFrame<E>,
         periodic_values: &[F],
-        aux_rand_elements: &[E],
+        aux_rand_elements: &AuxRandElements<E>,
         result: &mut [E],
     ) where
         F: FieldElement<BaseField = Self::BaseField>,
@@ -173,6 +173,8 @@ impl Air for RescueRapsAir {
 
         let aux_current = aux_frame.current();
         let aux_next = aux_frame.next();
+
+        let aux_rand_elements = aux_rand_elements.rand_elements();
 
         let absorption_flag = periodic_values[1];
 
@@ -233,7 +235,7 @@ impl Air for RescueRapsAir {
         ]
     }
 
-    fn get_aux_assertions<E>(&self, _aux_rand_elements: &[E]) -> Vec<Assertion<E>>
+    fn get_aux_assertions<E>(&self, _aux_rand_elements: &AuxRandElements<E>) -> Vec<Assertion<E>>
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {

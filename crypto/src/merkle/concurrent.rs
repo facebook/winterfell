@@ -18,11 +18,11 @@ pub const MIN_CONCURRENT_LEAVES: usize = 1024;
 // PUBLIC FUNCTIONS
 // ================================================================================================
 
-/// Builds all internal nodes of the Merkle.
+/// Returns internal nodes of a Merkle tree constructed from the provided leaves.
 ///
-/// All available threads are used, and the results are stored in a single vector, such that
-/// the root of the tree is at position 1, and nodes immediately under the root are at positions
-/// 2 and 3, and so on.
+/// Builds all internal nodes of the Merkle using all available threads and stores the
+/// results in a single vector such that root of the tree is at position 1, nodes immediately
+/// under the root is at positions 2 and 3 etc.
 pub fn build_merkle_nodes<H: Hasher>(leaves: &[H::Digest]) -> Vec<H::Digest> {
     let n = leaves.len() / 2;
 

@@ -31,6 +31,10 @@ impl<B: StarkField> Hasher for Sha3_256<B> {
         ByteDigest(sha3::Sha3_256::digest(ByteDigest::digests_as_bytes(values)).into())
     }
 
+    fn merge_many(values: &[Self::Digest]) -> Self::Digest {
+        ByteDigest(sha3::Sha3_256::digest(ByteDigest::digests_as_bytes(values)).into())
+    }
+
     fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest {
         let mut data = [0; 40];
         data[..32].copy_from_slice(&seed.0);

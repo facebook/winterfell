@@ -3,6 +3,20 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+//! This module contains helper functions as well as constants used to perform a 12x12 vector-matrix
+//! multiplication. The special form of our MDS matrix i.e. being circulant, allows us to reduce
+//! the vector-matrix multiplication to a Hadamard product of two vectors in "frequency domain".
+//! This follows from the simple fact that every circulant matrix has the columns of the discrete
+//! Fourier transform matrix as orthogonal eigenvectors.
+//! The implementation also avoids the use of 3-point FFTs, and 3-point iFFTs, and substitutes that
+//! with explicit expressions. It also avoids, due to the form of our matrix in the frequency domain,
+//! divisions by 2 and repeated modular reductions. This is because of our explicit choice of
+//! an MDS matrix that has small powers of 2 entries in frequency domain.
+//! The following implementation has benefited greatly from the discussions and insights of
+//! Hamish Ivey-Law and Jacqueline Nabaglo of Polygon Zero and is based on Nabaglo's implementation
+//! in [Plonky2](https://github.com/mir-protocol/plonky2).
+//! The circulant matrix is identified by its first row: [7, 23, 8, 26, 13, 10, 9, 7, 6, 22, 21, 8].
+
 // FFT-BASED MDS MULTIPLICATION HELPER FUNCTIONS
 // ================================================================================================
 
@@ -11,20 +25,6 @@ use math::{
     fields::f64::BaseElement,
     FieldElement,
 };
-
-/// This module contains helper functions as well as constants used to perform a 12x12 vector-matrix
-/// multiplication. The special form of our MDS matrix i.e. being circulant, allows us to reduce
-/// the vector-matrix multiplication to a Hadamard product of two vectors in "frequency domain".
-/// This follows from the simple fact that every circulant matrix has the columns of the discrete
-/// Fourier transform matrix as orthogonal eigenvectors.
-/// The implementation also avoids the use of 3-point FFTs, and 3-point iFFTs, and substitutes that
-/// with explicit expressions. It also avoids, due to the form of our matrix in the frequency domain,
-/// divisions by 2 and repeated modular reductions. This is because of our explicit choice of
-/// an MDS matrix that has small powers of 2 entries in frequency domain.
-/// The following implementation has benefited greatly from the discussions and insights of
-/// Hamish Ivey-Law and Jacqueline Nabaglo of Polygon Zero and is based on Nabaglo's implementation
-/// in [Plonky2](https://github.com/mir-protocol/plonky2).
-/// The circulant matrix is identified by its first row: [7, 23, 8, 26, 13, 10, 9, 7, 6, 22, 21, 8].
 
 // MDS matrix in frequency domain.
 // More precisely, this is the output of the three 4-point (real) FFTs of the first column of

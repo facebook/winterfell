@@ -573,7 +573,7 @@ impl TryFrom<[u8; 8]> for BaseElement {
     }
 }
 
-impl<'a> TryFrom<&'a [u8]> for BaseElement {
+impl TryFrom<&'_ [u8]> for BaseElement {
     type Error = DeserializationError;
 
     /// Converts a slice of bytes into a field element; returns error if the value encoded in bytes

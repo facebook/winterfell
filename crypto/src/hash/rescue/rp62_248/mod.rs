@@ -165,6 +165,10 @@ impl Hasher for Rp62_248 {
         ElementDigest::new(state[..DIGEST_SIZE].try_into().unwrap())
     }
 
+    fn merge_many(values: &[Self::Digest]) -> Self::Digest {
+        Self::hash_elements(ElementDigest::digests_as_elements(values))
+    }
+
     fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest {
         // initialize the state as follows:
         // - seed is copied into the first 4 elements of the state.

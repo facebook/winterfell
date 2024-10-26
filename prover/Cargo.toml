@@ -1,16 +1,16 @@
 [package]
 name = "winter-prover"
-version = "0.9.0"
+version = "0.10.0"
 description = "Winterfell STARK prover"
 authors = ["winterfell contributors"]
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/novifinancial/winterfell"
-documentation = "https://docs.rs/winter-prover/0.9.0"
+documentation = "https://docs.rs/winter-prover/0.10.0"
 categories = ["cryptography", "no-std"]
 keywords = ["crypto", "zkp", "stark", "prover"]
 edition = "2021"
-rust-version = "1.78"
+rust-version = "1.82"
 
 [lib]
 bench = false
@@ -24,24 +24,23 @@ name = "lagrange_kernel"
 harness = false
 
 [features]
-async = ["async-trait", "maybe_async/async"]
+async = ["maybe_async/async"]
 concurrent = ["crypto/concurrent", "math/concurrent", "fri/concurrent", "utils/concurrent", "std"]
 default = ["std"]
 std = ["air/std", "crypto/std", "fri/std", "math/std", "utils/std"]
 
 [dependencies]
-air = { version = "0.9", path = "../air", package = "winter-air", default-features = false }
-async-trait = { version = "0.1.80", optional = true }
-crypto = { version = "0.9", path = "../crypto", package = "winter-crypto", default-features = false }
-fri = { version = "0.9", path = '../fri', package = "winter-fri", default-features = false }
-math = { version = "0.9", path = "../math", package = "winter-math", default-features = false }
-maybe_async = { version = "0.9", path = "../utils/maybe_async", package = "winter-maybe-async"}
+air = { version = "0.10", path = "../air", package = "winter-air", default-features = false }
+crypto = { version = "0.10", path = "../crypto", package = "winter-crypto", default-features = false }
+fri = { version = "0.10", path = '../fri', package = "winter-fri", default-features = false }
+math = { version = "0.10", path = "../math", package = "winter-math", default-features = false }
+maybe_async = { path = "../utils/maybe_async" , package = "winter-maybe-async" }
 tracing = { version = "0.1", default-features = false, features = ["attributes"]}
-utils = { version = "0.9", path = "../utils/core", package = "winter-utils", default-features = false }
+utils = { version = "0.10", path = "../utils/core", package = "winter-utils", default-features = false }
 
 [dev-dependencies]
 criterion = "0.5"
-rand-utils = { version = "0.9", path = "../utils/rand", package = "winter-rand-utils" }
+rand-utils = { version = "0.10", path = "../utils/rand", package = "winter-rand-utils" }
 
 # Allow math in docs
 [package.metadata.docs.rs]

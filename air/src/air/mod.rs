@@ -11,7 +11,7 @@ use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElemen
 use crate::ProofOptions;
 
 mod aux;
-pub use aux::{AuxRandElements, GkrVerifier};
+pub use aux::{AuxRandElements, GkrRandElements, GkrVerifier};
 
 mod trace_info;
 pub use trace_info::TraceInfo;
@@ -269,7 +269,7 @@ pub trait Air: Send + Sync {
         main_frame: &EvaluationFrame<F>,
         aux_frame: &EvaluationFrame<E>,
         periodic_values: &[F],
-        aux_rand_elements: &[E],
+        aux_rand_elements: &AuxRandElements<E>,
         result: &mut [E],
     ) where
         F: FieldElement<BaseField = Self::BaseField>,
@@ -298,7 +298,7 @@ pub trait Air: Send + Sync {
     #[allow(unused_variables)]
     fn get_aux_assertions<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        aux_rand_elements: &[E],
+        aux_rand_elements: &AuxRandElements<E>,
     ) -> Vec<Assertion<E>> {
         Vec::new()
     }
@@ -309,7 +309,7 @@ pub trait Air: Send + Sync {
     /// Returns the [`GkrVerifier`] to be used to verify the GKR proof.
     ///
     /// Leave unimplemented if the `Air` doesn't use a GKR proof.
-    fn get_auxiliary_proof_verifier<E: FieldElement<BaseField = Self::BaseField>>(
+    fn get_gkr_proof_verifier<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
     ) -> Self::GkrVerifier {
         unimplemented!("`get_auxiliary_proof_verifier()` must be implemented when the proof contains a GKR proof");
@@ -422,7 +422,7 @@ pub trait Air: Send + Sync {
     /// combination of boundary constraints during constraint merging.
     fn get_boundary_constraints<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        aux_rand_elements: Option<&[E]>,
+        aux_rand_elements: Option<&AuxRandElements<E>>,
         composition_coefficients: &[E],
     ) -> BoundaryConstraints<E> {
         BoundaryConstraints::new(

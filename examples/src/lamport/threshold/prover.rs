@@ -8,9 +8,9 @@ use std::collections::HashMap;
 #[cfg(feature = "concurrent")]
 use winterfell::iterators::*;
 use winterfell::{
-    matrix::ColMatrix, AuxRandElements, ConstraintCompositionCoefficients,
-    DefaultConstraintEvaluator, DefaultTraceLde, StarkDomain, TraceInfo, TracePolyTable,
-    TraceTable,
+    crypto::MerkleTree, matrix::ColMatrix, AuxRandElements, ConstraintCompositionCoefficients,
+    DefaultConstraintEvaluator, DefaultTraceLde, PartitionOptions, StarkDomain, TraceInfo,
+    TracePolyTable, TraceTable,
 };
 
 use super::{
@@ -137,14 +137,16 @@ impl<H: ElementHasher> LamportThresholdProver<H> {
 
 impl<H: ElementHasher> Prover for LamportThresholdProver<H>
 where
-    H: ElementHasher<BaseField = BaseElement>,
+    H: ElementHasher<BaseField = BaseElement> + Sync,
 {
     type BaseField = BaseElement;
     type Air = LamportThresholdAir;
     type Trace = TraceTable<BaseElement>;
     type HashFn = H;
+    type VC = MerkleTree<H>;
     type RandomCoin = DefaultRandomCoin<Self::HashFn>;
-    type TraceLde<E: FieldElement<BaseField = Self::BaseField>> = DefaultTraceLde<E, Self::HashFn>;
+    type TraceLde<E: FieldElement<BaseField = Self::BaseField>> =
+        DefaultTraceLde<E, Self::HashFn, Self::VC>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
         DefaultConstraintEvaluator<'a, Self::Air, E>;
 
@@ -161,8 +163,9 @@ where
         trace_info: &TraceInfo,
         main_trace: &ColMatrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
+        partition_option: PartitionOptions,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
-        DefaultTraceLde::new(trace_info, main_trace, domain)
+        DefaultTraceLde::new(trace_info, main_trace, domain, partition_option)
     }
 
     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(

@@ -8,7 +8,7 @@ use std::time::Instant;
 
 use tracing::{field, info_span};
 use winterfell::{
-    crypto::{DefaultRandomCoin, ElementHasher},
+    crypto::{DefaultRandomCoin, ElementHasher, MerkleTree},
     math::{fields::f128::BaseElement, FieldElement},
     Proof, ProofOptions, Prover, Trace, VerifierError,
 };
@@ -86,7 +86,7 @@ impl<H: ElementHasher> VdfExample<H> {
 
 impl<H: ElementHasher> Example for VdfExample<H>
 where
-    H: ElementHasher<BaseField = BaseElement>,
+    H: ElementHasher<BaseField = BaseElement> + Sync,
 {
     fn prove(&self) -> Proof {
         println!("Generating proof for executing a VDF function for {} steps", self.num_steps);
@@ -111,7 +111,7 @@ where
         let pub_inputs = VdfInputs { seed: self.seed, result: self.result };
         let acceptable_options =
             winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
-        winterfell::verify::<VdfAir, H, DefaultRandomCoin<H>>(
+        winterfell::verify::<VdfAir, H, DefaultRandomCoin<H>, MerkleTree<H>>(
             proof,
             pub_inputs,
             &acceptable_options,
@@ -125,7 +125,7 @@ where
         };
         let acceptable_options =
             winterfell::AcceptableOptions::OptionSet(vec![proof.options().clone()]);
-        winterfell::verify::<VdfAir, H, DefaultRandomCoin<H>>(
+        winterfell::verify::<VdfAir, H, DefaultRandomCoin<H>, MerkleTree<H>>(
             proof,
             pub_inputs,
             &acceptable_options,

@@ -6,7 +6,7 @@
 use alloc::vec::Vec;
 use core::{iter::FusedIterator, slice};
 
-use crypto::{ElementHasher, MerkleTree};
+use crypto::{ElementHasher, VectorCommitment};
 use math::{fft, polynom, FieldElement};
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
@@ -256,13 +256,13 @@ impl<E: FieldElement> ColMatrix<E> {
     ///
     /// The commitment is built as follows:
     /// * Each row of the matrix is hashed into a single digest of the specified hash function.
-    /// * The resulting values are used to built a binary Merkle tree such that each row digest
-    ///   becomes a leaf in the tree. Thus, the number of leaves in the tree is equal to the
-    ///   number of rows in the matrix.
-    /// * The resulting Merkle tree is return as the commitment to the entire matrix.
-    pub fn commit_to_rows<H>(&self) -> MerkleTree<H>
+    /// * The resulting vector of digests is committed to using the specified vector commitment
+    ///   scheme.
+    /// * The resulting commitment is returned as the commitment to the entire matrix.
+    pub fn commit_to_rows<H, V>(&self) -> V
     where
         H: ElementHasher<BaseField = E::BaseField>,
+        V: VectorCommitment<H>,
     {
         // allocate vector to store row hashes
         let mut row_hashes = unsafe { uninit_vector::<H::Digest>(self.num_rows()) };
@@ -282,8 +282,7 @@ impl<E: FieldElement> ColMatrix<E> {
             }
         );
 
-        // build Merkle tree out of hashed rows
-        MerkleTree::new(row_hashes).expect("failed to construct trace Merkle tree")
+        V::new(row_hashes).expect("failed to construct trace vector commitment")
     }
 
     // CONVERSIONS
@@ -334,15 +333,15 @@ impl<'a, E: FieldElement> Iterator for ColumnIter<'a, E> {
     }
 }
 
-impl<'a, E: FieldElement> ExactSizeIterator for ColumnIter<'a, E> {
+impl<E: FieldElement> ExactSizeIterator for ColumnIter<'_, E> {
     fn len(&self) -> usize {
         self.matrix.map(|matrix| matrix.num_cols()).unwrap_or_default()
     }
 }
 
-impl<'a, E: FieldElement> FusedIterator for ColumnIter<'a, E> {}
+impl<E: FieldElement> FusedIterator for ColumnIter<'_, E> {}
 
-impl<'a, E: FieldElement> Default for ColumnIter<'a, E> {
+impl<E: FieldElement> Default for ColumnIter<'_, E> {
     fn default() -> Self {
         Self::empty()
     }
@@ -383,10 +382,10 @@ impl<'a, E: FieldElement> Iterator for ColumnIterMut<'a, E> {
     }
 }
 
-impl<'a, E: FieldElement> ExactSizeIterator for ColumnIterMut<'a, E> {
+impl<E: FieldElement> ExactSizeIterator for ColumnIterMut<'_, E> {
     fn len(&self) -> usize {
         self.matrix.num_cols()
     }
 }
 
-impl<'a, E: FieldElement> FusedIterator for ColumnIterMut<'a, E> {}
+impl<E: FieldElement> FusedIterator for ColumnIterMut<'_, E> {}

@@ -1,91 +1,127 @@
 # Winter maybe-async
-This crate contains a `maybe_async` proc macro that abstracts away sync/async. It is heavily based on [`maybe-async`](https://github.com/fMeow/maybe-async-rs).
 
-The `maybe_async` macro will generate a synchronous or asynchronous version of the trait it is marking. To generate the asynchronous version, enable the `async` feature on the crate. If the `async` feature is off, the synchronous version will be generated. For example,
+This crate contains the `maybe_async` procedural attribute macro and the `maybe_await` procedural macro which abstract away Rust sync/async.
 
-```rs
-#[maybe_async]
+## maybe_async
+
+The `maybe_async` macro will conditionally add the `async` keyword to a function it marks depending on the `async` feature being enabled. To generate the asynchronous version, enable the `async` feature on the crate. If the `async` feature is off, the synchronous version will be generated. For example,
+
+```rust
+// Adding `maybe_async` to trait functions
 trait ExampleTrait {
-    async fn say_hello(&self) {
-        let hello = self.get_hello().await;
+    #[maybe_async]
+    fn say_hello(&self);
 
-        println!("{}", hello);
-    }
-
-    async fn get_hello(&self) -> String {
-        "hello".into()
-    }
+    #[maybe_async]
+    fn get_hello(&self) -> String;
 }
 
-// Generate code when `async` feature is turned ON
-#[async_trait]
-trait ExampleTrait {
-    async fn say_hello(&self) {
-        let hello = self.get_hello().await;
-
-        println!("{}", hello);
-    }
-
-    async fn get_hello(&self) -> String {
-        "hello".into()
-    }
-}
-
-// Generate code when `async` feature is turned OFF
-trait ExampleTrait {
-    fn say_hello(&self) {
-        let hello = self.get_hello();
-
-        println!("{}", hello);
-    }
-
-    fn get_hello(&self) -> String {
-        "hello".into()
-    }
-}
-```
-
-where `#[async_trait]` is the proc macro provided by the [`async-trait`](https://crates.io/crates/async-trait) crate. Notice how `#[maybe_async]` took care of removing the `.await` in the synchronous version of `say_hello()`.
-
-`#[maybe_async]` can also mark `impl` blocks in a similar manner. For example,
-
-```rs
-struct ExampleStruct;
-
+// Adding `maybe_async` to regular functions
 #[maybe_async]
-impl ExampleTrait for ExampleStruct {
-    async fn say_hello(&self) {
-        println!("hello!");
-    }
-}
-
-// Generate code when `async` feature is turned ON
-#[async_trait]
-impl ExampleTrait for ExampleStruct {
-    async fn say_hello(&self) {
-        println!("hello!");
-    }
-}
-
-// Generate code when `async` feature is turned OFF
-impl ExampleTrait for ExampleStruct {
-    fn say_hello(&self) {
-        println!("hello!");
-    }
-}
-
-```
-
-Finally, `#[maybe_async]` can be used on `fn` items, which works in an analogous way to the previous examples.
-
-```rs
-#[maybe_async]
-async fn say_hello() {
+fn hello_world() {
     // ...
 }
 ```
 
-License
--------
+When the `async` feature is enabled, the above code will be transformed into:
+
+```rust
+trait ExampleTrait {
+    async fn say_hello(&self);
+
+    async fn get_hello(&self) -> String;
+}
+
+async fn hello_world() {
+    // ...
+}
+```
+
+## maybe_await
+
+To compliment `maybe_async` we also have the `maybe_await` procedural macro that conditionally adds the `.await` keyword to the end of an expression depending on the `async` feature flag.
+
+```rust
+#[maybe_async]
+fn hello_world() {
+    // Adding `maybe_await` to an expression
+    let w = maybe_await!(world());
+
+    println!("hello {}", w);
+}
+
+#[maybe_async]
+fn world() -> String {
+    "world".to_string()
+}
+```
+
+When the `async` feature is enabled, the above code will be transformed into:
+
+```rust
+async fn hello_world() {
+    let w = world().await;
+
+    println!("hello {}", w);
+}
+
+async fn world() -> String {
+    "world".to_string()
+}
+```
+
+## maybe_async_trait
+
+The `maybe_async_trait` macro can be applied to traits, and it will conditionally add the `async` keyword to trait methods annotated with `#[maybe_async]`, depending on the async feature being enabled. It also applies `#[async_trait::async_trait(?Send)]` to the trait or impl block when the async feature is on.
+
+For example:
+
+```rust
+// Adding `maybe_async_trait` to a trait definition
+#[maybe_async_trait]
+trait ExampleTrait {
+    #[maybe_async]
+    fn hello_world(&self);
+
+    fn get_hello(&self) -> String;
+}
+
+// Adding `maybe_async_trait` to an implementation of the trait
+#[maybe_async_trait]
+impl ExampleTrait for MyStruct {
+    #[maybe_async]
+    fn hello_world(&self) {
+        // ...
+    }
+
+    fn get_hello(&self) -> String {
+        // ...
+    }
+}
+```
+
+When `async` is set, it gets transformed into:
+
+```rust
+#[async_trait::async_trait(?Send)]
+trait ExampleTrait {
+    async fn hello_world(&self);
+
+    fn get_hello(&self) -> String;
+}
+
+#[async_trait::async_trait(?Send)]
+impl ExampleTrait for MyStruct {
+    async fn hello_world(&self) {
+        // ...
+    }
+
+    fn get_hello(&self) -> String {
+        // ...
+    }
+}
+```
+
+## License
 
 This project is [MIT licensed](../../LICENSE).

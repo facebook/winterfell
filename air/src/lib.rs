@@ -38,13 +38,13 @@ mod errors;
 pub use errors::AssertionError;
 
 mod options;
-pub use options::{FieldExtension, ProofOptions};
+pub use options::{FieldExtension, PartitionOptions, ProofOptions};
 
 mod air;
 pub use air::{
     Air, AirContext, Assertion, AuxRandElements, BoundaryConstraint, BoundaryConstraintGroup,
     BoundaryConstraints, ConstraintCompositionCoefficients, ConstraintDivisor,
-    DeepCompositionCoefficients, EvaluationFrame, GkrVerifier,
+    DeepCompositionCoefficients, EvaluationFrame, GkrRandElements, GkrVerifier,
     LagrangeConstraintsCompositionCoefficients, LagrangeKernelBoundaryConstraint,
     LagrangeKernelConstraints, LagrangeKernelEvaluationFrame, LagrangeKernelRandElements,
     LagrangeKernelTransitionConstraints, TraceInfo, TransitionConstraintDegree,

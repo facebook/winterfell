@@ -45,7 +45,7 @@ pub struct DefaultConstraintEvaluator<'a, A: Air, E: FieldElement<BaseField = A:
     periodic_values: PeriodicValueTable<E::BaseField>,
 }
 
-impl<'a, A, E> ConstraintEvaluator<E> for DefaultConstraintEvaluator<'a, A, E>
+impl<A, E> ConstraintEvaluator<E> for DefaultConstraintEvaluator<'_, A, E>
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseField>,
@@ -154,9 +154,7 @@ where
         // constraint evaluations.
         let boundary_constraints = BoundaryConstraints::new(
             air,
-            aux_rand_elements
-                .as_ref()
-                .map(|aux_rand_elements| aux_rand_elements.rand_elements()),
+            aux_rand_elements.as_ref(),
             &composition_coefficients.boundary,
         );
 
@@ -378,8 +376,7 @@ where
             periodic_values,
             self.aux_rand_elements
                 .as_ref()
-                .expect("expected aux rand elements to be present")
-                .rand_elements(),
+                .expect("expected aux rand elements to be present"),
             evaluations,
         );
 

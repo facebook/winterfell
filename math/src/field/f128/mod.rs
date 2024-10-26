@@ -352,7 +352,7 @@ impl TryFrom<u128> for BaseElement {
     }
 }
 
-impl<'a> TryFrom<&'a [u8]> for BaseElement {
+impl TryFrom<&'_ [u8]> for BaseElement {
     type Error = String;
 
     /// Converts a slice of bytes into a field element; returns error if the value encoded in bytes

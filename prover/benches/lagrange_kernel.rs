@@ -7,11 +7,11 @@ use std::time::Duration;
 
 use air::{
     Air, AirContext, Assertion, AuxRandElements, ConstraintCompositionCoefficients,
-    EvaluationFrame, FieldExtension, LagrangeKernelRandElements, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
+    EvaluationFrame, FieldExtension, GkrRandElements, LagrangeKernelRandElements, PartitionOptions,
+    ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
-use crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin};
+use crypto::{hashers::Blake3_256, DefaultRandomCoin, MerkleTree, RandomCoin};
 use math::{fields::f64::BaseElement, ExtensionOf, FieldElement};
 use winter_prover::{
     matrix::ColMatrix, DefaultConstraintEvaluator, DefaultTraceLde, Prover, ProverGkrProof,
@@ -144,7 +144,7 @@ impl Air for LagrangeKernelAir {
         _main_frame: &EvaluationFrame<F>,
         _aux_frame: &EvaluationFrame<E>,
         _periodic_values: &[F],
-        _aux_rand_elements: &[E],
+        _aux_rand_elements: &AuxRandElements<E>,
         _result: &mut [E],
     ) where
         F: FieldElement<BaseField = Self::BaseField>,
@@ -155,7 +155,7 @@ impl Air for LagrangeKernelAir {
 
     fn get_aux_assertions<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
-        _aux_rand_elements: &[E],
+        _aux_rand_elements: &AuxRandElements<E>,
     ) -> Vec<Assertion<E>> {
         vec![Assertion::single(1, 0, E::ZERO)]
     }
@@ -183,8 +183,10 @@ impl Prover for LagrangeProver {
     type Air = LagrangeKernelAir;
     type Trace = LagrangeTrace;
     type HashFn = Blake3_256<BaseElement>;
+    type VC = MerkleTree<Blake3_256<BaseElement>>;
     type RandomCoin = DefaultRandomCoin<Self::HashFn>;
-    type TraceLde<E: FieldElement<BaseField = BaseElement>> = DefaultTraceLde<E, Self::HashFn>;
+    type TraceLde<E: FieldElement<BaseField = BaseElement>> =
+        DefaultTraceLde<E, Self::HashFn, Self::VC>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = BaseElement>> =
         DefaultConstraintEvaluator<'a, LagrangeKernelAir, E>;
 
@@ -200,11 +202,12 @@ impl Prover for LagrangeProver {
         trace_info: &TraceInfo,
         main_trace: &ColMatrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
+        partition_option: PartitionOptions,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>)
     where
         E: math::FieldElement<BaseField = Self::BaseField>,
     {
-        DefaultTraceLde::new(trace_info, main_trace, domain)
+        DefaultTraceLde::new(trace_info, main_trace, domain, partition_option)
     }
 
     fn new_evaluator<'a, E>(
@@ -223,22 +226,22 @@ impl Prover for LagrangeProver {
         &self,
         main_trace: &Self::Trace,
         public_coin: &mut Self::RandomCoin,
-    ) -> (ProverGkrProof<Self>, LagrangeKernelRandElements<E>)
+    ) -> (ProverGkrProof<Self>, GkrRandElements<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
         let main_trace = main_trace.main_segment();
-        let lagrange_kernel_rand_elements: Vec<E> = {
+        let lagrange_kernel_rand_elements = {
             let log_trace_len = main_trace.num_rows().ilog2() as usize;
             let mut rand_elements = Vec::with_capacity(log_trace_len);
             for _ in 0..log_trace_len {
                 rand_elements.push(public_coin.draw().unwrap());
             }
 
-            rand_elements
+            LagrangeKernelRandElements::new(rand_elements)
         };
 
-        ((), LagrangeKernelRandElements::new(lagrange_kernel_rand_elements))
+        ((), GkrRandElements::new(lagrange_kernel_rand_elements, Vec::new()))
     }
 
     fn build_aux_trace<E>(
