@@ -34,7 +34,7 @@ air = { version = "0.10", path = "../air", package = "winter-air", default-featu
 crypto = { version = "0.10", path = "../crypto", package = "winter-crypto", default-features = false }
 fri = { version = "0.10", path = '../fri', package = "winter-fri", default-features = false }
 math = { version = "0.10", path = "../math", package = "winter-math", default-features = false }
-maybe_async = { path = "../utils/maybe_async" , package = "winter-maybe-async" }
+maybe_async = { version = "0.10", path = "../utils/maybe_async" , package = "winter-maybe-async" }
 tracing = { version = "0.1", default-features = false, features = ["attributes"]}
 utils = { version = "0.10", path = "../utils/core", package = "winter-utils", default-features = false }
 
