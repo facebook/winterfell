@@ -1,10 +1,11 @@
 # Changelog
 
-## 0.10.1 (2024-10-04) - `utils/maybe-async` crate only
+## 0.10.0 (2024-10-25)
 - Added `maybe-async-trait` procedural macro.
-
-## 0.10.0 (2024-06-11) - `utils/maybe-async` crate only
 - [BREAKING] Refactored `maybe-async` macro into simpler `maybe-async` and `maybe-await` macros.
+- Introduce `VectorCommitment` abstraction (#285).
+- Add options for partitioned trace commitments (#336).
+- Updated minimum supported Rust version to 1.82.
 
 ## 0.9.3 (2024-09-25) - `utils/core` and `math` crates only
 - Implemented `get_size_hint()` for default impls (#332).

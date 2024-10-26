@@ -9,7 +9,7 @@ repository = "https://github.com/facebook/winterfell"
 documentation = "https://docs.rs/winter-maybe-async/0.10.1"
 keywords = ["async"]
 edition = "2021"
-rust-version = "1.78"
+rust-version = "1.82"
 
 [lib]
 proc-macro = true
