@@ -6,6 +6,12 @@
 ## 0.10.0 (2024-06-11) - `utils/maybe-async` crate only
 - [BREAKING] Refactored `maybe-async` macro into simpler `maybe-async` and `maybe-await` macros.
 
+## 0.9.3 (2024-09-25) - `utils/core` and `math` crates only
+- Implemented `get_size_hint()` for default impls (#332).
+
+## 0.9.2 (2024-09-06) - `utils/core` crate only
+- Fixed `read_slice` impl for ReadAdapter` (#309).
+
 ## 0.9.1 (2024-06-24) - `utils/core` crate only
 - Fixed `useize` serialization in `ByteWriter`.
 

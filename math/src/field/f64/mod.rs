@@ -10,6 +10,7 @@
 //!
 //! This field supports very fast modular arithmetic and has a number of other attractive
 //! properties, including:
+//!
 //! * Multiplication of two 32-bit values does not overflow field modulus.
 //! * Field arithmetic in this field can be implemented using a few 32-bit addition, subtractions,
 //!   and shifts.
@@ -661,6 +662,10 @@ impl Serializable for BaseElement {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         // convert from Montgomery representation into canonical representation
         target.write_bytes(&self.as_int().to_le_bytes());
+    }
+
+    fn get_size_hint(&self) -> usize {
+        self.as_int().get_size_hint()
     }
 }
 

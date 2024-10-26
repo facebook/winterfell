@@ -512,6 +512,10 @@ impl Serializable for BaseElement {
         // convert from Montgomery representation into canonical representation
         target.write_bytes(&self.as_int().to_le_bytes());
     }
+
+    fn get_size_hint(&self) -> usize {
+        self.as_int().get_size_hint()
+    }
 }
 
 impl Deserializable for BaseElement {
