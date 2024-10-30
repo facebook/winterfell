@@ -377,7 +377,11 @@ impl PartitionOptions {
 
     /// Returns the size of each partition used when committing to the main and auxiliary traces as
     /// well as the constraint evaluation trace.
+    /// The returned size is given in terms of number of columns in the field `E`.
     pub fn partition_size<E: FieldElement>(&self, num_columns: usize) -> usize {
+        if self.num_partitions == 1 && self.min_partition_size == 1 {
+            return num_columns;
+        }
         let base_elements_per_partition = cmp::max(
             (num_columns * E::EXTENSION_DEGREE).div_ceil(self.num_partitions as usize),
             self.min_partition_size as usize,

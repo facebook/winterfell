@@ -219,6 +219,7 @@ pub trait Prover {
     /// Builds and returns the auxiliary trace.
     #[allow(unused_variables)]
     #[maybe_async]
+    #[instrument(skip_all)]
     fn build_aux_trace<E>(
         &self,
         main_trace: &Self::Trace,
