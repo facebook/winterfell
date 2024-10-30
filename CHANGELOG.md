@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.10.1 (2024-10-30)
+- Fixed partition hashing and add logging to aux trace building (#338).
+
 ## 0.10.0 (2024-10-25)
 - [BREAKING] Refactored maybe-async macro into simpler maybe-async and maybe-await macros (#283).
 - [BREAKING] Introduce `VectorCommitment` abstraction (#285).
