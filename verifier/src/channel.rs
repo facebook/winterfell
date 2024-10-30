@@ -442,7 +442,7 @@ where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
 {
-    if partition_size == row.len() * E::EXTENSION_DEGREE {
+    if partition_size == row.len() {
         H::hash_elements(row)
     } else {
         let mut buffer = vec![H::Digest::default(); partition_size];
