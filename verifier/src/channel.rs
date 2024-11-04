@@ -445,7 +445,9 @@ where
     if partition_size == row.len() {
         H::hash_elements(row)
     } else {
-        let mut buffer = vec![H::Digest::default(); partition_size];
+        let num_partitions = row.len().div_ceil(partition_size);
+
+        let mut buffer = vec![H::Digest::default(); num_partitions];
 
         row.chunks(partition_size)
             .zip(buffer.iter_mut())

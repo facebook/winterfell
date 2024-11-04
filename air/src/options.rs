@@ -181,9 +181,9 @@ impl ProofOptions {
     pub const fn with_partitions(
         mut self,
         num_partitions: usize,
-        min_partition_size: usize,
+        hash_rate: usize,
     ) -> ProofOptions {
-        self.partition_options = PartitionOptions::new(num_partitions, min_partition_size);
+        self.partition_options = PartitionOptions::new(num_partitions, hash_rate);
 
         self
     }
@@ -277,7 +277,7 @@ impl Serializable for ProofOptions {
         target.write_u8(self.fri_folding_factor);
         target.write_u8(self.fri_remainder_max_degree);
         target.write_u8(self.partition_options.num_partitions);
-        target.write_u8(self.partition_options.min_partition_size);
+        target.write_u8(self.partition_options.hash_rate);
     }
 }
 
@@ -351,27 +351,27 @@ impl Deserializable for FieldExtension {
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct PartitionOptions {
     num_partitions: u8,
-    min_partition_size: u8,
+    hash_rate: u8,
 }
 
 impl PartitionOptions {
     /// Returns a new instance of `[PartitionOptions]`.
-    pub const fn new(num_partitions: usize, min_partition_size: usize) -> Self {
+    pub const fn new(num_partitions: usize, hash_rate: usize) -> Self {
         assert!(num_partitions >= 1, "number of partitions must be greater than or eqaul to 1");
         assert!(num_partitions <= 16, "number of partitions must be smaller than or equal to 16");
 
         assert!(
-            min_partition_size >= 1,
-            "smallest partition size must be greater than or equal to 1"
+            hash_rate >= 1,
+            "hash rate must be greater than or equal to 1"
         );
         assert!(
-            min_partition_size <= 256,
-            "smallest partition size must be smaller than or equal to 256"
+            hash_rate <= 256,
+            "hash rate must be smaller than or equal to 256"
         );
 
         Self {
             num_partitions: num_partitions as u8,
-            min_partition_size: min_partition_size as u8,
+            hash_rate: hash_rate as u8,
         }
     }
 
@@ -379,21 +379,28 @@ impl PartitionOptions {
     /// well as the constraint evaluation trace.
     /// The returned size is given in terms of number of columns in the field `E`.
     pub fn partition_size<E: FieldElement>(&self, num_columns: usize) -> usize {
-        if self.num_partitions == 1 && self.min_partition_size == 1 {
+        if self.num_partitions == 1 {
             return num_columns;
         }
+        let min_partition_size = self.hash_rate as usize / E::EXTENSION_DEGREE;
         let base_elements_per_partition = cmp::max(
             (num_columns * E::EXTENSION_DEGREE).div_ceil(self.num_partitions as usize),
-            self.min_partition_size as usize,
+            min_partition_size,
         );
 
         base_elements_per_partition.div(E::EXTENSION_DEGREE)
+    }
+
+    /// The actual number of partitions, after the min partition size implied
+    /// by the hash rate is taken into account.
+    pub fn num_partitions<E: FieldElement>(&self, num_columns: usize) -> usize {
+        num_columns.div_ceil(self.partition_size::<E>(num_columns))
     }
 }
 
 impl Default for PartitionOptions {
     fn default() -> Self {
-        Self { num_partitions: 1, min_partition_size: 1 }
+        Self { num_partitions: 1, hash_rate: 1 }
     }
 }
 
