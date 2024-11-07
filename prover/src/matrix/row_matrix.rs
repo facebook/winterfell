@@ -5,6 +5,7 @@
 
 use alloc::vec::Vec;
 
+use air::PartitionOptions;
 use crypto::{ElementHasher, VectorCommitment};
 use math::{fft, FieldElement, StarkField};
 #[cfg(feature = "concurrent")]
@@ -180,13 +181,16 @@ impl<E: FieldElement> RowMatrix<E> {
     /// * A vector commitment is computed for the resulting vector using the specified vector
     ///   commitment scheme.
     /// * The resulting vector commitment is returned as the commitment to the entire matrix.
-    pub fn commit_to_rows<H, V>(&self, partition_size: usize) -> V
+    pub fn commit_to_rows<H, V>(&self, partition_options: PartitionOptions) -> V
     where
         H: ElementHasher<BaseField = E::BaseField>,
         V: VectorCommitment<H>,
     {
         // allocate vector to store row hashes
         let mut row_hashes = unsafe { uninit_vector::<H::Digest>(self.num_rows()) };
+
+        let partition_size = partition_options.partition_size::<E>(self.num_cols());
+        let num_partitions = partition_options.num_partitons();
 
         if partition_size == self.num_cols() * E::EXTENSION_DEGREE {
             // iterate though matrix rows, hashing each row
@@ -205,7 +209,7 @@ impl<E: FieldElement> RowMatrix<E> {
                 &mut row_hashes,
                 128, // min batch size
                 |batch: &mut [H::Digest], batch_offset: usize| {
-                    let mut buffer = vec![H::Digest::default(); partition_size];
+                    let mut buffer = vec![H::Digest::default(); num_partitions];
                     for (i, row_hash) in batch.iter_mut().enumerate() {
                         self.row(batch_offset + i)
                             .chunks(partition_size)

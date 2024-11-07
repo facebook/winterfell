@@ -383,7 +383,11 @@ impl PartitionOptions {
             self.min_partition_size as usize,
         );
 
-        base_elements_per_partition.div(E::EXTENSION_DEGREE)
+        base_elements_per_partition.div_ceil(E::EXTENSION_DEGREE)
+    }
+
+    pub fn num_partitons(&self) -> usize {
+        self.num_partitions as usize
     }
 }
 
