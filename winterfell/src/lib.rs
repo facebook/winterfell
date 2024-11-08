@@ -262,6 +262,7 @@
 //!     math::{fields::f128::BaseElement, FieldElement, ToElements},
 //!     matrix::ColMatrix,
 //!     DefaultTraceLde, ProofOptions, Prover, StarkDomain, Trace, TracePolyTable, TraceTable,
+//!     ZkParameters,
 //! };
 //!
 //! # use winterfell::{
@@ -372,8 +373,9 @@
 //!         main_trace: &ColMatrix<Self::BaseField>,
 //!         domain: &StarkDomain<Self::BaseField>,
 //!         partition_option: PartitionOptions,
+//!         is_zk: Option<ZkParameters>,
 //!     ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
-//!         DefaultTraceLde::new(trace_info, main_trace, domain, partition_option)
+//!         DefaultTraceLde::new(trace_info, main_trace, domain, partition_option, is_zk)
 //!     }
 //!
 //!     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
@@ -403,6 +405,7 @@
 //! #    DefaultTraceLde, EvaluationFrame, TraceInfo,
 //! #    TransitionConstraintDegree, TraceTable, FieldExtension, PartitionOptions, Prover,
 //! #    ProofOptions, StarkDomain, Proof, Trace, TracePolyTable,
+//! #    ZkParameters
 //! # };
 //! #
 //! # pub fn build_do_work_trace(start: BaseElement, n: usize) -> TraceTable<BaseElement> {
@@ -516,8 +519,9 @@
 //! #        main_trace: &ColMatrix<Self::BaseField>,
 //! #        domain: &StarkDomain<Self::BaseField>,
 //! #        partition_option: PartitionOptions,
+//! #        is_zk: Option<ZkParameters>,
 //! #    ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
-//! #        DefaultTraceLde::new(trace_info, main_trace, domain, partition_option)
+//! #        DefaultTraceLde::new(trace_info, main_trace, domain, partition_option, is_zk)
 //! #    }
 //! #
 //! #    fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
@@ -548,6 +552,7 @@
 //!     FieldExtension::None,
 //!     8,  // FRI folding factor
 //!     31, // FRI max remainder polynomial degree
+//!     false, // Enable zero-knowledge
 //! );
 //!
 //! // Instantiate the prover and generate the proof.
@@ -596,7 +601,7 @@
 #[cfg(test)]
 extern crate std;
 
-pub use air::{AuxRandElements, GkrVerifier, PartitionOptions};
+pub use air::{AuxRandElements, GkrVerifier, PartitionOptions, ZkParameters};
 pub use prover::{
     crypto, iterators, math, matrix, Air, AirContext, Assertion, AuxTraceWithMetadata,
     BoundaryConstraint, BoundaryConstraintGroup, CompositionPolyTrace,

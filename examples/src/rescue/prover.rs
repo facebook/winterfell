@@ -3,6 +3,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use air::ZkParameters;
+use rand_chacha::{rand_core::SeedableRng, ChaCha20Rng};
 use winterfell::{
     crypto::MerkleTree, matrix::ColMatrix, AuxRandElements, ConstraintCompositionCoefficients,
     DefaultConstraintEvaluator, DefaultTraceLde, PartitionOptions, StarkDomain, Trace, TraceInfo,
@@ -96,8 +98,17 @@ where
         main_trace: &ColMatrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
         partition_option: PartitionOptions,
+        zk_parameters: Option<ZkParameters>,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
-        DefaultTraceLde::new(trace_info, main_trace, domain, partition_option)
+        let mut prng = ChaCha20Rng::from_entropy();
+        DefaultTraceLde::new(
+            trace_info,
+            main_trace,
+            domain,
+            partition_option,
+            zk_parameters,
+            &mut prng,
+        )
     }
 
     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(

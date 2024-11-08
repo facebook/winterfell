@@ -88,12 +88,13 @@ impl<E: FieldElement> DeepComposer<E> {
         let n = queried_main_trace_states.num_rows();
         let mut result_num = Vec::<E>::with_capacity(n);
         let mut result_den = Vec::<E>::with_capacity(n);
-
         for ((_, row), &x) in (0..n).zip(queried_main_trace_states.rows()).zip(&self.x_coordinates)
         {
             let mut t1_num = E::ZERO;
             let mut t2_num = E::ZERO;
 
+            // we iterate over all polynomials except for the randomizer when zero-knowledge
+            // is enabled
             for (i, &value) in row.iter().enumerate() {
                 let value = E::from(value);
                 // compute the numerator of T'_i(x) as (T_i(x) - T_i(z)), multiply it by a
@@ -122,6 +123,8 @@ impl<E: FieldElement> DeepComposer<E> {
 
             // we define this offset here because composition of the main trace columns has
             // consumed some number of composition coefficients already.
+            // In the case zero-knowledge is enabled, the offset is adjusted so as to account for
+            // the randomizer polynomial.
             let cc_offset = queried_main_trace_states.num_columns();
 
             // we treat the Lagrange column separately if present
@@ -215,10 +218,12 @@ impl<E: FieldElement> DeepComposer<E> {
         &self,
         queried_evaluations: Table<E>,
         ood_evaluations: Vec<E>,
+        is_zk: bool,
     ) -> Vec<E> {
         assert_eq!(queried_evaluations.num_rows(), self.x_coordinates.len());
 
         let n = queried_evaluations.num_rows();
+        let num_cols = ood_evaluations.len();
         let mut result_num = Vec::<E>::with_capacity(n);
         let mut result_den = Vec::<E>::with_capacity(n);
 
@@ -228,10 +233,16 @@ impl<E: FieldElement> DeepComposer<E> {
         // this way we can use batch inversion in the end.
         for (query_values, &x) in queried_evaluations.rows().zip(&self.x_coordinates) {
             let mut composition_num = E::ZERO;
-            for (i, &evaluation) in query_values.iter().enumerate() {
+            for (i, &evaluation) in query_values.iter().enumerate().take(num_cols) {
                 // compute the numerator of H'_i(x) as (H_i(x) - H_i(z)), multiply it by a
                 // composition coefficient, and add the result to the numerator aggregator
                 composition_num += (evaluation - ood_evaluations[i]) * self.cc.constraints[i];
+            }
+            // In the case zero-knowledge is enabled, the randomizer is added to DEEP composition
+            // polynomial.
+            if is_zk {
+                let randmizer_at_x = query_values[num_cols];
+                composition_num += randmizer_at_x * (x - z);
             }
             result_num.push(composition_num);
             result_den.push(x - z);

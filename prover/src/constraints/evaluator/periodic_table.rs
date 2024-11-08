@@ -37,23 +37,29 @@ impl<B: StarkField> PeriodicValueTable<B> {
         // them for polynomials of the same size
         let mut twiddle_map = BTreeMap::new();
 
+        // zero-knowledge blowup factor
+        let factor = air.context().trace_length_ext() / air.trace_length();
         let evaluations = polys
             .iter()
             .map(|poly| {
                 let poly_size = poly.len();
                 let num_cycles = (air.trace_length() / poly_size) as u64;
                 let offset = air.domain_offset().exp(num_cycles.into());
-                let twiddles =
-                    twiddle_map.entry(poly_size).or_insert_with(|| fft::get_twiddles(poly_size));
 
-                fft::evaluate_poly_with_offset(poly, twiddles, offset, air.ce_blowup_factor())
+                let mut new_poly = vec![B::ZERO; factor * poly_size];
+                new_poly[..poly_size].copy_from_slice(&poly[..poly_size]);
+                let twiddles = twiddle_map
+                    .entry(new_poly.len())
+                    .or_insert_with(|| fft::get_twiddles(new_poly.len()));
+
+                fft::evaluate_poly_with_offset(&new_poly, twiddles, offset, air.ce_blowup_factor())
             })
             .collect::<Vec<_>>();
 
         // allocate memory to hold all expanded values and copy polynomial evaluations into the
         // table in such a way that values for the same row are adjacent to each other.
         let row_width = polys.len();
-        let column_length = max_poly_size * air.ce_blowup_factor();
+        let column_length = factor * max_poly_size * air.ce_blowup_factor();
         let mut values = unsafe { uninit_vector(row_width * column_length) };
         for i in 0..column_length {
             for (j, column) in evaluations.iter().enumerate() {

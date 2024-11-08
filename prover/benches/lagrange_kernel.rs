@@ -8,11 +8,13 @@ use std::time::Duration;
 use air::{
     Air, AirContext, Assertion, AuxRandElements, ConstraintCompositionCoefficients,
     EvaluationFrame, FieldExtension, GkrRandElements, LagrangeKernelRandElements, PartitionOptions,
-    ProofOptions, TraceInfo, TransitionConstraintDegree,
+    ProofOptions, TraceInfo, TransitionConstraintDegree, ZkParameters,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, MerkleTree, RandomCoin};
 use math::{fields::f64::BaseElement, ExtensionOf, FieldElement};
+use rand::SeedableRng;
+use rand_chacha::ChaCha20Rng;
 use winter_prover::{
     matrix::ColMatrix, DefaultConstraintEvaluator, DefaultTraceLde, Prover, ProverGkrProof,
     StarkDomain, Trace, TracePolyTable,
@@ -173,7 +175,7 @@ impl LagrangeProver {
     fn new(aux_trace_width: usize) -> Self {
         Self {
             aux_trace_width,
-            options: ProofOptions::new(1, 2, 0, FieldExtension::None, 2, 1),
+            options: ProofOptions::new(1, 2, 0, FieldExtension::None, 2, 1, false),
         }
     }
 }
@@ -203,11 +205,20 @@ impl Prover for LagrangeProver {
         main_trace: &ColMatrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
         partition_option: PartitionOptions,
+        zk_parameters: Option<ZkParameters>,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>)
     where
         E: math::FieldElement<BaseField = Self::BaseField>,
     {
-        DefaultTraceLde::new(trace_info, main_trace, domain, partition_option)
+        let mut prng = ChaCha20Rng::from_entropy();
+        DefaultTraceLde::new(
+            trace_info,
+            main_trace,
+            domain,
+            partition_option,
+            zk_parameters,
+            &mut prng,
+        )
     }
 
     fn new_evaluator<'a, E>(

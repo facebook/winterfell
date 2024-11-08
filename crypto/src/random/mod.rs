@@ -38,6 +38,14 @@ pub trait RandomCoin: Sync {
     /// Reseeds the coin with the specified data by setting the new seed to hash(`seed` || `data`).
     fn reseed(&mut self, data: <Self::Hasher as Hasher>::Digest);
 
+    /// Similar to `Self::reseed` but takes a salt which is not a `None` when zero-knowledge is enabled.
+    /// TODO: Should we remove `Self::reseed`?
+    fn reseed_with_salt(
+        &mut self,
+        data: <Self::Hasher as Hasher>::Digest,
+        salt: Option<<Self::Hasher as Hasher>::Digest>,
+    );
+
     /// Computes hash(`seed` || `value`) and returns the number of leading zeros in the resulting
     /// value if it is interpreted as an integer in big-endian byte order.
     fn check_leading_zeros(&self, value: u64) -> u32;

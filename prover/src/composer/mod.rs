@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 use alloc::vec::Vec;
 
-use air::{proof::TraceOodFrame, DeepCompositionCoefficients};
+use air::{proof::TraceOodFrame, Air, DeepCompositionCoefficients};
 use math::{
     add_in_place, fft, mul_acc,
     polynom::{self, syn_div_roots_in_place},
@@ -22,6 +22,8 @@ pub struct DeepCompositionPoly<E: FieldElement> {
     coefficients: Vec<E>,
     cc: DeepCompositionCoefficients<E>,
     z: E,
+    g: E,
+    is_zk: bool,
 }
 
 impl<E: FieldElement> DeepCompositionPoly<E> {
@@ -30,17 +32,27 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
     /// Returns a new DEEP composition polynomial. Initially, this polynomial will be empty, and
     /// the intent is to populate the coefficients via add_trace_polys() and add_constraint_polys()
     /// methods.
-    pub fn new(z: E, cc: DeepCompositionCoefficients<E>) -> Self {
-        DeepCompositionPoly { coefficients: vec![], cc, z }
+    pub fn new<A: Air<BaseField = E::BaseField>>(
+        air: &A,
+        z: E,
+        cc: DeepCompositionCoefficients<E>,
+    ) -> Self {
+        DeepCompositionPoly {
+            coefficients: vec![],
+            cc,
+            z,
+            g: E::from(air.trace_domain_generator()),
+            is_zk: air.is_zk(),
+        }
     }
 
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the size of the DEEP composition polynomial.
-    pub fn poly_size(&self) -> usize {
-        self.coefficients.len()
-    }
+    ///// Returns the size of the DEEP composition polynomial.
+    //pub fn poly_size(&self) -> usize {
+    //self.coefficients.len()
+    //}
 
     /// Returns the degree of the composition polynomial.
     pub fn degree(&self) -> usize {
@@ -82,8 +94,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
         // compute a second out-of-domain point offset from z by exactly trace generator; this
         // point defines the "next" computation state in relation to point z
         let trace_length = trace_polys.poly_size();
-        let g = E::from(E::BaseField::get_root_of_unity(trace_length.ilog2()));
-        let next_z = self.z * g;
+        let next_z = self.z * self.g;
 
         // combine trace polynomials into 2 composition polynomials T'(x) and T''(x)
         let mut t1_composition = vec![E::ZERO; trace_length];
@@ -185,7 +196,6 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
 
         // set the coefficients of the DEEP composition polynomial
         self.coefficients = trace_poly;
-        assert_eq!(self.poly_size() - 2, self.degree());
     }
 
     // CONSTRAINT POLYNOMIAL COMPOSITION
@@ -194,7 +204,7 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
     /// into the DEEP composition polynomial. This method is intended to be called only after the
     /// add_trace_polys() method has been executed. The composition is done as follows:
     ///
-    /// - For each H_i(x), compute H'_i(x) = (H_i(x) - H(z)) / (x - z), where H_i(x) is the
+    /// - For each H_i(x), compute H'_i(x) = (H_i(x) - H(z)) / (x - z^m), where H_i(x) is the
     ///   ith composition polynomial column.
     /// - Then, combine all H_i(x) polynomials together by computing H(x) = sum(H_i(x) * cc_i) for
     ///   all i, where cc_i is the coefficient for the random linear combination drawn from the
@@ -208,22 +218,32 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
     ) {
         assert!(!self.coefficients.is_empty());
 
+        let mut column_polys = composition_poly.into_columns();
+        let num_cols = ood_evaluations.len();
         let z = self.z;
 
-        let mut column_polys = composition_poly.into_columns();
-
         // Divide out the OOD point z from column polynomials
-        iter_mut!(column_polys).zip(ood_evaluations).for_each(|(poly, value_at_z)| {
-            // compute H'_i(x) = (H_i(x) - H_i(z)) / (x - z)
-            poly[0] -= value_at_z;
-            polynom::syn_div_in_place(poly, 1, z);
-        });
+        iter_mut!(column_polys).take(num_cols).zip(ood_evaluations).for_each(
+            |(poly, value_at_z)| {
+                // compute H'_i(x) = (H_i(x) - H_i(z)) / (x - z)
+                poly[0] -= value_at_z;
+                polynom::syn_div_in_place(poly, 1, z);
+            },
+        );
 
         // add H'_i(x) * cc_i for all i into the DEEP composition polynomial
-        for (i, poly) in column_polys.into_iter().enumerate() {
-            mul_acc::<E, E>(&mut self.coefficients, &poly, self.cc.constraints[i]);
+        for (i, poly) in column_polys.iter().enumerate().take(num_cols) {
+            mul_acc::<E, E>(&mut self.coefficients, poly, self.cc.constraints[i]);
         }
-        assert_eq!(self.poly_size() - 2, self.degree());
+
+        // add the randomizer codeword for FRI
+        if self.is_zk {
+            iter_mut!(self.coefficients)
+                .zip(&column_polys[column_polys.len() - 1])
+                .for_each(|(a, b)| *a += *b);
+        }
+
+        assert_eq!(self.coefficients.len() - 2, self.degree());
     }
 
     // LOW-DEGREE EXTENSION

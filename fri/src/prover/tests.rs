@@ -7,6 +7,8 @@ use alloc::vec::Vec;
 
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, Hasher, MerkleTree, RandomCoin};
 use math::{fft, fields::f128::BaseElement, FieldElement};
+use rand::SeedableRng;
+use rand_chacha::ChaCha20Rng;
 use utils::{Deserializable, Serializable, SliceReader};
 
 use super::{DefaultProverChannel, FriProver};
@@ -45,7 +47,7 @@ pub fn build_prover_channel(
     trace_length: usize,
     options: &FriOptions,
 ) -> DefaultProverChannel<BaseElement, Blake3, DefaultRandomCoin<Blake3>> {
-    DefaultProverChannel::new(trace_length * options.blowup_factor(), 32)
+    DefaultProverChannel::new(trace_length * options.blowup_factor(), 32, false)
 }
 
 pub fn build_evaluations(trace_length: usize, lde_blowup: usize) -> Vec<BaseElement> {
@@ -105,7 +107,8 @@ fn fri_prove_verify(
 
     // instantiate the prover and generate the proof
     let mut prover = FriProver::<_, _, _, MerkleTree<Blake3>>::new(options.clone());
-    prover.build_layers(&mut channel, evaluations.clone());
+    let mut prng = ChaCha20Rng::from_entropy();
+    prover.build_layers(&mut channel, evaluations.clone(), &mut prng);
     let positions = channel.draw_query_positions(0);
     let proof = prover.build_proof(&positions);
 

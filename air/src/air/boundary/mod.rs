@@ -170,7 +170,7 @@ where
         let group = groups.entry(key).or_insert_with(|| {
             BoundaryConstraintGroup::new(ConstraintDivisor::from_assertion(
                 &assertion,
-                context.trace_len(),
+                context.trace_info().length(),
             ))
         });
 

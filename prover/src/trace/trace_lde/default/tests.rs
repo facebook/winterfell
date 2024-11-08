@@ -11,6 +11,8 @@ use math::{
     fields::f128::BaseElement, get_power_series, get_power_series_with_offset, polynom,
     FieldElement, StarkField,
 };
+use rand::SeedableRng;
+use rand_chacha::ChaCha20Rng;
 
 use crate::{
     tests::{build_fib_trace, MockAir},
@@ -27,6 +29,7 @@ fn extend_trace_table() {
     let trace = build_fib_trace(trace_length * 2);
     let domain = StarkDomain::new(&air);
     let partition_option = PartitionOptions::default();
+    let mut prng = ChaCha20Rng::from_entropy();
 
     // build the trace polynomials, extended trace, and commitment using the default TraceLde impl
     let (trace_lde, trace_polys) = DefaultTraceLde::<BaseElement, Blake3, MerkleTree<Blake3>>::new(
@@ -34,6 +37,8 @@ fn extend_trace_table() {
         trace.main_segment(),
         &domain,
         partition_option,
+        None,
+        &mut prng,
     );
 
     // check the width and length of the extended trace
@@ -79,6 +84,7 @@ fn commit_trace_table() {
     let trace = build_fib_trace(trace_length * 2);
     let domain = StarkDomain::new(&air);
     let partition_option = PartitionOptions::default();
+    let mut prng = ChaCha20Rng::from_entropy();
 
     // build the trace polynomials, extended trace, and commitment using the default TraceLde impl
     let (trace_lde, _) = DefaultTraceLde::<BaseElement, Blake3, MerkleTree<Blake3>>::new(
@@ -86,6 +92,8 @@ fn commit_trace_table() {
         trace.main_segment(),
         &domain,
         partition_option,
+        None,
+        &mut prng,
     );
 
     // build commitment, using a Merkle tree, to the trace rows

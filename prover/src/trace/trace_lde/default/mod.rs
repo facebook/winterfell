@@ -6,8 +6,11 @@
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
-use air::{proof::Queries, LagrangeKernelEvaluationFrame, PartitionOptions, TraceInfo};
+use air::{
+    proof::Queries, LagrangeKernelEvaluationFrame, PartitionOptions, TraceInfo, ZkParameters,
+};
 use crypto::VectorCommitment;
+use rand::RngCore;
 use tracing::info_span;
 
 use super::{
@@ -60,18 +63,22 @@ where
     ///
     /// Returns a tuple containing a [TracePolyTable] with the trace polynomials for the main trace
     /// segment and the new [DefaultTraceLde].
-    pub fn new(
+    pub fn new<R: RngCore>(
         trace_info: &TraceInfo,
         main_trace: &ColMatrix<E::BaseField>,
         domain: &StarkDomain<E::BaseField>,
         partition_option: PartitionOptions,
+        zk_parameters: Option<ZkParameters>,
+        prng: &mut R,
     ) -> (Self, TracePolyTable<E>) {
         // extend the main execution trace and build a commitment to the extended trace
         let (main_segment_lde, main_segment_vector_com, main_segment_polys) =
-            build_trace_commitment::<E, E::BaseField, H, V>(
+            build_trace_commitment::<E, E::BaseField, H, V, R>(
                 main_trace,
                 domain,
                 partition_option.partition_size::<E::BaseField>(main_trace.num_cols()),
+                zk_parameters,
+                prng,
             );
 
         let trace_poly_table = TracePolyTable::new(main_segment_polys);
@@ -80,9 +87,9 @@ where
             main_segment_oracles: main_segment_vector_com,
             aux_segment_lde: None,
             aux_segment_oracles: None,
-            blowup: domain.trace_to_lde_blowup(),
             trace_info: trace_info.clone(),
             partition_option,
+            blowup: domain.lde_domain_size() / trace_info.length(),
             _h: PhantomData,
         };
 
@@ -141,17 +148,21 @@ where
     /// This function will panic if any of the following are true:
     /// - the number of rows in the provided `aux_trace` does not match the main trace.
     /// - the auxiliary trace has been previously set already.
-    fn set_aux_trace(
+    fn set_aux_trace<R: RngCore>(
         &mut self,
         aux_trace: &ColMatrix<E>,
         domain: &StarkDomain<E::BaseField>,
+        zk_parameters: Option<ZkParameters>,
+        prng: &mut R,
     ) -> (ColMatrix<E>, H::Digest) {
         // extend the auxiliary trace segment and build a commitment to the extended trace
         let (aux_segment_lde, aux_segment_oracles, aux_segment_polys) =
-            build_trace_commitment::<E, E, H, Self::VC>(
+            build_trace_commitment::<E, E, H, Self::VC, R>(
                 aux_trace,
                 domain,
                 self.partition_option.partition_size::<E>(aux_trace.num_cols()),
+                zk_parameters,
+                prng,
             );
 
         // check errors
@@ -181,10 +192,9 @@ where
     ) {
         // at the end of the trace, next state wraps around and we read the first step again
         let next_lde_step = (lde_step + self.blowup()) % self.trace_len();
-
-        // copy main trace segment values into the frame
-        frame.current_mut().copy_from_slice(self.main_segment_lde.row(lde_step));
-        frame.next_mut().copy_from_slice(self.main_segment_lde.row(next_lde_step));
+        let l = frame.current().len();
+        frame.current_mut().copy_from_slice(&self.main_segment_lde.row(lde_step)[..l]);
+        frame.next_mut().copy_from_slice(&self.main_segment_lde.row(next_lde_step)[..l]);
     }
 
     /// Reads current and next rows from the auxiliary trace segment into the specified frame.
@@ -260,7 +270,6 @@ where
         &self.trace_info
     }
 }
-
 // HELPER FUNCTIONS
 // ================================================================================================
 
@@ -273,16 +282,19 @@ where
 ///
 /// The trace commitment is computed by building a vector containing the hashes of each row of
 /// the extended execution trace, then building a vector commitment to the resulting vector.
-fn build_trace_commitment<E, F, H, V>(
+fn build_trace_commitment<E, F, H, V, R>(
     trace: &ColMatrix<F>,
     domain: &StarkDomain<E::BaseField>,
     partition_size: usize,
+    zk_parameters: Option<ZkParameters>,
+    prng: &mut R,
 ) -> (RowMatrix<F>, V, ColMatrix<F>)
 where
     E: FieldElement,
     F: FieldElement<BaseField = E::BaseField>,
     H: ElementHasher<BaseField = E::BaseField>,
     V: VectorCommitment<H>,
+    R: RngCore,
 {
     // extend the execution trace
     let (trace_lde, trace_polys) = {
@@ -292,22 +304,31 @@ where
             blowup = domain.trace_to_lde_blowup()
         )
         .entered();
+
         let trace_polys = trace.interpolate_columns();
+
+        // when zero-knowledge is enabled, we randomize the witness polynomials by adding a random
+        // polynomial times the zerofier over the trace domain. The degree of the random polynomial
+        // is a function of the number of FRI queries.
+        let trace_polys = if let Some(parameters) = zk_parameters {
+            trace_polys.randomize(parameters.zk_blowup_witness(), prng)
+        } else {
+            trace_polys
+        };
+
         let trace_lde =
             RowMatrix::evaluate_polys_over::<DEFAULT_SEGMENT_WIDTH>(&trace_polys, domain);
         drop(span);
 
         (trace_lde, trace_polys)
     };
-    assert_eq!(trace_lde.num_cols(), trace.num_cols());
-    assert_eq!(trace_polys.num_rows(), trace.num_rows());
     assert_eq!(trace_lde.num_rows(), domain.lde_domain_size());
 
     // build trace commitment
     let commitment_domain_size = trace_lde.num_rows();
     let trace_vector_com = info_span!("compute_execution_trace_commitment", commitment_domain_size)
         .in_scope(|| trace_lde.commit_to_rows::<H, V>(partition_size));
-    assert_eq!(trace_vector_com.domain_len(), commitment_domain_size);
+    assert_eq!(trace_vector_com.get_domain_len(), commitment_domain_size);
 
     (trace_lde, trace_vector_com, trace_polys)
 }
