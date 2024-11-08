@@ -34,6 +34,7 @@ pub struct FriProof {
     layers: Vec<FriProofLayer>,
     remainder: Vec<u8>,
     num_partitions: u8, // stored as power of 2
+    salts: Vec<u8>,
 }
 
 impl FriProof {
@@ -49,6 +50,7 @@ impl FriProof {
         layers: Vec<FriProofLayer>,
         remainder: Vec<E>,
         num_partitions: usize,
+        salts: Vec<u8>,
     ) -> Self {
         assert!(!remainder.is_empty(), "number of remainder elements must be greater than zero");
         assert!(
@@ -69,6 +71,7 @@ impl FriProof {
             layers,
             remainder: remainder_bytes,
             num_partitions: num_partitions.trailing_zeros() as u8,
+            salts,
         }
     }
 
@@ -78,6 +81,7 @@ impl FriProof {
             layers: Vec::new(),
             remainder: Vec::new(),
             num_partitions: 0,
+            salts: vec![],
         }
     }
 
@@ -190,6 +194,16 @@ impl FriProof {
         }
         Ok(remainder)
     }
+
+    /// Returns a vector of values used in order to salt the transcript when zero-knowledge is
+    /// enabled.
+    pub fn parse_salts<E, H>(&self) -> Result<Vec<Option<H::Digest>>, DeserializationError>
+    where
+        E: FieldElement,
+        H: ElementHasher<BaseField = E::BaseField>,
+    {
+        Vec::read_from_bytes(&self.salts)
+    }
 }
 
 // SERIALIZATION / DESERIALIZATION
@@ -210,6 +224,10 @@ impl Serializable for FriProof {
 
         // write number of partitions
         target.write_u8(self.num_partitions);
+
+        // write salts
+        target.write_u32(self.salts.len() as u32);
+        target.write_bytes(&self.salts);
     }
 }
 
@@ -230,7 +248,11 @@ impl Deserializable for FriProof {
         // read number of partitions
         let num_partitions = source.read_u8()?;
 
-        Ok(FriProof { layers, remainder, num_partitions })
+        // read salts
+        let salts_len = source.read_u32()? as usize;
+        let salts = source.read_vec(salts_len)?;
+
+        Ok(FriProof { layers, remainder, num_partitions, salts })
     }
 }
 

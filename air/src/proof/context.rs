@@ -5,7 +5,7 @@
 
 use alloc::{string::ToString, vec::Vec};
 
-use math::{StarkField, ToElements};
+use math::{FieldElement, StarkField, ToElements};
 use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 use crate::{ProofOptions, TraceInfo};
@@ -18,6 +18,7 @@ pub struct Context {
     trace_info: TraceInfo,
     field_modulus_bytes: Vec<u8>,
     options: ProofOptions,
+    zk_blowup: usize,
 }
 
 impl Context {
@@ -29,7 +30,11 @@ impl Context {
     /// # Panics
     /// Panics if either trace length or the LDE domain size implied by the trace length and the
     /// blowup factor is greater then [u32::MAX].
-    pub fn new<B: StarkField>(trace_info: TraceInfo, options: ProofOptions) -> Self {
+    pub fn new<B: StarkField>(
+        trace_info: TraceInfo,
+        options: ProofOptions,
+        zk_blowup: usize,
+    ) -> Self {
         // TODO: return errors instead of panicking?
 
         let trace_length = trace_info.length();
@@ -42,6 +47,7 @@ impl Context {
             trace_info,
             field_modulus_bytes: B::get_modulus_le_bytes(),
             options,
+            zk_blowup,
         }
     }
 
@@ -54,8 +60,8 @@ impl Context {
     }
 
     /// Returns the size of the LDE domain for the computation described by this context.
-    pub fn lde_domain_size(&self) -> usize {
-        self.trace_info.length() * self.options.blowup_factor()
+    pub fn lde_domain_size<E: FieldElement>(&self) -> usize {
+        self.trace_info.length() * self.zk_blowup * self.options.blowup_factor()
     }
 
     /// Returns modulus of the field for the computation described by this context.
@@ -124,6 +130,7 @@ impl Serializable for Context {
         target.write_u8(self.field_modulus_bytes.len() as u8);
         target.write_bytes(&self.field_modulus_bytes);
         self.options.write_into(target);
+        self.zk_blowup.write_into(target);
     }
 }
 
@@ -148,7 +155,15 @@ impl Deserializable for Context {
         // read options
         let options = ProofOptions::read_from(source)?;
 
-        Ok(Context { trace_info, field_modulus_bytes, options })
+        // TODO: should we validate it?
+        let zk_blowup = usize::read_from(source)?;
+
+        Ok(Context {
+            trace_info,
+            field_modulus_bytes,
+            options,
+            zk_blowup,
+        })
     }
 }
 
@@ -212,10 +227,11 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            false,
         );
         let trace_info =
             TraceInfo::new_multi_segment(main_width, aux_width, aux_rands, trace_length, vec![]);
-        let context = Context::new::<BaseElement>(trace_info, options);
+        let context = Context::new::<BaseElement>(trace_info, options, 1);
         assert_eq!(expected, context.to_elements());
     }
 }

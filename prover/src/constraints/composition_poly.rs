@@ -5,7 +5,9 @@
 
 use alloc::vec::Vec;
 
-use math::{fft, polynom::degree_of, FieldElement};
+use air::ZkParameters;
+use math::{fft, polynom, FieldElement};
+use rand::{Rng, RngCore};
 
 use super::{ColMatrix, StarkDomain};
 
@@ -47,16 +49,23 @@ impl<E: FieldElement> CompositionPolyTrace<E> {
 ///
 /// For example, if the composition polynomial has degree 2N - 1, where N is the trace length,
 /// it will be stored as two columns of size N (each of degree N - 1).
+///
+/// When zero-knowledge is enabled, the composition polynomial is split into segment polynomials
+/// such that each segment polynomial's degree is small enough to accommodate adding a randomizer
+/// polynomial without the degree of the resulting ranomized segment polynomial exceeding
+/// `domain.trace_length()`.
 pub struct CompositionPoly<E: FieldElement> {
     data: ColMatrix<E>,
 }
 
 impl<E: FieldElement> CompositionPoly<E> {
     /// Returns a new composition polynomial.
-    pub fn new(
+    pub fn new<R: RngCore>(
         composition_trace: CompositionPolyTrace<E>,
         domain: &StarkDomain<E::BaseField>,
         num_cols: usize,
+        zk_parameters: Option<ZkParameters>,
+        prng: &mut R,
     ) -> Self {
         assert!(
             domain.trace_length() < composition_trace.num_rows(),
@@ -70,7 +79,30 @@ impl<E: FieldElement> CompositionPoly<E> {
         let inv_twiddles = fft::get_inv_twiddles::<E::BaseField>(trace.len());
         fft::interpolate_poly_with_offset(&mut trace, &inv_twiddles, domain.offset());
 
-        let polys = segment(trace, domain.trace_length(), num_cols);
+        // compute the segment quotient polynomials
+        let quotient_degree = polynom::degree_of(&trace);
+        let degree_chunked_quotient = if zk_parameters.is_some() {
+            (quotient_degree + 1).div_ceil(num_cols)
+        } else {
+            domain.trace_length()
+        };
+        let polys = segment(trace, degree_chunked_quotient, num_cols);
+        let mut polys = complement_to(polys, domain.trace_length(), prng);
+
+        // generate a randomizer polynomial for FRI
+        if zk_parameters.is_some() {
+            let extended_len = polys[0].len();
+            let mut zk_col = vec![E::ZERO; extended_len];
+
+            for a in zk_col.iter_mut() {
+                let bytes = prng.gen::<[u8; 32]>();
+                *a = E::from_random_bytes(&bytes[..E::VALUE_SIZE])
+                    .expect("failed to generate randomness");
+            }
+            // reduce the degree to match that of the DEEP composition polynomial
+            zk_col[extended_len - 1] = E::ZERO;
+            polys.push(zk_col)
+        }
 
         CompositionPoly { data: ColMatrix::new(polys) }
     }
@@ -96,8 +128,8 @@ impl<E: FieldElement> CompositionPoly<E> {
     }
 
     /// Returns evaluations of all composition polynomial columns at point z.
-    pub fn evaluate_at(&self, z: E) -> Vec<E> {
-        self.data.evaluate_columns_at(z)
+    pub fn evaluate_at(&self, z: E, is_zk: bool) -> Vec<E> {
+        self.data.evaluate_columns_at(z, is_zk)
     }
 
     /// Returns a reference to the matrix of individual column polynomials.
@@ -109,6 +141,55 @@ impl<E: FieldElement> CompositionPoly<E> {
     pub fn into_columns(self) -> Vec<Vec<E>> {
         self.data.into_columns()
     }
+}
+
+/// Takes a vector of coefficients representing the segment polynomials of a given composition
+/// polynomial as input, and generates coefficients of their randomized version.
+///
+/// The randomization technique is the one in section 4.1 in https://eprint.iacr.org/2024/1037.pdf.
+fn complement_to<R: RngCore, E: FieldElement>(
+    polys: Vec<Vec<E>>,
+    l: usize,
+    prng: &mut R,
+) -> Vec<Vec<E>> {
+    let mut result = vec![];
+
+    let randomizer_poly_size = l - polys[0].len();
+    let mut current_poly = vec![E::ZERO; randomizer_poly_size];
+    let mut previous_poly = vec![E::ZERO; randomizer_poly_size];
+
+    for (_, poly) in polys.iter().enumerate().take_while(|(index, _)| *index != polys.len() - 1) {
+        let diff = l - poly.len();
+
+        for eval in current_poly.iter_mut().take(diff) {
+            let bytes = prng.gen::<[u8; 32]>();
+            *eval = E::from_random_bytes(&bytes[..E::VALUE_SIZE])
+                .expect("failed to generate randomness");
+        }
+
+        let mut res = vec![];
+        res.extend_from_slice(poly);
+        res.extend_from_slice(&current_poly);
+
+        for i in 0..randomizer_poly_size {
+            res[i] -= previous_poly[i];
+        }
+
+        previous_poly.copy_from_slice(&current_poly[..randomizer_poly_size]);
+
+        result.push(res)
+    }
+
+    let poly = polys.last().unwrap();
+    let mut res = vec![E::ZERO; l];
+    for (i, entry) in poly.iter().enumerate() {
+        res[i] = *entry;
+    }
+    for i in 0..randomizer_poly_size {
+        res[i] -= previous_poly[i];
+    }
+    result.push(res);
+    result
 }
 
 // HELPER FUNCTIONS
@@ -123,8 +204,6 @@ fn segment<E: FieldElement>(
     trace_len: usize,
     num_cols: usize,
 ) -> Vec<Vec<E>> {
-    debug_assert!(degree_of(&coefficients) < trace_len * num_cols);
-
     coefficients
         .chunks(trace_len)
         .take(num_cols)

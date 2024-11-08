@@ -87,8 +87,10 @@ impl TransitionConstraintDegree {
     /// $$
     /// 2 \cdot (64 - 1) + \frac{64 \cdot (32 - 1)}{32} = 126 + 62 = 188
     /// $$
-    pub fn get_evaluation_degree(&self, trace_length: usize) -> usize {
-        let mut result = self.base * (trace_length - 1);
+    ///
+    /// TODO: Update docs
+    pub fn get_evaluation_degree(&self, trace_length: usize, trace_length_ext: usize) -> usize {
+        let mut result = self.base * (trace_length_ext - 1);
         for cycle_length in self.cycles.iter() {
             result += (trace_length / cycle_length) * (cycle_length - 1);
         }
@@ -98,7 +100,7 @@ impl TransitionConstraintDegree {
     /// Returns a minimum blowup factor needed to evaluate constraint of this degree.
     ///
     /// This is guaranteed to be a power of two, greater than one.
-    pub fn min_blowup_factor(&self) -> usize {
+    pub fn min_blowup_factor(&self, trace_length: usize, trace_length_ext: usize) -> usize {
         // The blowup factor needs to be a power of two large enough to accommodate degree of
         // transition constraints defined by rational functions `C(x) / z(x)` where `C(x)` is the
         // constraint polynomial and `z(x)` is the transition constraint divisor.
@@ -110,7 +112,12 @@ impl TransitionConstraintDegree {
         //
         // For example, if degree of our constraints is 6, the blowup factor would need to be 8.
         // However, if the degree is 5, the blowup factor could be as small as 4.
-        let degree_bound = self.base + self.cycles.len() - 1;
-        cmp::max(degree_bound.next_power_of_two(), ProofOptions::MIN_BLOWUP_FACTOR)
+        //
+        // TODO: update documentation
+        let degree_bound = self.base + self.cycles.len();
+        let q_deg = degree_bound * (trace_length_ext - 1) - (trace_length - 1);
+        let blowup_factor = q_deg.div_ceil(trace_length_ext);
+
+        cmp::max(blowup_factor.next_power_of_two(), ProofOptions::MIN_BLOWUP_FACTOR)
     }
 }

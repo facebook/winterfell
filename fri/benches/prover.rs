@@ -23,6 +23,7 @@ pub fn build_layers(c: &mut Criterion) {
 
     for &domain_size in &BATCH_SIZES {
         let evaluations = build_evaluations(domain_size);
+        let mut prng = <rand_chacha::ChaCha20Rng as rand::SeedableRng>::from_entropy();
 
         fri_group.bench_with_input(
             BenchmarkId::new("build_layers", domain_size),
@@ -37,8 +38,9 @@ pub fn build_layers(c: &mut Criterion) {
                             BaseElement,
                             Blake3_256<BaseElement>,
                             DefaultRandomCoin<Blake3_256<BaseElement>>,
-                        >::new(domain_size, 32);
-                        prover.build_layers(&mut channel, evaluations);
+                        >::new(domain_size, 32, false);
+
+                        prover.build_layers(&mut channel, evaluations, &mut prng);
                         prover.reset();
                     },
                     BatchSize::LargeInput,

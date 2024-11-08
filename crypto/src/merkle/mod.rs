@@ -9,10 +9,19 @@ use alloc::{
 };
 use core::slice;
 
+use rand::{
+    distributions::{Distribution, Standard},
+    thread_rng, Rng, RngCore,
+};
+
+use crate::{
+    errors::MerkleTreeError,
+    hash::{ByteDigest, Hasher},
+    VectorCommitment,
+};
+
 mod proofs;
 pub use proofs::BatchMerkleProof;
-
-use crate::{Hasher, MerkleTreeError, VectorCommitment};
 
 #[cfg(feature = "concurrent")]
 pub mod concurrent;
@@ -96,6 +105,17 @@ pub struct MerkleTree<H: Hasher> {
 /// Merkle tree opening consisting of a leaf value and a Merkle path leading from this leaf
 /// up to the root (excluding the root itself).
 pub type MerkleTreeOpening<H> = (<H as Hasher>::Digest, Vec<<H as Hasher>::Digest>);
+
+/// Salted Merkle tree opening consisting of a leaf value, a salt, and a Merkle path leading
+/// from this leaf up to the root (excluding the root itself).
+pub type SaltedMerkleTreeOpening<H> =
+    (<H as Hasher>::Digest, (<H as Hasher>::Digest, Vec<<H as Hasher>::Digest>));
+
+/// Salted Merkle tree multi opening consisting of a vector of leaves, a vector of corresponding salts,
+/// and a collection of corresponding Merkle paths leading from these leaves up to the root
+/// (excluding the root itself). The collection of Merkle paths is stored as a [BatchMerkleProof].
+pub type SaltedMerkleTreeMultiOpening<H> =
+    (Vec<<H as Hasher>::Digest>, (Vec<<H as Hasher>::Digest>, BatchMerkleProof<H>));
 
 // MERKLE TREE IMPLEMENTATION
 // ================================================================================================
@@ -416,7 +436,7 @@ impl<H: Hasher> VectorCommitment<H> for MerkleTree<H> {
         *self.root()
     }
 
-    fn domain_len(&self) -> usize {
+    fn get_domain_len(&self) -> usize {
         1 << self.depth()
     }
 
@@ -455,5 +475,181 @@ impl<H: Hasher> VectorCommitment<H> for MerkleTree<H> {
         proof: &Self::MultiProof,
     ) -> Result<(), Self::Error> {
         MerkleTree::<H>::verify_batch(&commitment, indexes, items, proof)
+    }
+}
+
+// SALTED MERKLE TREE
+// ================================================================================================
+
+pub struct SaltedMerkleTree<H: Hasher> {
+    leaves: Vec<H::Digest>,
+    tree: MerkleTree<H>,
+    salts: Vec<H::Digest>,
+}
+
+impl<H: Hasher> SaltedMerkleTree<H>
+where
+    Standard: Distribution<<H as Hasher>::Digest>,
+{
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
+    pub fn new<R: RngCore>(leaves: Vec<H::Digest>, prng: &mut R) -> Result<Self, MerkleTreeError> {
+        if leaves.len() < 2 {
+            return Err(MerkleTreeError::TooFewLeaves(2, leaves.len()));
+        }
+        if !leaves.len().is_power_of_two() {
+            return Err(MerkleTreeError::NumberOfLeavesNotPowerOfTwo(leaves.len()));
+        }
+
+        let num_leaves = leaves.len();
+        let salts: Vec<H::Digest> = (0..num_leaves).map(|_| prng.sample(Standard)).collect();
+
+        let salted_leaves: Vec<H::Digest> = leaves
+            .iter()
+            .zip(salts.iter())
+            .map(|(leaf, salt)| H::merge(&[*leaf, *salt]))
+            .collect();
+
+        let tree = MerkleTree::new(salted_leaves)?;
+
+        Ok(Self { tree, leaves, salts })
+    }
+
+    /// Returns the root of the tree.
+    pub fn root(&self) -> &H::Digest {
+        self.tree.root()
+    }
+
+    pub fn depth(&self) -> usize {
+        self.tree.depth()
+    }
+
+    pub fn prove(&self, index: usize) -> Result<SaltedMerkleTreeOpening<H>, MerkleTreeError> {
+        let (_, proof) = self.tree.prove(index)?;
+        Ok((self.leaves[index], (self.salts[index], proof)))
+    }
+
+    pub fn prove_batch(
+        &self,
+        indexes: &[usize],
+    ) -> Result<SaltedMerkleTreeMultiOpening<H>, MerkleTreeError> {
+        let (_, proof) = self.tree.prove_batch(indexes)?;
+        let leaves_at_indices = indexes.iter().map(|index| self.leaves[*index]).collect();
+        let salts_at_indices = indexes.iter().map(|index| self.salts[*index]).collect();
+        Ok((leaves_at_indices, (salts_at_indices, proof)))
+    }
+
+    pub fn verify(
+        root: H::Digest,
+        index: usize,
+        leaf: H::Digest,
+        salt: H::Digest,
+        proof: &[H::Digest],
+    ) -> Result<(), MerkleTreeError> {
+        let salted_leaf = H::merge(&[leaf, salt]);
+        MerkleTree::<H>::verify(root, index, salted_leaf, proof)
+    }
+
+    /// Checks whether the batch proof contains Merkle paths for the of the specified `indexes`.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// * No indexes were provided (i.e., `indexes` is an empty slice).
+    /// * Number of provided indexes is greater than 255.
+    /// * Any of the specified `indexes` is greater than or equal to the number of leaves in the
+    ///   tree from which the batch proof was generated.
+    /// * List of indexes contains duplicates.
+    /// * Any of the paths in the batch proof does not resolve to the specified `root`.
+    pub fn verify_batch(
+        root: &H::Digest,
+        indexes: &[usize],
+        leaves: &[H::Digest],
+        salts: &[H::Digest],
+        proof: &BatchMerkleProof<H>,
+    ) -> Result<(), MerkleTreeError> {
+        let salted_leaves: Vec<H::Digest> = leaves
+            .iter()
+            .zip(salts.iter())
+            .map(|(leaf, salt)| H::merge(&[*leaf, *salt]))
+            .collect();
+
+        MerkleTree::<H>::verify_batch(root, indexes, &salted_leaves, proof)
+    }
+}
+
+impl Distribution<ByteDigest<32>> for Standard {
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> ByteDigest<32> {
+        let mut dest = [0; 32];
+        rng.fill_bytes(&mut dest);
+        ByteDigest::new(dest)
+    }
+}
+
+impl<H: Hasher> VectorCommitment<H> for SaltedMerkleTree<H>
+where
+    Standard: Distribution<<H as Hasher>::Digest>,
+{
+    type Options = ();
+
+    type Proof = (H::Digest, Vec<H::Digest>);
+
+    type MultiProof = (Vec<H::Digest>, BatchMerkleProof<H>);
+
+    type Error = MerkleTreeError;
+
+    fn new(items: Vec<H::Digest>) -> Result<Self, Self::Error> {
+        let mut prng = thread_rng();
+        SaltedMerkleTree::new(items, &mut prng)
+    }
+
+    fn with_options(items: Vec<H::Digest>, _options: Self::Options) -> Result<Self, Self::Error> {
+        let mut prng = thread_rng();
+        Self::new(items, &mut prng)
+    }
+
+    fn get_domain_len(&self) -> usize {
+        1 << self.depth()
+    }
+
+    fn get_proof_domain_len(proof: &Self::Proof) -> usize {
+        proof.1.len()
+    }
+
+    fn get_multiproof_domain_len(proof: &Self::MultiProof) -> usize {
+        1 << proof.1.depth
+    }
+
+    fn commitment(&self) -> H::Digest {
+        *self.root()
+    }
+
+    fn open(&self, index: usize) -> Result<(H::Digest, Self::Proof), Self::Error> {
+        self.prove(index)
+    }
+
+    fn open_many(
+        &self,
+        indexes: &[usize],
+    ) -> Result<(Vec<H::Digest>, Self::MultiProof), Self::Error> {
+        self.prove_batch(indexes)
+    }
+
+    fn verify(
+        commitment: H::Digest,
+        index: usize,
+        item: H::Digest,
+        proof: &Self::Proof,
+    ) -> Result<(), Self::Error> {
+        SaltedMerkleTree::<H>::verify(commitment, index, item, proof.0, &proof.1)
+    }
+
+    fn verify_many(
+        commitment: H::Digest,
+        indexes: &[usize],
+        items: &[H::Digest],
+        proof: &Self::MultiProof,
+    ) -> Result<(), Self::Error> {
+        SaltedMerkleTree::<H>::verify_batch(&commitment, indexes, items, &proof.0, &proof.1)
     }
 }

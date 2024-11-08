@@ -6,7 +6,7 @@
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
-use crypto::{ElementHasher, Hasher, RandomCoin};
+use crypto::{Digest, ElementHasher, Hasher, RandomCoin};
 use math::FieldElement;
 
 // PROVER CHANNEL TRAIT
@@ -34,7 +34,13 @@ pub trait ProverChannel<E: FieldElement> {
     /// the hash of each row to get one entry of the vector being committed to. Thus, the number
     /// of elements grouped into a single leaf is equal to the `folding_factor` used for FRI layer
     /// construction.
-    fn commit_fri_layer(&mut self, layer_root: <Self::Hasher as Hasher>::Digest);
+    fn commit_fri_layer<P>(
+        &mut self,
+        layer_root: <Self::Hasher as Hasher>::Digest,
+        prng: &mut P,
+    ) -> Option<<Self::Hasher as Hasher>::Digest>
+    where
+        P: rand::RngCore;
 
     /// Returns a random α drawn uniformly at random from the entire field.
     ///
@@ -63,6 +69,8 @@ where
     commitments: Vec<H::Digest>,
     domain_size: usize,
     num_queries: usize,
+    is_zk: bool,
+    salts: Vec<Option<H::Digest>>,
     _field_element: PhantomData<E>,
 }
 
@@ -78,7 +86,7 @@ where
     /// Panics if:
     /// * `domain_size` is smaller than 8 or is not a power of two.
     /// * `num_queries` is zero.
-    pub fn new(domain_size: usize, num_queries: usize) -> Self {
+    pub fn new(domain_size: usize, num_queries: usize, is_zk: bool) -> Self {
         assert!(domain_size >= 8, "domain size must be at least 8, but was {domain_size}");
         assert!(
             domain_size.is_power_of_two(),
@@ -90,6 +98,8 @@ where
             commitments: Vec::new(),
             domain_size,
             num_queries,
+            is_zk,
+            salts: vec![],
             _field_element: PhantomData,
         }
     }
@@ -124,9 +134,27 @@ where
 {
     type Hasher = H;
 
-    fn commit_fri_layer(&mut self, layer_root: H::Digest) {
+    fn commit_fri_layer<P: rand::Rng>(
+        &mut self,
+        layer_root: H::Digest,
+        prng: &mut P,
+    ) -> Option<<Self::Hasher as Hasher>::Digest> {
         self.commitments.push(layer_root);
-        self.public_coin.reseed(layer_root);
+
+        // sample a salt for Fiat-Shamir is zero-knowledge is enabled
+        let salt = if self.is_zk {
+            let mut buffer = [0_u8; 32];
+            prng.fill_bytes(&mut buffer);
+
+            let salt = Digest::from_random_bytes(&buffer);
+
+            Some(salt)
+        } else {
+            None
+        };
+        self.salts.push(salt);
+        self.public_coin.reseed_with_salt(layer_root, salt);
+        salt
     }
 
     fn draw_fri_alpha(&mut self) -> E {

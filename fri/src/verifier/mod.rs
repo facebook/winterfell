@@ -121,7 +121,8 @@ where
         let mut layer_alphas = Vec::with_capacity(layer_commitments.len());
         let mut max_degree_plus_1 = max_poly_degree + 1;
         for (depth, commitment) in layer_commitments.iter().enumerate() {
-            public_coin.reseed(*commitment);
+            let salt = channel.take_salt();
+            public_coin.reseed_with_salt(*commitment, salt);
             let alpha = public_coin.draw().map_err(VerifierError::RandomCoinError)?;
             layer_alphas.push(alpha);
 

@@ -18,7 +18,7 @@ fn rescue(c: &mut Criterion) {
     group.sample_size(10);
     group.measurement_time(Duration::from_secs(25));
 
-    let options = ProofOptions::new(32, 32, 0, FieldExtension::None, 4, 255);
+    let options = ProofOptions::new(32, 32, 0, FieldExtension::None, 4, 255, false);
 
     for &size in SIZES.iter() {
         let resc = rescue::RescueExample::<Blake3_256<BaseElement>>::new(size, options.clone());

@@ -32,6 +32,8 @@ std = ["crypto/std", "math/std", "utils/std"]
 crypto = { version = "0.11", path = "../crypto", package = "winter-crypto", default-features = false }
 math = { version = "0.11", path = "../math", package = "winter-math", default-features = false }
 utils = { version = "0.11", path = "../utils/core", package = "winter-utils", default-features = false }
+rand_chacha = { version = "0.3", default-features = false }
+rand =  { version = "0.8" }
 
 [dev-dependencies]
 criterion = "0.5"

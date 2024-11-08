@@ -70,6 +70,9 @@ pub trait VerifierChannel<E: FieldElement> {
     /// Reads and removes the remainder polynomial from the channel.
     fn take_fri_remainder(&mut self) -> Vec<E>;
 
+    /// Reads and removes the salt value needed for Fiat-Shamir at the current round.
+    fn take_salt(&mut self) -> Option<<Self::Hasher as Hasher>::Digest>;
+
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
 
@@ -135,6 +138,7 @@ pub struct DefaultVerifierChannel<
     layer_queries: Vec<Vec<E>>,
     remainder: Vec<E>,
     num_partitions: usize,
+    salts: Vec<Option<H::Digest>>,
     _h: PhantomData<H>,
 }
 
@@ -156,6 +160,7 @@ where
     ) -> Result<Self, DeserializationError> {
         let num_partitions = proof.num_partitions();
 
+        let salts = proof.parse_salts::<E, H>()?;
         let remainder = proof.parse_remainder()?;
         let (layer_queries, layer_proofs) =
             proof.parse_layers::<E, H, V>(domain_size, folding_factor)?;
@@ -166,6 +171,7 @@ where
             layer_queries,
             remainder,
             num_partitions,
+            salts,
             _h: PhantomData,
         })
     }
@@ -198,5 +204,9 @@ where
 
     fn take_fri_remainder(&mut self) -> Vec<E> {
         self.remainder.clone()
+    }
+
+    fn take_salt(&mut self) -> Option<H::Digest> {
+        self.salts.remove(0)
     }
 }

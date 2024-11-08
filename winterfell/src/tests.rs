@@ -5,7 +5,7 @@
 
 use std::{vec, vec::Vec};
 
-use air::{GkrRandElements, LagrangeKernelRandElements};
+use air::{GkrRandElements, LagrangeKernelRandElements, ZkParameters};
 use crypto::MerkleTree;
 use prover::{
     crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin},
@@ -13,6 +13,7 @@ use prover::{
     matrix::ColMatrix,
     CompositionPoly, DefaultConstraintCommitment,
 };
+use rand_chacha::{rand_core::SeedableRng, ChaCha20Rng};
 
 use super::*;
 
@@ -206,7 +207,7 @@ impl LagrangeComplexProver {
     fn new(aux_trace_width: usize) -> Self {
         Self {
             aux_trace_width,
-            options: ProofOptions::new(1, 2, 0, FieldExtension::None, 2, 1),
+            options: ProofOptions::new(1, 2, 0, FieldExtension::None, 2, 1, false),
         }
     }
 }
@@ -238,11 +239,20 @@ impl Prover for LagrangeComplexProver {
         main_trace: &ColMatrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
         partition_option: PartitionOptions,
+        zk_parameters: Option<ZkParameters>,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>)
     where
         E: math::FieldElement<BaseField = Self::BaseField>,
     {
-        DefaultTraceLde::new(trace_info, main_trace, domain, partition_option)
+        let mut prng = ChaCha20Rng::from_entropy();
+        DefaultTraceLde::new(
+            trace_info,
+            main_trace,
+            domain,
+            partition_option,
+            zk_parameters,
+            &mut prng,
+        )
     }
 
     fn build_constraint_commitment<E: FieldElement<BaseField = Self::BaseField>>(

@@ -12,6 +12,7 @@ use math::{fft, FieldElement};
 use utils::iterators::*;
 use utils::{
     flatten_vector_elements, group_slice_elements, iter_mut, transpose_slice, uninit_vector,
+    Serializable,
 };
 
 use crate::{
@@ -102,6 +103,7 @@ where
     options: FriOptions,
     layers: Vec<FriLayer<E, H, V>>,
     remainder_poly: FriRemainder<E>,
+    salts: Vec<Option<H::Digest>>,
     _channel: PhantomData<C>,
 }
 
@@ -131,6 +133,7 @@ where
             options,
             layers: Vec::new(),
             remainder_poly: FriRemainder(vec![]),
+            salts: vec![],
             _channel: PhantomData,
         }
     }
@@ -176,7 +179,12 @@ where
     ///
     /// # Panics
     /// Panics if the prover state is dirty (the vector of layers is not empty).
-    pub fn build_layers(&mut self, channel: &mut C, mut evaluations: Vec<E>) {
+    pub fn build_layers<R: rand::Rng>(
+        &mut self,
+        channel: &mut C,
+        mut evaluations: Vec<E>,
+        prng: &mut R,
+    ) {
         assert!(
             self.layers.is_empty(),
             "a prior proof generation request has not been completed yet"
@@ -186,20 +194,25 @@ where
         // has small enough degree
         for _ in 0..self.options.num_fri_layers(evaluations.len()) {
             match self.folding_factor() {
-                2 => self.build_layer::<2>(channel, &mut evaluations),
-                4 => self.build_layer::<4>(channel, &mut evaluations),
-                8 => self.build_layer::<8>(channel, &mut evaluations),
-                16 => self.build_layer::<16>(channel, &mut evaluations),
+                2 => self.build_layer::<R, 2>(channel, &mut evaluations, prng),
+                4 => self.build_layer::<R, 4>(channel, &mut evaluations, prng),
+                8 => self.build_layer::<R, 8>(channel, &mut evaluations, prng),
+                16 => self.build_layer::<R, 16>(channel, &mut evaluations, prng),
                 _ => unimplemented!("folding factor {} is not supported", self.folding_factor()),
             }
         }
 
-        self.set_remainder(channel, &mut evaluations);
+        self.set_remainder(channel, &mut evaluations, prng);
     }
 
     /// Builds a single FRI layer by first committing to the `evaluations`, then drawing a random
     /// alpha from the channel and use it to perform degree-respecting projection.
-    fn build_layer<const N: usize>(&mut self, channel: &mut C, evaluations: &mut Vec<E>) {
+    fn build_layer<R: rand::Rng, const N: usize>(
+        &mut self,
+        channel: &mut C,
+        evaluations: &mut Vec<E>,
+        prng: &mut R,
+    ) {
         // commit to the evaluations at the current layer; we do this by first transposing the
         // evaluations into a matrix of N columns, then hashing each row into a digest, and finally
         // commiting to vector of these digests; we do this so that we could de-commit to N values
@@ -208,7 +221,8 @@ where
         let evaluation_vector_commitment =
             build_layer_commitment::<_, _, V, N>(&transposed_evaluations)
                 .expect("failed to construct FRI layer commitment");
-        channel.commit_fri_layer(evaluation_vector_commitment.commitment());
+        let salt = channel.commit_fri_layer(evaluation_vector_commitment.commitment(), prng);
+        self.salts.push(salt);
 
         // draw a pseudo-random coefficient from the channel, and use it in degree-respecting
         // projection to reduce the degree of evaluations by N
@@ -222,13 +236,19 @@ where
     }
 
     /// Creates remainder polynomial in coefficient form from a vector of `evaluations` over a domain.
-    fn set_remainder(&mut self, channel: &mut C, evaluations: &mut [E]) {
+    fn set_remainder<R: rand::Rng>(
+        &mut self,
+        channel: &mut C,
+        evaluations: &mut [E],
+        prng: &mut R,
+    ) {
         let inv_twiddles = fft::get_inv_twiddles(evaluations.len());
         fft::interpolate_poly_with_offset(evaluations, &inv_twiddles, self.options.domain_offset());
         let remainder_poly_size = evaluations.len() / self.options.blowup_factor();
         let remainder_poly = evaluations[..remainder_poly_size].to_vec();
         let commitment = <H as ElementHasher>::hash_elements(&remainder_poly);
-        channel.commit_fri_layer(commitment);
+        let salt = channel.commit_fri_layer(commitment, prng);
+        self.salts.push(salt);
         self.remainder_poly = FriRemainder(remainder_poly);
     }
 
@@ -278,7 +298,8 @@ where
         // clear layers so that another proof can be generated
         self.reset();
 
-        FriProof::new(layers, remainder, 1)
+        let salts = self.salts.to_bytes();
+        FriProof::new(layers, remainder, 1, salts)
     }
 }
 

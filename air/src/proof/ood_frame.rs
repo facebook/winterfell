@@ -145,7 +145,6 @@ impl OodFrame {
             let mut reader = SliceReader::new(&self.trace_states);
             let frame_size = reader.read_u8()? as usize;
             let trace = reader.read_many((main_trace_width + aux_trace_width) * frame_size)?;
-
             if reader.has_more_bytes() {
                 return Err(DeserializationError::UnconsumedBytes);
             }
