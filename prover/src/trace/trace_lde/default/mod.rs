@@ -71,7 +71,7 @@ where
             build_trace_commitment::<E, E::BaseField, H, V>(
                 main_trace,
                 domain,
-                partition_options.partition_size::<E::BaseField>(main_trace.num_cols()),
+                partition_options,
             );
 
         let trace_poly_table = TracePolyTable::new(main_segment_polys);
