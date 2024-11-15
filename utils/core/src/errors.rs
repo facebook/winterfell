@@ -32,3 +32,5 @@ impl fmt::Display for DeserializationError {
         }
     }
 }
+
+impl core::error::Error for DeserializationError {}

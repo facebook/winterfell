@@ -42,3 +42,5 @@ impl fmt::Display for AssertionError {
         }
     }
 }
+
+impl core::error::Error for AssertionError {}

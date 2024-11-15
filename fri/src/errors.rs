@@ -73,3 +73,5 @@ impl fmt::Display for VerifierError {
         }
     }
 }
+
+impl core::error::Error for VerifierError {}
