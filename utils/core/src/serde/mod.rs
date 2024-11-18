@@ -344,7 +344,7 @@ impl Serializable for str {
     }
 
     fn get_size_hint(&self) -> usize {
-        self.len().get_size_hint() + self.as_bytes().len()
+        self.len().get_size_hint() + self.len()
     }
 }
 
@@ -355,7 +355,7 @@ impl Serializable for String {
     }
 
     fn get_size_hint(&self) -> usize {
-        self.len().get_size_hint() + self.as_bytes().len()
+        self.len().get_size_hint() + self.len()
     }
 }
 

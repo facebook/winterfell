@@ -61,6 +61,8 @@ impl fmt::Display for MerkleTreeError {
     }
 }
 
+impl core::error::Error for MerkleTreeError {}
+
 // RANDOM COIN ERROR
 // ================================================================================================
 
@@ -89,3 +91,5 @@ impl fmt::Display for RandomCoinError {
         }
     }
 }
+
+impl core::error::Error for RandomCoinError {}

@@ -39,3 +39,5 @@ impl fmt::Display for ProverError {
         }
     }
 }
+
+impl core::error::Error for ProverError {}
