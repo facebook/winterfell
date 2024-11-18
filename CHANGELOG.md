@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.10.2 (TBD)
+- Implement `core::error::Error` for error types (#341).
+
 ## 0.10.1 (2024-10-30)
 - Fixed partition hashing and add logging to aux trace building (#338).
 
