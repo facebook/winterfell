@@ -68,12 +68,8 @@ where
     ) -> (Self, TracePolyTable<E>) {
         // extend the main execution trace and build a commitment to the extended trace
         let (main_segment_lde, main_segment_vector_com, main_segment_polys) =
-            build_trace_commitment::<E, E::BaseField, H, V>(
-                main_trace,
-                domain,
-                partition_options,
-            );
-    
+            build_trace_commitment::<E, E::BaseField, H, V>(main_trace, domain, partition_options);
+
         let trace_poly_table = TracePolyTable::new(main_segment_polys);
         let trace_lde = DefaultTraceLde {
             main_segment_lde,
@@ -148,12 +144,8 @@ where
     ) -> (ColMatrix<E>, H::Digest) {
         // extend the auxiliary trace segment and build a commitment to the extended trace
         let (aux_segment_lde, aux_segment_oracles, aux_segment_polys) =
-            build_trace_commitment::<E, E, H, Self::VC>(
-                aux_trace,
-                domain,
-                self.partition_options,
-            );
-    
+            build_trace_commitment::<E, E, H, Self::VC>(aux_trace, domain, self.partition_options);
+
         // check errors
         assert!(
             usize::from(self.aux_segment_lde.is_some()) < self.trace_info.num_aux_segments(),

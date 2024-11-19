@@ -346,15 +346,15 @@ impl Deserializable for FieldExtension {
 
 /// Defines the parameters used to calculate partition size when committing to the traces
 /// generated during the protocol.
-/// 
+///
 /// Using multiple partitions will change how vector commitments are calculated:
 /// - Input matrix columns are split into at most num_partitions partitions
 /// - For each matrix row, a hash is calculated for each partition separately
 /// - The results are merged together by one more hash iteration
-/// 
+///
 /// This is especially useful when proving with multiple GPU cards where each device holds
 /// a subset of data and allows less data reshuffling when generating commitments.
-/// 
+///
 /// Hash_rate parameter is used to find the optimal partition size to minimize the number
 /// of hash iterations. It specifies how many field elements are consumed by each hash iteration.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -366,17 +366,11 @@ pub struct PartitionOptions {
 impl PartitionOptions {
     /// Returns a new instance of `[PartitionOptions]`.
     pub const fn new(num_partitions: usize, hash_rate: usize) -> Self {
-        assert!(num_partitions >= 1, "number of partitions must be greater than or eqaul to 1");
+        assert!(num_partitions >= 1, "number of partitions must be greater than or equal to 1");
         assert!(num_partitions <= 16, "number of partitions must be smaller than or equal to 16");
 
-        assert!(
-            hash_rate >= 1,
-            "hash rate must be greater than or equal to 1"
-        );
-        assert!(
-            hash_rate <= 256,
-            "hash rate must be smaller than or equal to 256"
-        );
+        assert!(hash_rate >= 1, "hash rate must be greater than or equal to 1");
+        assert!(hash_rate <= 256, "hash rate must be smaller than or equal to 256");
 
         Self {
             num_partitions: num_partitions as u8,
@@ -396,10 +390,7 @@ impl PartitionOptions {
         // the number of `E` elements that can be consumed in one hash iteration.
         let min_partition_size = self.hash_rate as usize / E::EXTENSION_DEGREE;
 
-        cmp::max(
-            num_columns.div_ceil(self.num_partitions as usize),
-            min_partition_size,
-        )
+        cmp::max(num_columns.div_ceil(self.num_partitions as usize), min_partition_size)
     }
 
     /// The actual number of partitions, after the min partition size implied

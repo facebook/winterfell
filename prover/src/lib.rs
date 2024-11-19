@@ -556,10 +556,8 @@ pub trait Prover {
             log_domain_size = domain_size.ilog2()
         )
         .in_scope(|| {
-            let commitment = composed_evaluations.commit_to_rows::<Self::HashFn, Self::VC>(
-                self.options()
-                    .partition_options(),
-            );
+            let commitment = composed_evaluations
+                .commit_to_rows::<Self::HashFn, Self::VC>(self.options().partition_options());
             ConstraintCommitment::new(composed_evaluations, commitment)
         });
 

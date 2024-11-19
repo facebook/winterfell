@@ -3,9 +3,9 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use air::PartitionOptions;
 use alloc::vec::Vec;
 
+use air::PartitionOptions;
 use crypto::{ElementHasher, VectorCommitment};
 use math::{fft, FieldElement, StarkField};
 #[cfg(feature = "concurrent")]
@@ -203,7 +203,7 @@ impl<E: FieldElement> RowMatrix<E> {
             );
         } else {
             let num_partitions = partition_options.num_partitions::<E>(self.num_cols());
-            
+
             // iterate though matrix rows, hashing each row
             batch_iter_mut!(
                 &mut row_hashes,
