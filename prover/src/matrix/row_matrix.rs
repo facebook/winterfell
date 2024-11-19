@@ -3,6 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use air::PartitionOptions;
 use alloc::vec::Vec;
 
 use crypto::{ElementHasher, VectorCommitment};
@@ -180,13 +181,14 @@ impl<E: FieldElement> RowMatrix<E> {
     /// * A vector commitment is computed for the resulting vector using the specified vector
     ///   commitment scheme.
     /// * The resulting vector commitment is returned as the commitment to the entire matrix.
-    pub fn commit_to_rows<H, V>(&self, partition_size: usize) -> V
+    pub fn commit_to_rows<H, V>(&self, partition_options: PartitionOptions) -> V
     where
         H: ElementHasher<BaseField = E::BaseField>,
         V: VectorCommitment<H>,
     {
         // allocate vector to store row hashes
         let mut row_hashes = unsafe { uninit_vector::<H::Digest>(self.num_rows()) };
+        let partition_size = partition_options.partition_size::<E>(self.num_cols());
 
         if partition_size == self.num_cols() {
             // iterate though matrix rows, hashing each row
@@ -200,17 +202,21 @@ impl<E: FieldElement> RowMatrix<E> {
                 }
             );
         } else {
+            let num_partitions = partition_options.num_partitions::<E>(self.num_cols());
+            
             // iterate though matrix rows, hashing each row
             batch_iter_mut!(
                 &mut row_hashes,
                 128, // min batch size
                 |batch: &mut [H::Digest], batch_offset: usize| {
-                    let mut buffer = vec![H::Digest::default(); partition_size];
+                    let mut buffer = vec![H::Digest::default(); num_partitions];
                     for (i, row_hash) in batch.iter_mut().enumerate() {
                         self.row(batch_offset + i)
                             .chunks(partition_size)
                             .zip(buffer.iter_mut())
-                            .for_each(|(chunk, buf)| *buf = H::hash_elements(chunk));
+                            .for_each(|(chunk, buf)| {
+                                *buf = H::hash_elements(chunk);
+                            });
                         *row_hash = H::merge_many(&buffer);
                     }
                 }

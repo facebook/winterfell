@@ -4,7 +4,7 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::vec::Vec;
-use core::{cmp, ops::Div};
+use core::cmp;
 
 use fri::FriOptions;
 use math::{FieldElement, StarkField, ToElements};
@@ -76,16 +76,13 @@ pub enum FieldExtension {
 /// collision resistance of the hash function used by the protocol. For example, if a hash function
 /// with 128-bit collision resistance is used, soundness of a STARK proof cannot exceed 128 bits.
 ///
-/// In addition to the above, the parameter `num_partitions` is used in order to specify the number
-/// of partitions each of the traces committed to during proof generation is split into, and
-/// the parameter `min_partition_size` gives a lower bound on the size of each such partition.
-/// More precisely, and taking the main segment trace as an example, the prover will split the main
-/// segment trace into `num_partitions` parts each of size at least `min_partition_size`. The prover
-/// will then proceed to hash each part row-wise resulting in `num_partitions` digests per row of
-/// the trace. The prover finally combines the `num_partitions` digest (per row) into one digest
-/// (per row) and at this point the vector commitment scheme can be called.
-/// In the case when `num_partitions` is equal to `1` the prover will just hash each row in one go
-/// producing one digest per row of the trace.
+/// In addition, partition options (see [PartitionOptions]) can be provided to split traces during
+/// proving and distribute work across multiple devices. Taking the main segment trace as an example,
+/// the prover will split the main segment trace into `num_partitions` parts, and then proceed to hash
+/// each part row-wise resulting in `num_partitions` digests per row of the trace. Finally,
+/// `num_partitions` digests (per row) are combined into one digest (per row) and at this point
+/// a vector commitment scheme can be called. In the case when `num_partitions` is equal to `1` (default)
+/// the prover will hash each row in one go producing one digest per row of the trace.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ProofOptions {
     num_queries: u8,
@@ -177,13 +174,13 @@ impl ProofOptions {
     /// # Panics
     /// Panics if:
     /// - `num_partitions` is zero or greater than 16.
-    /// - `min_partition_size` is zero or greater than 256.
+    /// - `hash_rate` is zero or greater than 256.
     pub const fn with_partitions(
         mut self,
         num_partitions: usize,
-        min_partition_size: usize,
+        hash_rate: usize,
     ) -> ProofOptions {
-        self.partition_options = PartitionOptions::new(num_partitions, min_partition_size);
+        self.partition_options = PartitionOptions::new(num_partitions, hash_rate);
 
         self
     }
@@ -277,7 +274,7 @@ impl Serializable for ProofOptions {
         target.write_u8(self.fri_folding_factor);
         target.write_u8(self.fri_remainder_max_degree);
         target.write_u8(self.partition_options.num_partitions);
-        target.write_u8(self.partition_options.min_partition_size);
+        target.write_u8(self.partition_options.hash_rate);
     }
 }
 
@@ -347,31 +344,43 @@ impl Deserializable for FieldExtension {
 // PARTITION OPTION IMPLEMENTATION
 // ================================================================================================
 
-/// Defines the parameters used when committing to the traces generated during the protocol.
+/// Defines the parameters used to calculate partition size when committing to the traces
+/// generated during the protocol.
+/// 
+/// Using multiple partitions will change how vector commitments are calculated:
+/// - Input matrix columns are split into at most num_partitions partitions
+/// - For each matrix row, a hash is calculated for each partition separately
+/// - The results are merged together by one more hash iteration
+/// 
+/// This is especially useful when proving with multiple GPU cards where each device holds
+/// a subset of data and allows less data reshuffling when generating commitments.
+/// 
+/// Hash_rate parameter is used to find the optimal partition size to minimize the number
+/// of hash iterations. It specifies how many field elements are consumed by each hash iteration.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct PartitionOptions {
     num_partitions: u8,
-    min_partition_size: u8,
+    hash_rate: u8,
 }
 
 impl PartitionOptions {
     /// Returns a new instance of `[PartitionOptions]`.
-    pub const fn new(num_partitions: usize, min_partition_size: usize) -> Self {
+    pub const fn new(num_partitions: usize, hash_rate: usize) -> Self {
         assert!(num_partitions >= 1, "number of partitions must be greater than or eqaul to 1");
         assert!(num_partitions <= 16, "number of partitions must be smaller than or equal to 16");
 
         assert!(
-            min_partition_size >= 1,
-            "smallest partition size must be greater than or equal to 1"
+            hash_rate >= 1,
+            "hash rate must be greater than or equal to 1"
         );
         assert!(
-            min_partition_size <= 256,
-            "smallest partition size must be smaller than or equal to 256"
+            hash_rate <= 256,
+            "hash rate must be smaller than or equal to 256"
         );
 
         Self {
             num_partitions: num_partitions as u8,
-            min_partition_size: min_partition_size as u8,
+            hash_rate: hash_rate as u8,
         }
     }
 
@@ -379,21 +388,30 @@ impl PartitionOptions {
     /// well as the constraint evaluation trace.
     /// The returned size is given in terms of number of columns in the field `E`.
     pub fn partition_size<E: FieldElement>(&self, num_columns: usize) -> usize {
-        if self.num_partitions == 1 && self.min_partition_size == 1 {
+        if self.num_partitions == 1 {
             return num_columns;
         }
-        let base_elements_per_partition = cmp::max(
-            (num_columns * E::EXTENSION_DEGREE).div_ceil(self.num_partitions as usize),
-            self.min_partition_size as usize,
-        );
 
-        base_elements_per_partition.div(E::EXTENSION_DEGREE)
+        // Don't separate columns that would fit inside one hash iteration. min_partition_size is
+        // the number of `E` elements that can be consumed in one hash iteration.
+        let min_partition_size = self.hash_rate as usize / E::EXTENSION_DEGREE;
+
+        cmp::max(
+            num_columns.div_ceil(self.num_partitions as usize),
+            min_partition_size,
+        )
+    }
+
+    /// The actual number of partitions, after the min partition size implied
+    /// by the hash rate is taken into account.
+    pub fn num_partitions<E: FieldElement>(&self, num_columns: usize) -> usize {
+        num_columns.div_ceil(self.partition_size::<E>(num_columns))
     }
 }
 
 impl Default for PartitionOptions {
     fn default() -> Self {
-        Self { num_partitions: 1, min_partition_size: 1 }
+        Self { num_partitions: 1, hash_rate: 1 }
     }
 }
 
@@ -402,9 +420,9 @@ impl Default for PartitionOptions {
 
 #[cfg(test)]
 mod tests {
-    use math::fields::f64::BaseElement;
+    use math::fields::{f64::BaseElement, CubeExtension};
 
-    use super::{FieldExtension, ProofOptions, ToElements};
+    use super::{FieldExtension, PartitionOptions, ProofOptions, ToElements};
 
     #[test]
     fn proof_options_to_elements() {
@@ -437,5 +455,38 @@ mod tests {
             fri_remainder_max_degree as usize,
         );
         assert_eq!(expected, options.to_elements());
+    }
+
+    #[test]
+    fn correct_partition_sizes() {
+        type E1 = BaseElement;
+        type E3 = CubeExtension<BaseElement>;
+
+        let options = PartitionOptions::new(4, 8);
+        let columns = 7;
+        assert_eq!(8, options.partition_size::<E1>(columns));
+        assert_eq!(1, options.num_partitions::<E1>(columns));
+
+        let options = PartitionOptions::new(4, 8);
+        let columns = 70;
+        assert_eq!(18, options.partition_size::<E1>(columns));
+        assert_eq!(4, options.num_partitions::<E1>(columns));
+
+        let options = PartitionOptions::new(2, 8);
+        let columns = 7;
+        assert_eq!(4, options.partition_size::<E3>(columns));
+        assert_eq!(2, options.num_partitions::<E3>(columns));
+
+        let options: PartitionOptions = PartitionOptions::new(4, 8);
+        let columns = 7;
+        assert_eq!(2, options.partition_size::<E3>(columns));
+        assert_eq!(4, options.num_partitions::<E3>(columns));
+
+        // don't use all partitions if it would result in sizes smaller than
+        // a single hash iteration can handle
+        let options: PartitionOptions = PartitionOptions::new(4, 8);
+        let columns = 3;
+        assert_eq!(2, options.partition_size::<E3>(columns));
+        assert_eq!(2, options.num_partitions::<E3>(columns));
     }
 }
