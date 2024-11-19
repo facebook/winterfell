@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.2 (TBD)
+## 0.10.2 (2024-11-18)
 - Implement `core::error::Error` for error types (#341).
 
 ## 0.10.1 (2024-10-30)

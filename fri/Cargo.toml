@@ -1,12 +1,12 @@
 [package]
 name = "winter-fri"
-version = "0.10.1"
+version = "0.10.2"
 description = "Implementation of FRI protocol for the Winterfell STARK prover/verifier"
 authors = ["winterfell contributors"]
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/novifinancial/winterfell"
-documentation = "https://docs.rs/winter-fri/0.10.1"
+documentation = "https://docs.rs/winter-fri/0.10.2"
 categories = ["cryptography", "no-std"]
 keywords = ["crypto", "polynomial", "commitments"]
 edition = "2021"
