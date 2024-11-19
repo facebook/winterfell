@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.10.3 (2024-11-19) - `air`, `prover`, and `verifier` crates only
+- Fix partition size calculations in `PartitionOptions` (#341).
+
 ## 0.10.2 (2024-11-18)
 - Implement `core::error::Error` for error types (#341).
 
