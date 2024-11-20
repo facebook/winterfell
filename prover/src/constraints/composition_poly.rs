@@ -13,7 +13,7 @@ use super::{ColMatrix, StarkDomain};
 // ================================================================================================
 
 /// Represents merged evaluations of all constraint evaluations.
-pub struct CompositionPolyTrace<E>(Vec<E>);
+pub struct CompositionPolyTrace<E>(pub Vec<E>);
 
 impl<E: FieldElement> CompositionPolyTrace<E> {
     /// Returns a new instance of [CompositionPolyTrace] instantiated from the provided evaluations.
@@ -62,13 +62,20 @@ impl<E: FieldElement> CompositionPoly<E> {
             domain.trace_length() < composition_trace.num_rows(),
             "trace length must be smaller than length of composition polynomial trace"
         );
+        println!("coset intt in composition poly {} -> len {} cols {}", composition_trace.num_rows(), domain.trace_length(), num_cols);
 
         let mut trace = composition_trace.into_inner();
+
+        println!("trace-before {:?}", trace);
 
         // at this point, combined_poly contains evaluations of the combined constraint polynomial;
         // we interpolate this polynomial to transform it into coefficient form.
         let inv_twiddles = fft::get_inv_twiddles::<E::BaseField>(trace.len());
         fft::interpolate_poly_with_offset(&mut trace, &inv_twiddles, domain.offset());
+        // fft::interpolate_poly(&mut trace, &inv_twiddles);
+
+        println!("cpu-trace-after {:?}", trace);
+
 
         let polys = segment(trace, domain.trace_length(), num_cols);
 
