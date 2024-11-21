@@ -48,7 +48,7 @@ impl<E: FieldElement> CompositionPolyTrace<E> {
 /// For example, if the composition polynomial has degree 2N - 1, where N is the trace length,
 /// it will be stored as two columns of size N (each of degree N - 1).
 pub struct CompositionPoly<E: FieldElement> {
-    data: ColMatrix<E>,
+    pub data: ColMatrix<E>,
 }
 
 impl<E: FieldElement> CompositionPoly<E> {
@@ -62,11 +62,11 @@ impl<E: FieldElement> CompositionPoly<E> {
             domain.trace_length() < composition_trace.num_rows(),
             "trace length must be smaller than length of composition polynomial trace"
         );
-        println!("coset intt in composition poly {} -> len {} cols {}", composition_trace.num_rows(), domain.trace_length(), num_cols);
+        // println!("coset intt in composition poly {} -> len {} cols {}", composition_trace.num_rows(), domain.trace_length(), num_cols);
 
         let mut trace = composition_trace.into_inner();
 
-        println!("trace-before {:?}", trace);
+        // println!("trace-before {:?}", trace);
 
         // at this point, combined_poly contains evaluations of the combined constraint polynomial;
         // we interpolate this polynomial to transform it into coefficient form.
@@ -74,7 +74,7 @@ impl<E: FieldElement> CompositionPoly<E> {
         fft::interpolate_poly_with_offset(&mut trace, &inv_twiddles, domain.offset());
         // fft::interpolate_poly(&mut trace, &inv_twiddles);
 
-        println!("cpu-trace-after {:?}", trace);
+        // println!("cpu-trace-after {:?}", trace);
 
 
         let polys = segment(trace, domain.trace_length(), num_cols);

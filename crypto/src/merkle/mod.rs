@@ -89,8 +89,8 @@ mod tests;
 /// ```
 #[derive(Debug)]
 pub struct MerkleTree<H: Hasher> {
-    nodes: Vec<H::Digest>,
-    leaves: Vec<H::Digest>,
+    pub nodes: Vec<H::Digest>,
+    pub leaves: Vec<H::Digest>,
 }
 
 /// Merkle tree opening consisting of a leaf value and a Merkle path leading from this leaf

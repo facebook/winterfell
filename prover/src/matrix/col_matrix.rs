@@ -217,6 +217,19 @@ impl<E: FieldElement> ColMatrix<E> {
         self
     }
 
+    pub fn evaluate_columns(&self) -> Self {
+        let twiddles = fft::get_twiddles::<E::BaseField>(self.num_rows());
+        let columns = iter!(self.columns)
+            .map(|coeffs: &Vec<E>| {
+                let mut column = coeffs.clone();
+                fft::evaluate_poly(&mut column, &twiddles);
+                column
+            })
+            .collect();
+        Self { columns }
+    }
+
+
     /// Evaluates polynomials contained in the columns of this matrix over the specified domain
     /// and returns the result.
     ///
