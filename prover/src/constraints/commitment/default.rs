@@ -10,7 +10,7 @@ use air::proof::Queries;
 use crypto::{ElementHasher, VectorCommitment};
 use math::FieldElement;
 
-use super::RowMatrix;
+use super::{ConstraintCommitment, RowMatrix};
 
 // CONSTRAINT COMMITMENT
 // ================================================================================================
@@ -21,7 +21,7 @@ use super::RowMatrix;
 /// * Evaluations of composition polynomial columns over the LDE domain.
 /// * Vector commitment where each vector element corresponds to the digest of a row in
 ///   the composition polynomial evaluation matrix.
-pub struct ConstraintCommitment<
+pub struct DefaultConstraintCommitment<
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
     V: VectorCommitment<H>,
@@ -31,7 +31,7 @@ pub struct ConstraintCommitment<
     _h: PhantomData<H>,
 }
 
-impl<E, H, V> ConstraintCommitment<E, H, V>
+impl<E, H, V> DefaultConstraintCommitment<E, H, V>
 where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
@@ -39,7 +39,7 @@ where
 {
     /// Creates a new constraint evaluation commitment from the provided composition polynomial
     /// evaluations and the corresponding vector commitment.
-    pub fn new(evaluations: RowMatrix<E>, commitment: V) -> ConstraintCommitment<E, H, V> {
+    pub fn new(evaluations: RowMatrix<E>, commitment: V) -> Self {
         assert_eq!(
             evaluations.num_rows(),
             commitment.domain_len(),
@@ -47,21 +47,31 @@ where
             of the vector commitment domain"
         );
 
-        ConstraintCommitment {
+        Self {
             evaluations,
             vector_commitment: commitment,
             _h: PhantomData,
         }
     }
+}
+
+impl<E, H, V> ConstraintCommitment<E> for DefaultConstraintCommitment<E, H, V>
+where
+    E: FieldElement,
+    H: ElementHasher<BaseField = E::BaseField> + core::marker::Sync,
+    V: VectorCommitment<H> + core::marker::Sync,
+{
+    type HashFn = H;
+    type VC = V;
 
     /// Returns the commitment.
-    pub fn commitment(&self) -> H::Digest {
+    fn commitment(&self) -> H::Digest {
         self.vector_commitment.commitment()
     }
 
     /// Returns constraint evaluations at the specified positions along with a batch opening proof
     /// against the vector commitment.
-    pub fn query(self, positions: &[usize]) -> Queries {
+    fn query(self, positions: &[usize]) -> Queries {
         // build batch opening proof to the leaves specified by positions
         let opening_proof = self
             .vector_commitment

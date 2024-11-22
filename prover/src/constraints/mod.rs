@@ -15,4 +15,4 @@ mod evaluation_table;
 pub use evaluation_table::{ConstraintEvaluationTable, EvaluationTableFragment};
 
 mod commitment;
-pub use commitment::ConstraintCommitment;
+pub use commitment::{ConstraintCommitment, DefaultConstraintCommitment};

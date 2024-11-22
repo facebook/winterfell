@@ -71,7 +71,7 @@ use matrix::{ColMatrix, RowMatrix};
 mod constraints;
 pub use constraints::{
     CompositionPoly, CompositionPolyTrace, ConstraintCommitment, ConstraintEvaluator,
-    DefaultConstraintEvaluator,
+    DefaultConstraintEvaluator, DefaultConstraintCommitment,
 };
 
 mod composer;
@@ -148,6 +148,12 @@ pub trait Prover {
     where
         E: FieldElement<BaseField = Self::BaseField>;
 
+    /// Trace low-degree extension for building the LDEs of trace segments and their commitments.
+    type ConstraintCommitment<E>: ConstraintCommitment<E, HashFn = Self::HashFn, VC = Self::VC>
+    where
+        E: FieldElement<BaseField = Self::BaseField>;
+
+
     /// Constraints evaluator used to evaluate AIR constraints over the extended execution trace.
     type ConstraintEvaluator<'a, E>: ConstraintEvaluator<E, Air = Self::Air>
     where
@@ -182,6 +188,16 @@ pub trait Prover {
         domain: &StarkDomain<Self::BaseField>,
         partition_option: PartitionOptions,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>)
+    where
+        E: FieldElement<BaseField = Self::BaseField>;
+
+    /// Returns a new constraint commitment
+    #[maybe_async]
+    fn new_constraint_commitment<E>(
+        &self,
+        evaluations: RowMatrix<E>,
+        commitment: Self::VC
+    ) -> Self::ConstraintCommitment<E>
     where
         E: FieldElement<BaseField = Self::BaseField>;
 
@@ -522,7 +538,7 @@ pub trait Prover {
         composition_poly_trace: CompositionPolyTrace<E>,
         num_constraint_composition_columns: usize,
         domain: &StarkDomain<Self::BaseField>,
-    ) -> (ConstraintCommitment<E, Self::HashFn, Self::VC>, CompositionPoly<E>)
+    ) -> (Self::ConstraintCommitment<E>, CompositionPoly<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
@@ -556,7 +572,7 @@ pub trait Prover {
         .in_scope(|| {
             let commitment = composed_evaluations
                 .commit_to_rows::<Self::HashFn, Self::VC>(self.options().partition_options());
-            ConstraintCommitment::new(composed_evaluations, commitment)
+            self.new_constraint_commitment(composed_evaluations, commitment)
         });
 
         (constraint_commitment, composition_poly)
@@ -601,7 +617,7 @@ pub trait Prover {
         composition_poly_trace: CompositionPolyTrace<E>,
         domain: &StarkDomain<Self::BaseField>,
         channel: &mut ProverChannel<'_, Self::Air, E, Self::HashFn, Self::RandomCoin, Self::VC>,
-    ) -> (ConstraintCommitment<E, Self::HashFn, Self::VC>, CompositionPoly<E>)
+    ) -> (Self::ConstraintCommitment<E>, CompositionPoly<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
     {
