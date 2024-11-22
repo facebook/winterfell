@@ -4,11 +4,15 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::vec::Vec;
+use maybe_async::maybe_async;
+use tracing::info_span;
 use core::marker::PhantomData;
 
-use air::proof::Queries;
+use air::{proof::Queries, PartitionOptions};
 use crypto::{ElementHasher, VectorCommitment};
 use math::FieldElement;
+
+use crate::{CompositionPoly, CompositionPolyTrace, StarkDomain, DEFAULT_SEGMENT_WIDTH};
 
 use super::{ConstraintCommitment, RowMatrix};
 
@@ -39,7 +43,17 @@ where
 {
     /// Creates a new constraint evaluation commitment from the provided composition polynomial
     /// evaluations and the corresponding vector commitment.
-    pub fn new(evaluations: RowMatrix<E>, commitment: V) -> Self {
+    pub fn new(
+        composition_poly_trace: CompositionPolyTrace<E>,
+        num_constraint_composition_columns: usize,
+        domain: &StarkDomain<E::BaseField>,
+        partition_options: PartitionOptions,
+    ) -> (Self, CompositionPoly<E>) {
+
+        // extend the main execution trace and build a commitment to the extended trace
+        let (evaluations, commitment, composition_poly) =
+            build_constraint_commitment::<E, H, V>(composition_poly_trace, num_constraint_composition_columns, domain, partition_options);
+    
         assert_eq!(
             evaluations.num_rows(),
             commitment.domain_len(),
@@ -47,11 +61,13 @@ where
             of the vector commitment domain"
         );
 
-        Self {
+        let commitment = Self {
             evaluations,
             vector_commitment: commitment,
             _h: PhantomData,
-        }
+        };
+
+        (commitment, composition_poly)
     }
 }
 
@@ -87,4 +103,51 @@ where
 
         Queries::new::<H, E, V>(opening_proof.1, evaluations)
     }
+}
+
+#[maybe_async]
+fn build_constraint_commitment<E, H, V>(
+    composition_poly_trace: CompositionPolyTrace<E>,
+    num_constraint_composition_columns: usize,
+    domain: &StarkDomain<E::BaseField>,
+    partition_options: PartitionOptions,
+) -> (RowMatrix<E>, V, CompositionPoly<E>)
+where
+    E: FieldElement,
+    H: ElementHasher<BaseField = E::BaseField>,
+    V: VectorCommitment<H>,
+{
+    // first, build constraint composition polynomial from its trace as follows:
+    // - interpolate the trace into a polynomial in coefficient form
+    // - "break" the polynomial into a set of column polynomials each of degree equal to
+    //   trace_length - 1
+    let composition_poly = info_span!(
+        "build_composition_poly_columns",
+        num_columns = num_constraint_composition_columns
+    )
+    .in_scope(|| {
+        CompositionPoly::new(composition_poly_trace, domain, num_constraint_composition_columns)
+    });
+    assert_eq!(composition_poly.num_columns(), num_constraint_composition_columns);
+    assert_eq!(composition_poly.column_degree(), domain.trace_length() - 1);
+
+    // then, evaluate composition polynomial columns over the LDE domain
+    let domain_size = domain.lde_domain_size();
+    let composed_evaluations = info_span!("evaluate_composition_poly_columns").in_scope(|| {
+        RowMatrix::evaluate_polys_over::<DEFAULT_SEGMENT_WIDTH>(composition_poly.data(), domain)
+    });
+    assert_eq!(composed_evaluations.num_cols(), num_constraint_composition_columns);
+    assert_eq!(composed_evaluations.num_rows(), domain_size);
+
+    // finally, build constraint evaluation commitment
+    let commitment = info_span!(
+        "compute_constraint_evaluation_commitment",
+        log_domain_size = domain_size.ilog2()
+    )
+    .in_scope(|| {
+        composed_evaluations
+            .commit_to_rows::<H, V>(partition_options)
+    });
+
+    (composed_evaluations, commitment, composition_poly)
 }

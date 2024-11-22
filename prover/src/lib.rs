@@ -191,16 +191,6 @@ pub trait Prover {
     where
         E: FieldElement<BaseField = Self::BaseField>;
 
-    /// Returns a new constraint commitment
-    #[maybe_async]
-    fn new_constraint_commitment<E>(
-        &self,
-        evaluations: RowMatrix<E>,
-        commitment: Self::VC
-    ) -> Self::ConstraintCommitment<E>
-    where
-        E: FieldElement<BaseField = Self::BaseField>;
-
     /// Returns a new constraint evaluator which can be used to evaluate transition and boundary
     /// constraints over the extended execution trace.
     #[maybe_async]
@@ -538,45 +528,49 @@ pub trait Prover {
         composition_poly_trace: CompositionPolyTrace<E>,
         num_constraint_composition_columns: usize,
         domain: &StarkDomain<Self::BaseField>,
+        partition_options: PartitionOptions,
     ) -> (Self::ConstraintCommitment<E>, CompositionPoly<E>)
     where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        // first, build constraint composition polynomial from its trace as follows:
-        // - interpolate the trace into a polynomial in coefficient form
-        // - "break" the polynomial into a set of column polynomials each of degree equal to
-        //   trace_length - 1
-        let composition_poly = info_span!(
-            "build_composition_poly_columns",
-            num_columns = num_constraint_composition_columns
-        )
-        .in_scope(|| {
-            CompositionPoly::new(composition_poly_trace, domain, num_constraint_composition_columns)
-        });
-        assert_eq!(composition_poly.num_columns(), num_constraint_composition_columns);
-        assert_eq!(composition_poly.column_degree(), domain.trace_length() - 1);
+        E: FieldElement<BaseField = Self::BaseField>;
+        
+        
+    //     ,
+    // {
+    //     // first, build constraint composition polynomial from its trace as follows:
+    //     // - interpolate the trace into a polynomial in coefficient form
+    //     // - "break" the polynomial into a set of column polynomials each of degree equal to
+    //     //   trace_length - 1
+    //     let composition_poly = info_span!(
+    //         "build_composition_poly_columns",
+    //         num_columns = num_constraint_composition_columns
+    //     )
+    //     .in_scope(|| {
+    //         CompositionPoly::new(composition_poly_trace, domain, num_constraint_composition_columns)
+    //     });
+    //     assert_eq!(composition_poly.num_columns(), num_constraint_composition_columns);
+    //     assert_eq!(composition_poly.column_degree(), domain.trace_length() - 1);
 
-        // then, evaluate composition polynomial columns over the LDE domain
-        let domain_size = domain.lde_domain_size();
-        let composed_evaluations = info_span!("evaluate_composition_poly_columns").in_scope(|| {
-            RowMatrix::evaluate_polys_over::<DEFAULT_SEGMENT_WIDTH>(composition_poly.data(), domain)
-        });
-        assert_eq!(composed_evaluations.num_cols(), num_constraint_composition_columns);
-        assert_eq!(composed_evaluations.num_rows(), domain_size);
+    //     // then, evaluate composition polynomial columns over the LDE domain
+    //     let domain_size = domain.lde_domain_size();
+    //     let composed_evaluations = info_span!("evaluate_composition_poly_columns").in_scope(|| {
+    //         RowMatrix::evaluate_polys_over::<DEFAULT_SEGMENT_WIDTH>(composition_poly.data(), domain)
+    //     });
+    //     assert_eq!(composed_evaluations.num_cols(), num_constraint_composition_columns);
+    //     assert_eq!(composed_evaluations.num_rows(), domain_size);
 
-        // finally, build constraint evaluation commitment
-        let constraint_commitment = info_span!(
-            "compute_constraint_evaluation_commitment",
-            log_domain_size = domain_size.ilog2()
-        )
-        .in_scope(|| {
-            let commitment = composed_evaluations
-                .commit_to_rows::<Self::HashFn, Self::VC>(self.options().partition_options());
-            self.new_constraint_commitment(composed_evaluations, commitment)
-        });
+    //     // finally, build constraint evaluation commitment
+    //     let constraint_commitment = info_span!(
+    //         "compute_constraint_evaluation_commitment",
+    //         log_domain_size = domain_size.ilog2()
+    //     )
+    //     .in_scope(|| {
+    //         let commitment = composed_evaluations
+    //             .commit_to_rows::<Self::HashFn, Self::VC>(self.options().partition_options());
+    //         self.new_constraint_commitment(composed_evaluations, commitment)
+    //     });
 
-        (constraint_commitment, composition_poly)
-    }
+    //     (constraint_commitment, composition_poly)
+    // }
 
     #[doc(hidden)]
     #[instrument(skip_all)]
@@ -628,6 +622,7 @@ pub trait Prover {
                 composition_poly_trace,
                 air.context().num_constraint_composition_columns(),
                 domain,
+                self.options().partition_options()
             ));
 
         // then, commit to the evaluations of constraints by writing the commitment string of
