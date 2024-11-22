@@ -44,22 +44,6 @@ impl<E: FieldElement> RowMatrix<E> {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a new [Matrix] instantiated with the data from the specified rows.
-    ///
-    /// # Panics
-    /// Panics if:
-    /// * The provided vector of rows is empty.
-    /// * Not all of the rows have the same number of elements.
-    /// * Number of columns is smaller than or equal to 1.
-    /// * Number of columns is not a power of two.
-    pub fn new(data: Vec<E::BaseField>, num_columns: usize) -> Self {
-        Self { 
-            data,
-            row_width: num_columns * E::EXTENSION_DEGREE,
-            elements_per_row: num_columns * E::EXTENSION_DEGREE,
-        }
-    }
-
     /// Returns a new [RowMatrix] constructed by evaluating the provided polynomials over the
     /// domain defined by the specified blowup factor.
     ///
