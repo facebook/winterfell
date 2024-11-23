@@ -71,7 +71,7 @@ use matrix::{ColMatrix, RowMatrix};
 mod constraints;
 pub use constraints::{
     CompositionPoly, CompositionPolyTrace, ConstraintCommitment, ConstraintEvaluator,
-    DefaultConstraintEvaluator, DefaultConstraintCommitment,
+    DefaultConstraintCommitment, DefaultConstraintEvaluator,
 };
 
 mod composer;
@@ -152,7 +152,6 @@ pub trait Prover {
     type ConstraintCommitment<E>: ConstraintCommitment<E, HashFn = Self::HashFn, VC = Self::VC>
     where
         E: FieldElement<BaseField = Self::BaseField>;
-
 
     /// Constraints evaluator used to evaluate AIR constraints over the extended execution trace.
     type ConstraintEvaluator<'a, E>: ConstraintEvaluator<E, Air = Self::Air>

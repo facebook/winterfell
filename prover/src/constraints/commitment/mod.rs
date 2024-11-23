@@ -12,7 +12,6 @@ use super::RowMatrix;
 mod default;
 pub use default::DefaultConstraintCommitment;
 
-
 // CONSTRAINT COMMITMENT
 // ================================================================================================
 

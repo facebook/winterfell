@@ -8,7 +8,10 @@ use std::{vec, vec::Vec};
 use air::{GkrRandElements, LagrangeKernelRandElements};
 use crypto::MerkleTree;
 use prover::{
-    crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin}, math::{fields::f64::BaseElement, ExtensionOf, FieldElement}, matrix::ColMatrix, CompositionPoly, DefaultConstraintCommitment
+    crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin},
+    math::{fields::f64::BaseElement, ExtensionOf, FieldElement},
+    matrix::ColMatrix,
+    CompositionPoly, DefaultConstraintCommitment,
 };
 
 use super::*;

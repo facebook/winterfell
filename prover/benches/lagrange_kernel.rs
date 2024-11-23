@@ -14,7 +14,9 @@ use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criteri
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, MerkleTree, RandomCoin};
 use math::{fields::f64::BaseElement, ExtensionOf, FieldElement};
 use winter_prover::{
-    matrix::ColMatrix, CompositionPoly, CompositionPolyTrace, DefaultConstraintCommitment, DefaultConstraintEvaluator, DefaultTraceLde, Prover, ProverGkrProof, StarkDomain, Trace, TracePolyTable
+    matrix::ColMatrix, CompositionPoly, CompositionPolyTrace, DefaultConstraintCommitment,
+    DefaultConstraintEvaluator, DefaultTraceLde, Prover, ProverGkrProof, StarkDomain, Trace,
+    TracePolyTable,
 };
 
 const TRACE_LENS: [usize; 2] = [2_usize.pow(16), 2_usize.pow(20)];
