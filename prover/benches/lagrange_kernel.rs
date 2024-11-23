@@ -14,8 +14,7 @@ use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criteri
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, MerkleTree, RandomCoin};
 use math::{fields::f64::BaseElement, ExtensionOf, FieldElement};
 use winter_prover::{
-    matrix::ColMatrix, DefaultConstraintEvaluator, DefaultTraceLde, Prover, ProverGkrProof,
-    StarkDomain, Trace, TracePolyTable,
+    matrix::ColMatrix, CompositionPoly, CompositionPolyTrace, DefaultConstraintCommitment, DefaultConstraintEvaluator, DefaultTraceLde, Prover, ProverGkrProof, StarkDomain, Trace, TracePolyTable
 };
 
 const TRACE_LENS: [usize; 2] = [2_usize.pow(16), 2_usize.pow(20)];
@@ -187,6 +186,8 @@ impl Prover for LagrangeProver {
     type RandomCoin = DefaultRandomCoin<Self::HashFn>;
     type TraceLde<E: FieldElement<BaseField = BaseElement>> =
         DefaultTraceLde<E, Self::HashFn, Self::VC>;
+    type ConstraintCommitment<E: FieldElement<BaseField = Self::BaseField>> =
+        DefaultConstraintCommitment<E, Self::HashFn, Self::VC>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = BaseElement>> =
         DefaultConstraintEvaluator<'a, LagrangeKernelAir, E>;
 
@@ -208,6 +209,21 @@ impl Prover for LagrangeProver {
         E: math::FieldElement<BaseField = Self::BaseField>,
     {
         DefaultTraceLde::new(trace_info, main_trace, domain, partition_option)
+    }
+
+    fn build_constraint_commitment<E: FieldElement<BaseField = Self::BaseField>>(
+        &self,
+        composition_poly_trace: CompositionPolyTrace<E>,
+        num_constraint_composition_columns: usize,
+        domain: &StarkDomain<Self::BaseField>,
+        partition_options: PartitionOptions,
+    ) -> (Self::ConstraintCommitment<E>, CompositionPoly<E>) {
+        DefaultConstraintCommitment::new(
+            composition_poly_trace,
+            num_constraint_composition_columns,
+            domain,
+            partition_options,
+        )
     }
 
     fn new_evaluator<'a, E>(
