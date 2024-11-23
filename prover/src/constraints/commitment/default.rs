@@ -4,7 +4,6 @@
 // LICENSE file in the root directory of this source tree.
 
 use alloc::vec::Vec;
-use maybe_async::maybe_async;
 use tracing::info_span;
 use core::marker::PhantomData;
 
@@ -105,7 +104,6 @@ where
     }
 }
 
-#[maybe_async]
 fn build_constraint_commitment<E, H, V>(
     composition_poly_trace: CompositionPolyTrace<E>,
     num_constraint_composition_columns: usize,
