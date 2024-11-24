@@ -84,6 +84,15 @@ where
         DefaultTraceLde::new(trace_info, main_trace, domain, partition_option)
     }
 
+    fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
+        &self,
+        air: &'a Self::Air,
+        aux_rand_elements: Option<AuxRandElements<E>>,
+        composition_coefficients: ConstraintCompositionCoefficients<E>,
+    ) -> Self::ConstraintEvaluator<'a, E> {
+        DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
+    }
+
     fn build_constraint_commitment<E: FieldElement<BaseField = Self::BaseField>>(
         &self,
         composition_poly_trace: CompositionPolyTrace<E>,
@@ -97,14 +106,5 @@ where
             domain,
             partition_options,
         )
-    }
-
-    fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(
-        &self,
-        air: &'a Self::Air,
-        aux_rand_elements: Option<AuxRandElements<E>>,
-        composition_coefficients: ConstraintCompositionCoefficients<E>,
-    ) -> Self::ConstraintEvaluator<'a, E> {
-        DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
     }
 }

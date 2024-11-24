@@ -148,13 +148,14 @@ pub trait Prover {
     where
         E: FieldElement<BaseField = Self::BaseField>;
 
-    /// Trace low-degree extension for building the LDEs of trace segments and their commitments.
-    type ConstraintCommitment<E>: ConstraintCommitment<E, HashFn = Self::HashFn, VC = Self::VC>
+    /// Constraints evaluator used to evaluate AIR constraints over the extended execution trace.
+    type ConstraintEvaluator<'a, E>: ConstraintEvaluator<E, Air = Self::Air>
     where
         E: FieldElement<BaseField = Self::BaseField>;
 
-    /// Constraints evaluator used to evaluate AIR constraints over the extended execution trace.
-    type ConstraintEvaluator<'a, E>: ConstraintEvaluator<E, Air = Self::Air>
+    /// Constraint low-degree extension for building the LDEs of composition polynomial columns and
+    /// their commitments.
+    type ConstraintCommitment<E>: ConstraintCommitment<E, HashFn = Self::HashFn, VC = Self::VC>
     where
         E: FieldElement<BaseField = Self::BaseField>;
 
@@ -199,6 +200,27 @@ pub trait Prover {
         aux_rand_elements: Option<AuxRandElements<E>>,
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E>
+    where
+        E: FieldElement<BaseField = Self::BaseField>;
+
+    /// Extends constraint composition polynomial over the LDE domain and builds a commitment to
+    /// its evaluations.
+    ///
+    /// The extension is done by first interpolating the evaluations of the polynomial so that we
+    /// get the composition polynomial in coefficient form; then breaking the polynomial into
+    /// columns each of size equal to trace length, and finally evaluating each composition
+    /// polynomial column over the LDE domain.
+    ///
+    /// The commitment is computed by building a vector containing the hashes of each row in
+    /// the evaluation matrix, and then building vector commitment of the resulting vector.
+    #[maybe_async]
+    fn build_constraint_commitment<E>(
+        &self,
+        composition_poly_trace: CompositionPolyTrace<E>,
+        num_constraint_composition_columns: usize,
+        domain: &StarkDomain<Self::BaseField>,
+        partition_options: PartitionOptions,
+    ) -> (Self::ConstraintCommitment<E>, CompositionPoly<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>;
 
@@ -510,27 +532,6 @@ pub trait Prover {
 
         Ok(proof)
     }
-
-    /// Extends constraint composition polynomial over the LDE domain and builds a commitment to
-    /// its evaluations.
-    ///
-    /// The extension is done by first interpolating the evaluations of the polynomial so that we
-    /// get the composition polynomial in coefficient form; then breaking the polynomial into
-    /// columns each of size equal to trace length, and finally evaluating each composition
-    /// polynomial column over the LDE domain.
-    ///
-    /// The commitment is computed by building a vector containing the hashes of each row in
-    /// the evaluation matrix, and then building vector commitment of the resulting vector.
-    #[maybe_async]
-    fn build_constraint_commitment<E>(
-        &self,
-        composition_poly_trace: CompositionPolyTrace<E>,
-        num_constraint_composition_columns: usize,
-        domain: &StarkDomain<Self::BaseField>,
-        partition_options: PartitionOptions,
-    ) -> (Self::ConstraintCommitment<E>, CompositionPoly<E>)
-    where
-        E: FieldElement<BaseField = Self::BaseField>;
 
     #[doc(hidden)]
     #[instrument(skip_all)]
