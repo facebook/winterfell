@@ -4,9 +4,9 @@
 // LICENSE file in the root directory of this source tree.
 
 use winterfell::{
-    crypto::MerkleTree, matrix::ColMatrix, AuxRandElements, ConstraintCompositionCoefficients,
-    DefaultConstraintEvaluator, DefaultTraceLde, PartitionOptions, StarkDomain, Trace, TraceInfo,
-    TracePolyTable, TraceTable,
+    crypto::MerkleTree, matrix::ColMatrix, AuxRandElements, CompositionPoly, CompositionPolyTrace,
+    ConstraintCompositionCoefficients, DefaultConstraintCommitment, DefaultConstraintEvaluator,
+    DefaultTraceLde, PartitionOptions, StarkDomain, Trace, TraceInfo, TracePolyTable, TraceTable,
 };
 
 use super::{
@@ -75,6 +75,8 @@ where
     type RandomCoin = DefaultRandomCoin<Self::HashFn>;
     type TraceLde<E: FieldElement<BaseField = Self::BaseField>> =
         DefaultTraceLde<E, Self::HashFn, Self::VC>;
+    type ConstraintCommitment<E: FieldElement<BaseField = Self::BaseField>> =
+        DefaultConstraintCommitment<E, H, Self::VC>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
         DefaultConstraintEvaluator<'a, Self::Air, E>;
 
@@ -107,5 +109,20 @@ where
         composition_coefficients: ConstraintCompositionCoefficients<E>,
     ) -> Self::ConstraintEvaluator<'a, E> {
         DefaultConstraintEvaluator::new(air, aux_rand_elements, composition_coefficients)
+    }
+
+    fn build_constraint_commitment<E: FieldElement<BaseField = Self::BaseField>>(
+        &self,
+        composition_poly_trace: CompositionPolyTrace<E>,
+        num_constraint_composition_columns: usize,
+        domain: &StarkDomain<Self::BaseField>,
+        partition_options: PartitionOptions,
+    ) -> (Self::ConstraintCommitment<E>, CompositionPoly<E>) {
+        DefaultConstraintCommitment::new(
+            composition_poly_trace,
+            num_constraint_composition_columns,
+            domain,
+            partition_options,
+        )
     }
 }
