@@ -1,19 +1,22 @@
 # Changelog
 
+## 0.11.0 (2024-11-24)
+- [BREAKING] Made the prover generic over the `ConstraintCommitment` type (#343).
+
 ## 0.10.3 (2024-11-19) - `air`, `prover`, and `verifier` crates only
-- Fix partition size calculations in `PartitionOptions` (#340).
+- Fixed partition size calculations in `PartitionOptions` (#340).
 
 ## 0.10.2 (2024-11-18)
-- Implement `core::error::Error` for error types (#341).
+- Implemented `core::error::Error` for error types (#341).
 
 ## 0.10.1 (2024-10-30)
 - Fixed partition hashing and add logging to aux trace building (#338).
 
 ## 0.10.0 (2024-10-25)
 - [BREAKING] Refactored maybe-async macro into simpler maybe-async and maybe-await macros (#283).
-- [BREAKING] Introduce `VectorCommitment` abstraction (#285).
+- [BREAKING] Introduced `VectorCommitment` abstraction (#285).
 - Added `maybe-async-trait` procedural macro (#334).
-- [BREAKING] Add options for partitioned trace commitments (#336).
+- [BREAKING] Added options for partitioned trace commitments (#336).
 - Updated minimum supported Rust version to 1.82.
 
 ## 0.9.3 (2024-09-25) - `utils/core` and `math` crates only
@@ -23,7 +26,7 @@
 - Fixed `read_slice` impl for ReadAdapter` (#309).
 
 ## 0.9.1 (2024-06-24) - `utils/core` crate only
-- Fixed `useize` serialization in `ByteWriter`.
+- Fixed `usize` serialization in `ByteWriter`.
 
 ## 0.9.0 (2024-05-09)
 - [BREAKING] Merged `TraceLayout` into `TraceInfo` (#245).
