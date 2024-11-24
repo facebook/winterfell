@@ -37,6 +37,8 @@
 //! also depends on the capabilities of the machine used to generate the proofs (i.e. on number
 //! of CPU cores and memory bandwidth).
 
+#![no_std]
+
 #[macro_use]
 extern crate alloc;
 
