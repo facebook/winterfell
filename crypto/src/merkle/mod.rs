@@ -11,7 +11,7 @@ use core::slice;
 
 use rand::{
     distributions::{Distribution, Standard},
-    thread_rng, Rng, RngCore,
+    thread_rng, Rng, RngCore, SeedableRng,
 };
 
 use crate::{
@@ -599,12 +599,16 @@ where
     type Error = MerkleTreeError;
 
     fn new(items: Vec<H::Digest>) -> Result<Self, Self::Error> {
-        let mut prng = thread_rng();
+        let mut _prng = thread_rng();
+        let seed = [0_u8; 32];
+        let mut prng = rand_chacha::ChaCha20Rng::from_seed(seed);
         SaltedMerkleTree::new(items, &mut prng)
     }
 
     fn with_options(items: Vec<H::Digest>, _options: Self::Options) -> Result<Self, Self::Error> {
-        let mut prng = thread_rng();
+        let mut _prng = thread_rng();
+        let seed = [0_u8; 32];
+        let mut prng = rand_chacha::ChaCha20Rng::from_seed(seed);
         Self::new(items, &mut prng)
     }
 

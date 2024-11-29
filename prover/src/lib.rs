@@ -329,7 +329,9 @@ pub trait Prover {
                 pub_inputs_elements,
                 air.context().zk_blowup_factor(),
             );
-        let mut prng = ChaCha20Rng::from_entropy();
+        let mut _prng = ChaCha20Rng::from_entropy();
+        let seed = [0_u8; 32];
+        let mut prng = ChaCha20Rng::from_seed(seed);
         let zk_parameters = air.context().zk_parameters();
 
         // 1 ----- Commit to the execution trace --------------------------------------------------
