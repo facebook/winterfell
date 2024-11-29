@@ -301,7 +301,9 @@ pub trait Prover {
                 pub_inputs_elements,
                 air.context().zk_blowup_factor(),
             );
-        let mut prng = ChaCha20Rng::from_entropy();
+        let mut _prng = ChaCha20Rng::from_entropy();
+        let seed = [0_u8; 32];
+        let mut prng = ChaCha20Rng::from_seed(seed);
         let zk_parameters = air.context().zk_parameters();
 
         // 1 ----- Commit to the execution trace --------------------------------------------------
@@ -595,7 +597,7 @@ pub trait Prover {
             let commitment = composed_evaluations.commit_to_rows::<Self::HashFn, Self::VC>(
                 self.options()
                     .partition_options()
-                    .partition_size::<E>(num_constraint_composition_columns),
+                    .partition_size::<E>(num_constraint_composition_columns) + zk_parameters.is_some() as usize,
             );
             ConstraintCommitment::new(composed_evaluations, commitment)
         });

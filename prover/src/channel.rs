@@ -129,7 +129,7 @@ where
     {
         let trace_states_hash = self.ood_frame.set_trace_states::<E, H>(trace_ood_frame);
 
-        // sample a salt for Fiat-Shamir is zero-knowledge is enabled
+        // sample a salt for Fiat-Shamir if zero-knowledge is enabled
         let salt = if self.air.is_zk() {
             let mut buffer = [0_u8; 32];
             prng.fill_bytes(&mut buffer);
