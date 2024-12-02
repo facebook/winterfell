@@ -13,6 +13,7 @@ use air::{
 use crypto::{ElementHasher, VectorCommitment};
 use fri::VerifierChannel as FriVerifierChannel;
 use math::{FieldElement, StarkField};
+use utils::Deserializable;
 
 use crate::VerifierError;
 
@@ -45,12 +46,14 @@ pub struct VerifierChannel<
     fri_layer_queries: Vec<Vec<E>>,
     fri_remainder: Option<Vec<E>>,
     fri_num_partitions: usize,
+    fri_salts: Vec<Option<H::Digest>>,
     // out-of-domain frame
     ood_trace_frame: Option<TraceOodFrame<E>>,
     ood_constraint_evaluations: Option<Vec<E>>,
     // query proof-of-work
     pow_nonce: u64,
     gkr_proof: Option<Vec<u8>>,
+    salts: Vec<Option<H::Digest>>,
 }
 
 impl<E, H, V> VerifierChannel<E, H, V>
@@ -76,6 +79,7 @@ where
             fri_proof,
             pow_nonce,
             gkr_proof,
+            salts,
         } = proof;
 
         // make sure AIR and proof base fields are the same
@@ -103,12 +107,17 @@ where
             constraint_queries,
             air,
             num_unique_queries as usize,
+            air.is_zk(),
         )?;
 
         // --- parse FRI proofs -------------------------------------------------------------------
         let fri_num_partitions = fri_proof.num_partitions();
         let fri_remainder = fri_proof
             .parse_remainder()
+            .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
+
+        let fri_salts = fri_proof
+            .parse_salts::<E, H>()
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
         let (fri_layer_queries, fri_layer_proofs) = fri_proof
             .parse_layers::<E, H, V>(lde_domain_size, fri_options.folding_factor())
@@ -124,8 +133,12 @@ where
             .partition_size::<E::BaseField>(air.context().trace_info().main_trace_width());
         let partition_size_aux =
             partition_options.partition_size::<E>(air.context().trace_info().aux_segment_width());
-        let partition_size_constraint = partition_options
-            .partition_size::<E>(air.context().num_constraint_composition_columns());
+        let partition_size_constraint = partition_options.partition_size::<E>(
+            air.context().num_constraint_composition_columns() + air.is_zk() as usize,
+        );
+        // --- parse Fiat-Shamir salts -----------------------------------------------
+        let salts: Vec<Option<H::Digest>> = Vec::read_from_bytes(&salts)
+            .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;
 
         Ok(VerifierChannel {
             // trace queries
@@ -144,12 +157,14 @@ where
             fri_layer_queries,
             fri_remainder: Some(fri_remainder),
             fri_num_partitions,
+            fri_salts,
             // out-of-domain evaluation
             ood_trace_frame: Some(ood_trace_frame),
             ood_constraint_evaluations: Some(ood_constraint_evaluations),
             // query seed
             pow_nonce,
             gkr_proof,
+            salts,
         })
     }
 
@@ -192,6 +207,11 @@ where
     /// Returns the serialized GKR proof, if any.
     pub fn read_gkr_proof(&self) -> Option<&Vec<u8>> {
         self.gkr_proof.as_ref()
+    }
+
+    /// Returns the salts needed for Fiat-Shamir.
+    pub fn read_salts(&self) -> Vec<Option<H::Digest>> {
+        self.salts.clone()
     }
 
     /// Returns trace states at the specified positions of the LDE domain. This also checks if
@@ -297,6 +317,10 @@ where
 
     fn take_fri_remainder(&mut self) -> Vec<E> {
         self.fri_remainder.take().expect("already read")
+    }
+
+    fn take_salt(&mut self) -> Option<<Self::Hasher as crypto::Hasher>::Digest> {
+        self.fri_salts.remove(0)
     }
 }
 
@@ -414,8 +438,11 @@ where
         queries: Queries,
         air: &A,
         num_queries: usize,
+        is_zk: bool,
     ) -> Result<Self, VerifierError> {
-        let constraint_frame_width = air.context().num_constraint_composition_columns();
+        // In the case zero-knowledge is enabled, we parse the randomizer polynomial as well
+        let constraint_frame_width =
+            air.context().num_constraint_composition_columns() + is_zk as usize;
 
         let (query_proofs, evaluations) = queries
             .parse::<E, H, V>(air.lde_domain_size(), num_queries, constraint_frame_width)
@@ -442,7 +469,7 @@ where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
 {
-    if partition_size == row.len() * E::EXTENSION_DEGREE {
+    if partition_size == row.len() {
         H::hash_elements(row)
     } else {
         let mut buffer = vec![H::Digest::default(); partition_size];

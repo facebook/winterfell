@@ -5,7 +5,7 @@
 
 use core::slice;
 
-use math::{fields::f62::BaseElement, StarkField};
+use math::{fields::f62::BaseElement, FieldElement, StarkField};
 use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 use super::{Digest, DIGEST_SIZE};
@@ -46,6 +46,18 @@ impl Digest for ElementDigest {
         result[24..].copy_from_slice(&(v4 >> 6).to_le_bytes());
 
         result
+    }
+
+    fn from_random_bytes(buffer: &[u8]) -> Self {
+        let mut digest: [BaseElement; DIGEST_SIZE] = [BaseElement::ZERO; DIGEST_SIZE];
+
+        buffer.chunks(8).zip(digest.iter_mut()).for_each(|(chunk, digest)| {
+            *digest = BaseElement::new(u64::from_be_bytes(
+                chunk.try_into().expect("Given the size of the chunk this should not panic"),
+            ))
+        });
+
+        Self(digest)
     }
 }
 

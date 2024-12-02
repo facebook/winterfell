@@ -73,7 +73,7 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
         // collect expected degrees for all transition constraints to compare them against actual
         // degrees; we do this in debug mode only because this comparison is expensive
         let expected_transition_degrees =
-            build_transition_constraint_degrees(transition_constraints, domain.trace_length());
+            build_transition_constraint_degrees(transition_constraints, domain);
 
         ConstraintEvaluationTable {
             evaluations: uninit_matrix(num_columns, num_rows),
@@ -420,16 +420,35 @@ fn get_inv_evaluation<B: StarkField>(
 #[cfg(debug_assertions)]
 fn build_transition_constraint_degrees<E: FieldElement>(
     constraints: &TransitionConstraints<E>,
-    trace_length: usize,
+    domain: &StarkDomain<E::BaseField>,
 ) -> Vec<usize> {
+    use crate::domain::ZkInfo;
+
     let mut result = Vec::new();
+    let (trace_length, trace_len_ext) = if let Some(zk_info) = domain.zk_info() {
+        let ZkInfo {
+            original_trace_length,
+            degree_witness_randomizer,
+        }: ZkInfo = zk_info;
+
+        let ext_len = (original_trace_length + degree_witness_randomizer).next_power_of_two();
+        (original_trace_length, ext_len)
+    } else {
+        (domain.trace_length(), domain.trace_length())
+    };
 
     for degree in constraints.main_constraint_degrees() {
-        result.push(degree.get_evaluation_degree(trace_length) - constraints.divisor().degree())
+        result.push(
+            degree.get_evaluation_degree(trace_length, trace_len_ext)
+                - constraints.divisor().degree(),
+        )
     }
 
     for degree in constraints.aux_constraint_degrees() {
-        result.push(degree.get_evaluation_degree(trace_length) - constraints.divisor().degree())
+        result.push(
+            degree.get_evaluation_degree(trace_length, trace_len_ext)
+                - constraints.divisor().degree(),
+        )
     }
 
     result

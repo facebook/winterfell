@@ -7,6 +7,7 @@ use alloc::vec::Vec;
 
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, Hasher, MerkleTree, RandomCoin};
 use math::{fft, fields::f128::BaseElement, FieldElement};
+use rand_chacha::ChaCha20Rng;
 use utils::{Deserializable, Serializable, SliceReader};
 
 use super::{DefaultProverChannel, FriProver};
@@ -44,8 +45,8 @@ fn fri_folding_4() {
 pub fn build_prover_channel(
     trace_length: usize,
     options: &FriOptions,
-) -> DefaultProverChannel<BaseElement, Blake3, DefaultRandomCoin<Blake3>> {
-    DefaultProverChannel::new(trace_length * options.blowup_factor(), 32)
+) -> DefaultProverChannel<BaseElement, Blake3, ChaCha20Rng, DefaultRandomCoin<Blake3>> {
+    DefaultProverChannel::new(trace_length * options.blowup_factor(), 32, false, None)
 }
 
 pub fn build_evaluations(trace_length: usize, lde_blowup: usize) -> Vec<BaseElement> {

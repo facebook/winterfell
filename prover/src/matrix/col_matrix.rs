@@ -8,6 +8,7 @@ use core::{iter::FusedIterator, slice};
 
 use crypto::{ElementHasher, VectorCommitment};
 use math::{fft, polynom, FieldElement};
+use rand::{Rng, RngCore};
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
 use utils::{batch_iter_mut, iter, iter_mut, uninit_vector};
@@ -242,11 +243,13 @@ impl<E: FieldElement> ColMatrix<E> {
     }
 
     /// Evaluates polynomials contained in the columns of this matrix at a single point `x`.
-    pub fn evaluate_columns_at<F>(&self, x: F) -> Vec<F>
+    pub fn evaluate_columns_at<F>(&self, x: F, skip_last: bool) -> Vec<F>
     where
         F: FieldElement + From<E>,
     {
-        iter!(self.columns).map(|p| polynom::eval(p, x)).collect()
+        iter!(&self.columns[..self.columns.len() - skip_last as usize])
+            .map(|p| polynom::eval(p, x))
+            .collect()
     }
 
     // COMMITMENTS
@@ -293,6 +296,52 @@ impl<E: FieldElement> ColMatrix<E> {
     /// TODO: replace this with an iterator.
     pub fn into_columns(self) -> Vec<Vec<E>> {
         self.columns
+    }
+
+    /// Randomizes the trace polynomials when zero-knowledge is enabled.
+    ///
+    /// Takes as input a factor that is a power of two which is used to determine the size (i.e.,
+    /// the number of coefficients) of the randomized witness polynomial.
+    ///
+    /// The randomized witness polynomial has the form:
+    ///
+    /// ```text
+    ///         \hat{w}(x) = w(x) + r(x) * Z_H(x)
+    /// ```
+    /// where:
+    ///
+    /// 1. w(x) is the witness polynomial of degree trace length minus one.
+    /// 2. \hat{w}(x) is the randomized witness polynomial.
+    /// 3. r(x) is the randomizer polynomial and has degree `(zk_blowup - 1) * n`.
+    /// 4. Z_H(x) = (x^n - 1).
+    pub(crate) fn randomize<R: RngCore>(&self, zk_blowup: usize, prng: &mut Option<R>) -> Self {
+        let cur_len = self.num_rows();
+        let extended_len = zk_blowup * cur_len;
+        let pad_len = extended_len - cur_len;
+
+        let randomized_cols: Vec<Vec<E>> = self
+            .columns()
+            .map(|col| {
+                let mut added = vec![E::ZERO; pad_len];
+                for a in added.iter_mut() {
+                    let bytes = prng
+                        .as_mut()
+                        .expect("should have a PRNG when zk is enabled")
+                        .gen::<[u8; 32]>();
+                    *a = E::from_random_bytes(&bytes[..E::VALUE_SIZE])
+                        .expect("failed to generate randomness");
+                }
+
+                let mut res_col = col.to_vec();
+                res_col.extend_from_slice(&added);
+                for i in 0..pad_len {
+                    res_col[i] -= added[i]
+                }
+                res_col
+            })
+            .collect();
+
+        Self { columns: randomized_cols }
     }
 }
 

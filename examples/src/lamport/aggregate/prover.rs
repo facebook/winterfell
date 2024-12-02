@@ -3,12 +3,13 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+use air::ZkParameters;
 #[cfg(feature = "concurrent")]
 use winterfell::iterators::*;
 use winterfell::{
     crypto::MerkleTree, matrix::ColMatrix, AuxRandElements, ConstraintCompositionCoefficients,
-    DefaultConstraintEvaluator, DefaultTraceLde, PartitionOptions, StarkDomain, TraceInfo,
-    TracePolyTable, TraceTable,
+    DefaultConstraintEvaluator, DefaultTraceLde, MockPrng, PartitionOptions, StarkDomain,
+    TraceInfo, TracePolyTable, TraceTable,
 };
 
 use super::{
@@ -107,6 +108,7 @@ where
         DefaultTraceLde<E, Self::HashFn, Self::VC>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
         DefaultConstraintEvaluator<'a, Self::Air, E>;
+    type ZkPrng = MockPrng;
 
     fn get_pub_inputs(&self, _trace: &Self::Trace) -> PublicInputs {
         self.pub_inputs.clone()
@@ -122,8 +124,10 @@ where
         main_trace: &ColMatrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
         partition_option: PartitionOptions,
+        zk_parameters: Option<ZkParameters>,
+        prng: &mut Option<Self::ZkPrng>,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
-        DefaultTraceLde::new(trace_info, main_trace, domain, partition_option)
+        DefaultTraceLde::new(trace_info, main_trace, domain, partition_option, zk_parameters, prng)
     }
 
     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(

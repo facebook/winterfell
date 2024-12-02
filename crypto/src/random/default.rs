@@ -118,6 +118,22 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRando
         self.counter = 0;
     }
 
+    fn reseed_with_salt(
+        &mut self,
+        data: <Self::Hasher as crate::Hasher>::Digest,
+        salt: Option<<Self::Hasher as crate::Hasher>::Digest>,
+    ) {
+        // TODO: revisit
+        if let Some(salt) = salt {
+            self.seed = H::merge(&[self.seed, data]);
+            self.seed = H::merge(&[self.seed, salt]);
+            self.counter = 0;
+        } else {
+            self.seed = H::merge(&[self.seed, data]);
+            self.counter = 0;
+        }
+    }
+
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 

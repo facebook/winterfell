@@ -5,6 +5,7 @@
 
 use math::fields::f128::BaseElement;
 use proptest::prelude::*;
+use rand_chacha::ChaCha20Rng;
 
 use super::*;
 
@@ -252,6 +253,56 @@ fn from_proofs() {
 
     assert!(proof1.nodes == proof2.nodes);
     assert_eq!(proof1.depth, proof2.depth);
+}
+
+#[test]
+fn verify_salted() {
+    // depth 4
+    let leaves = Digest256::bytes_as_digests(&LEAVES4).to_vec();
+    let mut prng = ChaCha20Rng::from_entropy();
+    let tree: SaltedMerkleTree<Blake3_256, _> = SaltedMerkleTree::new(leaves, &mut prng).unwrap();
+    let (leaf, (salt, proof)) = tree.prove(1).unwrap();
+    assert!(SaltedMerkleTree::<Blake3_256, ChaCha20Rng>::verify(
+        *tree.root(),
+        1,
+        leaf,
+        salt,
+        &proof
+    )
+    .is_ok());
+
+    let (leaf, (salt, proof)) = tree.prove(2).unwrap();
+    assert!(SaltedMerkleTree::<Blake3_256, ChaCha20Rng>::verify(
+        *tree.root(),
+        2,
+        leaf,
+        salt,
+        &proof
+    )
+    .is_ok());
+
+    // depth 5
+    let leaf = Digest256::bytes_as_digests(&LEAVES8).to_vec();
+    let tree: SaltedMerkleTree<Blake3_256, _> = SaltedMerkleTree::new(leaf, &mut prng).unwrap();
+    let (leaf, (salt, proof)) = tree.prove(1).unwrap();
+    assert!(SaltedMerkleTree::<Blake3_256, ChaCha20Rng>::verify(
+        *tree.root(),
+        1,
+        leaf,
+        salt,
+        &proof
+    )
+    .is_ok());
+
+    let (leaf, (salt, proof)) = tree.prove(6).unwrap();
+    assert!(SaltedMerkleTree::<Blake3_256, ChaCha20Rng>::verify(
+        *tree.root(),
+        6,
+        leaf,
+        salt,
+        &proof
+    )
+    .is_ok());
 }
 
 proptest! {

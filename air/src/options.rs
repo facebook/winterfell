@@ -95,6 +95,7 @@ pub struct ProofOptions {
     fri_folding_factor: u8,
     fri_remainder_max_degree: u8,
     partition_options: PartitionOptions,
+    is_zk: bool,
 }
 
 // PROOF OPTIONS IMPLEMENTATION
@@ -128,6 +129,7 @@ impl ProofOptions {
         field_extension: FieldExtension,
         fri_folding_factor: usize,
         fri_remainder_max_degree: usize,
+        is_zk: bool,
     ) -> ProofOptions {
         // TODO: return errors instead of panicking
         assert!(num_queries > 0, "number of queries must be greater than 0");
@@ -169,6 +171,7 @@ impl ProofOptions {
             fri_folding_factor: fri_folding_factor as u8,
             fri_remainder_max_degree: fri_remainder_max_degree as u8,
             partition_options: PartitionOptions::new(1, 1),
+            is_zk,
         }
     }
 
@@ -249,6 +252,32 @@ impl ProofOptions {
     pub fn partition_options(&self) -> PartitionOptions {
         self.partition_options
     }
+    /// Returns whether zero-knowledge is enabled.
+    pub fn is_zk(&self) -> bool {
+        self.is_zk
+    }
+
+    /// Computes a lower bound on the degree of the polynomial used for randomizing the witness
+    /// polynomials.
+    pub(crate) fn zk_witness_randomizer_degree(&self) -> Option<u32> {
+        if self.is_zk {
+            let h = compute_degree_randomizing_poly(
+                self.field_extension().degree() as usize,
+                self.num_queries(),
+            );
+
+            Some(h as u32)
+        } else {
+            None
+        }
+    }
+}
+
+/// Computes the number of coefficients of the polynomials used to randomize the witness polynomials.
+///
+/// This is based on equation (13) in https://eprint.iacr.org/2024/1037
+pub fn compute_degree_randomizing_poly(extension_degree: usize, num_fri_queries: usize) -> usize {
+    2 * (extension_degree + num_fri_queries)
 }
 
 impl<E: StarkField> ToElements<E> for ProofOptions {
@@ -278,6 +307,7 @@ impl Serializable for ProofOptions {
         target.write_u8(self.fri_remainder_max_degree);
         target.write_u8(self.partition_options.num_partitions);
         target.write_u8(self.partition_options.min_partition_size);
+        target.write_bool(self.is_zk)
     }
 }
 
@@ -294,6 +324,7 @@ impl Deserializable for ProofOptions {
             FieldExtension::read_from(source)?,
             source.read_u8()? as usize,
             source.read_u8()? as usize,
+            source.read_bool()?,
         );
         Ok(result.with_partitions(source.read_u8()? as usize, source.read_u8()? as usize))
     }
@@ -378,6 +409,9 @@ impl PartitionOptions {
     /// Returns the size of each partition used when committing to the main and auxiliary traces as
     /// well as the constraint evaluation trace.
     pub fn partition_size<E: FieldElement>(&self, num_columns: usize) -> usize {
+        if self.num_partitions == 1 && self.min_partition_size == 1 {
+            return num_columns;
+        }
         let base_elements_per_partition = cmp::max(
             (num_columns * E::EXTENSION_DEGREE).div_ceil(self.num_partitions as usize),
             self.min_partition_size as usize,
@@ -431,6 +465,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            false,
         );
         assert_eq!(expected, options.to_elements());
     }

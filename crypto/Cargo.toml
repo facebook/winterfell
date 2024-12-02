@@ -34,6 +34,8 @@ blake3 = { version = "1.5", default-features = false }
 math = { version = "0.10", path = "../math", package = "winter-math", default-features = false }
 sha3 = { version = "0.10", default-features = false }
 utils = { version = "0.10", path = "../utils/core", package = "winter-utils", default-features = false }
+rand =  { version = "0.8" }
+rand_chacha = { version = "0.3", default-features = false }
 
 [dev-dependencies]
 criterion = "0.5"

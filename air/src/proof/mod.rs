@@ -79,6 +79,8 @@ pub struct Proof {
     pub pow_nonce: u64,
     /// Optionally, an auxiliary (non-STARK) proof that was generated during auxiliary trace generation.
     pub gkr_proof: Option<Vec<u8>>,
+    /// Random values needed for Fiat-Shamir.
+    pub salts: Vec<u8>,
 }
 
 impl Proof {
@@ -93,8 +95,8 @@ impl Proof {
     }
 
     /// Returns the size of the LDE domain for the computation described by this proof.
-    pub fn lde_domain_size(&self) -> usize {
-        self.context.lde_domain_size()
+    pub fn lde_domain_size<E: FieldElement>(&self) -> usize {
+        self.context.lde_domain_size::<E>()
     }
 
     // SECURITY LEVEL
@@ -108,15 +110,21 @@ impl Proof {
     pub fn security_level<H: Hasher>(&self, conjectured: bool) -> u32 {
         if conjectured {
             get_conjectured_security(
-                self.context.options(),
                 self.context.num_modulus_bits(),
+                self.context.options().field_extension() as u32,
+                self.context.options().blowup_factor(),
+                self.options().num_queries(),
+                self.options().grinding_factor(),
                 self.trace_info().length(),
                 H::COLLISION_RESISTANCE,
             )
         } else {
             get_proven_security(
-                self.context.options(),
                 self.context.num_modulus_bits(),
+                self.context.options().field_extension() as u32,
+                self.context.options().blowup_factor(),
+                self.options().num_queries(),
+                self.options().grinding_factor(),
                 self.trace_info().length(),
                 H::COLLISION_RESISTANCE,
             )
@@ -149,7 +157,8 @@ impl Proof {
         Self {
             context: Context::new::<DummyField>(
                 TraceInfo::new(1, 8),
-                ProofOptions::new(1, 2, 2, FieldExtension::None, 8, 1),
+                ProofOptions::new(1, 2, 2, FieldExtension::None, 8, 1, false),
+                1,
             ),
             num_unique_queries: 0,
             commitments: Commitments::default(),
@@ -162,6 +171,7 @@ impl Proof {
             fri_proof: FriProof::new_dummy(),
             pow_nonce: 0,
             gkr_proof: None,
+            salts: vec![],
         }
     }
 }
@@ -180,6 +190,7 @@ impl Serializable for Proof {
         self.fri_proof.write_into(target);
         self.pow_nonce.write_into(target);
         self.gkr_proof.write_into(target);
+        self.salts.write_into(target);
     }
 }
 
@@ -204,6 +215,7 @@ impl Deserializable for Proof {
             fri_proof: FriProof::read_from(source)?,
             pow_nonce: source.read_u64()?,
             gkr_proof: Option::<Vec<u8>>::read_from(source)?,
+            salts: Vec::read_from(source)?,
         };
         Ok(proof)
     }
@@ -213,32 +225,38 @@ impl Deserializable for Proof {
 // ================================================================================================
 
 /// Computes conjectured security level for the specified proof parameters.
-fn get_conjectured_security(
-    options: &ProofOptions,
+pub(crate) fn get_conjectured_security(
     base_field_bits: u32,
+    extension_degree: u32,
+    blowup_factor: usize,
+    num_queries: usize,
+    grinding_factor: u32,
     trace_domain_size: usize,
     collision_resistance: u32,
 ) -> u32 {
     // compute max security we can get for a given field size
-    let field_size = base_field_bits * options.field_extension().degree();
-    let field_security = field_size - (trace_domain_size * options.blowup_factor()).ilog2();
+    let field_size = base_field_bits * extension_degree;
+    let field_security = field_size - (trace_domain_size * blowup_factor).ilog2();
 
     // compute security we get by executing multiple query rounds
-    let security_per_query = options.blowup_factor().ilog2();
-    let mut query_security = security_per_query * options.num_queries() as u32;
+    let security_per_query = blowup_factor.ilog2();
+    let mut query_security = security_per_query * num_queries as u32;
 
     // include grinding factor contributions only for proofs adequate security
     if query_security >= GRINDING_CONTRIBUTION_FLOOR {
-        query_security += options.grinding_factor();
+        query_security += grinding_factor;
     }
 
     cmp::min(cmp::min(field_security, query_security) - 1, collision_resistance)
 }
 
 /// Estimates proven security level for the specified proof parameters.
-fn get_proven_security(
-    options: &ProofOptions,
+pub(crate) fn get_proven_security(
     base_field_bits: u32,
+    extension_degree: u32,
+    blowup_factor: usize,
+    num_queries: usize,
+    grinding_factor: u32,
     trace_domain_size: usize,
     collision_resistance: u32,
 ) -> u32 {
@@ -248,8 +266,11 @@ fn get_proven_security(
     let m_optimal = (m_min as u32..m_max as u32)
         .max_by_key(|&a| {
             proven_security_protocol_for_m(
-                options,
                 base_field_bits,
+                extension_degree,
+    blowup_factor,
+    num_queries,
+    grinding_factor,
                 trace_domain_size,
                 a as usize,
             )
@@ -260,8 +281,11 @@ fn get_proven_security(
 
     cmp::min(
         proven_security_protocol_for_m(
-            options,
             base_field_bits,
+            extension_degree,
+            blowup_factor,
+            num_queries,
+            grinding_factor,
             trace_domain_size,
             m_optimal as usize,
         ),
@@ -272,17 +296,20 @@ fn get_proven_security(
 /// Computes proven security level for the specified proof parameters for a fixed
 /// value of the proximity parameter m in the list-decoding regime.
 fn proven_security_protocol_for_m(
-    options: &ProofOptions,
     base_field_bits: u32,
+    extension_degree: u32,
+    blowup_factor: usize,
+    num_queries: usize,
+    grinding_factor: u32,
     trace_domain_size: usize,
     m: usize,
 ) -> u64 {
-    let extension_field_bits = (base_field_bits * options.field_extension().degree()) as f64;
-    let num_fri_queries = options.num_queries() as f64;
+    let extension_field_bits = (base_field_bits * extension_degree) as f64;
+    let num_fri_queries = num_queries as f64;
     let m = m as f64;
-    let rho = 1.0 / options.blowup_factor() as f64;
+    let rho = 1.0 / blowup_factor as f64;
     let alpha = (1.0 + 0.5 / m) * sqrt(rho);
-    let max_deg = options.blowup_factor() as f64 + 1.0;
+    let max_deg = blowup_factor as f64 + 1.0;
 
     // To apply Theorem 8 in https://eprint.iacr.org/2022/1216.pdf, we need to apply FRI with
     // a slightly larger agreement parameter alpha.
@@ -296,7 +323,7 @@ fn proven_security_protocol_for_m(
     // the list-decoding list size in F(Z).
 
     // Modified rate in function field F(Z)
-    let lde_domain_size = (trace_domain_size * options.blowup_factor()) as f64;
+    let lde_domain_size = (trace_domain_size * blowup_factor) as f64;
     let trace_domain_size = trace_domain_size as f64;
     let num_openings = 2.0;
     let rho_plus = (trace_domain_size + num_openings) / lde_domain_size;
@@ -315,7 +342,7 @@ fn proven_security_protocol_for_m(
 
     // Compute FRI query-phase soundness error
     let fri_queries_err_bits =
-        options.grinding_factor() as f64 - log2(powf(1.0 - theta_plus, num_fri_queries));
+        grinding_factor as f64 - log2(powf(1.0 - theta_plus, num_fri_queries));
 
     // Combined error for FRI
     let fri_err_bits = cmp::min(fri_commit_err_bits as u64, fri_queries_err_bits as u64);
@@ -405,31 +432,27 @@ pub fn ceil(value: f64) -> f64 {
 mod prove_security_tests {
     use math::{fields::f64::BaseElement, StarkField};
 
-    use super::ProofOptions;
     use crate::{proof::get_proven_security, FieldExtension};
 
     #[test]
     fn get_96_bits_security() {
         let field_extension = FieldExtension::Cubic;
         let base_field_bits = BaseElement::MODULUS_BITS;
-        let fri_folding_factor = 8;
-        let fri_remainder_max_degree = 127;
         let grinding_factor = 20;
         let blowup_factor = 4;
         let num_queries = 80;
         let collision_resistance = 128;
         let trace_length = 2_usize.pow(18);
 
-        let mut options = ProofOptions::new(
-            num_queries,
+        let security_1 = get_proven_security(
+            base_field_bits,
+            field_extension.degree(),
             blowup_factor,
+            num_queries,
             grinding_factor,
-            field_extension,
-            fri_folding_factor as usize,
-            fri_remainder_max_degree as usize,
+            trace_length,
+            collision_resistance,
         );
-        let security_1 =
-            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
 
         assert_eq!(security_1, 97);
 
@@ -437,16 +460,15 @@ mod prove_security_tests {
         let blowup_factor = 8;
         let num_queries = 53;
 
-        options = ProofOptions::new(
-            num_queries,
+        let security_2 = get_proven_security(
+            base_field_bits,
+            field_extension.degree(),
             blowup_factor,
+            num_queries,
             grinding_factor,
-            field_extension,
-            fri_folding_factor as usize,
-            fri_remainder_max_degree as usize,
+            trace_length,
+            collision_resistance,
         );
-        let security_2 =
-            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
 
         assert_eq!(security_2, 97);
     }
@@ -455,24 +477,21 @@ mod prove_security_tests {
     fn get_128_bits_security() {
         let field_extension = FieldExtension::Cubic;
         let base_field_bits = BaseElement::MODULUS_BITS;
-        let fri_folding_factor = 8;
-        let fri_remainder_max_degree = 127;
         let grinding_factor = 20;
         let blowup_factor = 8;
         let num_queries = 85;
         let collision_resistance = 128;
         let trace_length = 2_usize.pow(18);
 
-        let mut options = ProofOptions::new(
-            num_queries,
+        let security_1 = get_proven_security(
+            base_field_bits,
+            field_extension.degree(),
             blowup_factor,
+            num_queries,
             grinding_factor,
-            field_extension,
-            fri_folding_factor as usize,
-            fri_remainder_max_degree as usize,
+            trace_length,
+            collision_resistance,
         );
-        let security_1 =
-            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
 
         assert_eq!(security_1, 128);
 
@@ -480,16 +499,15 @@ mod prove_security_tests {
         let blowup_factor = 16;
         let num_queries = 65;
 
-        options = ProofOptions::new(
-            num_queries,
+        let security_2 = get_proven_security(
+            base_field_bits,
+            field_extension.degree(),
             blowup_factor,
+            num_queries,
             grinding_factor,
-            field_extension,
-            fri_folding_factor as usize,
-            fri_remainder_max_degree as usize,
+            trace_length,
+            collision_resistance,
         );
-        let security_2 =
-            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
 
         assert_eq!(security_2, 128);
     }
@@ -498,24 +516,21 @@ mod prove_security_tests {
     fn extension_degree() {
         let field_extension = FieldExtension::Quadratic;
         let base_field_bits = BaseElement::MODULUS_BITS;
-        let fri_folding_factor = 8;
-        let fri_remainder_max_degree = 127;
         let grinding_factor = 20;
         let blowup_factor = 8;
         let num_queries = 85;
         let collision_resistance = 128;
         let trace_length = 2_usize.pow(18);
 
-        let mut options = ProofOptions::new(
-            num_queries,
+        let security_1 = get_proven_security(
+            base_field_bits,
+            field_extension.degree(),
             blowup_factor,
+            num_queries,
             grinding_factor,
-            field_extension,
-            fri_folding_factor as usize,
-            fri_remainder_max_degree as usize,
+            trace_length,
+            collision_resistance,
         );
-        let security_1 =
-            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
 
         assert_eq!(security_1, 67);
 
@@ -523,16 +538,15 @@ mod prove_security_tests {
         // reaching 128 bits security
         let field_extension = FieldExtension::Cubic;
 
-        options = ProofOptions::new(
-            num_queries,
+        let security_2 = get_proven_security(
+            base_field_bits,
+            field_extension.degree(),
             blowup_factor,
+            num_queries,
             grinding_factor,
-            field_extension,
-            fri_folding_factor as usize,
-            fri_remainder_max_degree as usize,
+            trace_length,
+            collision_resistance,
         );
-        let security_2 =
-            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
 
         assert_eq!(security_2, 128);
     }
@@ -541,37 +555,33 @@ mod prove_security_tests {
     fn trace_length() {
         let field_extension = FieldExtension::Cubic;
         let base_field_bits = BaseElement::MODULUS_BITS;
-        let fri_folding_factor = 8;
-        let fri_remainder_max_degree = 127;
         let grinding_factor = 20;
         let blowup_factor = 8;
         let num_queries = 80;
         let collision_resistance = 128;
         let trace_length = 2_usize.pow(20);
 
-        let mut options = ProofOptions::new(
-            num_queries,
+        let security_1 = get_proven_security(
+            base_field_bits,
+            field_extension.degree(),
             blowup_factor,
+            num_queries,
             grinding_factor,
-            field_extension,
-            fri_folding_factor as usize,
-            fri_remainder_max_degree as usize,
+            trace_length,
+            collision_resistance,
         );
-        let security_1 =
-            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
 
         let trace_length = 2_usize.pow(16);
 
-        options = ProofOptions::new(
-            num_queries,
+        let security_2 = get_proven_security(
+            base_field_bits,
+            field_extension.degree(),
             blowup_factor,
+            num_queries,
             grinding_factor,
-            field_extension,
-            fri_folding_factor as usize,
-            fri_remainder_max_degree as usize,
+            trace_length,
+            collision_resistance,
         );
-        let security_2 =
-            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
 
         assert!(security_1 < security_2);
     }
@@ -580,37 +590,33 @@ mod prove_security_tests {
     fn num_fri_queries() {
         let field_extension = FieldExtension::Cubic;
         let base_field_bits = BaseElement::MODULUS_BITS;
-        let fri_folding_factor = 8;
-        let fri_remainder_max_degree = 127;
         let grinding_factor = 20;
         let blowup_factor = 8;
         let num_queries = 60;
         let collision_resistance = 128;
         let trace_length = 2_usize.pow(20);
 
-        let mut options = ProofOptions::new(
-            num_queries,
+        let security_1 = get_proven_security(
+            base_field_bits,
+            field_extension.degree(),
             blowup_factor,
+            num_queries,
             grinding_factor,
-            field_extension,
-            fri_folding_factor as usize,
-            fri_remainder_max_degree as usize,
+            trace_length,
+            collision_resistance,
         );
-        let security_1 =
-            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
 
         let num_queries = 80;
 
-        options = ProofOptions::new(
-            num_queries,
+        let security_2 = get_proven_security(
+            base_field_bits,
+            field_extension.degree(),
             blowup_factor,
+            num_queries,
             grinding_factor,
-            field_extension,
-            fri_folding_factor as usize,
-            fri_remainder_max_degree as usize,
+            trace_length,
+            collision_resistance,
         );
-        let security_2 =
-            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
 
         assert!(security_1 < security_2);
     }
@@ -619,37 +625,33 @@ mod prove_security_tests {
     fn blowup_factor() {
         let field_extension = FieldExtension::Cubic;
         let base_field_bits = BaseElement::MODULUS_BITS;
-        let fri_folding_factor = 8;
-        let fri_remainder_max_degree = 127;
         let grinding_factor = 20;
         let blowup_factor = 8;
         let num_queries = 30;
         let collision_resistance = 128;
         let trace_length = 2_usize.pow(20);
 
-        let mut options = ProofOptions::new(
-            num_queries,
+        let security_1 = get_proven_security(
+            base_field_bits,
+            field_extension.degree(),
             blowup_factor,
+            num_queries,
             grinding_factor,
-            field_extension,
-            fri_folding_factor as usize,
-            fri_remainder_max_degree as usize,
+            trace_length,
+            collision_resistance,
         );
-        let security_1 =
-            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
 
         let blowup_factor = 16;
 
-        options = ProofOptions::new(
-            num_queries,
+        let security_2 = get_proven_security(
+            base_field_bits,
+            field_extension.degree(),
             blowup_factor,
+            num_queries,
             grinding_factor,
-            field_extension,
-            fri_folding_factor as usize,
-            fri_remainder_max_degree as usize,
+            trace_length,
+            collision_resistance,
         );
-        let security_2 =
-            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
 
         assert!(security_1 < security_2);
     }

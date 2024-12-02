@@ -8,14 +8,14 @@ use std::time::Duration;
 use air::{
     Air, AirContext, Assertion, AuxRandElements, ConstraintCompositionCoefficients,
     EvaluationFrame, FieldExtension, GkrRandElements, LagrangeKernelRandElements, PartitionOptions,
-    ProofOptions, TraceInfo, TransitionConstraintDegree,
+    ProofOptions, TraceInfo, TransitionConstraintDegree, ZkParameters,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, MerkleTree, RandomCoin};
 use math::{fields::f64::BaseElement, ExtensionOf, FieldElement};
 use winter_prover::{
-    matrix::ColMatrix, DefaultConstraintEvaluator, DefaultTraceLde, Prover, ProverGkrProof,
-    StarkDomain, Trace, TracePolyTable,
+    matrix::ColMatrix, DefaultConstraintEvaluator, DefaultTraceLde, MockPrng, Prover,
+    ProverGkrProof, StarkDomain, Trace, TracePolyTable,
 };
 
 const TRACE_LENS: [usize; 2] = [2_usize.pow(16), 2_usize.pow(20)];
@@ -32,7 +32,7 @@ fn prove_with_lagrange_kernel(c: &mut Criterion) {
             let prover = LagrangeProver::new(AUX_TRACE_WIDTH);
             b.iter_batched(
                 || trace.clone(),
-                |trace| prover.prove(trace).unwrap(),
+                |trace| prover.prove(trace, None).unwrap(),
                 BatchSize::SmallInput,
             )
         });
@@ -173,7 +173,7 @@ impl LagrangeProver {
     fn new(aux_trace_width: usize) -> Self {
         Self {
             aux_trace_width,
-            options: ProofOptions::new(1, 2, 0, FieldExtension::None, 2, 1),
+            options: ProofOptions::new(1, 2, 0, FieldExtension::None, 2, 1, false),
         }
     }
 }
@@ -189,6 +189,7 @@ impl Prover for LagrangeProver {
         DefaultTraceLde<E, Self::HashFn, Self::VC>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = BaseElement>> =
         DefaultConstraintEvaluator<'a, LagrangeKernelAir, E>;
+    type ZkPrng = MockPrng;
 
     fn get_pub_inputs(&self, _trace: &Self::Trace) -> <<Self as Prover>::Air as Air>::PublicInputs {
     }
@@ -203,11 +204,13 @@ impl Prover for LagrangeProver {
         main_trace: &ColMatrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
         partition_option: PartitionOptions,
+        zk_parameters: Option<ZkParameters>,
+        _prng: &mut Option<Self::ZkPrng>,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>)
     where
         E: math::FieldElement<BaseField = Self::BaseField>,
     {
-        DefaultTraceLde::new(trace_info, main_trace, domain, partition_option)
+        DefaultTraceLde::new(trace_info, main_trace, domain, partition_option, zk_parameters, _prng)
     }
 
     fn new_evaluator<'a, E>(

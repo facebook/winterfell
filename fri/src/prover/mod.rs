@@ -12,6 +12,7 @@ use math::{fft, FieldElement};
 use utils::iterators::*;
 use utils::{
     flatten_vector_elements, group_slice_elements, iter_mut, transpose_slice, uninit_vector,
+    Serializable,
 };
 
 use crate::{
@@ -102,6 +103,7 @@ where
     options: FriOptions,
     layers: Vec<FriLayer<E, H, V>>,
     remainder_poly: FriRemainder<E>,
+    salts: Vec<Option<H::Digest>>,
     _channel: PhantomData<C>,
 }
 
@@ -131,6 +133,7 @@ where
             options,
             layers: Vec::new(),
             remainder_poly: FriRemainder(vec![]),
+            salts: vec![],
             _channel: PhantomData,
         }
     }
@@ -208,7 +211,8 @@ where
         let evaluation_vector_commitment =
             build_layer_commitment::<_, _, V, N>(&transposed_evaluations)
                 .expect("failed to construct FRI layer commitment");
-        channel.commit_fri_layer(evaluation_vector_commitment.commitment());
+        let salt = channel.commit_fri_layer(evaluation_vector_commitment.commitment());
+        self.salts.push(salt);
 
         // draw a pseudo-random coefficient from the channel, and use it in degree-respecting
         // projection to reduce the degree of evaluations by N
@@ -228,7 +232,8 @@ where
         let remainder_poly_size = evaluations.len() / self.options.blowup_factor();
         let remainder_poly = evaluations[..remainder_poly_size].to_vec();
         let commitment = <H as ElementHasher>::hash_elements(&remainder_poly);
-        channel.commit_fri_layer(commitment);
+        let salt = channel.commit_fri_layer(commitment);
+        self.salts.push(salt);
         self.remainder_poly = FriRemainder(remainder_poly);
     }
 
@@ -278,7 +283,8 @@ where
         // clear layers so that another proof can be generated
         self.reset();
 
-        FriProof::new(layers, remainder, 1)
+        let salts = self.salts.to_bytes();
+        FriProof::new(layers, remainder, 1, salts)
     }
 }
 

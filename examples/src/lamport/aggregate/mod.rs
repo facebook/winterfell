@@ -134,7 +134,7 @@ where
                 });
 
         // generate the proof
-        prover.prove(trace).unwrap()
+        prover.prove(trace, None).unwrap()
     }
 
     fn verify(&self, proof: Proof) -> Result<(), VerifierError> {

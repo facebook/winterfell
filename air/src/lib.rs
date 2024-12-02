@@ -48,5 +48,5 @@ pub use air::{
     LagrangeConstraintsCompositionCoefficients, LagrangeKernelBoundaryConstraint,
     LagrangeKernelConstraints, LagrangeKernelEvaluationFrame, LagrangeKernelRandElements,
     LagrangeKernelTransitionConstraints, TraceInfo, TransitionConstraintDegree,
-    TransitionConstraints,
+    TransitionConstraints, ZkParameters,
 };

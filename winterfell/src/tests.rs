@@ -5,7 +5,7 @@
 
 use std::{vec, vec::Vec};
 
-use air::{GkrRandElements, LagrangeKernelRandElements};
+use air::{GkrRandElements, LagrangeKernelRandElements, ZkParameters};
 use crypto::MerkleTree;
 use prover::{
     crypto::{hashers::Blake3_256, DefaultRandomCoin, RandomCoin},
@@ -23,7 +23,7 @@ fn test_complex_lagrange_kernel_air() {
 
     let prover = LagrangeComplexProver::new(AUX_TRACE_WIDTH);
 
-    let proof = prover.prove(trace).unwrap();
+    let proof = prover.prove(trace, None).unwrap();
 
     verify::<
         LagrangeKernelComplexAir,
@@ -205,7 +205,7 @@ impl LagrangeComplexProver {
     fn new(aux_trace_width: usize) -> Self {
         Self {
             aux_trace_width,
-            options: ProofOptions::new(1, 2, 0, FieldExtension::None, 2, 1),
+            options: ProofOptions::new(1, 2, 0, FieldExtension::None, 2, 1, false),
         }
     }
 }
@@ -221,6 +221,7 @@ impl Prover for LagrangeComplexProver {
         DefaultTraceLde<E, Self::HashFn, Self::VC>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = BaseElement>> =
         DefaultConstraintEvaluator<'a, LagrangeKernelComplexAir, E>;
+    type ZkPrng = MockPrng;
 
     fn get_pub_inputs(&self, _trace: &Self::Trace) -> <<Self as Prover>::Air as Air>::PublicInputs {
     }
@@ -235,11 +236,13 @@ impl Prover for LagrangeComplexProver {
         main_trace: &ColMatrix<Self::BaseField>,
         domain: &StarkDomain<Self::BaseField>,
         partition_option: PartitionOptions,
+        zk_parameters: Option<ZkParameters>,
+        prng: &mut Option<Self::ZkPrng>,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>)
     where
         E: math::FieldElement<BaseField = Self::BaseField>,
     {
-        DefaultTraceLde::new(trace_info, main_trace, domain, partition_option)
+        DefaultTraceLde::new(trace_info, main_trace, domain, partition_option, zk_parameters, prng)
     }
 
     fn new_evaluator<'a, E>(

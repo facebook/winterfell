@@ -6,8 +6,9 @@
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
-use crypto::{ElementHasher, Hasher, RandomCoin};
+use crypto::{Digest, ElementHasher, Hasher, RandomCoin};
 use math::FieldElement;
+use rand::{RngCore, SeedableRng};
 
 // PROVER CHANNEL TRAIT
 // ================================================================================================
@@ -34,7 +35,10 @@ pub trait ProverChannel<E: FieldElement> {
     /// the hash of each row to get one entry of the vector being committed to. Thus, the number
     /// of elements grouped into a single leaf is equal to the `folding_factor` used for FRI layer
     /// construction.
-    fn commit_fri_layer(&mut self, layer_root: <Self::Hasher as Hasher>::Digest);
+    fn commit_fri_layer(
+        &mut self,
+        layer_root: <Self::Hasher as Hasher>::Digest,
+    ) -> Option<<Self::Hasher as Hasher>::Digest>;
 
     /// Returns a random α drawn uniformly at random from the entire field.
     ///
@@ -53,23 +57,28 @@ pub trait ProverChannel<E: FieldElement> {
 ///
 /// Though this implementation is intended primarily for testing purposes, it can be used in
 /// production use cases as well.
-pub struct DefaultProverChannel<E, H, R>
+pub struct DefaultProverChannel<E, H, P, R>
 where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
+    P: RngCore,
     R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
 {
     public_coin: R,
     commitments: Vec<H::Digest>,
     domain_size: usize,
     num_queries: usize,
+    is_zk: bool,
+    salts: Vec<Option<H::Digest>>,
+    prng: Option<P>,
     _field_element: PhantomData<E>,
 }
 
-impl<E, H, R> DefaultProverChannel<E, H, R>
+impl<E, H, P, R> DefaultProverChannel<E, H, P, R>
 where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
+    P: RngCore + SeedableRng,
     R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
 {
     /// Returns a new prover channel instantiated from the specified parameters.
@@ -78,18 +87,32 @@ where
     /// Panics if:
     /// * `domain_size` is smaller than 8 or is not a power of two.
     /// * `num_queries` is zero.
-    pub fn new(domain_size: usize, num_queries: usize) -> Self {
+    pub fn new(
+        domain_size: usize,
+        num_queries: usize,
+        is_zk: bool,
+        seed: Option<<P as SeedableRng>::Seed>,
+    ) -> Self {
         assert!(domain_size >= 8, "domain size must be at least 8, but was {domain_size}");
         assert!(
             domain_size.is_power_of_two(),
             "domain size must be a power of two, but was {domain_size}"
         );
         assert!(num_queries > 0, "number of queries must be greater than zero");
+
+        let prng = if is_zk {
+            Some(P::from_seed(seed.expect("must provide the seed when zk is enabled")))
+        } else {
+            None
+        };
         DefaultProverChannel {
             public_coin: RandomCoin::new(&[]),
             commitments: Vec::new(),
             domain_size,
             num_queries,
+            is_zk,
+            salts: vec![],
+            prng,
             _field_element: PhantomData,
         }
     }
@@ -116,17 +139,35 @@ where
     }
 }
 
-impl<E, H, R> ProverChannel<E> for DefaultProverChannel<E, H, R>
+impl<E, H, P, R> ProverChannel<E> for DefaultProverChannel<E, H, P, R>
 where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
+    P: RngCore,
     R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
 {
     type Hasher = H;
 
-    fn commit_fri_layer(&mut self, layer_root: H::Digest) {
+    fn commit_fri_layer(
+        &mut self,
+        layer_root: H::Digest,
+    ) -> Option<<Self::Hasher as Hasher>::Digest> {
         self.commitments.push(layer_root);
-        self.public_coin.reseed(layer_root);
+
+        // sample a salt for Fiat-Shamir if zero-knowledge is enabled
+        let salt = if self.is_zk {
+            let mut buffer = [0_u8; 32];
+            self.prng
+                .as_mut()
+                .expect("should have a PRNG when zk is enabled")
+                .fill_bytes(&mut buffer);
+            Some(Digest::from_random_bytes(&buffer))
+        } else {
+            None
+        };
+        self.salts.push(salt);
+        self.public_coin.reseed_with_salt(layer_root, salt);
+        salt
     }
 
     fn draw_fri_alpha(&mut self) -> E {

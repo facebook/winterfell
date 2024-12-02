@@ -9,7 +9,7 @@ mod rp62_248;
 pub use rp62_248::Rp62_248;
 
 mod rp64_256;
-pub use rp64_256::Rp64_256;
+pub use rp64_256::{Rp64_256, ARK1, ARK2, MDS};
 
 mod rp64_256_jive;
 pub use rp64_256_jive::RpJive64_256;

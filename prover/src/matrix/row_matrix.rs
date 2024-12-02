@@ -188,7 +188,7 @@ impl<E: FieldElement> RowMatrix<E> {
         // allocate vector to store row hashes
         let mut row_hashes = unsafe { uninit_vector::<H::Digest>(self.num_rows()) };
 
-        if partition_size == self.num_cols() * E::EXTENSION_DEGREE {
+        if partition_size == self.num_cols() {
             // iterate though matrix rows, hashing each row
             batch_iter_mut!(
                 &mut row_hashes,

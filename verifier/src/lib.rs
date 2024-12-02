@@ -170,8 +170,12 @@ where
     const AUX_TRACE_IDX: usize = 1;
     let trace_commitments = channel.read_trace_commitments();
 
+    // read all the salts needed for Fiat-Shamir. These are random values sampled by the Prover
+    // and required for zero-knowledge i.e., if zero-knowledge is not enabled then they are `None`.
+    let mut salts = channel.read_salts();
+
     // reseed the coin with the commitment to the main trace segment
-    public_coin.reseed(trace_commitments[MAIN_TRACE_IDX]);
+    public_coin.reseed_with_salt(trace_commitments[MAIN_TRACE_IDX], salts.remove(0));
 
     // process auxiliary trace segments (if any), to build a set of random elements for each segment
     let aux_trace_rand_elements = if air.trace_info().is_multi_segment() {
@@ -193,7 +197,7 @@ where
                 "failed to generate the random elements needed to build the auxiliary trace",
             );
 
-            public_coin.reseed(trace_commitments[AUX_TRACE_IDX]);
+            public_coin.reseed_with_salt(trace_commitments[AUX_TRACE_IDX], salts.remove(0));
 
             Some(AuxRandElements::new_with_gkr(rand_elements, gkr_rand_elements))
         } else {
@@ -201,7 +205,7 @@ where
                 "failed to generate the random elements needed to build the auxiliary trace",
             );
 
-            public_coin.reseed(trace_commitments[AUX_TRACE_IDX]);
+            public_coin.reseed_with_salt(trace_commitments[AUX_TRACE_IDX], salts.remove(0));
 
             Some(AuxRandElements::new(rand_elements))
         }
@@ -221,7 +225,7 @@ where
     // to the prover, and the prover evaluates trace and constraint composition polynomials at z,
     // and sends the results back to the verifier.
     let constraint_commitment = channel.read_constraint_commitment();
-    public_coin.reseed(constraint_commitment);
+    public_coin.reseed_with_salt(constraint_commitment, salts.remove(0));
     let z = public_coin.draw::<E>().map_err(|_| VerifierError::RandomCoinError)?;
 
     // 3 ----- OOD consistency check --------------------------------------------------------------
@@ -244,14 +248,14 @@ where
         aux_trace_rand_elements.as_ref(),
         z,
     );
-    public_coin.reseed(ood_trace_frame.hash::<H>());
+    public_coin.reseed_with_salt(ood_trace_frame.hash::<H>(), salts.remove(0));
 
     // read evaluations of composition polynomial columns sent by the prover, and reduce them into
-    // a single value by computing \sum_{i=0}^{m-1}(z^(i * l) * value_i), where value_i is the
-    // evaluation of the ith column polynomial H_i(X) at z, l is the trace length and m is
+    // a single value by computing \sum_{i=0}^{m-1}(z^(i) * value_i), where value_i is the
+    // evaluation of the ith column polynomial H_i(X) at z^m, l is the trace length and m is
     // the number of composition column polynomials. This computes H(z) (i.e.
     // the evaluation of the composition polynomial at z) using the fact that
-    // H(X) = \sum_{i=0}^{m-1} X^{i * l} H_i(X).
+    // H(X) = \sum_{i=0}^{m-1} X^{i} H_i(X^m).
     // Also, reseed the public coin with the OOD constraint evaluations received from the prover.
     let ood_constraint_evaluations = channel.read_ood_constraint_evaluations();
     let ood_constraint_evaluation_2 =
@@ -259,9 +263,12 @@ where
             .iter()
             .enumerate()
             .fold(E::ZERO, |result, (i, &value)| {
-                result + z.exp_vartime(((i * (air.trace_length())) as u32).into()) * value
+                result
+                    + z.exp_vartime(
+                        ((i * air.context().num_coefficients_chunk_quotient()) as u32).into(),
+                    ) * value
             });
-    public_coin.reseed(H::hash_elements(&ood_constraint_evaluations));
+    public_coin.reseed_with_salt(H::hash_elements(&ood_constraint_evaluations), salts.remove(0));
 
     // finally, make sure the values are the same
     if ood_constraint_evaluation_1 != ood_constraint_evaluation_2 {
@@ -329,8 +336,11 @@ where
         ood_aux_trace_frame,
         ood_lagrange_kernel_frame,
     );
-    let c_composition = composer
-        .compose_constraint_evaluations(queried_constraint_evaluations, ood_constraint_evaluations);
+    let c_composition = composer.compose_constraint_evaluations(
+        queried_constraint_evaluations,
+        ood_constraint_evaluations,
+        air.is_zk(),
+    );
     let deep_evaluations = composer.combine_compositions(t_composition, c_composition);
 
     // 7 ----- Verify low-degree proof -------------------------------------------------------------
