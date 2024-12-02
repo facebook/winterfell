@@ -8,6 +8,7 @@ use std::time::Duration;
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, MerkleTree};
 use math::{fft, fields::f128::BaseElement, FieldElement};
+use rand_chacha::ChaCha20Rng;
 use rand_utils::rand_vector;
 use winter_fri::{DefaultProverChannel, FriOptions, FriProver};
 
@@ -23,7 +24,6 @@ pub fn build_layers(c: &mut Criterion) {
 
     for &domain_size in &BATCH_SIZES {
         let evaluations = build_evaluations(domain_size);
-        let mut prng = <rand_chacha::ChaCha20Rng as rand::SeedableRng>::from_entropy();
 
         fri_group.bench_with_input(
             BenchmarkId::new("build_layers", domain_size),
@@ -34,13 +34,15 @@ pub fn build_layers(c: &mut Criterion) {
                 b.iter_batched(
                     || e.clone(),
                     |evaluations| {
-                        let mut channel = DefaultProverChannel::<
-                            BaseElement,
-                            Blake3_256<BaseElement>,
-                            DefaultRandomCoin<Blake3_256<BaseElement>>,
-                        >::new(domain_size, 32, false);
+                        let mut channel =
+                            DefaultProverChannel::<
+                                BaseElement,
+                                Blake3_256<BaseElement>,
+                                ChaCha20Rng,
+                                DefaultRandomCoin<Blake3_256<BaseElement>>,
+                            >::new(domain_size, 32, false, None);
 
-                        prover.build_layers(&mut channel, evaluations, &mut prng);
+                        prover.build_layers(&mut channel, evaluations);
                         prover.reset();
                     },
                     BatchSize::LargeInput,

@@ -314,7 +314,7 @@ impl<E: FieldElement> ColMatrix<E> {
     /// 2. \hat{w}(x) is the randomized witness polynomial.
     /// 3. r(x) is the randomizer polynomial and has degree `(zk_blowup - 1) * n`.
     /// 4. Z_H(x) = (x^n - 1).
-    pub(crate) fn randomize<R: RngCore>(&self, zk_blowup: usize, prng: &mut R) -> Self {
+    pub(crate) fn randomize<R: RngCore>(&self, zk_blowup: usize, prng: &mut Option<R>) -> Self {
         let cur_len = self.num_rows();
         let extended_len = zk_blowup * cur_len;
         let pad_len = extended_len - cur_len;
@@ -324,7 +324,10 @@ impl<E: FieldElement> ColMatrix<E> {
             .map(|col| {
                 let mut added = vec![E::ZERO; pad_len];
                 for a in added.iter_mut() {
-                    let bytes = prng.gen::<[u8; 32]>();
+                    let bytes = prng
+                        .as_mut()
+                        .expect("should have a PRNG when zk is enabled")
+                        .gen::<[u8; 32]>();
                     *a = E::from_random_bytes(&bytes[..E::VALUE_SIZE])
                         .expect("failed to generate randomness");
                 }

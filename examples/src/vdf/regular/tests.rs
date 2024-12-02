@@ -31,5 +31,5 @@ fn build_options(use_extension_field: bool) -> ProofOptions {
     } else {
         FieldExtension::None
     };
-    ProofOptions::new(2, 4, 0, extension, 2, 255, true)
+    ProofOptions::new(2, 4, 0, extension, 2, 255, false)
 }

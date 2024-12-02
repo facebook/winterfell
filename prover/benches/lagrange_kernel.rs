@@ -13,11 +13,9 @@ use air::{
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use crypto::{hashers::Blake3_256, DefaultRandomCoin, MerkleTree, RandomCoin};
 use math::{fields::f64::BaseElement, ExtensionOf, FieldElement};
-use rand::SeedableRng;
-use rand_chacha::ChaCha20Rng;
 use winter_prover::{
-    matrix::ColMatrix, DefaultConstraintEvaluator, DefaultTraceLde, Prover, ProverGkrProof,
-    StarkDomain, Trace, TracePolyTable,
+    matrix::ColMatrix, DefaultConstraintEvaluator, DefaultTraceLde, MockPrng, Prover,
+    ProverGkrProof, StarkDomain, Trace, TracePolyTable,
 };
 
 const TRACE_LENS: [usize; 2] = [2_usize.pow(16), 2_usize.pow(20)];
@@ -34,7 +32,7 @@ fn prove_with_lagrange_kernel(c: &mut Criterion) {
             let prover = LagrangeProver::new(AUX_TRACE_WIDTH);
             b.iter_batched(
                 || trace.clone(),
-                |trace| prover.prove(trace).unwrap(),
+                |trace| prover.prove(trace, None).unwrap(),
                 BatchSize::SmallInput,
             )
         });
@@ -191,6 +189,7 @@ impl Prover for LagrangeProver {
         DefaultTraceLde<E, Self::HashFn, Self::VC>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = BaseElement>> =
         DefaultConstraintEvaluator<'a, LagrangeKernelAir, E>;
+    type ZkPrng = MockPrng;
 
     fn get_pub_inputs(&self, _trace: &Self::Trace) -> <<Self as Prover>::Air as Air>::PublicInputs {
     }
@@ -206,19 +205,12 @@ impl Prover for LagrangeProver {
         domain: &StarkDomain<Self::BaseField>,
         partition_option: PartitionOptions,
         zk_parameters: Option<ZkParameters>,
+        _prng: &mut Option<Self::ZkPrng>,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>)
     where
         E: math::FieldElement<BaseField = Self::BaseField>,
     {
-        let mut prng = ChaCha20Rng::from_entropy();
-        DefaultTraceLde::new(
-            trace_info,
-            main_trace,
-            domain,
-            partition_option,
-            zk_parameters,
-            &mut prng,
-        )
+        DefaultTraceLde::new(trace_info, main_trace, domain, partition_option, zk_parameters, _prng)
     }
 
     fn new_evaluator<'a, E>(

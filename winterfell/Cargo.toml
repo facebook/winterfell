@@ -26,8 +26,6 @@ air = { version = "0.10", path = "../air", package = "winter-air", default-featu
 prover = { version = "0.10", path = "../prover", package = "winter-prover", default-features = false }
 verifier = { version = "0.10", path = "../verifier", package = "winter-verifier", default-features = false }
 
-rand_chacha = { version = "0.3", default-features = false }
-
 # Allow math in docs
 [package.metadata.docs.rs]
 rustdoc-args = ["--html-in-header", ".cargo/katex-header.html"]

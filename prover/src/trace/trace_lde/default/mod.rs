@@ -69,7 +69,7 @@ where
         domain: &StarkDomain<E::BaseField>,
         partition_option: PartitionOptions,
         zk_parameters: Option<ZkParameters>,
-        prng: &mut R,
+        prng: &mut Option<R>,
     ) -> (Self, TracePolyTable<E>) {
         // extend the main execution trace and build a commitment to the extended trace
         let (main_segment_lde, main_segment_vector_com, main_segment_polys) =
@@ -153,7 +153,7 @@ where
         aux_trace: &ColMatrix<E>,
         domain: &StarkDomain<E::BaseField>,
         zk_parameters: Option<ZkParameters>,
-        prng: &mut R,
+        prng: &mut Option<R>,
     ) -> (ColMatrix<E>, H::Digest) {
         // extend the auxiliary trace segment and build a commitment to the extended trace
         let (aux_segment_lde, aux_segment_oracles, aux_segment_polys) =
@@ -287,7 +287,7 @@ fn build_trace_commitment<E, F, H, V, R>(
     domain: &StarkDomain<E::BaseField>,
     partition_size: usize,
     zk_parameters: Option<ZkParameters>,
-    prng: &mut R,
+    prng: &mut Option<R>,
 ) -> (RowMatrix<F>, V, ColMatrix<F>)
 where
     E: FieldElement,

@@ -7,11 +7,11 @@ use alloc::{
     collections::{BTreeMap, BTreeSet},
     vec::Vec,
 };
-use core::slice;
+use core::{marker::PhantomData, slice};
 
 use rand::{
     distributions::{Distribution, Standard},
-    thread_rng, Rng, RngCore, SeedableRng,
+    Rng, RngCore, SeedableRng,
 };
 
 use crate::{
@@ -481,20 +481,21 @@ impl<H: Hasher> VectorCommitment<H> for MerkleTree<H> {
 // SALTED MERKLE TREE
 // ================================================================================================
 
-pub struct SaltedMerkleTree<H: Hasher> {
+pub struct SaltedMerkleTree<H: Hasher, P: RngCore + SeedableRng> {
     leaves: Vec<H::Digest>,
     tree: MerkleTree<H>,
     salts: Vec<H::Digest>,
+    _prng: PhantomData<P>,
 }
 
-impl<H: Hasher> SaltedMerkleTree<H>
+impl<H: Hasher, P: RngCore + SeedableRng> SaltedMerkleTree<H, P>
 where
     Standard: Distribution<<H as Hasher>::Digest>,
 {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    pub fn new<R: RngCore>(leaves: Vec<H::Digest>, prng: &mut R) -> Result<Self, MerkleTreeError> {
+    pub fn new(leaves: Vec<H::Digest>, prng: &mut P) -> Result<Self, MerkleTreeError> {
         if leaves.len() < 2 {
             return Err(MerkleTreeError::TooFewLeaves(2, leaves.len()));
         }
@@ -513,7 +514,7 @@ where
 
         let tree = MerkleTree::new(salted_leaves)?;
 
-        Ok(Self { tree, leaves, salts })
+        Ok(Self { tree, leaves, salts, _prng: PhantomData })
     }
 
     /// Returns the root of the tree.
@@ -521,15 +522,19 @@ where
         self.tree.root()
     }
 
+    /// Returns the depth of the tree.
     pub fn depth(&self) -> usize {
         self.tree.depth()
     }
 
+    /// Returns a Merkle proof to a leaf at the specified `index`.
     pub fn prove(&self, index: usize) -> Result<SaltedMerkleTreeOpening<H>, MerkleTreeError> {
         let (_, proof) = self.tree.prove(index)?;
         Ok((self.leaves[index], (self.salts[index], proof)))
     }
 
+    /// Computes Merkle proofs for the provided indexes, compresses the proofs into a single batch
+    /// and returns the batch proof alongside the leaves at the provided indexes.
     pub fn prove_batch(
         &self,
         indexes: &[usize],
@@ -540,6 +545,7 @@ where
         Ok((leaves_at_indices, (salts_at_indices, proof)))
     }
 
+    /// Checks whether the `proof` for the given `leaf` at the specified `index` is valid.
     pub fn verify(
         root: H::Digest,
         index: usize,
@@ -552,15 +558,6 @@ where
     }
 
     /// Checks whether the batch proof contains Merkle paths for the of the specified `indexes`.
-    ///
-    /// # Errors
-    /// Returns an error if:
-    /// * No indexes were provided (i.e., `indexes` is an empty slice).
-    /// * Number of provided indexes is greater than 255.
-    /// * Any of the specified `indexes` is greater than or equal to the number of leaves in the
-    ///   tree from which the batch proof was generated.
-    /// * List of indexes contains duplicates.
-    /// * Any of the paths in the batch proof does not resolve to the specified `root`.
     pub fn verify_batch(
         root: &H::Digest,
         indexes: &[usize],
@@ -586,7 +583,7 @@ impl Distribution<ByteDigest<32>> for Standard {
     }
 }
 
-impl<H: Hasher> VectorCommitment<H> for SaltedMerkleTree<H>
+impl<H: Hasher, P: RngCore + SeedableRng> VectorCommitment<H> for SaltedMerkleTree<H, P>
 where
     Standard: Distribution<<H as Hasher>::Digest>,
 {
@@ -599,16 +596,16 @@ where
     type Error = MerkleTreeError;
 
     fn new(items: Vec<H::Digest>) -> Result<Self, Self::Error> {
-        let mut _prng = thread_rng();
-        let seed = [0_u8; 32];
-        let mut prng = rand_chacha::ChaCha20Rng::from_seed(seed);
+        // TODO: make random
+        let seed = P::Seed::default();
+        let mut prng = P::from_seed(seed);
         SaltedMerkleTree::new(items, &mut prng)
     }
 
     fn with_options(items: Vec<H::Digest>, _options: Self::Options) -> Result<Self, Self::Error> {
-        let mut _prng = thread_rng();
-        let seed = [0_u8; 32];
-        let mut prng = rand_chacha::ChaCha20Rng::from_seed(seed);
+        // TODO: make random
+        let seed = P::Seed::default();
+        let mut prng = P::from_seed(seed);
         Self::new(items, &mut prng)
     }
 
@@ -645,7 +642,7 @@ where
         item: H::Digest,
         proof: &Self::Proof,
     ) -> Result<(), Self::Error> {
-        SaltedMerkleTree::<H>::verify(commitment, index, item, proof.0, &proof.1)
+        SaltedMerkleTree::<H, P>::verify(commitment, index, item, proof.0, &proof.1)
     }
 
     fn verify_many(
@@ -654,6 +651,6 @@ where
         items: &[H::Digest],
         proof: &Self::MultiProof,
     ) -> Result<(), Self::Error> {
-        SaltedMerkleTree::<H>::verify_batch(&commitment, indexes, items, &proof.0, &proof.1)
+        SaltedMerkleTree::<H, P>::verify_batch(&commitment, indexes, items, &proof.0, &proof.1)
     }
 }

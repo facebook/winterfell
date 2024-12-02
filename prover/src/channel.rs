@@ -13,7 +13,7 @@ use air::{
 use crypto::{Digest, ElementHasher, Hasher, RandomCoin, VectorCommitment};
 use fri::FriProof;
 use math::{FieldElement, ToElements};
-use rand::RngCore;
+use rand::{RngCore, SeedableRng};
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
 use utils::Serializable;
@@ -21,11 +21,12 @@ use utils::Serializable;
 // TYPES AND INTERFACES
 // ================================================================================================
 
-pub struct ProverChannel<'a, A, E, H, R, V>
+pub struct ProverChannel<'a, A, E, H, P, R, V>
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseField>,
     H: ElementHasher<BaseField = A::BaseField>,
+    P: RngCore,
     R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
     V: VectorCommitment<H>,
 {
@@ -36,6 +37,7 @@ where
     ood_frame: OodFrame,
     pow_nonce: u64,
     salts: Vec<Option<H::Digest>>,
+    prng: Option<P>,
     _field_element: PhantomData<E>,
     _vector_commitment: PhantomData<V>,
 }
@@ -43,18 +45,24 @@ where
 // PROVER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-impl<'a, A, E, H, R, V> ProverChannel<'a, A, E, H, R, V>
+impl<'a, A, E, H, P, R, V> ProverChannel<'a, A, E, H, P, R, V>
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseField>,
     H: ElementHasher<BaseField = A::BaseField>,
+    P: RngCore + SeedableRng,
     R: RandomCoin<BaseField = A::BaseField, Hasher = H>,
     V: VectorCommitment<H>,
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     /// Creates a new prover channel for the specified `air` and public inputs.
-    pub fn new(air: &'a A, mut pub_inputs_elements: Vec<A::BaseField>, zk_blowup: usize) -> Self {
+    pub fn new(
+        air: &'a A,
+        mut pub_inputs_elements: Vec<A::BaseField>,
+        zk_blowup: usize,
+        seed: Option<<P as SeedableRng>::Seed>,
+    ) -> Self {
         let context = Context::new::<A::BaseField>(
             air.trace_info().clone(),
             air.options().clone(),
@@ -67,6 +75,12 @@ where
         let mut coin_seed_elements = context.to_elements();
         coin_seed_elements.append(&mut pub_inputs_elements);
 
+        let prng = if air.options().is_zk() {
+            Some(P::from_seed(seed.expect("must provide the seed when zk is enabled")))
+        } else {
+            None
+        };
+
         ProverChannel {
             air,
             public_coin: RandomCoin::new(&coin_seed_elements),
@@ -75,6 +89,7 @@ where
             ood_frame: OodFrame::default(),
             pow_nonce: 0,
             salts: vec![],
+            prng,
             _field_element: PhantomData,
             _vector_commitment: PhantomData,
         }
@@ -84,16 +99,16 @@ where
     // --------------------------------------------------------------------------------------------
 
     /// Commits the prover the extended execution trace.
-    pub fn commit_trace<P>(&mut self, trace_root: H::Digest, prng: &mut P)
-    where
-        P: RngCore,
-    {
+    pub fn commit_trace(&mut self, trace_root: H::Digest) {
         self.commitments.add::<H>(&trace_root);
 
-        // sample a salt for Fiat-Shamir is zero-knowledge is enabled
+        // sample a salt for Fiat-Shamir if zero-knowledge is enabled
         let salt = if self.air.is_zk() {
             let mut buffer = [0_u8; 32];
-            prng.fill_bytes(&mut buffer);
+            self.prng
+                .as_mut()
+                .expect("should have a PRNG when zk is enabled")
+                .fill_bytes(&mut buffer);
             Some(Digest::from_random_bytes(&buffer))
         } else {
             None
@@ -103,16 +118,16 @@ where
     }
 
     /// Commits the prover to the evaluations of the constraint composition polynomial.
-    pub fn commit_constraints<P>(&mut self, constraint_root: H::Digest, prng: &mut P)
-    where
-        P: RngCore,
-    {
+    pub fn commit_constraints(&mut self, constraint_root: H::Digest) {
         self.commitments.add::<H>(&constraint_root);
 
-        // sample a salt for Fiat-Shamir is zero-knowledge is enabled
+        // sample a salt for Fiat-Shamir if zero-knowledge is enabled
         let salt = if self.air.is_zk() {
             let mut buffer = [0_u8; 32];
-            prng.fill_bytes(&mut buffer);
+            self.prng
+                .as_mut()
+                .expect("should have a PRNG when zk is enabled")
+                .fill_bytes(&mut buffer);
             Some(Digest::from_random_bytes(&buffer))
         } else {
             None
@@ -123,16 +138,16 @@ where
 
     /// Saves the evaluations of trace polynomials over the out-of-domain evaluation frame. This
     /// also reseeds the public coin with the hashes of the evaluation frame states.
-    pub fn send_ood_trace_states<P>(&mut self, trace_ood_frame: &TraceOodFrame<E>, prng: &mut P)
-    where
-        P: RngCore,
-    {
+    pub fn send_ood_trace_states(&mut self, trace_ood_frame: &TraceOodFrame<E>) {
         let trace_states_hash = self.ood_frame.set_trace_states::<E, H>(trace_ood_frame);
 
         // sample a salt for Fiat-Shamir if zero-knowledge is enabled
         let salt = if self.air.is_zk() {
             let mut buffer = [0_u8; 32];
-            prng.fill_bytes(&mut buffer);
+            self.prng
+                .as_mut()
+                .expect("should have a PRNG when zk is enabled")
+                .fill_bytes(&mut buffer);
             Some(Digest::from_random_bytes(&buffer))
         } else {
             None
@@ -143,16 +158,16 @@ where
 
     /// Saves the evaluations of constraint composition polynomial columns at the out-of-domain
     /// point. This also reseeds the public coin wit the hash of the evaluations.
-    pub fn send_ood_constraint_evaluations<P>(&mut self, evaluations: &[E], prng: &mut P)
-    where
-        P: RngCore,
-    {
+    pub fn send_ood_constraint_evaluations(&mut self, evaluations: &[E]) {
         self.ood_frame.set_constraint_evaluations(evaluations);
 
         // sample a salt for Fiat-Shamir is zero-knowledge is enabled
         let salt = if self.air.is_zk() {
             let mut buffer = [0_u8; 32];
-            prng.fill_bytes(&mut buffer);
+            self.prng
+                .as_mut()
+                .expect("should have a PRNG when zk is enabled")
+                .fill_bytes(&mut buffer);
             Some(Digest::from_random_bytes(&buffer))
         } else {
             None
@@ -264,31 +279,31 @@ where
 // FRI PROVER CHANNEL IMPLEMENTATION
 // ================================================================================================
 
-impl<A, E, H, R, V> fri::ProverChannel<E> for ProverChannel<'_, A, E, H, R, V>
+impl<A, E, H, P, R, V> fri::ProverChannel<E> for ProverChannel<'_, A, E, H, P, R, V>
 where
     A: Air,
     E: FieldElement<BaseField = A::BaseField>,
     H: ElementHasher<BaseField = A::BaseField>,
+    P: RngCore,
     R: RandomCoin<BaseField = A::BaseField, Hasher = H>,
     V: VectorCommitment<H>,
 {
     type Hasher = H;
 
     /// Commits the prover to a FRI layer.
-    fn commit_fri_layer<P>(
-        &mut self,
-        layer_root: H::Digest,
-        prng: &mut P,
-    ) -> Option<<H as Hasher>::Digest>
+    fn commit_fri_layer(&mut self, layer_root: H::Digest) -> Option<<H as Hasher>::Digest>
     where
         P: RngCore,
     {
         self.commitments.add::<H>(&layer_root);
 
-        // sample a salt for Fiat-Shamir is zero-knowledge is enabled
+        // sample a salt for Fiat-Shamir if zero-knowledge is enabled
         let salt = if self.air.is_zk() {
             let mut buffer = [0_u8; 32];
-            prng.fill_bytes(&mut buffer);
+            self.prng
+                .as_mut()
+                .expect("should have a PRNG when zk is enabled")
+                .fill_bytes(&mut buffer);
             Some(Digest::from_random_bytes(&buffer))
         } else {
             None
