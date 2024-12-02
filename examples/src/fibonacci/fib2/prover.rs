@@ -4,11 +4,13 @@
 // LICENSE file in the root directory of this source tree.
 
 use air::ZkParameters;
-use rand_chacha::{rand_core::SeedableRng, ChaCha20Rng};
 use winterfell::{
     crypto::MerkleTree, matrix::ColMatrix, AuxRandElements, CompositionPoly, CompositionPolyTrace,
     ConstraintCompositionCoefficients, DefaultConstraintCommitment, DefaultConstraintEvaluator,
     DefaultTraceLde, PartitionOptions, StarkDomain, Trace, TraceInfo, TracePolyTable, TraceTable,
+    crypto::MerkleTree, matrix::ColMatrix, AuxRandElements, ConstraintCompositionCoefficients,
+    DefaultConstraintEvaluator, DefaultTraceLde, MockPrng, PartitionOptions, StarkDomain, Trace,
+    TraceInfo, TracePolyTable, TraceTable,
 };
 
 use super::{
@@ -66,6 +68,7 @@ where
         DefaultConstraintCommitment<E, H, Self::VC>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
         DefaultConstraintEvaluator<'a, Self::Air, E>;
+    type ZkPrng = MockPrng;
 
     fn get_pub_inputs(&self, trace: &Self::Trace) -> BaseElement {
         let last_step = trace.length() - 1;
@@ -83,16 +86,9 @@ where
         domain: &StarkDomain<Self::BaseField>,
         partition_option: PartitionOptions,
         zk_parameters: Option<ZkParameters>,
+        prng: &mut Option<Self::ZkPrng>,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
-        let mut prng = ChaCha20Rng::from_entropy();
-        DefaultTraceLde::new(
-            trace_info,
-            main_trace,
-            domain,
-            partition_option,
-            zk_parameters,
-            &mut prng,
-        )
+        DefaultTraceLde::new(trace_info, main_trace, domain, partition_option, zk_parameters, prng)
     }
 
     fn new_evaluator<'a, E: FieldElement<BaseField = Self::BaseField>>(

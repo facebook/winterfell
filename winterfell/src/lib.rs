@@ -268,7 +268,7 @@
 //!
 //! # use winterfell::{
 //! #   Air, AirContext, Assertion, AuxRandElements, ByteWriter, DefaultConstraintEvaluator,
-//! #   EvaluationFrame, PartitionOptions, TraceInfo, TransitionConstraintDegree,
+//! #   EvaluationFrame, PartitionOptions, TraceInfo, TransitionConstraintDegree, MockPrng,
 //! # };
 //! #
 //! # pub struct PublicInputs {
@@ -356,6 +356,7 @@
 //!         DefaultConstraintCommitment<E, Self::HashFn, Self::VC>;
 //!     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
 //!         DefaultConstraintEvaluator<'a, Self::Air, E>;
+//!     type ZkPrng = MockPrng;
 //!
 //!     // Our public inputs consist of the first and last value in the execution trace.
 //!     fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
@@ -377,8 +378,9 @@
 //!         domain: &StarkDomain<Self::BaseField>,
 //!         partition_option: PartitionOptions,
 //!         is_zk: Option<ZkParameters>,
+//!         prng: &mut Option<Self::ZkPrng>,
 //!     ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
-//!         DefaultTraceLde::new(trace_info, main_trace, domain, partition_option, is_zk)
+//!         DefaultTraceLde::new(trace_info, main_trace, domain, partition_option, is_zk, prng)
 //!     }
 //!
 //!     fn build_constraint_commitment<E: FieldElement<BaseField = Self::BaseField>>(
@@ -423,7 +425,7 @@
 //! #    DefaultConstraintEvaluator, DefaultConstraintCommitment, DefaultTraceLde, EvaluationFrame,
 //! #    TraceInfo, TransitionConstraintDegree, TraceTable, FieldExtension, PartitionOptions, Prover,
 //! #    ProofOptions, StarkDomain, Proof, Trace, TracePolyTable,
-//! #    ZkParameters
+//! #    ZkParameters, MockPrng,
 //! # };
 //! #
 //! # pub fn build_do_work_trace(start: BaseElement, n: usize) -> TraceTable<BaseElement> {
@@ -520,6 +522,7 @@
 //! #        DefaultConstraintCommitment<E, Self::HashFn, Self::VC>;
 //! #    type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
 //! #        DefaultConstraintEvaluator<'a, Self::Air, E>;
+//! #    type ZkPrng = MockPrng;
 //! #
 //! #    fn get_pub_inputs(&self, trace: &Self::Trace) -> PublicInputs {
 //! #        let last_step = trace.length() - 1;
@@ -540,8 +543,9 @@
 //! #        domain: &StarkDomain<Self::BaseField>,
 //! #        partition_option: PartitionOptions,
 //! #        is_zk: Option<ZkParameters>,
+//! #        prng: &mut Option<Self::ZkPrng>,
 //! #    ) -> (Self::TraceLde<E>, TracePolyTable<E>) {
-//! #        DefaultTraceLde::new(trace_info, main_trace, domain, partition_option, is_zk)
+//! #        DefaultTraceLde::new(trace_info, main_trace, domain, partition_option, is_zk, prng)
 //! #    }
 //! #
 //! #    fn build_constraint_commitment<E: FieldElement<BaseField = Self::BaseField>>(
@@ -592,7 +596,7 @@
 //!
 //! // Instantiate the prover and generate the proof.
 //! let prover = WorkProver::new(options);
-//! let proof = prover.prove(trace).unwrap();
+//! let proof = prover.prove(trace, None).unwrap();
 //!
 //! // The verifier will accept proofs with parameters which guarantee 95 bits or more of
 //! // conjectured security
@@ -642,9 +646,9 @@ pub use prover::{
     BoundaryConstraint, BoundaryConstraintGroup, CompositionPoly, CompositionPolyTrace,
     ConstraintCompositionCoefficients, ConstraintDivisor, ConstraintEvaluator,
     DeepCompositionCoefficients, DefaultConstraintCommitment, DefaultConstraintEvaluator,
-    DefaultTraceLde, EvaluationFrame, FieldExtension, Proof, ProofOptions, Prover, ProverError,
-    ProverGkrProof, StarkDomain, Trace, TraceInfo, TraceLde, TracePolyTable, TraceTable,
-    TraceTableFragment, TransitionConstraintDegree,
+    DefaultTraceLde, EvaluationFrame, FieldExtension, MockPrng, Proof, ProofOptions, Prover,
+    ProverError, ProverGkrProof, StarkDomain, Trace, TraceInfo, TraceLde, TracePolyTable,
+    TraceTable, TraceTableFragment, TransitionConstraintDegree,
 };
 pub use verifier::{verify, AcceptableOptions, ByteWriter, VerifierError};
 

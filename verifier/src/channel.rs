@@ -133,8 +133,9 @@ where
             .partition_size::<E::BaseField>(air.context().trace_info().main_trace_width());
         let partition_size_aux =
             partition_options.partition_size::<E>(air.context().trace_info().aux_segment_width());
-        let partition_size_constraint = partition_options
-            .partition_size::<E>(air.context().num_constraint_composition_columns() + air.is_zk() as usize);
+        let partition_size_constraint = partition_options.partition_size::<E>(
+            air.context().num_constraint_composition_columns() + air.is_zk() as usize,
+        );
         // --- parse Fiat-Shamir salts -----------------------------------------------
         let salts: Vec<Option<H::Digest>> = Vec::read_from_bytes(&salts)
             .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?;

@@ -13,7 +13,6 @@ use prover::{
     matrix::ColMatrix,
     CompositionPoly, DefaultConstraintCommitment,
 };
-use rand_chacha::{rand_core::SeedableRng, ChaCha20Rng};
 
 use super::*;
 
@@ -25,7 +24,7 @@ fn test_complex_lagrange_kernel_air() {
 
     let prover = LagrangeComplexProver::new(AUX_TRACE_WIDTH);
 
-    let proof = prover.prove(trace).unwrap();
+    let proof = prover.prove(trace, None).unwrap();
 
     verify::<
         LagrangeKernelComplexAir,
@@ -225,6 +224,7 @@ impl Prover for LagrangeComplexProver {
         DefaultConstraintCommitment<E, Blake3_256<BaseElement>, Self::VC>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = BaseElement>> =
         DefaultConstraintEvaluator<'a, LagrangeKernelComplexAir, E>;
+    type ZkPrng = MockPrng;
 
     fn get_pub_inputs(&self, _trace: &Self::Trace) -> <<Self as Prover>::Air as Air>::PublicInputs {
     }
@@ -240,19 +240,12 @@ impl Prover for LagrangeComplexProver {
         domain: &StarkDomain<Self::BaseField>,
         partition_option: PartitionOptions,
         zk_parameters: Option<ZkParameters>,
+        prng: &mut Option<Self::ZkPrng>,
     ) -> (Self::TraceLde<E>, TracePolyTable<E>)
     where
         E: math::FieldElement<BaseField = Self::BaseField>,
     {
-        let mut prng = ChaCha20Rng::from_entropy();
-        DefaultTraceLde::new(
-            trace_info,
-            main_trace,
-            domain,
-            partition_option,
-            zk_parameters,
-            &mut prng,
-        )
+        DefaultTraceLde::new(trace_info, main_trace, domain, partition_option, zk_parameters, prng)
     }
 
     fn build_constraint_commitment<E: FieldElement<BaseField = Self::BaseField>>(

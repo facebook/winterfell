@@ -65,7 +65,7 @@ impl<E: FieldElement> CompositionPoly<E> {
         domain: &StarkDomain<E::BaseField>,
         num_cols: usize,
         zk_parameters: Option<ZkParameters>,
-        prng: &mut R,
+        prng: &mut Option<R>,
     ) -> Self {
         assert!(
             domain.trace_length() < composition_trace.num_rows(),
@@ -95,7 +95,10 @@ impl<E: FieldElement> CompositionPoly<E> {
             let mut zk_col = vec![E::ZERO; extended_len];
 
             for a in zk_col.iter_mut() {
-                let bytes = prng.gen::<[u8; 32]>();
+                let bytes = prng
+                    .as_mut()
+                    .expect("should contain a PRNG when zk is enabled")
+                    .gen::<[u8; 32]>();
                 *a = E::from_random_bytes(&bytes[..E::VALUE_SIZE])
                     .expect("failed to generate randomness");
             }
@@ -150,7 +153,7 @@ impl<E: FieldElement> CompositionPoly<E> {
 fn complement_to<R: RngCore, E: FieldElement>(
     polys: Vec<Vec<E>>,
     l: usize,
-    prng: &mut R,
+    prng: &mut Option<R>,
 ) -> Vec<Vec<E>> {
     let mut result = vec![];
 
@@ -162,7 +165,10 @@ fn complement_to<R: RngCore, E: FieldElement>(
         let diff = l - poly.len();
 
         for eval in current_poly.iter_mut().take(diff) {
-            let bytes = prng.gen::<[u8; 32]>();
+            let bytes = prng
+                .as_mut()
+                .expect("should contain a PRNG when zk is enabled")
+                .gen::<[u8; 32]>();
             *eval = E::from_random_bytes(&bytes[..E::VALUE_SIZE])
                 .expect("failed to generate randomness");
         }
@@ -180,6 +186,7 @@ fn complement_to<R: RngCore, E: FieldElement>(
         result.push(res)
     }
 
+    // TODO: is this always guaranteed to not panic?
     let poly = polys.last().unwrap();
     let mut res = vec![E::ZERO; l];
     for (i, entry) in poly.iter().enumerate() {
