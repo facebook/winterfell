@@ -328,7 +328,7 @@ where
     let commitment_domain_size = trace_lde.num_rows();
     let trace_vector_com = info_span!("compute_execution_trace_commitment", commitment_domain_size)
         .in_scope(|| trace_lde.commit_to_rows::<H, V>(partition_options));
-    assert_eq!(trace_vector_com.domain_len(), commitment_domain_size);
+    assert_eq!(trace_vector_com.get_domain_len(), commitment_domain_size);
 
     (trace_lde, trace_vector_com, trace_polys)
 }

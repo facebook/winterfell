@@ -6,9 +6,10 @@
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
-use air::{proof::Queries, PartitionOptions};
+use air::{proof::Queries, PartitionOptions, ZkParameters};
 use crypto::{ElementHasher, VectorCommitment};
 use math::FieldElement;
+use rand::RngCore;
 use tracing::info_span;
 
 use super::{ConstraintCommitment, RowMatrix};
@@ -26,17 +27,20 @@ use crate::{CompositionPoly, CompositionPolyTrace, StarkDomain, DEFAULT_SEGMENT_
 pub struct DefaultConstraintCommitment<
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
+    R: RngCore,
     V: VectorCommitment<H>,
 > {
     evaluations: RowMatrix<E>,
     vector_commitment: V,
     _h: PhantomData<H>,
+    _prng: PhantomData<R>,
 }
 
-impl<E, H, V> DefaultConstraintCommitment<E, H, V>
+impl<E, H, R, V> DefaultConstraintCommitment<E, H, R, V>
 where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
+    R: RngCore,
     V: VectorCommitment<H>,
 {
     /// Creates a new constraint evaluation commitment from the provided composition polynomial
@@ -46,18 +50,22 @@ where
         num_constraint_composition_columns: usize,
         domain: &StarkDomain<E::BaseField>,
         partition_options: PartitionOptions,
+        zk_parameters: Option<ZkParameters>,
+        prng: &mut Option<R>,
     ) -> (Self, CompositionPoly<E>) {
         // extend the main execution trace and build a commitment to the extended trace
-        let (evaluations, commitment, composition_poly) = build_constraint_commitment::<E, H, V>(
+        let (evaluations, commitment, composition_poly) = build_constraint_commitment::<E, H, R, V>(
             composition_poly_trace,
             num_constraint_composition_columns,
             domain,
             partition_options,
+            zk_parameters,
+            prng,
         );
 
         assert_eq!(
             evaluations.num_rows(),
-            commitment.domain_len(),
+            commitment.get_domain_len(),
             "number of rows in constraint evaluation matrix must be the same as the size \
             of the vector commitment domain"
         );
@@ -66,16 +74,18 @@ where
             evaluations,
             vector_commitment: commitment,
             _h: PhantomData,
+            _prng: PhantomData,
         };
 
         (commitment, composition_poly)
     }
 }
 
-impl<E, H, V> ConstraintCommitment<E> for DefaultConstraintCommitment<E, H, V>
+impl<E, H, R, V> ConstraintCommitment<E> for DefaultConstraintCommitment<E, H, R, V>
 where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField> + core::marker::Sync,
+    R: RngCore,
     V: VectorCommitment<H> + core::marker::Sync,
 {
     type HashFn = H;
@@ -106,15 +116,18 @@ where
     }
 }
 
-fn build_constraint_commitment<E, H, V>(
+fn build_constraint_commitment<E, H, R, V>(
     composition_poly_trace: CompositionPolyTrace<E>,
     num_constraint_composition_columns: usize,
     domain: &StarkDomain<E::BaseField>,
     partition_options: PartitionOptions,
+    zk_parameters: Option<ZkParameters>,
+    prng: &mut Option<R>,
 ) -> (RowMatrix<E>, V, CompositionPoly<E>)
 where
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,
+    R: RngCore,
     V: VectorCommitment<H>,
 {
     // first, build constraint composition polynomial from its trace as follows:
@@ -126,7 +139,13 @@ where
         num_columns = num_constraint_composition_columns
     )
     .in_scope(|| {
-        CompositionPoly::new(composition_poly_trace, domain, num_constraint_composition_columns)
+        CompositionPoly::new(
+            composition_poly_trace,
+            domain,
+            num_constraint_composition_columns,
+            zk_parameters,
+            prng,
+        )
     });
     assert_eq!(composition_poly.num_columns(), num_constraint_composition_columns);
     assert_eq!(composition_poly.column_degree(), domain.trace_length() - 1);

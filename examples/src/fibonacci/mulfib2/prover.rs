@@ -7,7 +7,8 @@ use air::ZkParameters;
 use winterfell::{
     crypto::MerkleTree, matrix::ColMatrix, AuxRandElements, CompositionPoly, CompositionPolyTrace,
     ConstraintCompositionCoefficients, DefaultConstraintCommitment, DefaultConstraintEvaluator,
-    DefaultTraceLde, PartitionOptions, StarkDomain, Trace, TraceInfo, TracePolyTable, TraceTable,
+    DefaultTraceLde, MockPrng, PartitionOptions, StarkDomain, Trace, TraceInfo, TracePolyTable,
+    TraceTable,
 };
 
 use super::{
@@ -58,7 +59,7 @@ where
     type TraceLde<E: FieldElement<BaseField = Self::BaseField>> =
         DefaultTraceLde<E, Self::HashFn, Self::VC>;
     type ConstraintCommitment<E: FieldElement<BaseField = Self::BaseField>> =
-        DefaultConstraintCommitment<E, H, Self::VC>;
+        DefaultConstraintCommitment<E, H, Self::ZkPrng, Self::VC>;
     type ConstraintEvaluator<'a, E: FieldElement<BaseField = Self::BaseField>> =
         DefaultConstraintEvaluator<'a, Self::Air, E>;
     type ZkPrng = MockPrng;
@@ -99,12 +100,16 @@ where
         num_constraint_composition_columns: usize,
         domain: &StarkDomain<Self::BaseField>,
         partition_options: PartitionOptions,
+        zk_parameters: Option<ZkParameters>,
+        prng: &mut Option<Self::ZkPrng>,
     ) -> (Self::ConstraintCommitment<E>, CompositionPoly<E>) {
         DefaultConstraintCommitment::new(
             composition_poly_trace,
             num_constraint_composition_columns,
             domain,
             partition_options,
+            zk_parameters,
+            prng,
         )
     }
 }

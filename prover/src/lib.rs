@@ -228,6 +228,8 @@ pub trait Prover {
         num_constraint_composition_columns: usize,
         domain: &StarkDomain<Self::BaseField>,
         partition_options: PartitionOptions,
+        zk_parameters: Option<ZkParameters>,
+        prng: &mut Option<Self::ZkPrng>,
     ) -> (Self::ConstraintCommitment<E>, CompositionPoly<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>;
@@ -653,7 +655,7 @@ pub trait Prover {
                 composition_poly_trace,
                 air.context().num_constraint_composition_columns(),
                 domain,
-                self.options().partition_options()
+                self.options().partition_options(),
                 zk_parameters,
                 prng
             ));
