@@ -393,8 +393,8 @@ impl<'a> ReadAdapter<'a> {
                     },
                     // We didn't get enough, but haven't necessarily reached eof yet, so fall back
                     // to filling `self.buf`
-                    m => {
-                        let needed = N - (m + n);
+                    _ => {
+                        let needed = N - n;
                         drop(reader_buf);
                         self.buffer_at_least(needed)?;
                         debug_assert!(self.buffer().len() >= N, "expected buffer to be at least {N} bytes after call to buffer_at_least");
@@ -430,8 +430,9 @@ impl<'a> ReadAdapter<'a> {
         // Read until we have at least `count` bytes, or until we reach end-of-file,
         // which ever comes first.
         loop {
-            // If we have succesfully read `count` bytes, we're done
-            if count == 0 || self.buf.len() >= count {
+            // If we have successfully read `count` bytes, we're done
+            if count == 0 {
+                // || self.buf.len() >= count {
                 break Ok(());
             }
 
@@ -760,6 +761,9 @@ mod tests {
             buf.write_usize(0xfeed);
             buf.write_u16(0x5);
 
+            let arr = vec![10u8; 10000];
+            buf.write(&arr);
+
             std::fs::write(&path, &buf).unwrap();
         }
 
@@ -772,6 +776,10 @@ mod tests {
         assert_eq!(reader.read_u32().unwrap(), 0xbeef);
         assert_eq!(reader.read_usize().unwrap(), 0xfeed);
         assert_eq!(reader.read_u16().unwrap(), 0x5);
+
+        assert_eq!(reader.read_usize().unwrap(), 10000);
+        assert_eq!(reader.read_array::<10000usize>().unwrap(), [10u8; 10000]);
+
         assert!(!reader.has_more_bytes(), "expected there to be no more data in the input");
     }
 }
