@@ -6,6 +6,10 @@
 use core::slice;
 
 use math::{fields::f62::BaseElement, FieldElement, StarkField};
+use rand::{
+    distributions::{Standard, Uniform},
+    prelude::Distribution,
+};
 use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 use super::{Digest, DIGEST_SIZE};
@@ -47,23 +51,23 @@ impl Digest for ElementDigest {
 
         result
     }
-
-    fn from_random_bytes(buffer: &[u8]) -> Self {
-        let mut digest: [BaseElement; DIGEST_SIZE] = [BaseElement::ZERO; DIGEST_SIZE];
-
-        buffer.chunks(8).zip(digest.iter_mut()).for_each(|(chunk, digest)| {
-            *digest = BaseElement::new(u64::from_be_bytes(
-                chunk.try_into().expect("Given the size of the chunk this should not panic"),
-            ))
-        });
-
-        Self(digest)
-    }
 }
 
 impl Default for ElementDigest {
     fn default() -> Self {
         ElementDigest([BaseElement::default(); DIGEST_SIZE])
+    }
+}
+
+impl Distribution<ElementDigest> for Standard {
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> ElementDigest {
+        let mut res = [BaseElement::ZERO; DIGEST_SIZE];
+        let uni_dist = Uniform::from(0..BaseElement::MODULUS);
+        for r in res.iter_mut() {
+            let sampled_integer = uni_dist.sample(rng);
+            *r = BaseElement::new(sampled_integer);
+        }
+        ElementDigest::new(res)
     }
 }
 

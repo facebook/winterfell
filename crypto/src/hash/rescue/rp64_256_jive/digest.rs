@@ -5,7 +5,11 @@
 
 use core::slice;
 
-use math::{fields::f64::BaseElement, FieldElement};
+use math::{fields::f64::BaseElement, FieldElement, StarkField};
+use rand::{
+    distributions::{Standard, Uniform},
+    prelude::Distribution,
+};
 use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 use super::{Digest, DIGEST_SIZE};
@@ -42,18 +46,6 @@ impl Digest for ElementDigest {
         result[24..].copy_from_slice(&self.0[3].as_int().to_le_bytes());
 
         result
-    }
-
-    fn from_random_bytes(buffer: &[u8]) -> Self {
-        let mut digest: [BaseElement; DIGEST_SIZE] = [BaseElement::ZERO; DIGEST_SIZE];
-
-        buffer.chunks(8).zip(digest.iter_mut()).for_each(|(chunk, digest)| {
-            *digest = BaseElement::new(u64::from_be_bytes(
-                chunk.try_into().expect("Given the size of the chunk this should not panic"),
-            ))
-        });
-
-        digest.into()
     }
 }
 
@@ -96,6 +88,18 @@ impl From<ElementDigest> for [BaseElement; DIGEST_SIZE] {
 impl From<ElementDigest> for [u8; 32] {
     fn from(value: ElementDigest) -> Self {
         value.as_bytes()
+    }
+}
+
+impl Distribution<ElementDigest> for Standard {
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> ElementDigest {
+        let mut res = [BaseElement::ZERO; DIGEST_SIZE];
+        let uni_dist = Uniform::from(0..BaseElement::MODULUS);
+        for r in res.iter_mut() {
+            let sampled_integer = uni_dist.sample(rng);
+            *r = BaseElement::new(sampled_integer);
+        }
+        ElementDigest::new(res)
     }
 }
 

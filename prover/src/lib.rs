@@ -50,7 +50,7 @@ pub use air::{
 };
 use air::{AuxRandElements, GkrRandElements, PartitionOptions, ZkParameters};
 pub use crypto;
-use crypto::{ElementHasher, RandomCoin, VectorCommitment};
+use crypto::{ElementHasher, Hasher, RandomCoin, VectorCommitment};
 use fri::FriProver;
 pub use math;
 use math::{
@@ -58,7 +58,7 @@ use math::{
     fields::{CubeExtension, QuadExtension},
     ExtensibleField, FieldElement, StarkField, ToElements,
 };
-use rand::{Error, RngCore, SeedableRng};
+use rand::{distributions::Standard, prelude::Distribution, Error, RngCore, SeedableRng};
 use tracing::{event, info_span, instrument, Level};
 pub use utils::{
     iterators, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
@@ -281,6 +281,7 @@ pub trait Prover {
         seed: Option<<Self::ZkPrng as SeedableRng>::Seed>,
     ) -> Result<Proof, ProverError>
     where
+        Standard: Distribution<<<Self as Prover>::HashFn as crypto::Hasher>::Digest>,
         <Self::Air as Air>::PublicInputs: Send,
         <Self::Air as Air>::GkrProof: Send,
     {
@@ -320,6 +321,7 @@ pub trait Prover {
         seed: Option<<Self::ZkPrng as SeedableRng>::Seed>,
     ) -> Result<Proof, ProverError>
     where
+        Standard: Distribution<<<Self as Prover>::HashFn as Hasher>::Digest>,
         E: FieldElement<BaseField = Self::BaseField>,
         <Self::Air as Air>::PublicInputs: Send,
         <Self::Air as Air>::GkrProof: Send,
@@ -603,6 +605,7 @@ pub trait Prover {
     ) -> (Self::TraceLde<E>, TracePolyTable<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
+        Standard: Distribution<<<Self as Prover>::HashFn as crypto::Hasher>::Digest>,
     {
         // extend the main execution trace and commit to the extended trace
         let (trace_lde, trace_polys) = maybe_await!(self.new_trace_lde(
@@ -647,6 +650,7 @@ pub trait Prover {
     ) -> (Self::ConstraintCommitment<E>, CompositionPoly<E>)
     where
         E: FieldElement<BaseField = Self::BaseField>,
+        Standard: Distribution<<<Self as Prover>::HashFn as crypto::Hasher>::Digest>,
     {
         // first, build a commitment to the evaluations of the constraint composition polynomial
         // columns

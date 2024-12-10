@@ -6,6 +6,7 @@
 use core::{fmt::Debug, slice};
 
 use math::{FieldElement, StarkField};
+use rand::{distributions::Standard, prelude::Distribution};
 use utils::{ByteReader, Deserializable, DeserializationError, Serializable};
 
 mod blake;
@@ -77,9 +78,6 @@ pub trait Digest:
     /// upper limit on the possible digest size. For digests which are smaller than 32 bytes, the
     /// unused bytes should be set to 0.
     fn as_bytes(&self) -> [u8; 32];
-
-    /// Returns a digest that is drawn uniformly at random from the space of all digests.
-    fn from_random_bytes(buffer: &[u8]) -> Self;
 }
 
 // BYTE DIGEST
@@ -114,19 +112,19 @@ impl<const N: usize> Digest for ByteDigest<N> {
         result[..N].copy_from_slice(&self.0);
         result
     }
-
-    fn from_random_bytes(buffer: &[u8]) -> Self {
-        Self::new(
-            buffer
-                .try_into()
-                .expect("The size of the buffer with random bytes should be 32"),
-        )
-    }
 }
 
 impl<const N: usize> Default for ByteDigest<N> {
     fn default() -> Self {
         ByteDigest([0; N])
+    }
+}
+
+impl Distribution<ByteDigest<24>> for Standard {
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> ByteDigest<24> {
+        let mut res = [0_u8; 24];
+        rng.fill_bytes(&mut res);
+        ByteDigest(res)
     }
 }
 

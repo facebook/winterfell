@@ -6,9 +6,10 @@
 use core::marker::PhantomData;
 use std::time::Instant;
 
+use rand::{distributions::Standard, prelude::Distribution};
 use tracing::{field, info_span};
 use winterfell::{
-    crypto::{DefaultRandomCoin, ElementHasher, MerkleTree},
+    crypto::{DefaultRandomCoin, ElementHasher, Hasher, MerkleTree},
     math::{fields::f128::BaseElement, get_power_series, FieldElement, StarkField},
     Proof, ProofOptions, Prover, Trace, VerifierError,
 };
@@ -115,6 +116,7 @@ impl<H: ElementHasher> LamportAggregateExample<H> {
 impl<H: ElementHasher> Example for LamportAggregateExample<H>
 where
     H: ElementHasher<BaseField = BaseElement> + Sync,
+    Standard: Distribution<<H as Hasher>::Digest>,
 {
     fn prove(&self) -> Proof {
         // generate the execution trace

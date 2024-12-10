@@ -6,9 +6,9 @@
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
-use crypto::{Digest, ElementHasher, Hasher, RandomCoin};
+use crypto::{ElementHasher, Hasher, RandomCoin};
 use math::FieldElement;
-use rand::{RngCore, SeedableRng};
+use rand::{distributions::Standard, prelude::Distribution, Rng, RngCore, SeedableRng};
 
 // PROVER CHANNEL TRAIT
 // ================================================================================================
@@ -145,6 +145,7 @@ where
     H: ElementHasher<BaseField = E::BaseField>,
     P: RngCore,
     R: RandomCoin<BaseField = E::BaseField, Hasher = H>,
+    Standard: Distribution<<H as Hasher>::Digest>,
 {
     type Hasher = H;
 
@@ -156,12 +157,12 @@ where
 
         // sample a salt for Fiat-Shamir if zero-knowledge is enabled
         let salt = if self.is_zk {
-            let mut buffer = [0_u8; 32];
-            self.prng
+            let digest = self
+                .prng
                 .as_mut()
                 .expect("should have a PRNG when zk is enabled")
-                .fill_bytes(&mut buffer);
-            Some(Digest::from_random_bytes(&buffer))
+                .sample(Standard);
+            Some(digest)
         } else {
             None
         };

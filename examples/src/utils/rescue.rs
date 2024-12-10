@@ -162,18 +162,6 @@ impl Digest for Hash {
         result[..bytes.len()].copy_from_slice(bytes);
         result
     }
-
-    fn from_random_bytes(buffer: &[u8]) -> Self {
-        let mut digest: [BaseElement; DIGEST_SIZE] = [BaseElement::ZERO; DIGEST_SIZE];
-
-        buffer.chunks(16).zip(digest.iter_mut()).for_each(|(chunk, digest)| {
-            *digest = BaseElement::new(u128::from_be_bytes(
-                chunk.try_into().expect("Given the size of the chunk this should not panic"),
-            ))
-        });
-
-        Self(digest)
-    }
 }
 
 impl Serializable for Hash {

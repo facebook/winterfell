@@ -10,10 +10,10 @@ use air::{
     proof::{Commitments, Context, OodFrame, Proof, Queries, TraceOodFrame},
     Air, ConstraintCompositionCoefficients, DeepCompositionCoefficients,
 };
-use crypto::{Digest, ElementHasher, Hasher, RandomCoin, VectorCommitment};
+use crypto::{ElementHasher, Hasher, RandomCoin, VectorCommitment};
 use fri::FriProof;
 use math::{FieldElement, ToElements};
-use rand::{RngCore, SeedableRng};
+use rand::{distributions::Standard, prelude::Distribution, Rng, RngCore, SeedableRng};
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
 use utils::Serializable;
@@ -52,6 +52,7 @@ where
     H: ElementHasher<BaseField = A::BaseField>,
     P: RngCore + SeedableRng,
     R: RandomCoin<BaseField = A::BaseField, Hasher = H>,
+    Standard: Distribution<<H as Hasher>::Digest>,
     V: VectorCommitment<H>,
 {
     // CONSTRUCTOR
@@ -104,12 +105,12 @@ where
 
         // sample a salt for Fiat-Shamir if zero-knowledge is enabled
         let salt = if self.air.is_zk() {
-            let mut buffer = [0_u8; 32];
-            self.prng
+            let digest = self
+                .prng
                 .as_mut()
                 .expect("should have a PRNG when zk is enabled")
-                .fill_bytes(&mut buffer);
-            Some(Digest::from_random_bytes(&buffer))
+                .sample(Standard);
+            Some(digest)
         } else {
             None
         };
@@ -123,12 +124,12 @@ where
 
         // sample a salt for Fiat-Shamir if zero-knowledge is enabled
         let salt = if self.air.is_zk() {
-            let mut buffer = [0_u8; 32];
-            self.prng
+            let digest = self
+                .prng
                 .as_mut()
                 .expect("should have a PRNG when zk is enabled")
-                .fill_bytes(&mut buffer);
-            Some(Digest::from_random_bytes(&buffer))
+                .sample(Standard);
+            Some(digest)
         } else {
             None
         };
@@ -143,12 +144,12 @@ where
 
         // sample a salt for Fiat-Shamir if zero-knowledge is enabled
         let salt = if self.air.is_zk() {
-            let mut buffer = [0_u8; 32];
-            self.prng
+            let digest = self
+                .prng
                 .as_mut()
                 .expect("should have a PRNG when zk is enabled")
-                .fill_bytes(&mut buffer);
-            Some(Digest::from_random_bytes(&buffer))
+                .sample(Standard);
+            Some(digest)
         } else {
             None
         };
@@ -163,12 +164,12 @@ where
 
         // sample a salt for Fiat-Shamir is zero-knowledge is enabled
         let salt = if self.air.is_zk() {
-            let mut buffer = [0_u8; 32];
-            self.prng
+            let digest = self
+                .prng
                 .as_mut()
                 .expect("should have a PRNG when zk is enabled")
-                .fill_bytes(&mut buffer);
-            Some(Digest::from_random_bytes(&buffer))
+                .sample(Standard);
+            Some(digest)
         } else {
             None
         };
@@ -286,6 +287,7 @@ where
     H: ElementHasher<BaseField = A::BaseField>,
     P: RngCore,
     R: RandomCoin<BaseField = A::BaseField, Hasher = H>,
+    Standard: Distribution<<H as Hasher>::Digest>,
     V: VectorCommitment<H>,
 {
     type Hasher = H;
@@ -299,12 +301,12 @@ where
 
         // sample a salt for Fiat-Shamir if zero-knowledge is enabled
         let salt = if self.air.is_zk() {
-            let mut buffer = [0_u8; 32];
-            self.prng
+            let digest = self
+                .prng
                 .as_mut()
                 .expect("should have a PRNG when zk is enabled")
-                .fill_bytes(&mut buffer);
-            Some(Digest::from_random_bytes(&buffer))
+                .sample(Standard);
+            Some(digest)
         } else {
             None
         };

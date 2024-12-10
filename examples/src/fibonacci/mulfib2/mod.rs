@@ -6,9 +6,10 @@
 use core::marker::PhantomData;
 use std::time::Instant;
 
+use rand::{distributions::Standard, prelude::Distribution};
 use tracing::{field, info_span};
 use winterfell::{
-    crypto::{DefaultRandomCoin, ElementHasher, MerkleTree},
+    crypto::{DefaultRandomCoin, ElementHasher, Hasher, MerkleTree},
     math::{fields::f128::BaseElement, FieldElement},
     Proof, ProofOptions, Prover, Trace, VerifierError,
 };
@@ -87,6 +88,7 @@ impl<H: ElementHasher> MulFib2Example<H> {
 impl<H: ElementHasher> Example for MulFib2Example<H>
 where
     H: ElementHasher<BaseField = BaseElement> + Sync,
+    Standard: Distribution<<H as Hasher>::Digest>,
 {
     fn prove(&self) -> Proof {
         let sequence_length = self.sequence_length;

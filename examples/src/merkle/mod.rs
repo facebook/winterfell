@@ -6,10 +6,11 @@
 use core::marker::PhantomData;
 use std::time::Instant;
 
+use rand::{distributions::Standard, prelude::Distribution};
 use rand_utils::{rand_value, rand_vector};
 use tracing::{field, info_span};
 use winterfell::{
-    crypto::{DefaultRandomCoin, Digest, ElementHasher, MerkleTree},
+    crypto::{DefaultRandomCoin, Digest, ElementHasher, Hasher, MerkleTree},
     math::{fields::f128::BaseElement, FieldElement, StarkField},
     Proof, ProofOptions, Prover, Trace, VerifierError,
 };
@@ -110,6 +111,7 @@ impl<H: ElementHasher> MerkleExample<H> {
 impl<H: ElementHasher> Example for MerkleExample<H>
 where
     H: ElementHasher<BaseField = BaseElement> + Sync,
+    Standard: Distribution<<H as Hasher>::Digest>,
 {
     fn prove(&self) -> Proof {
         // generate the execution trace
