@@ -396,7 +396,7 @@ impl<'a> ReadAdapter<'a> {
                     _ => {
                         let needed = N - n;
                         drop(reader_buf);
-                        self.buffer_at_least(needed)?;
+                        self.buffer_at_least(needed, true)?;
                         debug_assert!(self.buffer().len() >= N, "expected buffer to be at least {N} bytes after call to buffer_at_least");
                         // SAFETY: This is guaranteed to be an in-bounds copy
                         unsafe {
@@ -426,13 +426,15 @@ impl<'a> ReadAdapter<'a> {
     /// Fill `self.buf` with `count` bytes
     ///
     /// This should only be called when we can't read from the reader directly
-    fn buffer_at_least(&mut self, mut count: usize) -> Result<(), DeserializationError> {
+    fn buffer_at_least(&mut self, mut count: usize, append_all: bool) -> Result<(), DeserializationError> {
         // Read until we have at least `count` bytes, or until we reach end-of-file,
         // which ever comes first.
         loop {
             // If we have successfully read `count` bytes, we're done
             if count == 0 {
-                // || self.buf.len() >= count {
+                break Ok(());
+            }
+            if !append_all && self.buf.len() >= count {
                 break Ok(());
             }
 
@@ -503,7 +505,7 @@ impl ByteReader for ReadAdapter<'_> {
 
         // Fill the buffer so we have at least `len` bytes available,
         // this will return an error if we hit EOF first
-        self.buffer_at_least(len)?;
+        self.buffer_at_least(len, false)?;
 
         let slice = &self.buf[self.pos..(self.pos + len)];
         self.pos += len;
@@ -686,7 +688,7 @@ mod tests {
     use std::io::Cursor;
 
     use super::*;
-    use crate::ByteWriter;
+    use crate::{ByteWriter, Serializable};
 
     #[test]
     fn read_adapter_empty() -> Result<(), DeserializationError> {
@@ -761,9 +763,6 @@ mod tests {
             buf.write_usize(0xfeed);
             buf.write_u16(0x5);
 
-            let arr = vec![10u8; 10000];
-            buf.write(&arr);
-
             std::fs::write(&path, &buf).unwrap();
         }
 
@@ -776,10 +775,115 @@ mod tests {
         assert_eq!(reader.read_u32().unwrap(), 0xbeef);
         assert_eq!(reader.read_usize().unwrap(), 0xfeed);
         assert_eq!(reader.read_u16().unwrap(), 0x5);
-
-        assert_eq!(reader.read_usize().unwrap(), 10000);
-        assert_eq!(reader.read_array::<10000usize>().unwrap(), [10u8; 10000]);
-
         assert!(!reader.has_more_bytes(), "expected there to be no more data in the input");
+    }
+
+
+    #[test]
+    #[ignore]
+    fn my_test() {
+        use std::{fs::File, path::Path};
+
+        let path = Path::new("/Users/andrey/Desktop/Winterfell_fork/winterfell/utils/core/src/serde/test.bin");
+        {
+            let mut buf = Vec::new();
+            let vec = vec![7u32; 1000];
+            vec.write_into(&mut buf);
+
+            std::fs::write(&path, &buf).unwrap();
+        }
+
+
+        let mut file = File::open(&path).unwrap();
+        let mut source = ReadAdapter::new(&mut file);
+
+        // pub const SERIALIZED: &'static [u8] =
+        //     include_bytes!("/Users/andrey/Desktop/Winterfell_fork/winterfell/utils/core/src/serde/test.bin");
+        // let mut source = SliceReader::new(SERIALIZED);
+
+        let _vec: Vec<u32> = Deserializable::read_from(&mut source).unwrap();
+    }
+
+    #[test]
+    #[ignore]
+    fn stdlib_deser() {
+        use std::{fs::File, path::Path};
+
+        // let path = std::env::temp_dir().join("read_adapter_for_file.bin");
+
+        let path = Path::new("/Users/andrey/Desktop/Winterfell_fork/winterfell/utils/core/src/serde/std.masl");
+
+        // Encode some data to a buffer, then write that buffer to a file
+        // {
+        //     let mut buf = Vec::<u8>::with_capacity(256);
+        //     buf.write_bytes(b"MAGIC\0");
+        //     buf.write_bool(true);
+        //     buf.write_u32(0xbeef);
+        //     buf.write_usize(0xfeed);
+        //     buf.write_u16(0x5);
+
+        //     buf.write_usize(5);
+        //     let arr = [10u8; 5];
+        //     buf.write(arr);
+
+        //     let arr = vec![10u8; 10000];
+        //     buf.write(&arr);
+
+        //     // std::println!("{:?}", buf);
+
+        //     std::fs::write(&path, &buf).unwrap();
+        // }
+
+        // Open the file, and try to decode the encoded items
+        let mut file = File::open(&path).unwrap();
+        let mut source = ReadAdapter::new(&mut file);
+
+        // pub const SERIALIZED: &'static [u8] =
+        //     include_bytes!("/Users/andrey/Desktop/Winterfell_fork/winterfell/utils/core/src/serde/std.masl");
+        // let mut source = SliceReader::new(SERIALIZED);
+
+        // ------ deser masl forest -------
+
+        // magic
+        let magic: [u8; 5] = source.read_array().unwrap();
+        assert_eq!(&magic, b"MAST\0");
+
+        // version
+        let version: [u8; 3] = source.read_array().unwrap();
+        assert_eq!(version, [0, 0, 0]);
+
+        // node count
+        let node_count = source.read_usize().unwrap();
+        assert_eq!(node_count, 1008);
+
+        // decorator count
+        let decorator_count = source.read_usize().unwrap();
+        assert_eq!(decorator_count, 0);
+
+        // roots
+        // let roots: Vec<u32> = Deserializable::read_from(&mut source).unwrap();
+        let len = source.read_usize().unwrap();
+        std::println!("len: {len}");
+
+        let mut result = Vec::with_capacity(len);
+        for _ in 0..len {
+            let element = u32::read_from(&mut source).unwrap();
+            result.push(element)
+        }
+
+        // assert_eq!(reader.peek_u8().unwrap(), b'M');
+        // assert_eq!(reader.read_slice(6).unwrap(), b"MAGIC\0");
+        // assert!(reader.read_bool().unwrap());
+        // assert_eq!(reader.read_u32().unwrap(), 0xbeef);
+        // assert_eq!(reader.read_usize().unwrap(), 0xfeed);
+        // assert_eq!(reader.read_u16().unwrap(), 0x5);
+
+        // assert_eq!(reader.read_usize().unwrap(), 5);
+        // assert_eq!(reader.read_slice(5).unwrap(), &[10u8; 5]);
+
+        // assert_eq!(reader.read_usize().unwrap(), 10000);
+        // assert_eq!(source.read_array::<10000usize>().unwrap(), [10u8; 10000]);
+
+        // assert!(!reader.has_more_bytes(), "expected there to be no more data in the input");
     }
 }
