@@ -418,6 +418,14 @@ impl<'a> ReadAdapter<'a> {
             unsafe {
                 self.buf.set_len(0);
             }
+            self.pos = 0;
+        }
+
+        // If the internal buffer is empty, but we still have some data on the reader buffer, move 
+        // it to the internal one
+        if self.buffer().is_empty() && !self.reader_buffer().is_empty() {
+            let reader_buffer_len = self.reader_buffer().len();
+            self.buffer_at_least(reader_buffer_len, true)?;
         }
 
         Ok(output)
@@ -794,12 +802,12 @@ mod tests {
         }
 
 
-        let mut file = File::open(&path).unwrap();
-        let mut source = ReadAdapter::new(&mut file);
+        // let mut file = File::open(&path).unwrap();
+        // let mut source = ReadAdapter::new(&mut file);
 
-        // pub const SERIALIZED: &'static [u8] =
-        //     include_bytes!("/Users/andrey/Desktop/Winterfell_fork/winterfell/utils/core/src/serde/test.bin");
-        // let mut source = SliceReader::new(SERIALIZED);
+        pub const SERIALIZED: &'static [u8] =
+            include_bytes!("/Users/andrey/Desktop/Winterfell_fork/winterfell/utils/core/src/serde/test.bin");
+        let mut source = SliceReader::new(SERIALIZED);
 
         let _vec: Vec<u32> = Deserializable::read_from(&mut source).unwrap();
     }
@@ -813,62 +821,74 @@ mod tests {
 
         let path = Path::new("/Users/andrey/Desktop/Winterfell_fork/winterfell/utils/core/src/serde/std.masl");
 
-        // Encode some data to a buffer, then write that buffer to a file
-        // {
-        //     let mut buf = Vec::<u8>::with_capacity(256);
-        //     buf.write_bytes(b"MAGIC\0");
-        //     buf.write_bool(true);
-        //     buf.write_u32(0xbeef);
-        //     buf.write_usize(0xfeed);
-        //     buf.write_u16(0x5);
-
-        //     buf.write_usize(5);
-        //     let arr = [10u8; 5];
-        //     buf.write(arr);
-
-        //     let arr = vec![10u8; 10000];
-        //     buf.write(&arr);
-
-        //     // std::println!("{:?}", buf);
-
-        //     std::fs::write(&path, &buf).unwrap();
-        // }
-
         // Open the file, and try to decode the encoded items
         let mut file = File::open(&path).unwrap();
-        let mut source = ReadAdapter::new(&mut file);
+        let mut read_adapter = ReadAdapter::new(&mut file);
 
-        // pub const SERIALIZED: &'static [u8] =
-        //     include_bytes!("/Users/andrey/Desktop/Winterfell_fork/winterfell/utils/core/src/serde/std.masl");
-        // let mut source = SliceReader::new(SERIALIZED);
+        pub const SERIALIZED: &'static [u8] =
+            include_bytes!("/Users/andrey/Desktop/Winterfell_fork/winterfell/utils/core/src/serde/std.masl");
+        let mut slice_reader = SliceReader::new(SERIALIZED);
 
         // ------ deser masl forest -------
 
         // magic
-        let magic: [u8; 5] = source.read_array().unwrap();
-        assert_eq!(&magic, b"MAST\0");
+        let magic_adapter: [u8; 5] = read_adapter.read_array().unwrap();
+        let magic_slice: [u8; 5] = slice_reader.read_array().unwrap();
+        assert_eq!(&magic_adapter, &magic_slice);
 
         // version
-        let version: [u8; 3] = source.read_array().unwrap();
-        assert_eq!(version, [0, 0, 0]);
+        let version_adapter: [u8; 3] = read_adapter.read_array().unwrap();
+        let version_slice: [u8; 3] = slice_reader.read_array().unwrap();
+        assert_eq!(version_adapter, version_slice);
 
         // node count
-        let node_count = source.read_usize().unwrap();
-        assert_eq!(node_count, 1008);
+        let node_count_adapter = read_adapter.read_usize().unwrap();
+        let node_count_slice = slice_reader.read_usize().unwrap();
+        assert_eq!(node_count_adapter, node_count_slice);
 
         // decorator count
-        let decorator_count = source.read_usize().unwrap();
-        assert_eq!(decorator_count, 0);
+        let decorator_count_adapter = read_adapter.read_usize().unwrap();
+        let decorator_count_slice = slice_reader.read_usize().unwrap();
+        assert_eq!(decorator_count_adapter, decorator_count_slice);
 
         // roots
-        // let roots: Vec<u32> = Deserializable::read_from(&mut source).unwrap();
-        let len = source.read_usize().unwrap();
-        std::println!("len: {len}");
+        let roots_adapter: Vec<u32> = Deserializable::read_from(&mut read_adapter).unwrap();
+        let roots_slice: Vec<u32> = Deserializable::read_from(&mut slice_reader).unwrap();
+        assert_eq!(roots_adapter, roots_slice);
 
-        let mut result = Vec::with_capacity(len);
-        for _ in 0..len {
-            let element = u32::read_from(&mut source).unwrap();
-            result.push(element)
+        // nodes
+        let basic_block_data_adapter: Vec<u8> = Deserializable::read_from(&mut read_adapter).unwrap();
+        let basic_block_data_slice: Vec<u8> = Deserializable::read_from(&mut slice_reader).unwrap();
+        assert_eq!(basic_block_data_adapter, basic_block_data_slice);
+
+        let mut remaining = node_count_slice;
+        loop {
+            if remaining == 0 {
+                break
+            }
+            remaining -= 1;
+            
+            // read mast node type
+            let mast_node_type_adapter = read_adapter.read_u64().unwrap();
+            let mast_node_type_slice = slice_reader.read_u64().unwrap();
+            assert_eq!(mast_node_type_adapter, mast_node_type_slice);
+
+            // read digest
+            let felt_adapter = read_adapter.read_u64().unwrap();
+            let felt_slice = slice_reader.read_u64().unwrap();
+            assert_eq!(felt_adapter, felt_slice);
+
+            let felt_adapter = read_adapter.read_u64().unwrap();
+            let felt_slice = slice_reader.read_u64().unwrap();
+            assert_eq!(felt_adapter, felt_slice);
+
+            let felt_adapter = read_adapter.read_u64().unwrap();
+            let felt_slice = slice_reader.read_u64().unwrap();
+            assert_eq!(felt_adapter, felt_slice);
+
+            let felt_adapter = read_adapter.read_u64().unwrap();
+            let felt_slice = slice_reader.read_u64().unwrap();
+            assert_eq!(felt_adapter, felt_slice);
         }
 
         // assert_eq!(reader.peek_u8().unwrap(), b'M');
@@ -878,11 +898,14 @@ mod tests {
         // assert_eq!(reader.read_usize().unwrap(), 0xfeed);
         // assert_eq!(reader.read_u16().unwrap(), 0x5);
 
-        // assert_eq!(reader.read_usize().unwrap(), 5);
-        // assert_eq!(reader.read_slice(5).unwrap(), &[10u8; 5]);
+        // assert_eq!(reader.read_usize().unwrap(), 500);
+        // assert_eq!(reader.read_slice(5).unwrap(), &[10u32; 5]);
+
+
+        // let vec: Vec<u32> = Deserializable::read_from(&mut reader).unwrap();
 
         // assert_eq!(reader.read_usize().unwrap(), 10000);
-        // assert_eq!(source.read_array::<10000usize>().unwrap(), [10u8; 10000]);
+        // assert_eq!(reader.read_array::<10000usize>().unwrap(), [10u8; 10000]);
 
         // assert!(!reader.has_more_bytes(), "expected there to be no more data in the input");
     }
