@@ -54,7 +54,7 @@ where:
 
 * **sequence length** is the term of the Fibonacci sequence to compute. Currently, this must be a power of 2. The default is 1,048,576 (same as 2<sup>20</sup>).
 
-For example, the following command will generate and very a proof for computing a Fibonacci sequence up to 1024th term.
+For example, the following command will generate and verify a proof for computing a Fibonacci sequence up to 1024th term.
 ```
 ./target/release/winterfell fib -n 1024 
 ```
