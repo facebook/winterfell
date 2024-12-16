@@ -24,7 +24,7 @@ The parameters used to instantiate the functions are:
   - State width: 12 field elements.
   - Capacity size: 4 field elements.
   - Digest size: 4 field elements (can be serialized into 32 bytes).
-  - Number of founds: 7.
+  - Number of rounds: 7.
   - S-Box degree: 7.
   - Target security level: 128-bits.
 * For `RPJive64_256`:
@@ -32,7 +32,7 @@ The parameters used to instantiate the functions are:
   - State width: 8 field elements.
   - Capacity size: 4 field elements.
   - Digest size: 4 field elements (can be serialized into 32 bytes).
-  - Number of founds: 7.
+  - Number of rounds: 7.
   - S-Box degree: 7.
   - Target security level: 128-bits.
 * For `RP62_248`:
@@ -40,7 +40,7 @@ The parameters used to instantiate the functions are:
   - State width: 12 field elements.
   - Capacity size: 4 field elements.
   - Digest size: 4 field elements (can be serialized into 31 bytes).
-  - Number of founds: 7.
+  - Number of rounds: 7.
   - S-Box degree: 3.
   - Target security level: 124-bits.
 
