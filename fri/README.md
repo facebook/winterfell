@@ -16,7 +16,7 @@ FRI proofs are verified by a [FriVerifier](src/verifier/mod.rs) as follows:
 3. Finally, the query phase of the FRI protocol should be executed via `verify()` function. Note that query values at the first FRI layer are provided to the `verify()` function directly. The values at remaining layers, the verifier reads from the specified verifier channel.
 
 ## Protocol parameters
-This crates supports executing FRI protocol with dynamically configurable parameters including:
+This crate supports executing FRI protocol with dynamically configurable parameters including:
 
 * Base STARK field,
 * Extension field,
