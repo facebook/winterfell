@@ -2,7 +2,7 @@
 This crate contains modules with mathematical operations needed in STARK proof generation and verification.
 
 ## Finite field
-[Finite field](src/field) module implements arithmetic operations in STARK-friendly finite fields. The operation include:
+[Finite field](src/field) module implements arithmetic operations in STARK-friendly finite fields. The operations include:
 
 * Basic arithmetic operations: addition, multiplication, subtraction, division, inversion.
 * Drawing random and pseudo-random elements from the field.
