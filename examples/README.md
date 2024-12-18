@@ -8,7 +8,7 @@ First, compile an optimized version of the `winterfell` binary by running:
 ```
 cargo build --release
 ```
-Or, if you want to compile the with multi-threaded support enabled, run:
+Or, if you want to compile it with multi-threaded support enabled, run:
 ```
 cargo build --release --manifest-path examples/Cargo.toml --features concurrent
 ```
