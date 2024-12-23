@@ -39,7 +39,7 @@ async fn hello_world() {
 
 ## maybe_await
 
-To compliment `maybe_async` we also have the `maybe_await` procedural macro that conditionally adds the `.await` keyword to the end of an expression depending on the `async` feature flag.
+To complement `maybe_async` we also have the `maybe_await` procedural macro that conditionally adds the `.await` keyword to the end of an expression depending on the `async` feature flag.
 
 ```rust
 #[maybe_async]
