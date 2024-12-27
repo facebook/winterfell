@@ -32,13 +32,14 @@
 extern crate alloc;
 
 use alloc::{string::ToString, vec::Vec};
+use core::cmp;
 
+use air::{proof::ConjecturedSecurityBits, AuxRandElements, GkrVerifier};
 pub use air::{
     proof::Proof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
     ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
     EvaluationFrame, FieldExtension, ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
-use air::{AuxRandElements, GkrVerifier};
 pub use crypto;
 use crypto::{ElementHasher, Hasher, RandomCoin, VectorCommitment};
 use fri::FriVerifier;
@@ -359,7 +360,8 @@ impl AcceptableOptions {
     pub fn validate<H: Hasher>(&self, proof: &Proof) -> Result<(), VerifierError> {
         match self {
             AcceptableOptions::MinConjecturedSecurity(minimal_security) => {
-                let proof_security = proof.security_level::<H>(true);
+                let ConjecturedSecurityBits(proof_security) =
+                    proof.security_level_conjectured::<H>();
                 if proof_security < *minimal_security {
                     return Err(VerifierError::InsufficientConjecturedSecurity(
                         *minimal_security,
@@ -368,11 +370,16 @@ impl AcceptableOptions {
                 }
             },
             AcceptableOptions::MinProvenSecurity(minimal_security) => {
-                let proof_security = proof.security_level::<H>(false);
-                if proof_security < *minimal_security {
+                let proven_security = proof.security_level_proven::<H>();
+                if proven_security.list_decoding() < *minimal_security
+                    && proven_security.unique_decoding() < *minimal_security
+                {
                     return Err(VerifierError::InsufficientProvenSecurity(
                         *minimal_security,
-                        proof_security,
+                        cmp::max(
+                            proven_security.list_decoding(),
+                            proven_security.unique_decoding(),
+                        ),
                     ));
                 }
             },

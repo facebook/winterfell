@@ -7,7 +7,8 @@ use structopt::StructOpt;
 use winterfell::{
     crypto::hashers::{Rp64_256, RpJive64_256},
     math::fields::f128::BaseElement,
-    FieldExtension, Proof, ProofOptions, VerifierError,
+    ConjecturedSecurityBits, FieldExtension, Proof, ProofOptions, ProvenSecurityBits,
+    VerifierError,
 };
 
 pub mod fibonacci;
@@ -104,18 +105,32 @@ impl ExampleOptions {
         )
     }
 
-    /// Returns security level of the input proof in bits.
-    pub fn get_proof_security_level(&self, proof: &Proof, conjectured: bool) -> usize {
+    /// Returns the conjectured security level of the input proof in bits.
+    pub fn get_proof_security_level_conjectured(&self, proof: &Proof) -> ConjecturedSecurityBits {
         let security_level = match self.hash_fn.as_str() {
-            "blake3_192" => proof.security_level::<Blake3_192>(conjectured),
-            "blake3_256" => proof.security_level::<Blake3_256>(conjectured),
-            "sha3_256" => proof.security_level::<Sha3_256>(conjectured),
-            "rp64_256" => proof.security_level::<Rp64_256>(conjectured),
-            "rp_jive64_256" => proof.security_level::<RpJive64_256>(conjectured),
+            "blake3_192" => proof.security_level_conjectured::<Blake3_192>(),
+            "blake3_256" => proof.security_level_conjectured::<Blake3_256>(),
+            "sha3_256" => proof.security_level_conjectured::<Sha3_256>(),
+            "rp64_256" => proof.security_level_conjectured::<Rp64_256>(),
+            "rp_jive64_256" => proof.security_level_conjectured::<RpJive64_256>(),
             val => panic!("'{val}' is not a valid hash function option"),
         };
 
-        security_level as usize
+        security_level
+    }
+
+    /// Returns the proven security level of the input proof in bits.
+    pub fn get_proof_security_level_proven(&self, proof: &Proof) -> ProvenSecurityBits {
+        let security_level = match self.hash_fn.as_str() {
+            "blake3_192" => proof.security_level_proven::<Blake3_192>(),
+            "blake3_256" => proof.security_level_proven::<Blake3_256>(),
+            "sha3_256" => proof.security_level_proven::<Sha3_256>(),
+            "rp64_256" => proof.security_level_proven::<Rp64_256>(),
+            "rp_jive64_256" => proof.security_level_proven::<RpJive64_256>(),
+            val => panic!("'{val}' is not a valid hash function option"),
+        };
+
+        security_level
     }
 }
 

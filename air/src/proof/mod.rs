@@ -99,28 +99,28 @@ impl Proof {
 
     // SECURITY LEVEL
     // --------------------------------------------------------------------------------------------
-    /// Returns security level of this proof (in bits).
+    /// Returns security level of this proof (in bits) using conjectured security.
     ///
-    /// When `conjectured` is true, conjectured security level is returned; otherwise, provable
-    /// security level is returned. Usually, the number of queries needed for provable security is
-    /// 2x - 3x higher than the number of queries needed for conjectured security at the same
-    /// security level.
-    pub fn security_level<H: Hasher>(&self, conjectured: bool) -> u32 {
-        if conjectured {
-            get_conjectured_security(
-                self.context.options(),
-                self.context.num_modulus_bits(),
-                self.trace_info().length(),
-                H::COLLISION_RESISTANCE,
-            )
-        } else {
-            get_proven_security(
-                self.context.options(),
-                self.context.num_modulus_bits(),
-                self.trace_info().length(),
-                H::COLLISION_RESISTANCE,
-            )
-        }
+    /// This is Conjecture 1 in https://eprint.iacr.org/2021/582.
+    pub fn security_level_conjectured<H: Hasher>(&self) -> ConjecturedSecurityBits {
+        get_conjectured_security(
+            self.context.options(),
+            self.context.num_modulus_bits(),
+            self.trace_info().length(),
+            H::COLLISION_RESISTANCE,
+        )
+    }
+    /// Returns security level of this proof (in bits) using proven security.
+    ///
+    /// Usually, the number of queries needed for provable security is 2x - 3x higher than
+    /// the number of queries needed for conjectured security at the same security level.
+    pub fn security_level_proven<H: Hasher>(&self) -> ProvenSecurityBits {
+        get_proven_security(
+            self.context.options(),
+            self.context.num_modulus_bits(),
+            self.trace_info().length(),
+            H::COLLISION_RESISTANCE,
+        )
     }
 
     // SERIALIZATION / DESERIALIZATION
@@ -212,13 +212,30 @@ impl Deserializable for Proof {
 // HELPER FUNCTIONS
 // ================================================================================================
 
+pub struct ConjecturedSecurityBits(pub u32);
+
+pub struct ProvenSecurityBits {
+    unique_decoding: u32,
+    list_decoding: u32,
+}
+
+impl ProvenSecurityBits {
+    pub fn list_decoding(&self) -> u32 {
+        self.list_decoding
+    }
+
+    pub fn unique_decoding(&self) -> u32 {
+        self.unique_decoding
+    }
+}
+
 /// Computes conjectured security level for the specified proof parameters.
 fn get_conjectured_security(
     options: &ProofOptions,
     base_field_bits: u32,
     trace_domain_size: usize,
     collision_resistance: u32,
-) -> u32 {
+) -> ConjecturedSecurityBits {
     // compute max security we can get for a given field size
     let field_size = base_field_bits * options.field_extension().degree();
     let field_security = field_size - (trace_domain_size * options.blowup_factor()).ilog2();
@@ -232,7 +249,10 @@ fn get_conjectured_security(
         query_security += options.grinding_factor();
     }
 
-    cmp::min(cmp::min(field_security, query_security) - 1, collision_resistance)
+    ConjecturedSecurityBits(cmp::min(
+        cmp::min(field_security, query_security) - 1,
+        collision_resistance,
+    ))
 }
 
 /// Estimates proven security level for the specified proof parameters.
@@ -241,7 +261,7 @@ fn get_proven_security(
     base_field_bits: u32,
     trace_domain_size: usize,
     collision_resistance: u32,
-) -> u32 {
+) -> ProvenSecurityBits {
     let m_min: usize = 3;
     let m_max = compute_upper_m(trace_domain_size);
 
@@ -258,7 +278,7 @@ fn get_proven_security(
             "Should not fail since m_max is larger than m_min for all trace sizes of length greater than 4",
         );
 
-    cmp::min(
+    let list_decoding = cmp::min(
         proven_security_protocol_for_m(
             options,
             base_field_bits,
@@ -266,7 +286,14 @@ fn get_proven_security(
             m_optimal as usize,
         ),
         collision_resistance as u64,
-    ) as u32
+    ) as u32;
+
+    let unique_decoding = cmp::min(
+        proven_security_protocol_unique_decoding(options, base_field_bits, trace_domain_size),
+        collision_resistance as u64,
+    ) as u32;
+
+    ProvenSecurityBits { unique_decoding, list_decoding }
 }
 
 /// Computes proven security level for the specified proof parameters for a fixed
@@ -282,78 +309,116 @@ fn proven_security_protocol_for_m(
     let m = m as f64;
     let rho = 1.0 / options.blowup_factor() as f64;
     let alpha = (1.0 + 0.5 / m) * sqrt(rho);
+    // we use the blowup factor in order to bound the max degree
     let max_deg = options.blowup_factor() as f64 + 1.0;
-
-    // To apply Theorem 8 in https://eprint.iacr.org/2022/1216.pdf, we need to apply FRI with
-    // a slightly larger agreement parameter alpha.
-    // More concretely, we need alpha > rho_plus.sqrt() where rho_plus is the rate in function field
-    // F(Z) and defined as (trace_domain_size + 2.0) / lde_domain_size .
-    // This means that the range of m needs to be restricted in order to ensure that
-    // alpha := 1 - theta := rho.sqrt() * (1 + 1/2m) is greater than rho_plus.sqrt().
-    // Determining the range of m is the responsibility of the calling function.
-    // Now, once m is fixed, we need to make sure that we choose an m_plus such that
-    // alpha <= rho_plus.sqrt() * (1 + 1/2m_plus). This m_plus will be used to define
-    // the list-decoding list size in F(Z).
-
-    // Modified rate in function field F(Z)
     let lde_domain_size = (trace_domain_size * options.blowup_factor()) as f64;
     let trace_domain_size = trace_domain_size as f64;
     let num_openings = 2.0;
-    let rho_plus = (trace_domain_size + num_openings) / lde_domain_size;
 
-    // New proximity parameter m_plus, corresponding to rho_plus, needed to make sure that
-    //  alpha < rho_plus.sqrt() * (1 + 1 / (2 * m_plus))
-    let m_plus = ceil(1.0 / (2.0 * (alpha / sqrt(rho_plus) - 1.0)));
-    let alpha_plus = (1.0 + 0.5 / m_plus) * sqrt(rho_plus);
-    let theta_plus = 1.0 - alpha_plus;
-
-    // Computes FRI commit-phase (i.e., pre-query) soundness error.
-    // This considers only the first term given in eq. 7 in https://eprint.iacr.org/2022/1216.pdf,
-    // i.e. 0.5 * (m + 0.5)^7 * n^2 / (rho^1.5.q) as all other terms are negligible in comparison.
-    let fri_commit_err_bits = extension_field_bits
-        - log2((0.5 * powf(m + 0.5, 7.0) / powf(rho, 1.5)) * powf(lde_domain_size, 2.0));
-
-    // Compute FRI query-phase soundness error
-    let fri_queries_err_bits =
-        options.grinding_factor() as f64 - log2(powf(1.0 - theta_plus, num_fri_queries));
-
-    // Combined error for FRI
-    let fri_err_bits = cmp::min(fri_commit_err_bits as u64, fri_queries_err_bits as u64);
-    if fri_err_bits < 1 {
-        return 0;
-    }
-    let fri_err_bits = fri_err_bits - 1;
+    // we apply Theorem 2 in https://eprint.iacr.org/2024/1553, which is based on Theorem 8 in
+    // https://eprint.iacr.org/2022/1216.pdf and Theorem 5 in https://eprint.iacr.org/2021/582
+    // Note that the range of m needs to be restricted in order to ensure that eta, the slackness
+    // factor to the distance bound, is greater than 0.
+    // Determining the range of m is the responsibility of the calling function.
+    let mut epsilons_bits_neg = vec![];
 
     // List size
-    let l_plus = (2.0 * m_plus + 1.0) / (2.0 * sqrt(rho_plus));
+    let l = m / (rho - (2.0 * m / lde_domain_size));
 
     // ALI related soundness error. Note that C here is equal to 1 because of our use of
-    // linear batching.
-    let ali_err_bits = -log2(l_plus) + extension_field_bits;
+    // linear batching
+    let epsilon_1_bits_neg = -log2(l) + extension_field_bits;
+    epsilons_bits_neg.push(epsilon_1_bits_neg);
 
     // DEEP related soundness error. Note that this uses that the denominator |F| - |D ∪ H|
     // can be approximated by |F| for all practical domain sizes. We also use the blow-up factor
     // as an upper bound for the maximal constraint degree.
-    let deep_err_bits = -log2(
-        l_plus * (max_deg * (trace_domain_size + num_openings - 1.0) + (trace_domain_size - 1.0)),
+    let epsilon_2_bits_neg = -log2(
+        l * l * (max_deg * (trace_domain_size + num_openings - 1.0) + (trace_domain_size - 1.0)),
     ) + extension_field_bits;
+    epsilons_bits_neg.push(epsilon_2_bits_neg);
 
-    let min = cmp::min(cmp::min(fri_err_bits, ali_err_bits as u64), deep_err_bits as u64);
-    if min < 1 {
-        return 0;
-    }
+    // Computes FRI commit-phase (i.e., pre-query) soundness error.
+    // This considers only the first term given in eq. 7 in https://eprint.iacr.org/2022/1216.pdf,
+    // i.e. 0.5 * (m + 0.5)^7 * n^2 / (rho^1.5.q) as all other terms are negligible in comparison.
+    let epsilon_3_bits_neg = extension_field_bits
+        - log2((0.5 * powf(m + 0.5, 7.0) / powf(rho, 1.5)) * powf(lde_domain_size, 2.0));
+    epsilons_bits_neg.push(epsilon_3_bits_neg);
 
-    min - 1
+    // epsilon_i for i in [3..(k-1)], where k is number of rounds, are also negligible
+
+    // Compute FRI query-phase soundness error
+    let epsilon_k_bits_neg = options.grinding_factor() as f64 - log2(powf(alpha, num_fri_queries));
+    epsilons_bits_neg.push(epsilon_k_bits_neg);
+
+    // return the round-by-round (RbR) soundness error
+    epsilons_bits_neg.into_iter().fold(f64::INFINITY, |a, b| a.min(b)) as u64
+}
+
+/// Computes proven security level for the specified proof parameters in the unique-decoding regime.
+fn proven_security_protocol_unique_decoding(
+    options: &ProofOptions,
+    base_field_bits: u32,
+    trace_domain_size: usize,
+) -> u64 {
+    let extension_field_bits = (base_field_bits * options.field_extension().degree()) as f64;
+    let num_fri_queries = options.num_queries() as f64;
+    let lde_domain_size = (trace_domain_size * options.blowup_factor()) as f64;
+    let trace_domain_size = trace_domain_size as f64;
+    let num_openings = 2.0;
+    let rho_plus = (trace_domain_size + num_openings) / lde_domain_size;
+    let alpha = (1.0 + rho_plus) * 0.5;
+    // we use the blowup factor in order to bound the max degree
+    let max_deg = options.blowup_factor() as f64 + 1.0;
+
+    // we apply Theorem 3 in https://eprint.iacr.org/2024/1553
+    let mut epsilons_bits_neg = vec![];
+
+    // ALI related soundness error
+    let epsilon_1_bits_neg = extension_field_bits;
+    epsilons_bits_neg.push(epsilon_1_bits_neg);
+
+    // DEEP related soundness error. Note that this uses that the denominator |F| - |D ∪ H|
+    // can be approximated by |F| for all practical domain sizes. We also use the blow-up factor
+    // as an upper bound for the maximal constraint degree
+    let epsilon_2_bits_neg =
+        -log2(max_deg * (trace_domain_size + num_openings - 1.0) + (trace_domain_size - 1.0))
+            + extension_field_bits;
+    epsilons_bits_neg.push(epsilon_2_bits_neg);
+
+    // Computes FRI commit-phase (i.e., pre-query) soundness error
+    let epsilon_3_bits_neg = extension_field_bits - log2(lde_domain_size);
+    epsilons_bits_neg.push(epsilon_3_bits_neg);
+
+    // epsilon_i for i in [3..(k-1)], where k is number of rounds
+    let folding_factor = options.to_fri_options().folding_factor() as f64;
+    let num_fri_layers = options.to_fri_options().num_fri_layers(lde_domain_size as usize);
+    let epsilon_i_min_bits_neg = (0..num_fri_layers)
+        .map(|_| extension_field_bits - log2((folding_factor - 1.0) * (lde_domain_size + 1.0)))
+        .fold(f64::INFINITY, |a, b| a.min(b));
+    epsilons_bits_neg.push(epsilon_i_min_bits_neg);
+
+    // Compute FRI query-phase soundness error
+    let epsilon_k_bits_neg = options.grinding_factor() as f64 - log2(powf(alpha, num_fri_queries));
+    epsilons_bits_neg.push(epsilon_k_bits_neg);
+
+    // return the round-by-round (RbR) soundness error
+    epsilons_bits_neg.into_iter().fold(f64::INFINITY, |a, b| a.min(b)) as u64
 }
 
 // HELPER FUNCTIONS
 // ================================================================================================
 
-/// Computes the largest proximity parameter m needed for Theorem 8
-/// in <https://eprint.iacr.org/2022/1216.pdf> to work.
+/// Computes the largest proximity parameter m such that eta is greater than 0 in Theorem 1 in
+/// https://eprint.iacr.org/2021/582.
+///
+/// The bound on m in Theorem 2 in https://eprint.iacr.org/2024/1553 is sufficient but we can use
+/// the following to compute a better bound.
 fn compute_upper_m(h: usize) -> f64 {
     let h = h as f64;
-    let m_max = ceil(0.25 * h * (1.0 + sqrt(1.0 + 2.0 / h)));
+    let ratio = (h + 2.0) / h;
+    let m_max = ceil(1.0 / (2.0 * (sqrt(ratio) - 1.0)));
+    assert!(m_max >= h / 2.0, "the bound in the theorem should be tighter");
 
     // We cap the range to 1000 as the optimal m value will be in the lower range of [m_min, m_max]
     // since increasing m too much will lead to a deterioration in the FRI commit soundness making
@@ -406,7 +471,193 @@ mod prove_security_tests {
     use math::{fields::f64::BaseElement, StarkField};
 
     use super::ProofOptions;
-    use crate::{proof::get_proven_security, FieldExtension};
+    use crate::{
+        proof::{get_proven_security, ProvenSecurityBits},
+        FieldExtension,
+    };
+
+    #[test]
+    fn get_100_bits_security() {
+        let field_extension = FieldExtension::Quadratic;
+        let base_field_bits = BaseElement::MODULUS_BITS;
+        let fri_folding_factor = 2;
+        let fri_remainder_max_degree = 127;
+        let grinding_factor = 20;
+        let blowup_factor = 4;
+        let num_queries = 119;
+        let collision_resistance = 128;
+        let trace_length = 2_usize.pow(20);
+
+        let mut options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+        );
+        let ProvenSecurityBits { unique_decoding, list_decoding } =
+            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
+
+        assert_eq!(unique_decoding, 100);
+        assert_eq!(list_decoding, 69);
+
+        // increasing the queries does not help the LDR case
+        let num_queries = 150;
+
+        options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+        );
+        let ProvenSecurityBits { unique_decoding: _, list_decoding } =
+            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
+
+        assert_eq!(list_decoding, 69);
+
+        // increasing the extension degree does help and we then need fewer queries by virtue
+        // of being in LDR
+        let field_extension = FieldExtension::Cubic;
+        let num_queries = 81;
+
+        options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+        );
+        let ProvenSecurityBits { unique_decoding: _, list_decoding } =
+            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
+
+        assert_eq!(list_decoding, 100);
+    }
+
+    #[test]
+    fn unique_decoding_folding_factor_effect() {
+        let field_extension = FieldExtension::Quadratic;
+        let base_field_bits = BaseElement::MODULUS_BITS;
+        let fri_folding_factor = 2;
+        let fri_remainder_max_degree = 7;
+        let grinding_factor = 16;
+        let blowup_factor = 8;
+        let num_queries = 123;
+        let collision_resistance = 128;
+        let trace_length = 2_usize.pow(8);
+
+        let mut options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+        );
+        let ProvenSecurityBits { unique_decoding, list_decoding: _ } =
+            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
+
+        assert_eq!(unique_decoding, 116);
+
+        let fri_folding_factor = 4;
+        options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+        );
+        let ProvenSecurityBits { unique_decoding, list_decoding: _ } =
+            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
+
+        assert_eq!(unique_decoding, 115);
+    }
+
+    #[test]
+    fn unique_versus_list_decoding_rate_effect() {
+        let field_extension = FieldExtension::Quadratic;
+        let base_field_bits = BaseElement::MODULUS_BITS;
+        let fri_folding_factor = 2;
+        let fri_remainder_max_degree = 7;
+        let grinding_factor = 20;
+        let blowup_factor = 2;
+        let num_queries = 195;
+        let collision_resistance = 128;
+        let trace_length = 2_usize.pow(8);
+
+        let mut options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+        );
+        let ProvenSecurityBits { unique_decoding, list_decoding: _ } =
+            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
+
+        assert_eq!(unique_decoding, 100);
+
+        // when the rate is large, going to a larger extension field in order to make full use of
+        // being in the LDR might not always be justified
+
+        // we increase the extension degree
+        let field_extension = FieldExtension::Cubic;
+        // and we reduce the number of required queries to reach the target level, but this is
+        // a relatively small, approximately 16%, reduction
+        let num_queries = 163;
+        options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+        );
+        let ProvenSecurityBits { unique_decoding: _, list_decoding } =
+            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
+
+        assert_eq!(list_decoding, 100);
+
+        // reducing the rate further changes things
+        let field_extension = FieldExtension::Quadratic;
+        let blowup_factor = 4;
+        let num_queries = 119;
+
+        options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+        );
+        let ProvenSecurityBits { unique_decoding, list_decoding: _ } =
+            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
+
+        assert_eq!(unique_decoding, 100);
+
+        // the improvement is now at approximately 32%
+        let field_extension = FieldExtension::Cubic;
+        let num_queries = 81;
+
+        options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+        );
+        let ProvenSecurityBits { unique_decoding: _, list_decoding } =
+            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
+
+        assert_eq!(list_decoding, 100);
+    }
 
     #[test]
     fn get_96_bits_security() {
@@ -428,10 +679,10 @@ mod prove_security_tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
         );
-        let security_1 =
+        let ProvenSecurityBits { unique_decoding: _, list_decoding } =
             get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
 
-        assert_eq!(security_1, 97);
+        assert_eq!(list_decoding, 99);
 
         // increasing the blowup factor should increase the bits of security gained per query
         let blowup_factor = 8;
@@ -445,10 +696,10 @@ mod prove_security_tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
         );
-        let security_2 =
+        let ProvenSecurityBits { unique_decoding: _, list_decoding } =
             get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
 
-        assert_eq!(security_2, 97);
+        assert_eq!(list_decoding, 99);
     }
 
     #[test]
@@ -471,10 +722,10 @@ mod prove_security_tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
         );
-        let security_1 =
+        let ProvenSecurityBits { unique_decoding: _, list_decoding } =
             get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
 
-        assert_eq!(security_1, 128);
+        assert_eq!(list_decoding, 128);
 
         // increasing the blowup factor should increase the bits of security gained per query
         let blowup_factor = 16;
@@ -488,10 +739,10 @@ mod prove_security_tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
         );
-        let security_2 =
+        let ProvenSecurityBits { unique_decoding: _, list_decoding } =
             get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
 
-        assert_eq!(security_2, 128);
+        assert_eq!(list_decoding, 128);
     }
 
     #[test]
@@ -514,10 +765,10 @@ mod prove_security_tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
         );
-        let security_1 =
+        let ProvenSecurityBits { unique_decoding: _, list_decoding } =
             get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
 
-        assert_eq!(security_1, 67);
+        assert_eq!(list_decoding, 69);
 
         // increasing the extension degree improves the FRI commit phase soundness error and permits
         // reaching 128 bits security
@@ -531,10 +782,10 @@ mod prove_security_tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
         );
-        let security_2 =
+        let ProvenSecurityBits { unique_decoding: _, list_decoding } =
             get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
 
-        assert_eq!(security_2, 128);
+        assert_eq!(list_decoding, 128);
     }
 
     #[test]
@@ -557,8 +808,10 @@ mod prove_security_tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
         );
-        let security_1 =
-            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
+        let ProvenSecurityBits {
+            unique_decoding: _,
+            list_decoding: security_1,
+        } = get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
 
         let trace_length = 2_usize.pow(16);
 
@@ -570,8 +823,10 @@ mod prove_security_tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
         );
-        let security_2 =
-            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
+        let ProvenSecurityBits {
+            unique_decoding: _,
+            list_decoding: security_2,
+        } = get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
 
         assert!(security_1 < security_2);
     }
@@ -596,8 +851,10 @@ mod prove_security_tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
         );
-        let security_1 =
-            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
+        let ProvenSecurityBits {
+            unique_decoding: _,
+            list_decoding: security_1,
+        } = get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
 
         let num_queries = 80;
 
@@ -609,8 +866,10 @@ mod prove_security_tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
         );
-        let security_2 =
-            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
+        let ProvenSecurityBits {
+            unique_decoding: _,
+            list_decoding: security_2,
+        } = get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
 
         assert!(security_1 < security_2);
     }
@@ -635,8 +894,10 @@ mod prove_security_tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
         );
-        let security_1 =
-            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
+        let ProvenSecurityBits {
+            unique_decoding: _,
+            list_decoding: security_1,
+        } = get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
 
         let blowup_factor = 16;
 
@@ -648,8 +909,10 @@ mod prove_security_tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
         );
-        let security_2 =
-            get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
+        let ProvenSecurityBits {
+            unique_decoding: _,
+            list_decoding: security_2,
+        } = get_proven_security(&options, base_field_bits, trace_length, collision_resistance);
 
         assert!(security_1 < security_2);
     }

@@ -92,15 +92,23 @@ fn main() {
 
     let proof_bytes = proof.to_bytes();
     println!("Proof size: {:.1} KB", proof_bytes.len() as f64 / 1024f64);
-    let conjectured_security_level = options.get_proof_security_level(&proof, true);
+    let conjectured_security_level = options.get_proof_security_level_conjectured(&proof);
 
     #[cfg(feature = "std")]
     {
-        let proven_security_level = options.get_proof_security_level(&proof, false);
-        println!(
-            "Proof security: {} bits ({} proven)",
-            conjectured_security_level, proven_security_level,
+        let proven_security_level = options.get_proof_security_level_proven(&proof);
+        let output_string = format!(
+            r#"Proof security:
+        * Conjectured: {} bits
+        * Proven:
+            * List decoding regime: {} bits
+            * Unique decoding regime: {} bits
+        "#,
+            conjectured_security_level.0,
+            proven_security_level.list_decoding(),
+            proven_security_level.unique_decoding()
         );
+        println!("{}", output_string);
     }
 
     #[cfg(not(feature = "std"))]
