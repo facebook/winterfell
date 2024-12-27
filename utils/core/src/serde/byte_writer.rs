@@ -85,7 +85,7 @@ pub trait ByteWriter: Sized {
             self.write_u8(0);
             self.write(value.to_le_bytes());
         } else {
-            let encoded_bytes = ((value << 1 | 1) << (length - 1)).to_le_bytes();
+            let encoded_bytes = (((value << 1) | 1) << (length - 1)).to_le_bytes();
             self.write_bytes(&encoded_bytes[..length]);
         }
     }
