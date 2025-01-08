@@ -101,7 +101,8 @@ impl Proof {
     // --------------------------------------------------------------------------------------------
     /// Returns security level of this proof (in bits) using conjectured security.
     ///
-    /// This is Conjecture 1 in https://eprint.iacr.org/2021/582.
+    /// This is the conjecture on the security of the Toy problem (Conjecture 1)
+    /// in https://eprint.iacr.org/2021/582.
     pub fn security_level_conjectured<H: Hasher>(&self) -> ConjecturedSecurityBits {
         get_conjectured_security(
             self.context.options(),
@@ -262,9 +263,16 @@ fn get_proven_security(
     trace_domain_size: usize,
     collision_resistance: u32,
 ) -> ProvenSecurityBits {
+    let unique_decoding = cmp::min(
+        proven_security_protocol_unique_decoding(options, base_field_bits, trace_domain_size),
+        collision_resistance as u64,
+    ) as u32;
+
+    // determine the interval to which the which the optimal `m` belongs
     let m_min: usize = 3;
     let m_max = compute_upper_m(trace_domain_size);
 
+    // search for optimal `m` i.e., the one at which we maximize the number of security bits
     let m_optimal = (m_min as u32..m_max as u32)
         .max_by_key(|&a| {
             proven_security_protocol_for_m(
@@ -285,11 +293,6 @@ fn get_proven_security(
             trace_domain_size,
             m_optimal as usize,
         ),
-        collision_resistance as u64,
-    ) as u32;
-
-    let unique_decoding = cmp::min(
-        proven_security_protocol_unique_decoding(options, base_field_bits, trace_domain_size),
         collision_resistance as u64,
     ) as u32;
 
@@ -409,8 +412,9 @@ fn proven_security_protocol_unique_decoding(
 // HELPER FUNCTIONS
 // ================================================================================================
 
-/// Computes the largest proximity parameter m such that eta is greater than 0 in Theorem 1 in
-/// https://eprint.iacr.org/2021/582.
+/// Computes the largest proximity parameter m such that eta is greater than 0 in the proof of
+/// Theorem 1 in https://eprint.iacr.org/2021/582. See Theorem 2 in https://eprint.iacr.org/2024/1553
+/// and its proof for more on this point.
 ///
 /// The bound on m in Theorem 2 in https://eprint.iacr.org/2024/1553 is sufficient but we can use
 /// the following to compute a better bound.
