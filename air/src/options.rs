@@ -92,6 +92,7 @@ pub struct ProofOptions {
     fri_folding_factor: u8,
     fri_remainder_max_degree: u8,
     partition_options: PartitionOptions,
+    batching_deep: BatchingOptions,
 }
 
 // PROOF OPTIONS IMPLEMENTATION
@@ -125,6 +126,7 @@ impl ProofOptions {
         field_extension: FieldExtension,
         fri_folding_factor: usize,
         fri_remainder_max_degree: usize,
+        batching_deep: BatchingOptions,
     ) -> ProofOptions {
         // TODO: return errors instead of panicking
         assert!(num_queries > 0, "number of queries must be greater than 0");
@@ -166,6 +168,7 @@ impl ProofOptions {
             fri_folding_factor: fri_folding_factor as u8,
             fri_remainder_max_degree: fri_remainder_max_degree as u8,
             partition_options: PartitionOptions::new(1, 1),
+            batching_deep,
         }
     }
 
@@ -275,6 +278,7 @@ impl Serializable for ProofOptions {
         target.write_u8(self.fri_remainder_max_degree);
         target.write_u8(self.partition_options.num_partitions);
         target.write_u8(self.partition_options.hash_rate);
+        target.write_u8(self.batching_deep as u8);
     }
 }
 
@@ -291,6 +295,10 @@ impl Deserializable for ProofOptions {
             FieldExtension::read_from(source)?,
             source.read_u8()? as usize,
             source.read_u8()? as usize,
+            match source.read_u8()? {
+                0 => BatchingOptions::Linear,
+                _ => BatchingOptions::Algebraic,
+            }
         );
         Ok(result.with_partitions(source.read_u8()? as usize, source.read_u8()? as usize))
     }
@@ -406,12 +414,24 @@ impl Default for PartitionOptions {
     }
 }
 
+// BATCHING OPTION
+// ================================================================================================
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum BatchingOptions{
+    Linear = 0,
+    Algebraic = 1,
+}
+
 // TESTS
 // ================================================================================================
 
 #[cfg(test)]
 mod tests {
     use math::fields::{f64::BaseElement, CubeExtension};
+
+    use crate::options::BatchingOptions;
 
     use super::{FieldExtension, PartitionOptions, ProofOptions, ToElements};
 
@@ -444,6 +464,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingOptions::Linear,
         );
         assert_eq!(expected, options.to_elements());
     }

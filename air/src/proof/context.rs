@@ -160,7 +160,7 @@ mod tests {
     use math::fields::f64::BaseElement;
 
     use super::{Context, ProofOptions, ToElements, TraceInfo};
-    use crate::FieldExtension;
+    use crate::{options::BatchingOptions, FieldExtension};
 
     #[test]
     fn context_to_elements() {
@@ -170,6 +170,7 @@ mod tests {
         let grinding_factor = 20;
         let blowup_factor = 8;
         let num_queries = 30;
+        let batching_deep = BatchingOptions::Linear;
 
         let main_width = 20;
         let aux_width = 9;
@@ -212,6 +213,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            batching_deep,
         );
         let trace_info =
             TraceInfo::new_multi_segment(main_width, aux_width, aux_rands, trace_length, vec![]);
