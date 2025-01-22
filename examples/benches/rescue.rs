@@ -8,7 +8,8 @@ use std::time::Duration;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use examples::{rescue, Example};
 use winterfell::{
-    crypto::hashers::Blake3_256, math::fields::f128::BaseElement, FieldExtension, ProofOptions,
+    crypto::hashers::Blake3_256, math::fields::f128::BaseElement, BatchingType, FieldExtension,
+    ProofOptions,
 };
 
 const SIZES: [usize; 2] = [256, 512];
@@ -18,7 +19,7 @@ fn rescue(c: &mut Criterion) {
     group.sample_size(10);
     group.measurement_time(Duration::from_secs(25));
 
-    let options = ProofOptions::new(32, 32, 0, FieldExtension::None, 4, 255);
+    let options = ProofOptions::new(32, 32, 0, FieldExtension::None, 4, 255, BatchingType::Linear);
 
     for &size in SIZES.iter() {
         let resc = rescue::RescueExample::<Blake3_256<BaseElement>>::new(size, options.clone());

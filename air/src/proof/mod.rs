@@ -13,7 +13,7 @@ use math::FieldElement;
 use security::{ConjecturedSecurity, ProvenSecurity};
 use utils::{ByteReader, Deserializable, DeserializationError, Serializable, SliceReader};
 
-use crate::{options::BatchingOptions, ProofOptions, TraceInfo};
+use crate::{options::BatchingType, ProofOptions, TraceInfo};
 
 mod context;
 pub use context::Context;
@@ -146,7 +146,7 @@ impl Proof {
         Self {
             context: Context::new::<DummyField>(
                 TraceInfo::new(1, 8),
-                ProofOptions::new(1, 2, 2, FieldExtension::None, 8, 1, BatchingOptions::Linear),
+                ProofOptions::new(1, 2, 2, FieldExtension::None, 8, 1, BatchingType::Linear),
             ),
             num_unique_queries: 0,
             commitments: Commitments::default(),

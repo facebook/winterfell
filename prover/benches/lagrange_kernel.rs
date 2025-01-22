@@ -6,7 +6,7 @@
 use std::time::Duration;
 
 use air::{
-    Air, AirContext, Assertion, AuxRandElements, ConstraintCompositionCoefficients,
+    Air, AirContext, Assertion, AuxRandElements, BatchingType, ConstraintCompositionCoefficients,
     EvaluationFrame, FieldExtension, GkrRandElements, LagrangeKernelRandElements, PartitionOptions,
     ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
@@ -174,7 +174,7 @@ impl LagrangeProver {
     fn new(aux_trace_width: usize) -> Self {
         Self {
             aux_trace_width,
-            options: ProofOptions::new(1, 2, 0, FieldExtension::None, 2, 1),
+            options: ProofOptions::new(1, 2, 0, FieldExtension::None, 2, 1, BatchingType::Linear),
         }
     }
 }

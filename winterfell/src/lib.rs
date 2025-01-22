@@ -418,10 +418,10 @@
 //! #    crypto::{hashers::Blake3_256, DefaultRandomCoin, MerkleTree},
 //! #    math::{fields::f128::BaseElement, FieldElement, ToElements},
 //! #    matrix::ColMatrix,
-//! #    Air, AirContext, Assertion, AuxRandElements, ByteWriter, CompositionPoly, CompositionPolyTrace,
-//! #    DefaultConstraintEvaluator, DefaultConstraintCommitment, DefaultTraceLde, EvaluationFrame,
-//! #    TraceInfo, TransitionConstraintDegree, TraceTable, FieldExtension, PartitionOptions, Prover,
-//! #    ProofOptions, StarkDomain, Proof, Trace, TracePolyTable,
+//! #    Air, AirContext, Assertion, AuxRandElements, ByteWriter, BatchingType, CompositionPoly,
+//! #    CompositionPolyTrace, DefaultConstraintEvaluator, DefaultConstraintCommitment, DefaultTraceLde,
+//! #    EvaluationFrame, TraceInfo, TransitionConstraintDegree, TraceTable, FieldExtension,
+//! #    PartitionOptions, Prover, ProofOptions, StarkDomain, Proof, Trace, TracePolyTable,
 //! # };
 //! #
 //! # pub fn build_do_work_trace(start: BaseElement, n: usize) -> TraceTable<BaseElement> {
@@ -584,6 +584,7 @@
 //!     FieldExtension::None,
 //!     8,  // FRI folding factor
 //!     31, // FRI max remainder polynomial degree
+//!     BatchingType::Linear, // Type of batching used in computing DEEP polynomial
 //! );
 //!
 //! // Instantiate the prover and generate the proof.
@@ -632,7 +633,7 @@
 #[cfg(test)]
 extern crate std;
 
-pub use air::{AuxRandElements, BatchingOptions, GkrVerifier, PartitionOptions};
+pub use air::{AuxRandElements, BatchingType, GkrVerifier, PartitionOptions};
 pub use prover::{
     crypto, iterators, math, matrix, Air, AirContext, Assertion, AuxTraceWithMetadata,
     BoundaryConstraint, BoundaryConstraintGroup, CompositionPoly, CompositionPolyTrace,

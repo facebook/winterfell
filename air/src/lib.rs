@@ -38,7 +38,7 @@ mod errors;
 pub use errors::AssertionError;
 
 mod options;
-pub use options::{BatchingOptions, FieldExtension, PartitionOptions, ProofOptions};
+pub use options::{BatchingType, FieldExtension, PartitionOptions, ProofOptions};
 
 mod air;
 pub use air::{

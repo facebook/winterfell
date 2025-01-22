@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use winterfell::{FieldExtension, ProofOptions};
+use winterfell::{BatchingType, FieldExtension, ProofOptions};
 
 use super::Blake3_256;
 
@@ -31,5 +31,5 @@ fn build_options(use_extension_field: bool) -> ProofOptions {
     } else {
         FieldExtension::None
     };
-    ProofOptions::new(85, 2, 0, extension, 4, 31)
+    ProofOptions::new(85, 2, 0, extension, 4, 31, BatchingType::Linear)
 }

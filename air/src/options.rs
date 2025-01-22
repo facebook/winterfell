@@ -92,7 +92,7 @@ pub struct ProofOptions {
     fri_folding_factor: u8,
     fri_remainder_max_degree: u8,
     partition_options: PartitionOptions,
-    batching_deep: BatchingOptions,
+    batching_deep: BatchingType,
 }
 
 // PROOF OPTIONS IMPLEMENTATION
@@ -126,7 +126,7 @@ impl ProofOptions {
         field_extension: FieldExtension,
         fri_folding_factor: usize,
         fri_remainder_max_degree: usize,
-        batching_deep: BatchingOptions,
+        batching_deep: BatchingType,
     ) -> ProofOptions {
         // TODO: return errors instead of panicking
         assert!(num_queries > 0, "number of queries must be greater than 0");
@@ -249,6 +249,11 @@ impl ProofOptions {
     pub fn partition_options(&self) -> PartitionOptions {
         self.partition_options
     }
+
+    /// Returns the `[BatchingType]` used in this instance of proof options for the DEEP polynomial.
+    pub fn batching_type_deep(&self) -> BatchingType {
+        self.batching_deep
+    }
 }
 
 impl<E: StarkField> ToElements<E> for ProofOptions {
@@ -296,9 +301,9 @@ impl Deserializable for ProofOptions {
             source.read_u8()? as usize,
             source.read_u8()? as usize,
             match source.read_u8()? {
-                0 => BatchingOptions::Linear,
-                _ => BatchingOptions::Algebraic,
-            }
+                0 => BatchingType::Linear,
+                _ => BatchingType::Algebraic,
+            },
         );
         Ok(result.with_partitions(source.read_u8()? as usize, source.read_u8()? as usize))
     }
@@ -419,7 +424,7 @@ impl Default for PartitionOptions {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
-pub enum BatchingOptions{
+pub enum BatchingType {
     Linear = 0,
     Algebraic = 1,
 }
@@ -431,9 +436,8 @@ pub enum BatchingOptions{
 mod tests {
     use math::fields::{f64::BaseElement, CubeExtension};
 
-    use crate::options::BatchingOptions;
-
     use super::{FieldExtension, PartitionOptions, ProofOptions, ToElements};
+    use crate::options::BatchingType;
 
     #[test]
     fn proof_options_to_elements() {
@@ -464,7 +468,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
-            BatchingOptions::Linear,
+            BatchingType::Linear,
         );
         assert_eq!(expected, options.to_elements());
     }
