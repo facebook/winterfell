@@ -6,7 +6,10 @@
 use alloc::{collections::BTreeMap, vec::Vec};
 
 use crypto::{RandomCoin, RandomCoinError};
-use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElements};
+use math::{
+    fft, get_power_series, get_power_series_with_offset, ExtensibleField, ExtensionOf,
+    FieldElement, StarkField, ToElements,
+};
 
 use crate::{BatchingMethod, ProofOptions};
 

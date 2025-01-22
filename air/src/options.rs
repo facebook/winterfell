@@ -96,7 +96,7 @@ pub struct ProofOptions {
     fri_remainder_max_degree: u8,
     batching_deep: BatchingMethod,
     partition_options: PartitionOptions,
-    batching_deep: BatchingOptions,
+    batching_deep: BatchingType,
 }
 
 // PROOF OPTIONS IMPLEMENTATION
@@ -483,8 +483,6 @@ impl Deserializable for BatchingMethod {
 #[cfg(test)]
 mod tests {
     use math::fields::{f64::BaseElement, CubeExtension};
-
-    use crate::options::BatchingOptions;
 
     use super::{FieldExtension, PartitionOptions, ProofOptions, ToElements};
     use crate::options::BatchingMethod;
