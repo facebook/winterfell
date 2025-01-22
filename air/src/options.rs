@@ -96,7 +96,7 @@ pub struct ProofOptions {
     fri_remainder_max_degree: u8,
     batching_deep: BatchingMethod,
     partition_options: PartitionOptions,
-    batching_deep: BatchingOptions,
+    batching_deep: BatchingType,
 }
 
 // PROOF OPTIONS IMPLEMENTATION
@@ -257,17 +257,12 @@ impl ProofOptions {
     /// Returns the `[BatchingMethod]` defining the method used for batching the multi-point quotients
     /// defining the DEEP polynomial.
     ///
-    /// Linear batching implies that independently drawn random values per multi-point quotient
     /// will be used to do the batching, while Algebraic batching implies that powers of a single
     /// random value are used.
     ///
     /// Depending on other parameters, Algebraic batching may lead to a small reduction in the security
     /// level of the generated proofs, but avoids extra calls to the random oracle (i.e., hash function).
     pub fn deep_poly_batching_method(&self) -> BatchingMethod {
-        self.batching_deep
-    }
-}
-
 impl<E: StarkField> ToElements<E> for ProofOptions {
     fn to_elements(&self) -> Vec<E> {
         // encode field extension and FRI parameters into a single field element
@@ -483,8 +478,6 @@ impl Deserializable for BatchingMethod {
 #[cfg(test)]
 mod tests {
     use math::fields::{f64::BaseElement, CubeExtension};
-
-    use crate::options::BatchingOptions;
 
     use super::{FieldExtension, PartitionOptions, ProofOptions, ToElements};
     use crate::options::BatchingMethod;
