@@ -69,19 +69,19 @@ pub struct LagrangeConstraintsCompositionCoefficients<E: FieldElement> {
 /// * $\alpha_i$ is a composition coefficient for the $i$th trace polynomial.
 /// * $\beta_j$ is a composition coefficient for the $j$th constraint column polynomial.
 ///
-/// The soundness of the resulting protocol with batching as above is given in Theorem 8 in
-/// https://eprint.iacr.org/2022/1216 and it relies on two points:
+/// The soundness of the resulting protocol is given in Theorem 8 in https://eprint.iacr.org/2022/1216
+/// and it relies on the following points:
+///
 ///
 /// 1. The evaluation proofs for each trace polynomial at $z$ and $g \cdot z$ can be batched using
 ///    the non-normalized Lagrange kernel over the set $\{z, g \cdot z\}$. This, however, requires
-///    that the FRI protocol is run with a larger agreement parameter
-///    $\alpha^{+} = (1 + 1/2m)\cdot\sqrt{\rho^{+}}$ where $\rho^{+} := \frac{\kappa + 2}{\nu}$,
-///    $\kappa$ and $\nu$ are the length of the execution trace and the LDE domain size,
-///    respectively.
+///    that the FRI protocol is run with a larger agreement parameter.
 /// 2. The resulting $Y(x)$ do not need to be degree adjusted but the soundness error of the
 ///    protocol needs to be updated. For most combinations of batching parameters, this leads to a
 ///    negligible increase in soundness error. The formula for the updated error can be found in
 ///    Theorem 8 of https://eprint.iacr.org/2022/1216.
+/// 3. The error will depend on the batching used in building the DEEP polynomial. More precisely,
+///    when using algebraic batching there is a loss of log_2(k + m - 1) bits of soundness.
 ///
 /// In the case when the trace polynomials contain a trace polynomial corresponding to a Lagrange
 /// kernel column, the above expression of $Y(x)$ includes the additional term given by
@@ -99,8 +99,8 @@ pub struct LagrangeConstraintsCompositionCoefficients<E: FieldElement> {
 /// 4. $p_S(X)$ is the polynomial of minimal degree interpolating the set ${(a, T_l(a)): a \in S}$.
 /// 5. $Z_S(X)$ is the polynomial of minimal degree vanishing over the set $S$.
 ///
-/// Note that, if a Lagrange kernel trace polynomial is present, then $\rho^{+}$ from above should
-/// be updated to be $\rho^{+} := \frac{\kappa + log_2(\nu) + 1}{\nu}$.
+/// Note that, if a Lagrange kernel trace polynomial is present, then the agreement parameter needs
+/// to be adapted accordingly.
 #[derive(Debug, Clone)]
 pub struct DeepCompositionCoefficients<E: FieldElement> {
     /// Trace polynomial composition coefficients $\alpha_i$.
