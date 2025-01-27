@@ -8,7 +8,7 @@ First, compile an optimized version of the `winterfell` binary by running:
 ```
 cargo build --release
 ```
-Or, if you want to compile the with multi-threaded support enabled, run:
+Or, if you want to compile with multi-threaded support enabled, run:
 ```
 cargo build --release --manifest-path examples/Cargo.toml --features concurrent
 ```
@@ -48,7 +48,7 @@ These improvements come at the expense of slightly more complex proof verificati
 
 You can run these examples like so:
 ```
-./target/release/winterfell [FLAGS] [OPTIONS] [fib|fib4|mulfib] [sequence length]
+./target/release/winterfell [FLAGS] [OPTIONS] [fib|fib8|mulfib] [sequence length]
 ```
 where:
 

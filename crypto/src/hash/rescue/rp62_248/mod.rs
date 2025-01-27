@@ -60,7 +60,7 @@ const INV_ALPHA: u64 = 3074416663688030891;
 /// * Field: 62-bit prime field with modulus 2^62 - 111 * 2^39 + 1.
 /// * State width: 12 field elements.
 /// * Capacity size: 4 field elements.
-/// * Number of founds: 7.
+/// * Number of rounds: 7.
 /// * S-Box degree: 3.
 ///
 /// The above parameters target 124-bit security level. The digest consists of four field elements

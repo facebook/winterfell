@@ -73,8 +73,9 @@ impl Deserializable for ElementDigest {
         let e1 = BaseElement::new(v1 & 0x3FFFFFFFFFFFFFFF);
         let e2 = BaseElement::new(((v2 << 4) >> 2) | (v1 >> 62) & 0x3FFFFFFFFFFFFFFF);
         let e3 = BaseElement::new(((v3 << 6) >> 2) | (v2 >> 60) & 0x3FFFFFFFFFFFFFFF);
-        let e4 =
-            BaseElement::new(v3 >> 58 | (v4 as u64) << 6 | (v5 as u64) << 38 | (v6 as u64) << 54);
+        let e4 = BaseElement::new(
+            (v3 >> 58) | ((v4 as u64) << 6) | ((v5 as u64) << 38) | ((v6 as u64) << 54),
+        );
 
         Ok(Self([e1, e2, e3, e4]))
     }
