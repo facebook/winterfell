@@ -110,7 +110,7 @@ fn main() {
     }
 
     #[cfg(not(feature = "std"))]
-    println!("Proof security: {} bits", conjectured_security_level.0);
+    println!("Proof security: {} bits", conjectured_security_level);
 
     #[cfg(feature = "std")]
     println!("Proof hash: {}", hex::encode(blake3::hash(&proof_bytes).as_bytes()));
