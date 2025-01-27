@@ -104,9 +104,7 @@ fn main() {
             * List decoding regime: {} bits
             * Unique decoding regime: {} bits
         "#,
-            conjectured_security_level.0,
-            proven_security_level.list_decoding(),
-            proven_security_level.unique_decoding()
+            conjectured_security_level, proven_security_level.0, proven_security_level.1,
         );
         println!("{}", output_string);
     }

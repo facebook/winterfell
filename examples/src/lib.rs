@@ -7,8 +7,7 @@ use structopt::StructOpt;
 use winterfell::{
     crypto::hashers::{Rp64_256, RpJive64_256},
     math::fields::f128::BaseElement,
-    ConjecturedSecurityBits, FieldExtension, Proof, ProofOptions, ProvenSecurityBits,
-    VerifierError,
+    FieldExtension, Proof, ProofOptions, VerifierError,
 };
 
 pub mod fibonacci;
@@ -106,7 +105,7 @@ impl ExampleOptions {
     }
 
     /// Returns the conjectured security level of the input proof in bits.
-    pub fn get_proof_security_level_conjectured(&self, proof: &Proof) -> ConjecturedSecurityBits {
+    pub fn get_proof_security_level_conjectured(&self, proof: &Proof) -> u32 {
         let security_level = match self.hash_fn.as_str() {
             "blake3_192" => proof.security_level_conjectured::<Blake3_192>(),
             "blake3_256" => proof.security_level_conjectured::<Blake3_256>(),
@@ -116,11 +115,11 @@ impl ExampleOptions {
             val => panic!("'{val}' is not a valid hash function option"),
         };
 
-        security_level
+        security_level.bits()
     }
 
     /// Returns the proven security level of the input proof in bits.
-    pub fn get_proof_security_level_proven(&self, proof: &Proof) -> ProvenSecurityBits {
+    pub fn get_proof_security_level_proven(&self, proof: &Proof) -> (u32, u32) {
         let security_level = match self.hash_fn.as_str() {
             "blake3_192" => proof.security_level_proven::<Blake3_192>(),
             "blake3_256" => proof.security_level_proven::<Blake3_256>(),
@@ -130,7 +129,7 @@ impl ExampleOptions {
             val => panic!("'{val}' is not a valid hash function option"),
         };
 
-        security_level
+        (security_level.ldr_bits(), security_level.udr_bits())
     }
 }
 

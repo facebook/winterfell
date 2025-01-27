@@ -632,10 +632,7 @@
 #[cfg(test)]
 extern crate std;
 
-pub use air::{
-    proof::{ConjecturedSecurityBits, ProvenSecurityBits},
-    AuxRandElements, GkrVerifier, PartitionOptions,
-};
+pub use air::{AuxRandElements, GkrVerifier, PartitionOptions};
 pub use prover::{
     crypto, iterators, math, matrix, Air, AirContext, Assertion, AuxTraceWithMetadata,
     BoundaryConstraint, BoundaryConstraintGroup, CompositionPoly, CompositionPolyTrace,
