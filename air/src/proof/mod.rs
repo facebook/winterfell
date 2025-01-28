@@ -99,7 +99,7 @@ impl Proof {
     ///
     /// This is the conjecture on the security of the Toy problem (Conjecture 1)
     /// in https://eprint.iacr.org/2021/582.
-    pub fn security_level_conjectured<H: Hasher>(&self) -> ConjecturedSecurity {
+    pub fn conjectured_security<H: Hasher>(&self) -> ConjecturedSecurity {
         ConjecturedSecurity::compute(
             self.context.options(),
             self.context.num_modulus_bits(),
@@ -111,7 +111,7 @@ impl Proof {
     ///
     /// Usually, the number of queries needed for provable security is 2x - 3x higher than
     /// the number of queries needed for conjectured security at the same security level.
-    pub fn security_level_proven<H: Hasher>(&self) -> ProvenSecurity {
+    pub fn proven_security<H: Hasher>(&self) -> ProvenSecurity {
         ProvenSecurity::compute(
             self.context.options(),
             self.context.num_modulus_bits(),

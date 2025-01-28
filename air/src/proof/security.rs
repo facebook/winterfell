@@ -9,12 +9,24 @@ use core::cmp;
 
 use crate::ProofOptions;
 
+// CONSTANTS
+// ================================================================================================
+
 const GRINDING_CONTRIBUTION_FLOOR: u32 = 80;
 const MAX_PROXIMITY_PARAMETER: u64 = 1000;
 
+// CONJECTURED SECURITY
+// ================================================================================================
+
+/// Represents the security bits of the protocol under Conjecture 1 in [1].
+///
+/// [1]: https://eprint.iacr.org/2021/582
 pub struct ConjecturedSecurity(u32);
 
 impl ConjecturedSecurity {
+    /// Computes the security bits using a modification of Eq. (19) in [1].
+    ///
+    /// [1]: https://eprint.iacr.org/2021/582
     pub fn compute(
         options: &ProofOptions,
         base_field_bits: u32,
@@ -37,21 +49,31 @@ impl ConjecturedSecurity {
         Self(cmp::min(cmp::min(field_security, query_security) - 1, collision_resistance))
     }
 
+    /// Returns the conjectured security bits.
     pub fn bits(&self) -> u32 {
         self.0
     }
 
+    /// Returns whether or not the conjectured security bits are at least `bits` security bits.
     pub fn is_at_least(&self, bits: u32) -> bool {
         self.0 >= bits
     }
 }
 
+// PROVEN SECURITY
+// ================================================================================================
+
+/// Represents the proven security bits, in list-decoding and unique decoding regimes, of
+/// the protocol.
 pub struct ProvenSecurity {
     unique_decoding: u32,
     list_decoding: u32,
 }
 
 impl ProvenSecurity {
+    /// Computes the proven security bits using Theorem 2 and Theorem 3 in [1].
+    ///
+    /// [1]: https://eprint.iacr.org/2024/1553
     pub fn compute(
         options: &ProofOptions,
         base_field_bits: u32,
@@ -94,14 +116,17 @@ impl ProvenSecurity {
         Self { unique_decoding, list_decoding }
     }
 
+    /// Returns the proven security bits in the list decoding regime.
     pub fn ldr_bits(&self) -> u32 {
         self.list_decoding
     }
 
+    /// Returns the proven security bits in the unique decoding regime.
     pub fn udr_bits(&self) -> u32 {
         self.unique_decoding
     }
 
+    /// Returns whether or not the proven security bits are at least `bits` security bits.
     pub fn is_at_least(&self, bits: u32) -> bool {
         self.list_decoding >= bits || self.unique_decoding >= bits
     }
@@ -278,8 +303,11 @@ pub fn ceil(value: f64) -> f64 {
     libm::ceil(value)
 }
 
+// TESTS
+// ================================================================================================
+
 #[cfg(test)]
-mod prove_security_tests {
+mod tests {
     use math::{fields::f64::BaseElement, StarkField};
 
     use super::ProofOptions;

@@ -360,7 +360,7 @@ impl AcceptableOptions {
     pub fn validate<H: Hasher>(&self, proof: &Proof) -> Result<(), VerifierError> {
         match self {
             AcceptableOptions::MinConjecturedSecurity(minimal_security) => {
-                let conjectured_security = proof.security_level_conjectured::<H>();
+                let conjectured_security = proof.conjectured_security::<H>();
                 if !conjectured_security.is_at_least(*minimal_security) {
                     return Err(VerifierError::InsufficientConjecturedSecurity(
                         *minimal_security,
@@ -369,7 +369,7 @@ impl AcceptableOptions {
                 }
             },
             AcceptableOptions::MinProvenSecurity(minimal_security) => {
-                let proven_security = proof.security_level_proven::<H>();
+                let proven_security = proof.proven_security::<H>();
                 if !proven_security.is_at_least(*minimal_security) {
                     return Err(VerifierError::InsufficientProvenSecurity(
                         *minimal_security,
