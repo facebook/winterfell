@@ -70,6 +70,9 @@ pub enum FieldExtension {
 /// 4. Grinding factor - higher values increase proof soundness, but also may increase proof
 ///    generation time. More precisely, conjectured proof soundness is bounded by
 ///    `num_queries * log2(blowup_factor) + grinding_factor`.
+/// 5. Batching type - either independent random values per multi-point quotient are used in
+///    the computation of the DEEP polynomial or powers of a single random value are used
+///    instead. The first type of batching is called `Linear` while the second is called `Algebraic`.
 ///
 /// Another important parameter in defining STARK security level, which is not a part of [ProofOptions]
 /// is the hash function used in the protocol. The soundness of a STARK proof is limited by the
@@ -91,8 +94,8 @@ pub struct ProofOptions {
     field_extension: FieldExtension,
     fri_folding_factor: u8,
     fri_remainder_max_degree: u8,
-    partition_options: PartitionOptions,
     batching_deep: BatchingType,
+    partition_options: PartitionOptions,
 }
 
 // PROOF OPTIONS IMPLEMENTATION
@@ -250,8 +253,16 @@ impl ProofOptions {
         self.partition_options
     }
 
-    /// Returns the `[BatchingType]` used in this instance of proof options for the DEEP polynomial.
-    pub fn batching_type_deep(&self) -> BatchingType {
+    /// Returns the `[BatchingType]` defining the method used for batching the multi-point quotients
+    /// defining the DEEP polynomial.
+    ///
+    /// Linear batching implies that independently drawn random values per multi-point quotient
+    /// will be used to do the batching, while Algebraic batching implies that powers of a single
+    /// random value are used.
+    ///
+    /// Depending on other parameters, Algebraic batching may lead to a small reduction in the security
+    /// level of the generated proofs, but avoids extra calls to the random oracle (i.e., hash function).
+    pub fn batching_used_for_deep_poly(&self) -> BatchingType {
         self.batching_deep
     }
 }
@@ -422,11 +433,50 @@ impl Default for PartitionOptions {
 // BATCHING OPTION
 // ================================================================================================
 
+/// Represents the type of batching, using randomness, used in the construction of the DEEP
+/// composition polynomial.
+///
+/// There are currently two types of batching supported:
+///
+/// 1. Linear, also called affine, where the resulting expression is a multivariate polynomial of
+///    total degree 1 in each of the random values.
+/// 2. Algebraic, also called parametric or curve batching, where the resulting expression is
+///    a univariate polynomial in one random value.
+///
+/// The main difference between the two types is that algebraic batching has low verifier randomness
+/// complexity and hence is light on the number of calls to the random oracle. However, this comes
+/// at the cost of a slight degradation in the soundness of the FRI protocol, on the order of
+/// log2(N - 1) where N is the number of code words being batched. Linear batching does not suffer
+/// from such a degradation but has linear verifier randomness complexity in the number of terms
+/// being batched.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum BatchingType {
     Linear = 0,
     Algebraic = 1,
+}
+
+impl Serializable for BatchingType {
+    /// Serializes `self` and writes the resulting bytes into the `target`.
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_u8(*self as u8);
+    }
+}
+
+impl Deserializable for BatchingType {
+    /// Reads [BatchingType] from the specified `source` and returns the result.
+    ///
+    /// # Errors
+    /// Returns an error if the value does not correspond to a valid [BatchingType].
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        match source.read_u8()? {
+            0 => Ok(BatchingType::Linear),
+            1 => Ok(BatchingType::Algebraic),
+            n => Err(DeserializationError::InvalidValue(format!(
+                "value {n} cannot be deserialized as a BatchingType enum"
+            ))),
+        }
+    }
 }
 
 // TESTS

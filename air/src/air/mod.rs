@@ -582,7 +582,7 @@ pub trait Air: Send + Sync {
         R: RandomCoin<BaseField = Self::BaseField>,
     {
         let mut t_coefficients = Vec::new();
-        match self.context().options.batching_type_deep() {
+        match self.context().options.batching_used_for_deep_poly() {
             BatchingType::Linear => {
                 for _ in 0..self.trace_info().width() {
                     t_coefficients.push(public_coin.draw()?);
@@ -612,9 +612,11 @@ pub trait Air: Send + Sync {
                     .extend_from_slice(&get_power_series(alpha, self.trace_info().width()));
 
                 let mut c_coefficients = Vec::new();
+
+                let alpha_pow_trace_width = alpha.exp(((self.trace_info().width()) as u32).into());
                 c_coefficients.extend_from_slice(&get_power_series_with_offset(
                     alpha,
-                    alpha.exp(((self.trace_info().width()) as u32).into()),
+                    alpha_pow_trace_width,
                     self.context().num_constraint_composition_columns(),
                 ));
 
