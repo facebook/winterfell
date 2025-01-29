@@ -97,6 +97,7 @@ pub struct ProofOptions {
     batching_deep: BatchingMethod,
     partition_options: PartitionOptions,
     batching_deep: BatchingType,
+    partition_options: PartitionOptions,
 }
 
 // PROOF OPTIONS IMPLEMENTATION
@@ -257,6 +258,7 @@ impl ProofOptions {
     /// Returns the `[BatchingMethod]` defining the method used for batching the multi-point quotients
     /// defining the DEEP polynomial.
     ///
+    /// Linear batching implies that independently drawn random values per multi-point quotient
     /// will be used to do the batching, while Algebraic batching implies that powers of a single
     /// random value are used.
     ///
