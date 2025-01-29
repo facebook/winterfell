@@ -104,18 +104,32 @@ impl ExampleOptions {
         )
     }
 
-    /// Returns security level of the input proof in bits.
-    pub fn get_proof_security_level(&self, proof: &Proof, conjectured: bool) -> usize {
+    /// Returns the conjectured security level of the input proof in bits.
+    pub fn get_proof_security_level_conjectured(&self, proof: &Proof) -> u32 {
         let security_level = match self.hash_fn.as_str() {
-            "blake3_192" => proof.security_level::<Blake3_192>(conjectured),
-            "blake3_256" => proof.security_level::<Blake3_256>(conjectured),
-            "sha3_256" => proof.security_level::<Sha3_256>(conjectured),
-            "rp64_256" => proof.security_level::<Rp64_256>(conjectured),
-            "rp_jive64_256" => proof.security_level::<RpJive64_256>(conjectured),
+            "blake3_192" => proof.conjectured_security::<Blake3_192>(),
+            "blake3_256" => proof.conjectured_security::<Blake3_256>(),
+            "sha3_256" => proof.conjectured_security::<Sha3_256>(),
+            "rp64_256" => proof.conjectured_security::<Rp64_256>(),
+            "rp_jive64_256" => proof.conjectured_security::<RpJive64_256>(),
             val => panic!("'{val}' is not a valid hash function option"),
         };
 
-        security_level as usize
+        security_level.bits()
+    }
+
+    /// Returns the proven security level of the input proof in bits.
+    pub fn get_proof_security_level_proven(&self, proof: &Proof) -> (u32, u32) {
+        let security_level = match self.hash_fn.as_str() {
+            "blake3_192" => proof.proven_security::<Blake3_192>(),
+            "blake3_256" => proof.proven_security::<Blake3_256>(),
+            "sha3_256" => proof.proven_security::<Sha3_256>(),
+            "rp64_256" => proof.proven_security::<Rp64_256>(),
+            "rp_jive64_256" => proof.proven_security::<RpJive64_256>(),
+            val => panic!("'{val}' is not a valid hash function option"),
+        };
+
+        (security_level.ldr_bits(), security_level.udr_bits())
     }
 }
 

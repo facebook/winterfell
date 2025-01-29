@@ -32,6 +32,7 @@
 extern crate alloc;
 
 use alloc::{string::ToString, vec::Vec};
+use core::cmp;
 
 pub use air::{
     proof::Proof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
@@ -359,20 +360,20 @@ impl AcceptableOptions {
     pub fn validate<H: Hasher>(&self, proof: &Proof) -> Result<(), VerifierError> {
         match self {
             AcceptableOptions::MinConjecturedSecurity(minimal_security) => {
-                let proof_security = proof.security_level::<H>(true);
-                if proof_security < *minimal_security {
+                let conjectured_security = proof.conjectured_security::<H>();
+                if !conjectured_security.is_at_least(*minimal_security) {
                     return Err(VerifierError::InsufficientConjecturedSecurity(
                         *minimal_security,
-                        proof_security,
+                        conjectured_security.bits(),
                     ));
                 }
             },
             AcceptableOptions::MinProvenSecurity(minimal_security) => {
-                let proof_security = proof.security_level::<H>(false);
-                if proof_security < *minimal_security {
+                let proven_security = proof.proven_security::<H>();
+                if !proven_security.is_at_least(*minimal_security) {
                     return Err(VerifierError::InsufficientProvenSecurity(
                         *minimal_security,
-                        proof_security,
+                        cmp::max(proven_security.ldr_bits(), proven_security.udr_bits()),
                     ));
                 }
             },
