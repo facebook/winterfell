@@ -18,13 +18,14 @@ const MAX_PROXIMITY_PARAMETER: u64 = 1000;
 // CONJECTURED SECURITY
 // ================================================================================================
 
-/// Represents the security bits of the protocol under Conjecture 1 in [1].
+/// Security estimate (in bits) of the protocol under Conjecture 1 in [1].
 ///
 /// [1]: https://eprint.iacr.org/2021/582
 pub struct ConjecturedSecurity(u32);
 
 impl ConjecturedSecurity {
-    /// Computes the security bits using a modification of Eq. (19) in [1].
+    /// Computes the security level (in bits) of the protocol using a modification of Eq. (19) in
+    /// [1].
     ///
     /// [1]: https://eprint.iacr.org/2021/582
     pub fn compute(
@@ -49,12 +50,13 @@ impl ConjecturedSecurity {
         Self(cmp::min(cmp::min(field_security, query_security) - 1, collision_resistance))
     }
 
-    /// Returns the conjectured security bits.
+    /// Returns the conjectured security level (in bits).
     pub fn bits(&self) -> u32 {
         self.0
     }
 
-    /// Returns whether or not the conjectured security bits are at least `bits` security bits.
+    /// Returns whether or not the conjectured security level is greater than or equal to the the
+    /// specified security level in bits.
     pub fn is_at_least(&self, bits: u32) -> bool {
         self.0 >= bits
     }
@@ -63,15 +65,16 @@ impl ConjecturedSecurity {
 // PROVEN SECURITY
 // ================================================================================================
 
-/// Represents the proven security bits, in list-decoding and unique decoding regimes, of
-/// the protocol.
+/// Proven security estimate (in bits) in list-decoding and unique decoding regimes, of the
+/// protocol.
 pub struct ProvenSecurity {
     unique_decoding: u32,
     list_decoding: u32,
 }
 
 impl ProvenSecurity {
-    /// Computes the proven security bits using Theorem 2 and Theorem 3 in [1].
+    /// Computes the proven security level (in bits) of the protocol using Theorem 2 and Theorem 3
+    /// in [1].
     ///
     /// [1]: https://eprint.iacr.org/2024/1553
     pub fn compute(
@@ -116,24 +119,25 @@ impl ProvenSecurity {
         Self { unique_decoding, list_decoding }
     }
 
-    /// Returns the proven security bits in the list decoding regime.
+    /// Returns the proven security level (in bits) in the list decoding regime.
     pub fn ldr_bits(&self) -> u32 {
         self.list_decoding
     }
 
-    /// Returns the proven security bits in the unique decoding regime.
+    /// Returns the proven security level (in bits) in the unique decoding regime.
     pub fn udr_bits(&self) -> u32 {
         self.unique_decoding
     }
 
-    /// Returns whether or not the proven security bits are at least `bits` security bits.
+    /// Returns whether or not the proven security level is greater than or equal to the the
+    /// specified security level in bits.
     pub fn is_at_least(&self, bits: u32) -> bool {
         self.list_decoding >= bits || self.unique_decoding >= bits
     }
 }
 
-/// Computes proven security level for the specified proof parameters for a fixed
-/// value of the proximity parameter m in the list-decoding regime.
+/// Computes proven security level for the specified proof parameters for a fixed value of the
+/// proximity parameter m in the list-decoding regime.
 fn proven_security_protocol_for_given_proximity_parameter(
     options: &ProofOptions,
     base_field_bits: u32,

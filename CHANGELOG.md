@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.12.0 (TBD)
+- [BREAKING] Added security estimate in unique decoding regime  (#356).
+
 ## 0.11.0 (2024-11-24)
 - [BREAKING] Made the prover generic over the `ConstraintCommitment` type (#343).
 
