@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use air::{Air, AuxRandElements, EvaluationFrame, LagrangeKernelBoundaryConstraint, TraceInfo};
+use air::{Air, AuxRandElements, EvaluationFrame, TraceInfo};
 use math::{polynom, FieldElement, StarkField};
 
 use super::ColMatrix;
@@ -20,20 +20,13 @@ pub use trace_table::{TraceTable, TraceTableFragment};
 #[cfg(test)]
 mod tests;
 
-/// Defines an [`AuxTraceWithMetadata`] type where the type arguments use their equivalents in an
-/// [`Air`].
-type AirAuxTraceWithMetadata<A, E> = AuxTraceWithMetadata<E, <A as Air>::GkrProof>;
-
 // AUX TRACE WITH METADATA
 // ================================================================================================
 
-/// Holds the auxiliary trace, the random elements used when generating the auxiliary trace, and
-/// optionally, a GKR proof. See [`crate::Proof`] for more information about the auxiliary
-/// proof.
-pub struct AuxTraceWithMetadata<E: FieldElement, GkrProof> {
+/// Holds the auxiliary trace, the random elements used when generating the auxiliary trace.
+pub struct AuxTraceWithMetadata<E: FieldElement> {
     pub aux_trace: ColMatrix<E>,
     pub aux_rand_elements: AuxRandElements<E>,
-    pub gkr_proof: Option<GkrProof>,
 }
 
 // TRACE TRAIT
@@ -90,11 +83,8 @@ pub trait Trace: Sized {
     /// Checks if this trace is valid against the specified AIR, and panics if not.
     ///
     /// NOTE: this is a very expensive operation and is intended for use only in debug mode.
-    fn validate<A, E>(
-        &self,
-        air: &A,
-        aux_trace_with_metadata: Option<&AirAuxTraceWithMetadata<A, E>>,
-    ) where
+    fn validate<A, E>(&self, air: &A, aux_trace_with_metadata: Option<&AuxTraceWithMetadata<E>>)
+    where
         A: Air<BaseField = Self::BaseField>,
         E: FieldElement<BaseField = Self::BaseField>,
     {
@@ -138,21 +128,6 @@ pub trait Trace: Sized {
                         value
                     );
                 });
-            }
-
-            // then, check the Lagrange kernel assertion, if any
-            if let Some(lagrange_kernel_col_idx) = air.context().lagrange_kernel_aux_column_idx() {
-                let boundary_constraint_assertion_value =
-                    LagrangeKernelBoundaryConstraint::assertion_value(
-                        aux_rand_elements
-                            .lagrange()
-                            .expect("expected Lagrange kernel rand elements to be present"),
-                    );
-
-                assert_eq!(
-                    boundary_constraint_assertion_value,
-                    aux_trace.get(lagrange_kernel_col_idx, 0)
-                );
             }
         }
 
@@ -222,40 +197,6 @@ pub trait Trace: Sized {
 
             // update x coordinate of the domain
             x *= g;
-        }
-
-        // evaluate transition constraints for Lagrange kernel column (if any) and make sure
-        // they all evaluate to zeros
-        if let Some(col_idx) = air.context().lagrange_kernel_aux_column_idx() {
-            let aux_trace_with_metadata =
-                aux_trace_with_metadata.expect("expected aux trace to be present");
-            let aux_trace = &aux_trace_with_metadata.aux_trace;
-            let aux_rand_elements = &aux_trace_with_metadata.aux_rand_elements;
-
-            let c = aux_trace.get_column(col_idx);
-            let v = self.length().ilog2() as usize;
-            let r = aux_rand_elements.lagrange().expect("expected Lagrange column to be present");
-
-            // Loop over every constraint
-            for constraint_idx in 1..v + 1 {
-                let domain_step = 2_usize.pow((v - constraint_idx + 1) as u32);
-                let domain_half_step = 2_usize.pow((v - constraint_idx) as u32);
-
-                // Every transition constraint has a different enforcement domain (i.e. the rows to which it applies).
-                let enforcement_dom_len = self.length() / domain_step;
-                for dom_idx in 0..enforcement_dom_len {
-                    let x_current = dom_idx * domain_step;
-                    let x_next = x_current + domain_half_step;
-
-                    let evaluation = (r[v - constraint_idx] * c[x_current])
-                        - ((E::ONE - r[v - constraint_idx]) * c[x_next]);
-
-                    assert!(
-                        evaluation == E::ZERO,
-                        "Lagrange transition constraint {constraint_idx} did not evaluate to ZERO at step {x_current}"
-                    );
-                }
-            }
         }
     }
 }

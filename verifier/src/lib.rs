@@ -31,15 +31,15 @@
 #[macro_use]
 extern crate alloc;
 
-use alloc::{string::ToString, vec::Vec};
+use alloc::vec::Vec;
 use core::cmp;
 
+use air::AuxRandElements;
 pub use air::{
     proof::Proof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
     ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
     EvaluationFrame, FieldExtension, ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
-use air::{AuxRandElements, GkrVerifier};
 pub use crypto;
 use crypto::{ElementHasher, Hasher, RandomCoin, VectorCommitment};
 use fri::FriVerifier;
@@ -176,36 +176,13 @@ where
 
     // process auxiliary trace segments (if any), to build a set of random elements for each segment
     let aux_trace_rand_elements = if air.trace_info().is_multi_segment() {
-        if air.context().has_lagrange_kernel_aux_column() {
-            let gkr_proof = {
-                let gkr_proof_serialized = channel
-                    .read_gkr_proof()
-                    .expect("Expected an a GKR proof because trace has lagrange kernel column");
+        let rand_elements = air
+            .get_aux_rand_elements(&mut public_coin)
+            .expect("failed to generate the random elements needed to build the auxiliary trace");
 
-                Deserializable::read_from_bytes(gkr_proof_serialized)
-                    .map_err(|err| VerifierError::ProofDeserializationError(err.to_string()))?
-            };
-            let gkr_rand_elements = air
-                .get_gkr_proof_verifier::<E>()
-                .verify::<E, _>(gkr_proof, &mut public_coin)
-                .map_err(|err| VerifierError::GkrProofVerificationFailed(err.to_string()))?;
+        public_coin.reseed(trace_commitments[AUX_TRACE_IDX]);
 
-            let rand_elements = air.get_aux_rand_elements(&mut public_coin).expect(
-                "failed to generate the random elements needed to build the auxiliary trace",
-            );
-
-            public_coin.reseed(trace_commitments[AUX_TRACE_IDX]);
-
-            Some(AuxRandElements::new_with_gkr(rand_elements, gkr_rand_elements))
-        } else {
-            let rand_elements = air.get_aux_rand_elements(&mut public_coin).expect(
-                "failed to generate the random elements needed to build the auxiliary trace",
-            );
-
-            public_coin.reseed(trace_commitments[AUX_TRACE_IDX]);
-
-            Some(AuxRandElements::new(rand_elements))
-        }
+        Some(AuxRandElements::new(rand_elements))
     } else {
         None
     };
@@ -235,13 +212,11 @@ where
     let ood_trace_frame = channel.read_ood_trace_frame();
     let ood_main_trace_frame = ood_trace_frame.main_frame();
     let ood_aux_trace_frame = ood_trace_frame.aux_frame();
-    let ood_lagrange_kernel_frame = ood_trace_frame.lagrange_kernel_frame();
     let ood_constraint_evaluation_1 = evaluate_constraints(
         &air,
         constraint_coeffs,
         &ood_main_trace_frame,
         &ood_aux_trace_frame,
-        ood_lagrange_kernel_frame,
         aux_trace_rand_elements.as_ref(),
         z,
     );
@@ -328,7 +303,6 @@ where
         queried_aux_trace_states,
         ood_main_trace_frame,
         ood_aux_trace_frame,
-        ood_lagrange_kernel_frame,
     );
     let c_composition = composer
         .compose_constraint_evaluations(queried_constraint_evaluations, ood_constraint_evaluations);

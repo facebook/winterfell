@@ -5,10 +5,8 @@
 
 use alloc::vec::Vec;
 
-use air::{
-    proof::Table, Air, DeepCompositionCoefficients, EvaluationFrame, LagrangeKernelEvaluationFrame,
-};
-use math::{batch_inversion, polynom, FieldElement};
+use air::{proof::Table, Air, DeepCompositionCoefficients, EvaluationFrame};
+use math::{batch_inversion, FieldElement};
 
 // DEEP COMPOSER
 // ================================================================================================
@@ -17,8 +15,6 @@ pub struct DeepComposer<E: FieldElement> {
     cc: DeepCompositionCoefficients<E>,
     x_coordinates: Vec<E>,
     z: [E; 2],
-    g_trace: E::BaseField,
-    lagrange_kernel_column_idx: Option<usize>,
 }
 
 impl<E: FieldElement> DeepComposer<E> {
@@ -42,8 +38,6 @@ impl<E: FieldElement> DeepComposer<E> {
             cc,
             x_coordinates,
             z: [z, z * E::from(g_trace)],
-            g_trace,
-            lagrange_kernel_column_idx: air.context().lagrange_kernel_aux_column_idx(),
         }
     }
 
@@ -57,28 +51,15 @@ impl<E: FieldElement> DeepComposer<E> {
     /// - Then, combine all T'_i(x) and T''_i(x) values together by computing
     ///   T(x) = sum((T'_i(x) + T''_i(x)) * cc_i) for all i, where cc_i is the coefficient for
     ///   for the random linear combination drawn from the public coin.
-    /// - If a Lagrange kernel is present, combine one additional term defined as
-    ///   (T_l(x) - p_S(x)) / Z_S(x), where:
-    ///
-    /// 1. $T_l(x) is the evaluation of the Lagrange trace polynomial at $x$.
-    /// 2. $S$ is the set of opening points for the Lagrange kernel i.e.,
-    ///    $S := {z, z.g, z.g^2, ..., z.g^{2^{log_2(\nu) - 1}}}$.
-    /// 3. $p_S(X)$ is the polynomial of minimal degree interpolating the set
-    ///    ${(a, T_l(a)): a \in S}$.
-    /// 4. $Z_S(X)$ is the polynomial of minimal degree vanishing over the set $S$.
     ///
     /// Note that values of T_i(z) and T_i(z * g) are received from the prover and passed into
     /// this function via the `ood_main_frame` and `ood_aux_frame` parameters.
-    ///
-    /// If a Lagrange kernel is present, the evaluations of $T_l$ over the set $S$ are received
-    /// from the prover and passed separately via `ood_lagrange_kernel_frame`.
     pub fn compose_trace_columns(
         &self,
         queried_main_trace_states: Table<E::BaseField>,
         queried_aux_trace_states: Option<Table<E>>,
         ood_main_frame: EvaluationFrame<E>,
         ood_aux_frame: Option<EvaluationFrame<E>>,
-        ood_lagrange_kernel_frame: Option<&LagrangeKernelEvaluationFrame<E>>,
     ) -> Vec<E> {
         let ood_main_trace_states = [ood_main_frame.current(), ood_main_frame.next()];
 
@@ -124,17 +105,12 @@ impl<E: FieldElement> DeepComposer<E> {
             // consumed some number of composition coefficients already.
             let cc_offset = queried_main_trace_states.num_columns();
 
-            // we treat the Lagrange column separately if present
-            let lagrange_ker_col_idx =
-                self.lagrange_kernel_column_idx.unwrap_or(ood_aux_trace_states[0].len());
-
             for ((j, row), &x) in
                 (0..n).zip(queried_aux_trace_states.rows()).zip(&self.x_coordinates)
             {
                 let mut t1_num = E::ZERO;
                 let mut t2_num = E::ZERO;
 
-                let row = &row[..lagrange_ker_col_idx];
                 for (i, &value) in row.iter().enumerate() {
                     // compute the numerator of T'_i(x) as (T_i(x) - T_i(z)), multiply it by a
                     // composition coefficient, and add the result to the numerator aggregator
@@ -150,49 +126,6 @@ impl<E: FieldElement> DeepComposer<E> {
                 let t1_den = x - self.z[0];
                 let t2_den = x - self.z[1];
                 result_num[j] += t1_num * t2_den + t2_num * t1_den;
-            }
-
-            // if a Lagrange kernel trace polynomial is present, we include its associated term
-            // separately. Note that, for performance reasons, we divide by Z_{S^{'}} instead of
-            // Z_S, where  $S^{'} := {z.g^2, ..., z.g^{2^{log_2(\nu) - 1}}}$. This is done as
-            // the final linear combination is divided by `(x - z) . (x - z.g)`.
-            if let Some(ood_lagrange_kernel_frame) = ood_lagrange_kernel_frame {
-                let mut result_lag_num = Vec::<E>::with_capacity(n);
-                let mut result_lag_den = Vec::<E>::with_capacity(n);
-
-                let log_trace_len_plus_1 = ood_lagrange_kernel_frame.num_rows();
-                let mut xs = Vec::with_capacity(log_trace_len_plus_1);
-                let mut ys = Vec::with_capacity(log_trace_len_plus_1);
-
-                xs.push(self.z[0]);
-                ys.push(ood_lagrange_kernel_frame.inner()[0]);
-
-                let mut g_exp = self.g_trace;
-                for i in 0..(log_trace_len_plus_1 - 1) {
-                    let x = self.z[0].mul_base(g_exp);
-                    let lagrange_poly_at_x = ood_lagrange_kernel_frame.inner()[i + 1];
-
-                    xs.push(x);
-                    ys.push(lagrange_poly_at_x);
-
-                    // takes on the values `g`, `g^2`, `g^4`, `g^8`, ...
-                    g_exp *= g_exp;
-                }
-                let p_s = polynom::interpolate(&xs, &ys, true);
-                let z_s_prime = polynom::poly_from_roots(&xs[2..]);
-
-                for (row, &x) in queried_aux_trace_states.rows().zip(&self.x_coordinates) {
-                    let value = row[lagrange_ker_col_idx];
-                    let cc = self.cc.lagrange.unwrap();
-
-                    result_lag_num.push((value - polynom::eval(&p_s, x)) * cc);
-                    result_lag_den.push(polynom::eval(&z_s_prime, x));
-                }
-
-                result_lag_den = batch_inversion(&result_lag_den);
-                for (j, res) in result_num.iter_mut().enumerate() {
-                    *res += result_lag_num[j] * result_lag_den[j];
-                }
             }
         }
 

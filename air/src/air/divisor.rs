@@ -49,9 +49,7 @@ impl<B: StarkField> ConstraintDivisor<B> {
     /// and $k$ is the number of exemption points. The default value for $k$ is $1$.
     ///
     /// The above divisor specifies that transition constraints must hold on all steps of the
-    /// constraint enforcement domain except for the last $k$ steps. The constraint enforcement
-    /// domain is the entire trace in the case of transition constraints, but only a subset of the
-    /// trace for Lagrange kernel transition constraints.
+    /// constraint enforcement domain except for the last $k$ steps.
     pub fn from_transition(
         constraint_enforcement_domain_size: usize,
         num_exemptions: usize,

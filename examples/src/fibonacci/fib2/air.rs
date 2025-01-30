@@ -21,8 +21,6 @@ pub struct FibAir {
 impl Air for FibAir {
     type BaseField = BaseElement;
     type PublicInputs = BaseElement;
-    type GkrProof = ();
-    type GkrVerifier = ();
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------

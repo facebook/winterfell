@@ -50,7 +50,6 @@ pub struct VerifierChannel<
     ood_constraint_evaluations: Option<Vec<E>>,
     // query proof-of-work
     pow_nonce: u64,
-    gkr_proof: Option<Vec<u8>>,
 }
 
 impl<E, H, V> VerifierChannel<E, H, V>
@@ -75,7 +74,6 @@ where
             ood_frame,
             fri_proof,
             pow_nonce,
-            gkr_proof,
         } = proof;
 
         // make sure AIR and proof base fields are the same
@@ -149,7 +147,6 @@ where
             ood_constraint_evaluations: Some(ood_constraint_evaluations),
             // query seed
             pow_nonce,
-            gkr_proof,
         })
     }
 
@@ -187,11 +184,6 @@ where
     /// Returns query proof-of-work nonce sent by the prover.
     pub fn read_pow_nonce(&self) -> u64 {
         self.pow_nonce
-    }
-
-    /// Returns the serialized GKR proof, if any.
-    pub fn read_gkr_proof(&self) -> Option<&Vec<u8>> {
-        self.gkr_proof.as_ref()
     }
 
     /// Returns trace states at the specified positions of the LDE domain. This also checks if
