@@ -5,7 +5,8 @@
 
 use alloc::vec::Vec;
 
-use math::FieldElement;
+use crypto::{RandomCoin, RandomCoinError};
+use math::{get_power_series, get_power_series_with_offset, FieldElement};
 
 // CONSTRAINT COMPOSITION COEFFICIENTS
 // ================================================================================================
@@ -109,4 +110,57 @@ pub struct DeepCompositionCoefficients<E: FieldElement> {
     pub constraints: Vec<E>,
     /// Lagrange kernel trace polynomial composition coefficient $\gamma$.
     pub lagrange: Option<E>,
+}
+
+impl<E: FieldElement> DeepCompositionCoefficients<E> {
+    /// Generates the random values used in the construction of the DEEP polynomial when linear
+    /// batching is used.
+    pub fn draw_linear(
+        public_coin: &mut impl RandomCoin<BaseField = E::BaseField>,
+        trace_width: usize,
+        num_constraint_composition_columns: usize,
+    ) -> Result<Self, RandomCoinError> {
+        let mut t_coefficients = Vec::new();
+        for _ in 0..trace_width {
+            t_coefficients.push(public_coin.draw()?);
+        }
+
+        let mut c_coefficients = Vec::new();
+        for _ in 0..num_constraint_composition_columns {
+            c_coefficients.push(public_coin.draw()?);
+        }
+
+        Ok(DeepCompositionCoefficients {
+            trace: t_coefficients,
+            constraints: c_coefficients,
+            lagrange: None,
+        })
+    }
+
+    /// Generates the random values used in the construction of the DEEP polynomial when algebraic
+    /// batching is used.
+    pub fn draw_algebraic(
+        public_coin: &mut impl RandomCoin<BaseField = E::BaseField>,
+        trace_width: usize,
+        num_constraint_composition_columns: usize,
+    ) -> Result<Self, RandomCoinError> {
+        let mut t_coefficients = Vec::new();
+        let alpha: E = public_coin.draw()?;
+        t_coefficients.extend_from_slice(&get_power_series(alpha, trace_width));
+
+        let mut c_coefficients = Vec::new();
+
+        let alpha_pow_trace_width = alpha.exp((trace_width as u32).into());
+        c_coefficients.extend_from_slice(&get_power_series_with_offset(
+            alpha,
+            alpha_pow_trace_width,
+            num_constraint_composition_columns,
+        ));
+
+        Ok(DeepCompositionCoefficients {
+            trace: t_coefficients,
+            constraints: c_coefficients,
+            lagrange: None,
+        })
+    }
 }

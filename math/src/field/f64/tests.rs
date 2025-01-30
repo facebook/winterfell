@@ -68,6 +68,7 @@ fn mul() {
     assert_eq!(BaseElement::new(m - 2), t * BaseElement::from(2u8));
     assert_eq!(BaseElement::new(m - 4), t * BaseElement::from(4u8));
 
+    #[allow(clippy::manual_div_ceil)]
     let t = (m + 1) / 2;
     assert_eq!(BaseElement::ONE, BaseElement::new(t) * BaseElement::from(2u8));
 }

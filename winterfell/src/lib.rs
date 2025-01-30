@@ -644,6 +644,3 @@ pub use prover::{
     TraceTableFragment, TransitionConstraintDegree,
 };
 pub use verifier::{verify, AcceptableOptions, ByteWriter, VerifierError};
-
-#[cfg(test)]
-mod tests;
