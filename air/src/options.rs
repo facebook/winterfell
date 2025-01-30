@@ -70,7 +70,7 @@ pub enum FieldExtension {
 /// 4. Grinding factor - higher values increase proof soundness, but also may increase proof
 ///    generation time. More precisely, conjectured proof soundness is bounded by
 ///    `num_queries * log2(blowup_factor) + grinding_factor`.
-/// 5. Batching type - either independent random values per multi-point quotient are used in
+/// 5. Batching method - either independent random values per multi-point quotient are used in
 ///    the computation of the DEEP polynomial or powers of a single random value are used
 ///    instead. The first type of batching is called `Linear` while the second is called `Algebraic`.
 ///
@@ -95,8 +95,6 @@ pub struct ProofOptions {
     fri_folding_factor: u8,
     fri_remainder_max_degree: u8,
     batching_deep: BatchingMethod,
-    partition_options: PartitionOptions,
-    batching_deep: BatchingType,
     partition_options: PartitionOptions,
 }
 
@@ -265,6 +263,10 @@ impl ProofOptions {
     /// Depending on other parameters, Algebraic batching may lead to a small reduction in the security
     /// level of the generated proofs, but avoids extra calls to the random oracle (i.e., hash function).
     pub fn deep_poly_batching_method(&self) -> BatchingMethod {
+        self.batching_deep
+    }
+}
+
 impl<E: StarkField> ToElements<E> for ProofOptions {
     fn to_elements(&self) -> Vec<E> {
         // encode field extension and FRI parameters into a single field element
