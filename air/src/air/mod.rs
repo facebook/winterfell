@@ -11,7 +11,7 @@ use math::{
     FieldElement, StarkField, ToElements,
 };
 
-use crate::{BatchingType, ProofOptions};
+use crate::{BatchingMethod, ProofOptions};
 
 mod aux;
 pub use aux::{AuxRandElements, GkrRandElements, GkrVerifier};
@@ -582,8 +582,8 @@ pub trait Air: Send + Sync {
         R: RandomCoin<BaseField = Self::BaseField>,
     {
         let mut t_coefficients = Vec::new();
-        match self.context().options.batching_used_for_deep_poly() {
-            BatchingType::Linear => {
+        match self.context().options.deep_poly_batching_method() {
+            BatchingMethod::Linear => {
                 for _ in 0..self.trace_info().width() {
                     t_coefficients.push(public_coin.draw()?);
                 }
@@ -605,7 +605,7 @@ pub trait Air: Send + Sync {
                     lagrange: lagrange_cc,
                 })
             },
-            BatchingType::Algebraic => {
+            BatchingMethod::Algebraic => {
                 let mut t_coefficients = Vec::new();
                 let alpha: E = public_coin.draw()?;
                 t_coefficients

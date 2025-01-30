@@ -160,7 +160,7 @@ mod tests {
     use math::fields::f64::BaseElement;
 
     use super::{Context, ProofOptions, ToElements, TraceInfo};
-    use crate::{options::BatchingType, FieldExtension};
+    use crate::{options::BatchingMethod, FieldExtension};
 
     #[test]
     fn context_to_elements() {
@@ -170,7 +170,7 @@ mod tests {
         let grinding_factor = 20;
         let blowup_factor = 8;
         let num_queries = 30;
-        let batching_deep = BatchingType::Linear;
+        let batching_deep = BatchingMethod::Linear;
 
         let main_width = 20;
         let aux_width = 9;

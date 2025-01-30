@@ -94,7 +94,7 @@ pub struct ProofOptions {
     field_extension: FieldExtension,
     fri_folding_factor: u8,
     fri_remainder_max_degree: u8,
-    batching_deep: BatchingType,
+    batching_deep: BatchingMethod,
     partition_options: PartitionOptions,
 }
 
@@ -129,7 +129,7 @@ impl ProofOptions {
         field_extension: FieldExtension,
         fri_folding_factor: usize,
         fri_remainder_max_degree: usize,
-        batching_deep: BatchingType,
+        batching_deep: BatchingMethod,
     ) -> ProofOptions {
         // TODO: return errors instead of panicking
         assert!(num_queries > 0, "number of queries must be greater than 0");
@@ -262,7 +262,7 @@ impl ProofOptions {
     ///
     /// Depending on other parameters, Algebraic batching may lead to a small reduction in the security
     /// level of the generated proofs, but avoids extra calls to the random oracle (i.e., hash function).
-    pub fn batching_used_for_deep_poly(&self) -> BatchingType {
+    pub fn deep_poly_batching_method(&self) -> BatchingMethod {
         self.batching_deep
     }
 }
@@ -294,7 +294,7 @@ impl Serializable for ProofOptions {
         target.write_u8(self.fri_remainder_max_degree);
         target.write_u8(self.partition_options.num_partitions);
         target.write_u8(self.partition_options.hash_rate);
-        target.write_u8(self.batching_deep as u8);
+        target.write(self.batching_deep);
     }
 }
 
@@ -311,10 +311,7 @@ impl Deserializable for ProofOptions {
             FieldExtension::read_from(source)?,
             source.read_u8()? as usize,
             source.read_u8()? as usize,
-            match source.read_u8()? {
-                0 => BatchingType::Linear,
-                _ => BatchingType::Algebraic,
-            },
+            BatchingMethod::read_from(source)?,
         );
         Ok(result.with_partitions(source.read_u8()? as usize, source.read_u8()? as usize))
     }
@@ -451,27 +448,27 @@ impl Default for PartitionOptions {
 /// being batched.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
-pub enum BatchingType {
+pub enum BatchingMethod {
     Linear = 0,
     Algebraic = 1,
 }
 
-impl Serializable for BatchingType {
+impl Serializable for BatchingMethod {
     /// Serializes `self` and writes the resulting bytes into the `target`.
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write_u8(*self as u8);
     }
 }
 
-impl Deserializable for BatchingType {
+impl Deserializable for BatchingMethod {
     /// Reads [BatchingType] from the specified `source` and returns the result.
     ///
     /// # Errors
     /// Returns an error if the value does not correspond to a valid [BatchingType].
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         match source.read_u8()? {
-            0 => Ok(BatchingType::Linear),
-            1 => Ok(BatchingType::Algebraic),
+            0 => Ok(BatchingMethod::Linear),
+            1 => Ok(BatchingMethod::Algebraic),
             n => Err(DeserializationError::InvalidValue(format!(
                 "value {n} cannot be deserialized as a BatchingType enum"
             ))),
@@ -487,7 +484,7 @@ mod tests {
     use math::fields::{f64::BaseElement, CubeExtension};
 
     use super::{FieldExtension, PartitionOptions, ProofOptions, ToElements};
-    use crate::options::BatchingType;
+    use crate::options::BatchingMethod;
 
     #[test]
     fn proof_options_to_elements() {
@@ -518,7 +515,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
-            BatchingType::Linear,
+            BatchingMethod::Linear,
         );
         assert_eq!(expected, options.to_elements());
     }

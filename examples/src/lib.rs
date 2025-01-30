@@ -7,7 +7,7 @@ use structopt::StructOpt;
 use winterfell::{
     crypto::hashers::{Rp64_256, RpJive64_256},
     math::fields::f128::BaseElement,
-    BatchingType, FieldExtension, Proof, ProofOptions, VerifierError,
+    BatchingMethod, FieldExtension, Proof, ProofOptions, VerifierError,
 };
 
 pub mod fibonacci;
@@ -99,7 +99,7 @@ impl ExampleOptions {
                 field_extension,
                 self.folding_factor,
                 31,
-                BatchingType::Linear,
+                BatchingMethod::Linear,
             ),
             hash_fn,
         )

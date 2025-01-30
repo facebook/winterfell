@@ -8,7 +8,7 @@ use std::time::Duration;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use examples::{fibonacci, Example};
 use winterfell::{
-    crypto::hashers::Blake3_256, math::fields::f128::BaseElement, BatchingType, FieldExtension,
+    crypto::hashers::Blake3_256, math::fields::f128::BaseElement, BatchingMethod, FieldExtension,
     ProofOptions,
 };
 
@@ -19,7 +19,7 @@ fn fibonacci(c: &mut Criterion) {
     group.sample_size(10);
     group.measurement_time(Duration::from_secs(20));
 
-    let options = ProofOptions::new(32, 8, 0, FieldExtension::None, 4, 255, BatchingType::Linear);
+    let options = ProofOptions::new(32, 8, 0, FieldExtension::None, 4, 255, BatchingMethod::Linear);
 
     for &size in SIZES.iter() {
         let fib =
