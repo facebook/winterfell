@@ -253,7 +253,7 @@ impl ProofOptions {
         self.partition_options
     }
 
-    /// Returns the `[BatchingType]` defining the method used for batching the multi-point quotients
+    /// Returns the `[BatchingMethod]` defining the method used for batching the multi-point quotients
     /// defining the DEEP polynomial.
     ///
     /// Linear batching implies that independently drawn random values per multi-point quotient
@@ -427,7 +427,7 @@ impl Default for PartitionOptions {
     }
 }
 
-// BATCHING OPTION
+// BATCHING METHOD
 // ================================================================================================
 
 /// Represents the type of batching, using randomness, used in the construction of the DEEP
@@ -461,16 +461,16 @@ impl Serializable for BatchingMethod {
 }
 
 impl Deserializable for BatchingMethod {
-    /// Reads [BatchingType] from the specified `source` and returns the result.
+    /// Reads [BatchingMethod] from the specified `source` and returns the result.
     ///
     /// # Errors
-    /// Returns an error if the value does not correspond to a valid [BatchingType].
+    /// Returns an error if the value does not correspond to a valid [BatchingMethod].
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         match source.read_u8()? {
             0 => Ok(BatchingMethod::Linear),
             1 => Ok(BatchingMethod::Algebraic),
             n => Err(DeserializationError::InvalidValue(format!(
-                "value {n} cannot be deserialized as a BatchingType enum"
+                "value {n} cannot be deserialized as a BatchingMethod enum"
             ))),
         }
     }

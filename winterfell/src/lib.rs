@@ -584,7 +584,7 @@
 //!     FieldExtension::None,
 //!     8,  // FRI folding factor
 //!     31, // FRI max remainder polynomial degree
-//!     BatchingMethod::Linear, // Type of batching used in computing DEEP polynomial
+//!     BatchingMethod::Linear, // method of batching used in computing DEEP polynomial
 //! );
 //!
 //! // Instantiate the prover and generate the proof.

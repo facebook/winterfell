@@ -157,6 +157,8 @@ impl<E: FieldElement> DeepCompositionCoefficients<E> {
             num_constraint_composition_columns,
         ));
 
+        assert_eq!(t_coefficients[trace_width - 1] * alpha, c_coefficients[0]);
+
         Ok(DeepCompositionCoefficients {
             trace: t_coefficients,
             constraints: c_coefficients,
