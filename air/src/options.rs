@@ -96,7 +96,6 @@ pub struct ProofOptions {
     fri_remainder_max_degree: u8,
     batching_deep: BatchingMethod,
     partition_options: PartitionOptions,
-    batching_deep: BatchingType,
 }
 
 // PROOF OPTIONS IMPLEMENTATION
