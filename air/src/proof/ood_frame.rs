@@ -43,8 +43,8 @@ impl OodFrame {
     /// Updates the trace state portion of this out-of-domain frame, and returns the hash of the
     /// trace states.
     ///
-    /// The out-of-domain frame is stored as one vector of interleaved values, one from the current
-    /// row and the other from the next row. Given the input frame
+    /// The out-of-domain frame is stored as one vector built from the concatenation of values of two
+    /// vectors, the current row vector and the next row vector. Given the input frame
     ///
     ///    +-------+-------+-------+-------+-------+-------+-------+-------+
     ///    |   a1  |   a2  |  ...  |  an   |  c1   |  c2   |  ...  |  cm   |
@@ -54,7 +54,7 @@ impl OodFrame {
     ///
     /// with n being the main trace width and m the auxiliary trace width, the values are stored as
     ///
-    /// [a1, b1, a2, b2, ..., an, bn, c1, d1, c2, d2, ..., cm, dm]
+    /// [a1, ..., an, c1, ..., cm, b1, ..., bn, d1, ..., dm]
     ///
     /// into `Self::trace_states` (as byte values).
     ///
@@ -67,7 +67,7 @@ impl OodFrame {
     {
         assert!(self.trace_states.is_empty(), "trace sates have already been set");
 
-        // save the evaluations with the current and next evaluations interleaved for each polynomial
+        // save the evaluations of the current and then next evaluations for each polynomial
         let (main_and_aux_trace_states, lagrange_trace_states) = trace_ood_frame.to_trace_states();
 
         // there are 2 frames: current and next
@@ -144,20 +144,14 @@ impl OodFrame {
         let (current_row, next_row) = {
             let mut reader = SliceReader::new(&self.trace_states);
             let frame_size = reader.read_u8()? as usize;
-            let trace = reader.read_many((main_trace_width + aux_trace_width) * frame_size)?;
+            let mut trace = reader.read_many((main_trace_width + aux_trace_width) * frame_size)?;
 
             if reader.has_more_bytes() {
                 return Err(DeserializationError::UnconsumedBytes);
             }
 
-            let mut current_row = Vec::with_capacity(main_trace_width);
-            let mut next_row = Vec::with_capacity(main_trace_width);
-
-            for col in trace.chunks_exact(2) {
-                current_row.push(col[0]);
-                next_row.push(col[1]);
-            }
-
+            let next_row = trace.split_off(main_trace_width + aux_trace_width);
+            let current_row = trace;
             (current_row, next_row)
         };
 
@@ -316,14 +310,12 @@ impl<E: FieldElement> TraceOodFrame<E> {
         self.current_row.len() > self.main_trace_width
     }
 
-    /// Returns the main/aux frame and Lagrange kernel frame as element vectors. Specifically, the
-    /// main and auxiliary frames are interleaved, as described in [`OodFrame::set_trace_states`].
+    /// Returns the main/aux frame and Lagrange kernel frame as element vectors as described in
+    /// [`OodFrame::set_trace_states`].
     fn to_trace_states(&self) -> (Vec<E>, Vec<E>) {
         let mut main_and_aux_frame_states = Vec::new();
-        for col in 0..self.current_row.len() {
-            main_and_aux_frame_states.push(self.current_row[col]);
-            main_and_aux_frame_states.push(self.next_row[col]);
-        }
+        main_and_aux_frame_states.extend_from_slice(&self.current_row);
+        main_and_aux_frame_states.extend_from_slice(&self.next_row);
 
         let lagrange_frame_states = match self.lagrange_kernel_frame {
             Some(ref lagrange_kernel_frame) => lagrange_kernel_frame.inner().to_vec(),
