@@ -70,6 +70,9 @@ pub enum FieldExtension {
 /// 4. Grinding factor - higher values increase proof soundness, but also may increase proof
 ///    generation time. More precisely, conjectured proof soundness is bounded by
 ///    `num_queries * log2(blowup_factor) + grinding_factor`.
+/// 5. Batching type - either independent random values per multi-point quotient are used in
+///    the computation of the DEEP polynomial or powers of a single random value are used
+///    instead. The first type of batching is called `Linear` while the second is called `Algebraic`.
 ///
 /// Another important parameter in defining STARK security level, which is not a part of [ProofOptions]
 /// is the hash function used in the protocol. The soundness of a STARK proof is limited by the
@@ -91,6 +94,7 @@ pub struct ProofOptions {
     field_extension: FieldExtension,
     fri_folding_factor: u8,
     fri_remainder_max_degree: u8,
+    batching_deep: BatchingMethod,
     partition_options: PartitionOptions,
 }
 
@@ -125,6 +129,7 @@ impl ProofOptions {
         field_extension: FieldExtension,
         fri_folding_factor: usize,
         fri_remainder_max_degree: usize,
+        batching_deep: BatchingMethod,
     ) -> ProofOptions {
         // TODO: return errors instead of panicking
         assert!(num_queries > 0, "number of queries must be greater than 0");
@@ -166,6 +171,7 @@ impl ProofOptions {
             fri_folding_factor: fri_folding_factor as u8,
             fri_remainder_max_degree: fri_remainder_max_degree as u8,
             partition_options: PartitionOptions::new(1, 1),
+            batching_deep,
         }
     }
 
@@ -246,6 +252,19 @@ impl ProofOptions {
     pub fn partition_options(&self) -> PartitionOptions {
         self.partition_options
     }
+
+    /// Returns the `[BatchingMethod]` defining the method used for batching the multi-point quotients
+    /// defining the DEEP polynomial.
+    ///
+    /// Linear batching implies that independently drawn random values per multi-point quotient
+    /// will be used to do the batching, while Algebraic batching implies that powers of a single
+    /// random value are used.
+    ///
+    /// Depending on other parameters, Algebraic batching may lead to a small reduction in the security
+    /// level of the generated proofs, but avoids extra calls to the random oracle (i.e., hash function).
+    pub fn deep_poly_batching_method(&self) -> BatchingMethod {
+        self.batching_deep
+    }
 }
 
 impl<E: StarkField> ToElements<E> for ProofOptions {
@@ -275,6 +294,7 @@ impl Serializable for ProofOptions {
         target.write_u8(self.fri_remainder_max_degree);
         target.write_u8(self.partition_options.num_partitions);
         target.write_u8(self.partition_options.hash_rate);
+        target.write(self.batching_deep);
     }
 }
 
@@ -291,6 +311,7 @@ impl Deserializable for ProofOptions {
             FieldExtension::read_from(source)?,
             source.read_u8()? as usize,
             source.read_u8()? as usize,
+            BatchingMethod::read_from(source)?,
         );
         Ok(result.with_partitions(source.read_u8()? as usize, source.read_u8()? as usize))
     }
@@ -406,6 +427,55 @@ impl Default for PartitionOptions {
     }
 }
 
+// BATCHING METHOD
+// ================================================================================================
+
+/// Represents the type of batching, using randomness, used in the construction of the DEEP
+/// composition polynomial.
+///
+/// There are currently two types of batching supported:
+///
+/// 1. Linear, also called affine, where the resulting expression is a multivariate polynomial of
+///    total degree 1 in each of the random values.
+/// 2. Algebraic, also called parametric or curve batching, where the resulting expression is
+///    a univariate polynomial in one random value.
+///
+/// The main difference between the two types is that algebraic batching has low verifier randomness
+/// complexity and hence is light on the number of calls to the random oracle. However, this comes
+/// at the cost of a slight degradation in the soundness of the FRI protocol, on the order of
+/// log2(N - 1) where N is the number of code words being batched. Linear batching does not suffer
+/// from such a degradation but has linear verifier randomness complexity in the number of terms
+/// being batched.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum BatchingMethod {
+    Linear = 0,
+    Algebraic = 1,
+}
+
+impl Serializable for BatchingMethod {
+    /// Serializes `self` and writes the resulting bytes into the `target`.
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_u8(*self as u8);
+    }
+}
+
+impl Deserializable for BatchingMethod {
+    /// Reads [BatchingMethod] from the specified `source` and returns the result.
+    ///
+    /// # Errors
+    /// Returns an error if the value does not correspond to a valid [BatchingMethod].
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        match source.read_u8()? {
+            0 => Ok(BatchingMethod::Linear),
+            1 => Ok(BatchingMethod::Algebraic),
+            n => Err(DeserializationError::InvalidValue(format!(
+                "value {n} cannot be deserialized as a BatchingMethod enum"
+            ))),
+        }
+    }
+}
+
 // TESTS
 // ================================================================================================
 
@@ -414,6 +484,7 @@ mod tests {
     use math::fields::{f64::BaseElement, CubeExtension};
 
     use super::{FieldExtension, PartitionOptions, ProofOptions, ToElements};
+    use crate::options::BatchingMethod;
 
     #[test]
     fn proof_options_to_elements() {
@@ -444,6 +515,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
         );
         assert_eq!(expected, options.to_elements());
     }

@@ -315,7 +315,7 @@ mod tests {
     use math::{fields::f64::BaseElement, StarkField};
 
     use super::ProofOptions;
-    use crate::{proof::security::ProvenSecurity, FieldExtension};
+    use crate::{proof::security::ProvenSecurity, BatchingMethod, FieldExtension};
 
     #[test]
     fn get_100_bits_security() {
@@ -336,6 +336,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding, list_decoding } =
             ProvenSecurity::compute(&options, base_field_bits, trace_length, collision_resistance);
@@ -353,6 +354,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding: _, list_decoding } =
             ProvenSecurity::compute(&options, base_field_bits, trace_length, collision_resistance);
@@ -371,6 +373,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding: _, list_decoding } =
             ProvenSecurity::compute(&options, base_field_bits, trace_length, collision_resistance);
@@ -397,6 +400,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding, list_decoding: _ } =
             ProvenSecurity::compute(&options, base_field_bits, trace_length, collision_resistance);
@@ -411,6 +415,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding, list_decoding: _ } =
             ProvenSecurity::compute(&options, base_field_bits, trace_length, collision_resistance);
@@ -437,6 +442,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding, list_decoding: _ } =
             ProvenSecurity::compute(&options, base_field_bits, trace_length, collision_resistance);
@@ -458,6 +464,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding: _, list_decoding } =
             ProvenSecurity::compute(&options, base_field_bits, trace_length, collision_resistance);
@@ -476,6 +483,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding, list_decoding: _ } =
             ProvenSecurity::compute(&options, base_field_bits, trace_length, collision_resistance);
@@ -493,6 +501,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding: _, list_decoding } =
             ProvenSecurity::compute(&options, base_field_bits, trace_length, collision_resistance);
@@ -519,6 +528,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding: _, list_decoding } =
             ProvenSecurity::compute(&options, base_field_bits, trace_length, collision_resistance);
@@ -536,6 +546,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding: _, list_decoding } =
             ProvenSecurity::compute(&options, base_field_bits, trace_length, collision_resistance);
@@ -562,6 +573,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding: _, list_decoding } =
             ProvenSecurity::compute(&options, base_field_bits, trace_length, collision_resistance);
@@ -579,6 +591,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding: _, list_decoding } =
             ProvenSecurity::compute(&options, base_field_bits, trace_length, collision_resistance);
@@ -605,6 +618,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding: _, list_decoding } =
             ProvenSecurity::compute(&options, base_field_bits, trace_length, collision_resistance);
@@ -622,6 +636,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding: _, list_decoding } =
             ProvenSecurity::compute(&options, base_field_bits, trace_length, collision_resistance);
@@ -648,6 +663,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity {
             unique_decoding: _,
@@ -663,6 +679,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity {
             unique_decoding: _,
@@ -691,6 +708,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity {
             unique_decoding: _,
@@ -706,6 +724,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity {
             unique_decoding: _,
@@ -734,6 +753,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity {
             unique_decoding: _,
@@ -749,6 +769,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity {
             unique_decoding: _,

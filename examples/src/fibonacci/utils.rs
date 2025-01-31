@@ -31,12 +31,12 @@ pub fn compute_mulfib_term(n: usize) -> BaseElement {
 
 #[cfg(test)]
 pub fn build_proof_options(use_extension_field: bool) -> winterfell::ProofOptions {
-    use winterfell::{FieldExtension, ProofOptions};
+    use winterfell::{BatchingMethod, FieldExtension, ProofOptions};
 
     let extension = if use_extension_field {
         FieldExtension::Quadratic
     } else {
         FieldExtension::None
     };
-    ProofOptions::new(28, 8, 0, extension, 4, 7)
+    ProofOptions::new(28, 8, 0, extension, 4, 7, BatchingMethod::Linear)
 }

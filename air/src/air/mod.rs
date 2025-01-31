@@ -8,7 +8,7 @@ use alloc::{collections::BTreeMap, vec::Vec};
 use crypto::{RandomCoin, RandomCoinError};
 use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElements};
 
-use crate::ProofOptions;
+use crate::{BatchingMethod, ProofOptions};
 
 mod aux;
 pub use aux::{AuxRandElements, GkrRandElements, GkrVerifier};
@@ -578,26 +578,17 @@ pub trait Air: Send + Sync {
         E: FieldElement<BaseField = Self::BaseField>,
         R: RandomCoin<BaseField = Self::BaseField>,
     {
-        let mut t_coefficients = Vec::new();
-        for _ in 0..self.trace_info().width() {
-            t_coefficients.push(public_coin.draw()?);
+        match self.context().options.deep_poly_batching_method() {
+            BatchingMethod::Linear => DeepCompositionCoefficients::draw_linear(
+                public_coin,
+                self.trace_info().width(),
+                self.context().num_constraint_composition_columns(),
+            ),
+            BatchingMethod::Algebraic => DeepCompositionCoefficients::draw_algebraic(
+                public_coin,
+                self.trace_info().width(),
+                self.context().num_constraint_composition_columns(),
+            ),
         }
-
-        let mut c_coefficients = Vec::new();
-        for _ in 0..self.context().num_constraint_composition_columns() {
-            c_coefficients.push(public_coin.draw()?);
-        }
-
-        let lagrange_cc = if self.context().has_lagrange_kernel_aux_column() {
-            Some(public_coin.draw()?)
-        } else {
-            None
-        };
-
-        Ok(DeepCompositionCoefficients {
-            trace: t_coefficients,
-            constraints: c_coefficients,
-            lagrange: lagrange_cc,
-        })
     }
 }
