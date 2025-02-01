@@ -225,8 +225,6 @@ impl MockAir {
 impl Air for MockAir {
     type BaseField = BaseElement;
     type PublicInputs = ();
-    type GkrProof = ();
-    type GkrVerifier = ();
 
     fn new(trace_info: TraceInfo, _pub_inputs: (), _options: ProofOptions) -> Self {
         let num_assertions = trace_info.meta()[0] as usize;

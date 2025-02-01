@@ -39,7 +39,6 @@ Over time, we hope extend the library with additional features:
 
 **Perfect zero-knowledge.** The current implementation provides succinct proofs but NOT perfect zero-knowledge. This means that, in its current form, the library may not be suitable for use cases where proofs must not leak any info about secret inputs.
 
-**Auxiliary GKR proofs.** It will be possible to attach auxiliary GKR-based proofs to the base STARK proofs. This will enable powerful new ways of defining constraints and optimizing prover performance.
 
 ### Project structure
 The project is organized into several crates like so:

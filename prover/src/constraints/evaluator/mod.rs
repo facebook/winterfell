@@ -14,8 +14,6 @@ pub use default::DefaultConstraintEvaluator;
 mod boundary;
 use boundary::BoundaryConstraints;
 
-mod lagrange;
-
 mod periodic_table;
 use periodic_table::PeriodicValueTable;
 

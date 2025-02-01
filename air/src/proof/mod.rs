@@ -43,10 +43,6 @@ mod tests;
 /// also contains basic metadata for the computation, but neither the definition of the computation
 /// itself, nor public inputs consumed by the computation are contained in a proof.
 ///
-/// Optionally, it may contain a GKR proof. The GKR proof object gives the possibility to prove some
-/// auxiliary trace constraints using GKR, as described in [Improving logarithmic derivative lookups
-/// using GKR](https://eprint.iacr.org/2023/1284.pdf).
-///
 /// A proof can be serialized into a sequence of bytes using [to_bytes()](Proof::to_bytes) function,
 /// and deserialized from a sequence of bytes using [from_bytes()](Proof::from_bytes) function.
 ///
@@ -73,8 +69,6 @@ pub struct Proof {
     pub fri_proof: FriProof,
     /// Proof-of-work nonce for query seed grinding.
     pub pow_nonce: u64,
-    /// Optionally, an auxiliary (non-STARK) proof that was generated during auxiliary trace generation.
-    pub gkr_proof: Option<Vec<u8>>,
 }
 
 impl Proof {
@@ -158,7 +152,6 @@ impl Proof {
             ood_frame: OodFrame::default(),
             fri_proof: FriProof::new_dummy(),
             pow_nonce: 0,
-            gkr_proof: None,
         }
     }
 }
@@ -176,7 +169,6 @@ impl Serializable for Proof {
         self.ood_frame.write_into(target);
         self.fri_proof.write_into(target);
         self.pow_nonce.write_into(target);
-        self.gkr_proof.write_into(target);
     }
 }
 
@@ -200,7 +192,6 @@ impl Deserializable for Proof {
             ood_frame: OodFrame::read_from(source)?,
             fri_proof: FriProof::read_from(source)?,
             pow_nonce: source.read_u64()?,
-            gkr_proof: Option::<Vec<u8>>::read_from(source)?,
         };
         Ok(proof)
     }

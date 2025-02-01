@@ -46,8 +46,6 @@ pub struct LamportAggregateAir {
 impl Air for LamportAggregateAir {
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
-    type GkrProof = ();
-    type GkrVerifier = ();
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------

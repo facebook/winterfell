@@ -19,10 +19,6 @@ bench = false
 name = "row_matrix"
 harness = false
 
-[[bench]]
-name = "lagrange_kernel"
-harness = false
-
 [features]
 async = ["maybe_async/async"]
 concurrent = ["crypto/concurrent", "math/concurrent", "fri/concurrent", "utils/concurrent", "std"]

@@ -6,7 +6,7 @@
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
-use air::{proof::Queries, LagrangeKernelEvaluationFrame, PartitionOptions, TraceInfo};
+use air::{proof::Queries, PartitionOptions, TraceInfo};
 use crypto::VectorCommitment;
 use tracing::info_span;
 
@@ -192,29 +192,6 @@ where
         let segment = self.aux_segment_lde.as_ref().expect("expected aux segment to be present");
         frame.current_mut().copy_from_slice(segment.row(lde_step));
         frame.next_mut().copy_from_slice(segment.row(next_lde_step));
-    }
-
-    fn read_lagrange_kernel_frame_into(
-        &self,
-        lde_step: usize,
-        lagrange_kernel_aux_column_idx: usize,
-        frame: &mut LagrangeKernelEvaluationFrame<E>,
-    ) {
-        let frame = frame.frame_mut();
-        frame.truncate(0);
-
-        let aux_segment =
-            self.aux_segment_lde.as_ref().expect("expected aux segment to be present");
-
-        frame.push(aux_segment.get(lagrange_kernel_aux_column_idx, lde_step));
-
-        let frame_length = self.trace_info.length().ilog2() as usize + 1;
-        for i in 0..frame_length - 1 {
-            let shift = self.blowup() * (1 << i);
-            let next_lde_step = (lde_step + shift) % self.trace_len();
-
-            frame.push(aux_segment.get(lagrange_kernel_aux_column_idx, next_lde_step));
-        }
     }
 
     /// Returns trace table rows at the specified positions along with an opening proof to these

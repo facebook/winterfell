@@ -32,16 +32,8 @@ use math::{get_power_series, get_power_series_with_offset, FieldElement};
 pub struct ConstraintCompositionCoefficients<E: FieldElement> {
     pub transition: Vec<E>,
     pub boundary: Vec<E>,
-    pub lagrange: Option<LagrangeConstraintsCompositionCoefficients<E>>,
 }
 
-/// Stores the constraint composition coefficients for the Lagrange kernel transition and boundary
-/// constraints.
-#[derive(Debug, Clone)]
-pub struct LagrangeConstraintsCompositionCoefficients<E: FieldElement> {
-    pub transition: Vec<E>,
-    pub boundary: E,
-}
 // DEEP COMPOSITION COEFFICIENTS
 // ================================================================================================
 /// Coefficients used in construction of DEEP composition polynomial.
@@ -83,33 +75,12 @@ pub struct LagrangeConstraintsCompositionCoefficients<E: FieldElement> {
 ///    Theorem 8 of https://eprint.iacr.org/2022/1216.
 /// 3. The error will depend on the batching used in building the DEEP polynomial. More precisely,
 ///    when using algebraic batching there is a loss of log_2(k + m - 1) bits of soundness.
-///
-/// In the case when the trace polynomials contain a trace polynomial corresponding to a Lagrange
-/// kernel column, the above expression of $Y(x)$ includes the additional term given by
-///
-/// $$
-/// \gamma \cdot \frac{T_l(x) - p_S(x)}{Z_S(x)}
-/// $$
-///
-/// where:
-///
-/// 1. $\gamma$ is the composition coefficient for the Lagrange kernel trace polynomial.
-/// 2. $T_l(x) is the evaluation of the Lagrange trace polynomial at $x$.
-/// 3. $S$ is the set of opening points for the Lagrange kernel i.e.,
-///    $S := {z, z.g, z.g^2, ..., z.g^{2^{log_2(\nu) - 1}}}$.
-/// 4. $p_S(X)$ is the polynomial of minimal degree interpolating the set ${(a, T_l(a)): a \in S}$.
-/// 5. $Z_S(X)$ is the polynomial of minimal degree vanishing over the set $S$.
-///
-/// Note that, if a Lagrange kernel trace polynomial is present, then the agreement parameter needs
-/// to be adapted accordingly.
 #[derive(Debug, Clone)]
 pub struct DeepCompositionCoefficients<E: FieldElement> {
     /// Trace polynomial composition coefficients $\alpha_i$.
     pub trace: Vec<E>,
     /// Constraint column polynomial composition coefficients $\beta_j$.
     pub constraints: Vec<E>,
-    /// Lagrange kernel trace polynomial composition coefficient $\gamma$.
-    pub lagrange: Option<E>,
 }
 
 impl<E: FieldElement> DeepCompositionCoefficients<E> {
@@ -133,7 +104,6 @@ impl<E: FieldElement> DeepCompositionCoefficients<E> {
         Ok(DeepCompositionCoefficients {
             trace: t_coefficients,
             constraints: c_coefficients,
-            lagrange: None,
         })
     }
 
@@ -162,7 +132,6 @@ impl<E: FieldElement> DeepCompositionCoefficients<E> {
         Ok(DeepCompositionCoefficients {
             trace: t_coefficients,
             constraints: c_coefficients,
-            lagrange: None,
         })
     }
 }

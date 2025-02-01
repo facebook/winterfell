@@ -59,8 +59,6 @@ pub struct RescueRapsAir {
 impl Air for RescueRapsAir {
     type BaseField = BaseElement;
     type PublicInputs = PublicInputs;
-    type GkrProof = ();
-    type GkrVerifier = ();
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -80,7 +78,6 @@ impl Air for RescueRapsAir {
                 aux_degrees,
                 8,
                 2,
-                None,
                 options,
             ),
             result: pub_inputs.result,

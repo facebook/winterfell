@@ -70,7 +70,7 @@ pub enum FieldExtension {
 /// 4. Grinding factor - higher values increase proof soundness, but also may increase proof
 ///    generation time. More precisely, conjectured proof soundness is bounded by
 ///    `num_queries * log2(blowup_factor) + grinding_factor`.
-/// 5. Batching type - either independent random values per multi-point quotient are used in
+/// 5. Batching method - either independent random values per multi-point quotient are used in
 ///    the computation of the DEEP polynomial or powers of a single random value are used
 ///    instead. The first type of batching is called `Linear` while the second is called `Algebraic`.
 ///

@@ -45,10 +45,9 @@ extern crate alloc;
 pub use air::{
     proof, proof::Proof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
     ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
-    EvaluationFrame, FieldExtension, LagrangeKernelRandElements, ProofOptions, TraceInfo,
-    TransitionConstraintDegree,
+    EvaluationFrame, FieldExtension, ProofOptions, TraceInfo, TransitionConstraintDegree,
 };
-use air::{AuxRandElements, GkrRandElements, PartitionOptions};
+use air::{AuxRandElements, PartitionOptions};
 pub use crypto;
 use crypto::{ElementHasher, RandomCoin, VectorCommitment};
 use fri::FriProver;
@@ -100,9 +99,6 @@ pub mod tests;
 
 // this segment width seems to give the best performance for small fields (i.e., 64 bits)
 const DEFAULT_SEGMENT_WIDTH: usize = 8;
-
-/// Accesses the `GkrProof` type in a [`Prover`].
-pub type ProverGkrProof<P> = <<P as Prover>::Air as Air>::GkrProof;
 
 /// Defines a STARK prover for a computation.
 ///
@@ -229,20 +225,6 @@ pub trait Prover {
     // PROVIDED METHODS
     // --------------------------------------------------------------------------------------------
 
-    /// Builds the GKR proof. If the [`Air`] doesn't use a GKR proof, leave unimplemented.
-    #[allow(unused_variables)]
-    #[maybe_async]
-    fn generate_gkr_proof<E>(
-        &self,
-        main_trace: &Self::Trace,
-        public_coin: &mut Self::RandomCoin,
-    ) -> (ProverGkrProof<Self>, GkrRandElements<E>)
-    where
-        E: FieldElement<BaseField = Self::BaseField>,
-    {
-        unimplemented!("`Prover::generate_gkr_proof` needs to be implemented when the auxiliary trace has a Lagrange kernel column.")
-    }
-
     /// Builds and returns the auxiliary trace.
     #[allow(unused_variables)]
     #[maybe_async]
@@ -263,14 +245,11 @@ pub trait Prover {
     ///
     /// The returned [Proof] attests that the specified `trace` is a valid execution trace of the
     /// computation described by [Self::Air](Prover::Air) and generated using some set of secret and
-    /// public inputs. It may also contain a GKR proof, further documented in [`Proof`].
-    /// Public inputs must match the value returned from
-    /// [Self::get_pub_inputs()](Prover::get_pub_inputs) for the provided trace.
+    /// public inputs.
     #[maybe_async]
     fn prove(&self, trace: Self::Trace) -> Result<Proof, ProverError>
     where
         <Self::Air as Air>::PublicInputs: Send,
-        <Self::Air as Air>::GkrProof: Send,
     {
         // figure out which version of the generic proof generation procedure to run. this is a sort
         // of static dispatch for selecting two generic parameter: extension field and hash
@@ -304,7 +283,6 @@ pub trait Prover {
     where
         E: FieldElement<BaseField = Self::BaseField>,
         <Self::Air as Air>::PublicInputs: Send,
-        <Self::Air as Air>::GkrProof: Send,
     {
         // 0 ----- instantiate AIR and prover channel ---------------------------------------------
 
@@ -343,25 +321,9 @@ pub trait Prover {
         // build the auxiliary trace segment, and append the resulting segments to trace commitment
         // and trace polynomial table structs
         let aux_trace_with_metadata = if air.trace_info().is_multi_segment() {
-            let (gkr_proof, aux_rand_elements) = if air.context().has_lagrange_kernel_aux_column() {
-                let (gkr_proof, gkr_rand_elements) =
-                    maybe_await!(self.generate_gkr_proof(&trace, channel.public_coin()));
-
-                let rand_elements = air
-                    .get_aux_rand_elements(channel.public_coin())
-                    .expect("failed to draw random elements for the auxiliary trace segment");
-
-                let aux_rand_elements =
-                    AuxRandElements::new_with_gkr(rand_elements, gkr_rand_elements);
-
-                (Some(gkr_proof), aux_rand_elements)
-            } else {
-                let rand_elements = air
-                    .get_aux_rand_elements(channel.public_coin())
-                    .expect("failed to draw random elements for the auxiliary trace segment");
-
-                (None, AuxRandElements::new(rand_elements))
-            };
+            let aux_rand_elements = air
+                .get_aux_rand_elements(channel.public_coin())
+                .expect("failed to draw random elements for the auxiliary trace segment");
 
             let aux_trace = maybe_await!(self.build_aux_trace(&trace, &aux_rand_elements));
 
@@ -380,10 +342,9 @@ pub trait Prover {
                 aux_segment_polys
             };
 
-            trace_polys
-                .add_aux_segment(aux_segment_polys, air.context().lagrange_kernel_aux_column_idx());
+            trace_polys.add_aux_segment(aux_segment_polys);
 
-            Some(AuxTraceWithMetadata { aux_trace, aux_rand_elements, gkr_proof })
+            Some(AuxTraceWithMetadata { aux_trace, aux_rand_elements })
         } else {
             None
         };
@@ -395,9 +356,9 @@ pub trait Prover {
         trace.validate(&air, aux_trace_with_metadata.as_ref());
 
         // Destructure `aux_trace_with_metadata`.
-        let (aux_trace, aux_rand_elements, gkr_proof) = match aux_trace_with_metadata {
-            Some(atm) => (Some(atm.aux_trace), Some(atm.aux_rand_elements), atm.gkr_proof),
-            None => (None, None, None),
+        let (aux_trace, aux_rand_elements) = match aux_trace_with_metadata {
+            Some(atm) => (Some(atm.aux_trace), Some(atm.aux_rand_elements)),
+            None => (None, None),
         };
 
         // drop the main trace and aux trace segment as they are no longer needed
@@ -435,9 +396,7 @@ pub trait Prover {
 
             // evaluate trace and constraint polynomials at the OOD point z, and send the results to
             // the verifier. the trace polynomials are actually evaluated over two points: z and z *
-            // g, where g is the generator of the trace domain. Additionally, if the Lagrange kernel
-            // auxiliary column is present, we also evaluate that column over the points: z, z * g,
-            // z * g^2, z * g^4, ..., z * g^(2^(v-1)), where v = log(trace_len).
+            // g, where g is the generator of the trace domain.
             let ood_trace_states = trace_polys.get_ood_frame(z);
             channel.send_ood_trace_states(&ood_trace_states);
 
@@ -525,7 +484,6 @@ pub trait Prover {
                 constraint_queries,
                 fri_proof,
                 query_positions.len(),
-                gkr_proof.map(|gkr_proof| gkr_proof.to_bytes()),
             );
 
             drop(span);
