@@ -2,6 +2,10 @@
 
 ## 0.12.0 (TBD)
 - [BREAKING] Added security estimate in unique decoding regime  (#356).
+- [BREAKING] Added option for algebraic batching to build DEPP polynomial (#357).
+- [BREAKING] Updated serialization logic of the OOD frame (#358).
+- [BREAKING] Removed GKR-related code (#359).
+
 
 ## 0.11.0 (2024-11-24)
 - [BREAKING] Made the prover generic over the `ConstraintCommitment` type (#343).

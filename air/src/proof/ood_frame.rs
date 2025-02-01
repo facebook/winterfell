@@ -246,7 +246,7 @@ impl<E: FieldElement> TraceOodFrame<E> {
         self.current_row.len() > self.main_trace_width
     }
 
-    /// Returns the main/aux frame and Lagrange kernel frame as element vectors as described in
+    /// Returns the main/aux frames as a vector of elements described in
     /// [`OodFrame::set_trace_states`].
     fn to_trace_states(&self) -> Vec<E> {
         let mut main_and_aux_frame_states = Vec::new();
