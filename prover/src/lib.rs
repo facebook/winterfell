@@ -321,11 +321,9 @@ pub trait Prover {
         // build the auxiliary trace segment, and append the resulting segments to trace commitment
         // and trace polynomial table structs
         let aux_trace_with_metadata = if air.trace_info().is_multi_segment() {
-            let rand_elements = air
+            let aux_rand_elements = air
                 .get_aux_rand_elements(channel.public_coin())
                 .expect("failed to draw random elements for the auxiliary trace segment");
-
-            let aux_rand_elements = AuxRandElements::new(rand_elements);
 
             let aux_trace = maybe_await!(self.build_aux_trace(&trace, &aux_rand_elements));
 

@@ -64,7 +64,7 @@ impl OodFrame {
     {
         assert!(self.trace_states.is_empty(), "trace sates have already been set");
 
-        // save the evaluations with the current and next evaluations interleaved for each polynomial
+        // save the evaluations of the current and then next evaluations for each polynomial
         let main_and_aux_trace_states = trace_ood_frame.to_trace_states();
 
         // there are 2 frames: current and next
@@ -246,8 +246,8 @@ impl<E: FieldElement> TraceOodFrame<E> {
         self.current_row.len() > self.main_trace_width
     }
 
-    /// Returns the main/aux frames as element vectors. Specifically, the main and auxiliary frames
-    /// are interleaved, as described in [`OodFrame::set_trace_states`].
+    /// Returns the main/aux frame and Lagrange kernel frame as element vectors as described in
+    /// [`OodFrame::set_trace_states`].
     fn to_trace_states(&self) -> Vec<E> {
         let mut main_and_aux_frame_states = Vec::new();
         main_and_aux_frame_states.extend_from_slice(&self.current_row);

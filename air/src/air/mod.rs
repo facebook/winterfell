@@ -292,7 +292,10 @@ pub trait Air: Send + Sync {
     /// Returns a vector of field elements required for construction of the auxiliary trace segment.
     ///
     /// The elements are drawn uniformly at random from the provided public coin.
-    fn get_aux_rand_elements<E, R>(&self, public_coin: &mut R) -> Result<Vec<E>, RandomCoinError>
+    fn get_aux_rand_elements<E, R>(
+        &self,
+        public_coin: &mut R,
+    ) -> Result<AuxRandElements<E>, RandomCoinError>
     where
         E: FieldElement<BaseField = Self::BaseField>,
         R: RandomCoin<BaseField = Self::BaseField>,
@@ -302,7 +305,7 @@ pub trait Air: Send + Sync {
         for _ in 0..num_elements {
             rand_elements.push(public_coin.draw()?);
         }
-        Ok(rand_elements)
+        Ok(AuxRandElements::new(rand_elements))
     }
 
     /// Returns values for all periodic columns used in the computation.

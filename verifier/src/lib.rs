@@ -34,7 +34,6 @@ extern crate alloc;
 use alloc::vec::Vec;
 use core::cmp;
 
-use air::AuxRandElements;
 pub use air::{
     proof::Proof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
     ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
@@ -176,13 +175,13 @@ where
 
     // process auxiliary trace segments (if any), to build a set of random elements for each segment
     let aux_trace_rand_elements = if air.trace_info().is_multi_segment() {
-        let rand_elements = air
+        let aux_rand_elements = air
             .get_aux_rand_elements(&mut public_coin)
             .expect("failed to generate the random elements needed to build the auxiliary trace");
 
         public_coin.reseed(trace_commitments[AUX_TRACE_IDX]);
 
-        Some(AuxRandElements::new(rand_elements))
+        Some(aux_rand_elements)
     } else {
         None
     };

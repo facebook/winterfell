@@ -126,11 +126,11 @@ where
             .partition_size::<E>(air.context().num_constraint_composition_columns());
 
         Ok(VerifierChannel {
-            // trace queries
             trace_commitments,
+            // trace queries
             trace_queries: Some(trace_queries),
-            // constraint queries
             constraint_commitment,
+            // constraint queries
             constraint_queries: Some(constraint_queries),
             // num partitions used in commitment
             partition_size_main,
