@@ -921,4 +921,178 @@ mod tests {
 
         assert!(security_1 < security_2);
     }
+
+    #[test]
+    fn batching_method_udr() {
+        let field_extension = FieldExtension::Quadratic;
+        let base_field_bits = BaseElement::MODULUS_BITS;
+        let fri_folding_factor = 8;
+        let fri_remainder_max_degree = 255;
+        let grinding_factor = 20;
+        let blowup_factor = 8;
+        let num_queries = 120;
+        let collision_resistance = 128;
+        let trace_length = 2_usize.pow(16);
+        let total_num_of_polys = 1 << 1;
+
+        let mut options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+            BatchingMethod::Algebraic,
+        );
+        let ProvenSecurity {
+            unique_decoding: security_1,
+            list_decoding: _,
+        } = ProvenSecurity::compute(
+            &options,
+            base_field_bits,
+            trace_length,
+            collision_resistance,
+            total_num_of_polys,
+        );
+
+        assert_eq!(security_1, 106);
+
+        // when the FRI batching error is not largest when compared to the other soundness error
+        // terms, increasing the number of committed polynomials might not lead to a degradation
+        // in the round-by-round soundness of the protocol
+        let total_num_of_polys = 1 << 2;
+        options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+            BatchingMethod::Algebraic,
+        );
+        let ProvenSecurity {
+            unique_decoding: security_2,
+            list_decoding: _,
+        } = ProvenSecurity::compute(
+            &options,
+            base_field_bits,
+            trace_length,
+            collision_resistance,
+            total_num_of_polys,
+        );
+
+        assert_eq!(security_2, 106);
+
+        // but after a certain point, there will be a degradation
+        let total_num_of_polys = 1 << 5;
+        options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+            BatchingMethod::Algebraic,
+        );
+        let ProvenSecurity {
+            unique_decoding: security_2,
+            list_decoding: _,
+        } = ProvenSecurity::compute(
+            &options,
+            base_field_bits,
+            trace_length,
+            collision_resistance,
+            total_num_of_polys,
+        );
+
+        assert_eq!(security_2, 104);
+
+        // and this degradation is on the order of log2(N - 1) where N is the number of
+        // committed polynomials
+        let total_num_of_polys = total_num_of_polys << 3;
+        options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+            BatchingMethod::Algebraic,
+        );
+        let ProvenSecurity {
+            unique_decoding: security_2,
+            list_decoding: _,
+        } = ProvenSecurity::compute(
+            &options,
+            base_field_bits,
+            trace_length,
+            collision_resistance,
+            total_num_of_polys,
+        );
+
+        assert_eq!(security_2, 101);
+    }
+
+    #[test]
+    fn batching_method_ldr() {
+        let field_extension = FieldExtension::Cubic;
+        let base_field_bits = BaseElement::MODULUS_BITS;
+        let fri_folding_factor = 8;
+        let fri_remainder_max_degree = 255;
+        let grinding_factor = 20;
+        let blowup_factor = 8;
+        let num_queries = 120;
+        let collision_resistance = 128;
+        let trace_length = 2_usize.pow(22);
+        let total_num_of_polys = 1 << 1;
+
+        let mut options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+            BatchingMethod::Algebraic,
+        );
+        let ProvenSecurity {
+            unique_decoding: _,
+            list_decoding: security_1,
+        } = ProvenSecurity::compute(
+            &options,
+            base_field_bits,
+            trace_length,
+            collision_resistance,
+            total_num_of_polys,
+        );
+
+        assert_eq!(security_1, 126);
+
+        // increasing the number of committed polynomials might lead to a degradation
+        // in the round-by-round soundness of the protocol on the order of log2(N - 1) where
+        // N is the number of committed polynomials. This happens when the FRI batching error
+        // is the largest among all erros
+        let total_num_of_polys = 1 << 8;
+        options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+            BatchingMethod::Algebraic,
+        );
+        let ProvenSecurity {
+            unique_decoding: _,
+            list_decoding: security_2,
+        } = ProvenSecurity::compute(
+            &options,
+            base_field_bits,
+            trace_length,
+            collision_resistance,
+            total_num_of_polys,
+        );
+
+        assert_eq!(security_2, 118);
+    }
 }
