@@ -79,6 +79,7 @@ impl ProvenSecurity {
         base_field_bits: u32,
         trace_domain_size: usize,
         collision_resistance: u32,
+        total_num_of_constraints: usize,
         total_num_of_polys: usize,
     ) -> Self {
         let unique_decoding = cmp::min(
@@ -86,6 +87,7 @@ impl ProvenSecurity {
                 options,
                 base_field_bits,
                 trace_domain_size,
+                total_num_of_constraints,
                 total_num_of_polys,
             ),
             collision_resistance as u64,
@@ -103,6 +105,7 @@ impl ProvenSecurity {
                 base_field_bits,
                 trace_domain_size,
                 a as usize,
+                total_num_of_constraints,
                 total_num_of_polys,
             )
         })
@@ -116,6 +119,7 @@ impl ProvenSecurity {
                 base_field_bits,
                 trace_domain_size,
                 m_optimal as usize,
+                total_num_of_constraints,
                 total_num_of_polys,
             ),
             collision_resistance as u64,
@@ -148,6 +152,7 @@ fn proven_security_protocol_for_given_proximity_parameter(
     base_field_bits: u32,
     trace_domain_size: usize,
     m: usize,
+    total_num_of_constraints: usize,
     total_num_of_polys: usize,
 ) -> u64 {
     let extension_field_bits = (base_field_bits * options.field_extension().degree()) as f64;
@@ -171,9 +176,13 @@ fn proven_security_protocol_for_given_proximity_parameter(
     // list size
     let l = m / (rho - (2.0 * m / lde_domain_size));
 
-    // ALI related soundness error. Note that C here is equal to 1 because of our use of
-    // linear batching
-    let epsilon_1_bits_neg = -log2(l) + extension_field_bits;
+    // ALI related soundness error. If algebraic/curve batching is used for batching the constraints
+    // then there is a loss of log2(C - 1) where C is the total number of constraints.
+    let batching_factor = match options.constraint_batching_method() {
+        BatchingMethod::Linear => 1.0,
+        BatchingMethod::Algebraic => total_num_of_constraints as f64 - 1.0,
+    };
+    let epsilon_1_bits_neg = -log2(l) - log2(batching_factor) + extension_field_bits;
     epsilons_bits_neg.push(epsilon_1_bits_neg);
 
     // DEEP related soundness error. Note that this uses that the denominator |F| - |D ∪ H|
@@ -215,6 +224,7 @@ fn proven_security_protocol_unique_decoding(
     options: &ProofOptions,
     base_field_bits: u32,
     trace_domain_size: usize,
+    total_num_of_constraints: usize,
     total_num_of_polys: usize,
 ) -> u64 {
     let extension_field_bits = (base_field_bits * options.field_extension().degree()) as f64;
@@ -230,8 +240,13 @@ fn proven_security_protocol_unique_decoding(
     // we apply Theorem 3 in https://eprint.iacr.org/2024/1553
     let mut epsilons_bits_neg = vec![];
 
-    // ALI related soundness error
-    let epsilon_1_bits_neg = extension_field_bits;
+    // ALI related soundness error. If algebraic/curve batching is used for batching the constraints
+    // then there is a loss of log2(C - 1) where C is the total number of constraints.
+    let batching_factor = match options.constraint_batching_method() {
+        BatchingMethod::Linear => 1.0,
+        BatchingMethod::Algebraic => total_num_of_constraints as f64 - 1.0,
+    };
+    let epsilon_1_bits_neg = -log2(batching_factor) + extension_field_bits;
     epsilons_bits_neg.push(epsilon_1_bits_neg);
 
     // DEEP related soundness error. Note that this uses that the denominator |F| - |D ∪ H|
@@ -352,6 +367,7 @@ mod tests {
         let collision_resistance = 128;
         let trace_length = 2_usize.pow(20);
         let total_num_of_polys = 2;
+        let total_num_of_constraints = 100;
 
         let mut options = ProofOptions::new(
             num_queries,
@@ -361,12 +377,14 @@ mod tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
             BatchingMethod::Linear,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding, list_decoding } = ProvenSecurity::compute(
             &options,
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -384,12 +402,14 @@ mod tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
             BatchingMethod::Linear,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding: _, list_decoding } = ProvenSecurity::compute(
             &options,
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -408,12 +428,14 @@ mod tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
             BatchingMethod::Linear,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding: _, list_decoding } = ProvenSecurity::compute(
             &options,
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -432,6 +454,7 @@ mod tests {
         let collision_resistance = 128;
         let trace_length = 2_usize.pow(8);
         let total_num_of_polys = 2;
+        let total_num_of_constraints = 100;
 
         let mut options = ProofOptions::new(
             num_queries,
@@ -441,12 +464,14 @@ mod tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
             BatchingMethod::Linear,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding, list_decoding: _ } = ProvenSecurity::compute(
             &options,
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -461,12 +486,14 @@ mod tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
             BatchingMethod::Linear,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding, list_decoding: _ } = ProvenSecurity::compute(
             &options,
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -485,6 +512,7 @@ mod tests {
         let collision_resistance = 128;
         let trace_length = 2_usize.pow(8);
         let total_num_of_polys = 2;
+        let total_num_of_constraints = 100;
 
         let mut options = ProofOptions::new(
             num_queries,
@@ -494,12 +522,14 @@ mod tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
             BatchingMethod::Linear,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding, list_decoding: _ } = ProvenSecurity::compute(
             &options,
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -521,12 +551,14 @@ mod tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
             BatchingMethod::Linear,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding: _, list_decoding } = ProvenSecurity::compute(
             &options,
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -545,12 +577,14 @@ mod tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
             BatchingMethod::Linear,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding, list_decoding: _ } = ProvenSecurity::compute(
             &options,
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -568,12 +602,14 @@ mod tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
             BatchingMethod::Linear,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding: _, list_decoding } = ProvenSecurity::compute(
             &options,
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -592,6 +628,7 @@ mod tests {
         let collision_resistance = 128;
         let trace_length = 2_usize.pow(18);
         let total_num_of_polys = 2;
+        let total_num_of_constraints = 100;
 
         let mut options = ProofOptions::new(
             num_queries,
@@ -601,12 +638,14 @@ mod tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
             BatchingMethod::Linear,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding: _, list_decoding } = ProvenSecurity::compute(
             &options,
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -624,12 +663,14 @@ mod tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
             BatchingMethod::Linear,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding: _, list_decoding } = ProvenSecurity::compute(
             &options,
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -648,6 +689,7 @@ mod tests {
         let collision_resistance = 128;
         let trace_length = 2_usize.pow(18);
         let total_num_of_polys = 2;
+        let total_num_of_constraints = 100;
 
         let mut options = ProofOptions::new(
             num_queries,
@@ -657,12 +699,14 @@ mod tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
             BatchingMethod::Linear,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding: _, list_decoding } = ProvenSecurity::compute(
             &options,
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -680,12 +724,14 @@ mod tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
             BatchingMethod::Linear,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding: _, list_decoding } = ProvenSecurity::compute(
             &options,
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -704,6 +750,7 @@ mod tests {
         let collision_resistance = 128;
         let trace_length = 2_usize.pow(18);
         let total_num_of_polys = 2;
+        let total_num_of_constraints = 100;
 
         let mut options = ProofOptions::new(
             num_queries,
@@ -713,12 +760,14 @@ mod tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
             BatchingMethod::Linear,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding: _, list_decoding } = ProvenSecurity::compute(
             &options,
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -736,12 +785,14 @@ mod tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
             BatchingMethod::Linear,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity { unique_decoding: _, list_decoding } = ProvenSecurity::compute(
             &options,
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -760,6 +811,7 @@ mod tests {
         let collision_resistance = 128;
         let trace_length = 2_usize.pow(20);
         let total_num_of_polys = 2;
+        let total_num_of_constraints = 100;
 
         let mut options = ProofOptions::new(
             num_queries,
@@ -768,6 +820,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
             BatchingMethod::Linear,
         );
         let ProvenSecurity {
@@ -778,6 +831,7 @@ mod tests {
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -791,6 +845,7 @@ mod tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
             BatchingMethod::Linear,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity {
             unique_decoding: _,
@@ -800,6 +855,7 @@ mod tests {
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -818,6 +874,7 @@ mod tests {
         let collision_resistance = 128;
         let trace_length = 2_usize.pow(20);
         let total_num_of_polys = 2;
+        let total_num_of_constraints = 100;
 
         let mut options = ProofOptions::new(
             num_queries,
@@ -826,6 +883,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
             BatchingMethod::Linear,
         );
         let ProvenSecurity {
@@ -836,6 +894,7 @@ mod tests {
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -849,6 +908,7 @@ mod tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
             BatchingMethod::Linear,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity {
             unique_decoding: _,
@@ -858,6 +918,7 @@ mod tests {
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -876,6 +937,7 @@ mod tests {
         let collision_resistance = 128;
         let trace_length = 2_usize.pow(20);
         let total_num_of_polys = 2;
+        let total_num_of_constraints = 100;
 
         let mut options = ProofOptions::new(
             num_queries,
@@ -884,6 +946,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
             BatchingMethod::Linear,
         );
         let ProvenSecurity {
@@ -894,6 +957,7 @@ mod tests {
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -907,6 +971,7 @@ mod tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
             BatchingMethod::Linear,
+            BatchingMethod::Linear,
         );
         let ProvenSecurity {
             unique_decoding: _,
@@ -916,6 +981,7 @@ mod tests {
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -923,7 +989,7 @@ mod tests {
     }
 
     #[test]
-    fn batching_method_udr() {
+    fn deep_batching_method_udr() {
         let field_extension = FieldExtension::Quadratic;
         let base_field_bits = BaseElement::MODULUS_BITS;
         let fri_folding_factor = 8;
@@ -934,6 +1000,7 @@ mod tests {
         let collision_resistance = 128;
         let trace_length = 2_usize.pow(16);
         let total_num_of_polys = 1 << 1;
+        let total_num_of_constraints = 100;
 
         let mut options = ProofOptions::new(
             num_queries,
@@ -942,6 +1009,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
             BatchingMethod::Algebraic,
         );
         let ProvenSecurity {
@@ -952,6 +1020,7 @@ mod tests {
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -968,6 +1037,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
             BatchingMethod::Algebraic,
         );
         let ProvenSecurity {
@@ -978,6 +1048,7 @@ mod tests {
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -992,6 +1063,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
             BatchingMethod::Algebraic,
         );
         let ProvenSecurity {
@@ -1002,6 +1074,7 @@ mod tests {
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -1017,6 +1090,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
             BatchingMethod::Algebraic,
         );
         let ProvenSecurity {
@@ -1027,6 +1101,7 @@ mod tests {
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -1034,7 +1109,7 @@ mod tests {
     }
 
     #[test]
-    fn batching_method_ldr() {
+    fn deep_batching_method_ldr() {
         let field_extension = FieldExtension::Cubic;
         let base_field_bits = BaseElement::MODULUS_BITS;
         let fri_folding_factor = 8;
@@ -1045,6 +1120,7 @@ mod tests {
         let collision_resistance = 128;
         let trace_length = 2_usize.pow(22);
         let total_num_of_polys = 1 << 1;
+        let total_num_of_constraints = 100;
 
         let mut options = ProofOptions::new(
             num_queries,
@@ -1053,6 +1129,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
             BatchingMethod::Algebraic,
         );
         let ProvenSecurity {
@@ -1063,6 +1140,7 @@ mod tests {
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
@@ -1080,6 +1158,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
             BatchingMethod::Algebraic,
         );
         let ProvenSecurity {
@@ -1090,9 +1169,223 @@ mod tests {
             base_field_bits,
             trace_length,
             collision_resistance,
+            total_num_of_constraints,
             total_num_of_polys,
         );
 
         assert_eq!(security_2, 118);
+    }
+
+    #[test]
+    fn constraints_batching_method_udr() {
+        let field_extension = FieldExtension::Quadratic;
+        let base_field_bits = BaseElement::MODULUS_BITS;
+        let fri_folding_factor = 2;
+        let fri_remainder_max_degree = 255;
+        let grinding_factor = 20;
+        let blowup_factor = 8;
+        let num_queries = 120;
+        let collision_resistance = 128;
+        let trace_length = 2_usize.pow(16);
+        let total_num_of_polys = 1 << 1;
+        let total_num_of_constraints = 100;
+
+        let mut options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
+            BatchingMethod::Linear,
+        );
+        let ProvenSecurity {
+            unique_decoding: security_1,
+            list_decoding: _,
+        } = ProvenSecurity::compute(
+            &options,
+            base_field_bits,
+            trace_length,
+            collision_resistance,
+            total_num_of_constraints,
+            total_num_of_polys,
+        );
+
+        assert_eq!(security_1, 108);
+
+        // when the total number of constraints is on the order of the size of the LDE domain size
+        // there is no degradation in the soundness error when using algebraic/curve batching
+        // to batch constraints
+        let total_num_of_constraints = trace_length * blowup_factor;
+        options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+            BatchingMethod::Algebraic,
+            BatchingMethod::Linear,
+        );
+        let ProvenSecurity {
+            unique_decoding: security_2,
+            list_decoding: _,
+        } = ProvenSecurity::compute(
+            &options,
+            base_field_bits,
+            trace_length,
+            collision_resistance,
+            total_num_of_constraints,
+            total_num_of_polys,
+        );
+
+        assert_eq!(security_2, 108);
+
+        // but after a certain point, there will be a degradation
+        let total_num_of_constraints = trace_length * blowup_factor << 2;
+        options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+            BatchingMethod::Algebraic,
+            BatchingMethod::Linear,
+        );
+        let ProvenSecurity {
+            unique_decoding: security_2,
+            list_decoding: _,
+        } = ProvenSecurity::compute(
+            &options,
+            base_field_bits,
+            trace_length,
+            collision_resistance,
+            total_num_of_constraints,
+            total_num_of_polys,
+        );
+
+        assert_eq!(security_2, 107);
+
+        // and this degradation is on the order of log2(C - 1) where C is the total number of
+        // constraints
+        let total_num_of_constraints = total_num_of_constraints << 2;
+        options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+            BatchingMethod::Algebraic,
+            BatchingMethod::Linear,
+        );
+        let ProvenSecurity {
+            unique_decoding: security_2,
+            list_decoding: _,
+        } = ProvenSecurity::compute(
+            &options,
+            base_field_bits,
+            trace_length,
+            collision_resistance,
+            total_num_of_constraints,
+            total_num_of_polys,
+        );
+
+        assert_eq!(security_2, 105);
+    }
+
+    #[test]
+    fn constraints_batching_method_ldr() {
+        let field_extension = FieldExtension::Cubic;
+        let base_field_bits = BaseElement::MODULUS_BITS;
+        let fri_folding_factor = 8;
+        let fri_remainder_max_degree = 255;
+        let grinding_factor = 20;
+        let blowup_factor = 8;
+        let num_queries = 120;
+        let collision_resistance = 128;
+        let trace_length = 2_usize.pow(22);
+        let total_num_of_polys = 1 << 1;
+        let total_num_of_constraints = 100;
+
+        let mut options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
+            BatchingMethod::Linear,
+        );
+        let ProvenSecurity {
+            unique_decoding: _,
+            list_decoding: security_1,
+        } = ProvenSecurity::compute(
+            &options,
+            base_field_bits,
+            trace_length,
+            collision_resistance,
+            total_num_of_constraints,
+            total_num_of_polys,
+        );
+
+        assert_eq!(security_1, 126);
+
+        // when the total number of constraints is on the order of the size of the LDE domain size
+        // square there is no degradation in the soundness error when using algebraic/curve batching
+        // to batch constraints
+        let total_num_of_constraints = (trace_length * blowup_factor).pow(2);
+        options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+            BatchingMethod::Algebraic,
+            BatchingMethod::Linear,
+        );
+        let ProvenSecurity {
+            unique_decoding: _,
+            list_decoding: security_2,
+        } = ProvenSecurity::compute(
+            &options,
+            base_field_bits,
+            trace_length,
+            collision_resistance,
+            total_num_of_constraints,
+            total_num_of_polys,
+        );
+
+        assert_eq!(security_2, 126);
+
+        // and we have a good margin until we see any degradation in the soundness error
+        let total_num_of_constraints = total_num_of_constraints << 12;
+        options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+            BatchingMethod::Algebraic,
+            BatchingMethod::Linear,
+        );
+        let ProvenSecurity {
+            unique_decoding: _,
+            list_decoding: security_3,
+        } = ProvenSecurity::compute(
+            &options,
+            base_field_bits,
+            trace_length,
+            collision_resistance,
+            total_num_of_constraints,
+            total_num_of_polys,
+        );
+
+        assert_eq!(security_3, 125);
     }
 }

@@ -100,6 +100,7 @@ impl ExampleOptions {
                 self.folding_factor,
                 31,
                 BatchingMethod::Linear,
+                BatchingMethod::Linear,
             ),
             hash_fn,
         )

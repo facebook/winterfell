@@ -44,7 +44,16 @@ impl MockAir {
         Self::new(
             TraceInfo::new(4, trace_length),
             (),
-            ProofOptions::new(32, 8, 0, FieldExtension::None, 4, 31, BatchingMethod::Linear),
+            ProofOptions::new(
+                32,
+                8,
+                0,
+                FieldExtension::None,
+                4,
+                31,
+                BatchingMethod::Linear,
+                BatchingMethod::Linear,
+            ),
         )
     }
 
@@ -55,7 +64,16 @@ impl MockAir {
         let mut result = Self::new(
             TraceInfo::new(4, trace_length),
             (),
-            ProofOptions::new(32, 8, 0, FieldExtension::None, 4, 31, BatchingMethod::Linear),
+            ProofOptions::new(
+                32,
+                8,
+                0,
+                FieldExtension::None,
+                4,
+                31,
+                BatchingMethod::Linear,
+                BatchingMethod::Linear,
+            ),
         );
         result.periodic_columns = column_values;
         result
@@ -65,7 +83,16 @@ impl MockAir {
         let mut result = Self::new(
             TraceInfo::new(4, trace_length),
             (),
-            ProofOptions::new(32, 8, 0, FieldExtension::None, 4, 31, BatchingMethod::Linear),
+            ProofOptions::new(
+                32,
+                8,
+                0,
+                FieldExtension::None,
+                4,
+                31,
+                BatchingMethod::Linear,
+                BatchingMethod::Linear,
+            ),
         );
         result.assertions = assertions;
         result
@@ -121,6 +148,7 @@ fn build_context<B: StarkField>(
         FieldExtension::None,
         4,
         31,
+        BatchingMethod::Linear,
         BatchingMethod::Linear,
     );
     let t_degrees = vec![TransitionConstraintDegree::new(2)];

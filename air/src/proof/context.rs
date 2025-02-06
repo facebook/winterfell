@@ -18,18 +18,24 @@ pub struct Context {
     trace_info: TraceInfo,
     field_modulus_bytes: Vec<u8>,
     options: ProofOptions,
+    total_num_of_constraints: usize,
 }
 
 impl Context {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
-    /// Creates a new context for a computation described by the specified field, trace info, and
-    /// proof options.
+    /// Creates a new context for a computation described by the specified field, trace info, proof
+    /// options, and total number of constraints.
     ///
     /// # Panics
-    /// Panics if either trace length or the LDE domain size implied by the trace length and the
-    /// blowup factor is greater then [u32::MAX].
-    pub fn new<B: StarkField>(trace_info: TraceInfo, options: ProofOptions) -> Self {
+    /// - If either trace length or the LDE domain size implied by the trace length and the
+    ///   blowup factor is greater then [u32::MAX].
+    /// - If the number of constraints is greater than [u32::MAX].
+    pub fn new<B: StarkField>(
+        trace_info: TraceInfo,
+        options: ProofOptions,
+        total_num_of_constraints: usize,
+    ) -> Self {
         // TODO: return errors instead of panicking?
 
         let trace_length = trace_info.length();
@@ -38,10 +44,16 @@ impl Context {
         let lde_domain_size = trace_length * options.blowup_factor();
         assert!(lde_domain_size <= u32::MAX as usize, "LDE domain size too big");
 
+        assert!(
+            total_num_of_constraints <= u32::MAX as usize,
+            "number of constraints is too big"
+        );
+
         Context {
             trace_info,
             field_modulus_bytes: B::get_modulus_le_bytes(),
             options,
+            total_num_of_constraints,
         }
     }
 
@@ -83,6 +95,11 @@ impl Context {
     /// Returns proof options which were used to a proof in this context.
     pub fn options(&self) -> &ProofOptions {
         &self.options
+    }
+
+    /// Returns the total number of constraints.
+    pub fn total_num_of_constraints(&self) -> usize {
+        self.total_num_of_constraints
     }
 }
 
@@ -148,7 +165,15 @@ impl Deserializable for Context {
         // read options
         let options = ProofOptions::read_from(source)?;
 
-        Ok(Context { trace_info, field_modulus_bytes, options })
+        // read total number of constraints
+        let total_num_of_constraints = source.read_usize()?;
+
+        Ok(Context {
+            trace_info,
+            field_modulus_bytes,
+            options,
+            total_num_of_constraints,
+        })
     }
 }
 
@@ -170,6 +195,8 @@ mod tests {
         let grinding_factor = 20;
         let blowup_factor = 8;
         let num_queries = 30;
+        let total_num_of_constraints = 128;
+        let batching_constraints = BatchingMethod::Linear;
         let batching_deep = BatchingMethod::Linear;
 
         let main_width = 20;
@@ -213,11 +240,12 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            batching_constraints,
             batching_deep,
         );
         let trace_info =
             TraceInfo::new_multi_segment(main_width, aux_width, aux_rands, trace_length, vec![]);
-        let context = Context::new::<BaseElement>(trace_info, options);
+        let context = Context::new::<BaseElement>(trace_info, options, total_num_of_constraints);
         assert_eq!(expected, context.to_elements());
     }
 }

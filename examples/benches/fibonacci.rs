@@ -19,7 +19,16 @@ fn fibonacci(c: &mut Criterion) {
     group.sample_size(10);
     group.measurement_time(Duration::from_secs(20));
 
-    let options = ProofOptions::new(32, 8, 0, FieldExtension::None, 4, 255, BatchingMethod::Linear);
+    let options = ProofOptions::new(
+        32,
+        8,
+        0,
+        FieldExtension::None,
+        4,
+        255,
+        BatchingMethod::Linear,
+        BatchingMethod::Linear,
+    );
 
     for &size in SIZES.iter() {
         let fib =

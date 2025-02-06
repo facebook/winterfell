@@ -33,5 +33,14 @@ fn build_options(use_extension_field: bool) -> ProofOptions {
     } else {
         FieldExtension::None
     };
-    ProofOptions::new(28, 8, 0, extension, 4, 31, BatchingMethod::Linear)
+    ProofOptions::new(
+        28,
+        8,
+        0,
+        extension,
+        4,
+        31,
+        BatchingMethod::Algebraic,
+        BatchingMethod::Algebraic,
+    )
 }

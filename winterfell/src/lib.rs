@@ -578,6 +578,7 @@
 //!     FieldExtension::None,
 //!     8,  // FRI folding factor
 //!     31, // FRI max remainder polynomial degree
+//!     BatchingMethod::Linear, // method of batching used in computing constraint composition polynomial
 //!     BatchingMethod::Linear, // method of batching used in computing DEEP polynomial
 //! );
 //!
