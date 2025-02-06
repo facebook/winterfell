@@ -1243,7 +1243,7 @@ mod tests {
         assert_eq!(security_2, 108);
 
         // but after a certain point, there will be a degradation
-        let total_num_of_constraints = trace_length * blowup_factor << 2;
+        let total_num_of_constraints = (trace_length * blowup_factor) << 2;
         options = ProofOptions::new(
             num_queries,
             blowup_factor,
