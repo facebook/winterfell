@@ -292,9 +292,9 @@ impl Serializable for ProofOptions {
         target.write(self.field_extension);
         target.write_u8(self.fri_folding_factor);
         target.write_u8(self.fri_remainder_max_degree);
+        target.write(self.batching_deep);
         target.write_u8(self.partition_options.num_partitions);
         target.write_u8(self.partition_options.hash_rate);
-        target.write(self.batching_deep);
     }
 }
 
