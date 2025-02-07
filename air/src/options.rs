@@ -294,13 +294,9 @@ impl<E: StarkField> ToElements<E> for ProofOptions {
         let mut buf = self.field_extension as u32;
         buf = (buf << 8) | self.fri_folding_factor as u32;
         buf = (buf << 8) | self.fri_remainder_max_degree as u32;
+        buf = (buf << 8) | self.blowup_factor as u32;
 
-        vec![
-            E::from(buf),
-            E::from(self.grinding_factor),
-            E::from(self.blowup_factor),
-            E::from(self.num_queries),
-        ]
+        vec![E::from(buf), E::from(self.grinding_factor), E::from(self.num_queries)]
     }
 }
 
@@ -521,15 +517,14 @@ mod tests {
         let num_queries = 30;
 
         let ext_fri = u32::from_le_bytes([
+            blowup_factor as u8,
             fri_remainder_max_degree,
             fri_folding_factor,
             field_extension as u8,
-            0,
         ]);
         let expected = vec![
             BaseElement::from(ext_fri),
             BaseElement::from(grinding_factor),
-            BaseElement::from(blowup_factor as u32),
             BaseElement::from(num_queries as u32),
         ];
 

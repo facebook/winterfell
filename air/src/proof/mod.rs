@@ -107,7 +107,7 @@ impl Proof {
     pub fn proven_security<H: Hasher>(&self) -> ProvenSecurity {
         // note that we need the count of the total number of constraints in the protocol as
         // the soundness error, in the case of algebraic batching, depends on the this number.
-        let total_num_of_constraints = self.context.total_num_of_constraints();
+        let num_constraints = self.context.num_constraints();
 
         // we need to count the number of code words appearing in the protocol as the soundness
         // error, in the case of algebraic batching, depends on the this number.
@@ -115,14 +115,14 @@ impl Proof {
         // polynomials.
         let num_trace_polys = self.context.trace_info().width();
         let num_constraint_composition_polys = self.options().blowup_factor();
-        let total_number_of_polys = num_trace_polys + num_constraint_composition_polys;
+        let num_polys = num_trace_polys + num_constraint_composition_polys;
         ProvenSecurity::compute(
             self.context.options(),
             self.context.num_modulus_bits(),
             self.trace_info().length(),
             H::COLLISION_RESISTANCE,
-            total_num_of_constraints,
-            total_number_of_polys,
+            num_constraints,
+            num_polys,
         )
     }
 

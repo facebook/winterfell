@@ -47,16 +47,16 @@ impl<E: FieldElement> ConstraintCompositionCoefficients<E> {
     /// polynomial when linear batching is used.
     pub fn draw_linear(
         public_coin: &mut impl RandomCoin<BaseField = E::BaseField>,
-        num_of_transition_constraints: usize,
-        num_of_boundary_constraints: usize,
+        num_transition_constraints: usize,
+        num_boundary_constraints: usize,
     ) -> Result<Self, RandomCoinError> {
         let mut t_coefficients = Vec::new();
-        for _ in 0..num_of_transition_constraints {
+        for _ in 0..num_transition_constraints {
             t_coefficients.push(public_coin.draw()?);
         }
 
         let mut b_coefficients = Vec::new();
-        for _ in 0..num_of_boundary_constraints {
+        for _ in 0..num_boundary_constraints {
             b_coefficients.push(public_coin.draw()?);
         }
 
@@ -70,24 +70,24 @@ impl<E: FieldElement> ConstraintCompositionCoefficients<E> {
     /// polynomial when algebraic batching is used.
     pub fn draw_algebraic(
         public_coin: &mut impl RandomCoin<BaseField = E::BaseField>,
-        num_of_transition_constraints: usize,
-        num_of_boundary_constraints: usize,
+        num_transition_constraints: usize,
+        num_boundary_constraints: usize,
     ) -> Result<Self, RandomCoinError> {
         let mut t_coefficients = Vec::new();
         let alpha: E = public_coin.draw()?;
-        t_coefficients.extend_from_slice(&get_power_series(alpha, num_of_transition_constraints));
+        t_coefficients.extend_from_slice(&get_power_series(alpha, num_transition_constraints));
 
         let mut b_coefficients = Vec::new();
 
         let alpha_pow_num_transition_constraints =
-            alpha.exp((num_of_transition_constraints as u32).into());
+            alpha.exp((num_transition_constraints as u32).into());
         b_coefficients.extend_from_slice(&get_power_series_with_offset(
             alpha,
             alpha_pow_num_transition_constraints,
-            num_of_boundary_constraints,
+            num_boundary_constraints,
         ));
 
-        assert_eq!(t_coefficients[num_of_transition_constraints - 1] * alpha, b_coefficients[0]);
+        assert_eq!(t_coefficients[num_transition_constraints - 1] * alpha, b_coefficients[0]);
 
         Ok(ConstraintCompositionCoefficients {
             transition: t_coefficients,

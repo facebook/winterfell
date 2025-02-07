@@ -52,12 +52,12 @@ where
     // --------------------------------------------------------------------------------------------
     /// Creates a new prover channel for the specified `air` and public inputs.
     pub fn new(air: &'a A, mut pub_inputs_elements: Vec<A::BaseField>) -> Self {
-        let total_num_of_constraints =
+        let num_constraints =
             air.context().num_assertions() + air.context().num_transition_constraints();
         let context = Context::new::<A::BaseField>(
             air.trace_info().clone(),
             air.options().clone(),
-            total_num_of_constraints,
+            num_constraints,
         );
 
         // build a seed for the public coin; the initial seed is a hash of the proof context and

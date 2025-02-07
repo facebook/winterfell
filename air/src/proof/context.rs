@@ -18,7 +18,7 @@ pub struct Context {
     trace_info: TraceInfo,
     field_modulus_bytes: Vec<u8>,
     options: ProofOptions,
-    total_num_of_constraints: usize,
+    num_constraints: usize,
 }
 
 impl Context {
@@ -30,11 +30,12 @@ impl Context {
     /// # Panics
     /// - If either trace length or the LDE domain size implied by the trace length and the
     ///   blowup factor is greater then [u32::MAX].
+    /// - If the number of constraints is not greater than 0.
     /// - If the number of constraints is greater than [u32::MAX].
     pub fn new<B: StarkField>(
         trace_info: TraceInfo,
         options: ProofOptions,
-        total_num_of_constraints: usize,
+        num_constraints: usize,
     ) -> Self {
         // TODO: return errors instead of panicking?
 
@@ -44,16 +45,14 @@ impl Context {
         let lde_domain_size = trace_length * options.blowup_factor();
         assert!(lde_domain_size <= u32::MAX as usize, "LDE domain size too big");
 
-        assert!(
-            total_num_of_constraints <= u32::MAX as usize,
-            "number of constraints is too big"
-        );
+        assert!(num_constraints > 0, "number of constraints should be greater than zero");
+        assert!(num_constraints <= u32::MAX as usize, "number of constraints is too big");
 
         Context {
             trace_info,
             field_modulus_bytes: B::get_modulus_le_bytes(),
             options,
-            total_num_of_constraints,
+            num_constraints,
         }
     }
 
@@ -98,8 +97,8 @@ impl Context {
     }
 
     /// Returns the total number of constraints.
-    pub fn total_num_of_constraints(&self) -> usize {
-        self.total_num_of_constraints
+    pub fn num_constraints(&self) -> usize {
+        self.num_constraints
     }
 }
 
@@ -122,6 +121,9 @@ impl<E: StarkField> ToElements<E> for Context {
         let (m1, m2) = self.field_modulus_bytes.split_at(num_modulus_bytes / 2);
         result.push(E::from_bytes_with_padding(m1));
         result.push(E::from_bytes_with_padding(m2));
+
+        // convert the number of constraints
+        result.push(E::from(self.num_constraints as u32));
 
         // convert proof options to elements
         result.append(&mut self.options.to_elements());
@@ -166,13 +168,13 @@ impl Deserializable for Context {
         let options = ProofOptions::read_from(source)?;
 
         // read total number of constraints
-        let total_num_of_constraints = source.read_usize()?;
+        let num_constraints = source.read_usize()?;
 
         Ok(Context {
             trace_info,
             field_modulus_bytes,
             options,
-            total_num_of_constraints,
+            num_constraints,
         })
     }
 }
@@ -195,7 +197,7 @@ mod tests {
         let grinding_factor = 20;
         let blowup_factor = 8;
         let num_queries = 30;
-        let total_num_of_constraints = 128;
+        let num_constraints = 128;
         let batching_constraints = BatchingMethod::Linear;
         let batching_deep = BatchingMethod::Linear;
 
@@ -205,10 +207,10 @@ mod tests {
         let trace_length = 4096;
 
         let ext_fri = u32::from_le_bytes([
+            blowup_factor as u8,
             fri_remainder_max_degree,
             fri_folding_factor,
             field_extension as u8,
-            0,
         ]);
 
         let expected = {
@@ -224,9 +226,9 @@ mod tests {
             expected.extend(vec![
                 BaseElement::from(1_u32),    // lower bits of field modulus
                 BaseElement::from(u32::MAX), // upper bits of field modulus
+                BaseElement::from(num_constraints as u32),
                 BaseElement::from(ext_fri),
                 BaseElement::from(grinding_factor),
-                BaseElement::from(blowup_factor as u32),
                 BaseElement::from(num_queries as u32),
             ]);
 
@@ -245,7 +247,7 @@ mod tests {
         );
         let trace_info =
             TraceInfo::new_multi_segment(main_width, aux_width, aux_rands, trace_length, vec![]);
-        let context = Context::new::<BaseElement>(trace_info, options, total_num_of_constraints);
+        let context = Context::new::<BaseElement>(trace_info, options, num_constraints);
         assert_eq!(expected, context.to_elements());
     }
 }
