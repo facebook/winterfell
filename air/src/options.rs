@@ -503,6 +503,7 @@ impl Deserializable for BatchingMethod {
 #[cfg(test)]
 mod tests {
     use math::fields::{f64::BaseElement, CubeExtension};
+    use utils::{Deserializable, Serializable};
 
     use super::{FieldExtension, PartitionOptions, ProofOptions, ToElements};
     use crate::options::BatchingMethod;
@@ -572,5 +573,31 @@ mod tests {
         let columns = 3;
         assert_eq!(2, options.partition_size::<E3>(columns));
         assert_eq!(2, options.num_partitions::<E3>(columns));
+    }
+
+    #[test]
+    fn serialization_proof_options() {
+        let field_extension = FieldExtension::Quadratic;
+        let fri_folding_factor = 8;
+        let fri_remainder_max_degree = 127;
+        let grinding_factor = 20;
+        let blowup_factor = 8;
+        let num_queries = 30;
+
+        let options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
+            BatchingMethod::Linear,
+        );
+
+        let options_serialized = options.to_bytes();
+        let options_deserialized = ProofOptions::read_from_bytes(&options_serialized).unwrap();
+
+        assert_eq!(options, options_deserialized)
     }
 }
