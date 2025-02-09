@@ -1,12 +1,13 @@
 # Changelog
 
-## 0.12.0 (2025-02-06)
+## 0.12.0 (2025-02-08)
 - [BREAKING] Added security estimate in unique decoding regime  (#356).
 - [BREAKING] Added option for algebraic batching to build DEEP polynomial (#357).
 - [BREAKING] Updated serialization logic of the OOD frame (#358).
 - [BREAKING] Removed GKR-related code (#359).
 - Update security estimator to take batching method into account (#361).
 - [BREAKING] Added option for algebraic batching to build constraint composition polynomial (#363).
+- Updated minimum supported Rust version to 1.84.
 
 ## 0.11.0 (2024-11-24)
 - [BREAKING] Made the prover generic over the `ConstraintCommitment` type (#343).

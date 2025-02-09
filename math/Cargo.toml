@@ -10,7 +10,7 @@ documentation = "https://docs.rs/winter-math/0.12.0"
 categories = ["cryptography", "no-std"]
 keywords = ["crypto", "finite-fields", "polynomials", "fft"]
 edition = "2021"
-rust-version = "1.82"
+rust-version = "1.84"
 
 [lib]
 bench = false
