@@ -106,12 +106,16 @@ impl<E: StarkField> ToElements<E> for Context {
     /// Converts this [Context] into a vector of field elements.
     ///
     /// The elements are laid out as follows:
-    /// - trace info [2 or more elements].
+    /// - trace info:
+    ///   - trace segment widths and the number of aux random values [1 element].
+    ///   - trace length [1 element].
+    ///   - trace metadata [0 or more elements].
     /// - field modulus bytes [2 field elements].
-    /// - field extension and FRI parameters [1 element].
-    /// - grinding factor [1 element].
-    /// - blowup factor [1 element].
-    /// - number of queries [1 element].
+    /// - number of constraints (1 element).
+    /// - proof options:
+    ///   - field extension, FRI parameters, and grinding factor [1 element].
+    ///   - blowup factor [1 element].
+    ///   - number of queries [1 element].
     fn to_elements(&self) -> Vec<E> {
         // convert trace layout
         let mut result = self.trace_info.to_elements();

@@ -115,14 +115,14 @@ impl Proof {
         // polynomials.
         let num_trace_polys = self.context.trace_info().width();
         let num_constraint_composition_polys = self.options().blowup_factor();
-        let num_polys = num_trace_polys + num_constraint_composition_polys;
+        let num_committed_polys = num_trace_polys + num_constraint_composition_polys;
         ProvenSecurity::compute(
             self.context.options(),
             self.context.num_modulus_bits(),
             self.trace_info().length(),
             H::COLLISION_RESISTANCE,
             num_constraints,
-            num_polys,
+            num_committed_polys,
         )
     }
 

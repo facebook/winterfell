@@ -289,8 +289,9 @@ impl ProofOptions {
 }
 
 impl<E: StarkField> ToElements<E> for ProofOptions {
+    /// Encodes these proof options into 3 field elements.
     fn to_elements(&self) -> Vec<E> {
-        // encode field extension and FRI parameters into a single field element
+        // encode field extension, FRI parameters, and blowup factor into a single field element
         let mut buf = self.field_extension as u32;
         buf = (buf << 8) | self.fri_folding_factor as u32;
         buf = (buf << 8) | self.fri_remainder_max_degree as u32;
@@ -592,7 +593,7 @@ mod tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
             BatchingMethod::Linear,
-            BatchingMethod::Linear,
+            BatchingMethod::Algebraic,
         );
 
         let options_serialized = options.to_bytes();
