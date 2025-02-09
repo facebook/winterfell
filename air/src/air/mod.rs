@@ -492,20 +492,18 @@ pub trait Air: Send + Sync {
         E: FieldElement<BaseField = Self::BaseField>,
         R: RandomCoin<BaseField = Self::BaseField>,
     {
-        let mut t_coefficients = Vec::new();
-        for _ in 0..self.context().num_transition_constraints() {
-            t_coefficients.push(public_coin.draw()?);
+        match self.context().options.constraint_batching_method() {
+            BatchingMethod::Linear => ConstraintCompositionCoefficients::draw_linear(
+                public_coin,
+                self.context().num_transition_constraints(),
+                self.context().num_assertions(),
+            ),
+            BatchingMethod::Algebraic => ConstraintCompositionCoefficients::draw_algebraic(
+                public_coin,
+                self.context().num_transition_constraints(),
+                self.context().num_assertions(),
+            ),
         }
-
-        let mut b_coefficients = Vec::new();
-        for _ in 0..self.context().num_assertions() {
-            b_coefficients.push(public_coin.draw()?);
-        }
-
-        Ok(ConstraintCompositionCoefficients {
-            transition: t_coefficients,
-            boundary: b_coefficients,
-        })
     }
 
     /// Returns coefficients needed for random linear combinations during construction of DEEP

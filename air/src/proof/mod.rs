@@ -105,19 +105,24 @@ impl Proof {
     /// Usually, the number of queries needed for provable security is 2x - 3x higher than
     /// the number of queries needed for conjectured security at the same security level.
     pub fn proven_security<H: Hasher>(&self) -> ProvenSecurity {
+        // note that we need the count of the total number of constraints in the protocol as
+        // the soundness error, in the case of algebraic batching, depends on the this number.
+        let num_constraints = self.context.num_constraints();
+
         // we need to count the number of code words appearing in the protocol as the soundness
         // error, in the case of algebraic batching, depends on the this number.
         // we use the blowup factor as an upper bound on the number of constraint composition
         // polynomials.
         let num_trace_polys = self.context.trace_info().width();
         let num_constraint_composition_polys = self.options().blowup_factor();
-        let total_number_of_polys = num_trace_polys + num_constraint_composition_polys;
+        let num_polys = num_trace_polys + num_constraint_composition_polys;
         ProvenSecurity::compute(
             self.context.options(),
             self.context.num_modulus_bits(),
             self.trace_info().length(),
             H::COLLISION_RESISTANCE,
-            total_number_of_polys,
+            num_constraints,
+            num_polys,
         )
     }
 
@@ -147,7 +152,17 @@ impl Proof {
         Self {
             context: Context::new::<DummyField>(
                 TraceInfo::new(1, 8),
-                ProofOptions::new(1, 2, 2, FieldExtension::None, 8, 1, BatchingMethod::Linear),
+                ProofOptions::new(
+                    1,
+                    2,
+                    2,
+                    FieldExtension::None,
+                    8,
+                    1,
+                    BatchingMethod::Linear,
+                    BatchingMethod::Linear,
+                ),
+                100,
             ),
             num_unique_queries: 0,
             commitments: Commitments::default(),

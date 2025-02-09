@@ -14,8 +14,11 @@ use math::{get_power_series, get_power_series_with_offset, FieldElement};
 ///
 /// These coefficients are created by the
 /// [Air::get_constraint_composition_coefficients()](crate::Air::get_constraint_composition_coefficients)
-/// function. In the interactive version of the protocol, the verifier draws these coefficients
-/// uniformly at random from the extension field of the protocol.
+/// function. In the interactive version of the protocol, the verifier either draws these coefficients
+/// uniformly at random from the extension field of the protocol or draws a single random extension
+/// field element $\alpha$ and defines the coefficients as $\alpha_i = \alpha^i$. We call the former
+/// way way of generating the alpha-s, and hence of batching the constraints, linear/affine batching
+/// while we call the latter algebraic/curve batching.
 ///
 /// There is one coefficient for each constraint so that we can compute a random linear
 /// combination of constraints as:
@@ -28,10 +31,69 @@ use math::{get_power_series, get_power_series_with_offset, FieldElement};
 ///
 /// The coefficients are separated into two lists: one for transition constraints and another one
 /// for boundary constraints. This separation is done for convenience only.
+///
+/// Note that the soundness error of the protocol will depend on the batching used when computing
+/// the constraint composition polynomial. More precisely, when using algebraic batching there
+/// might be a loss of log_2(C - 1) bits of RbR soundness of the protocol, where C is the total
+/// number of constraints.
 #[derive(Debug, Clone)]
 pub struct ConstraintCompositionCoefficients<E: FieldElement> {
     pub transition: Vec<E>,
     pub boundary: Vec<E>,
+}
+
+impl<E: FieldElement> ConstraintCompositionCoefficients<E> {
+    /// Generates the random values used in the construction of the constraint composition
+    /// polynomial when linear batching is used.
+    pub fn draw_linear(
+        public_coin: &mut impl RandomCoin<BaseField = E::BaseField>,
+        num_transition_constraints: usize,
+        num_boundary_constraints: usize,
+    ) -> Result<Self, RandomCoinError> {
+        let mut t_coefficients = Vec::new();
+        for _ in 0..num_transition_constraints {
+            t_coefficients.push(public_coin.draw()?);
+        }
+
+        let mut b_coefficients = Vec::new();
+        for _ in 0..num_boundary_constraints {
+            b_coefficients.push(public_coin.draw()?);
+        }
+
+        Ok(ConstraintCompositionCoefficients {
+            transition: t_coefficients,
+            boundary: b_coefficients,
+        })
+    }
+
+    /// Generates the random values used in the construction of the constraint composition
+    /// polynomial when algebraic batching is used.
+    pub fn draw_algebraic(
+        public_coin: &mut impl RandomCoin<BaseField = E::BaseField>,
+        num_transition_constraints: usize,
+        num_boundary_constraints: usize,
+    ) -> Result<Self, RandomCoinError> {
+        let mut t_coefficients = Vec::new();
+        let alpha: E = public_coin.draw()?;
+        t_coefficients.extend_from_slice(&get_power_series(alpha, num_transition_constraints));
+
+        let mut b_coefficients = Vec::new();
+
+        let alpha_pow_num_transition_constraints =
+            alpha.exp((num_transition_constraints as u32).into());
+        b_coefficients.extend_from_slice(&get_power_series_with_offset(
+            alpha,
+            alpha_pow_num_transition_constraints,
+            num_boundary_constraints,
+        ));
+
+        assert_eq!(t_coefficients[num_transition_constraints - 1] * alpha, b_coefficients[0]);
+
+        Ok(ConstraintCompositionCoefficients {
+            transition: t_coefficients,
+            boundary: b_coefficients,
+        })
+    }
 }
 
 // DEEP COMPOSITION COEFFICIENTS
@@ -74,7 +136,7 @@ pub struct ConstraintCompositionCoefficients<E: FieldElement> {
 ///    negligible increase in soundness error. The formula for the updated error can be found in
 ///    Theorem 8 of https://eprint.iacr.org/2022/1216.
 /// 3. The error will depend on the batching used in building the DEEP polynomial. More precisely,
-///    when using algebraic batching there is a loss of log_2(k + m - 1) bits of soundness.
+///    when using algebraic batching there might be a loss of log_2(k + m - 1) bits of soundness.
 #[derive(Debug, Clone)]
 pub struct DeepCompositionCoefficients<E: FieldElement> {
     /// Trace polynomial composition coefficients $\alpha_i$.

@@ -38,5 +38,5 @@ pub fn build_proof_options(use_extension_field: bool) -> winterfell::ProofOption
     } else {
         FieldExtension::None
     };
-    ProofOptions::new(28, 8, 0, extension, 4, 7, BatchingMethod::Linear)
+    ProofOptions::new(28, 8, 0, extension, 4, 7, BatchingMethod::Linear, BatchingMethod::Linear)
 }

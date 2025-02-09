@@ -70,9 +70,13 @@ pub enum FieldExtension {
 /// 4. Grinding factor - higher values increase proof soundness, but also may increase proof
 ///    generation time. More precisely, conjectured proof soundness is bounded by
 ///    `num_queries * log2(blowup_factor) + grinding_factor`.
-/// 5. Batching method - either independent random values per multi-point quotient are used in
-///    the computation of the DEEP polynomial or powers of a single random value are used
-///    instead. The first type of batching is called `Linear` while the second is called `Algebraic`.
+/// 5. Batching method for constraint composition polynomial - either independent random values
+///    per constraint are used in the computation of the constraint composition polynomial or
+///    powers of a single random value are used instead. The first type of batching is called
+///    `Linear` while the second is called `Algebraic`.
+/// 6. Batching method for DEEP polynomial - either independent random values per multi-point quotient
+///    are used in the computation of the DEEP polynomial or powers of a single random value are used
+///    instead.
 ///
 /// Another important parameter in defining STARK security level, which is not a part of [ProofOptions]
 /// is the hash function used in the protocol. The soundness of a STARK proof is limited by the
@@ -94,6 +98,7 @@ pub struct ProofOptions {
     field_extension: FieldExtension,
     fri_folding_factor: u8,
     fri_remainder_max_degree: u8,
+    batching_constraints: BatchingMethod,
     batching_deep: BatchingMethod,
     partition_options: PartitionOptions,
 }
@@ -122,6 +127,7 @@ impl ProofOptions {
     /// - `grinding_factor` is greater than 32.
     /// - `fri_folding_factor` is not 2, 4, 8, or 16.
     /// - `fri_remainder_max_degree` is greater than 255 or is not a power of two minus 1.
+    #[allow(clippy::too_many_arguments)]
     pub const fn new(
         num_queries: usize,
         blowup_factor: usize,
@@ -129,6 +135,7 @@ impl ProofOptions {
         field_extension: FieldExtension,
         fri_folding_factor: usize,
         fri_remainder_max_degree: usize,
+        batching_constraints: BatchingMethod,
         batching_deep: BatchingMethod,
     ) -> ProofOptions {
         // TODO: return errors instead of panicking
@@ -171,6 +178,7 @@ impl ProofOptions {
             fri_folding_factor: fri_folding_factor as u8,
             fri_remainder_max_degree: fri_remainder_max_degree as u8,
             partition_options: PartitionOptions::new(1, 1),
+            batching_constraints,
             batching_deep,
         }
     }
@@ -253,6 +261,19 @@ impl ProofOptions {
         self.partition_options
     }
 
+    /// Returns the `[BatchingMethod]` defining the method used for batching the constraints during
+    /// the computation of the constraint composition polynomial.
+    ///
+    /// Linear batching implies that independently drawn random values per constraint will be used
+    /// to do the batching, while Algebraic batching implies that powers of a single random value
+    /// are used.
+    ///
+    /// Depending on other parameters, Algebraic batching may lead to a small reduction in the security
+    /// level of the generated proofs, but avoids extra calls to the random oracle (i.e., hash function).
+    pub fn constraint_batching_method(&self) -> BatchingMethod {
+        self.batching_constraints
+    }
+
     /// Returns the `[BatchingMethod]` defining the method used for batching the multi-point quotients
     /// defining the DEEP polynomial.
     ///
@@ -273,13 +294,9 @@ impl<E: StarkField> ToElements<E> for ProofOptions {
         let mut buf = self.field_extension as u32;
         buf = (buf << 8) | self.fri_folding_factor as u32;
         buf = (buf << 8) | self.fri_remainder_max_degree as u32;
+        buf = (buf << 8) | self.blowup_factor as u32;
 
-        vec![
-            E::from(buf),
-            E::from(self.grinding_factor),
-            E::from(self.blowup_factor),
-            E::from(self.num_queries),
-        ]
+        vec![E::from(buf), E::from(self.grinding_factor), E::from(self.num_queries)]
     }
 }
 
@@ -292,6 +309,7 @@ impl Serializable for ProofOptions {
         target.write(self.field_extension);
         target.write_u8(self.fri_folding_factor);
         target.write_u8(self.fri_remainder_max_degree);
+        target.write(self.batching_constraints);
         target.write(self.batching_deep);
         target.write_u8(self.partition_options.num_partitions);
         target.write_u8(self.partition_options.hash_rate);
@@ -311,6 +329,7 @@ impl Deserializable for ProofOptions {
             FieldExtension::read_from(source)?,
             source.read_u8()? as usize,
             source.read_u8()? as usize,
+            BatchingMethod::read_from(source)?,
             BatchingMethod::read_from(source)?,
         );
         Ok(result.with_partitions(source.read_u8()? as usize, source.read_u8()? as usize))
@@ -430,8 +449,8 @@ impl Default for PartitionOptions {
 // BATCHING METHOD
 // ================================================================================================
 
-/// Represents the type of batching, using randomness, used in the construction of the DEEP
-/// composition polynomial.
+/// Represents the type of batching, using randomness, used in the construction of either
+/// the constraint composition polynomial or the DEEP composition polynomial.
 ///
 /// There are currently two types of batching supported:
 ///
@@ -442,8 +461,10 @@ impl Default for PartitionOptions {
 ///
 /// The main difference between the two types is that algebraic batching has low verifier randomness
 /// complexity and hence is light on the number of calls to the random oracle. However, this comes
-/// at the cost of a slight degradation in the soundness of the FRI protocol, on the order of
-/// log2(N - 1) where N is the number of code words being batched. Linear batching does not suffer
+/// at the cost of an increase in the soundness error of the constraint batching step, i.e.,
+/// ALI, on the order of log2(C - 1) where C is the number of constraints being batched and
+/// an increase in the soundness error of the FRI batching step, on the order of log2(N - 1)
+/// where N is the number of code words being batched. Linear batching does not suffer
 /// from such a degradation but has linear verifier randomness complexity in the number of terms
 /// being batched.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -482,6 +503,7 @@ impl Deserializable for BatchingMethod {
 #[cfg(test)]
 mod tests {
     use math::fields::{f64::BaseElement, CubeExtension};
+    use utils::{Deserializable, Serializable};
 
     use super::{FieldExtension, PartitionOptions, ProofOptions, ToElements};
     use crate::options::BatchingMethod;
@@ -496,15 +518,14 @@ mod tests {
         let num_queries = 30;
 
         let ext_fri = u32::from_le_bytes([
+            blowup_factor as u8,
             fri_remainder_max_degree,
             fri_folding_factor,
             field_extension as u8,
-            0,
         ]);
         let expected = vec![
             BaseElement::from(ext_fri),
             BaseElement::from(grinding_factor),
-            BaseElement::from(blowup_factor as u32),
             BaseElement::from(num_queries as u32),
         ];
 
@@ -515,6 +536,7 @@ mod tests {
             field_extension,
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
             BatchingMethod::Linear,
         );
         assert_eq!(expected, options.to_elements());
@@ -551,5 +573,31 @@ mod tests {
         let columns = 3;
         assert_eq!(2, options.partition_size::<E3>(columns));
         assert_eq!(2, options.num_partitions::<E3>(columns));
+    }
+
+    #[test]
+    fn serialization_proof_options() {
+        let field_extension = FieldExtension::Quadratic;
+        let fri_folding_factor = 8;
+        let fri_remainder_max_degree = 127;
+        let grinding_factor = 20;
+        let blowup_factor = 8;
+        let num_queries = 30;
+
+        let options = ProofOptions::new(
+            num_queries,
+            blowup_factor,
+            grinding_factor,
+            field_extension,
+            fri_folding_factor as usize,
+            fri_remainder_max_degree as usize,
+            BatchingMethod::Linear,
+            BatchingMethod::Linear,
+        );
+
+        let options_serialized = options.to_bytes();
+        let options_deserialized = ProofOptions::read_from_bytes(&options_serialized).unwrap();
+
+        assert_eq!(options, options_deserialized)
     }
 }
