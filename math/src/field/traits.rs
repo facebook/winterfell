@@ -262,8 +262,8 @@ pub trait StarkField: FieldElement<BaseField = Self> {
         Self::TWO_ADIC_ROOT_OF_UNITY.exp(power)
     }
 
-    /// Converts a slice of bytes into a field element. Pads the slice if it is smaller than the number
-    /// of bytes needed to represent an element.
+    /// Converts a slice of bytes into a field element. Pads the slice if it is smaller than the
+    /// number of bytes needed to represent an element.
     ///
     /// # Panics
     /// Panics if
@@ -324,9 +324,9 @@ pub trait ExtensibleField<const N: usize>: StarkField {
 ///
 /// Currently, this implies the following:
 /// - An element in the base field can be converted into an element in the extension field.
-/// - An element in the extension field can be multiplied by a base field element directly. This
-///   can be used for optimization purposes as such multiplication could be much more efficient
-///   than multiplication of two extension field elements.
+/// - An element in the extension field can be multiplied by a base field element directly. This can
+///   be used for optimization purposes as such multiplication could be much more efficient than
+///   multiplication of two extension field elements.
 pub trait ExtensionOf<E: FieldElement>: From<E> {
     fn mul_base(self, other: E) -> Self;
 }

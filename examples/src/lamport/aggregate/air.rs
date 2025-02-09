@@ -52,16 +52,16 @@ impl Air for LamportAggregateAir {
     fn new(trace_info: TraceInfo, pub_inputs: PublicInputs, options: ProofOptions) -> Self {
         // define degrees for all transition constraints
         let degrees = vec![
-            TransitionConstraintDegree::with_cycles(2, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]), // m0 bit is binary
-            TransitionConstraintDegree::with_cycles(2, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]), // m1 bit is binary
+            TransitionConstraintDegree::with_cycles(2, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]), /* m0 bit is binary */
+            TransitionConstraintDegree::with_cycles(2, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]), /* m1 bit is binary */
             TransitionConstraintDegree::with_cycles(
                 1,
                 vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN, SIG_CYCLE_LEN],
-            ), // m0 accumulation
+            ), /* m0 accumulation */
             TransitionConstraintDegree::with_cycles(
                 1,
                 vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN, SIG_CYCLE_LEN],
-            ), // m1 accumulation
+            ), /* m1 accumulation */
             // secret key 1 hashing
             TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
             TransitionConstraintDegree::with_cycles(5, vec![HASH_CYCLE_LEN, SIG_CYCLE_LEN]),
@@ -152,8 +152,9 @@ impl Air for LamportAggregateAir {
             Assertion::periodic(20, 0, SIG_CYCLE_LEN, BaseElement::ZERO),
             Assertion::periodic(21, 0, SIG_CYCLE_LEN, BaseElement::ZERO),
             // --- set assertions against the last step of every cycle: 1023, 2047, 3071 etc. -----
-            // last bits of message bit registers should be set to zeros; this is because we truncate
-            // message elements to 127 bits each - so, 128th bit must always be zero
+            // last bits of message bit registers should be set to zeros; this is because we
+            // truncate message elements to 127 bits each - so, 128th bit must always
+            // be zero
             Assertion::periodic(0, last_cycle_step, SIG_CYCLE_LEN, BaseElement::ZERO),
             Assertion::periodic(1, last_cycle_step, SIG_CYCLE_LEN, BaseElement::ZERO),
             // message accumulator registers should be set to message element values

@@ -107,8 +107,8 @@ impl<E: FieldElement> RowMatrix<E> {
     /// # Panics
     /// Panics if
     /// - `segments` is an empty vector.
-    /// - `elements_per_row` is greater than the row width implied by the number of segments and
-    ///   `N` type parameter.
+    /// - `elements_per_row` is greater than the row width implied by the number of segments and `N`
+    ///   type parameter.
     pub fn from_segments<const N: usize>(
         segments: Vec<Segment<E::BaseField, N>>,
         elements_per_row: usize,
@@ -176,8 +176,8 @@ impl<E: FieldElement> RowMatrix<E> {
     /// Returns a commitment to this matrix.
     ///
     /// The commitment is built as follows:
-    /// * Each row of the matrix is hashed into a single digest of the specified hash function.
-    ///   The result is a vector of digests of length equal to the number of matrix rows.
+    /// * Each row of the matrix is hashed into a single digest of the specified hash function. The
+    ///   result is a vector of digests of length equal to the number of matrix rows.
     /// * A vector commitment is computed for the resulting vector using the specified vector
     ///   commitment scheme.
     /// * The resulting vector commitment is returned as the commitment to the entire matrix.

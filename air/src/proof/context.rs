@@ -28,8 +28,8 @@ impl Context {
     /// options, and total number of constraints.
     ///
     /// # Panics
-    /// - If either trace length or the LDE domain size implied by the trace length and the
-    ///   blowup factor is greater then [u32::MAX].
+    /// - If either trace length or the LDE domain size implied by the trace length and the blowup
+    ///   factor is greater then [u32::MAX].
     /// - If the number of constraints is not greater than 0.
     /// - If the number of constraints is greater than [u32::MAX].
     pub fn new<B: StarkField>(

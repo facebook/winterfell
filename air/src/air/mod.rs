@@ -53,17 +53,17 @@ const MIN_CYCLE_LENGTH: usize = 2;
 ///    [math::fields] for available field options).
 /// 2. Define a set of public inputs which are required for your computation via the
 ///    [Air::PublicInputs] associated type.
-/// 3. Implement [Air::new()] function. As a part of this function you should create a
-///    [AirContext] struct which takes degrees for all transition constraints as one of
-///    the constructor parameters.
-/// 4. Implement [Air::context()] method which should return a reference to the
-///    [AirContext] struct created in [Air::new()] function.
-/// 5. Implement [Air::evaluate_transition()] method which should evaluate
-///    [transition constraints](#transition-constraints) over a given evaluation frame.
+/// 3. Implement [Air::new()] function. As a part of this function you should create a [AirContext]
+///    struct which takes degrees for all transition constraints as one of the constructor
+///    parameters.
+/// 4. Implement [Air::context()] method which should return a reference to the [AirContext] struct
+///    created in [Air::new()] function.
+/// 5. Implement [Air::evaluate_transition()] method which should evaluate [transition
+///    constraints](#transition-constraints) over a given evaluation frame.
 /// 6. Implement [Air::get_assertions()] method which should return a vector of
 ///    [assertions](#trace-assertions) for a given instance of your computation.
-/// 7. If your computation requires [periodic values](#periodic-values), you can also override
-///    the default [Air::get_periodic_column_values()] method.
+/// 7. If your computation requires [periodic values](#periodic-values), you can also override the
+///    default [Air::get_periodic_column_values()] method.
 ///
 /// If your computation uses [Randomized AIR](#randomized-air), you will also need to override
 /// [Air::evaluate_aux_transition()] and [Air::get_aux_assertions()] methods.
@@ -73,21 +73,20 @@ const MIN_CYCLE_LENGTH: usize = 2;
 /// computation. In Winterfell, transition constraints are evaluated inside
 /// [Air::evaluate_transition()] function which takes the following parameters:
 ///
-/// - [EvaluationFrame] which contains vectors with current and next states of the
+/// - [EvaluationFrame] which contains vectors with current and next states of the computation.
+/// - A list of periodic values. When periodic columns are defined for a computation, this will
+///   contain values of periodic columns at the current step of the computation. Otherwise, this
+///   will be an empty list.
+/// - A mutable `result` slice. This is the slice where constraint evaluations should be written to.
+///   The length of this slice will be equal to the number of transition constraints defined for the
 ///   computation.
-/// - A list of periodic values. When periodic columns are defined for a computation,
-///   this will contain values of periodic columns at the current step of the computation.
-///   Otherwise, this will be an empty list.
-/// - A mutable `result` slice. This is the slice where constraint evaluations should be
-///   written to. The length of this slice will be equal to the number of transition
-///   constraints defined for the computation.
 ///
 /// The constraints are considered to be satisfied if and only if, after the function returns,
 /// the `result` slice contains all zeros. In general, it is important for the transition
 /// constraint evaluation function to work as follows:
 ///
-/// * For all valid transitions between consecutive computation steps, transition constraints
-///   should evaluation to all zeros.
+/// * For all valid transitions between consecutive computation steps, transition constraints should
+///   evaluation to all zeros.
 /// * For any invalid transition, at least one constraint must evaluate to a non-zero value.
 ///
 /// **Note:** since transition constraints define algebraic relations, they should be
@@ -102,16 +101,16 @@ const MIN_CYCLE_LENGTH: usize = 2;
 ///
 /// * All trace columns have degree `1`.
 /// * When multiplying trace columns together, the degree increases by `1`. For example, if our
-///   constraint involves multiplication of two columns, the degree of this constraint will be
-///   `2`. We can describe this constraint using [TransitionConstraintDegree] struct as follows:
+///   constraint involves multiplication of two columns, the degree of this constraint will be `2`.
+///   We can describe this constraint using [TransitionConstraintDegree] struct as follows:
 ///   `TransitionConstraintDegree::new(2)`.
 /// * Degrees of periodic columns depend on the length of their cycles, but in most cases, these
 ///   degrees are very close to `1`.
-/// * To describe a degree of a constraint involving multiplication of trace columns and
-///   periodic columns, use the [TransitionConstraintDegree::with_cycles()] constructor. For
-///   example, if our constraint involves multiplication of one trace column and one periodic
-///   column with a cycle of 32 steps, the degree can be described as:
-///   `TransitionConstraintDegree::with_cycles(1, vec![32])`.
+/// * To describe a degree of a constraint involving multiplication of trace columns and periodic
+///   columns, use the [TransitionConstraintDegree::with_cycles()] constructor. For example, if our
+///   constraint involves multiplication of one trace column and one periodic column with a cycle of
+///   32 steps, the degree can be described as: `TransitionConstraintDegree::with_cycles(1,
+///   vec![32])`.
 ///
 /// In general, multiplications should be used judiciously - though, there are ways to ease this
 /// restriction a bit at the expense of wider execution trace.
@@ -126,16 +125,14 @@ const MIN_CYCLE_LENGTH: usize = 2;
 /// function which should return a vector of [Assertion] structs. Every computation must have at
 /// least one assertion. Assertions can be of the following types:
 ///
-/// * A single assertion - such assertion specifies that a single cell of an execution trace must
-///   be equal to a specific value. For example: *value in column 0, at step 0, must be equal
-///   to 1*.
+/// * A single assertion - such assertion specifies that a single cell of an execution trace must be
+///   equal to a specific value. For example: *value in column 0, at step 0, must be equal to 1*.
 /// * A periodic assertion - such assertion specifies that values in a given column at specified
-///   intervals should be equal to some value. For example: *values in column 0, at steps 0, 8,
-///   16, 24 etc. must be equal to 2*.
+///   intervals should be equal to some value. For example: *values in column 0, at steps 0, 8, 16,
+///   24 etc. must be equal to 2*.
 /// * A sequence assertion - such assertion specifies that values in a given column at specific
-///   intervals must be equal to a sequence of provided values. For example: *values in column 0,
-///   at step 0 must be equal to 1, at step 8 must be equal to 2, at step 16 must be equal to 3
-///   etc.*
+///   intervals must be equal to a sequence of provided values. For example: *values in column 0, at
+///   step 0 must be equal to 1, at step 8 must be equal to 2, at step 16 must be equal to 3 etc.*
 ///
 /// ### Periodic values
 /// Sometimes, it may be useful to define a column in an execution trace which contains a set of
@@ -164,8 +161,8 @@ const MIN_CYCLE_LENGTH: usize = 2;
 /// To describe Randomized AIR, you will need to do the following when implementing the [Air]
 /// trait:
 /// * The [AirContext] struct returned from [Air::context()] method must be instantiated using
-///   [AirContext::new_multi_segment()] constructor. When building AIR context in this way, you
-///   will need to provide a [`crate::TraceInfo`] which describes the shape of a multi-segment execution
+///   [AirContext::new_multi_segment()] constructor. When building AIR context in this way, you will
+///   need to provide a [`crate::TraceInfo`] which describes the shape of a multi-segment execution
 ///   trace.
 /// * Override [Air::evaluate_aux_transition()] method. This method is similar to the
 ///   [Air::evaluate_transition()] method but it also accepts two extra parameters:
@@ -193,8 +190,8 @@ pub trait Air: Send + Sync {
     ///   described by this AIR, including trace width, trace length length, and optionally,
     ///   additional custom parameters in `meta` field.
     /// - `public_inputs` specifies public inputs for this instance of the computation.
-    /// - `options` defines proof generation options such as blowup factor, hash function etc.
-    ///   these options define security level of the proof and influence proof generation time.
+    /// - `options` defines proof generation options such as blowup factor, hash function etc. these
+    ///   options define security level of the proof and influence proof generation time.
     fn new(trace_info: TraceInfo, pub_inputs: Self::PublicInputs, options: ProofOptions) -> Self;
 
     /// Returns context for this instance of the computation.
@@ -235,10 +232,10 @@ pub trait Air: Send + Sync {
     /// describing computations which require multiple trace segments.
     ///
     /// The types for main and auxiliary trace evaluation frames are defined as follows:
-    /// * When the entire protocol is executed in a prime field, types `F` and `E` are the same,
-    ///   and thus, both the main and the auxiliary trace frames are defined over the base field.
-    /// * When the protocol is executed in an extension field, the main trace frame is defined
-    ///   over the base field, while the auxiliary trace frame is defined over the extension field.
+    /// * When the entire protocol is executed in a prime field, types `F` and `E` are the same, and
+    ///   thus, both the main and the auxiliary trace frames are defined over the base field.
+    /// * When the protocol is executed in an extension field, the main trace frame is defined over
+    ///   the base field, while the auxiliary trace frame is defined over the extension field.
     ///
     /// We define type `F` separately from `Self::BaseField` to allow evaluation of constraints
     /// over the out-of-domain evaluation frame, which may be defined over an extension field
@@ -410,7 +407,7 @@ pub trait Air: Send + Sync {
     /// Returns length of the execution trace for an instance of the computation described by
     /// this AIR.
     ///
-    // This is guaranteed to be a power of two greater than or equal to 8.
+    /// This is guaranteed to be a power of two greater than or equal to 8.
     fn trace_length(&self) -> usize {
         self.context().trace_info.length()
     }

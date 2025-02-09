@@ -43,7 +43,8 @@ impl<E: FieldElement> CompositionPolyTrace<E> {
 
 // CONSTRAINT COMPOSITION POLYNOMIAL
 // ================================================================================================
-/// A composition polynomial split into columns with each column being of length equal to trace_length.
+/// A composition polynomial split into columns with each column being of length equal to
+/// trace_length.
 ///
 /// For example, if the composition polynomial has degree 2N - 1, where N is the trace length,
 /// it will be stored as two columns of size N (each of degree N - 1).

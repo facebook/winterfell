@@ -58,38 +58,39 @@ pub enum FieldExtension {
 /// These parameters have a direct impact on proof soundness, proof generation time, and proof
 /// size. Specifically:
 ///
-/// 1. Finite field - proof soundness depends on the size of finite field used by the protocol.
-///    This means, that for small fields (e.g. smaller than ~128 bits), field extensions must be
-///    used to achieve adequate security. And even for ~128 bit fields, to achieve security over
-///    100 bits, a field extension may be required.
+/// 1. Finite field - proof soundness depends on the size of finite field used by the protocol. This
+///    means, that for small fields (e.g. smaller than ~128 bits), field extensions must be used to
+///    achieve adequate security. And even for ~128 bit fields, to achieve security over 100 bits, a
+///    field extension may be required.
 /// 2. Number of queries - higher values increase proof soundness, but also increase proof size.
 /// 3. Blowup factor - higher values increase proof soundness, but also increase proof generation
 ///    time and proof size. However, higher blowup factors require fewer queries for the same
 ///    security level. Thus, it is frequently possible to increase blowup factor and at the same
 ///    time decrease the number of queries in such a way that the proofs become smaller.
 /// 4. Grinding factor - higher values increase proof soundness, but also may increase proof
-///    generation time. More precisely, conjectured proof soundness is bounded by
-///    `num_queries * log2(blowup_factor) + grinding_factor`.
-/// 5. Batching method for constraint composition polynomial - either independent random values
-///    per constraint are used in the computation of the constraint composition polynomial or
-///    powers of a single random value are used instead. The first type of batching is called
-///    `Linear` while the second is called `Algebraic`.
-/// 6. Batching method for DEEP polynomial - either independent random values per multi-point quotient
-///    are used in the computation of the DEEP polynomial or powers of a single random value are used
-///    instead.
+///    generation time. More precisely, conjectured proof soundness is bounded by `num_queries *
+///    log2(blowup_factor) + grinding_factor`.
+/// 5. Batching method for constraint composition polynomial - either independent random values per
+///    constraint are used in the computation of the constraint composition polynomial or powers of
+///    a single random value are used instead. The first type of batching is called `Linear` while
+///    the second is called `Algebraic`.
+/// 6. Batching method for DEEP polynomial - either independent random values per multi-point
+///    quotient are used in the computation of the DEEP polynomial or powers of a single random
+///    value are used instead.
 ///
-/// Another important parameter in defining STARK security level, which is not a part of [ProofOptions]
-/// is the hash function used in the protocol. The soundness of a STARK proof is limited by the
-/// collision resistance of the hash function used by the protocol. For example, if a hash function
-/// with 128-bit collision resistance is used, soundness of a STARK proof cannot exceed 128 bits.
+/// Another important parameter in defining STARK security level, which is not a part of
+/// [ProofOptions] is the hash function used in the protocol. The soundness of a STARK proof is
+/// limited by the collision resistance of the hash function used by the protocol. For example, if a
+/// hash function with 128-bit collision resistance is used, soundness of a STARK proof cannot
+/// exceed 128 bits.
 ///
 /// In addition, partition options (see [PartitionOptions]) can be provided to split traces during
-/// proving and distribute work across multiple devices. Taking the main segment trace as an example,
-/// the prover will split the main segment trace into `num_partitions` parts, and then proceed to hash
-/// each part row-wise resulting in `num_partitions` digests per row of the trace. Finally,
-/// `num_partitions` digests (per row) are combined into one digest (per row) and at this point
-/// a vector commitment scheme can be called. In the case when `num_partitions` is equal to `1` (default)
-/// the prover will hash each row in one go producing one digest per row of the trace.
+/// proving and distribute work across multiple devices. Taking the main segment trace as an
+/// example, the prover will split the main segment trace into `num_partitions` parts, and then
+/// proceed to hash each part row-wise resulting in `num_partitions` digests per row of the trace.
+/// Finally, `num_partitions` digests (per row) are combined into one digest (per row) and at this
+/// point a vector commitment scheme can be called. In the case when `num_partitions` is equal to
+/// `1` (default) the prover will hash each row in one go producing one digest per row of the trace.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ProofOptions {
     num_queries: u8,
@@ -268,21 +269,23 @@ impl ProofOptions {
     /// to do the batching, while Algebraic batching implies that powers of a single random value
     /// are used.
     ///
-    /// Depending on other parameters, Algebraic batching may lead to a small reduction in the security
-    /// level of the generated proofs, but avoids extra calls to the random oracle (i.e., hash function).
+    /// Depending on other parameters, Algebraic batching may lead to a small reduction in the
+    /// security level of the generated proofs, but avoids extra calls to the random oracle
+    /// (i.e., hash function).
     pub fn constraint_batching_method(&self) -> BatchingMethod {
         self.batching_constraints
     }
 
-    /// Returns the `[BatchingMethod]` defining the method used for batching the multi-point quotients
-    /// defining the DEEP polynomial.
+    /// Returns the `[BatchingMethod]` defining the method used for batching the multi-point
+    /// quotients defining the DEEP polynomial.
     ///
     /// Linear batching implies that independently drawn random values per multi-point quotient
     /// will be used to do the batching, while Algebraic batching implies that powers of a single
     /// random value are used.
     ///
-    /// Depending on other parameters, Algebraic batching may lead to a small reduction in the security
-    /// level of the generated proofs, but avoids extra calls to the random oracle (i.e., hash function).
+    /// Depending on other parameters, Algebraic batching may lead to a small reduction in the
+    /// security level of the generated proofs, but avoids extra calls to the random oracle
+    /// (i.e., hash function).
     pub fn deep_poly_batching_method(&self) -> BatchingMethod {
         self.batching_deep
     }
@@ -457,8 +460,8 @@ impl Default for PartitionOptions {
 ///
 /// 1. Linear, also called affine, where the resulting expression is a multivariate polynomial of
 ///    total degree 1 in each of the random values.
-/// 2. Algebraic, also called parametric or curve batching, where the resulting expression is
-///    a univariate polynomial in one random value.
+/// 2. Algebraic, also called parametric or curve batching, where the resulting expression is a
+///    univariate polynomial in one random value.
 ///
 /// The main difference between the two types is that algebraic batching has low verifier randomness
 /// complexity and hence is light on the number of calls to the random oracle. However, this comes

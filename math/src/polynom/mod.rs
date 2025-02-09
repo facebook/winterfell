@@ -9,8 +9,7 @@
 //! - Polynomial evaluation using Horner method.
 //! - Polynomial interpolation using Lagrange method.
 //! - Polynomial addition, subtraction, multiplication, and division.
-//! - Synthetic polynomial division for efficient division by polynomials of the form
-//!   `x`^`a` - `b`.
+//! - Synthetic polynomial division for efficient division by polynomials of the form `x`^`a` - `b`.
 //!
 //! In the context of this module any slice of field elements is considered to be a polynomial
 //! in reverse coefficient form. A few examples:
@@ -155,14 +154,8 @@ where
 /// # use winter_math::polynom::*;
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
 /// # use rand_utils::rand_array;
-/// let x_batches: Vec<[BaseElement; 8]> = vec![
-///     rand_array(),
-///     rand_array(),
-/// ];
-/// let y_batches: Vec<[BaseElement; 8]> = vec![
-///     rand_array(),
-///     rand_array(),
-/// ];
+/// let x_batches: Vec<[BaseElement; 8]> = vec![rand_array(), rand_array()];
+/// let y_batches: Vec<[BaseElement; 8]> = vec![rand_array(), rand_array()];
 ///
 /// let polys = interpolate_batch(&x_batches, &y_batches);
 /// for ((p, xs), ys) in polys.iter().zip(x_batches).zip(y_batches) {
@@ -234,11 +227,7 @@ where
 /// let p2 = (1_u32..3).map(BaseElement::from).collect::<Vec<_>>();
 ///
 /// // expected result = 4 * x^2 + 5 * x + 3
-/// let expected = vec![
-///     BaseElement::new(3),
-///     BaseElement::new(5),
-///     BaseElement::new(4),
-/// ];
+/// let expected = vec![BaseElement::new(3), BaseElement::new(5), BaseElement::new(4)];
 /// assert_eq!(expected, add(&p1, &p2));
 /// ```
 pub fn add<E>(a: &[E], b: &[E]) -> Vec<E>
@@ -272,11 +261,7 @@ where
 /// let p2 = (1_u32..3).map(BaseElement::from).collect::<Vec<_>>();
 ///
 /// // expected result = 4 * x^2 + x + 1
-/// let expected = vec![
-///     BaseElement::new(1),
-///     BaseElement::new(1),
-///     BaseElement::new(4),
-/// ];
+/// let expected = vec![BaseElement::new(1), BaseElement::new(1), BaseElement::new(4)];
 /// assert_eq!(expected, sub(&p1, &p2));
 /// ```
 pub fn sub<E>(a: &[E], b: &[E]) -> Vec<E>
@@ -341,18 +326,10 @@ where
 /// ```
 /// # use winter_math::polynom::*;
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
-/// let p = [
-///     BaseElement::new(1),
-///     BaseElement::new(2),
-///     BaseElement::new(3),
-/// ];
+/// let p = [BaseElement::new(1), BaseElement::new(2), BaseElement::new(3)];
 /// let k = BaseElement::new(2);
 ///
-/// let expected = vec![
-///     BaseElement::new(2),
-///     BaseElement::new(4),
-///     BaseElement::new(6),
-/// ];
+/// let expected = vec![BaseElement::new(2), BaseElement::new(4), BaseElement::new(6)];
 /// assert_eq!(expected, mul_by_scalar(&p, k));
 /// ```
 pub fn mul_by_scalar<E>(p: &[E], k: E) -> Vec<E>
@@ -453,12 +430,8 @@ where
 /// ];
 ///
 /// // expected result = x^2 + 2
-/// let expected = vec![
-///     BaseElement::new(2),
-///     BaseElement::ZERO,
-///     BaseElement::new(1),
-///     BaseElement::ZERO,
-/// ];
+/// let expected =
+///     vec![BaseElement::new(2), BaseElement::ZERO, BaseElement::new(1), BaseElement::ZERO];
 ///
 /// // divide by x + 1
 /// assert_eq!(expected, syn_div(&p, 1, -BaseElement::ONE));
@@ -629,12 +602,7 @@ where
 /// assert_eq!(2, degree_of(&[BaseElement::ONE, BaseElement::new(2), BaseElement::new(3)]));
 /// assert_eq!(
 ///     2,
-///     degree_of(&[
-///         BaseElement::ONE,
-///         BaseElement::new(2),
-///         BaseElement::new(3),
-///         BaseElement::ZERO
-///     ])
+///     degree_of(&[BaseElement::ONE, BaseElement::new(2), BaseElement::new(3), BaseElement::ZERO])
 /// );
 /// ```
 pub fn degree_of<E>(poly: &[E]) -> usize
@@ -663,10 +631,7 @@ where
 /// assert_eq!(6, b.len());
 /// assert_eq!(a[..6], b);
 ///
-/// let a = vec![0u128, 0, 0, 0]
-///     .into_iter()
-///     .map(BaseElement::new)
-///     .collect::<Vec<_>>();
+/// let a = vec![0u128, 0, 0, 0].into_iter().map(BaseElement::new).collect::<Vec<_>>();
 /// let b = remove_leading_zeros(&a);
 /// assert_eq!(0, b.len());
 /// ```
@@ -688,15 +653,9 @@ where
 /// ```
 /// # use winter_math::polynom::*;
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement};
-/// let xs = vec![1u128, 2]
-///     .into_iter()
-///     .map(BaseElement::new)
-///     .collect::<Vec<_>>();
+/// let xs = vec![1u128, 2].into_iter().map(BaseElement::new).collect::<Vec<_>>();
 ///
-/// let mut expected_poly = vec![2u128, 3, 1]
-///     .into_iter()
-///     .map(BaseElement::new)
-///     .collect::<Vec<_>>();
+/// let mut expected_poly = vec![2u128, 3, 1].into_iter().map(BaseElement::new).collect::<Vec<_>>();
 /// expected_poly[1] *= -BaseElement::ONE;
 ///
 /// let poly = poly_from_roots(&xs);

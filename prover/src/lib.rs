@@ -18,11 +18,11 @@
 //! To generate a proof that a computation was executed correctly, you'll need to do the
 //! following:
 //!
-//! 1. Define an *algebraic intermediate representation* (AIR) for your computation. This can
-//!    be done by implementing [Air] trait.
+//! 1. Define an *algebraic intermediate representation* (AIR) for your computation. This can be
+//!    done by implementing [Air] trait.
 //! 2. Define an execution trace for your computation. This can be done by implementing [Trace]
-//!    trait. Alternatively, you can use [TraceTable] struct which already implements [Trace]
-//!    trait in cases when this generic implementation works for your use case.
+//!    trait. Alternatively, you can use [TraceTable] struct which already implements [Trace] trait
+//!    in cases when this generic implementation works for your use case.
 //! 3. Execute your computation and record its execution trace.
 //! 4. Define your prover by implementing [Prover] trait. Then execute [Prover::prove()] function
 //!    passing the trace generated in the previous step into it as a parameter. The function will
@@ -111,8 +111,8 @@ const DEFAULT_SEGMENT_WIDTH: usize = 8;
 /// Thus, once a prover is defined and instantiated, generating a STARK proof consists of two
 /// steps:
 /// 1. Build an execution trace for a specific instance of the computation.
-/// 2. Invoke [Prover::prove()] method generate a proof using the trace from the previous step
-///    as a witness.
+/// 2. Invoke [Prover::prove()] method generate a proof using the trace from the previous step as a
+///    witness.
 ///
 /// The generated proof is built using protocol parameters defined by the [ProofOptions] struct
 /// return from [Prover::options] method.

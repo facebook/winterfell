@@ -68,8 +68,9 @@ impl<B: StarkField, const N: usize> Segment<B, N> {
             // if we will fill the entire segment, we allocate uninitialized memory
             unsafe { uninit_vector::<[B; N]>(domain_size) }
         } else {
-            // but if some columns in the segment will remain unfilled, we allocate memory initialized
-            // to zeros to make sure we don't end up with memory with undefined values
+            // but if some columns in the segment will remain unfilled, we allocate memory
+            // initialized to zeros to make sure we don't end up with memory with
+            // undefined values
             vec![[B::ZERO; N]; domain_size]
         };
 

@@ -53,11 +53,11 @@
 //! [Polynomials](polynom) module implements basic polynomial operations such as:
 //!
 //! * Evaluation of a polynomial at a single or multiple point.
-//! * Interpolation of a polynomial from a set of points (using
-//!   [Lagrange](https://en.wikipedia.org/wiki/Lagrange_polynomial) interpolation).
+//! * Interpolation of a polynomial from a set of points (using [Lagrange](https://en.wikipedia.org/wiki/Lagrange_polynomial)
+//!   interpolation).
 //! * Addition, multiplication, subtraction, and division of polynomials.
-//! * Synthetic polynomial division (using
-//!   [Ruffini's](https://en.wikipedia.org/wiki/Ruffini%27s_rule) method).
+//! * Synthetic polynomial division (using [Ruffini's](https://en.wikipedia.org/wiki/Ruffini%27s_rule)
+//!   method).
 //!
 //! # Fast Fourier transform
 //! [FFT](fft) module contains operations for computing Fast Fourier transform in a prime

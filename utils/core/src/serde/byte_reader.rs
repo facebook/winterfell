@@ -222,18 +222,20 @@ pub struct ReadAdapter<'a> {
     // of the above-mentioned methods is made while that reference is live, and we attempt to read
     // from `reader`, a panic will occur.
     //
-    // Ultimately, this should be addressed by making the [ByteReader] trait align with the standard
-    // library I/O traits, so this is a temporary solution.
+    // Ultimately, this should be addressed by making the [ByteReader] trait align with the
+    // standard library I/O traits, so this is a temporary solution.
     reader: RefCell<std::io::BufReader<&'a mut dyn std::io::Read>>,
-    // A temporary buffer to store chunks read from `reader` that are larger than what is required for
-    // the higher-level [ByteReader] APIs.
+    // A temporary buffer to store chunks read from `reader` that are larger than what is required
+    // for the higher-level [ByteReader] APIs.
     //
-    // By default we attempt to satisfy reads from `reader` directly, but that is not always possible.
+    // By default we attempt to satisfy reads from `reader` directly, but that is not always
+    // possible.
     buf: alloc::vec::Vec<u8>,
-    // The position in `buf` at which we should start reading the next byte, when `buf` is non-empty.
+    // The position in `buf` at which we should start reading the next byte, when `buf` is
+    // non-empty.
     pos: usize,
-    // This is set when we attempt to read from `reader` and get an empty buffer. This indicates that
-    // once we exhaust `buf`, we have truly reached end-of-file.
+    // This is set when we attempt to read from `reader` and get an empty buffer. This indicates
+    // that once we exhaust `buf`, we have truly reached end-of-file.
     //
     // We will use this to more accurately handle functions like `has_more_bytes` when this is set.
     guaranteed_eof: bool,
@@ -265,7 +267,8 @@ impl<'a> ReadAdapter<'a> {
 
     /// Return the current reader buffer as a (possibly empty) slice of bytes.
     ///
-    /// This buffer being empty _does not_ mean we're at EOF, you must call [non_empty_reader_buffer_mut] first.
+    /// This buffer being empty _does not_ mean we're at EOF, you must call
+    /// [non_empty_reader_buffer_mut] first.
     #[inline(always)]
     fn reader_buffer(&self) -> Ref<'_, [u8]> {
         Ref::map(self.reader.borrow(), |r| r.buffer())
@@ -334,7 +337,8 @@ impl<'a> ReadAdapter<'a> {
         result
     }
 
-    /// Takes the next `N` bytes from the input as an array, returning an error if the operation fails
+    /// Takes the next `N` bytes from the input as an array, returning an error if the operation
+    /// fails
     fn read_exact<const N: usize>(&mut self) -> Result<[u8; N], DeserializationError> {
         let buf = self.buffer();
         let mut output = [0; N];

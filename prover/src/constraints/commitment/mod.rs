@@ -19,8 +19,8 @@ pub use default::DefaultConstraintCommitment;
 ///
 /// The commitment consists of two components:
 /// * Evaluations of composition polynomial columns over the LDE domain.
-/// * Vector commitment where each vector element corresponds to the digest of a row in
-///   the composition polynomial evaluation matrix.
+/// * Vector commitment where each vector element corresponds to the digest of a row in the
+///   composition polynomial evaluation matrix.
 pub trait ConstraintCommitment<E: FieldElement> {
     /// The hash function used for hashing the rows of trace segment LDEs.
     type HashFn: ElementHasher<BaseField = E::BaseField>;

@@ -9,9 +9,9 @@
 //! This follows from the simple fact that every circulant matrix has the columns of the discrete
 //! Fourier transform matrix as orthogonal eigenvectors.
 //! The implementation also avoids the use of 3-point FFTs, and 3-point iFFTs, and substitutes that
-//! with explicit expressions. It also avoids, due to the form of our matrix in the frequency domain,
-//! divisions by 2 and repeated modular reductions. This is because of our explicit choice of
-//! an MDS matrix that has small powers of 2 entries in frequency domain.
+//! with explicit expressions. It also avoids, due to the form of our matrix in the frequency
+//! domain, divisions by 2 and repeated modular reductions. This is because of our explicit choice
+//! of an MDS matrix that has small powers of 2 entries in frequency domain.
 //! The following implementation has benefited greatly from the discussions and insights of
 //! Hamish Ivey-Law and Jacqueline Nabaglo of Polygon Zero and is based on Nabaglo's implementation
 //! in [Plonky2](https://github.com/mir-protocol/plonky2).
@@ -31,8 +31,9 @@ use math::{
 // the MDS matrix i.e. just before the multiplication with the appropriate twiddle factors
 // and application of the final four 3-point FFT in order to get the full 12-point FFT.
 // The entries have been scaled appropriately in order to avoid divisions by 2 in iFFT2 and iFFT4.
-// The code to generate the matrix in frequency domain is based on an adaptation of a code, to generate
-// MDS matrices efficiently in original domain, that was developed by the Polygon Zero team.
+// The code to generate the matrix in frequency domain is based on an adaptation of a code, to
+// generate MDS matrices efficiently in original domain, that was developed by the Polygon Zero
+// team.
 const MDS_FREQ_BLOCK_ONE: [i64; 3] = [16, 8, 16];
 const MDS_FREQ_BLOCK_TWO: [(i64, i64); 3] = [(-1, 2), (-1, 1), (4, 8)];
 const MDS_FREQ_BLOCK_THREE: [i64; 3] = [-8, 1, 1];

@@ -40,8 +40,8 @@ impl OodFrame {
     /// Updates the trace state portion of this out-of-domain frame, and returns the hash of the
     /// trace states.
     ///
-    /// The out-of-domain frame is stored as one vector built from the concatenation of values of two
-    /// vectors, the current row vector and the next row vector. Given the input frame
+    /// The out-of-domain frame is stored as one vector built from the concatenation of values of
+    /// two vectors, the current row vector and the next row vector. Given the input frame
     ///
     ///    +-------+-------+-------+-------+-------+-------+-------+-------+
     ///    |   a1  |   a2  |  ...  |  an   |  c1   |  c2   |  ...  |  cm   |

@@ -42,8 +42,8 @@ impl<B: StarkField> AirContext<B> {
     /// Panics if
     /// * `transition_constraint_degrees` is an empty vector.
     /// * `num_assertions` is zero.
-    /// * Blowup factor specified by the provided `options` is too small to accommodate degrees
-    ///   of the specified transition constraints.
+    /// * Blowup factor specified by the provided `options` is too small to accommodate degrees of
+    ///   the specified transition constraints.
     /// * `trace_info` describes a multi-segment execution trace.
     pub fn new(
         trace_info: TraceInfo,
@@ -85,8 +85,8 @@ impl<B: StarkField> AirContext<B> {
     /// * `trace_info.is_multi_segment() == false` but:
     ///   - `aux_transition_constraint_degrees` is a non-empty vector.
     ///   - `num_aux_assertions` is greater than zero.
-    /// * Blowup factor specified by the provided `options` is too small to accommodate degrees
-    ///   of the specified transition constraints.
+    /// * Blowup factor specified by the provided `options` is too small to accommodate degrees of
+    ///   the specified transition constraints.
     pub fn new_multi_segment(
         trace_info: TraceInfo,
         main_transition_constraint_degrees: Vec<TransitionConstraintDegree>,
@@ -309,9 +309,9 @@ impl<B: StarkField> AirContext<B> {
         // number of exemptions.
         // The `ce_blowup` factor puts a ceiling on the maximal degree of a constraint composition
         // polynomial we can accommodate. On the other hand, adding exemption points reduces the
-        // degree of the divisor which results in an increase of the resulting constraint composition
-        // polynomial.Thus we need to check that the number of exemption points is not too large
-        // given the above.
+        // degree of the divisor which results in an increase of the resulting constraint
+        // composition polynomial.Thus we need to check that the number of exemption points
+        // is not too large given the above.
         for degree in self
             .main_transition_constraint_degrees
             .iter()

@@ -189,7 +189,8 @@ impl Air for LamportThresholdAir {
 
         let last_step = self.trace_length() - 1;
         assertions.extend_from_slice(&[
-            // signature counter starts at zero and terminates with the expected count of signatures
+            // signature counter starts at zero and terminates with the expected count of
+            // signatures
             Assertion::single(27, 0, BaseElement::ZERO),
             Assertion::single(27, last_step, BaseElement::from(self.num_signatures as u64)),
             // the first public key for merkle path verification should be a zero key (it is only

@@ -316,8 +316,8 @@ where
         // get periodic values at the evaluation step
         let periodic_values = self.periodic_values.get_row(step);
 
-        // evaluate transition constraints over the auxiliary trace segment and save the results into
-        // evaluations buffer
+        // evaluate transition constraints over the auxiliary trace segment and save the results
+        // into evaluations buffer
         self.air.evaluate_aux_transition(
             main_frame,
             aux_frame,

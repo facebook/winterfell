@@ -366,7 +366,8 @@ fn acc_column<E: FieldElement>(
     }
 }
 
-/// Computes evaluations of the divisor's numerator over the domain of the specified size and offset.
+/// Computes evaluations of the divisor's numerator over the domain of the specified size and
+/// offset.
 fn get_inv_evaluation<B: StarkField>(
     divisor: &ConstraintDivisor<B>,
     domain: &StarkDomain<B>,
@@ -440,10 +441,10 @@ fn build_transition_constraint_degrees<E: FieldElement>(
 /// The degree is computed as follows:
 /// - First, we divide the polynomial evaluations by the evaluations of transition constraint
 ///   divisor (`div_values`). This is needed because it is possible for the numerator portions of
-///   transition constraints to have a degree which is larger than the size of the evaluation
-///   domain (and thus, interpolating the numerator would yield an incorrect result). However,
-///   once the divisor values are divided out, the degree of the resulting polynomial should be
-///   smaller than the size of the evaluation domain, and thus, we can interpolate safely.
+///   transition constraints to have a degree which is larger than the size of the evaluation domain
+///   (and thus, interpolating the numerator would yield an incorrect result). However, once the
+///   divisor values are divided out, the degree of the resulting polynomial should be smaller than
+///   the size of the evaluation domain, and thus, we can interpolate safely.
 /// - Then, we interpolate the polynomial over the domain specified by `inv_twiddles`.
 /// - And finally, we get the degree from the interpolated polynomial.
 #[cfg(debug_assertions)]

@@ -32,7 +32,8 @@ pub enum VerifierError {
     RemainderDegreeNotValid,
     /// FRI remainder degree is greater than the polynomial degree expected for the last layer.
     RemainderDegreeMismatch(usize),
-    /// Polynomial degree at one of the FRI layers could not be divided evenly by the folding factor.
+    /// Polynomial degree at one of the FRI layers could not be divided evenly by the folding
+    /// factor.
     DegreeTruncation(usize, usize, usize),
 }
 

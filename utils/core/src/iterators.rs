@@ -21,7 +21,7 @@ pub use rayon::{current_num_threads as rayon_num_threads, prelude::*};
 /// Adapted from: <https://github.com/arkworks-rs/utils/blob/master/src/lib.rs>
 #[macro_export]
 macro_rules! iter {
-    ($e: expr) => {{
+    ($e:expr) => {{
         #[cfg(feature = "concurrent")]
         let result = $e.par_iter();
 
@@ -30,7 +30,7 @@ macro_rules! iter {
 
         result
     }};
-    ($e: expr, $min_len: expr) => {{
+    ($e:expr, $min_len:expr) => {{
         #[cfg(feature = "concurrent")]
         let result = $e.par_iter().with_min_len($min_len);
 
@@ -51,7 +51,7 @@ macro_rules! iter {
 /// Adapted from: <https://github.com/arkworks-rs/utils/blob/master/src/lib.rs>
 #[macro_export]
 macro_rules! iter_mut {
-    ($e: expr) => {{
+    ($e:expr) => {{
         #[cfg(feature = "concurrent")]
         let result = $e.par_iter_mut();
 
@@ -60,7 +60,7 @@ macro_rules! iter_mut {
 
         result
     }};
-    ($e: expr, $min_len: expr) => {{
+    ($e:expr, $min_len:expr) => {{
         #[cfg(feature = "concurrent")]
         let result = $e.par_iter_mut().with_min_len($min_len);
 

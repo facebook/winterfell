@@ -55,8 +55,8 @@ impl FriOptions {
 
     /// Returns the factor by which the degree of a polynomial is reduced with each FRI layer.
     ///
-    /// In combination with `remainder_max_degree_plus_1` this property defines how many FRI layers are
-    /// needed for an evaluation domain of a given size.
+    /// In combination with `remainder_max_degree_plus_1` this property defines how many FRI layers
+    /// are needed for an evaluation domain of a given size.
     pub fn folding_factor(&self) -> usize {
         self.folding_factor
     }

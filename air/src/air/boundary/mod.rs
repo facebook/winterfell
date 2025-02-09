@@ -52,8 +52,8 @@ impl<E: FieldElement> BoundaryConstraints<E> {
     ///
     /// # Panics
     /// Panics if:
-    /// * The number of provided assertions does not match the number of assertions described by
-    ///   the context.
+    /// * The number of provided assertions does not match the number of assertions described by the
+    ///   context.
     /// * The number of assertions does not match the number of the provided composition
     ///   coefficients.
     /// * The specified assertions are not valid in the context of the computation (e.g., assertion

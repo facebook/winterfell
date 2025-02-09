@@ -16,8 +16,8 @@ use winterfell::{math::StarkField, matrix::ColMatrix, EvaluationFrame, Trace, Tr
 /// fill it with data. To fill the execution trace, you can use the [fill()](RapTraceTable::fill)
 /// method, which takes two closures as parameters:
 ///
-/// 1. The first closure is responsible for initializing the first state of the computation
-///    (the first row of the execution trace).
+/// 1. The first closure is responsible for initializing the first state of the computation (the
+///    first row of the execution trace).
 /// 2. The second closure receives the previous state of the execution trace as input, and must
 ///    update it to the next state of the computation.
 ///
@@ -41,8 +41,8 @@ impl<B: StarkField> RapTraceTable<B> {
     /// # Panics
     /// Panics if:
     /// * `width` is zero or greater than 255.
-    /// * `length` is smaller than 8, greater than biggest multiplicative subgroup in the field
-    ///   `B`, or is not a power of two.
+    /// * `length` is smaller than 8, greater than biggest multiplicative subgroup in the field `B`,
+    ///   or is not a power of two.
     pub fn new(width: usize, length: usize) -> Self {
         Self::with_meta(width, length, vec![])
     }
@@ -56,8 +56,8 @@ impl<B: StarkField> RapTraceTable<B> {
     /// # Panics
     /// Panics if:
     /// * `width` is zero or greater than 255.
-    /// * `length` is smaller than 8, greater than the biggest multiplicative subgroup in the
-    ///   field `B`, or is not a power of two.
+    /// * `length` is smaller than 8, greater than the biggest multiplicative subgroup in the field
+    ///   `B`, or is not a power of two.
     /// * Length of `meta` is greater than 65535;
     pub fn with_meta(width: usize, length: usize, meta: Vec<u8>) -> Self {
         assert!(width > 0, "execution trace must consist of at least one column");
@@ -106,8 +106,8 @@ impl<B: StarkField> RapTraceTable<B> {
     /// - `update` closure is used to populate all subsequent rows of the trace; it receives two
     ///   parameters:
     ///   - index of the last updated row (starting with 0).
-    ///   - a mutable reference to the last updated state; the contents of the state are copied
-    ///     into the next row of the trace after the closure returns.
+    ///   - a mutable reference to the last updated state; the contents of the state are copied into
+    ///     the next row of the trace after the closure returns.
     pub fn fill<I, U>(&mut self, init: I, update: U)
     where
         I: Fn(&mut [B]),

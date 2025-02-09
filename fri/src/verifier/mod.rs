@@ -28,11 +28,11 @@ pub use channel::{DefaultVerifierChannel, VerifierChannel};
 ///
 /// * `B` specifies the base field of the STARK protocol.
 /// * `E` specifies the field in which the FRI protocol is executed. This can be the same as the
-///   base field `B`, but it can also be an extension of the base field in cases when the base
-///   field is too small to provide desired security level for the FRI protocol.
-/// * `C` specifies the type used to simulate prover-verifier interaction. This type is used
-///   as an abstraction for a [FriProof](crate::FriProof). Meaning, the verifier does not consume
-///   a FRI proof directly, but reads it via [VerifierChannel] interface.
+///   base field `B`, but it can also be an extension of the base field in cases when the base field
+///   is too small to provide desired security level for the FRI protocol.
+/// * `C` specifies the type used to simulate prover-verifier interaction. This type is used as an
+///   abstraction for a [FriProof](crate::FriProof). Meaning, the verifier does not consume a FRI
+///   proof directly, but reads it via [VerifierChannel] interface.
 /// * `H` specifies the Hash function used by the prover to commit to polynomial evaluations.
 ///
 /// Proof verification is performed in two phases: commit phase and query phase.
@@ -50,13 +50,13 @@ pub use channel::{DefaultVerifierChannel, VerifierChannel};
 /// the verifier sends a set of positions in the domain *D* to the prover, and the prover responds
 /// with polynomial evaluations at these positions (together with corresponding opening proofs)
 /// across all FRI layers. The verifier then checks that:
-/// * The opening proofs are valid against the layer commitments the verifier received during
-///   the commit phase.
-/// * The evaluations are consistent across FRI layers (i.e., the degree-respecting projection
-///   was applied correctly).
-/// * The degree of the polynomial implied by evaluations at the last FRI layer (the remainder)
-///   is smaller than the degree resulting from reducing degree *d* by `folding_factor` at each
-///   FRI layer.
+/// * The opening proofs are valid against the layer commitments the verifier received during the
+///   commit phase.
+/// * The evaluations are consistent across FRI layers (i.e., the degree-respecting projection was
+///   applied correctly).
+/// * The degree of the polynomial implied by evaluations at the last FRI layer (the remainder) is
+///   smaller than the degree resulting from reducing degree *d* by `folding_factor` at each FRI
+///   layer.
 pub struct FriVerifier<E, C, H, R, V>
 where
     E: FieldElement,
@@ -101,8 +101,8 @@ where
     ///
     /// # Errors
     /// Returns an error if:
-    /// * `max_poly_degree` is inconsistent with the number of FRI layers read from the channel
-    ///   and `folding_factor` specified in the `options` parameter.
+    /// * `max_poly_degree` is inconsistent with the number of FRI layers read from the channel and
+    ///   `folding_factor` specified in the `options` parameter.
     /// * An error was encountered while drawing a random α value from the coin.
     pub fn new(
         channel: &mut C,
@@ -201,10 +201,10 @@ where
     /// Returns an error if:
     /// * The length of `evaluations` is not equal to the length of `positions`.
     /// * An unsupported folding factor was specified by the `options` for this verifier.
-    /// * Decommitments to polynomial evaluations don't match the commitment value at any of the
-    ///   FRI layers.
-    /// * The verifier detects an error in how the degree-respecting projection was applied
-    ///   at any of the FRI layers.
+    /// * Decommitments to polynomial evaluations don't match the commitment value at any of the FRI
+    ///   layers.
+    /// * The verifier detects an error in how the degree-respecting projection was applied at any
+    ///   of the FRI layers.
     /// * The degree of the remainder at the last FRI layer is greater than the degree implied by
     ///   `max_poly_degree` reduced by the folding factor at each FRI layer.
     pub fn verify(
@@ -244,7 +244,7 @@ where
             .map(|i| self.domain_generator.exp_vartime(((self.domain_size / N * i) as u64).into()))
             .collect::<Vec<_>>();
 
-        // 1 ----- verify the recursive components of the FRI proof -----------------------------------
+        // 1 ----- verify the recursive components of the FRI proof -------------------------------
         let mut domain_generator = self.domain_generator;
         let mut domain_size = self.domain_size;
         let mut max_degree_plus_1 = self.max_poly_degree + 1;
@@ -306,8 +306,8 @@ where
 
         // 2 ----- verify the remainder polynomial of the FRI proof -------------------------------
 
-        // read the remainder polynomial from the channel and make sure it agrees with the evaluations
-        // from the previous layer.
+        // read the remainder polynomial from the channel and make sure it agrees with the
+        // evaluations from the previous layer.
         let remainder_poly = channel.read_remainder()?;
         if remainder_poly.len() > max_degree_plus_1 {
             return Err(VerifierError::RemainderDegreeMismatch(max_degree_plus_1 - 1));

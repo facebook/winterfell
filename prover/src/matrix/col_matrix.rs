@@ -223,9 +223,9 @@ impl<E: FieldElement> ColMatrix<E> {
     /// The evaluation is done as follows:
     /// * Each column of the matrix is interpreted as coefficients of degree `num_rows - 1`
     ///   polynomial.
-    /// * These polynomials are evaluated over the LDE domain defined by the specified
-    ///   [StarkDomain] using FFT algorithm. The domain specification includes the size of the
-    ///   subgroup as well as the domain offset (to define a coset).
+    /// * These polynomials are evaluated over the LDE domain defined by the specified [StarkDomain]
+    ///   using FFT algorithm. The domain specification includes the size of the subgroup as well as
+    ///   the domain offset (to define a coset).
     /// * The resulting evaluations are returned in a new Matrix.
     pub fn evaluate_columns_over(&self, domain: &StarkDomain<E::BaseField>) -> Self {
         let columns = iter!(self.columns)

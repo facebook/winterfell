@@ -15,8 +15,8 @@
 //! To generate a proof that a computation was executed correctly, you'll need to do the
 //! following:
 //!
-//! 1. Define an *algebraic intermediate representation* (AIR) for your computation. This can
-//!    be done by implementing [Air] trait.
+//! 1. Define an *algebraic intermediate representation* (AIR) for your computation. This can be
+//!    done by implementing [Air] trait.
 //! 2. Define an execution trace for your computation. This can be done by implementing [Trace]
 //!    trait. Alternatively, you can use the [TraceTable] struct which already implements [Trace]
 //!    trait in cases when this generic implementation works for your use case.
@@ -43,10 +43,10 @@
 //! To verify a [Proof] generated as described in the previous sections, you'll need to
 //! do the following:
 //!
-//! 1. Define an *algebraic intermediate representation* (AIR) for you computation. This AIR
-//!    must be the same as the one used during the proof generation process.
-//! 2. Execute [verify()] function and supply the AIR of your computation together with the
-//!    [Proof] and related public inputs as parameters.
+//! 1. Define an *algebraic intermediate representation* (AIR) for you computation. This AIR must be
+//!    the same as the one used during the proof generation process.
+//! 2. Execute [verify()] function and supply the AIR of your computation together with the [Proof]
+//!    and related public inputs as parameters.
 //!
 //! Proof verification is extremely fast and is nearly independent of the complexity of the
 //! computation being verified. In the vast majority of cases, proofs can be verified in 3 - 5 ms
@@ -68,11 +68,11 @@
 //! use winterfell::math::{fields::f128::BaseElement, FieldElement};
 //!
 //! fn do_work(start: BaseElement, n: usize) -> BaseElement {
-//!    let mut result = start;
-//!    for _ in 1..n {
-//!        result = result.exp(3) + BaseElement::new(42);
-//!    }
-//!    result
+//!     let mut result = start;
+//!     for _ in 1..n {
+//!         result = result.exp(3) + BaseElement::new(42);
+//!     }
+//!     result
 //! }
 //! ```
 //!
@@ -135,24 +135,24 @@
 //! This process is usually called *arithmetization*. We do this by implementing the [Air] trait.
 //! At the high level, the code below does three things:
 //!
-//! 1. Defines what the public inputs for our computation should look like. These inputs are
-//!    called "public" because they must be known to both, the prover and the verifier.
-//! 2. Defines a transition function with a single transition constraint. This transition
-//!    constraint must evaluate to zero for all valid state transitions, and to non-zero for any
-//!    invalid state transition. The degree of this constraint is 3 (see more about constraint
-//!    degrees "Constraint degrees" section of [Air] trait documentation).
-//! 3. Define two assertions against an execution trace of our computation. These assertions tie
-//!    a specific set of public inputs to a specific execution trace (see more about assertions
-//!    "Trace assertions" section of [Air] trait documentation).
+//! 1. Defines what the public inputs for our computation should look like. These inputs are called
+//!    "public" because they must be known to both, the prover and the verifier.
+//! 2. Defines a transition function with a single transition constraint. This transition constraint
+//!    must evaluate to zero for all valid state transitions, and to non-zero for any invalid state
+//!    transition. The degree of this constraint is 3 (see more about constraint degrees "Constraint
+//!    degrees" section of [Air] trait documentation).
+//! 3. Define two assertions against an execution trace of our computation. These assertions tie a
+//!    specific set of public inputs to a specific execution trace (see more about assertions "Trace
+//!    assertions" section of [Air] trait documentation).
 //!
 //! Here is the actual code:
 //!
 //! ```no_run
 //! use winterfell::{
-//!     math::{fields::f128::BaseElement, FieldElement, ToElements},
-//!     Air, AirContext, Assertion, EvaluationFrame,
-//!     ProofOptions, TraceInfo, TransitionConstraintDegree,
 //!     crypto::{hashers::Blake3_256, DefaultRandomCoin, MerkleTree},
+//!     math::{fields::f128::BaseElement, FieldElement, ToElements},
+//!     Air, AirContext, Assertion, EvaluationFrame, ProofOptions, TraceInfo,
+//!     TransitionConstraintDegree,
 //! };
 //!
 //! // Public inputs for our computation will consist of the starting value and the end result.

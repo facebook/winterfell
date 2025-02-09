@@ -43,10 +43,10 @@ mod tests;
 // ================================================================================================
 
 /// Field modulus = 2^64 - 2^32 + 1
-const M: u64 = 0xFFFFFFFF00000001;
+const M: u64 = 0xffffffff00000001;
 
 /// 2^128 mod M; this is used for conversion of elements into Montgomery representation.
-const R2: u64 = 0xFFFFFFFE00000001;
+const R2: u64 = 0xfffffffe00000001;
 
 /// Number of bytes needed to represent field element
 const ELEMENT_BYTES: usize = core::mem::size_of::<u64>();
@@ -302,7 +302,7 @@ impl Display for BaseElement {
 impl PartialEq for BaseElement {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        equals(self.0, other.0) == 0xFFFFFFFFFFFFFFFF
+        equals(self.0, other.0) == 0xffffffffffffffff
     }
 }
 

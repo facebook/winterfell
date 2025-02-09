@@ -10,10 +10,10 @@
 //! # Usage
 //! To verify a proof that a computation was executed correctly, you'll need to do the following:
 //!
-//! 1. Define an *algebraic intermediate representation* (AIR) for you computation. This can be
-//!    done by implementing [Air] trait.
-//! 2. Execute [verify()] function and supply the AIR of your computation together with the
-//!    [Proof] and related public inputs as parameters.
+//! 1. Define an *algebraic intermediate representation* (AIR) for you computation. This can be done
+//!    by implementing [Air] trait.
+//! 2. Execute [verify()] function and supply the AIR of your computation together with the [Proof]
+//!    and related public inputs as parameters.
 //!
 //! # Performance
 //! Proof verification is extremely fast and is nearly independent of the complexity of the

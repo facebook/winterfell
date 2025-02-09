@@ -14,11 +14,11 @@ use math::{get_power_series, get_power_series_with_offset, FieldElement};
 ///
 /// These coefficients are created by the
 /// [Air::get_constraint_composition_coefficients()](crate::Air::get_constraint_composition_coefficients)
-/// function. In the interactive version of the protocol, the verifier either draws these coefficients
-/// uniformly at random from the extension field of the protocol or draws a single random extension
-/// field element $\alpha$ and defines the coefficients as $\alpha_i = \alpha^i$. We call the former
-/// way way of generating the alpha-s, and hence of batching the constraints, linear/affine batching
-/// while we call the latter algebraic/curve batching.
+/// function. In the interactive version of the protocol, the verifier either draws these
+/// coefficients uniformly at random from the extension field of the protocol or draws a single
+/// random extension field element $\alpha$ and defines the coefficients as $\alpha_i = \alpha^i$.
+/// We call the former way way of generating the alpha-s, and hence of batching the constraints,
+/// linear/affine batching while we call the latter algebraic/curve batching.
 ///
 /// There is one coefficient for each constraint so that we can compute a random linear
 /// combination of constraints as:
@@ -113,14 +113,14 @@ impl<E: FieldElement> ConstraintCompositionCoefficients<E> {
 /// )} + \sum_{j=0}^m{\beta_j \cdot \frac{H_j(x) - H_j(z)}{x - z}}
 /// $$
 /// where:
-/// * $z$ is an out-of-domain point drawn randomly from the entire field. In the interactive
-///   version of the protocol, $z$ is provided by the verifier.
-/// * $g$ is the generator of the trace domain. This is the $n$th root of unity where
-///   $n$ is the length of the execution trace.
-/// * $T_i(x)$ is an evaluation of the $i$th trace polynomial at $x$, and $k$ is the total
-///   number of trace polynomials (which is equal to the width of the execution trace).
-/// * $H_i(x)$ is an evaluation of the $j$th constraint composition column polynomial at $x$,
-///   and $m$ is the total number of column polynomials.
+/// * $z$ is an out-of-domain point drawn randomly from the entire field. In the interactive version
+///   of the protocol, $z$ is provided by the verifier.
+/// * $g$ is the generator of the trace domain. This is the $n$th root of unity where $n$ is the
+///   length of the execution trace.
+/// * $T_i(x)$ is an evaluation of the $i$th trace polynomial at $x$, and $k$ is the total number of
+///   trace polynomials (which is equal to the width of the execution trace).
+/// * $H_i(x)$ is an evaluation of the $j$th constraint composition column polynomial at $x$, and
+///   $m$ is the total number of column polynomials.
 /// * $\alpha_i$ is a composition coefficient for the $i$th trace polynomial.
 /// * $\beta_j$ is a composition coefficient for the $j$th constraint column polynomial.
 ///

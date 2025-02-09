@@ -18,10 +18,10 @@ use super::Table;
 /// Decommitments to evaluations of a set of functions at multiple points.
 ///
 /// Given a set of functions evaluated over a domain *D*, a commitment is assumed to be a vector
-/// commitment where the *i*-th vector entry contains evaluations of all functions at *x<sub>i</sub>*.
-/// Thus, a query (i.e. a single decommitment) for position *i* includes evaluations of all
-/// functions at *x<sub>i</sub>*, accompanied by an opening proof of leaf *i* against the vector
-/// commitment string.
+/// commitment where the *i*-th vector entry contains evaluations of all functions at
+/// *x<sub>i</sub>*. Thus, a query (i.e. a single decommitment) for position *i* includes
+/// evaluations of all functions at *x<sub>i</sub>*, accompanied by an opening proof of leaf *i*
+/// against the vector commitment string.
 ///
 /// This struct can contain one or more queries. In cases when more than one query is stored,
 /// a batch opening proof is used in order to compress the individual opening proofs.

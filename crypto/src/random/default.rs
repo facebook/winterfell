@@ -20,46 +20,56 @@ use crate::{errors::RandomCoinError, Digest, ElementHasher, RandomCoin};
 ///
 /// Internally we use a cryptographic hash function (which is specified via the `H` type parameter),
 /// to draw elements from the field. The coin works roughly as follows:
-/// - The internal state of the coin consists of a `seed` and a `counter`. At instantiation
-///   time, the `seed` is set to a hash of the provided bytes, and the `counter` is set to 0.
-/// - To draw the next element, we increment the `counter` and compute hash(`seed` || `counter`).
-///   If the resulting value is a valid field element, we return the result; otherwise we try
-///   again until a valid element is found or the number of allowed tries is exceeded.
-/// - We can also re-seed the coin with a new value. During the reseeding procedure, the
-///   seed is set to hash(`old_seed` || `new_seed`), and the counter is reset to 0.
+/// - The internal state of the coin consists of a `seed` and a `counter`. At instantiation time,
+///   the `seed` is set to a hash of the provided bytes, and the `counter` is set to 0.
+/// - To draw the next element, we increment the `counter` and compute hash(`seed` || `counter`). If
+///   the resulting value is a valid field element, we return the result; otherwise we try again
+///   until a valid element is found or the number of allowed tries is exceeded.
+/// - We can also re-seed the coin with a new value. During the reseeding procedure, the seed is set
+///   to hash(`old_seed` || `new_seed`), and the counter is reset to 0.
 ///
 /// # Examples
 /// ```
 /// # use winter_crypto::{RandomCoin, DefaultRandomCoin, Hasher, hashers::Blake3_256};
 /// # use math::fields::f128::BaseElement;
 /// // initial elements for seeding the random coin
-/// let seed = &[BaseElement::new(1), BaseElement::new(2), BaseElement::new(3), BaseElement::new(4)];
+/// let seed = &[
+///     BaseElement::new(1),
+///     BaseElement::new(2),
+///     BaseElement::new(3),
+///     BaseElement::new(4),
+/// ];
 ///
 /// // instantiate a random coin using BLAKE3 as the hash function
 /// let mut coin = DefaultRandomCoin::<Blake3_256<BaseElement>>::new(seed);
 ///
 /// // should draw different elements each time
-/// let e1 = coin.draw::<BaseElement>().unwrap();;
-/// let e2 = coin.draw::<BaseElement>().unwrap();;
+/// let e1 = coin.draw::<BaseElement>().unwrap();
+/// let e2 = coin.draw::<BaseElement>().unwrap();
 /// assert_ne!(e1, e2);
 ///
-/// let e3 = coin.draw::<BaseElement>().unwrap();;
+/// let e3 = coin.draw::<BaseElement>().unwrap();
 /// assert_ne!(e1, e3);
 /// assert_ne!(e2, e3);
 ///
 /// // should draw same elements for the same seed
 /// let mut coin2 = DefaultRandomCoin::<Blake3_256<BaseElement>>::new(seed);
 /// let mut coin1 = DefaultRandomCoin::<Blake3_256<BaseElement>>::new(seed);
-/// let e1 = coin1.draw::<BaseElement>().unwrap();;
-/// let e2 = coin2.draw::<BaseElement>().unwrap();;
+/// let e1 = coin1.draw::<BaseElement>().unwrap();
+/// let e2 = coin2.draw::<BaseElement>().unwrap();
 /// assert_eq!(e1, e2);
 ///
 /// // should draw different elements based on seed
 /// let mut coin1 = DefaultRandomCoin::<Blake3_256<BaseElement>>::new(seed);
-/// let seed = &[BaseElement::new(2), BaseElement::new(3), BaseElement::new(4), BaseElement::new(5)];
+/// let seed = &[
+///     BaseElement::new(2),
+///     BaseElement::new(3),
+///     BaseElement::new(4),
+///     BaseElement::new(5),
+/// ];
 /// let mut coin2 = DefaultRandomCoin::<Blake3_256<BaseElement>>::new(seed);
-/// let e1 = coin1.draw::<BaseElement>().unwrap();;
-/// let e2 = coin2.draw::<BaseElement>().unwrap();;
+/// let e1 = coin1.draw::<BaseElement>().unwrap();
+/// let e2 = coin2.draw::<BaseElement>().unwrap();
 /// assert_ne!(e1, e2);
 /// ```
 pub struct DefaultRandomCoin<H: ElementHasher> {
@@ -97,20 +107,25 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRando
     /// # use winter_crypto::{RandomCoin, DefaultRandomCoin, Hasher, hashers::Blake3_256};
     /// # use math::fields::f128::BaseElement;
     /// // initial elements for seeding the random coin
-    /// let seed = &[BaseElement::new(1), BaseElement::new(2), BaseElement::new(3), BaseElement::new(4)];
+    /// let seed = &[
+    ///     BaseElement::new(1),
+    ///     BaseElement::new(2),
+    ///     BaseElement::new(3),
+    ///     BaseElement::new(4),
+    /// ];
     ///
     /// let mut coin1 = DefaultRandomCoin::<Blake3_256<BaseElement>>::new(seed);
     /// let mut coin2 = DefaultRandomCoin::<Blake3_256<BaseElement>>::new(seed);
     ///
     /// // should draw the same element form both coins
     /// let e1 = coin1.draw::<BaseElement>().unwrap();
-    /// let e2 = coin2.draw::<BaseElement>().unwrap();;
+    /// let e2 = coin2.draw::<BaseElement>().unwrap();
     /// assert_eq!(e1, e2);
     ///
     /// // after reseeding should draw different elements
     /// coin2.reseed(Blake3_256::<BaseElement>::hash(&[2, 3, 4, 5]));
-    /// let e1 = coin1.draw::<BaseElement>().unwrap();;
-    /// let e2 = coin2.draw::<BaseElement>().unwrap();;
+    /// let e1 = coin1.draw::<BaseElement>().unwrap();
+    /// let e2 = coin2.draw::<BaseElement>().unwrap();
     /// assert_ne!(e1, e2);
     /// ```
     fn reseed(&mut self, data: H::Digest) {
@@ -172,7 +187,12 @@ impl<B: StarkField, H: ElementHasher<BaseField = B>> RandomCoin for DefaultRando
     /// # use winter_crypto::{RandomCoin, DefaultRandomCoin, Hasher, hashers::Blake3_256};
     /// # use math::fields::f128::BaseElement;
     /// // initial elements for seeding the random coin
-    /// let seed = &[BaseElement::new(1), BaseElement::new(2), BaseElement::new(3), BaseElement::new(4)];
+    /// let seed = &[
+    ///     BaseElement::new(1),
+    ///     BaseElement::new(2),
+    ///     BaseElement::new(3),
+    ///     BaseElement::new(4),
+    /// ];
     ///
     /// let mut coin = DefaultRandomCoin::<Blake3_256<BaseElement>>::new(seed);
     ///

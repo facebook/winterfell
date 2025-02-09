@@ -10,7 +10,8 @@ pub fn fft2_real(x: [u64; 2]) -> [i64; 2] {
 }
 
 /// Real 2-iFFT over u64 integers.
-/// Division by two to complete the inverse FFT is expected to be performed ***outside*** of this function.
+/// Division by two to complete the inverse FFT is expected to be performed ***outside*** of this
+/// function.
 #[inline(always)]
 pub fn ifft2_real_unreduced(y: [i64; 2]) -> [u64; 2] {
     [(y[0] + y[1]) as u64, (y[0] - y[1]) as u64]
@@ -28,7 +29,8 @@ pub fn fft4_real(x: [u64; 4]) -> (i64, (i64, i64), i64) {
 }
 
 /// Real 4-iFFT over u64 integers.
-/// Division by four to complete the inverse FFT is expected to be performed ***outside*** of this function.
+/// Division by four to complete the inverse FFT is expected to be performed ***outside*** of this
+/// function.
 #[inline(always)]
 pub fn ifft4_real_unreduced(y: (i64, (i64, i64), i64)) -> [u64; 4] {
     let z0 = y.0 + y.2;

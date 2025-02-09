@@ -8,10 +8,10 @@
 //! the vector-matrix multiplication to a Hadamard product of two vectors in "frequency domain".
 //! This follows from the simple fact that every circulant matrix has the columns of the discrete
 //! Fourier transform matrix as orthogonal eigenvectors.
-//! The implementation also avoids the use of internal 2-point FFTs, and 2-point iFFTs, and substitutes
-//! them with explicit expressions. It also avoids, due to the form of our matrix in the frequency domain,
-//! divisions by 2 and repeated modular reductions. This is because of our explicit choice of
-//! an MDS matrix that has small powers of 2 entries in frequency domain.
+//! The implementation also avoids the use of internal 2-point FFTs, and 2-point iFFTs, and
+//! substitutes them with explicit expressions. It also avoids, due to the form of our matrix in the
+//! frequency domain, divisions by 2 and repeated modular reductions. This is because of our
+//! explicit choice of an MDS matrix that has small powers of 2 entries in frequency domain.
 //! The following implementation has benefited greatly from the discussions and insights of
 //! Hamish Ivey-Law and Jacqueline Nabaglo of Polygon Zero is based on Nabaglo's implementation
 //! in [Plonky2](https://github.com/mir-protocol/plonky2).

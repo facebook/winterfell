@@ -170,8 +170,8 @@ impl FriProof {
     ///
     /// # Errors
     /// Returns an error if:
-    /// * The number of remainder values implied by a combination of `E` type parameter and
-    ///   the number of remainder bytes in this proof is not a power of two.
+    /// * The number of remainder values implied by a combination of `E` type parameter and the
+    ///   number of remainder bytes in this proof is not a power of two.
     /// * Any of the remainder values could not be parsed correctly.
     /// * Not all bytes have been consumed while parsing remainder values.
     pub fn parse_remainder<E: FieldElement>(&self) -> Result<Vec<E>, DeserializationError> {

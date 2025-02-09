@@ -21,8 +21,8 @@ use crate::{CompositionPoly, CompositionPolyTrace, StarkDomain, DEFAULT_SEGMENT_
 ///
 /// The commitment consists of two components:
 /// * Evaluations of composition polynomial columns over the LDE domain.
-/// * Vector commitment where each vector element corresponds to the digest of a row in
-///   the composition polynomial evaluation matrix.
+/// * Vector commitment where each vector element corresponds to the digest of a row in the
+///   composition polynomial evaluation matrix.
 pub struct DefaultConstraintCommitment<
     E: FieldElement,
     H: ElementHasher<BaseField = E::BaseField>,

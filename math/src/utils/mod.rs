@@ -28,9 +28,7 @@ use crate::{field::FieldElement, ExtensionOf};
 /// let n = 2048;
 /// let b = BaseElement::from(3u8);
 ///
-/// let expected = (0..n)
-///     .map(|p| b.exp((p as u64).into()))
-///     .collect::<Vec<_>>();
+/// let expected = (0..n).map(|p| b.exp((p as u64).into())).collect::<Vec<_>>();
 ///
 /// let actual = get_power_series(b, n);
 /// assert_eq!(expected, actual);
@@ -63,9 +61,7 @@ where
 /// let b = BaseElement::from(3u8);
 /// let s = BaseElement::from(7u8);
 ///
-/// let expected = (0..n)
-///     .map(|p| s * b.exp((p as u64).into()))
-///     .collect::<Vec<_>>();
+/// let expected = (0..n).map(|p| s * b.exp((p as u64).into())).collect::<Vec<_>>();
 ///
 /// let actual = get_power_series_with_offset(b, s, n);
 /// assert_eq!(expected, actual);

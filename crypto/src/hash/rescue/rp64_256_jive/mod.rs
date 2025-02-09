@@ -62,23 +62,23 @@ const INV_ALPHA: u64 = 10540996611094048183;
 /// The hash function is implemented according to the Rescue Prime
 /// [specifications](https://eprint.iacr.org/2020/1143.pdf) with the following exception:
 /// * We set the number of rounds to 7, which implies a 40% security margin instead of the 50%
-///   margin used in the specifications (a 50% margin rounds up to 8 rounds). The primary
-///   motivation for this is that having the number of rounds be one less than a power of two
-///   simplifies AIR design for computations involving the hash function.
-/// * When hashing a sequence of elements, implement the Hirose padding rule. However, it also
-///   means that our instantiation of Rescue Prime cannot be used in a stream mode as the number
-///   of elements to be hashed must be known upfront.
+///   margin used in the specifications (a 50% margin rounds up to 8 rounds). The primary motivation
+///   for this is that having the number of rounds be one less than a power of two simplifies AIR
+///   design for computations involving the hash function.
+/// * When hashing a sequence of elements, implement the Hirose padding rule. However, it also means
+///   that our instantiation of Rescue Prime cannot be used in a stream mode as the number of
+///   elements to be hashed must be known upfront.
 /// * We use the first 4 elements of the state (rather than the last 4 elements of the state) for
-///   capacity and the remaining 8 elements for rate. The output of the hash function comes from
-///   the first four elements of the rate portion of the state (elements 4, 5, 6, and 7). This
+///   capacity and the remaining 8 elements for rate. The output of the hash function comes from the
+///   first four elements of the rate portion of the state (elements 4, 5, 6, and 7). This
 ///   effectively applies a fixed bit permutation before and after XLIX permutation. We assert
 ///   without proof that this does not affect security of the construction.
 /// * Instead of using Vandermonde matrices as a standard way of generating an MDS matrix as
-///   described in Rescue Prime paper, we use a methodology developed by Polygon Zero to find an
-///   MDS matrix with coefficients which are small powers of two in frequency domain. This allows
-///   us to dramatically reduce MDS matrix multiplication time. Using a different MDS matrix does
-///   not affect security of the hash function as any MDS matrix satisfies Rescue Prime
-///   construction (as described in section 4.2 of the paper).
+///   described in Rescue Prime paper, we use a methodology developed by Polygon Zero to find an MDS
+///   matrix with coefficients which are small powers of two in frequency domain. This allows us to
+///   dramatically reduce MDS matrix multiplication time. Using a different MDS matrix does not
+///   affect security of the hash function as any MDS matrix satisfies Rescue Prime construction (as
+///   described in section 4.2 of the paper).
 ///
 /// The parameters used to instantiate the function are:
 /// * Field: 64-bit prime field with modulus 2^64 - 2^32 + 1.
@@ -96,12 +96,12 @@ const INV_ALPHA: u64 = 10540996611094048183;
 /// is instantiated with a sponge construction, while the latter use the Jive compression mode and
 /// hence do not rely on the sponge construction.
 ///
-/// In addition, [hash()](RpJive64_256::hash) function is not consistent with the functions mentioned
-/// above. For example, if we take two field elements, serialize them to bytes and hash them using
-/// [hash()](RpJive64_256::hash), the result will differ from the result obtained by hashing these
-/// elements directly using [hash_elements()](RpJive64_256::hash_elements) function. The reason for
-/// this difference is that [hash()](RpJive64_256::hash) function needs to be able to handle
-/// arbitrary binary strings, which may or may not encode valid field elements - and thus,
+/// In addition, [hash()](RpJive64_256::hash) function is not consistent with the functions
+/// mentioned above. For example, if we take two field elements, serialize them to bytes and hash
+/// them using [hash()](RpJive64_256::hash), the result will differ from the result obtained by
+/// hashing these elements directly using [hash_elements()](RpJive64_256::hash_elements) function.
+/// The reason for this difference is that [hash()](RpJive64_256::hash) function needs to be able to
+/// handle arbitrary binary strings, which may or may not encode valid field elements - and thus,
 /// deserialization procedure used by this function is different from the procedure used to
 /// deserialize valid field elements.
 ///
@@ -153,8 +153,8 @@ impl Hasher for RpJive64_256 {
             }
 
             // convert the bytes into a field element and absorb it into the rate portion of the
-            // state; if the rate is filled up, apply the Rescue-Prime permutation and start absorbing
-            // again from zero index.
+            // state; if the rate is filled up, apply the Rescue-Prime permutation and start
+            // absorbing again from zero index.
             state[RATE_RANGE.start + i] += BaseElement::new(u64::from_le_bytes(buf));
             i += 1;
             if i % RATE_WIDTH == 0 {
@@ -204,11 +204,10 @@ impl Hasher for RpJive64_256 {
     fn merge_with_int(seed: Self::Digest, value: u64) -> Self::Digest {
         // initialize the state as follows:
         // - seed is copied into the first 4 elements of the state.
-        // - if the value fits into a single field element, copy it into the fifth rate element
-        //   and set the last state element to 5 (the number of elements to be hashed).
-        // - if the value doesn't fit into a single field element, split it into two field
-        //   elements, copy them into state elements 5 and 6, and set the last state element
-        //   to 6.
+        // - if the value fits into a single field element, copy it into the fifth rate element and
+        //   set the last state element to 5 (the number of elements to be hashed).
+        // - if the value doesn't fit into a single field element, split it into two field elements,
+        //   copy them into state elements 5 and 6, and set the last state element to 6.
         let mut state = [BaseElement::ZERO; STATE_WIDTH];
         state[INPUT1_RANGE].copy_from_slice(seed.as_elements());
         state[INPUT2_RANGE.start] = BaseElement::new(value);

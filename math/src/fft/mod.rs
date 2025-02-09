@@ -238,8 +238,7 @@ where
 /// Panics if:
 /// * Length of `evaluations` is not a power of two.
 /// * Length of `inv_twiddles` is not `evaluations.len()` / 2.
-/// * Field specified by `B` does not contain a multiplicative subgroup of size
-///   `evaluations.len()`.
+/// * Field specified by `B` does not contain a multiplicative subgroup of size `evaluations.len()`.
 ///
 /// # Examples
 /// ```
@@ -323,8 +322,7 @@ where
 /// Panics if:
 /// * Length of `evaluations` is not a power of two.
 /// * Length of `inv_twiddles` is not `evaluations.len()` / 2.
-/// * Field specified by `B` does not contain a multiplicative subgroup of size
-///   `evaluations.len()`.
+/// * Field specified by `B` does not contain a multiplicative subgroup of size `evaluations.len()`.
 /// * `domain_offset` is ZERO.
 ///
 /// # Examples
@@ -533,12 +531,7 @@ where
 /// # use winter_math::{fields::{f128::BaseElement}, FieldElement, StarkField};
 /// let offset = BaseElement::GENERATOR;
 /// // p(x) = x^2 + 1
-/// let p = [
-///     BaseElement::new(1),
-///     BaseElement::ZERO,
-///     BaseElement::new(1),
-///     BaseElement::ZERO,
-/// ];
+/// let p = [BaseElement::new(1), BaseElement::ZERO, BaseElement::new(1), BaseElement::ZERO];
 ///
 /// let g = BaseElement::get_root_of_unity(p.len().ilog2());
 /// let domain = get_power_series(g, p.len());

@@ -203,7 +203,8 @@ impl Air for RescueRapsAir {
 
         result.agg_constraint(1, absorption_flag.into(), are_equal(aux_current[1], copied_value_2));
 
-        // Enforce that the permutation argument column scales at each step by (aux[0] + γ) / (aux[1] + γ).
+        // Enforce that the permutation argument column scales at each step by (aux[0] + γ) /
+        // (aux[1] + γ).
         result.agg_constraint(
             2,
             E::ONE,
@@ -257,9 +258,9 @@ impl Air for RescueRapsAir {
 
 /// when flag = 1, enforces that the next state of the computation is defined like so:
 /// - the first two registers are equal to the values from the previous step
-/// - the other two registers are not restrained, they could be arbitrary elements,
-///   until the RAP columns enforces that they are a permutation of the two final registers
-///   of the other parallel chain
+/// - the other two registers are not restrained, they could be arbitrary elements, until the RAP
+///   columns enforces that they are a permutation of the two final registers of the other parallel
+///   chain
 fn enforce_hash_copy<E: FieldElement>(result: &mut [E], current: &[E], next: &[E], flag: E) {
     result.agg_constraint(0, flag, are_equal(current[0], next[0]));
     result.agg_constraint(1, flag, are_equal(current[1], next[1]));

@@ -42,8 +42,8 @@ mod tests;
 /// * `E` specifies the field in which the FRI protocol is executed.
 /// * `C` specifies the type used to simulate prover-verifier interaction.
 /// * `H` specifies the hash function used to build for each layer the vector of values committed to
-///   using the specified vector commitment scheme. The same hash function must be used in
-///   the prover channel to generate pseudo random values.
+///   using the specified vector commitment scheme. The same hash function must be used in the
+///   prover channel to generate pseudo random values.
 /// * `V` specifies the vector commitment scheme used in order to commit to each layer.
 ///
 /// Proof generation is performed in two phases: commit phase and query phase.
@@ -167,12 +167,12 @@ where
     /// During this phase we repeatedly apply a degree-respecting projection (DRP) to
     /// `evaluations` which contain evaluations of some function *f* over domain *D*. With every
     /// application of the DRP the degree of the function (and size of the domain) is reduced by
-    /// `folding_factor` until the remaining evaluations can be represented by a remainder polynomial
-    /// with at most `remainder_max_degree_plus_1` number of coefficients.
-    /// At each layer of reduction the current evaluations are committed to using a vector commitment
-    /// scheme, and the commitment string of this vector commitment is written into the channel.
-    /// After this the prover draws a random field element α from the channel, and uses it in
-    /// the next application of the DRP.
+    /// `folding_factor` until the remaining evaluations can be represented by a remainder
+    /// polynomial with at most `remainder_max_degree_plus_1` number of coefficients.
+    /// At each layer of reduction the current evaluations are committed to using a vector
+    /// commitment scheme, and the commitment string of this vector commitment is written into
+    /// the channel. After this the prover draws a random field element α from the channel, and
+    /// uses it in the next application of the DRP.
     ///
     /// # Panics
     /// Panics if the prover state is dirty (the vector of layers is not empty).
@@ -221,7 +221,8 @@ where
         });
     }
 
-    /// Creates remainder polynomial in coefficient form from a vector of `evaluations` over a domain.
+    /// Creates remainder polynomial in coefficient form from a vector of `evaluations` over a
+    /// domain.
     fn set_remainder(&mut self, channel: &mut C, evaluations: &mut [E]) {
         let inv_twiddles = fft::get_inv_twiddles(evaluations.len());
         fft::interpolate_poly_with_offset(evaluations, &inv_twiddles, self.options.domain_offset());

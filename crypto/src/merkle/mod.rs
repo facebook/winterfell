@@ -65,7 +65,7 @@ mod tests;
 /// ```
 /// # use winter_crypto::{MerkleTree, Hasher, hashers::Blake3_256};
 /// # use math::fields::f128::BaseElement;
-/// type Blake3 = Blake3_256::<BaseElement>;
+/// type Blake3 = Blake3_256<BaseElement>;
 ///
 /// // build a tree
 /// let leaves = [
@@ -212,8 +212,7 @@ impl<H: Hasher> MerkleTree<H> {
     /// # Errors
     /// Returns an error if:
     /// * No indexes were provided (i.e., `indexes` is an empty slice).
-    /// * Any of the provided indexes are greater than or equal to the number of leaves in the
-    ///   tree.
+    /// * Any of the provided indexes are greater than or equal to the number of leaves in the tree.
     /// * List of indexes contains duplicates.
     pub fn prove_batch(
         &self,

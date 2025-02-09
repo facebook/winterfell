@@ -31,8 +31,8 @@ use super::{Assertion, BoundaryConstraint, ConstraintDivisor, ExtensionOf, Field
 /// segments of the execution trace. Specifically:
 /// * For the constraints against columns of the main execution trace, `F` is set to the base field
 ///   of the protocol, and `E` is set to the extension field.
-/// * For the constraints against columns of the auxiliary trace segment, both `F` and `E` are set to
-///   the extension field.
+/// * For the constraints against columns of the auxiliary trace segment, both `F` and `E` are set
+///   to the extension field.
 #[derive(Debug, Clone)]
 pub struct BoundaryConstraintGroup<F, E>
 where
@@ -96,8 +96,8 @@ where
     /// $$
     /// where:
     /// * $C_i(x)$ is the evaluation of the $i$th constraint at `x` computed as $f(x) - b(x)$.
-    /// * $\alpha_i$ are random field elements. In the interactive version of the
-    ///   protocol, these are provided by the verifier.
+    /// * $\alpha_i$ are random field elements. In the interactive version of the protocol, these
+    ///   are provided by the verifier.
     pub fn evaluate_at(&self, state: &[E], x: E) -> E {
         let mut numerator = E::ZERO;
         for constraint in self.constraints().iter() {
