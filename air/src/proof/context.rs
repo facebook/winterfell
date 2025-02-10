@@ -147,6 +147,7 @@ impl Serializable for Context {
         target.write_u8(self.field_modulus_bytes.len() as u8);
         target.write_bytes(&self.field_modulus_bytes);
         self.options.write_into(target);
+        target.write_usize(self.num_constraints);
     }
 }
 

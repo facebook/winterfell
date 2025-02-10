@@ -186,7 +186,7 @@ impl Serializable for Proof {
         self.context.write_into(target);
         target.write_u8(self.num_unique_queries);
         self.commitments.write_into(target);
-        target.write_many(&self.trace_queries);
+        self.trace_queries.write_into(target);
         self.constraint_queries.write_into(target);
         self.ood_frame.write_into(target);
         self.fri_proof.write_into(target);
@@ -199,22 +199,38 @@ impl Deserializable for Proof {
         let context = Context::read_from(source)?;
         let num_unique_queries = source.read_u8()?;
         let commitments = Commitments::read_from(source)?;
-        let num_trace_segments = context.trace_info().num_segments();
-        let mut trace_queries = Vec::with_capacity(num_trace_segments);
-        for _ in 0..num_trace_segments {
-            trace_queries.push(Queries::read_from(source)?);
-        }
+        let trace_queries = Vec::<Queries>::read_from(source)?;
+        let constraint_queries = Queries::read_from(source)?;
+        let ood_frame = OodFrame::read_from(source)?;
+        let fri_proof = FriProof::read_from(source)?;
+        let pow_nonce = source.read_u64()?;
 
         let proof = Proof {
             context,
             num_unique_queries,
             commitments,
             trace_queries,
-            constraint_queries: Queries::read_from(source)?,
-            ood_frame: OodFrame::read_from(source)?,
-            fri_proof: FriProof::read_from(source)?,
-            pow_nonce: source.read_u64()?,
+            constraint_queries,
+            ood_frame,
+            fri_proof,
+            pow_nonce,
         };
         Ok(proof)
+    }
+}
+
+#[cfg(test)]
+mod serialization_tests {
+    use super::*;
+
+    #[test]
+    fn proof_serialization() {
+        let proof = Proof::new_dummy();
+
+        let bytes = proof.to_bytes();
+
+        let proof_copy = Proof::from_bytes(&bytes).unwrap();
+
+        assert_eq!(proof, proof_copy);
     }
 }
