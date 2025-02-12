@@ -9,3 +9,14 @@ use super::Proof;
 pub fn starkproof_new_dummy_doesnt_panic() {
     let _ = Proof::new_dummy();
 }
+
+#[test]
+fn dummy_proof_serialization() {
+    let proof = Proof::new_dummy();
+
+    let bytes = proof.to_bytes();
+
+    let proof_copy = Proof::from_bytes(&bytes).unwrap();
+
+    assert_eq!(proof, proof_copy);
+}

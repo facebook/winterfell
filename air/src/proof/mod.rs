@@ -164,9 +164,14 @@ impl Proof {
                 ),
                 100,
             ),
-            num_unique_queries: 0,
+            num_unique_queries: 1,
             commitments: Commitments::default(),
-            trace_queries: Vec::new(),
+            trace_queries: vec![
+                Queries::new::<DummyHasher<DummyField>, DummyField, MerkleTree<_>>(
+                    BatchMerkleProof::<DummyHasher<DummyField>> { nodes: Vec::new(), depth: 0 },
+                    vec![vec![DummyField::ONE]],
+                ),
+            ],
             constraint_queries: Queries::new::<DummyHasher<DummyField>, DummyField, MerkleTree<_>>(
                 BatchMerkleProof::<DummyHasher<DummyField>> { nodes: Vec::new(), depth: 0 },
                 vec![vec![DummyField::ONE]],

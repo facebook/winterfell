@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.12.1 (2025-02-12) - `air` crate only
+- Fixed `Context` struct serialization.
+
 ## 0.12.0 (2025-02-08)
 - [BREAKING] Added security estimate in unique decoding regime  (#356).
 - [BREAKING] Added option for algebraic batching to build DEEP polynomial (#357).

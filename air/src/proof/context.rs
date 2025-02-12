@@ -147,6 +147,7 @@ impl Serializable for Context {
         target.write_u8(self.field_modulus_bytes.len() as u8);
         target.write_bytes(&self.field_modulus_bytes);
         self.options.write_into(target);
+        self.num_constraints.write_into(target);
     }
 }
 
@@ -190,7 +191,7 @@ impl Deserializable for Context {
 mod tests {
     use math::fields::f64::BaseElement;
 
-    use super::{Context, ProofOptions, ToElements, TraceInfo};
+    use super::{Context, Deserializable, ProofOptions, Serializable, ToElements, TraceInfo};
     use crate::{options::BatchingMethod, FieldExtension};
 
     #[test]
@@ -253,5 +254,31 @@ mod tests {
             TraceInfo::new_multi_segment(main_width, aux_width, aux_rands, trace_length, vec![]);
         let context = Context::new::<BaseElement>(trace_info, options, num_constraints);
         assert_eq!(expected, context.to_elements());
+    }
+
+    #[test]
+    fn context_serialization() {
+        use math::fields::f64::BaseElement as DummyField;
+
+        let context = Context::new::<DummyField>(
+            TraceInfo::new(1, 8),
+            ProofOptions::new(
+                1,
+                2,
+                2,
+                FieldExtension::None,
+                8,
+                1,
+                BatchingMethod::Linear,
+                BatchingMethod::Linear,
+            ),
+            100,
+        );
+
+        let bytes = context.to_bytes();
+
+        let deserialized_context = Context::read_from_bytes(&bytes).unwrap();
+
+        assert_eq!(context, deserialized_context);
     }
 }
