@@ -184,14 +184,17 @@ where
 
         // reduce the degree by folding_factor at each iteration until the remaining polynomial
         // has small enough degree
+        let mut domain_offset = self.options.domain_offset();
         for _ in 0..self.options.num_fri_layers(evaluations.len()) {
             match self.folding_factor() {
-                2 => self.build_layer::<2>(channel, &mut evaluations),
-                4 => self.build_layer::<4>(channel, &mut evaluations),
-                8 => self.build_layer::<8>(channel, &mut evaluations),
-                16 => self.build_layer::<16>(channel, &mut evaluations),
+                2 => self.build_layer::<2>(channel, &mut evaluations, domain_offset),
+                4 => self.build_layer::<4>(channel, &mut evaluations, domain_offset),
+                8 => self.build_layer::<8>(channel, &mut evaluations, domain_offset),
+                16 => self.build_layer::<16>(channel, &mut evaluations, domain_offset),
                 _ => unimplemented!("folding factor {} is not supported", self.folding_factor()),
             }
+
+            domain_offset = domain_offset.exp_vartime((self.folding_factor() as u32).into());
         }
 
         self.set_remainder(channel, &mut evaluations);
@@ -199,7 +202,12 @@ where
 
     /// Builds a single FRI layer by first committing to the `evaluations`, then drawing a random
     /// alpha from the channel and use it to perform degree-respecting projection.
-    fn build_layer<const N: usize>(&mut self, channel: &mut C, evaluations: &mut Vec<E>) {
+    fn build_layer<const N: usize>(
+        &mut self,
+        channel: &mut C,
+        evaluations: &mut Vec<E>,
+        domain_offset: E::BaseField,
+    ) {
         // commit to the evaluations at the current layer; we do this by first transposing the
         // evaluations into a matrix of N columns, then hashing each row into a digest, and finally
         // commiting to vector of these digests; we do this so that we could de-commit to N values
@@ -213,7 +221,7 @@ where
         // draw a pseudo-random coefficient from the channel, and use it in degree-respecting
         // projection to reduce the degree of evaluations by N
         let alpha = channel.draw_fri_alpha();
-        *evaluations = apply_drp(&transposed_evaluations, self.domain_offset(), alpha);
+        *evaluations = apply_drp(&transposed_evaluations, domain_offset, alpha);
         self.layers.push(FriLayer {
             commitment: evaluation_vector_commitment,
             evaluations: flatten_vector_elements(transposed_evaluations),

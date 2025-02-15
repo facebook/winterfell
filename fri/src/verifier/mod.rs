@@ -250,6 +250,7 @@ where
         let mut max_degree_plus_1 = self.max_poly_degree + 1;
         let mut positions = positions.to_vec();
         let mut evaluations = evaluations.to_vec();
+        let mut domain_offset = self.options.domain_offset();
 
         for depth in 0..self.options.num_fri_layers(self.domain_size) {
             // determine which evaluations were queried in the folded layer
@@ -275,7 +276,7 @@ where
             // build a set of x coordinates for each row polynomial
             #[rustfmt::skip]
             let xs = folded_positions.iter().map(|&i| {
-                let xe = domain_generator.exp_vartime((i as u64).into()) * self.options.domain_offset();
+                let xe = domain_generator.exp_vartime((i as u64).into()) * domain_offset;
                 folding_roots.iter()
                     .map(|&r| E::from(xe * r))
                     .collect::<Vec<_>>().try_into().unwrap()
@@ -302,6 +303,7 @@ where
             max_degree_plus_1 /= N;
             domain_size /= N;
             mem::swap(&mut positions, &mut folded_positions);
+            domain_offset = domain_offset.exp_vartime((N as u32).into());
         }
 
         // 2 ----- verify the remainder polynomial of the FRI proof -------------------------------
