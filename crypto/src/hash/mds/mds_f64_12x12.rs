@@ -77,7 +77,7 @@ pub(crate) fn mds_multiply_freq(state: [u64; 12]) -> [u64; 12] {
     let (u8, u9, u10) = fft4_real([s2, s5, s8, s11]);
 
     // This where the multiplication in frequency domain is done. More precisely, and with
-    // the appropriate permuations in between, the sequence of
+    // the appropriate permutations in between, the sequence of
     // 3-point FFTs --> multiplication by twiddle factors --> Hadamard multiplication -->
     // 3 point iFFTs --> multiplication by (inverse) twiddle factors
     // is "squashed" into one step composed of the functions "block1", "block2" and "block3".
