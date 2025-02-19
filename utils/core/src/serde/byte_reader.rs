@@ -434,7 +434,7 @@ impl<'a> ReadAdapter<'a> {
         // Read until we have at least `count` bytes, or until we reach end-of-file,
         // which ever comes first.
         loop {
-            // If we have succesfully read `count` bytes, we're done
+            // If we have successfully read `count` bytes, we're done
             if count == 0 || self.buf.len() >= count {
                 break Ok(());
             }
