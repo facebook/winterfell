@@ -24,7 +24,7 @@ const MAX_GRINDING_FACTOR: u32 = 32;
 
 const FRI_MIN_FOLDING_FACTOR: usize = 2;
 const FRI_MAX_FOLDING_FACTOR: usize = 16;
-const FRI_MAX_REMAINDER_DEGREE: usize = 255;
+const FRI_MAX_REMAINDER_MAX_DEGREE: usize = 255;
 
 // TYPES AND INTERFACES
 // ================================================================================================
@@ -167,7 +167,7 @@ impl ProofOptions {
             "FRI polynomial remainder degree must be one less than a power of two"
         );
         assert!(
-            fri_remainder_max_degree <= FRI_MAX_REMAINDER_DEGREE,
+            fri_remainder_max_degree <= FRI_MAX_REMAINDER_MAX_DEGREE,
             "FRI polynomial remainder degree cannot be greater than 255"
         );
 
