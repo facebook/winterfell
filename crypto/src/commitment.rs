@@ -17,7 +17,7 @@ use crate::Hasher;
 /// position.
 ///
 /// This is achieved by providing the value `v_i` together with a proof `proof_i` such that anyone
-/// posessing `com` can be convinced, with high confidence, that the claim is true.
+/// possessing `com` can be convinced, with high confidence, that the claim is true.
 ///
 /// Vector commitment schemes usually have some batching properties in the sense that opening
 /// proofs for a number of `(i, v_i)` can be batched together into one batch opening proof in order
