@@ -291,6 +291,88 @@ impl ProofOptions {
     }
 }
 
+pub struct ProofOptionsBuilder {
+    num_queries: u8,
+    blowup_factor: u8,
+    grinding_factor: u8,
+    field_extension: FieldExtension,
+    fri_folding_factor: u8,
+    fri_remainder_max_degree: u8,
+    batching_constraints: BatchingMethod,
+    batching_deep: BatchingMethod,
+    partition_options: PartitionOptions,
+}
+
+impl ProofOptionsBuilder {
+    pub fn new() -> Self {
+        Self {
+            num_queries: 0,
+            blowup_factor: 0,
+            grinding_factor: 0,
+            field_extension: FieldExtension::None,
+            fri_folding_factor: 0,
+            fri_remainder_max_degree: 0,
+            batching_constraints: BatchingMethod::Linear,
+            batching_deep: BatchingMethod::Linear,
+            partition_options: PartitionOptions::default(),
+        }
+    }
+
+    pub fn num_queries(mut self, value: u8) -> Self {
+        self.num_queries = value;
+        self
+    }
+
+    pub fn blowup_factor(mut self, value: u8) -> Self {
+        self.blowup_factor = value;
+        self
+    }
+
+    pub fn grinding_factor(mut self, value: u8) -> Self {
+        self.grinding_factor = value;
+        self
+    }
+
+    pub fn field_extension(mut self, value: FieldExtension) -> Self {
+        self.field_extension = value;
+        self
+    }
+
+    pub fn fri_folding_factor(mut self, value: u8) -> Self {
+        self.fri_folding_factor = value;
+        self
+    }
+
+    pub fn batching_constraints(mut self, value: BatchingMethod) -> Self {
+        self.batching_constraints = value;
+        self
+    }
+
+    pub fn fri_remainder_max_degree(mut self, value: u8) -> Self {
+        self.fri_remainder_max_degree = value;
+        self
+    }
+    
+    pub fn batching_deep(mut self, value: BatchingMethod) -> Self {
+        self.batching_deep = value;
+        self
+    }
+
+    pub fn build(self) -> ProofOptions {
+        ProofOptions {
+            num_queries: self.num_queries,
+            blowup_factor: self.blowup_factor,
+            grinding_factor: self.grinding_factor,
+            field_extension: self.field_extension,
+            fri_folding_factor: self.fri_folding_factor,
+            fri_remainder_max_degree: self.fri_remainder_max_degree,
+            batching_constraints: self.batching_constraints,
+            batching_deep: self.batching_deep,
+            partition_options: self.partition_options,
+        }
+    }
+}
+
 impl<E: StarkField> ToElements<E> for ProofOptions {
     /// Encodes these proof options into 3 field elements.
     fn to_elements(&self) -> Vec<E> {
