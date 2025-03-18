@@ -313,7 +313,7 @@ where
             return Err(VerifierError::RemainderDegreeMismatch(max_degree_plus_1 - 1));
         }
         let offset: E::BaseField = self.options().domain_offset();
-
+        let remainder_poly: Vec<_> = remainder_poly.iter().copied().rev().collect();
         for (&position, evaluation) in positions.iter().zip(evaluations) {
             let comp_eval = eval_horner::<E>(
                 &remainder_poly,

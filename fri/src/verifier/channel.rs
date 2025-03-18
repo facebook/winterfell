@@ -110,10 +110,9 @@ pub trait VerifierChannel<E: FieldElement> {
 
     /// Returns FRI remainder polynomial read from this channel.
     fn read_remainder(&mut self) -> Result<Vec<E>, VerifierError> {
-        let remainder_poly = self.take_fri_remainder();
-        let remainder_poly: Vec<_> = remainder_poly.iter().copied().rev().collect();
+        let remainder = self.take_fri_remainder();
 
-        Ok(remainder_poly)
+        Ok(remainder)
     }
 }
 
