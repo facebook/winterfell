@@ -227,7 +227,8 @@ where
         let inv_twiddles = fft::get_inv_twiddles(evaluations.len());
         fft::interpolate_poly_with_offset(evaluations, &inv_twiddles, self.options.domain_offset());
         let remainder_poly_size = evaluations.len() / self.options.blowup_factor();
-        let remainder_poly = evaluations[..remainder_poly_size].to_vec();
+        let remainder_poly: Vec<_> =
+            evaluations[..remainder_poly_size].iter().copied().rev().collect();
         let commitment = <H as ElementHasher>::hash_elements(&remainder_poly);
         channel.commit_fri_layer(commitment);
         self.remainder_poly = FriRemainder(remainder_poly);
