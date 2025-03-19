@@ -11,6 +11,7 @@
 - Update security estimator to take batching method into account (#361).
 - [BREAKING] Added option for algebraic batching to build constraint composition polynomial (#363).
 - Updated minimum supported Rust version to 1.84.
+- Commit to coefficients of FRI remainder polynomial in reverse order (#373).
 
 ## 0.11.0 (2024-11-24)
 - [BREAKING] Made the prover generic over the `ConstraintCommitment` type (#343).
