@@ -225,7 +225,7 @@ where
     /// domain.
     ///
     /// We commit to the coefficients of the remainder polynomial in reverse order so that
-    /// evaluating the remainder polynomial on the verifier end, using Horner's evaluation
+    /// evaluating the remainder polynomial on the verifier's end, using Horner's evaluation
     /// method, becomes easier.
     fn set_remainder(&mut self, channel: &mut C, evaluations: &mut [E]) {
         let inv_twiddles = fft::get_inv_twiddles(evaluations.len());
