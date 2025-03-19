@@ -223,6 +223,10 @@ where
 
     /// Creates remainder polynomial in coefficient form from a vector of `evaluations` over a
     /// domain.
+    ///
+    /// We commit to the coefficients of the remainder polynomial in reverse order so that
+    /// evaluating the remainder polynomial on the verifier end, using Horner's evaluation
+    /// method, becomes easier.
     fn set_remainder(&mut self, channel: &mut C, evaluations: &mut [E]) {
         let inv_twiddles = fft::get_inv_twiddles(evaluations.len());
         fft::interpolate_poly_with_offset(evaluations, &inv_twiddles, self.options.domain_offset());
@@ -241,7 +245,9 @@ where
     /// For each of the provided `positions`, corresponding evaluations from each of the layers
     /// (excluding the remainder layer) are recorded into the proof together with a batch opening
     /// proof against the sent vector commitment. For the remainder, we send the whole remainder
-    /// polynomial resulting from interpolating the remainder layer evaluations.
+    /// polynomial resulting from interpolating the remainder layer evaluations. The coefficients
+    /// of the remainder polynomial are sent in reverse order so as to make evaluating it on
+    /// the verifier's end, using Horner's evaluation method, easier.
     ///
     /// # Panics
     /// Panics is the prover state is clean (no FRI layers have been build yet).
