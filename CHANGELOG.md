@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.12.2 (2025-03-19) - `prover` and `verifier` crate only
+
+- Commit to coefficients of FRI remainder polynomial in reverse order (#373).
+
 ## 0.12.1 (2025-02-12) - `air` crate only
 - Fixed `Context` struct serialization.
 
@@ -11,7 +15,6 @@
 - Update security estimator to take batching method into account (#361).
 - [BREAKING] Added option for algebraic batching to build constraint composition polynomial (#363).
 - Updated minimum supported Rust version to 1.84.
-- Commit to coefficients of FRI remainder polynomial in reverse order (#373).
 
 ## 0.11.0 (2024-11-24)
 - [BREAKING] Made the prover generic over the `ConstraintCommitment` type (#343).
