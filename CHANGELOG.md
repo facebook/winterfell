@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.12.2 (2025-03-19) - `prover` and `verifier` crate only
+## 0.12.2 (2025-03-19) - `fri`, `prover`, and `verifier` crates only
 
 - Commit to coefficients of FRI remainder polynomial in reverse order (#373).
 
