@@ -578,7 +578,6 @@ impl Deserializable for String {
         let len = source.read_usize()?;
         let data = source.read_many(len)?;
 
-        String::from_utf8(data)
-            .map_err(|err| DeserializationError::InvalidValue(format!("{}", err)))
+        String::from_utf8(data).map_err(|err| DeserializationError::InvalidValue(format!("{err}")))
     }
 }
