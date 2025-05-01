@@ -180,7 +180,7 @@ fn proven_security_protocol_for_given_proximity_parameter(
     // then there is a loss of log2(C - 1) where C is the total number of constraints.
     let batching_factor = match options.constraint_batching_method() {
         BatchingMethod::Linear => 1.0,
-        BatchingMethod::Algebraic => num_constraints as f64 - 1.0,
+        BatchingMethod::Algebraic | BatchingMethod::Horner => num_constraints as f64 - 1.0,
     };
     let epsilon_1_bits_neg = -log2(l) - log2(batching_factor) + extension_field_bits;
     epsilons_bits_neg.push(epsilon_1_bits_neg);
@@ -199,7 +199,7 @@ fn proven_security_protocol_for_given_proximity_parameter(
     // comparison. N is the number of batched polynomials.
     let batching_factor = match options.deep_poly_batching_method() {
         BatchingMethod::Linear => 1.0,
-        BatchingMethod::Algebraic => num_committed_polys as f64 - 1.0,
+        BatchingMethod::Algebraic | BatchingMethod::Horner => num_committed_polys as f64 - 1.0,
     };
     let epsilon_3_bits_neg = extension_field_bits
         - log2(
@@ -244,7 +244,7 @@ fn proven_security_protocol_unique_decoding(
     // then there is a loss of log2(C - 1) where C is the total number of constraints.
     let batching_factor = match options.constraint_batching_method() {
         BatchingMethod::Linear => 1.0,
-        BatchingMethod::Algebraic => num_constraints as f64 - 1.0,
+        BatchingMethod::Algebraic | BatchingMethod::Horner => num_constraints as f64 - 1.0,
     };
     let epsilon_1_bits_neg = -log2(batching_factor) + extension_field_bits;
     epsilons_bits_neg.push(epsilon_1_bits_neg);
@@ -263,7 +263,7 @@ fn proven_security_protocol_unique_decoding(
     // being batched.
     let batching_factor = match options.deep_poly_batching_method() {
         BatchingMethod::Linear => 1.0,
-        BatchingMethod::Algebraic => num_committed_polys as f64 - 1.0,
+        BatchingMethod::Algebraic | BatchingMethod::Horner => num_committed_polys as f64 - 1.0,
     };
     let epsilon_3_bits_neg = extension_field_bits - log2(lde_domain_size * batching_factor);
     epsilons_bits_neg.push(epsilon_3_bits_neg);

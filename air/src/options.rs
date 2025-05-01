@@ -266,11 +266,11 @@ impl ProofOptions {
     /// the computation of the constraint composition polynomial.
     ///
     /// Linear batching implies that independently drawn random values per constraint will be used
-    /// to do the batching, while Algebraic batching implies that powers of a single random value
-    /// are used.
+    /// to do the batching, while Algebraic/Horner batching implies that powers of a single random
+    /// value are used.
     ///
-    /// Depending on other parameters, Algebraic batching may lead to a small reduction in the
-    /// security level of the generated proofs, but avoids extra calls to the random oracle
+    /// Depending on other parameters, Algebraic/Horner batching may lead to a small reduction
+    /// in the security level of the generated proofs, but avoids extra calls to the random oracle
     /// (i.e., hash function).
     pub fn constraint_batching_method(&self) -> BatchingMethod {
         self.batching_constraints
@@ -280,11 +280,11 @@ impl ProofOptions {
     /// quotients defining the DEEP polynomial.
     ///
     /// Linear batching implies that independently drawn random values per multi-point quotient
-    /// will be used to do the batching, while Algebraic batching implies that powers of a single
-    /// random value are used.
+    /// will be used to do the batching, while Algebraic/Horner batching implies that powers of
+    /// a single random value are used.
     ///
-    /// Depending on other parameters, Algebraic batching may lead to a small reduction in the
-    /// security level of the generated proofs, but avoids extra calls to the random oracle
+    /// Depending on other parameters, Algebraic/Horner batching may lead to a small reduction
+    /// in the security level of the generated proofs, but avoids extra calls to the random oracle
     /// (i.e., hash function).
     pub fn deep_poly_batching_method(&self) -> BatchingMethod {
         self.batching_deep
@@ -462,6 +462,9 @@ impl Default for PartitionOptions {
 ///    total degree 1 in each of the random values.
 /// 2. Algebraic, also called parametric or curve batching, where the resulting expression is a
 ///    univariate polynomial in one random value.
+/// 3. Horner which is the same as Algebraic but with randomness generated is reversed. This is
+///    can sometimes be usefull in the context of recursive verification as it removes the need
+///    to do the reversion of the coefficients when using Horner's method of polynomial evaluation.
 ///
 /// The main difference between the two types is that algebraic batching has low verifier randomness
 /// complexity and hence is light on the number of calls to the random oracle. However, this comes
@@ -476,6 +479,7 @@ impl Default for PartitionOptions {
 pub enum BatchingMethod {
     Linear = 0,
     Algebraic = 1,
+    Horner = 2,
 }
 
 impl Serializable for BatchingMethod {
@@ -494,6 +498,7 @@ impl Deserializable for BatchingMethod {
         match source.read_u8()? {
             0 => Ok(BatchingMethod::Linear),
             1 => Ok(BatchingMethod::Algebraic),
+            2 => Ok(BatchingMethod::Horner),
             n => Err(DeserializationError::InvalidValue(format!(
                 "value {n} cannot be deserialized as a BatchingMethod enum"
             ))),
@@ -596,7 +601,7 @@ mod tests {
             fri_folding_factor as usize,
             fri_remainder_max_degree as usize,
             BatchingMethod::Linear,
-            BatchingMethod::Algebraic,
+            BatchingMethod::Horner,
         );
 
         let options_serialized = options.to_bytes();

@@ -94,6 +94,32 @@ impl<E: FieldElement> ConstraintCompositionCoefficients<E> {
             boundary: b_coefficients,
         })
     }
+
+    /// Generates the random values used in the construction of the constraint composition
+    /// polynomial when Horner-type batching is used.
+    pub fn draw_horner(
+        public_coin: &mut impl RandomCoin<BaseField = E::BaseField>,
+        num_transition_constraints: usize,
+        num_boundary_constraints: usize,
+    ) -> Result<Self, RandomCoinError> {
+        let num_constraints = num_transition_constraints + num_boundary_constraints;
+
+        let alpha: E = public_coin.draw()?;
+        let mut alphas = get_power_series(alpha, num_constraints);
+        alphas.reverse();
+
+        let mut t_coefficients = Vec::new();
+        let mut b_coefficients = Vec::new();
+        t_coefficients.extend_from_slice(&alphas[0..num_transition_constraints]);
+        b_coefficients.extend_from_slice(&alphas[num_transition_constraints..num_constraints]);
+
+        assert_eq!(t_coefficients[num_transition_constraints - 1], b_coefficients[0] * alpha);
+
+        Ok(ConstraintCompositionCoefficients {
+            transition: t_coefficients,
+            boundary: b_coefficients,
+        })
+    }
 }
 
 // DEEP COMPOSITION COEFFICIENTS
@@ -190,6 +216,32 @@ impl<E: FieldElement> DeepCompositionCoefficients<E> {
         ));
 
         assert_eq!(t_coefficients[trace_width - 1] * alpha, c_coefficients[0]);
+
+        Ok(DeepCompositionCoefficients {
+            trace: t_coefficients,
+            constraints: c_coefficients,
+        })
+    }
+
+    /// Generates the random values used in the construction of the DEEP polynomial when Horner-type
+    /// batching is used.
+    pub fn draw_horner(
+        public_coin: &mut impl RandomCoin<BaseField = E::BaseField>,
+        trace_width: usize,
+        num_constraint_composition_columns: usize,
+    ) -> Result<Self, RandomCoinError> {
+        let num_columns = trace_width + num_constraint_composition_columns;
+
+        let alpha: E = public_coin.draw()?;
+        let mut alphas = get_power_series(alpha, num_columns);
+        alphas.reverse();
+
+        let mut t_coefficients = Vec::new();
+        let mut c_coefficients = Vec::new();
+        t_coefficients.extend_from_slice(&alphas[0..trace_width]);
+        c_coefficients.extend_from_slice(&alphas[trace_width..num_columns]);
+
+        assert_eq!(t_coefficients[trace_width - 1], c_coefficients[0] * alpha);
 
         Ok(DeepCompositionCoefficients {
             trace: t_coefficients,
