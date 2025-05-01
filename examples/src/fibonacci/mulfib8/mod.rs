@@ -92,9 +92,7 @@ where
     fn prove(&self) -> Proof {
         let sequence_length = self.sequence_length;
         println!(
-            "Generating proof for computing multiplicative Fibonacci sequence (8 terms per step) up to {}th term",
-            sequence_length
-        );
+            "Generating proof for computing multiplicative Fibonacci sequence (8 terms per step) up to {sequence_length}th term");
 
         // create a prover
         let prover = MulFib8Prover::<H>::new(self.options.clone());
