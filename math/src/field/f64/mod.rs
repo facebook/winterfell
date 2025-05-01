@@ -286,7 +286,7 @@ impl Randomizable for BaseElement {
 
 impl Debug for BaseElement {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 
@@ -606,7 +606,7 @@ impl TryFrom<BaseElement> for bool {
         match value.as_int() {
             0 => Ok(false),
             1 => Ok(true),
-            v => Err(format!("Field element does not represent a boolean, got {}", v)),
+            v => Err(format!("Field element does not represent a boolean, got {v}")),
         }
     }
 }
@@ -615,7 +615,7 @@ impl TryFrom<BaseElement> for u8 {
     type Error = String;
 
     fn try_from(value: BaseElement) -> Result<Self, Self::Error> {
-        value.as_int().try_into().map_err(|e| format!("{}", e))
+        value.as_int().try_into().map_err(|e| format!("{e}"))
     }
 }
 
@@ -623,7 +623,7 @@ impl TryFrom<BaseElement> for u16 {
     type Error = String;
 
     fn try_from(value: BaseElement) -> Result<Self, Self::Error> {
-        value.as_int().try_into().map_err(|e| format!("{}", e))
+        value.as_int().try_into().map_err(|e| format!("{e}"))
     }
 }
 
@@ -631,7 +631,7 @@ impl TryFrom<BaseElement> for u32 {
     type Error = String;
 
     fn try_from(value: BaseElement) -> Result<Self, Self::Error> {
-        value.as_int().try_into().map_err(|e| format!("{}", e))
+        value.as_int().try_into().map_err(|e| format!("{e}"))
     }
 }
 
