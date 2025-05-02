@@ -22,6 +22,7 @@ use crate::EvaluationFrame;
 /// * Evaluations of all trace polynomials at *z*.
 /// * Evaluations of all trace polynomials at *z * g*.
 /// * Evaluations of constraint composition column polynomials at *z*.
+/// * Evaluations of constraint composition column polynomials at *gz*.
 ///
 /// where *z* is an out-of-domain point and *g* is the generator of the trace domain.
 ///
@@ -30,7 +31,7 @@ use crate::EvaluationFrame;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct OodFrame {
     trace_states: Vec<u8>,
-    evaluations: Vec<u8>,
+    quotient_states: Vec<u8>,
 }
 
 impl OodFrame {
@@ -75,21 +76,36 @@ impl OodFrame {
         H::hash_elements(&main_and_aux_trace_states)
     }
 
-    /// Updates constraint evaluation portion of this out-of-domain frame.
+    /// Updates constraints composition polynomials (i.e., quotient polynomials) state portion of
+    /// this out-of-domain frame.
     ///
     /// # Panics
     /// Panics if:
     /// * Constraint evaluations have already been set.
-    /// * `evaluations` is an empty vector.
-    pub fn set_constraint_evaluations<E: FieldElement>(&mut self, evaluations: &[E]) {
-        assert!(self.evaluations.is_empty(), "constraint evaluations have already been set");
-        assert!(!evaluations.is_empty(), "cannot set to empty constraint evaluations");
-        self.evaluations.write_many(evaluations);
+    pub fn set_quotient_states<E, H>(
+        &mut self,
+        quotients_ood_frame: &QuotientOodFrame<E>,
+    ) -> H::Digest
+    where
+        E: FieldElement,
+        H: ElementHasher<BaseField = E::BaseField>,
+    {
+        assert!(self.quotient_states.is_empty(), "constraint evaluations have already been set");
+
+        // save the the current evaluations and then next evaluations for each quotient polynomial
+        let quotient_states = quotients_ood_frame.to_trace_states();
+
+        // there are 2 frames: current and next
+        let frame_size: u8 = 2;
+        self.quotient_states.write_u8(frame_size);
+        self.quotient_states.write_many(&quotient_states);
+
+        H::hash_elements(&quotient_states)
     }
 
     // PARSER
     // --------------------------------------------------------------------------------------------
-    /// Returns an out-of-domain trace frame and a vector of out-of-domain constraint evaluations
+    /// Returns an out-of-domain trace frame and an out-of-domain constraints evaluations frame.
     /// contained in `self`.
     ///
     /// # Panics
@@ -97,23 +113,23 @@ impl OodFrame {
     ///
     /// # Errors
     /// Returns an error if:
-    /// * Valid [`crate::EvaluationFrame`]s for the specified `main_trace_width` and
-    ///   `aux_trace_width` could not be parsed from the internal bytes.
-    /// * A vector of evaluations specified by `num_evaluations` could not be parsed from the
-    ///   internal bytes.
+    /// * Valid [`TraceOodFrame`]s for the specified `main_trace_width` and `aux_trace_width`
+    ///   could not be parsed from the internal bytes.
+    /// * Valid [`QuotientOodFrame`]s for the specified `num_quotients` could not be parsed
+    ///   from the internal bytes.
     /// * Any unconsumed bytes remained after the parsing was complete.
     pub fn parse<E: FieldElement>(
         self,
         main_trace_width: usize,
         aux_trace_width: usize,
-        num_evaluations: usize,
-    ) -> Result<(TraceOodFrame<E>, Vec<E>), DeserializationError> {
+        num_quotients: usize,
+    ) -> Result<(TraceOodFrame<E>, QuotientOodFrame<E>), DeserializationError> {
         assert!(main_trace_width > 0, "trace width cannot be zero");
-        assert!(num_evaluations > 0, "number of evaluations cannot be zero");
+        assert!(num_quotients > 0, "number of evaluations cannot be zero");
 
         // parse main and auxiliary trace evaluation frames. This does the reverse operation done in
         // `set_trace_states()`.
-        let (current_row, next_row) = {
+        let (trace_current_row, trace_next_row) = {
             let mut reader = SliceReader::new(&self.trace_states);
             let frame_size = reader.read_u8()? as usize;
             let mut trace = reader.read_many((main_trace_width + aux_trace_width) * frame_size)?;
@@ -128,13 +144,20 @@ impl OodFrame {
         };
 
         // parse the constraint evaluations
-        let mut reader = SliceReader::new(&self.evaluations);
-        let evaluations = reader.read_many(num_evaluations)?;
+        let mut reader = SliceReader::new(&self.quotient_states);
+        let frame_size = reader.read_u8()? as usize;
+        let mut quotients_evaluations = reader.read_many(num_quotients * frame_size)?;
+        let quotients_next_row = quotients_evaluations.split_off(num_quotients);
+        let quotients_current_row = quotients_evaluations;
+
         if reader.has_more_bytes() {
             return Err(DeserializationError::UnconsumedBytes);
         }
 
-        Ok((TraceOodFrame::new(current_row, next_row, main_trace_width), evaluations))
+        Ok((
+            TraceOodFrame::new(trace_current_row, trace_next_row, main_trace_width),
+            QuotientOodFrame::new(quotients_current_row, quotients_next_row, num_quotients),
+        ))
     }
 }
 
@@ -149,13 +172,13 @@ impl Serializable for OodFrame {
         target.write_bytes(&self.trace_states);
 
         // write constraint evaluations row
-        target.write_u16(self.evaluations.len() as u16);
-        target.write_bytes(&self.evaluations)
+        target.write_u16(self.quotient_states.len() as u16);
+        target.write_bytes(&self.quotient_states)
     }
 
     /// Returns an estimate of how many bytes are needed to represent self.
     fn get_size_hint(&self) -> usize {
-        self.trace_states.len() + self.evaluations.len() + 4
+        self.trace_states.len() + self.quotient_states.len() + 4
     }
 }
 
@@ -173,7 +196,10 @@ impl Deserializable for OodFrame {
         let num_constraint_evaluation_bytes = source.read_u16()? as usize;
         let evaluations = source.read_vec(num_constraint_evaluation_bytes)?;
 
-        Ok(OodFrame { trace_states, evaluations })
+        Ok(OodFrame {
+            trace_states,
+            quotient_states: evaluations,
+        })
     }
 }
 
@@ -254,5 +280,58 @@ impl<E: FieldElement> TraceOodFrame<E> {
         main_and_aux_frame_states.extend_from_slice(&self.next_row);
 
         main_and_aux_frame_states
+    }
+}
+
+// QUOTIENTS OOD FRAME
+// ================================================================================================
+
+/// Quotient polynomial evaluation frame at the out-of-domain points.
+///
+/// Stores the quotient polynomials evaluations at `z` and `gz`, where `z` is a random Field
+/// element in `current_row` and `next_row`, respectively.
+pub struct QuotientOodFrame<E: FieldElement> {
+    current_row: Vec<E>,
+    next_row: Vec<E>,
+    num_quotients: usize,
+}
+
+impl<E: FieldElement> QuotientOodFrame<E> {
+    /// Creates a new [`QuotientOodFrame`] from current, next.
+    pub fn new(current_row: Vec<E>, next_row: Vec<E>, num_quotients: usize) -> Self {
+        assert_eq!(current_row.len(), next_row.len());
+
+        Self { current_row, next_row, num_quotients }
+    }
+
+    /// Returns the number of columns for the current and next frames.
+    pub fn num_quotients(&self) -> usize {
+        self.num_quotients
+    }
+
+    /// Returns the current row.
+    pub fn current_row(&self) -> &[E] {
+        &self.current_row
+    }
+
+    /// Returns the next frame.
+    pub fn next_row(&self) -> &[E] {
+        &self.next_row
+    }
+
+    /// Hashes the frame with the purpose of reseeding the public coin.
+    pub fn hash<H: ElementHasher<BaseField = E::BaseField>>(&self) -> H::Digest {
+        let trace_states = self.to_trace_states();
+
+        H::hash_elements(&trace_states)
+    }
+
+    /// Returns the frame as a vector of elements.
+    fn to_trace_states(&self) -> Vec<E> {
+        let mut quotients_frame_states = Vec::new();
+        quotients_frame_states.extend_from_slice(&self.current_row);
+        quotients_frame_states.extend_from_slice(&self.next_row);
+
+        quotients_frame_states
     }
 }

@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 use core::marker::PhantomData;
 
 use air::{
-    proof::{Commitments, Context, OodFrame, Proof, Queries, TraceOodFrame},
+    proof::{Commitments, Context, OodFrame, Proof, Queries, QuotientOodFrame, TraceOodFrame},
     Air, ConstraintCompositionCoefficients, DeepCompositionCoefficients,
 };
 use crypto::{ElementHasher, RandomCoin, VectorCommitment};
@@ -100,11 +100,12 @@ where
         self.public_coin.reseed(trace_states_hash);
     }
 
-    /// Saves the evaluations of constraint composition polynomial columns at the out-of-domain
-    /// point. This also reseeds the public coin wit the hash of the evaluations.
-    pub fn send_ood_constraint_evaluations(&mut self, evaluations: &[E]) {
-        self.ood_frame.set_constraint_evaluations(evaluations);
-        self.public_coin.reseed(H::hash_elements(evaluations));
+    /// Saves the evaluations of constraint composition polynomial columns over the out-of-domain
+    /// evaluation frame. This also reseeds the public coin with the hashes of the evaluation frame
+    /// states.
+    pub fn send_ood_constraint_evaluations(&mut self, evaluations: &QuotientOodFrame<E>) {
+        let quotient_hash = self.ood_frame.set_quotient_states::<E, H>(evaluations);
+        self.public_coin.reseed(quotient_hash);
     }
 
     // PUBLIC COIN METHODS

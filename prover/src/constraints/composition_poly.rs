@@ -5,7 +5,8 @@
 
 use alloc::vec::Vec;
 
-use math::{fft, polynom::degree_of, FieldElement};
+use air::proof::QuotientOodFrame;
+use math::{fft, polynom::degree_of, FieldElement, StarkField};
 
 use super::{ColMatrix, StarkDomain};
 
@@ -97,8 +98,14 @@ impl<E: FieldElement> CompositionPoly<E> {
     }
 
     /// Returns evaluations of all composition polynomial columns at point z.
-    pub fn evaluate_at(&self, z: E) -> Vec<E> {
-        self.data.evaluate_columns_at(z)
+    pub fn get_ood_frame(&self, z: E) -> QuotientOodFrame<E> {
+        let log_trace_len = self.column_len().ilog2();
+        let g = E::from(E::BaseField::get_root_of_unity(log_trace_len));
+        let current_row = self.data.evaluate_columns_at(z);
+        let next_row = self.data.evaluate_columns_at(z * g);
+        let trace_width = self.num_columns();
+
+        QuotientOodFrame::new(current_row, next_row, trace_width)
     }
 
     /// Returns a reference to the matrix of individual column polynomials.

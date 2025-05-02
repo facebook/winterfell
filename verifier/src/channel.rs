@@ -7,7 +7,7 @@ use alloc::{string::ToString, vec::Vec};
 use core::marker::PhantomData;
 
 use air::{
-    proof::{Proof, Queries, Table, TraceOodFrame},
+    proof::{Proof, Queries, QuotientOodFrame, Table, TraceOodFrame},
     Air,
 };
 use crypto::{ElementHasher, VectorCommitment};
@@ -47,7 +47,7 @@ pub struct VerifierChannel<
     fri_num_partitions: usize,
     // out-of-domain frame
     ood_trace_frame: Option<TraceOodFrame<E>>,
-    ood_constraint_evaluations: Option<Vec<E>>,
+    ood_constraint_evaluations: Option<QuotientOodFrame<E>>,
     // query proof-of-work
     pow_nonce: u64,
 }
@@ -167,7 +167,7 @@ where
     }
 
     /// Returns trace polynomial evaluations at out-of-domain points z and z * g, where g is the
-    /// generator of the LDE domain.
+    /// generator of the trace domain.
     ///
     /// For computations requiring multiple trace segments, evaluations of auxiliary trace
     /// polynomials are also included.
@@ -175,9 +175,9 @@ where
         self.ood_trace_frame.take().expect("already read")
     }
 
-    /// Returns evaluations of composition polynomial columns at z^m, where z is the out-of-domain
-    /// point, and m is the number of composition polynomial columns.
-    pub fn read_ood_constraint_evaluations(&mut self) -> Vec<E> {
+    /// Returns evaluations of composition polynomial columns at z and z * g, where z is
+    /// the out-of-domain point, and g is the generator of the trace domain.
+    pub fn read_ood_constraint_frame(&mut self) -> QuotientOodFrame<E> {
         self.ood_constraint_evaluations.take().expect("already read")
     }
 

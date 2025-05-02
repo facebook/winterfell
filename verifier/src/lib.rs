@@ -228,15 +228,17 @@ where
     // the evaluation of the composition polynomial at z) using the fact that
     // H(X) = \sum_{i=0}^{m-1} X^{i * l} H_i(X).
     // Also, reseed the public coin with the OOD constraint evaluations received from the prover.
-    let ood_constraint_evaluations = channel.read_ood_constraint_evaluations();
-    let ood_constraint_evaluation_2 =
-        ood_constraint_evaluations
-            .iter()
-            .enumerate()
-            .fold(E::ZERO, |result, (i, &value)| {
-                result + z.exp_vartime(((i * (air.trace_length())) as u32).into()) * value
-            });
-    public_coin.reseed(H::hash_elements(&ood_constraint_evaluations));
+    let ood_constraint_evaluations = channel.read_ood_constraint_frame();
+    let ood_constraint_evaluation_2 = ood_constraint_evaluations
+        .current_row()
+        .iter()
+        .enumerate()
+        .fold(E::ZERO, |result, (i, &value)| {
+            result + z.exp_vartime(((i * (air.trace_length())) as u32).into()) * value
+        });
+
+    let ood_constraint_hash = ood_constraint_evaluations.hash::<H>();
+    public_coin.reseed(ood_constraint_hash);
 
     // finally, make sure the values are the same
     if ood_constraint_evaluation_1 != ood_constraint_evaluation_2 {
@@ -297,15 +299,14 @@ where
     // 6 ----- DEEP composition -------------------------------------------------------------------
     // compute evaluations of the DEEP composition polynomial at the queried positions
     let composer = DeepComposer::new(&air, &query_positions, z, deep_coefficients);
-    let t_composition = composer.compose_trace_columns(
+    let deep_evaluations = composer.compose_columns(
         queried_main_trace_states,
         queried_aux_trace_states,
+        queried_constraint_evaluations,
         ood_main_trace_frame,
         ood_aux_trace_frame,
+        ood_constraint_evaluations,
     );
-    let c_composition = composer
-        .compose_constraint_evaluations(queried_constraint_evaluations, ood_constraint_evaluations);
-    let deep_evaluations = composer.combine_compositions(t_composition, c_composition);
 
     // 7 ----- Verify low-degree proof -------------------------------------------------------------
     // make sure that evaluations of the DEEP composition polynomial we computed in the previous
