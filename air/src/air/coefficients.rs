@@ -50,12 +50,12 @@ impl<E: FieldElement> ConstraintCompositionCoefficients<E> {
         num_transition_constraints: usize,
         num_boundary_constraints: usize,
     ) -> Result<Self, RandomCoinError> {
-        let mut t_coefficients = Vec::new();
+        let mut t_coefficients = Vec::with_capacity(num_transition_constraints);
         for _ in 0..num_transition_constraints {
             t_coefficients.push(public_coin.draw()?);
         }
 
-        let mut b_coefficients = Vec::new();
+        let mut b_coefficients = Vec::with_capacity(num_boundary_constraints);
         for _ in 0..num_boundary_constraints {
             b_coefficients.push(public_coin.draw()?);
         }
@@ -73,11 +73,11 @@ impl<E: FieldElement> ConstraintCompositionCoefficients<E> {
         num_transition_constraints: usize,
         num_boundary_constraints: usize,
     ) -> Result<Self, RandomCoinError> {
-        let mut t_coefficients = Vec::new();
+        let mut t_coefficients = Vec::with_capacity(num_transition_constraints);
         let alpha: E = public_coin.draw()?;
         t_coefficients.extend_from_slice(&get_power_series(alpha, num_transition_constraints));
 
-        let mut b_coefficients = Vec::new();
+        let mut b_coefficients = Vec::with_capacity(num_boundary_constraints);
 
         let alpha_pow_num_transition_constraints =
             alpha.exp((num_transition_constraints as u32).into());
@@ -108,8 +108,8 @@ impl<E: FieldElement> ConstraintCompositionCoefficients<E> {
         let mut alphas = get_power_series(alpha, num_constraints);
         alphas.reverse();
 
-        let mut t_coefficients = Vec::new();
-        let mut b_coefficients = Vec::new();
+        let mut t_coefficients = Vec::with_capacity(num_transition_constraints);
+        let mut b_coefficients = Vec::with_capacity(num_boundary_constraints);
         t_coefficients.extend_from_slice(&alphas[0..num_transition_constraints]);
         b_coefficients.extend_from_slice(&alphas[num_transition_constraints..num_constraints]);
 
@@ -179,12 +179,12 @@ impl<E: FieldElement> DeepCompositionCoefficients<E> {
         trace_width: usize,
         num_constraint_composition_columns: usize,
     ) -> Result<Self, RandomCoinError> {
-        let mut t_coefficients = Vec::new();
+        let mut t_coefficients = Vec::with_capacity(trace_width);
         for _ in 0..trace_width {
             t_coefficients.push(public_coin.draw()?);
         }
 
-        let mut c_coefficients = Vec::new();
+        let mut c_coefficients = Vec::with_capacity(num_constraint_composition_columns);
         for _ in 0..num_constraint_composition_columns {
             c_coefficients.push(public_coin.draw()?);
         }
@@ -202,11 +202,11 @@ impl<E: FieldElement> DeepCompositionCoefficients<E> {
         trace_width: usize,
         num_constraint_composition_columns: usize,
     ) -> Result<Self, RandomCoinError> {
-        let mut t_coefficients = Vec::new();
+        let mut t_coefficients = Vec::with_capacity(trace_width);
         let alpha: E = public_coin.draw()?;
         t_coefficients.extend_from_slice(&get_power_series(alpha, trace_width));
 
-        let mut c_coefficients = Vec::new();
+        let mut c_coefficients = Vec::with_capacity(num_constraint_composition_columns);
 
         let alpha_pow_trace_width = alpha.exp((trace_width as u32).into());
         c_coefficients.extend_from_slice(&get_power_series_with_offset(
@@ -236,8 +236,8 @@ impl<E: FieldElement> DeepCompositionCoefficients<E> {
         let mut alphas = get_power_series(alpha, num_columns);
         alphas.reverse();
 
-        let mut t_coefficients = Vec::new();
-        let mut c_coefficients = Vec::new();
+        let mut t_coefficients = Vec::with_capacity(trace_width);
+        let mut c_coefficients = Vec::with_capacity(num_constraint_composition_columns);
         t_coefficients.extend_from_slice(&alphas[0..trace_width]);
         c_coefficients.extend_from_slice(&alphas[trace_width..num_columns]);
 
