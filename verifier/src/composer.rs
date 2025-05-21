@@ -55,7 +55,8 @@ impl<E: FieldElement> DeepComposer<E> {
     ///   linear combination drawn from the public coin.
     ///
     /// Note that values of T_i(z) and T_i(z * g) are received from the prover and passed into
-    /// this function via the `ood_main_frame` and `ood_aux_frame` parameters.
+    /// this function via the `ood_main_frame`, `ood_aux_frame` and `ood_quotient_frame`
+    /// parameters.
     pub fn compose_columns(
         &self,
         queried_main_trace_states: Table<E::BaseField>,

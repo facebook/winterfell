@@ -132,6 +132,7 @@ impl OodFrame {
         let (trace_current_row, trace_next_row) = {
             let mut reader = SliceReader::new(&self.trace_states);
             let frame_size = reader.read_u8()? as usize;
+            assert_eq!(frame_size, 2);
             let mut trace = reader.read_many((main_trace_width + aux_trace_width) * frame_size)?;
 
             if reader.has_more_bytes() {
@@ -146,6 +147,7 @@ impl OodFrame {
         // parse the constraint evaluations
         let mut reader = SliceReader::new(&self.quotient_states);
         let frame_size = reader.read_u8()? as usize;
+        assert_eq!(frame_size, 2);
         let mut quotients_evaluations = reader.read_many(num_quotients * frame_size)?;
         let quotients_next_row = quotients_evaluations.split_off(num_quotients);
         let quotients_current_row = quotients_evaluations;
