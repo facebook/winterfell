@@ -463,7 +463,7 @@ impl Default for PartitionOptions {
 /// 2. Algebraic, also called parametric or curve batching, where the resulting expression is a
 ///    univariate polynomial in one random value.
 /// 3. Horner, which is the same as Algebraic except that the random values generated are reversed.
-///    This is can sometimes be useful in the context of recursive verification as it removes the need
+///    This can sometimes be useful in the context of recursive verification as it removes the need
 ///    to do the reversion of the coefficients when using Horner's method of polynomial evaluation.
 ///
 /// The main difference between the two types is that algebraic batching has low verifier randomness
