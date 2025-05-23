@@ -102,23 +102,35 @@ impl<E: FieldElement> ConstraintCompositionCoefficients<E> {
         num_transition_constraints: usize,
         num_boundary_constraints: usize,
     ) -> Result<Self, RandomCoinError> {
-        let num_constraints = num_transition_constraints + num_boundary_constraints;
+        let mut res = Self::draw_algebraic(
+            public_coin,
+            num_transition_constraints,
+            num_boundary_constraints,
+        )?;
+        res.reverse();
+        Ok(res)
+    }
 
-        let alpha: E = public_coin.draw()?;
-        let mut alphas = get_power_series(alpha, num_constraints);
-        alphas.reverse();
+    /// Reverses the order of coefficients.
+    fn reverse(&mut self) {
+        let num_constraints = self.transition.len() + self.boundary.len();
+        let mut coefficients = Vec::with_capacity(num_constraints);
 
-        let mut t_coefficients = Vec::with_capacity(num_transition_constraints);
-        let mut b_coefficients = Vec::with_capacity(num_boundary_constraints);
-        t_coefficients.extend_from_slice(&alphas[0..num_transition_constraints]);
-        b_coefficients.extend_from_slice(&alphas[num_transition_constraints..num_constraints]);
+        coefficients.extend_from_slice(&self.transition);
+        coefficients.extend_from_slice(&self.boundary);
 
-        assert_eq!(t_coefficients[num_transition_constraints - 1], b_coefficients[0] * alpha);
+        coefficients.reverse();
 
-        Ok(ConstraintCompositionCoefficients {
-            transition: t_coefficients,
-            boundary: b_coefficients,
-        })
+        let b_coefficients = coefficients.split_off(self.transition.len());
+        let t_coefficients = coefficients;
+
+        assert_eq!(
+            t_coefficients[self.transition.len() - 1],
+            b_coefficients[0] * self.transition[1]
+        );
+
+        self.transition = t_coefficients;
+        self.boundary = b_coefficients;
     }
 }
 
@@ -230,22 +242,28 @@ impl<E: FieldElement> DeepCompositionCoefficients<E> {
         trace_width: usize,
         num_constraint_composition_columns: usize,
     ) -> Result<Self, RandomCoinError> {
-        let num_columns = trace_width + num_constraint_composition_columns;
+        let mut res =
+            Self::draw_algebraic(public_coin, trace_width, num_constraint_composition_columns)?;
+        res.reverse();
+        Ok(res)
+    }
 
-        let alpha: E = public_coin.draw()?;
-        let mut alphas = get_power_series(alpha, num_columns);
-        alphas.reverse();
+    /// Reverses the order of coefficients.
+    fn reverse(&mut self) {
+        let num_constraints = self.trace.len() + self.constraints.len();
+        let mut coefficients = Vec::with_capacity(num_constraints);
 
-        let mut t_coefficients = Vec::with_capacity(trace_width);
-        let mut c_coefficients = Vec::with_capacity(num_constraint_composition_columns);
-        t_coefficients.extend_from_slice(&alphas[0..trace_width]);
-        c_coefficients.extend_from_slice(&alphas[trace_width..num_columns]);
+        coefficients.extend_from_slice(&self.trace);
+        coefficients.extend_from_slice(&self.constraints);
 
-        assert_eq!(t_coefficients[trace_width - 1], c_coefficients[0] * alpha);
+        coefficients.reverse();
 
-        Ok(DeepCompositionCoefficients {
-            trace: t_coefficients,
-            constraints: c_coefficients,
-        })
+        let c_coefficients = coefficients.split_off(self.trace.len());
+        let t_coefficients = coefficients;
+
+        assert_eq!(t_coefficients[self.trace.len() - 1], c_coefficients[0] * self.trace[1]);
+
+        self.trace = t_coefficients;
+        self.constraints = c_coefficients;
     }
 }
