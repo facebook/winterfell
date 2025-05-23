@@ -134,13 +134,12 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
         }
 
         // --- merge polynomials of the composition polynomial trace ------------------------------
-        i = 0;
-        for poly in quotient_polys.into_columns() {
+        for (i, poly) in quotient_polys.into_columns().iter().enumerate() {
             // compute T'(x) = T(x) - T(z), multiply it by a pseudo-random coefficient,
             // and add the result into composition polynomial
             acc_trace_poly::<E, E>(
                 &mut composition_z,
-                &poly,
+                poly,
                 ood_quotient_states.current_row()[i],
                 self.cc.constraints[i],
             );
@@ -149,12 +148,10 @@ impl<E: FieldElement> DeepCompositionPoly<E> {
             // and add the result into composition polynomial
             acc_trace_poly::<E, E>(
                 &mut composition_gz,
-                &poly,
+                poly,
                 ood_quotient_states.next_row()[i],
                 self.cc.constraints[i],
             );
-
-            i += 1;
         }
 
         // divide the composition polynomials by (x - z) and (x - z * g), respectively,
