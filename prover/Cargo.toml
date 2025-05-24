@@ -31,11 +31,11 @@ crypto = { version = "0.12", path = "../crypto", package = "winter-crypto", defa
 fri = { version = "0.12", path = '../fri', package = "winter-fri", default-features = false }
 math = { version = "0.12", path = "../math", package = "winter-math", default-features = false }
 maybe_async = { version = "0.12", path = "../utils/maybe_async" , package = "winter-maybe-async" }
-tracing = { version = "0.1", default-features = false, features = ["attributes"]}
+tracing = { version = "0.1", default-features = false, features = ["attributes"] }
 utils = { version = "0.12", path = "../utils/core", package = "winter-utils", default-features = false }
 
 [dev-dependencies]
-criterion = "0.5"
+criterion = "0.6"
 rand-utils = { version = "0.12", path = "../utils/rand", package = "winter-rand-utils" }
 
 # Allow math in docs

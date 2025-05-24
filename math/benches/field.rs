@@ -3,10 +3,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use std::time::Duration;
+use std::{hint::black_box, time::Duration};
 
 use criterion::{
-    black_box, criterion_group, criterion_main,
+    criterion_group, criterion_main,
     measurement::{Measurement, WallTime},
     BatchSize, BenchmarkGroup, BenchmarkId, Criterion,
 };

@@ -34,5 +34,5 @@ math = { version = "0.12", path = "../math", package = "winter-math", default-fe
 utils = { version = "0.12", path = "../utils/core", package = "winter-utils", default-features = false }
 
 [dev-dependencies]
-criterion = "0.5"
+criterion = "0.6"
 rand-utils = { version = "0.12", path = "../utils/rand", package = "winter-rand-utils" }

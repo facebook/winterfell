@@ -33,3 +33,7 @@ build: ## Builds with default parameters
 .PHONY: build-no-std
 build-no-std: ## Builds without the standard library
 	cargo build --no-default-features --target wasm32-unknown-unknown --workspace
+
+.PHONY: exec
+exec: ## Builds release executable with concurrent feature
+	cargo build --release --features "concurrent,tracing-forest"

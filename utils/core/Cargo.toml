@@ -21,7 +21,7 @@ default = ["std"]
 std = []
 
 [dependencies]
-rayon = { version = "1.8", optional = true }
+rayon = { version = "1.10", optional = true }
 
 [dev-dependencies]
-proptest = "1.4"
+proptest = "1.6"

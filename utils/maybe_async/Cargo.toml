@@ -18,5 +18,5 @@ proc-macro = true
 async = []
 
 [dependencies]
-quote = "1"
+quote = { version = "1" }
 syn = { version = "2", features = ["full"] }

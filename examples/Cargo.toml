@@ -26,7 +26,7 @@ default = ["std"]
 std = ["core-utils/std", "hex/std", "rand-utils", "winterfell/std"]
 
 [dependencies]
-blake3 = { version = "1.5", default-features = false }
+blake3 = { version = "1.8", default-features = false }
 core-utils = { version = "0.12", path = "../utils/core", package = "winter-utils", default-features = false }
 hex = { version = "0.4", optional = true }
 rand-utils = { version = "0.12", path = "../utils/rand", package = "winter-rand-utils", optional = true }
@@ -37,7 +37,7 @@ tracing-subscriber = { version = "0.3", features = ["std", "env-filter"] }
 winterfell = { version = "0.12", path = "../winterfell", default-features = false }
 
 [dev-dependencies]
-criterion = "0.5"
+criterion = "0.6"
 
 [[bench]]
 name = "fibonacci"
