@@ -50,12 +50,12 @@ impl<E: FieldElement> ConstraintCompositionCoefficients<E> {
         num_transition_constraints: usize,
         num_boundary_constraints: usize,
     ) -> Result<Self, RandomCoinError> {
-        let mut t_coefficients = Vec::new();
+        let mut t_coefficients = Vec::with_capacity(num_transition_constraints);
         for _ in 0..num_transition_constraints {
             t_coefficients.push(public_coin.draw()?);
         }
 
-        let mut b_coefficients = Vec::new();
+        let mut b_coefficients = Vec::with_capacity(num_boundary_constraints);
         for _ in 0..num_boundary_constraints {
             b_coefficients.push(public_coin.draw()?);
         }
@@ -73,11 +73,11 @@ impl<E: FieldElement> ConstraintCompositionCoefficients<E> {
         num_transition_constraints: usize,
         num_boundary_constraints: usize,
     ) -> Result<Self, RandomCoinError> {
-        let mut t_coefficients = Vec::new();
+        let mut t_coefficients = Vec::with_capacity(num_transition_constraints);
         let alpha: E = public_coin.draw()?;
         t_coefficients.extend_from_slice(&get_power_series(alpha, num_transition_constraints));
 
-        let mut b_coefficients = Vec::new();
+        let mut b_coefficients = Vec::with_capacity(num_boundary_constraints);
 
         let alpha_pow_num_transition_constraints =
             alpha.exp((num_transition_constraints as u32).into());
@@ -93,6 +93,44 @@ impl<E: FieldElement> ConstraintCompositionCoefficients<E> {
             transition: t_coefficients,
             boundary: b_coefficients,
         })
+    }
+
+    /// Generates the random values used in the construction of the constraint composition
+    /// polynomial when Horner-type batching is used.
+    pub fn draw_horner(
+        public_coin: &mut impl RandomCoin<BaseField = E::BaseField>,
+        num_transition_constraints: usize,
+        num_boundary_constraints: usize,
+    ) -> Result<Self, RandomCoinError> {
+        let mut res = Self::draw_algebraic(
+            public_coin,
+            num_transition_constraints,
+            num_boundary_constraints,
+        )?;
+        res.reverse();
+        Ok(res)
+    }
+
+    /// Reverses the order of coefficients.
+    fn reverse(&mut self) {
+        let num_constraints = self.transition.len() + self.boundary.len();
+        let mut coefficients = Vec::with_capacity(num_constraints);
+
+        coefficients.extend_from_slice(&self.transition);
+        coefficients.extend_from_slice(&self.boundary);
+
+        coefficients.reverse();
+
+        let b_coefficients = coefficients.split_off(self.transition.len());
+        let t_coefficients = coefficients;
+
+        assert_eq!(
+            t_coefficients[self.transition.len() - 1],
+            b_coefficients[0] * self.transition[1]
+        );
+
+        self.transition = t_coefficients;
+        self.boundary = b_coefficients;
     }
 }
 
@@ -153,12 +191,12 @@ impl<E: FieldElement> DeepCompositionCoefficients<E> {
         trace_width: usize,
         num_constraint_composition_columns: usize,
     ) -> Result<Self, RandomCoinError> {
-        let mut t_coefficients = Vec::new();
+        let mut t_coefficients = Vec::with_capacity(trace_width);
         for _ in 0..trace_width {
             t_coefficients.push(public_coin.draw()?);
         }
 
-        let mut c_coefficients = Vec::new();
+        let mut c_coefficients = Vec::with_capacity(num_constraint_composition_columns);
         for _ in 0..num_constraint_composition_columns {
             c_coefficients.push(public_coin.draw()?);
         }
@@ -176,11 +214,11 @@ impl<E: FieldElement> DeepCompositionCoefficients<E> {
         trace_width: usize,
         num_constraint_composition_columns: usize,
     ) -> Result<Self, RandomCoinError> {
-        let mut t_coefficients = Vec::new();
+        let mut t_coefficients = Vec::with_capacity(trace_width);
         let alpha: E = public_coin.draw()?;
         t_coefficients.extend_from_slice(&get_power_series(alpha, trace_width));
 
-        let mut c_coefficients = Vec::new();
+        let mut c_coefficients = Vec::with_capacity(num_constraint_composition_columns);
 
         let alpha_pow_trace_width = alpha.exp((trace_width as u32).into());
         c_coefficients.extend_from_slice(&get_power_series_with_offset(
@@ -195,5 +233,37 @@ impl<E: FieldElement> DeepCompositionCoefficients<E> {
             trace: t_coefficients,
             constraints: c_coefficients,
         })
+    }
+
+    /// Generates the random values used in the construction of the DEEP polynomial when Horner-type
+    /// batching is used.
+    pub fn draw_horner(
+        public_coin: &mut impl RandomCoin<BaseField = E::BaseField>,
+        trace_width: usize,
+        num_constraint_composition_columns: usize,
+    ) -> Result<Self, RandomCoinError> {
+        let mut res =
+            Self::draw_algebraic(public_coin, trace_width, num_constraint_composition_columns)?;
+        res.reverse();
+        Ok(res)
+    }
+
+    /// Reverses the order of coefficients.
+    fn reverse(&mut self) {
+        let num_constraints = self.trace.len() + self.constraints.len();
+        let mut coefficients = Vec::with_capacity(num_constraints);
+
+        coefficients.extend_from_slice(&self.trace);
+        coefficients.extend_from_slice(&self.constraints);
+
+        coefficients.reverse();
+
+        let c_coefficients = coefficients.split_off(self.trace.len());
+        let t_coefficients = coefficients;
+
+        assert_eq!(t_coefficients[self.trace.len() - 1], c_coefficients[0] * self.trace[1]);
+
+        self.trace = t_coefficients;
+        self.constraints = c_coefficients;
     }
 }

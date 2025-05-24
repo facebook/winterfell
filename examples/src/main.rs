@@ -106,7 +106,7 @@ fn main() {
         "#,
             conjectured_security_level, proven_security_level.0, proven_security_level.1,
         );
-        println!("{}", output_string);
+        println!("{output_string}");
     }
 
     #[cfg(not(feature = "std"))]
@@ -122,6 +122,6 @@ fn main() {
     let now = Instant::now();
     match example.verify(proof) {
         Ok(_) => println!("Proof verified in {:.1} ms", now.elapsed().as_micros() as f64 / 1000f64),
-        Err(msg) => println!("Failed to verify proof: {}", msg),
+        Err(msg) => println!("Failed to verify proof: {msg}"),
     }
 }

@@ -500,6 +500,11 @@ pub trait Air: Send + Sync {
                 self.context().num_transition_constraints(),
                 self.context().num_assertions(),
             ),
+            BatchingMethod::Horner => ConstraintCompositionCoefficients::draw_horner(
+                public_coin,
+                self.context().num_transition_constraints(),
+                self.context().num_assertions(),
+            ),
         }
     }
 
@@ -520,6 +525,11 @@ pub trait Air: Send + Sync {
                 self.context().num_constraint_composition_columns(),
             ),
             BatchingMethod::Algebraic => DeepCompositionCoefficients::draw_algebraic(
+                public_coin,
+                self.trace_info().width(),
+                self.context().num_constraint_composition_columns(),
+            ),
+            BatchingMethod::Horner => DeepCompositionCoefficients::draw_horner(
                 public_coin,
                 self.trace_info().width(),
                 self.context().num_constraint_composition_columns(),
