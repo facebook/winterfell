@@ -202,12 +202,7 @@ fn draw_linear_coefficients<E: FieldElement>(
     public_coin: &mut impl RandomCoin<BaseField = E::BaseField>,
     num_coefficients: usize,
 ) -> Result<Vec<E>, RandomCoinError> {
-    let mut coefficients = Vec::with_capacity(num_coefficients);
-    for _ in 0..num_coefficients {
-        coefficients.push(public_coin.draw()?);
-    }
-
-    Ok(coefficients)
+    (0..num_coefficients).map(|_| public_coin.draw()).collect()
 }
 
 /// Returns a vector of coefficients built from the provided public coin.
@@ -218,9 +213,6 @@ fn draw_algebraic_coefficients<E: FieldElement>(
     public_coin: &mut impl RandomCoin<BaseField = E::BaseField>,
     num_coefficients: usize,
 ) -> Result<Vec<E>, RandomCoinError> {
-    let mut coefficients = Vec::with_capacity(num_coefficients);
     let alpha: E = public_coin.draw()?;
-    coefficients.extend_from_slice(&get_power_series(alpha, num_coefficients));
-
-    Ok(coefficients)
+    Ok(get_power_series(alpha, num_coefficients))
 }
