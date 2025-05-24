@@ -434,7 +434,7 @@ impl<'a> ReadAdapter<'a> {
         // Read until we have at least `count` bytes, or until we reach end-of-file,
         // which ever comes first.
         loop {
-            // If we have succesfully read `count` bytes, we're done
+            // If we have successfully read `count` bytes, we're done
             if count == 0 || self.buf.len() >= count {
                 break Ok(());
             }
@@ -469,7 +469,7 @@ impl ByteReader for ReadAdapter<'_> {
     ///
     /// <div class="warning">
     /// Callers must ensure that they do not hold any immutable references to the buffer of this
-    /// reader when calling this function so as to avoid a situtation in which the dynamic borrow
+    /// reader when calling this function so as to avoid a situation in which the dynamic borrow
     /// check fails. Specifically, you must not be holding a reference to the result of
     /// [Self::read_slice] when this function is called.
     /// </div>

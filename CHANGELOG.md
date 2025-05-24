@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.12.3 (TBD)
+
+- Added Horner-type batching method (#378).
+
 ## 0.12.2 (2025-03-19) - `fri`, `prover`, and `verifier` crates only
 
 - Commit to coefficients of FRI remainder polynomial in reverse order (#373).
