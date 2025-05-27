@@ -6,7 +6,7 @@
 use alloc::vec::Vec;
 
 use crypto::{RandomCoin, RandomCoinError};
-use math::{get_power_series, get_power_series_with_offset, FieldElement};
+use math::{get_power_series, FieldElement};
 
 // CONSTRAINT COMPOSITION COEFFICIENTS
 // ================================================================================================
@@ -43,6 +43,18 @@ pub struct ConstraintCompositionCoefficients<E: FieldElement> {
 }
 
 impl<E: FieldElement> ConstraintCompositionCoefficients<E> {
+    /// Returns new [ConstraintCompositionCoefficients] constructed by splitting the provided
+    /// coefficients into transition and boundary coefficients.
+    ///
+    /// The first `num_transition_constraints` values in the `coefficients` vector are assigned
+    /// to the transition coefficients and the remaining coefficients are assigned to boundary
+    /// coefficients.
+    fn new(mut coefficients: Vec<E>, num_transition_constraints: usize) -> Self {
+        let boundary = coefficients.split_off(num_transition_constraints);
+        let transition = coefficients;
+        Self { transition, boundary }
+    }
+
     /// Generates the random values used in the construction of the constraint composition
     /// polynomial when linear batching is used.
     pub fn draw_linear(
@@ -50,20 +62,9 @@ impl<E: FieldElement> ConstraintCompositionCoefficients<E> {
         num_transition_constraints: usize,
         num_boundary_constraints: usize,
     ) -> Result<Self, RandomCoinError> {
-        let mut t_coefficients = Vec::with_capacity(num_transition_constraints);
-        for _ in 0..num_transition_constraints {
-            t_coefficients.push(public_coin.draw()?);
-        }
-
-        let mut b_coefficients = Vec::with_capacity(num_boundary_constraints);
-        for _ in 0..num_boundary_constraints {
-            b_coefficients.push(public_coin.draw()?);
-        }
-
-        Ok(ConstraintCompositionCoefficients {
-            transition: t_coefficients,
-            boundary: b_coefficients,
-        })
+        let num_coefficients = num_transition_constraints + num_boundary_constraints;
+        let coefficients = draw_linear_coefficients(public_coin, num_coefficients)?;
+        Ok(Self::new(coefficients, num_transition_constraints))
     }
 
     /// Generates the random values used in the construction of the constraint composition
@@ -73,26 +74,9 @@ impl<E: FieldElement> ConstraintCompositionCoefficients<E> {
         num_transition_constraints: usize,
         num_boundary_constraints: usize,
     ) -> Result<Self, RandomCoinError> {
-        let mut t_coefficients = Vec::with_capacity(num_transition_constraints);
-        let alpha: E = public_coin.draw()?;
-        t_coefficients.extend_from_slice(&get_power_series(alpha, num_transition_constraints));
-
-        let mut b_coefficients = Vec::with_capacity(num_boundary_constraints);
-
-        let alpha_pow_num_transition_constraints =
-            alpha.exp((num_transition_constraints as u32).into());
-        b_coefficients.extend_from_slice(&get_power_series_with_offset(
-            alpha,
-            alpha_pow_num_transition_constraints,
-            num_boundary_constraints,
-        ));
-
-        assert_eq!(t_coefficients[num_transition_constraints - 1] * alpha, b_coefficients[0]);
-
-        Ok(ConstraintCompositionCoefficients {
-            transition: t_coefficients,
-            boundary: b_coefficients,
-        })
+        let num_coefficients = num_transition_constraints + num_boundary_constraints;
+        let coefficients = draw_algebraic_coefficients(public_coin, num_coefficients)?;
+        Ok(Self::new(coefficients, num_transition_constraints))
     }
 
     /// Generates the random values used in the construction of the constraint composition
@@ -102,35 +86,10 @@ impl<E: FieldElement> ConstraintCompositionCoefficients<E> {
         num_transition_constraints: usize,
         num_boundary_constraints: usize,
     ) -> Result<Self, RandomCoinError> {
-        let mut res = Self::draw_algebraic(
-            public_coin,
-            num_transition_constraints,
-            num_boundary_constraints,
-        )?;
-        res.reverse();
-        Ok(res)
-    }
-
-    /// Reverses the order of coefficients.
-    fn reverse(&mut self) {
-        let num_constraints = self.transition.len() + self.boundary.len();
-        let mut coefficients = Vec::with_capacity(num_constraints);
-
-        coefficients.extend_from_slice(&self.transition);
-        coefficients.extend_from_slice(&self.boundary);
-
+        let num_coefficients = num_transition_constraints + num_boundary_constraints;
+        let mut coefficients = draw_algebraic_coefficients(public_coin, num_coefficients)?;
         coefficients.reverse();
-
-        let b_coefficients = coefficients.split_off(self.transition.len());
-        let t_coefficients = coefficients;
-
-        assert_eq!(
-            t_coefficients[self.transition.len() - 1],
-            b_coefficients[0] * self.transition[1]
-        );
-
-        self.transition = t_coefficients;
-        self.boundary = b_coefficients;
+        Ok(Self::new(coefficients, num_transition_constraints))
     }
 }
 
@@ -184,6 +143,17 @@ pub struct DeepCompositionCoefficients<E: FieldElement> {
 }
 
 impl<E: FieldElement> DeepCompositionCoefficients<E> {
+    /// Returns new [DeepCompositionCoefficients] constructed by splitting the provided
+    /// coefficients into transition and boundary coefficients.
+    ///
+    /// The first `trace_width` values in the `coefficients` vector are assigned to the trace
+    /// coefficients and the remaining coefficients are assigned to constraint coefficients.
+    fn new(mut coefficients: Vec<E>, trace_width: usize) -> Self {
+        let constraints = coefficients.split_off(trace_width);
+        let trace = coefficients;
+        Self { trace, constraints }
+    }
+
     /// Generates the random values used in the construction of the DEEP polynomial when linear
     /// batching is used.
     pub fn draw_linear(
@@ -191,20 +161,9 @@ impl<E: FieldElement> DeepCompositionCoefficients<E> {
         trace_width: usize,
         num_constraint_composition_columns: usize,
     ) -> Result<Self, RandomCoinError> {
-        let mut t_coefficients = Vec::with_capacity(trace_width);
-        for _ in 0..trace_width {
-            t_coefficients.push(public_coin.draw()?);
-        }
-
-        let mut c_coefficients = Vec::with_capacity(num_constraint_composition_columns);
-        for _ in 0..num_constraint_composition_columns {
-            c_coefficients.push(public_coin.draw()?);
-        }
-
-        Ok(DeepCompositionCoefficients {
-            trace: t_coefficients,
-            constraints: c_coefficients,
-        })
+        let num_coefficients = trace_width + num_constraint_composition_columns;
+        let coefficients = draw_linear_coefficients(public_coin, num_coefficients)?;
+        Ok(Self::new(coefficients, trace_width))
     }
 
     /// Generates the random values used in the construction of the DEEP polynomial when algebraic
@@ -214,25 +173,9 @@ impl<E: FieldElement> DeepCompositionCoefficients<E> {
         trace_width: usize,
         num_constraint_composition_columns: usize,
     ) -> Result<Self, RandomCoinError> {
-        let mut t_coefficients = Vec::with_capacity(trace_width);
-        let alpha: E = public_coin.draw()?;
-        t_coefficients.extend_from_slice(&get_power_series(alpha, trace_width));
-
-        let mut c_coefficients = Vec::with_capacity(num_constraint_composition_columns);
-
-        let alpha_pow_trace_width = alpha.exp((trace_width as u32).into());
-        c_coefficients.extend_from_slice(&get_power_series_with_offset(
-            alpha,
-            alpha_pow_trace_width,
-            num_constraint_composition_columns,
-        ));
-
-        assert_eq!(t_coefficients[trace_width - 1] * alpha, c_coefficients[0]);
-
-        Ok(DeepCompositionCoefficients {
-            trace: t_coefficients,
-            constraints: c_coefficients,
-        })
+        let num_coefficients = trace_width + num_constraint_composition_columns;
+        let coefficients = draw_algebraic_coefficients(public_coin, num_coefficients)?;
+        Ok(Self::new(coefficients, trace_width))
     }
 
     /// Generates the random values used in the construction of the DEEP polynomial when Horner-type
@@ -242,28 +185,34 @@ impl<E: FieldElement> DeepCompositionCoefficients<E> {
         trace_width: usize,
         num_constraint_composition_columns: usize,
     ) -> Result<Self, RandomCoinError> {
-        let mut res =
-            Self::draw_algebraic(public_coin, trace_width, num_constraint_composition_columns)?;
-        res.reverse();
-        Ok(res)
-    }
-
-    /// Reverses the order of coefficients.
-    fn reverse(&mut self) {
-        let num_constraints = self.trace.len() + self.constraints.len();
-        let mut coefficients = Vec::with_capacity(num_constraints);
-
-        coefficients.extend_from_slice(&self.trace);
-        coefficients.extend_from_slice(&self.constraints);
-
+        let num_coefficients = trace_width + num_constraint_composition_columns;
+        let mut coefficients = draw_algebraic_coefficients(public_coin, num_coefficients)?;
         coefficients.reverse();
-
-        let c_coefficients = coefficients.split_off(self.trace.len());
-        let t_coefficients = coefficients;
-
-        assert_eq!(t_coefficients[self.trace.len() - 1], c_coefficients[0] * self.trace[1]);
-
-        self.trace = t_coefficients;
-        self.constraints = c_coefficients;
+        Ok(Self::new(coefficients, trace_width))
     }
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+/// Returns a vector of coefficients built from the provided public coin.
+///
+/// The returned coefficients are drawn uniformly from the provided coin.
+fn draw_linear_coefficients<E: FieldElement>(
+    public_coin: &mut impl RandomCoin<BaseField = E::BaseField>,
+    num_coefficients: usize,
+) -> Result<Vec<E>, RandomCoinError> {
+    (0..num_coefficients).map(|_| public_coin.draw()).collect()
+}
+
+/// Returns a vector of coefficients built from the provided public coin.
+///
+/// A single random value alpha is drawn from the public coin, and the coefficients are computed as
+/// successive powers of this alpha.
+fn draw_algebraic_coefficients<E: FieldElement>(
+    public_coin: &mut impl RandomCoin<BaseField = E::BaseField>,
+    num_coefficients: usize,
+) -> Result<Vec<E>, RandomCoinError> {
+    let alpha: E = public_coin.draw()?;
+    Ok(get_power_series(alpha, num_coefficients))
 }
