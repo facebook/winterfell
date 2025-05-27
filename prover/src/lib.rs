@@ -394,13 +394,12 @@ pub trait Prover {
             // point from an extension field, rather than increasing the size of the field overall.
             let z = channel.get_ood_point();
 
-            // evaluate trace and constraint polynomials at the OOD point z, and send the results to
-            // the verifier. the trace polynomials are actually evaluated over two points: z and z *
-            // g, where g is the generator of the trace domain.
+            // evaluate trace and constraint polynomials at the OOD point z and gz, where g is
+            // the generator of the trace domain. and send the results to the verifier
             let ood_trace_states = trace_polys.get_ood_frame(z);
             channel.send_ood_trace_states(&ood_trace_states);
 
-            let ood_evaluations = composition_poly.evaluate_at(z);
+            let ood_evaluations = composition_poly.get_ood_frame(z);
             channel.send_ood_constraint_evaluations(&ood_evaluations);
 
             // draw random coefficients to use during DEEP polynomial composition, and use them to
@@ -408,13 +407,14 @@ pub trait Prover {
             let deep_coefficients = channel.get_deep_composition_coeffs();
             let mut deep_composition_poly = DeepCompositionPoly::new(z, deep_coefficients);
 
-            // combine all trace polynomials together and merge them into the DEEP composition
+            // combine all polynomials together and merge them into the DEEP composition
             // polynomial
-            deep_composition_poly.add_trace_polys(trace_polys, ood_trace_states);
-
-            // merge columns of constraint composition polynomial into the DEEP composition
-            // polynomial
-            deep_composition_poly.add_composition_poly(composition_poly, ood_evaluations);
+            deep_composition_poly.add_trace_polys(
+                trace_polys,
+                composition_poly,
+                ood_trace_states,
+                ood_evaluations,
+            );
 
             event!(Level::DEBUG, "degree: {}", deep_composition_poly.degree());
 
