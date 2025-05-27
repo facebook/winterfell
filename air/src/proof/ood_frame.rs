@@ -22,7 +22,7 @@ use crate::EvaluationFrame;
 /// * Evaluations of all trace polynomials at *z*.
 /// * Evaluations of all trace polynomials at *z * g*.
 /// * Evaluations of constraint composition column polynomials at *z*.
-/// * Evaluations of constraint composition column polynomials at *gz*.
+/// * Evaluations of constraint composition column polynomials at *z * g*.
 ///
 /// where *z* is an out-of-domain point and *g* is the generator of the trace domain.
 ///
@@ -78,6 +78,21 @@ impl OodFrame {
 
     /// Updates constraints composition polynomials (i.e., quotient polynomials) state portion of
     /// this out-of-domain frame.
+    ///
+    /// The out-of-domain frame is stored as one vector built from the concatenation of values of
+    /// two vectors, the current row vector and the next row vector. Given the input frame
+    ///
+    ///    +-------+-------+-------+-------+-------+-------+-------+-------+
+    ///    |   a1  |   a2  |  ...  |  ...  |  ...  |  ...  |  ...  |  an   |
+    ///    +-------+-------+-------+-------+-------+-------+-------+-------+
+    ///    |   b1  |   b2  |  ...  |  ...  |  ...  |  ...  |  ...  |  bn   |
+    ///    +-------+-------+-------+-------+-------+-------+-------+-------+
+    ///
+    /// with n being the number of constraints composition polynomials, the values are stored as
+    ///
+    /// [a1, ..., an, b1, ..., bn]
+    ///
+    /// into `Self::quotient_states` (as byte values).
     ///
     /// # Panics
     /// Panics if:
@@ -144,21 +159,26 @@ impl OodFrame {
             (current_row, next_row)
         };
 
-        // parse the constraint evaluations
-        let mut reader = SliceReader::new(&self.quotient_states);
-        let frame_size = reader.read_u8()? as usize;
-        assert_eq!(frame_size, 2);
-        let mut quotients_evaluations = reader.read_many(num_quotients * frame_size)?;
-        let quotients_next_row = quotients_evaluations.split_off(num_quotients);
-        let quotients_current_row = quotients_evaluations;
+        // parse the constraint evaluations. This does the reverse operation done in
+        // `set_quotient_states()`.
+        let (quotients_current_row, quotients_next_row) = {
+            let mut reader = SliceReader::new(&self.quotient_states);
+            let frame_size = reader.read_u8()? as usize;
+            assert_eq!(frame_size, 2);
+            let mut quotients_evaluations = reader.read_many(num_quotients * frame_size)?;
 
-        if reader.has_more_bytes() {
-            return Err(DeserializationError::UnconsumedBytes);
-        }
+            if reader.has_more_bytes() {
+                return Err(DeserializationError::UnconsumedBytes);
+            }
+
+            let quotients_next_row = quotients_evaluations.split_off(num_quotients);
+            let quotients_current_row = quotients_evaluations;
+            (quotients_current_row, quotients_next_row)
+        };
 
         Ok((
             TraceOodFrame::new(trace_current_row, trace_next_row, main_trace_width),
-            QuotientOodFrame::new(quotients_current_row, quotients_next_row, num_quotients),
+            QuotientOodFrame::new(quotients_current_row, quotients_next_row),
         ))
     }
 }
@@ -290,25 +310,19 @@ impl<E: FieldElement> TraceOodFrame<E> {
 
 /// Quotient polynomial evaluation frame at the out-of-domain points.
 ///
-/// Stores the quotient polynomials evaluations at `z` and `gz`, where `z` is a random Field
+/// Stores the quotient polynomials evaluations at `z` and `g * z`, where `z` is a random Field
 /// element in `current_row` and `next_row`, respectively.
 pub struct QuotientOodFrame<E: FieldElement> {
     current_row: Vec<E>,
     next_row: Vec<E>,
-    num_quotients: usize,
 }
 
 impl<E: FieldElement> QuotientOodFrame<E> {
     /// Creates a new [`QuotientOodFrame`] from current, next.
-    pub fn new(current_row: Vec<E>, next_row: Vec<E>, num_quotients: usize) -> Self {
+    pub fn new(current_row: Vec<E>, next_row: Vec<E>) -> Self {
         assert_eq!(current_row.len(), next_row.len());
 
-        Self { current_row, next_row, num_quotients }
-    }
-
-    /// Returns the number of columns for the current and next frames.
-    pub fn num_quotients(&self) -> usize {
-        self.num_quotients
+        Self { current_row, next_row }
     }
 
     /// Returns the current row.
