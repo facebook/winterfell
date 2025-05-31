@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.12.3 (TBD)
+## 0.12.3 (2025-05-30) - `air`, `prover`, and `verifier` crates only
 
 - Added Horner-type batching method (#378).
 
