@@ -397,10 +397,8 @@ pub trait Prover {
             // evaluate trace and constraint polynomials at the OOD point z and gz, where g is
             // the generator of the trace domain. and send the results to the verifier
             let ood_trace_states = trace_polys.get_ood_frame(z);
-            channel.send_ood_trace_states(&ood_trace_states);
-
             let ood_evaluations = composition_poly.get_ood_frame(z);
-            channel.send_ood_constraint_evaluations(&ood_evaluations);
+            channel.send_ood_evaluations(&ood_trace_states, &ood_evaluations);
 
             // draw random coefficients to use during DEEP polynomial composition, and use them to
             // initialize the DEEP composition polynomial

@@ -34,6 +34,7 @@ extern crate alloc;
 use alloc::vec::Vec;
 use core::cmp;
 
+use air::proof::merge_ood_evaluations;
 pub use air::{
     proof::Proof, Air, AirContext, Assertion, BoundaryConstraint, BoundaryConstraintGroup,
     ConstraintCompositionCoefficients, ConstraintDivisor, DeepCompositionCoefficients,
@@ -206,8 +207,7 @@ where
     // are consistent with the evaluations of composition polynomial columns sent by the prover
 
     // read the out-of-domain trace frames (the main trace frame and auxiliary trace frame, if
-    // provided) sent by the prover and evaluate constraints over them; also, reseed the public
-    // coin with the OOD frames received from the prover.
+    // provided) sent by the prover and evaluate constraints over them.
     let ood_trace_frame = channel.read_ood_trace_frame();
     let ood_main_trace_frame = ood_trace_frame.main_frame();
     let ood_aux_trace_frame = ood_trace_frame.aux_frame();
@@ -219,15 +219,14 @@ where
         aux_trace_rand_elements.as_ref(),
         z,
     );
-    public_coin.reseed(ood_trace_frame.hash::<H>());
 
-    // read evaluations of composition polynomial columns sent by the prover, and reduce them into
-    // a single value by computing \sum_{i=0}^{m-1}(z^(i * l) * value_i), where value_i is the
+    // read evaluations of composition polynomial columns sent by the prover, and reduce
+    // the evaluations at z into a single value by computing
+    // \sum_{i=0}^{m-1}(z^(i * l) * value_i), where value_i is the
     // evaluation of the ith column polynomial H_i(X) at z, l is the trace length and m is
     // the number of composition column polynomials. This computes H(z) (i.e.
     // the evaluation of the composition polynomial at z) using the fact that
     // H(X) = \sum_{i=0}^{m-1} X^{i * l} H_i(X).
-    // Also, reseed the public coin with the OOD constraint evaluations received from the prover.
     let ood_constraint_evaluations = channel.read_ood_constraint_frame();
     let ood_constraint_evaluation_2 = ood_constraint_evaluations
         .current_row()
@@ -237,13 +236,15 @@ where
             result + z.exp_vartime(((i * (air.trace_length())) as u32).into()) * value
         });
 
-    let ood_constraint_hash = ood_constraint_evaluations.hash::<H>();
-    public_coin.reseed(ood_constraint_hash);
-
     // finally, make sure the values are the same
     if ood_constraint_evaluation_1 != ood_constraint_evaluation_2 {
         return Err(VerifierError::InconsistentOodConstraintEvaluations);
     }
+
+    // reseed the public coin with OOD evaluations
+    let ood_evals = merge_ood_evaluations(&ood_trace_frame, &ood_constraint_evaluations);
+    let digest = H::hash_elements(&ood_evals);
+    public_coin.reseed(digest);
 
     // 4 ----- FRI commitments --------------------------------------------------------------------
     // draw coefficients for computing DEEP composition polynomial from the public coin; in the
