@@ -25,7 +25,7 @@ mod queries;
 pub use queries::Queries;
 
 mod ood_frame;
-pub use ood_frame::{OodFrame, QuotientOodFrame, TraceOodFrame};
+pub use ood_frame::{merge_ood_evaluations, OodFrame, QuotientOodFrame, TraceOodFrame};
 
 mod security;
 
