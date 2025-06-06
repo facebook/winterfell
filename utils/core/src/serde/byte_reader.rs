@@ -435,7 +435,7 @@ impl<'a> ReadAdapter<'a> {
         // which ever comes first.
         loop {
             // If we have successfully read `count` bytes, we're done
-            if count == 0 || self.buf.len() >= count {
+            if count == 0 || self.buffer().len() >= count {
                 break Ok(());
             }
 
@@ -776,6 +776,56 @@ mod tests {
         assert_eq!(reader.read_u32().unwrap(), 0xbeef);
         assert_eq!(reader.read_usize().unwrap(), 0xfeed);
         assert_eq!(reader.read_u16().unwrap(), 0x5);
+        assert!(!reader.has_more_bytes(), "expected there to be no more data in the input");
+    }
+
+    #[test]
+    fn read_adapter_issue_383() {
+        const STR_BYTES: &[u8] = b"just a string";
+
+        use std::fs::File;
+
+        use crate::ByteWriter;
+
+        let path = std::env::temp_dir().join("issue_383.bin");
+
+        // Encode some data to a buffer, then write that buffer to a file
+        {
+            let mut buf = vec![0u8; 1024];
+            unsafe {
+                buf.set_len(0);
+            }
+            buf.write_u128(2 * u64::MAX as u128);
+            unsafe {
+                buf.set_len(512);
+            }
+            buf.write_bytes(STR_BYTES);
+            buf.write_u32(0xbeef);
+
+            std::fs::write(&path, &buf).unwrap();
+        }
+
+        // Open the file, and try to decode the encoded items
+        let mut file = File::open(&path).unwrap();
+        let mut reader = ReadAdapter::new(&mut file);
+        assert_eq!(reader.read_u128().unwrap(), 2 * u64::MAX as u128);
+        assert_eq!(reader.buf.len(), 0);
+        assert_eq!(reader.pos, 0);
+        // Read to offset 512 (we're 16 bytes into the underlying file, i.e. offset of 496)
+        reader.read_slice(496).unwrap();
+        assert_eq!(reader.buf.len(), 496);
+        assert_eq!(reader.pos, 496);
+        // The byte string is 13 bytes, followed by 4 bytes containing the trailing u32 value.
+        // We expect that the underlying reader will buffer the remaining bytes of the file when
+        // reading STR_BYTES, so the total size of our adapter's buffer should be
+        // 496 + STR_BYTES.len() + size_of::<u32>();
+        assert_eq!(reader.read_slice(STR_BYTES.len()).unwrap(), STR_BYTES);
+        assert_eq!(reader.buf.len(), 496 + STR_BYTES.len() + core::mem::size_of::<u32>());
+        // We haven't read the u32 yet
+        assert_eq!(reader.pos, 509);
+        assert_eq!(reader.read_u32().unwrap(), 0xbeef);
+        // Now we have
+        assert_eq!(reader.pos, 513);
         assert!(!reader.has_more_bytes(), "expected there to be no more data in the input");
     }
 }
