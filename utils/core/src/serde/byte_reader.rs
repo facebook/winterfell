@@ -435,7 +435,7 @@ impl<'a> ReadAdapter<'a> {
         // which ever comes first.
         loop {
             // If we have successfully read `count` bytes, we're done
-            if count == 0 || self.buf.len() >= count {
+            if count == 0 || self.buffer().len() >= count {
                 break Ok(());
             }
 
