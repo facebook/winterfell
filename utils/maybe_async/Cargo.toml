@@ -1,12 +1,12 @@
 [package]
 name = "winter-maybe-async"
-version = "0.12.0"
+version = "0.13.0"
 description = "sync/async macro for winterfell"
 authors = ["winterfell contributors"]
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/facebook/winterfell"
-documentation = "https://docs.rs/winter-maybe-async/0.12.0"
+documentation = "https://docs.rs/winter-maybe-async/0.13.0"
 keywords = ["async"]
 edition = "2021"
 rust-version = "1.87"

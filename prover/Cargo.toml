@@ -1,12 +1,12 @@
 [package]
 name = "winter-prover"
-version = "0.12.3"
+version = "0.13.0"
 description = "Winterfell STARK prover"
 authors = ["winterfell contributors"]
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/novifinancial/winterfell"
-documentation = "https://docs.rs/winter-prover/0.12.3"
+documentation = "https://docs.rs/winter-prover/0.13.0"
 categories = ["cryptography", "no-std"]
 keywords = ["crypto", "zkp", "stark", "prover"]
 edition = "2021"
@@ -26,17 +26,17 @@ default = ["std"]
 std = ["air/std", "crypto/std", "fri/std", "math/std", "utils/std"]
 
 [dependencies]
-air = { version = "0.12", path = "../air", package = "winter-air", default-features = false }
-crypto = { version = "0.12", path = "../crypto", package = "winter-crypto", default-features = false }
-fri = { version = "0.12", path = '../fri', package = "winter-fri", default-features = false }
-math = { version = "0.12", path = "../math", package = "winter-math", default-features = false }
-maybe_async = { version = "0.12", path = "../utils/maybe_async" , package = "winter-maybe-async" }
+air = { version = "0.13", path = "../air", package = "winter-air", default-features = false }
+crypto = { version = "0.13", path = "../crypto", package = "winter-crypto", default-features = false }
+fri = { version = "0.13", path = '../fri', package = "winter-fri", default-features = false }
+math = { version = "0.13", path = "../math", package = "winter-math", default-features = false }
+maybe_async = { version = "0.13", path = "../utils/maybe_async" , package = "winter-maybe-async" }
 tracing = { version = "0.1", default-features = false, features = ["attributes"] }
-utils = { version = "0.12", path = "../utils/core", package = "winter-utils", default-features = false }
+utils = { version = "0.13", path = "../utils/core", package = "winter-utils", default-features = false }
 
 [dev-dependencies]
 criterion = "0.6"
-rand-utils = { version = "0.12", path = "../utils/rand", package = "winter-rand-utils" }
+rand-utils = { version = "0.13", path = "../utils/rand", package = "winter-rand-utils" }
 
 # Allow math in docs
 [package.metadata.docs.rs]

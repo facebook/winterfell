@@ -1,9 +1,10 @@
 # Changelog
 
-## 0.13.0 (TBD)
+## 0.13.0 (2025-06-13)
 
+- [BREAKING] Switched to absorbing OOD evaluations only once into the transcript (#382).
 - Fixed incorrect buffer length check in slice reader impl (#383).
-- Updated minimum supported Rust version to 1.87.
+- Updated MSRV to 1.87.
 
 ## 0.12.3 (2025-05-30) - `air`, `prover`, and `verifier` crates only
 
