@@ -5,7 +5,6 @@
 
 use alloc::vec::Vec;
 
-use crypto::ElementHasher;
 use math::FieldElement;
 use utils::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, SliceReader,
@@ -38,8 +37,7 @@ impl OodFrame {
     // UPDATERS
     // --------------------------------------------------------------------------------------------
 
-    /// Updates the trace state portion of this out-of-domain frame, and returns the hash of the
-    /// trace states.
+    /// Updates the trace state portion of this out-of-domain frame.
     ///
     /// The out-of-domain frame is stored as one vector built from the concatenation of values of
     /// two vectors, the current row vector and the next row vector. Given the input frame
@@ -58,10 +56,9 @@ impl OodFrame {
     ///
     /// # Panics
     /// Panics if evaluation frame has already been set.
-    pub fn set_trace_states<E, H>(&mut self, trace_ood_frame: &TraceOodFrame<E>) -> H::Digest
+    pub fn set_trace_states<E>(&mut self, trace_ood_frame: &TraceOodFrame<E>)
     where
         E: FieldElement,
-        H: ElementHasher<BaseField = E::BaseField>,
     {
         assert!(self.trace_states.is_empty(), "trace sates have already been set");
 
@@ -72,8 +69,6 @@ impl OodFrame {
         let frame_size: u8 = 2;
         self.trace_states.write_u8(frame_size);
         self.trace_states.write_many(&main_and_aux_trace_states);
-
-        H::hash_elements(&main_and_aux_trace_states)
     }
 
     /// Updates constraints composition polynomials (i.e., quotient polynomials) state portion of
@@ -97,13 +92,9 @@ impl OodFrame {
     /// # Panics
     /// Panics if:
     /// * Constraint evaluations have already been set.
-    pub fn set_quotient_states<E, H>(
-        &mut self,
-        quotients_ood_frame: &QuotientOodFrame<E>,
-    ) -> H::Digest
+    pub fn set_quotient_states<E>(&mut self, quotients_ood_frame: &QuotientOodFrame<E>)
     where
         E: FieldElement,
-        H: ElementHasher<BaseField = E::BaseField>,
     {
         assert!(self.quotient_states.is_empty(), "constraint evaluations have already been set");
 
@@ -114,8 +105,6 @@ impl OodFrame {
         let frame_size: u8 = 2;
         self.quotient_states.write_u8(frame_size);
         self.quotient_states.write_many(&quotient_states);
-
-        H::hash_elements(&quotient_states)
     }
 
     // PARSER
@@ -281,14 +270,6 @@ impl<E: FieldElement> TraceOodFrame<E> {
         }
     }
 
-    /// Hashes the main, auxiliary frames in a manner consistent with
-    /// [`OodFrame::set_trace_states`], with the purpose of reseeding the public coin.
-    pub fn hash<H: ElementHasher<BaseField = E::BaseField>>(&self) -> H::Digest {
-        let trace_states = self.to_trace_states();
-
-        H::hash_elements(&trace_states)
-    }
-
     /// Returns true if an auxiliary frame is present
     fn has_aux_frame(&self) -> bool {
         self.current_row.len() > self.main_trace_width
@@ -296,7 +277,7 @@ impl<E: FieldElement> TraceOodFrame<E> {
 
     /// Returns the main/aux frames as a vector of elements described in
     /// [`OodFrame::set_trace_states`].
-    fn to_trace_states(&self) -> Vec<E> {
+    pub fn to_trace_states(&self) -> Vec<E> {
         let mut main_and_aux_frame_states = Vec::new();
         main_and_aux_frame_states.extend_from_slice(&self.current_row);
         main_and_aux_frame_states.extend_from_slice(&self.next_row);
@@ -335,19 +316,36 @@ impl<E: FieldElement> QuotientOodFrame<E> {
         &self.next_row
     }
 
-    /// Hashes the frame with the purpose of reseeding the public coin.
-    pub fn hash<H: ElementHasher<BaseField = E::BaseField>>(&self) -> H::Digest {
-        let trace_states = self.to_trace_states();
-
-        H::hash_elements(&trace_states)
-    }
-
     /// Returns the frame as a vector of elements.
-    fn to_trace_states(&self) -> Vec<E> {
+    pub fn to_trace_states(&self) -> Vec<E> {
         let mut quotients_frame_states = Vec::new();
         quotients_frame_states.extend_from_slice(&self.current_row);
         quotients_frame_states.extend_from_slice(&self.next_row);
 
         quotients_frame_states
     }
+}
+
+// HELPER
+// ================================================================================================
+
+/// Given trace and constraints polynomials OOD evaluations, returns the vector containing their
+/// concatenation, with the evaluations at `z` grouped together and coming first and followed
+/// by the evaluations at `z * g`.
+pub fn merge_ood_evaluations<E>(
+    trace_ood_frame: &TraceOodFrame<E>,
+    constraints_ood_frame: &QuotientOodFrame<E>,
+) -> Vec<E>
+where
+    E: FieldElement,
+{
+    let mut current_row = trace_ood_frame.current_row().to_vec();
+    current_row.extend_from_slice(constraints_ood_frame.current_row());
+    let mut next_row = trace_ood_frame.next_row().to_vec();
+    next_row.extend_from_slice(constraints_ood_frame.next_row());
+
+    let mut ood_evals = current_row;
+    ood_evals.extend_from_slice(&next_row);
+
+    ood_evals
 }

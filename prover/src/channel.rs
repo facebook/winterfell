@@ -7,7 +7,10 @@ use alloc::vec::Vec;
 use core::marker::PhantomData;
 
 use air::{
-    proof::{Commitments, Context, OodFrame, Proof, Queries, QuotientOodFrame, TraceOodFrame},
+    proof::{
+        merge_ood_evaluations, Commitments, Context, OodFrame, Proof, Queries, QuotientOodFrame,
+        TraceOodFrame,
+    },
     Air, ConstraintCompositionCoefficients, DeepCompositionCoefficients,
 };
 use crypto::{ElementHasher, RandomCoin, VectorCommitment};
@@ -93,19 +96,20 @@ where
         self.public_coin.reseed(constraint_root);
     }
 
-    /// Saves the evaluations of trace polynomials over the out-of-domain evaluation frame. This
-    /// also reseeds the public coin with the hashes of the evaluation frame states.
-    pub fn send_ood_trace_states(&mut self, trace_ood_frame: &TraceOodFrame<E>) {
-        let trace_states_hash = self.ood_frame.set_trace_states::<E, H>(trace_ood_frame);
-        self.public_coin.reseed(trace_states_hash);
-    }
+    /// Saves the evaluations of the trace and constraint composition polynomials over
+    /// the out-of-domain evaluation frame. This also reseeds the public coin with the hash
+    /// of all OOD evaluations.
+    pub fn send_ood_evaluations(
+        &mut self,
+        trace_ood_frame: &TraceOodFrame<E>,
+        constraints_ood_frame: &QuotientOodFrame<E>,
+    ) {
+        self.ood_frame.set_trace_states::<E>(trace_ood_frame);
+        self.ood_frame.set_quotient_states::<E>(constraints_ood_frame);
+        let ood_evals = merge_ood_evaluations(trace_ood_frame, constraints_ood_frame);
+        let digest = H::hash_elements(&ood_evals);
 
-    /// Saves the evaluations of constraint composition polynomial columns over the out-of-domain
-    /// evaluation frame. This also reseeds the public coin with the hashes of the evaluation frame
-    /// states.
-    pub fn send_ood_constraint_evaluations(&mut self, evaluations: &QuotientOodFrame<E>) {
-        let quotient_hash = self.ood_frame.set_quotient_states::<E, H>(evaluations);
-        self.public_coin.reseed(quotient_hash);
+        self.public_coin.reseed(digest);
     }
 
     // PUBLIC COIN METHODS
