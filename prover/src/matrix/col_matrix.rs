@@ -167,12 +167,12 @@ impl<E: FieldElement> ColMatrix<E> {
     // --------------------------------------------------------------------------------------------
 
     /// Returns an iterator over the columns of this matrix.
-    pub fn columns(&self) -> ColumnIter<E> {
+    pub fn columns(&self) -> ColumnIter<'_, E> {
         ColumnIter::new(self)
     }
 
     /// Returns a mutable iterator over the columns of this matrix.
-    pub fn columns_mut(&mut self) -> ColumnIterMut<E> {
+    pub fn columns_mut(&mut self) -> ColumnIterMut<'_, E> {
         ColumnIterMut::new(self)
     }
 

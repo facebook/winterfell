@@ -212,13 +212,13 @@ impl<B: StarkField> TraceTable<B> {
     pub fn fragments(
         &mut self,
         fragment_length: usize,
-    ) -> rayon::vec::IntoIter<TraceTableFragment<B>> {
+    ) -> rayon::vec::IntoIter<TraceTableFragment<'_, B>> {
         self.build_fragments(fragment_length).into_par_iter()
     }
 
     /// Returns a vector of trace fragments each covering the number of steps specified by the
     /// `fragment_length` parameter.
-    fn build_fragments(&mut self, fragment_length: usize) -> Vec<TraceTableFragment<B>> {
+    fn build_fragments(&mut self, fragment_length: usize) -> Vec<TraceTableFragment<'_, B>> {
         assert!(
             fragment_length >= MIN_FRAGMENT_LENGTH,
             "fragment length must be at least {MIN_FRAGMENT_LENGTH}, but was {fragment_length}"

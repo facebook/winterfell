@@ -85,7 +85,7 @@ impl<E: FieldElement> Table<E> {
     }
 
     /// Returns an iterator over rows of this table.
-    pub fn rows(&self) -> RowIterator<E> {
+    pub fn rows(&self) -> RowIterator<'_, E> {
         RowIterator::new(self)
     }
 

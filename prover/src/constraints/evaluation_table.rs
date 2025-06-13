@@ -109,7 +109,7 @@ impl<'a, E: FieldElement> ConstraintEvaluationTable<'a, E> {
 
     /// Break the table into the number of specified fragments. All fragments can be updated
     /// independently - e.g. in different threads.
-    pub fn fragments(&mut self, num_fragments: usize) -> Vec<EvaluationTableFragment<E>> {
+    pub fn fragments(&mut self, num_fragments: usize) -> Vec<EvaluationTableFragment<'_, E>> {
         let fragment_size = self.num_rows() / num_fragments;
         assert!(
             fragment_size >= MIN_FRAGMENT_SIZE,
