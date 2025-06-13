@@ -3,8 +3,8 @@
 <a href="https://github.com/novifinancial/winterfell/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
 <a href="https://github.com/facebook/winterfell/actions/workflows/ci.yml"><img src="https://github.com/facebook/winterfell/actions/workflows/ci.yml/badge.svg">
 <a href="https://deps.rs/repo/github/novifinancial/winterfell"><img src="https://deps.rs/repo/github/novifinancial/winterfell/status.svg"></a>
-<img src="https://img.shields.io/badge/prover-rustc_1.84+-lightgray.svg">
-<img src="https://img.shields.io/badge/verifier-rustc_1.84+-lightgray.svg">
+<img src="https://img.shields.io/badge/prover-rustc_1.87+-lightgray.svg">
+<img src="https://img.shields.io/badge/verifier-rustc_1.87+-lightgray.svg">
 <a href="https://crates.io/crates/winterfell"><img src="https://img.shields.io/crates/v/winterfell"></a>
 
 A STARK prover and verifier for arbitrary computations.

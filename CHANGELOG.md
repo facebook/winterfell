@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.13.0 (TBD)
+
+- Fixed incorrect buffer length check in slice reader impl (#383).
+- Updated minimum supported Rust version to 1.87.
+
 ## 0.12.3 (2025-05-30) - `air`, `prover`, and `verifier` crates only
 
 - Added Horner-type batching method (#378).

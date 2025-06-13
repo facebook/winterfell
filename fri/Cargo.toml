@@ -10,7 +10,7 @@ documentation = "https://docs.rs/winter-fri/0.12.2"
 categories = ["cryptography", "no-std"]
 keywords = ["crypto", "polynomial", "commitments"]
 edition = "2021"
-rust-version = "1.84"
+rust-version = "1.87"
 
 [lib]
 bench = false
