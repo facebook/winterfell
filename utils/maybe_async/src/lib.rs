@@ -72,7 +72,12 @@ pub fn maybe_async(_attr: TokenStream, input: TokenStream) -> TokenStream {
 /// Parses a trait or an `impl` block and conditionally adds the `async` keyword to methods that
 /// are annotated with `#[maybe_async]`, depending on the `async` feature flag being enabled.
 /// Additionally, if applied to a trait definition or impl block, it will add
-/// `#[async_trait::async_trait(?Send)]` to the it.
+/// `#[async_trait::async_trait]` (Send futures) or `#[async_trait::async_trait(?Send)]` (non-Send futures)
+/// depending on the parameter.
+///
+/// Usage:
+/// - `#[maybe_async_trait]` - Creates Send futures (maps to `#[async_trait::async_trait]`)
+/// - `#[maybe_async_trait(?Send)]` - Creates non-Send futures (maps to `#[async_trait::async_trait(?Send)]`)
 ///
 /// For example, given the following trait definition:
 /// ```ignore
@@ -85,46 +90,46 @@ pub fn maybe_async(_attr: TokenStream, input: TokenStream) -> TokenStream {
 /// }
 /// ```
 ///
-/// And the following implementation:
-/// ```ignore
-/// #[maybe_async_trait]
-/// impl ExampleTrait for MyStruct {
-///     #[maybe_async]
-///     fn hello_world(&self) {
-///         // ...
-///     }
-///
-///     fn get_hello(&self) -> String {
-///         // ...
-///     }
-/// }
-/// ```
-///
 /// When the `async` feature is enabled, this will be transformed into:
 /// ```ignore
-/// #[async_trait::async_trait(?Send)]
+/// #[async_trait::async_trait]
 /// trait ExampleTrait {
 ///     async fn hello_world(&self);
 ///
 ///     fn get_hello(&self) -> String;
 /// }
+/// ```
 ///
+/// With `?Send` parameter:
+/// ```ignore
+/// #[maybe_async_trait(?Send)]
+/// trait ExampleTrait {
+///     #[maybe_async]
+///     fn hello_world(&self);
+/// }
+/// ```
+///
+/// Transforms to:
+/// ```ignore
 /// #[async_trait::async_trait(?Send)]
-/// impl ExampleTrait for MyStruct {
-///     async fn hello_world(&self) {
-///         // ...
-///     }
-///
-///     fn get_hello(&self) -> String {
-///         // ...
-///     }
+/// trait ExampleTrait {
+///     async fn hello_world(&self);
 /// }
 /// ```
 ///
 /// When the `async` feature is disabled, the code remains unchanged, and neither the `async`
-/// keyword nor the `#[async_trait::async_trait(?Send)]` attribute is applied.
+/// keyword nor the `#[async_trait::async_trait]` attribute is applied.
 #[proc_macro_attribute]
-pub fn maybe_async_trait(_attr: TokenStream, input: TokenStream) -> TokenStream {
+pub fn maybe_async_trait(attr: TokenStream, input: TokenStream) -> TokenStream {
+    // Parse the attribute to check for ?Send
+    let is_send = if attr.is_empty() {
+        true // Default to Send futures
+    } else {
+        // Parse the attribute tokens to check for ?Send
+        let attr_tokens = attr.to_string();
+        !attr_tokens.contains("?Send")
+    };
+
     // Try parsing the input as a trait definition
     if let Ok(mut trait_item) = syn::parse::<ItemTrait>(input.clone()) {
         let output = if cfg!(feature = "async") {
@@ -142,9 +147,16 @@ pub fn maybe_async_trait(_attr: TokenStream, input: TokenStream) -> TokenStream 
                 }
             }
 
-            quote! {
-                #[async_trait::async_trait(?Send)]
-                #trait_item
+            if is_send {
+                quote! {
+                    #[async_trait::async_trait]
+                    #trait_item
+                }
+            } else {
+                quote! {
+                    #[async_trait::async_trait(?Send)]
+                    #trait_item
+                }
             }
         } else {
             quote! {
@@ -170,9 +182,17 @@ pub fn maybe_async_trait(_attr: TokenStream, input: TokenStream) -> TokenStream 
                     });
                 }
             }
-            quote! {
-                #[async_trait::async_trait(?Send)]
-                #impl_item
+
+            if is_send {
+                quote! {
+                    #[async_trait::async_trait]
+                    #impl_item
+                }
+            } else {
+                quote! {
+                    #[async_trait::async_trait(?Send)]
+                    #impl_item
+                }
             }
         } else {
             quote! {
