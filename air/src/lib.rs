@@ -35,7 +35,7 @@ extern crate alloc;
 pub mod proof;
 
 mod errors;
-pub use errors::AssertionError;
+pub use errors::{AssertionError, ProofOptionsError};
 
 mod options;
 pub use options::{BatchingMethod, FieldExtension, PartitionOptions, ProofOptions};
