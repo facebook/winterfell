@@ -15,19 +15,8 @@ git pull origin main
 
 # Publish
 echo "Publishing crates..."
-crates=(
-winter-utils
-winter-rand-utils
-winter-maybe-async
-winter-math
-winter-crypto
-winter-fri
-winter-air
-winter-prover
-winter-verifier
-winterfell
-)
-for crate in ${crates[@]}; do
+crates="winter-utils winter-rand-utils winter-maybe-async winter-math winter-crypto winter-fri winter-air winter-prover winter-verifier winterfell"
+for crate in $crates; do
     echo "Publishing $crate..."
     cargo publish -p "$crate" $@
 done
