@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.13.1 (2025-07-19)
+
+- Fixed a panic in `rand_vector` when `n == 0` (#394).
+
 ## 0.13.0 (2025-06-13)
 
 - [BREAKING] Switched to absorbing OOD evaluations only once into the transcript (#382).
