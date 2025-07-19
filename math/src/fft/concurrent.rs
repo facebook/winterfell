@@ -184,7 +184,7 @@ fn transpose_square_stretch<T>(matrix: &mut [T], size: usize, stretch: usize) {
 
 fn transpose_square_1<T>(matrix: &mut [T], size: usize) {
     debug_assert_eq!(matrix.len(), size * size);
-    if size % 2 != 0 {
+    if !size.is_multiple_of(2) {
         unimplemented!("odd sizes are not supported");
     }
 

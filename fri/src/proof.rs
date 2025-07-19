@@ -298,7 +298,7 @@ impl FriProofLayer {
     {
         // make sure the number of value bytes can be parsed into a whole number of queries
         let num_query_bytes = E::ELEMENT_BYTES * folding_factor;
-        if self.values.len() % num_query_bytes != 0 {
+        if !self.values.len().is_multiple_of(num_query_bytes) {
             return Err(DeserializationError::InvalidValue(format!(
                 "number of value bytes ({}) does not divide into whole number of queries",
                 self.values.len(),

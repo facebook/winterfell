@@ -253,7 +253,7 @@ mod tests {
             let expected = polynom::eval(&poly, g.exp((i as u32).into()));
             let actual = divisor.evaluate_at(g.exp((i as u32).into()));
             assert_eq!(expected, actual);
-            if i % (j as usize) == 0 {
+            if i.is_multiple_of(j as usize) {
                 assert_eq!(BaseElement::ZERO, actual);
             }
         }
