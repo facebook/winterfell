@@ -10,6 +10,8 @@ use fri::FriOptions;
 use math::{FieldElement, StarkField, ToElements};
 use utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
+use crate::ProofOptionsError;
+
 // CONSTANTS
 // ================================================================================================
 
@@ -121,6 +123,77 @@ impl ProofOptions {
     // --------------------------------------------------------------------------------------------
     /// Returns a new instance of [ProofOptions] struct constructed from the specified parameters.
     ///
+    /// # Errors
+    /// Returns a [ProofOptionsError] if:
+    /// - `num_queries` is zero or greater than 255.
+    /// - `blowup_factor` is smaller than 2, greater than 128, or is not a power of two.
+    /// - `grinding_factor` is greater than 32.
+    /// - `fri_folding_factor` is not 2, 4, 8, or 16.
+    /// - `fri_remainder_max_degree` is greater than 255 or is not a power of two minus 1.
+    #[allow(clippy::too_many_arguments)]
+    pub fn try_new(
+        num_queries: usize,
+        blowup_factor: usize,
+        grinding_factor: u32,
+        field_extension: FieldExtension,
+        fri_folding_factor: usize,
+        fri_remainder_max_degree: usize,
+        batching_constraints: BatchingMethod,
+        batching_deep: BatchingMethod,
+    ) -> Result<ProofOptions, ProofOptionsError> {
+        if num_queries == 0 {
+            return Err(ProofOptionsError::NumQueriesTooSmall);
+        }
+        if num_queries > MAX_NUM_QUERIES {
+            return Err(ProofOptionsError::NumQueriesTooLarge(num_queries, MAX_NUM_QUERIES));
+        }
+
+        if !blowup_factor.is_power_of_two() {
+            return Err(ProofOptionsError::BlowupFactorNotPowerOfTwo(blowup_factor));
+        }
+        if blowup_factor < MIN_BLOWUP_FACTOR {
+            return Err(ProofOptionsError::BlowupFactorTooSmall(blowup_factor, MIN_BLOWUP_FACTOR));
+        }
+        if blowup_factor > MAX_BLOWUP_FACTOR {
+            return Err(ProofOptionsError::BlowupFactorTooLarge(blowup_factor, MAX_BLOWUP_FACTOR));
+        }
+
+        if grinding_factor > MAX_GRINDING_FACTOR {
+            return Err(ProofOptionsError::GrindingFactorTooLarge(grinding_factor, MAX_GRINDING_FACTOR));
+        }
+
+        if !fri_folding_factor.is_power_of_two() {
+            return Err(ProofOptionsError::FriFoldingFactorNotPowerOfTwo(fri_folding_factor));
+        }
+        if fri_folding_factor < FRI_MIN_FOLDING_FACTOR {
+            return Err(ProofOptionsError::FriFoldingFactorTooSmall(fri_folding_factor, FRI_MIN_FOLDING_FACTOR));
+        }
+        if fri_folding_factor > FRI_MAX_FOLDING_FACTOR {
+            return Err(ProofOptionsError::FriFoldingFactorTooLarge(fri_folding_factor, FRI_MAX_FOLDING_FACTOR));
+        }
+
+        if !(fri_remainder_max_degree + 1).is_power_of_two() {
+            return Err(ProofOptionsError::FriRemainderDegreeInvalid(fri_remainder_max_degree));
+        }
+        if fri_remainder_max_degree > FRI_MAX_REMAINDER_DEGREE {
+            return Err(ProofOptionsError::FriRemainderDegreeTooLarge(fri_remainder_max_degree, FRI_MAX_REMAINDER_DEGREE));
+        }
+
+        Ok(Self {
+            num_queries: num_queries as u8,
+            blowup_factor: blowup_factor as u8,
+            grinding_factor: grinding_factor as u8,
+            field_extension,
+            fri_folding_factor: fri_folding_factor as u8,
+            fri_remainder_max_degree: fri_remainder_max_degree as u8,
+            partition_options: PartitionOptions::new(1, 1),
+            batching_constraints,
+            batching_deep,
+        })
+    }
+
+    /// Returns a new instance of [ProofOptions] struct constructed from the specified parameters.
+    ///
     /// # Panics
     /// Panics if:
     /// - `num_queries` is zero or greater than 255.
@@ -128,6 +201,10 @@ impl ProofOptions {
     /// - `grinding_factor` is greater than 32.
     /// - `fri_folding_factor` is not 2, 4, 8, or 16.
     /// - `fri_remainder_max_degree` is greater than 255 or is not a power of two minus 1.
+    ///
+    /// # Deprecated
+    /// This method is deprecated. Use [`try_new`](Self::try_new) instead to handle errors gracefully.
+    #[deprecated(since = "0.9.0", note = "Use `try_new` instead to handle validation errors")]
     #[allow(clippy::too_many_arguments)]
     pub const fn new(
         num_queries: usize,
@@ -186,10 +263,42 @@ impl ProofOptions {
 
     /// Updates the provided [ProofOptions] instance with the specified partition parameters.
     ///
+    /// # Errors
+    /// Returns a [ProofOptionsError] if:
+    /// - `num_partitions` is zero or greater than 16.
+    /// - `hash_rate` is zero or greater than 256.
+    pub fn try_with_partitions(
+        mut self,
+        num_partitions: usize,
+        hash_rate: usize,
+    ) -> Result<ProofOptions, ProofOptionsError> {
+        if num_partitions == 0 {
+            return Err(ProofOptionsError::PartitionCountTooSmall);
+        }
+        if num_partitions > 16 {
+            return Err(ProofOptionsError::PartitionCountTooLarge(num_partitions, 16));
+        }
+        if hash_rate == 0 {
+            return Err(ProofOptionsError::HashRateTooSmall);
+        }
+        if hash_rate > 256 {
+            return Err(ProofOptionsError::HashRateTooLarge(hash_rate, 256));
+        }
+
+        self.partition_options = PartitionOptions::new(num_partitions, hash_rate);
+        Ok(self)
+    }
+
+    /// Updates the provided [ProofOptions] instance with the specified partition parameters.
+    ///
     /// # Panics
     /// Panics if:
     /// - `num_partitions` is zero or greater than 16.
     /// - `hash_rate` is zero or greater than 256.
+    ///
+    /// # Deprecated
+    /// This method is deprecated. Use [`try_with_partitions`](Self::try_with_partitions) instead to handle errors gracefully.
+    #[deprecated(since = "0.9.0", note = "Use `try_with_partitions` instead to handle validation errors")]
     pub const fn with_partitions(
         mut self,
         num_partitions: usize,
@@ -326,7 +435,7 @@ impl Deserializable for ProofOptions {
     /// # Errors
     /// Returns an error of a valid proof options could not be read from the specified `source`.
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let result = ProofOptions::new(
+        let result = ProofOptions::try_new(
             source.read_u8()? as usize,
             source.read_u8()? as usize,
             source.read_u8()? as u32,
@@ -335,8 +444,10 @@ impl Deserializable for ProofOptions {
             source.read_u8()? as usize,
             BatchingMethod::read_from(source)?,
             BatchingMethod::read_from(source)?,
-        );
-        Ok(result.with_partitions(source.read_u8()? as usize, source.read_u8()? as usize))
+        ).map_err(|e| DeserializationError::InvalidValue(format!("{e}")))?;
+        
+        result.try_with_partitions(source.read_u8()? as usize, source.read_u8()? as usize)
+            .map_err(|e| DeserializationError::InvalidValue(format!("{e}")))
     }
 }
 
@@ -516,6 +627,7 @@ mod tests {
 
     use super::{FieldExtension, PartitionOptions, ProofOptions, ToElements};
     use crate::options::BatchingMethod;
+    use crate::ProofOptionsError;
 
     #[test]
     fn proof_options_to_elements() {
@@ -538,7 +650,7 @@ mod tests {
             BaseElement::from(num_queries as u32),
         ];
 
-        let options = ProofOptions::new(
+        let options = ProofOptions::try_new(
             num_queries,
             blowup_factor,
             grinding_factor,
@@ -547,7 +659,7 @@ mod tests {
             fri_remainder_max_degree as usize,
             BatchingMethod::Linear,
             BatchingMethod::Linear,
-        );
+        ).expect("valid proof options");
         assert_eq!(expected, options.to_elements());
     }
 
@@ -593,7 +705,7 @@ mod tests {
         let blowup_factor = 8;
         let num_queries = 30;
 
-        let options = ProofOptions::new(
+        let options = ProofOptions::try_new(
             num_queries,
             blowup_factor,
             grinding_factor,
@@ -602,11 +714,105 @@ mod tests {
             fri_remainder_max_degree as usize,
             BatchingMethod::Linear,
             BatchingMethod::Horner,
-        );
+        ).expect("valid proof options");
 
         let options_serialized = options.to_bytes();
         let options_deserialized = ProofOptions::read_from_bytes(&options_serialized).unwrap();
 
         assert_eq!(options, options_deserialized)
+    }
+
+    #[test]
+    fn proof_options_validation_errors() {
+        // Test num_queries validation
+        assert!(matches!(
+            ProofOptions::try_new(0, 8, 20, FieldExtension::None, 8, 127, BatchingMethod::Linear, BatchingMethod::Linear),
+            Err(ProofOptionsError::NumQueriesTooSmall)
+        ));
+
+        assert!(matches!(
+            ProofOptions::try_new(300, 8, 20, FieldExtension::None, 8, 127, BatchingMethod::Linear, BatchingMethod::Linear),
+            Err(ProofOptionsError::NumQueriesTooLarge(300, 255))
+        ));
+
+        // Test blowup_factor validation
+        assert!(matches!(
+            ProofOptions::try_new(30, 3, 20, FieldExtension::None, 8, 127, BatchingMethod::Linear, BatchingMethod::Linear),
+            Err(ProofOptionsError::BlowupFactorNotPowerOfTwo(3))
+        ));
+
+        assert!(matches!(
+            ProofOptions::try_new(30, 1, 20, FieldExtension::None, 8, 127, BatchingMethod::Linear, BatchingMethod::Linear),
+            Err(ProofOptionsError::BlowupFactorTooSmall(1, 2))
+        ));
+
+        assert!(matches!(
+            ProofOptions::try_new(30, 256, 20, FieldExtension::None, 8, 127, BatchingMethod::Linear, BatchingMethod::Linear),
+            Err(ProofOptionsError::BlowupFactorTooLarge(256, 128))
+        ));
+
+        // Test grinding_factor validation
+        assert!(matches!(
+            ProofOptions::try_new(30, 8, 40, FieldExtension::None, 8, 127, BatchingMethod::Linear, BatchingMethod::Linear),
+            Err(ProofOptionsError::GrindingFactorTooLarge(40, 32))
+        ));
+
+        // Test fri_folding_factor validation
+        assert!(matches!(
+            ProofOptions::try_new(30, 8, 20, FieldExtension::None, 3, 127, BatchingMethod::Linear, BatchingMethod::Linear),
+            Err(ProofOptionsError::FriFoldingFactorNotPowerOfTwo(3))
+        ));
+
+        assert!(matches!(
+            ProofOptions::try_new(30, 8, 20, FieldExtension::None, 1, 127, BatchingMethod::Linear, BatchingMethod::Linear),
+            Err(ProofOptionsError::FriFoldingFactorTooSmall(1, 2))
+        ));
+
+        assert!(matches!(
+            ProofOptions::try_new(30, 8, 20, FieldExtension::None, 32, 127, BatchingMethod::Linear, BatchingMethod::Linear),
+            Err(ProofOptionsError::FriFoldingFactorTooLarge(32, 16))
+        ));
+
+        // Test fri_remainder_max_degree validation
+        assert!(matches!(
+            ProofOptions::try_new(30, 8, 20, FieldExtension::None, 8, 128, BatchingMethod::Linear, BatchingMethod::Linear),
+            Err(ProofOptionsError::FriRemainderDegreeInvalid(128))
+        ));
+
+        assert!(matches!(
+            ProofOptions::try_new(30, 8, 20, FieldExtension::None, 8, 300, BatchingMethod::Linear, BatchingMethod::Linear),
+            Err(ProofOptionsError::FriRemainderDegreeTooLarge(300, 255))
+        ));
+    }
+
+    #[test]
+    fn with_partitions_validation_errors() {
+        let options = ProofOptions::try_new(30, 8, 20, FieldExtension::None, 8, 127, BatchingMethod::Linear, BatchingMethod::Linear)
+            .expect("valid proof options");
+
+        // Test partition count validation
+        assert!(matches!(
+            options.clone().try_with_partitions(0, 8),
+            Err(ProofOptionsError::PartitionCountTooSmall)
+        ));
+
+        assert!(matches!(
+            options.clone().try_with_partitions(20, 8),
+            Err(ProofOptionsError::PartitionCountTooLarge(20, 16))
+        ));
+
+        // Test hash rate validation
+        assert!(matches!(
+            options.clone().try_with_partitions(4, 0),
+            Err(ProofOptionsError::HashRateTooSmall)
+        ));
+
+        assert!(matches!(
+            options.clone().try_with_partitions(4, 300),
+            Err(ProofOptionsError::HashRateTooLarge(300, 256))
+        ));
+
+        // Test valid partitions
+        assert!(options.try_with_partitions(4, 8).is_ok());
     }
 }
