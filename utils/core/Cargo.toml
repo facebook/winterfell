@@ -21,6 +21,7 @@ default = ["std"]
 std = []
 
 [dependencies]
+hashbrown = { default-features = false, optional = true, version = "0.15" }
 rayon = { version = "1.10", optional = true }
 
 [dev-dependencies]

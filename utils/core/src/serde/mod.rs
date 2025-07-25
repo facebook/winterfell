@@ -267,11 +267,7 @@ impl<T: Serializable, const C: usize> Serializable for [T; C] {
     }
 
     fn get_size_hint(&self) -> usize {
-        let mut size = 0;
-        for item in self {
-            size += item.get_size_hint();
-        }
-        size
+        generic_get_size_hint(self.len(), self)
     }
 }
 
@@ -299,11 +295,7 @@ impl<T: Serializable> Serializable for Vec<T> {
     }
 
     fn get_size_hint(&self) -> usize {
-        let mut size = self.len().get_size_hint();
-        for item in self {
-            size += item.get_size_hint();
-        }
-        size
+        generic_get_size_hint(self.len(), self)
     }
 }
 
@@ -314,11 +306,7 @@ impl<K: Serializable, V: Serializable> Serializable for BTreeMap<K, V> {
     }
 
     fn get_size_hint(&self) -> usize {
-        let mut size = self.len().get_size_hint();
-        for item in self {
-            size += item.get_size_hint();
-        }
-        size
+        generic_get_size_hint(self.len(), self)
     }
 }
 
@@ -329,11 +317,31 @@ impl<T: Serializable> Serializable for BTreeSet<T> {
     }
 
     fn get_size_hint(&self) -> usize {
-        let mut size = self.len().get_size_hint();
-        for item in self {
-            size += item.get_size_hint();
-        }
-        size
+        generic_get_size_hint(self.len(), self)
+    }
+}
+
+#[cfg(feature = "hashbrown")]
+impl<K: Serializable, V: Serializable> Serializable for hashbrown::HashMap<K, V> {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_usize(self.len());
+        target.write_many(self);
+    }
+
+    fn get_size_hint(&self) -> usize {
+        generic_get_size_hint(self.len(), self)
+    }
+}
+
+#[cfg(feature = "hashbrown")]
+impl<K: Serializable, V: Serializable> Serializable for hashbrown::HashSet<K, V> {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        target.write_usize(self.len());
+        target.write_many(self);
+    }
+
+    fn get_size_hint(&self) -> usize {
+        generic_get_size_hint(self.len(), self)
     }
 }
 
@@ -573,6 +581,33 @@ impl<T: Deserializable + Ord> Deserializable for BTreeSet<T> {
     }
 }
 
+#[cfg(feature = "hashbrown")]
+impl<K, V, S> Deserializable for hashbrown::HashMap<K, V, S>
+where
+    K: Deserializable + Eq + core::hash::Hash,
+    V: Deserializable,
+    S: core::hash::BuildHasher + Deserializable + Default,
+{
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let len = source.read_usize()?;
+        let data = source.read_many(len)?;
+        Ok(Self::from_iter(data))
+    }
+}
+
+#[cfg(feature = "hashbrown")]
+impl<T, S> Deserializable for hashbrown::HashSet<T, S>
+where
+    T: Deserializable + Eq + core::hash::Hash,
+    S: core::hash::BuildHasher + Deserializable + Default,
+{
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let len = source.read_usize()?;
+        let data = source.read_many(len)?;
+        Ok(Self::from_iter(data))
+    }
+}
+
 impl Deserializable for String {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let len = source.read_usize()?;
@@ -580,4 +615,16 @@ impl Deserializable for String {
 
         String::from_utf8(data).map_err(|err| DeserializationError::InvalidValue(format!("{err}")))
     }
+}
+
+fn generic_get_size_hint<E>(len: usize, elements: E) -> usize
+where
+    E: IntoIterator,
+    E::Item: Serializable,
+{
+    let mut size = len.get_size_hint();
+    for item in elements {
+        size = size.wrapping_add(item.get_size_hint());
+    }
+    size
 }
