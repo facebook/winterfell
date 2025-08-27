@@ -202,7 +202,7 @@ where
     fn build_layer<const N: usize>(&mut self, channel: &mut C, evaluations: &mut Vec<E>) {
         // commit to the evaluations at the current layer; we do this by first transposing the
         // evaluations into a matrix of N columns, then hashing each row into a digest, and finally
-        // commiting to vector of these digests; we do this so that we could de-commit to N values
+        // committing to vector of these digests; we do this so that we could de-commit to N values
         // with a single opening proof.
         let transposed_evaluations = transpose_slice(evaluations);
         let evaluation_vector_commitment =

@@ -25,7 +25,7 @@ pub trait ConstraintCommitment<E: FieldElement> {
     /// The hash function used for hashing the rows of trace segment LDEs.
     type HashFn: ElementHasher<BaseField = E::BaseField>;
 
-    /// The vector commitment scheme used for commiting to the trace.
+    /// The vector commitment scheme used for committing to the trace.
     type VC: VectorCommitment<Self::HashFn>;
 
     /// Returns the commitment.

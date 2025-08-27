@@ -310,7 +310,7 @@ fn transpose<B: StarkField, const N: usize>(mut segments: Vec<Segment<B, N>>) ->
     // TODO: investigate transposing in-place
     let mut result = unsafe { uninit_vector::<[B; N]>(result_len) };
 
-    // determine number of batches in which transposition will be preformed; if `concurrent`
+    // determine number of batches in which transposition will be performed; if `concurrent`
     // feature is not enabled, the number of batches will always be 1
     let num_batches = get_num_batches(result_len);
     let rows_per_batch = num_rows / num_batches;

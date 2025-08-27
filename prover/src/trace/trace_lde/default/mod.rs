@@ -195,7 +195,7 @@ where
     }
 
     /// Returns trace table rows at the specified positions along with an opening proof to these
-    /// rows againt the already computed commitment.
+    /// rows against the already computed commitment.
     fn query(&self, positions: &[usize]) -> Vec<Queries> {
         // build queries for the main trace segment
         let mut result = vec![build_segment_queries::<E::BaseField, H, V>(
