@@ -10,8 +10,8 @@ use math::{fft, ExtensibleField, ExtensionOf, FieldElement, StarkField, ToElemen
 
 use crate::{BatchingMethod, ProofOptions};
 
-mod aux;
-pub use aux::AuxRandElements;
+mod aux_rand_elements;
+pub use aux_rand_elements::AuxRandElements;
 
 mod trace_info;
 pub use trace_info::TraceInfo;
