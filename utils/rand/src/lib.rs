@@ -44,6 +44,9 @@ mod internal {
     /// * A valid value requires at over 32 bytes.
     /// * A valid value could not be generated after 1000 tries.
     pub fn rand_vector<R: Randomizable>(n: usize) -> Vec<R> {
+        if n == 0 {
+            return Vec::new();
+        }
         let mut result = Vec::with_capacity(n);
         let seed = rand::rng().random::<[u8; 32]>();
         let mut g = StdRng::from_seed(seed);

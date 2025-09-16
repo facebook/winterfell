@@ -128,7 +128,7 @@ where
             // make sure the degree can be reduced by the folding factor at all layers
             // but the remainder layer
             if depth != layer_commitments.len() - 1
-                && max_degree_plus_1 % options.folding_factor() != 0
+                && !max_degree_plus_1.is_multiple_of(options.folding_factor())
             {
                 return Err(VerifierError::DegreeTruncation(
                     max_degree_plus_1 - 1,
@@ -293,7 +293,7 @@ where
             evaluations = row_polys.iter().map(|p| polynom::eval(p, alpha)).collect();
 
             // make sure next degree reduction does not result in degree truncation
-            if max_degree_plus_1 % N != 0 {
+            if !max_degree_plus_1.is_multiple_of(N) {
                 return Err(VerifierError::DegreeTruncation(max_degree_plus_1 - 1, N, depth));
             }
 

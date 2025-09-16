@@ -217,7 +217,7 @@ impl FieldElement for BaseElement {
     }
 
     unsafe fn bytes_as_elements(bytes: &[u8]) -> Result<&[Self], DeserializationError> {
-        if bytes.len() % Self::ELEMENT_BYTES != 0 {
+        if !bytes.len().is_multiple_of(Self::ELEMENT_BYTES) {
             return Err(DeserializationError::InvalidValue(format!(
                 "number of bytes ({}) does not divide into whole number of field elements",
                 bytes.len(),
@@ -227,7 +227,7 @@ impl FieldElement for BaseElement {
         let p = bytes.as_ptr();
         let len = bytes.len() / Self::ELEMENT_BYTES;
 
-        if (p as usize) % mem::align_of::<u64>() != 0 {
+        if !(p as usize).is_multiple_of(mem::align_of::<u64>()) {
             return Err(DeserializationError::InvalidValue(
                 "slice memory alignment is not valid for this field element type".to_string(),
             ));

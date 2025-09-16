@@ -98,7 +98,7 @@ impl Hasher for Rp62_248 {
         // compute the number of elements required to represent the string; we will be processing
         // the string in 7-byte chunks, thus the number of elements will be equal to the number
         // of such chunks (including a potential partial chunk at the end).
-        let num_elements = if bytes.len() % 7 == 0 {
+        let num_elements = if bytes.len().is_multiple_of(7) {
             bytes.len() / 7
         } else {
             bytes.len() / 7 + 1
@@ -134,7 +134,7 @@ impl Hasher for Rp62_248 {
             // again from zero index.
             state[i] += BaseElement::new(u64::from_le_bytes(buf));
             i += 1;
-            if i % RATE_WIDTH == 0 {
+            if i.is_multiple_of(RATE_WIDTH) {
                 apply_permutation(&mut state);
                 i = 0;
             }
@@ -212,7 +212,7 @@ impl ElementHasher for Rp62_248 {
         for &element in elements.iter() {
             state[i] += element;
             i += 1;
-            if i % RATE_WIDTH == 0 {
+            if i.is_multiple_of(RATE_WIDTH) {
                 apply_permutation(&mut state);
                 i = 0;
             }

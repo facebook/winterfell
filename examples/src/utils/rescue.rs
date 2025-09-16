@@ -61,7 +61,7 @@ impl Rescue128 {
         for &element in data {
             self.state[self.idx] += element;
             self.idx += 1;
-            if self.idx % RATE_WIDTH == 0 {
+            if self.idx.is_multiple_of(RATE_WIDTH) {
                 apply_permutation(&mut self.state);
                 self.idx = 0;
             }
@@ -86,7 +86,7 @@ impl Rescue128 {
         for &element in data.iter() {
             state[i] += element;
             i += 1;
-            if i % RATE_WIDTH == 0 {
+            if i.is_multiple_of(RATE_WIDTH) {
                 apply_permutation(&mut state);
                 i = 0;
             }

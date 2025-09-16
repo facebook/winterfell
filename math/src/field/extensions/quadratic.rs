@@ -118,7 +118,7 @@ impl<B: ExtensibleField<2>> FieldElement for QuadExtension<B> {
 
     fn slice_from_base_elements(elements: &[Self::BaseField]) -> &[Self] {
         assert!(
-            elements.len() % Self::EXTENSION_DEGREE == 0,
+            elements.len().is_multiple_of(Self::EXTENSION_DEGREE),
             "number of base elements must be divisible by 2, but was {}",
             elements.len()
         );
@@ -141,7 +141,7 @@ impl<B: ExtensibleField<2>> FieldElement for QuadExtension<B> {
     }
 
     unsafe fn bytes_as_elements(bytes: &[u8]) -> Result<&[Self], DeserializationError> {
-        if bytes.len() % Self::ELEMENT_BYTES != 0 {
+        if !bytes.len().is_multiple_of(Self::ELEMENT_BYTES) {
             return Err(DeserializationError::InvalidValue(format!(
                 "number of bytes ({}) does not divide into whole number of field elements",
                 bytes.len(),
@@ -152,7 +152,7 @@ impl<B: ExtensibleField<2>> FieldElement for QuadExtension<B> {
         let len = bytes.len() / Self::ELEMENT_BYTES;
 
         // make sure the bytes are aligned on the boundary consistent with base element alignment
-        if (p as usize) % Self::BaseField::ELEMENT_BYTES != 0 {
+        if !(p as usize).is_multiple_of(Self::BaseField::ELEMENT_BYTES) {
             return Err(DeserializationError::InvalidValue(
                 "slice memory alignment is not valid for this field element type".to_string(),
             ));

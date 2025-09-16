@@ -191,7 +191,7 @@ impl<E: FieldElement> Assertion<E> {
                 return false;
             }
             if other.is_single() || self.stride < other.stride {
-                (other.first_step - self.first_step) % self.stride == 0
+                (other.first_step - self.first_step).is_multiple_of(self.stride)
             } else {
                 false
             }
@@ -200,7 +200,7 @@ impl<E: FieldElement> Assertion<E> {
                 return false;
             }
             if self.is_single() || other.stride < self.stride {
-                (self.first_step - other.first_step) % other.stride == 0
+                (self.first_step - other.first_step).is_multiple_of(other.stride)
             } else {
                 false
             }

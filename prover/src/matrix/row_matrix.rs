@@ -281,7 +281,7 @@ pub fn build_segments<E: FieldElement, const N: usize>(
     debug_assert_eq!(polys.num_rows(), twiddles.len() * 2);
     debug_assert_eq!(offsets.len() % polys.num_rows(), 0);
 
-    let num_segments = if polys.num_base_cols() % N == 0 {
+    let num_segments = if polys.num_base_cols().is_multiple_of(N) {
         polys.num_base_cols() / N
     } else {
         polys.num_base_cols() / N + 1

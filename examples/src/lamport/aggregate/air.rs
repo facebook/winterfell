@@ -181,7 +181,7 @@ impl Air for LamportAggregateAir {
         for (i, value) in powers_of_two.iter_mut().enumerate().skip(1) {
             // we switch to a new power of two once every 8 steps this. is so that a
             // new power of two is available for every hash cycle
-            if i % HASH_CYCLE_LEN == 0 {
+            if i.is_multiple_of(HASH_CYCLE_LEN) {
                 current_power_of_two *= TWO;
             }
             *value = current_power_of_two;
