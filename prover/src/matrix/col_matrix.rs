@@ -8,6 +8,7 @@ use core::{iter::FusedIterator, slice};
 
 use crypto::{ElementHasher, VectorCommitment};
 use math::{fft, polynom, FieldElement};
+use tracing::info_span;
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
 use utils::{batch_iter_mut, iter, iter_mut, uninit_vector};
@@ -246,7 +247,9 @@ impl<E: FieldElement> ColMatrix<E> {
     where
         F: FieldElement + From<E>,
     {
-        iter!(self.columns).map(|p| polynom::eval(p, x)).collect()
+        let dim = (self.num_cols(), self.num_rows());
+        info_span!("compute opened values with Horner evaluation", ?dim)
+            .in_scope(|| iter!(self.columns).map(|p| polynom::eval(p, x)).collect())
     }
 
     // COMMITMENTS

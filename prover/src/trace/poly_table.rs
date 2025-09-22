@@ -7,6 +7,7 @@ use alloc::vec::Vec;
 
 use air::proof::TraceOodFrame;
 use math::{FieldElement, StarkField};
+use tracing::instrument;
 
 use crate::{matrix::ColumnIter, ColMatrix};
 
@@ -65,6 +66,7 @@ impl<E: FieldElement> TracePolyTable<E> {
 
     /// Returns an out-of-domain evaluation frame constructed by evaluating trace polynomials for
     /// all columns at points z and z * g, where g is the generator of the trace domain.
+    #[instrument(skip_all)]
     pub fn get_ood_frame(&self, z: E) -> TraceOodFrame<E> {
         let log_trace_len = self.poly_size().ilog2();
         let g = E::from(E::BaseField::get_root_of_unity(log_trace_len));

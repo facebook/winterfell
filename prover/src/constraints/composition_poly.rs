@@ -7,6 +7,7 @@ use alloc::vec::Vec;
 
 use air::proof::QuotientOodFrame;
 use math::{fft, polynom::degree_of, FieldElement, StarkField};
+use tracing::instrument;
 
 use super::{ColMatrix, StarkDomain};
 
@@ -98,6 +99,7 @@ impl<E: FieldElement> CompositionPoly<E> {
     }
 
     /// Returns evaluations of all composition polynomial columns at points `z` and `g * z`.
+    #[instrument(skip_all)]
     pub fn get_ood_frame(&self, z: E) -> QuotientOodFrame<E> {
         let log_trace_len = self.column_len().ilog2();
         let g = E::from(E::BaseField::get_root_of_unity(log_trace_len));

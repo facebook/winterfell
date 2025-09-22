@@ -383,6 +383,7 @@ pub trait Prover {
             .commit_to_constraint_evaluations(&air, composition_poly_trace, &domain, &mut channel));
 
         // 4 ----- build DEEP composition polynomial ----------------------------------------------
+        let opening_span = info_span!("opening").entered();
         let deep_composition_poly = {
             let span = info_span!("build_deep_composition_poly").entered();
             // draw an out-of-domain point z. Depending on the type of E, the point is drawn either
@@ -460,6 +461,7 @@ pub trait Prover {
             drop(span);
             query_positions
         };
+        drop(opening_span);
 
         // 8 ----- build proof object -------------------------------------------------------------
         let proof = {
