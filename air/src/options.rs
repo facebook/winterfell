@@ -189,7 +189,7 @@ impl ProofOptions {
     /// # Panics
     /// Panics if:
     /// - `num_partitions` is zero or greater than 16.
-    /// - `hash_rate` is zero or greater than 256.
+    /// - `hash_rate` is zero or greater than 255.
     pub const fn with_partitions(
         mut self,
         num_partitions: usize,
@@ -414,7 +414,7 @@ impl PartitionOptions {
         assert!(num_partitions <= 16, "number of partitions must be smaller than or equal to 16");
 
         assert!(hash_rate >= 1, "hash rate must be greater than or equal to 1");
-        assert!(hash_rate <= 256, "hash rate must be smaller than or equal to 256");
+        assert!(hash_rate <= 255, "hash rate must be smaller than or equal to 255");
 
         Self {
             num_partitions: num_partitions as u8,
