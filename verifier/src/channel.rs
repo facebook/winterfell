@@ -155,10 +155,16 @@ where
 
     /// Returns execution trace commitments sent by the prover.
     ///
-    /// For computations requiring multiple trace segment, the returned slice will contain a
-    /// commitment for each trace segment.
-    pub fn read_trace_commitments(&self) -> &[H::Digest] {
-        &self.trace_commitments
+    /// Returns a tuple containing the main trace commitment and an optional auxiliary trace
+    /// commitment (present only for multi-segment traces).
+    pub fn read_trace_commitments(&self) -> (H::Digest, Option<H::Digest>) {
+        let main = self.trace_commitments[0];
+        let aux = if self.trace_commitments.len() > 1 {
+            Some(self.trace_commitments[1])
+        } else {
+            None
+        };
+        (main, aux)
     }
 
     /// Returns constraint evaluation commitment sent by the prover.

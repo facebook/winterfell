@@ -167,12 +167,10 @@ where
     // used to draw random elements needed to construct the next trace segment. The last trace
     // commitment is used to draw a set of random coefficients which the prover uses to compute
     // constraint composition polynomial.
-    const MAIN_TRACE_IDX: usize = 0;
-    const AUX_TRACE_IDX: usize = 1;
-    let trace_commitments = channel.read_trace_commitments();
+    let (main_trace_commitment, aux_trace_commitment) = channel.read_trace_commitments();
 
     // reseed the coin with the commitment to the main trace segment
-    public_coin.reseed(trace_commitments[MAIN_TRACE_IDX]);
+    public_coin.reseed(main_trace_commitment);
 
     // process auxiliary trace segments (if any), to build a set of random elements for each segment
     let aux_trace_rand_elements = if air.trace_info().is_multi_segment() {
@@ -180,7 +178,7 @@ where
             .get_aux_rand_elements(&mut public_coin)
             .expect("failed to generate the random elements needed to build the auxiliary trace");
 
-        public_coin.reseed(trace_commitments[AUX_TRACE_IDX]);
+        public_coin.reseed(aux_trace_commitment.expect("missing auxiliary trace commitment"));
 
         Some(aux_rand_elements)
     } else {
