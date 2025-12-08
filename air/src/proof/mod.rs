@@ -10,7 +10,6 @@ use alloc::vec::Vec;
 use crypto::{Hasher, MerkleTree};
 use fri::FriProof;
 use math::FieldElement;
-use security::{ConjecturedSecurity, ProvenSecurity};
 use utils::{ByteReader, Deserializable, DeserializationError, Serializable, SliceReader};
 
 use crate::{options::BatchingMethod, ProofOptions, TraceInfo};
@@ -27,7 +26,12 @@ pub use queries::Queries;
 mod ood_frame;
 pub use ood_frame::{merge_ood_evaluations, OodFrame, QuotientOodFrame, TraceOodFrame};
 
-mod security;
+pub mod security;
+pub use security::{
+    find_min_grinding_ldr, find_min_grinding_udr, find_min_queries_ldr, find_min_queries_udr,
+    plan_grinding_schedule_ldr, plan_grinding_schedule_udr, summarize_ldr, summarize_udr,
+    ConjecturedSecurity, GrindingSchedule, ProvenSecurity, RoundSecurity, SecuritySummary,
+};
 
 mod table;
 pub use table::Table;
@@ -93,8 +97,8 @@ impl Proof {
     ///
     /// This is the conjecture on the security of the Toy problem (Conjecture 1)
     /// in https://eprint.iacr.org/2021/582.
-    pub fn conjectured_security<H: Hasher>(&self) -> ConjecturedSecurity {
-        ConjecturedSecurity::compute(
+    pub fn conjectured_security<H: Hasher>(&self) -> security::ConjecturedSecurity {
+        security::ConjecturedSecurity::compute(
             self.context.options(),
             self.context.num_modulus_bits(),
             H::COLLISION_RESISTANCE,
@@ -104,7 +108,7 @@ impl Proof {
     ///
     /// Usually, the number of queries needed for provable security is 2x - 3x higher than
     /// the number of queries needed for conjectured security at the same security level.
-    pub fn proven_security<H: Hasher>(&self) -> ProvenSecurity {
+    pub fn proven_security<H: Hasher>(&self) -> security::ProvenSecurity {
         // note that we need the count of the total number of constraints in the protocol as
         // the soundness error, in the case of algebraic batching, depends on the this number.
         let num_constraints = self.context.num_constraints();
@@ -116,7 +120,7 @@ impl Proof {
         let num_trace_polys = self.context.trace_info().width();
         let num_constraint_composition_polys = self.options().blowup_factor();
         let num_committed_polys = num_trace_polys + num_constraint_composition_polys;
-        ProvenSecurity::compute(
+        security::ProvenSecurity::compute(
             self.context.options(),
             self.context.num_modulus_bits(),
             self.trace_info().length(),
