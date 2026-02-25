@@ -267,7 +267,14 @@ where
         air.trace_poly_degree(),
     )
     .map_err(VerifierError::FriVerificationFailed)?;
-    // TODO: make sure air.lde_domain_size() == fri_verifier.domain_size()
+    
+    // Verify that the AIR's LDE domain size matches the FRI verifier's domain size
+    if air.lde_domain_size() != fri_verifier.domain_size() {
+        return Err(VerifierError::InconsistentDomainSize {
+            air_domain_size: air.lde_domain_size(),
+            fri_domain_size: fri_verifier.domain_size(),
+        });
+    }
 
     // 5 ----- trace and constraint queries -------------------------------------------------------
     // read proof-of-work nonce sent by the prover

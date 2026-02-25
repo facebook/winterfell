@@ -16,6 +16,14 @@ pub enum VerifierError {
     /// This error occurs when base field read by a verifier from a proof does not match the
     /// base field of AIR with which the verifier was instantiated.
     InconsistentBaseField,
+    /// This error occurs when the low-degree extension domain size of the AIR does not match
+    /// the domain size of the FRI verifier.
+    InconsistentDomainSize {
+        /// The domain size expected by the AIR.
+        air_domain_size: usize,
+        /// The domain size used by the FRI verifier.
+        fri_domain_size: usize,
+    },
     /// This error occurs when the base field in which the proof was generated does not support
     /// field extension of degree specified by the proof.
     UnsupportedFieldExtension(usize),
@@ -59,6 +67,9 @@ impl fmt::Display for VerifierError {
         match self {
             Self::InconsistentBaseField =>  {
                 write!(f, "base field of the proof does not match base field of the specified AIR")
+            }
+            Self::InconsistentDomainSize { air_domain_size, fri_domain_size } => {
+                write!(f, "inconsistent domain sizes: AIR expects domain size {air_domain_size}, but FRI verifier uses domain size {fri_domain_size}")
             }
             Self::UnsupportedFieldExtension(degree) => {
                 write!(f, "field extension of degree {degree} is not supported for the proof base field")
