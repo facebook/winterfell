@@ -48,12 +48,12 @@ impl<E: FieldElement> Table<E> {
     ) -> Result<Self, DeserializationError> {
         assert!(num_rows > 0, "number of rows must be greater than 0");
         assert!(
-            num_rows < MAX_ROWS,
+            num_rows <= MAX_ROWS,
             "number of rows cannot exceed {MAX_ROWS}, but was {num_rows}"
         );
         assert!(num_cols > 0, "number of columns must be greater than 0");
         assert!(
-            num_cols < MAX_ROWS,
+            num_cols <= MAX_COLS,
             "number of columns cannot exceed {MAX_COLS}, but was {num_cols}"
         );
 
