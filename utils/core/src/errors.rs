@@ -18,6 +18,8 @@ pub enum DeserializationError {
     UnexpectedEOF,
     /// Deserialization has finished but not all bytes have been consumed.
     UnconsumedBytes,
+    /// The requested number of elements could not be allocated.
+    TooManyElements(usize),
     /// An unknown error has occurred.
     UnknownError(String),
 }
@@ -28,6 +30,9 @@ impl fmt::Display for DeserializationError {
             Self::InvalidValue(err_msg) => write!(f, "{err_msg}"),
             Self::UnexpectedEOF => write!(f, "unexpected EOF"),
             Self::UnconsumedBytes => write!(f, "not all bytes were consumed"),
+            Self::TooManyElements(num) => {
+                write!(f, "could not allocate memory for {num} elements")
+            }
             Self::UnknownError(err_msg) => write!(f, "unknown error: {err_msg}"),
         }
     }

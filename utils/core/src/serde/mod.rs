@@ -393,6 +393,34 @@ pub trait Deserializable: Sized {
     }
 }
 
+    /// Reads a sequence of bytes from the provided `source`, attempts to deserialize these bytes
+    /// into a vector with the specified number of `Self` elements, and returns the result.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// * The `source` does not contain enough bytes to deserialize the specified number of
+    ///   elements.
+    /// * Bytes read from the `source` do not represent a valid value for `Self` for any of the
+    ///   elements.
+    ///
+    /// Note: if the error occurs, the reader is not rolled back to the state prior to calling
+    /// this function.
+    fn read_batch_from<R: ByteReader>(
+        source: &mut R,
+        num_elements: usize,
+    ) -> Result<Vec<Self>, DeserializationError> {
+        let mut result = Vec::new();
+        result
+            .try_reserve(num_elements)
+            .map_err(|_| DeserializationError::TooManyElements(num_elements))?;
+        for _ in 0..num_elements {
+            let element = Self::read_from(source)?;
+            result.push(element)
+        }
+        Ok(result)
+    }
+}
+
 impl Deserializable for () {
     fn read_from<R: ByteReader>(_source: &mut R) -> Result<Self, DeserializationError> {
         Ok(())
