@@ -5,7 +5,8 @@
 
 use alloc::vec::Vec;
 
-use utils::uninit_vector;
+use core::mem::MaybeUninit;
+use utils::{assume_init_vec, uninit_vector};
 
 use super::fft_inputs::FftInputs;
 use crate::{field::StarkField, FieldElement};
@@ -38,16 +39,21 @@ where
 {
     let domain_size = p.len() * blowup_factor;
     let g = B::get_root_of_unity(domain_size.ilog2());
-    let mut result = unsafe { uninit_vector(domain_size) };
+    let mut result = uninit_vector(domain_size);
 
     result.as_mut_slice().chunks_mut(p.len()).enumerate().for_each(|(i, chunk)| {
         let idx = super::permute_index(blowup_factor, i) as u64;
         let offset = g.exp(idx.into()) * domain_offset;
         let mut factor = E::BaseField::ONE;
         for (d, c) in chunk.iter_mut().zip(p.iter()) {
-            *d = (*c).mul_base(factor);
+            *d = MaybeUninit::new((*c).mul_base(factor));
             factor *= offset;
         }
+    });
+
+    let mut result = unsafe { assume_init_vec(result) };
+
+    result.as_mut_slice().chunks_mut(p.len()).for_each(|chunk| {
         chunk.fft_in_place(twiddles);
     });
 

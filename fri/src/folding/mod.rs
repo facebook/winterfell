@@ -16,7 +16,8 @@ use math::{
 };
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
-use utils::{iter_mut, uninit_vector};
+use core::mem::MaybeUninit;
+use utils::{assume_init_vec, iter_mut, uninit_vector};
 
 // DEGREE-RESPECTING PROJECTION
 // ================================================================================================
@@ -93,7 +94,7 @@ where
     let inv_twiddles = get_inv_twiddles::<B>(N);
     let len_offset = E::inv((N as u32).into());
 
-    let mut result = unsafe { uninit_vector(values.len()) };
+    let mut result = uninit_vector(values.len());
     iter_mut!(result)
         .zip(values)
         .zip(inv_offsets)
@@ -111,10 +112,10 @@ where
             }
 
             // evaluate the polynomial at alpha, and save the result
-            *result = polynom::eval(&poly, alpha)
+            *result = MaybeUninit::new(polynom::eval(&poly, alpha))
         });
 
-    result
+    unsafe { assume_init_vec(result) }
 }
 
 // POSITION FOLDING

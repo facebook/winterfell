@@ -5,9 +5,11 @@
 
 use alloc::vec::Vec;
 
+use core::mem::MaybeUninit;
+
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
-use utils::{batch_iter_mut, iter_mut, uninit_vector};
+use utils::{assume_init_vec, batch_iter_mut, iter_mut, uninit_vector};
 
 use crate::{field::FieldElement, ExtensionOf};
 
@@ -37,12 +39,15 @@ pub fn get_power_series<E>(b: E, n: usize) -> Vec<E>
 where
     E: FieldElement,
 {
-    let mut result = unsafe { uninit_vector(n) };
-    batch_iter_mut!(&mut result, 1024, |batch: &mut [E], batch_offset: usize| {
+    let mut result = uninit_vector(n);
+    batch_iter_mut!(&mut result, 1024, |batch: &mut [MaybeUninit<E>], batch_offset: usize| {
+        // SAFETY: MaybeUninit<E> has the same layout as E; fill_power_series initializes
+        // every element of the batch.
+        let batch = unsafe { &mut *(batch as *mut [MaybeUninit<E>] as *mut [E]) };
         let start = b.exp((batch_offset as u64).into());
         fill_power_series(batch, b, start);
     });
-    result
+    unsafe { assume_init_vec(result) }
 }
 
 /// Returns a vector containing successive powers of a given base offset by the specified value.
@@ -70,12 +75,15 @@ pub fn get_power_series_with_offset<E>(b: E, s: E, n: usize) -> Vec<E>
 where
     E: FieldElement,
 {
-    let mut result = unsafe { uninit_vector(n) };
-    batch_iter_mut!(&mut result, 1024, |batch: &mut [E], batch_offset: usize| {
+    let mut result = uninit_vector(n);
+    batch_iter_mut!(&mut result, 1024, |batch: &mut [MaybeUninit<E>], batch_offset: usize| {
+        // SAFETY: MaybeUninit<E> has the same layout as E; fill_power_series initializes
+        // every element of the batch.
+        let batch = unsafe { &mut *(batch as *mut [MaybeUninit<E>] as *mut [E]) };
         let start = s * b.exp((batch_offset as u64).into());
         fill_power_series(batch, b, start);
     });
-    result
+    unsafe { assume_init_vec(result) }
 }
 
 /// Computes element-wise sum of the provided vectors, and stores the result in the first vector.
@@ -170,13 +178,16 @@ pub fn batch_inversion<E>(values: &[E]) -> Vec<E>
 where
     E: FieldElement,
 {
-    let mut result: Vec<E> = unsafe { uninit_vector(values.len()) };
-    batch_iter_mut!(&mut result, 1024, |batch: &mut [E], batch_offset: usize| {
+    let mut result: Vec<MaybeUninit<E>> = uninit_vector(values.len());
+    batch_iter_mut!(&mut result, 1024, |batch: &mut [MaybeUninit<E>], batch_offset: usize| {
+        // SAFETY: MaybeUninit<E> has the same layout as E; serial_batch_inversion
+        // initializes every element of the batch.
+        let batch = unsafe { &mut *(batch as *mut [MaybeUninit<E>] as *mut [E]) };
         let start = batch_offset;
         let end = start + batch.len();
         serial_batch_inversion(&values[start..end], batch);
     });
-    result
+    unsafe { assume_init_vec(result) }
 }
 
 // HELPER FUNCTIONS

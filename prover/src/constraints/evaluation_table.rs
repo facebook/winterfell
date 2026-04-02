@@ -12,7 +12,8 @@ use math::fft;
 use math::{batch_inversion, FieldElement, StarkField};
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
-use utils::{batch_iter_mut, iter_mut, uninit_vector};
+use core::mem::MaybeUninit;
+use utils::{assume_init_vec, batch_iter_mut, iter_mut, uninit_vector};
 
 use super::{ConstraintDivisor, StarkDomain};
 
@@ -288,7 +289,9 @@ impl<E: FieldElement> EvaluationTableFragment<'_, E> {
 
 /// Allocates memory for a two-dimensional data structure without initializing it.
 fn uninit_matrix<E: FieldElement>(num_cols: usize, num_rows: usize) -> Vec<Vec<E>> {
-    unsafe { (0..num_cols).map(|_| uninit_vector(num_rows)).collect() }
+    // SAFETY: each column is fully initialized before being read; the callers write to
+    // every element via constraint evaluation before accessing the data.
+    (0..num_cols).map(|_| unsafe { assume_init_vec(uninit_vector(num_rows)) }).collect()
 }
 
 /// Breaks the source data into a mutable set of fragments such that each fragment has the same
@@ -390,17 +393,18 @@ fn get_inv_evaluation<B: StarkField>(
     let domain_offset_exp = domain.offset().exp(a.into());
 
     // compute x^a - b for all x
-    let mut evaluations = unsafe { uninit_vector(n) };
+    let mut evaluations = uninit_vector(n);
     batch_iter_mut!(
         &mut evaluations,
         128, // min batch size
-        |batch: &mut [B], batch_offset: usize| {
+        |batch: &mut [MaybeUninit<B>], batch_offset: usize| {
             for (i, evaluation) in batch.iter_mut().enumerate() {
                 let x = domain.get_ce_x_power_at(batch_offset + i, a, domain_offset_exp);
-                *evaluation = x - b;
+                *evaluation = MaybeUninit::new(x - b);
             }
         }
     );
+    let evaluations = unsafe { assume_init_vec(evaluations) };
 
     // compute 1 / (x^a - b)
     batch_inversion(&evaluations)

@@ -662,9 +662,11 @@ where
 /// assert_eq!(expected_poly, poly);
 /// ```
 pub fn poly_from_roots<E: FieldElement>(xs: &[E]) -> Vec<E> {
-    let mut result = unsafe { utils::uninit_vector(xs.len() + 1) };
-    fill_zero_roots(xs, &mut result);
-    result
+    let mut result = utils::uninit_vector(xs.len() + 1);
+    // fill_zero_roots writes all elements of result
+    let result_slice = unsafe { &mut *(result.as_mut_slice() as *mut [core::mem::MaybeUninit<E>] as *mut [E]) };
+    fill_zero_roots(xs, result_slice);
+    unsafe { utils::assume_init_vec(result) }
 }
 
 // HELPER FUNCTIONS

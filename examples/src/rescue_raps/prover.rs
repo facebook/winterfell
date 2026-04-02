@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use core_utils::uninit_vector;
+use core_utils::{assume_init_vec, uninit_vector};
 use winterfell::{
     crypto::MerkleTree, matrix::ColMatrix, AuxRandElements, CompositionPoly, CompositionPolyTrace,
     ConstraintCompositionCoefficients, DefaultConstraintCommitment, DefaultConstraintEvaluator,
@@ -168,8 +168,9 @@ where
         let main_trace = trace.main_segment();
         let rand_elements = aux_rand_elements.rand_elements();
 
-        let mut current_row = unsafe { uninit_vector(main_trace.num_cols()) };
-        let mut next_row = unsafe { uninit_vector(main_trace.num_cols()) };
+        // SAFETY: read_row_into fully initializes each row buffer before it is read.
+        let mut current_row = unsafe { assume_init_vec(uninit_vector(main_trace.num_cols())) };
+        let mut next_row = unsafe { assume_init_vec(uninit_vector(main_trace.num_cols())) };
         main_trace.read_row_into(0, &mut current_row);
         let mut aux_columns = vec![vec![E::ZERO; main_trace.num_rows()]; trace.aux_trace_width()];
 

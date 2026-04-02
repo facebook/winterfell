@@ -16,7 +16,7 @@ extern crate std;
 pub mod iterators;
 
 use alloc::vec::Vec;
-use core::{mem, slice};
+use core::{mem, mem::MaybeUninit, slice};
 
 mod serde;
 #[cfg(feature = "std")]
@@ -76,12 +76,25 @@ impl<const N: usize> AsBytes for [[u8; N]] {
 /// overwrite all contents of the vector immediately after memory allocation.
 ///
 /// # Safety
-/// Using values from the returned vector before initializing them will lead to undefined behavior.
-#[allow(clippy::uninit_vec)]
-pub unsafe fn uninit_vector<T>(length: usize) -> Vec<T> {
-    let mut vector = Vec::with_capacity(length);
-    vector.set_len(length);
-    vector
+/// All elements must be initialized before reading from them or converting via
+/// [`assume_init_vec`].
+pub fn uninit_vector<T>(length: usize) -> Vec<MaybeUninit<T>> {
+    let mut result = Vec::with_capacity(length);
+    // SAFETY: MaybeUninit<T> does not require initialization; we are only extending the
+    // length to match the capacity, which is valid for MaybeUninit elements.
+    unsafe { result.set_len(length) };
+    result
+}
+
+/// Converts a vector of fully-initialized `MaybeUninit<T>` values into a `Vec<T>`.
+///
+/// This is a zero-cost conversion (same memory layout).
+///
+/// # Safety
+/// Every element in `v` must have been initialized before calling this function.
+pub unsafe fn assume_init_vec<T>(v: Vec<MaybeUninit<T>>) -> Vec<T> {
+    let mut v = mem::ManuallyDrop::new(v);
+    Vec::from_raw_parts(v.as_mut_ptr().cast::<T>(), v.len(), v.capacity())
 }
 
 // GROUPING / UN-GROUPING FUNCTIONS
@@ -173,13 +186,16 @@ pub fn transpose_slice<T: Copy + Send + Sync, const N: usize>(source: &[T]) -> V
         source.len()
     );
 
-    let mut result: Vec<[T; N]> = unsafe { uninit_vector(row_count) };
+    let mut result = uninit_vector::<[T; N]>(row_count);
     iter_mut!(result, 1024).enumerate().for_each(|(i, element)| {
+        let mut arr = MaybeUninit::<[T; N]>::uninit();
+        let ptr = arr.as_mut_ptr() as *mut T;
         for j in 0..N {
-            element[j] = source[i + j * row_count]
+            unsafe { ptr.add(j).write(source[i + j * row_count]) };
         }
+        *element = arr;
     });
-    result
+    unsafe { assume_init_vec(result) }
 }
 
 // RANDOMNESS

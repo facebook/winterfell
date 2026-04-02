@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 
 use air::{EvaluationFrame, TraceInfo};
 use math::StarkField;
-use utils::uninit_vector;
+use utils::{assume_init_vec, uninit_vector};
 #[cfg(feature = "concurrent")]
 use utils::{iterators::*, rayon};
 
@@ -103,7 +103,8 @@ impl<B: StarkField> TraceTable<B> {
             length.ilog2()
         );
 
-        let columns = unsafe { (0..width).map(|_| uninit_vector(length)).collect() };
+        // SAFETY: each column is fully initialized via fill() or set() before being read.
+        let columns = (0..width).map(|_| unsafe { assume_init_vec(uninit_vector(length)) }).collect();
 
         Self { info, trace: ColMatrix::new(columns) }
     }

@@ -5,7 +5,8 @@
 
 use alloc::vec::Vec;
 
-use utils::{iterators::*, rayon, uninit_vector};
+use core::mem::MaybeUninit;
+use utils::{assume_init_vec, iterators::*, rayon, uninit_vector};
 
 use super::fft_inputs::FftInputs;
 use crate::field::{FieldElement, StarkField};
@@ -31,7 +32,7 @@ pub fn evaluate_poly_with_offset<B: StarkField, E: FieldElement<BaseField = B>>(
 ) -> Vec<E> {
     let domain_size = p.len() * blowup_factor;
     let g = B::get_root_of_unity(domain_size.ilog2());
-    let mut result = unsafe { uninit_vector(domain_size) };
+    let mut result = uninit_vector(domain_size);
 
     result
         .as_mut_slice()
@@ -40,9 +41,14 @@ pub fn evaluate_poly_with_offset<B: StarkField, E: FieldElement<BaseField = B>>(
         .for_each(|(i, chunk)| {
             let idx = super::permute_index(blowup_factor, i) as u64;
             let offset = g.exp(idx.into()) * domain_offset;
+            // SAFETY: MaybeUninit<E> has the same layout as E; we fully initialize
+            // the chunk via clone_and_shift before reading via split_radix_fft.
+            let chunk = unsafe { &mut *(chunk as *mut [MaybeUninit<E>] as *mut [E]) };
             clone_and_shift(p, chunk, offset);
             split_radix_fft(chunk, twiddles);
         });
+
+    let mut result = unsafe { assume_init_vec(result) };
 
     permute(&mut result);
     result

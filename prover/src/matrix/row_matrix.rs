@@ -10,7 +10,8 @@ use crypto::{ElementHasher, VectorCommitment};
 use math::{fft, FieldElement, StarkField};
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
-use utils::{batch_iter_mut, flatten_vector_elements, uninit_vector};
+use core::mem::MaybeUninit;
+use utils::{assume_init_vec, batch_iter_mut, flatten_vector_elements, uninit_vector};
 
 use super::{ColMatrix, Segment};
 use crate::StarkDomain;
@@ -187,7 +188,7 @@ impl<E: FieldElement> RowMatrix<E> {
         V: VectorCommitment<H>,
     {
         // allocate vector to store row hashes
-        let mut row_hashes = unsafe { uninit_vector::<H::Digest>(self.num_rows()) };
+        let mut row_hashes = uninit_vector::<H::Digest>(self.num_rows());
         let partition_size = partition_options.partition_size::<E>(self.num_cols());
 
         if partition_size == self.num_cols() {
@@ -195,9 +196,9 @@ impl<E: FieldElement> RowMatrix<E> {
             batch_iter_mut!(
                 &mut row_hashes,
                 128, // min batch size
-                |batch: &mut [H::Digest], batch_offset: usize| {
+                |batch: &mut [MaybeUninit<H::Digest>], batch_offset: usize| {
                     for (i, row_hash) in batch.iter_mut().enumerate() {
-                        *row_hash = H::hash_elements(self.row(batch_offset + i));
+                        *row_hash = MaybeUninit::new(H::hash_elements(self.row(batch_offset + i)));
                     }
                 }
             );
@@ -208,7 +209,7 @@ impl<E: FieldElement> RowMatrix<E> {
             batch_iter_mut!(
                 &mut row_hashes,
                 128, // min batch size
-                |batch: &mut [H::Digest], batch_offset: usize| {
+                |batch: &mut [MaybeUninit<H::Digest>], batch_offset: usize| {
                     let mut buffer = vec![H::Digest::default(); num_partitions];
                     for (i, row_hash) in batch.iter_mut().enumerate() {
                         self.row(batch_offset + i)
@@ -217,13 +218,14 @@ impl<E: FieldElement> RowMatrix<E> {
                             .for_each(|(chunk, buf)| {
                                 *buf = H::hash_elements(chunk);
                             });
-                        *row_hash = H::merge_many(&buffer);
+                        *row_hash = MaybeUninit::new(H::merge_many(&buffer));
                     }
                 }
             );
         }
 
         // build the vector commitment to the hashed rows
+        let row_hashes = unsafe { assume_init_vec(row_hashes) };
         V::new(row_hashes).expect("failed to construct trace vector commitment")
     }
 }
@@ -244,17 +246,17 @@ pub fn get_evaluation_offsets<E: FieldElement>(
     let g = E::BaseField::get_root_of_unity(domain_size.ilog2());
 
     // allocate memory to hold the offsets
-    let mut offsets = unsafe { uninit_vector(domain_size) };
+    let mut offsets = uninit_vector(domain_size);
 
     // define a closure to compute offsets for a given chunk of the result; the number of chunks
     // is defined by the blowup factor. for example, for blowup factor = 2, the number of chunks
     // will be 2, for blowup factor = 8, the number of chunks will be 8 etc.
-    let compute_offsets = |(chunk_idx, chunk): (usize, &mut [E::BaseField])| {
+    let compute_offsets = |(chunk_idx, chunk): (usize, &mut [MaybeUninit<E::BaseField>])| {
         let idx = fft::permute_index(blowup_factor, chunk_idx) as u64;
         let offset = g.exp_vartime(idx.into()) * domain_offset;
         let mut factor = E::BaseField::ONE;
         for res in chunk.iter_mut() {
-            *res = factor;
+            *res = MaybeUninit::new(factor);
             factor *= offset;
         }
     };
@@ -267,7 +269,7 @@ pub fn get_evaluation_offsets<E: FieldElement>(
     #[cfg(feature = "concurrent")]
     offsets.par_chunks_mut(poly_size).enumerate().for_each(compute_offsets);
 
-    offsets
+    unsafe { assume_init_vec(offsets) }
 }
 
 /// Returns matrix segments constructed by evaluating polynomials in the specified matrix over the
@@ -308,7 +310,7 @@ fn transpose<B: StarkField, const N: usize>(mut segments: Vec<Segment<B, N>>) ->
 
     // allocate memory to hold the transposed result;
     // TODO: investigate transposing in-place
-    let mut result = unsafe { uninit_vector::<[B; N]>(result_len) };
+    let mut result = uninit_vector::<[B; N]>(result_len);
 
     // determine number of batches in which transposition will be preformed; if `concurrent`
     // feature is not enabled, the number of batches will always be 1
@@ -316,16 +318,21 @@ fn transpose<B: StarkField, const N: usize>(mut segments: Vec<Segment<B, N>>) ->
     let rows_per_batch = num_rows / num_batches;
 
     // define a closure for transposing a given batch
-    let transpose_batch = |(batch_idx, batch): (usize, &mut [[B; N]])| {
-        let row_offset = batch_idx * rows_per_batch;
-        for i in 0..rows_per_batch {
-            let row_idx = i + row_offset;
-            for j in 0..num_segs {
-                let v = &segments[j][row_idx];
-                batch[i * num_segs + j].copy_from_slice(v);
+    let transpose_batch =
+        |(batch_idx, batch): (usize, &mut [MaybeUninit<[B; N]>])| {
+            // SAFETY: MaybeUninit<[B; N]> has the same layout as [B; N]; every element
+            // of the batch is fully written via copy_from_slice.
+            let batch =
+                unsafe { &mut *(batch as *mut [MaybeUninit<[B; N]>] as *mut [[B; N]]) };
+            let row_offset = batch_idx * rows_per_batch;
+            for i in 0..rows_per_batch {
+                let row_idx = i + row_offset;
+                for j in 0..num_segs {
+                    let v = &segments[j][row_idx];
+                    batch[i * num_segs + j].copy_from_slice(v);
+                }
             }
-        }
-    };
+        };
 
     // call the closure either once (for single-threaded transposition) or in a parallel
     // iterator (for multi-threaded transposition)
@@ -339,7 +346,7 @@ fn transpose<B: StarkField, const N: usize>(mut segments: Vec<Segment<B, N>>) ->
         .enumerate()
         .for_each(transpose_batch);
 
-    result
+    unsafe { assume_init_vec(result) }
 }
 
 #[cfg(not(feature = "concurrent"))]

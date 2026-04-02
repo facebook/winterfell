@@ -342,29 +342,32 @@ impl<H: Hasher> MerkleTree<H> {
 /// This function is exposed primarily for benchmarking purposes. It is not intended to be used
 /// directly by the end users of the crate.
 pub fn build_merkle_nodes<H: Hasher>(leaves: &[H::Digest]) -> Vec<H::Digest> {
+    use core::mem::MaybeUninit;
+
     let n = leaves.len() / 2;
 
     // create un-initialized array to hold all intermediate nodes
-    let mut nodes = unsafe { utils::uninit_vector::<H::Digest>(2 * n) };
-    nodes[0] = H::Digest::default();
+    let mut nodes = utils::uninit_vector::<H::Digest>(2 * n);
+    nodes[0] = MaybeUninit::new(H::Digest::default());
 
     // re-interpret leaves as an array of two leaves fused together
     let two_leaves = unsafe { slice::from_raw_parts(leaves.as_ptr() as *const [H::Digest; 2], n) };
 
     // build first row of internal nodes (parents of leaves)
     for (i, j) in (0..n).zip(n..nodes.len()) {
-        nodes[j] = H::merge(&two_leaves[i]);
+        nodes[j] = MaybeUninit::new(H::merge(&two_leaves[i]));
     }
 
-    // re-interpret nodes as an array of two nodes fused together
+    // re-interpret nodes as an array of two nodes fused together; safe because all elements
+    // from index n onwards are initialized, and lower indices will be initialized below
     let two_nodes = unsafe { slice::from_raw_parts(nodes.as_ptr() as *const [H::Digest; 2], n) };
 
     // calculate all other tree nodes
     for i in (1..n).rev() {
-        nodes[i] = H::merge(&two_nodes[i]);
+        nodes[i] = MaybeUninit::new(H::merge(&two_nodes[i]));
     }
 
-    nodes
+    unsafe { utils::assume_init_vec(nodes) }
 }
 
 fn map_indexes(

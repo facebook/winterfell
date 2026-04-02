@@ -10,7 +10,8 @@ use crypto::{ElementHasher, VectorCommitment};
 use math::{fft, polynom, FieldElement};
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
-use utils::{batch_iter_mut, iter, iter_mut, uninit_vector};
+use core::mem::MaybeUninit;
+use utils::{assume_init_vec, batch_iter_mut, iter, iter_mut, uninit_vector};
 
 use crate::StarkDomain;
 
@@ -265,7 +266,7 @@ impl<E: FieldElement> ColMatrix<E> {
         V: VectorCommitment<H>,
     {
         // allocate vector to store row hashes
-        let mut row_hashes = unsafe { uninit_vector::<H::Digest>(self.num_rows()) };
+        let mut row_hashes = uninit_vector::<H::Digest>(self.num_rows());
 
         // iterate though matrix rows, hashing each row; the hashing is done by first copying a
         // row into row_buf to avoid heap allocations, and then by applying the hash function to
@@ -273,15 +274,16 @@ impl<E: FieldElement> ColMatrix<E> {
         batch_iter_mut!(
             &mut row_hashes,
             128, // min batch size
-            |batch: &mut [H::Digest], batch_offset: usize| {
+            |batch: &mut [MaybeUninit<H::Digest>], batch_offset: usize| {
                 let mut row_buf = vec![E::ZERO; self.num_cols()];
                 for (i, row_hash) in batch.iter_mut().enumerate() {
                     self.read_row_into(i + batch_offset, &mut row_buf);
-                    *row_hash = H::hash_elements(&row_buf);
+                    *row_hash = MaybeUninit::new(H::hash_elements(&row_buf));
                 }
             }
         );
 
+        let row_hashes = unsafe { assume_init_vec(row_hashes) };
         V::new(row_hashes).expect("failed to construct trace vector commitment")
     }
 

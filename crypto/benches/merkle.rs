@@ -6,7 +6,8 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use math::fields::f128::BaseElement;
 use rand_utils::rand_value;
-use utils::uninit_vector;
+use core::mem::MaybeUninit;
+use utils::{assume_init_vec, uninit_vector};
 use winter_crypto::{build_merkle_nodes, concurrent, hashers::Blake3_256, Hasher};
 
 type Blake3 = Blake3_256<BaseElement>;
@@ -20,11 +21,11 @@ pub fn merkle_tree_construction(c: &mut Criterion) {
 
     for size in &BATCH_SIZES {
         let data: Vec<Blake3Digest> = {
-            let mut res = unsafe { uninit_vector(*size) };
+            let mut res = uninit_vector(*size);
             for i in 0..*size {
-                res[i] = Blake3::hash(&rand_value::<u128>().to_le_bytes());
+                res[i] = MaybeUninit::new(Blake3::hash(&rand_value::<u128>().to_le_bytes()));
             }
-            res
+            unsafe { assume_init_vec(res) }
         };
         merkle_group.bench_with_input(BenchmarkId::new("sequential", size), &data, |b, i| {
             b.iter(|| build_merkle_nodes::<Blake3>(i))

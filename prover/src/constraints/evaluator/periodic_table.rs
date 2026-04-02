@@ -7,7 +7,8 @@ use alloc::{collections::BTreeMap, vec::Vec};
 
 use air::Air;
 use math::{fft, StarkField};
-use utils::uninit_vector;
+use core::mem::MaybeUninit;
+use utils::{assume_init_vec, uninit_vector};
 
 pub struct PeriodicValueTable<B: StarkField> {
     values: Vec<B>,
@@ -54,12 +55,13 @@ impl<B: StarkField> PeriodicValueTable<B> {
         // table in such a way that values for the same row are adjacent to each other.
         let row_width = polys.len();
         let column_length = max_poly_size * air.ce_blowup_factor();
-        let mut values = unsafe { uninit_vector(row_width * column_length) };
+        let mut values = uninit_vector(row_width * column_length);
         for i in 0..column_length {
             for (j, column) in evaluations.iter().enumerate() {
-                values[i * row_width + j] = column[i % column.len()];
+                values[i * row_width + j] = MaybeUninit::new(column[i % column.len()]);
             }
         }
+        let values = unsafe { assume_init_vec(values) };
 
         PeriodicValueTable {
             values,

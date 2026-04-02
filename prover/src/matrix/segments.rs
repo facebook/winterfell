@@ -9,7 +9,7 @@ use core::ops::Deref;
 use math::{fft::fft_inputs::FftInputs, FieldElement, StarkField};
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
-use utils::uninit_vector;
+use utils::{assume_init_vec, uninit_vector};
 
 use super::ColMatrix;
 
@@ -65,8 +65,9 @@ impl<B: StarkField, const N: usize> Segment<B, N> {
 
         // allocate memory for the segment
         let data = if polys.num_base_cols() - poly_offset >= N {
-            // if we will fill the entire segment, we allocate uninitialized memory
-            unsafe { uninit_vector::<[B; N]>(domain_size) }
+            // if we will fill the entire segment, we allocate uninitialized memory;
+            // SAFETY: new_with_buffer fully initializes all elements before reading.
+            unsafe { assume_init_vec(uninit_vector::<[B; N]>(domain_size)) }
         } else {
             // but if some columns in the segment will remain unfilled, we allocate memory
             // initialized to zeros to make sure we don't end up with memory with

@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-use core_utils::uninit_vector;
+use core_utils::{assume_init_vec, uninit_vector};
 use winterfell::{math::StarkField, matrix::ColMatrix, EvaluationFrame, Trace, TraceInfo};
 
 // RAP TRACE TABLE
@@ -87,7 +87,8 @@ impl<B: StarkField> RapTraceTable<B> {
             meta.len()
         );
 
-        let columns = unsafe { (0..width).map(|_| uninit_vector(length)).collect() };
+        // SAFETY: each column is fully initialized via fill() or update_row() before being read.
+        let columns = (0..width).map(|_| unsafe { assume_init_vec(uninit_vector(length)) }).collect();
         Self {
             info: TraceInfo::new_multi_segment(width, 3, 3, length, meta),
             trace: ColMatrix::new(columns),

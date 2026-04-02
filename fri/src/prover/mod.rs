@@ -10,8 +10,10 @@ use crypto::{ElementHasher, Hasher, VectorCommitment};
 use math::{fft, FieldElement};
 #[cfg(feature = "concurrent")]
 use utils::iterators::*;
+use core::mem::MaybeUninit;
 use utils::{
-    flatten_vector_elements, group_slice_elements, iter_mut, transpose_slice, uninit_vector,
+    assume_init_vec, flatten_vector_elements, group_slice_elements, iter_mut, transpose_slice,
+    uninit_vector,
 };
 
 use crate::{
@@ -326,11 +328,11 @@ where
     H: ElementHasher<BaseField = E::BaseField>,
     V: VectorCommitment<H>,
 {
-    let mut hashed_evaluations: Vec<H::Digest> = unsafe { uninit_vector(values.len()) };
+    let mut hashed_evaluations: Vec<MaybeUninit<H::Digest>> = uninit_vector(values.len());
     iter_mut!(hashed_evaluations, 1024).zip(values).for_each(|(e, v)| {
         let digest: H::Digest = H::hash_elements(v);
-        *e = digest
+        *e = MaybeUninit::new(digest)
     });
 
-    V::new(hashed_evaluations)
+    V::new(unsafe { assume_init_vec(hashed_evaluations) })
 }
