@@ -136,12 +136,44 @@ impl<'a, E: FieldElement> Iterator for RowIterator<'a, E> {
             },
         }
     }
-}
 
-impl<E: FieldElement> ExactSizeIterator for RowIterator<'_, E> {
-    fn len(&self) -> usize {
-        self.table.num_rows()
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.table.num_rows() - self.cursor;
+        (remaining, Some(remaining))
     }
 }
 
+impl<E: FieldElement> ExactSizeIterator for RowIterator<'_, E> {}
+
 impl<E: FieldElement> FusedIterator for RowIterator<'_, E> {}
+
+#[cfg(test)]
+mod tests {
+    use math::fields::f64::BaseElement;
+    use utils::Serializable;
+
+    use super::Table;
+
+    #[test]
+    fn row_iterator_tracks_remaining_length() {
+        let values = vec![
+            BaseElement::new(1),
+            BaseElement::new(2),
+            BaseElement::new(3),
+            BaseElement::new(4),
+        ];
+        let table: Table<BaseElement> = Table::from_bytes(&values.to_bytes(), 4, 1).unwrap();
+        let mut iter = table.rows();
+
+        assert_eq!(iter.len(), 4);
+        assert_eq!(iter.size_hint(), (4, Some(4)));
+
+        iter.next();
+        assert_eq!(iter.len(), 3);
+        assert_eq!(iter.size_hint(), (3, Some(3)));
+
+        iter.by_ref().for_each(drop);
+        assert_eq!(iter.len(), 0);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+    }
+}

@@ -41,6 +41,43 @@ fn test_eval_poly_with_offset_matrix() {
     }
 }
 
+#[test]
+fn column_iterators_track_remaining_length() {
+    let columns = vec![
+        vec![BaseElement::new(1), BaseElement::new(2)],
+        vec![BaseElement::new(3), BaseElement::new(4)],
+        vec![BaseElement::new(5), BaseElement::new(6)],
+        vec![BaseElement::new(7), BaseElement::new(8)],
+    ];
+    let matrix = ColMatrix::new(columns.clone());
+    let mut iter = matrix.columns();
+
+    assert_eq!(iter.len(), 4);
+    assert_eq!(iter.size_hint(), (4, Some(4)));
+
+    iter.next();
+    assert_eq!(iter.len(), 3);
+    assert_eq!(iter.size_hint(), (3, Some(3)));
+
+    iter.by_ref().for_each(drop);
+    assert_eq!(iter.len(), 0);
+    assert_eq!(iter.size_hint(), (0, Some(0)));
+
+    let mut matrix = ColMatrix::new(columns);
+    let mut iter = matrix.columns_mut();
+
+    assert_eq!(iter.len(), 4);
+    assert_eq!(iter.size_hint(), (4, Some(4)));
+
+    iter.next();
+    assert_eq!(iter.len(), 3);
+    assert_eq!(iter.size_hint(), (3, Some(3)));
+
+    iter.by_ref().for_each(drop);
+    assert_eq!(iter.len(), 0);
+    assert_eq!(iter.size_hint(), (0, Some(0)));
+}
+
 // HELPER FUNCTIONS
 // ================================================================================================
 

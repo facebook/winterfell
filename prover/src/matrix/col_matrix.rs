@@ -331,13 +331,16 @@ impl<'a, E: FieldElement> Iterator for ColumnIter<'a, E> {
             None => None,
         }
     }
-}
 
-impl<E: FieldElement> ExactSizeIterator for ColumnIter<'_, E> {
-    fn len(&self) -> usize {
-        self.matrix.map(|matrix| matrix.num_cols()).unwrap_or_default()
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining =
+            self.matrix.map(|matrix| matrix.num_cols() - self.cursor).unwrap_or_default();
+
+        (remaining, Some(remaining))
     }
 }
+
+impl<E: FieldElement> ExactSizeIterator for ColumnIter<'_, E> {}
 
 impl<E: FieldElement> FusedIterator for ColumnIter<'_, E> {}
 
@@ -380,12 +383,13 @@ impl<'a, E: FieldElement> Iterator for ColumnIterMut<'a, E> {
             },
         }
     }
-}
 
-impl<E: FieldElement> ExactSizeIterator for ColumnIterMut<'_, E> {
-    fn len(&self) -> usize {
-        self.matrix.num_cols()
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.matrix.num_cols() - self.cursor;
+        (remaining, Some(remaining))
     }
 }
+
+impl<E: FieldElement> ExactSizeIterator for ColumnIterMut<'_, E> {}
 
 impl<E: FieldElement> FusedIterator for ColumnIterMut<'_, E> {}
